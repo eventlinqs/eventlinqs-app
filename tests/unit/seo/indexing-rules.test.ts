@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { isNoindex, judgePage, judgeSitemapEntry } from '../../../scripts/verify/lib/indexing-rules.mjs'
+import {
+  describeWithdrawnSitemapEntry,
+  isNoindex,
+  judgePage,
+  judgeSitemapEntry,
+} from '../../../scripts/verify/lib/indexing-rules.mjs'
 
 /**
  * THE FIVE INDEXING RULES, DRIVEN IN BOTH DIRECTIONS (close-out C19.6).
@@ -151,5 +156,49 @@ describe('RULE 2: every URL in the sitemap answers 200 and is indexable', () => 
 
   test('FIRES when a sitemap URL emits no canonical', () => {
     expect(judgeSitemapEntry(entry({ canonical: null })).join('\n')).toContain('RULE 3')
+  })
+
+  /*
+   * WITHDRAWN IS NOT BROKEN (20 September 2026).
+   *
+   * A push of 258 commits was refused on two URLs that were another lane's TEST
+   * fixture, created and deleted on the shared database between this drive's
+   * sitemap read and its page reads. At no single instant did the host both
+   * advertise them and fail to serve them.
+   *
+   * Both halves are held here, and the second half is the one that matters: the
+   * escape must require an explicit re-read, so that a caller which has checked
+   * nothing still fails exactly as it always did.
+   */
+  test('a URL the host has STOPPED advertising is not a fault', () => {
+    expect(judgeSitemapEntry(entry({ status: 410, stillAdvertised: false }))).toEqual([])
+    expect(judgeSitemapEntry(entry({ status: 404, stillAdvertised: false }))).toEqual([])
+  })
+
+  test('a URL the host is STILL advertising fires exactly as before', () => {
+    expect(judgeSitemapEntry(entry({ status: 410, stillAdvertised: true })).join('\n')).toContain('answered 410')
+  })
+
+  test('an ABSENT answer buys no excuse, because nothing was re-read', () => {
+    // The field omitted entirely, and the two falsy values a careless caller
+    // might pass. None of them may silence the rule: only `false` does.
+    expect(judgeSitemapEntry(entry({ status: 410 })).join('\n')).toContain('answered 410')
+    expect(judgeSitemapEntry(entry({ status: 410, stillAdvertised: undefined })).join('\n')).toContain('answered 410')
+    expect(judgeSitemapEntry(entry({ status: 410, stillAdvertised: null })).join('\n')).toContain('answered 410')
+    expect(judgeSitemapEntry(entry({ status: 410, stillAdvertised: 0 })).join('\n')).toContain('answered 410')
+  })
+
+  test('the withdrawal is described by name, so it is reported rather than silent', () => {
+    const line = describeWithdrawnSitemapEntry(entry({ status: 410, stillAdvertised: false }))
+    expect(line).toContain('/city/melbourne')
+    expect(line).toContain('410')
+    expect(line).toContain('no longer advertises it')
+  })
+
+  test('a withdrawal never silences the NOINDEX or canonical halves, which need a 200 to be read', () => {
+    // A 200 page carries a document, so the other two rules still apply and the
+    // escape is irrelevant to them.
+    expect(judgeSitemapEntry(entry({ robots: 'noindex', stillAdvertised: false })).join('\n')).toContain('is NOINDEX')
+    expect(judgeSitemapEntry(entry({ canonical: null, stillAdvertised: false })).join('\n')).toContain('RULE 3')
   })
 })

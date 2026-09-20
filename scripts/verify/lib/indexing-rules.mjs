@@ -93,13 +93,47 @@ export function judgePage(r) {
 }
 
 /**
+ * WITHDRAWN IS NOT BROKEN, and telling them apart is what this sentence buys.
+ *
+ * THE RUN THAT PUT THIS HERE, 20 September 2026. A push of 258 commits was
+ * refused at the indexing step on two URLs:
+ *
+ *   RULE 2: /events/lane-b-editrevenue-night-mu9nzzo1 ... answered 410
+ *   RULE 2: /organisers/lane-b-editrevenue-presents-mu9nzzo1 ... answered 404
+ *
+ * Neither was a defect. Both were another lane's TEST fixture, created and torn
+ * down by its own drive on the database all three lanes share, while this gate
+ * was between its build and its indexing step. The sitemap this drive read had
+ * been baked before the teardown; the pages were judged after it. At no single
+ * instant did the host both advertise those URLs and fail to serve them.
+ *
+ * So a non-200 is only a fault while the host is STILL ADVERTISING the URL. The
+ * caller re-reads the sitemap before it says so, and passes the answer here.
+ *
+ * `=== false` AND NOT `!e.stillAdvertised`, deliberately. A caller that omits
+ * the field has not re-checked anything, and an absent answer must never buy an
+ * excuse: it fails exactly as it always did. Only an explicit, re-read "the host
+ * no longer publishes this" is accepted, which is the one thing that makes the
+ * complaint moot.
+ */
+export function describeWithdrawnSitemapEntry(e) {
+  return (
+    `${e.path} answered ${e.status} and the host no longer advertises it. ` +
+    'Withdrawn between the sitemap read and the page read, so RULE 2 has nothing to complain about.'
+  )
+}
+
+/**
  * Judge one URL the sitemap publishes. RULE 2 and the sitemap half of RULE 3.
  *
- * @param {object} e { path, status, location, robots, canonical }
+ * @param {object} e { path, status, location, robots, canonical, stillAdvertised }
  */
 export function judgeSitemapEntry(e) {
   const faults = []
   if (e.status !== 200) {
+    // See describeWithdrawnSitemapEntry above for why, and for why this is
+    // `=== false` rather than falsy.
+    if (e.stillAdvertised === false) return faults
     faults.push(`RULE 2: ${e.path} is in the sitemap and answered ${e.status}${e.location ? ` -> ${e.location}` : ''}`)
     return faults
   }
