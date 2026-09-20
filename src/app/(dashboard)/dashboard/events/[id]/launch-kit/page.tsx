@@ -26,6 +26,7 @@ import {
 } from '@/lib/broadcast/share-links'
 import { getRequestOrigin } from '@/lib/site-origin'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
@@ -324,16 +325,25 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             priority
             objectPosition="50% 30%"
           />
-          {/* The platform hero scrim: darkness only ever comes from the photo. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(10,22,40,0.92) 0%, rgba(10,22,40,0.68) 45%, rgba(10,22,40,0.18) 80%, rgba(10,22,40,0.02) 100%)',
-            }}
-          />
-          <div className="relative z-10 flex min-h-[300px] flex-col justify-end p-6 sm:min-h-[320px] sm:p-8">
+          {/*
+           * THE SHARED WASH, 20 September 2026. This masthead carried its own
+           * `to top, 0.92 0%, 0.68 45%, 0.18 80%, 0.02 100%`: the same
+           * percentage-of-a-band shape `hero-photo-scrim.ts` records four hero
+           * templates carrying until 19 September, and it decides its darkness
+           * by where a pixel sits in the BAND rather than by where the text is.
+           * The organiser's event title is the one thing here whose length is
+           * not known in advance, so it is exactly the caption a percentage
+           * cannot locate.
+           *
+           * NOT DRIVEN, said plainly: this route is behind organiser auth and
+           * needs a published event, and the sweep that measures this class runs
+           * against public URLs. What holds it is the wash's own arithmetic,
+           * re-computed by hero-text-over-a-photograph.mjs clause 2 every build.
+           */}
+          <HeroCaption
+            className="z-10 flex min-h-[300px] flex-col justify-end p-6 sm:min-h-[320px] sm:p-8"
+            contentClassName="flex flex-col justify-end"
+          >
             <div className="hero-enter max-w-3xl">
               <p className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
                 <span
@@ -379,7 +389,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 {eventUrl.replace(/^https?:\/\//, '')}
               </p>
             </div>
-          </div>
+          </HeroCaption>
         </div>
       </section>
 

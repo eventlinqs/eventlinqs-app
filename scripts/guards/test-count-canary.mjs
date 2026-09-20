@@ -2810,9 +2810,50 @@ const ROOT = join(HERE, '..', '..')
  *
  * CHECKABLE:
  *   6407 + 32 = 6439 tests
+ *
+ * 2026-09-20 (the C8 measurement pass): raised 492/6439 -> 493/6470.
+ * ONE new file, tests/unit/perf/measurement-cookie.test.ts, pinning the cookie
+ * the local Lighthouse harness sends: the gate's own `el-audit=1` is never
+ * dropped, and a `--cookie=` value is SLICED rather than split, because a cookie
+ * value contains `=` and `split('=')[1]` truncates it to the name. That is not a
+ * hypothetical either: the item this came from tried to price the consent banner
+ * by passing an encoded consent decision, and a naive parse would have measured
+ * a valueless cookie and produced a confident median of nothing.
+ *
+ * THE PREVIOUS BASELINE WAS 22 TESTS SHORT, AND THIS SAYS SO RATHER THAN
+ * QUIETLY ABSORBING IT. The raise above recorded 6439. `npx vitest list` on this
+ * tree enumerates 6470 cases, of which exactly 9 are in the new file, so 6461
+ * were already present and uncounted when 6439 was written. The likeliest cause
+ * is the one this file has recorded twice before: a count taken from a run part
+ * way through an item rather than from the finished tree. It is called out here
+ * because a floor that drifts below the suite is the exact failure this guard
+ * exists to prevent, and it has now happened three times.
+ *
+ * MEASURED: 493 files, 6470 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`,
+ *  C:\dev\EVIDENCE\C8-SCORE-20260920\gate-suite.txt), and independently
+ * enumerated without running them (`npx vitest list`, 6470 lines).
+ *
+ * CHECKABLE:
+ *   492 + 1 = 493 files
+ *   6461 (measured, present before this item) + 9 = 6470 tests
+ *
+ * 2026-09-20 (lane A, the three lane merge reaching the suite step): raised
+ * 493/6470 -> 513/6833. The push lane's worktree carries lane B's and lane C's
+ * merged commits, and 493/6470 was measured in a lane worktree that held only
+ * its own. Twenty files and 363 cases is what the other two lanes added, not
+ * what this commit added: this commit adds no test file, it repairs three that
+ * could not survive a checkout (see tests/helpers/read-repo-file.ts).
+ *
+ * MEASURED on the merged tree: 513 files, 6833 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r22-suite2.txt).
+ *
+ * CHECKABLE:
+ *   493 + 20 (the files lane B and lane C added) = 513 files
+ *   6470 + 363 (the cases they added) = 6833 tests
  */
-const MIN_FILES = 492
-const MIN_TESTS = 6439
+const MIN_FILES = 513
+const MIN_TESTS = 6833
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

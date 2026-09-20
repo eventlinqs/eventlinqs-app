@@ -79,8 +79,18 @@
  *   EVERY HERO, NOT FOUR TEMPLATES. Its coverage table named four templates by
  *   hand. Thirteen files render a hero that paints text on a photograph; nine
  *   were absent, and four of those were failing. The table is now judged
- *   against `deriveHeroFiles()`, the same derivation the guard and the suite
- *   read, and the drive refuses to run when a hero has no route.
+ *   against the derivation the guard and the suite read, and the drive refuses
+ *   to run when a surface has no route.
+ *
+ *   AND THEN: EVERY SURFACE, NOT EVERY HERO. The three above were all fixed on
+ *   20 September and the sweep was still keyed on `.hero-marketing`, the locked
+ *   hero scale. The constitution carves an exception out of that token in the
+ *   same paragraph that locks it ("the two profile heroes keep their own inline
+ *   scale"), so the mark had documented blind spots, and behind them sat the
+ *   auth brand panel with its EVENTLINQS wordmark painting `text-ink-900` on a
+ *   photograph at 1.00:1, on every sign-in and sign-up page. The band is no
+ *   longer found by a class at all: see the derivation below, which asks the
+ *   BROWSER what is painted over what.
  *
  * Usage:
  *   BASE=http://localhost:3200 node scripts/verify/hero-text-over-photograph-drive.mjs \
@@ -90,9 +100,9 @@
  */
 import { chromium } from 'playwright'
 import sharp from 'sharp'
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { NOT_YET_ON_THE_SHARED_WASH, deriveHeroFiles } from '../guards/lib/hero-files.mjs'
+import { NOT_YET_ON_THE_SHARED_WASH, derivePhotographicTextSurfaces } from '../guards/lib/hero-files.mjs'
 
 const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/HERO-CONTRAST'
@@ -141,6 +151,40 @@ const COMMUNITIES = enumerate('src/lib/communities/data.ts', /^ {4}slug: '([a-z-
  * them apart rather than by indentation.
  */
 const CITIES = enumerate('src/lib/cities/data.ts', /^ {4}slug: '([a-z-]+)', name: '[^']+', state:/gm, 20, 'city slug(s)')
+
+/*
+ * THE AUTH FAMILY, enumerated from the route tree rather than typed, because
+ * the thing that made this family invisible was somebody's list. Every page
+ * that renders <AuthShell> carries a full-bleed platform photograph behind the
+ * wordmark and two locked taglines, at lg and wider, and no contrast check on
+ * this platform had ever loaded one: the panel carries no hero scale token, so
+ * the derivation that keyed on that token could not see it, and the sweep that
+ * used the same token never asked for the route.
+ */
+const AUTH_ROUTES = (() => {
+  const found = []
+  const walk = dir => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (entry === 'page.tsx' && /<AuthShell[\s/>]/.test(readFileSync(full, 'utf8'))) {
+        found.push(
+          full
+            .replace(/\\/g, '/')
+            .replace(/^src\/app/, '')
+            .replace(/\/page\.tsx$/, '')
+            .replace(/\/\([^/]+\)/g, '') || '/',
+        )
+      }
+    }
+  }
+  walk('src/app')
+  if (found.length < 3) {
+    console.error(`[hero-contrast] BROKEN DRIVE: only ${found.length} <AuthShell> route(s) found under src/app (expected >= 3).`)
+    process.exit(1)
+  }
+  return found.sort()
+})()
 const SUBURBS = [
   ...readFileSync('src/lib/cities/data.ts', 'utf8').matchAll(/^ {4}slug: '([a-z-]+)', citySlug: '([a-z-]+)',/gm),
 ].map(m => ({ city: m[2], suburb: m[1].startsWith(`${m[2]}-`) ? m[1].slice(m[2].length + 1) : m[1] }))
@@ -180,6 +224,11 @@ const ROUTES = [
   '/waitlist',
   '/forecast',
   '/organisers',
+  /* The auth brand panel, added 20 September 2026 when the derivation stopped
+   * keying on the hero scale token. It paints the wordmark and two taglines on
+   * a photograph at lg and wider, on every sign-in, sign-up, password-reset and
+   * verification page, and nothing had ever measured it. */
+  ...AUTH_ROUTES,
 ]
 /*
  * EVERY HERO TEMPLATE MUST HAVE A ROUTE IN THAT LIST, and the drive refuses to
@@ -200,6 +249,13 @@ const TEMPLATE_ROUTES = {
   'src/app/waitlist/page.tsx': '/waitlist',
   'src/app/forecast/page.tsx': '/forecast',
   'src/components/templates/OrganisersLandingPage.tsx': '/organisers',
+  /* The auth brand panel, added 20 September 2026 with the second derivation.
+   * Any one of the five <AuthShell> routes renders it; the sweep loads all of
+   * them because AUTH_ROUTES is enumerated, not chosen. */
+  'src/components/auth/auth-shell.tsx': '/login',
+  /* The community organiser CTA band, which renders under every community
+   * page and was measured for the first time on 20 September 2026. */
+  'src/components/features/community/community-organiser-cta.tsx': '/community/',
 }
 /*
  * TWO FAMILIES THIS TABLE CANNOT COVER FROM SOURCE, said here rather than left
@@ -219,6 +275,35 @@ const TEMPLATE_ROUTES = {
 const UNROUTABLE_HEROES = new Set([
   'src/app/events/[slug]/page.tsx',
   'src/components/ui/CategoryHeroEmpty.tsx',
+  /* ── Added 20 September 2026 with the second derivation ──────────────────
+   *
+   * Each of these paints text over a photograph and each is listed here with
+   * the reason no URL in this sweep reaches it, rather than being quietly
+   * absent, which is how the first nine stayed invisible. Every one of them is
+   * held instead by the wash's own arithmetic, which
+   * `hero-text-over-a-photograph.mjs` clause 2 recomputes on every build.
+   */
+  /* Its slugs are database rows, like the event family. It IS driven, by
+   * --routes-file, and the run that reports ZERO photographic text surfaces on
+   * it at all three widths is the evidence behind its register entry. */
+  'src/components/features/organisers/organiser-profile-hero.tsx',
+  /* Also row-derived, and on TEST not one of the 49 venue rows carries a cover
+   * image, so all 49 pages render <BrandedPlaceholder> and the photographic
+   * branch has no URL that exercises it. */
+  'src/components/features/venues/venue-profile-hero.tsx',
+  /* /artists and /gigs are gated on `artist_showcase` and `gig_board`, both
+   * false in BROADCAST_FLAG_DEFAULTS, so both answer 404. */
+  'src/components/marketplace/marketplace-hero.tsx',
+  /* Behind organiser auth, and needs a published event. This sweep runs against
+   * public URLs. */
+  'src/app/(dashboard)/dashboard/events/[id]/launch-kit/page.tsx',
+  /* Needs a live queue for an event that is actually queueing. */
+  'src/app/queue/[slug]/queue-room.tsx',
+  /* Needs a squad invitation token, which exists only once somebody has made
+   * one. */
+  'src/app/squad/[token]/page.tsx',
+  /* Nothing in src imports it. */
+  'src/components/features/home/split-state-hero.tsx',
 ])
 
 /*
@@ -231,7 +316,7 @@ const UNROUTABLE_HEROES = new Set([
  * A sweep that is missing a family does not look any different from a sweep
  * that is green, so the drive now refuses to run when one is missing.
  */
-const derivedHeroes = deriveHeroFiles()
+const derivedHeroes = derivePhotographicTextSurfaces().map(x => x.file)
 const uncovered = derivedHeroes.filter(f => !(f in TEMPLATE_ROUTES) && !UNROUTABLE_HEROES.has(f))
 if (uncovered.length) {
   console.error(
@@ -310,6 +395,146 @@ const composite = (fg, alpha, bg) => [
 ]
 const hex = ([r, g, b]) => '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase()
 
+/* ── WHICH SURFACES PAINT TEXT ON A PHOTOGRAPH, DERIVED FROM THE DOM ───────
+ *
+ * THE INCIDENT, 20 September 2026, the second one. The first version of this
+ * file found its bands with `:is(.hero-marketing, .hero-marketing-grow)` and
+ * `hero-files.mjs` derived its file list from the same token, and both said so
+ * in their own headers: derived, not listed. They ARE derived. The token is the
+ * wrong thing to derive from, and the platform's own constitution says so in
+ * the same paragraph that locks it: "The two profile heroes (venue, organiser)
+ * keep their own inline scale". A derivation whose mark the law carves
+ * exceptions out of has those exceptions as blind spots, and nothing about it
+ * looks any different from a derivation with none.
+ *
+ * Six surfaces paint text on a photograph without that token: the auth brand
+ * panel behind every sign-in and sign-up, the /about story band, the community
+ * organiser band, the venue profile banner, the queue room backdrop, and the
+ * city and community tiles. Not one had ever been measured by anything.
+ *
+ * SO THE DERIVATION ASKS THE PAGE, NOT THE SOURCE. A photograph is a painted
+ * photograph: an `<img>` that has decoded, or an element whose computed
+ * `background-image` resolves a `url()`. No class, no component name, no
+ * import: a surface cannot avoid this by being written differently, and the
+ * organiser banner, which paints its cover through a CSS `background-image`
+ * and therefore renders no media component at all, is found by the same rule
+ * as the homepage hero.
+ *
+ * WHETHER THE PHOTOGRAPH IS ACTUALLY BEHIND THE TEXT IS HIT-TESTED, NOT
+ * INFERRED FROM OVERLAP. Rectangle overlap alone reported the mobile bottom
+ * navigation as text on a photograph, because the fixed bar happens to cover a
+ * card image it has nothing to do with, and the same for the consent dialog.
+ * `elementsFromPoint` is the browser's own stacking answer: the photograph must
+ * be UNDER the run at that point with nothing FULLY OPAQUE between them. A
+ * translucent pill (`bg-ink-900/95`) is not opaque and stays in, because the
+ * photograph genuinely shows through it and the reader genuinely receives the
+ * composite.
+ */
+const PHOTO_MIN_EDGE = 24
+
+/** Tag every painted photograph on the page, in document order. Returns the count. */
+const tagPhotos = page =>
+  page.evaluate(min => {
+    for (const stale of document.querySelectorAll('[data-photo]')) stale.removeAttribute('data-photo')
+    let n = 0
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el)
+      if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < min || r.height < min) continue
+      const decoded = el.tagName === 'IMG' && el.complete && el.naturalWidth > 0
+      const painted = /url\(/.test(cs.backgroundImage)
+      if (!decoded && !painted) continue
+      el.setAttribute('data-photo', String(n))
+      n += 1
+    }
+    return n
+  }, PHOTO_MIN_EDGE)
+
+/**
+ * For photograph `idx`, already scrolled into view: the text runs genuinely
+ * painted over it, and the band that holds both. Tags the band
+ * `data-photo-band="<key>"` and returns what it found.
+ */
+const bandForPhoto = (page, idx, key) =>
+  page.evaluate(
+    ({ i, k }) => {
+      const photo = document.querySelector(`[data-photo="${i}"]`)
+      if (!photo) return null
+      const pr = photo.getBoundingClientRect()
+      const vis = el => {
+        const cs = getComputedStyle(el)
+        return cs.visibility !== 'hidden' && cs.display !== 'none' && parseFloat(cs.opacity) >= 0.05
+      }
+      const opaque = el => {
+        const m = getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/)
+        if (!m) return false
+        const parts = m[1].split(',').map(v => parseFloat(v))
+        return parts.length < 4 || parts[3] >= 0.99
+      }
+      const runs = []
+      for (const el of document.querySelectorAll('*')) {
+        if (photo.contains(el) || el.contains(photo)) continue
+        const own = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ').trim()
+        if (!own || !vis(el)) continue
+        const r = el.getBoundingClientRect()
+        if (r.width < 2 || r.height < 2) continue
+        const cx = Math.round(r.left + r.width / 2)
+        const cy = Math.round(r.top + r.height / 2)
+        if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) continue
+        const stack = document.elementsFromPoint(cx, cy)
+        const iRun = stack.findIndex(n => n === el || n.contains(el))
+        const iPhoto = stack.indexOf(photo)
+        if (iRun < 0 || iPhoto < 0 || iRun >= iPhoto) continue
+        if (stack.slice(iRun + 1, iPhoto).some(opaque)) continue
+        runs.push(el)
+      }
+      if (runs.length === 0) return { runs: 0 }
+      /* THE BAND IS THE NEAREST COMMON ANCESTOR of the photograph and every run
+       * over it, computed rather than named, so a hero section, a tile anchor
+       * and a whole-page backdrop are each found at their own true extent. */
+      let band = photo
+      while (band && !runs.every(r => band.contains(r))) band = band.parentElement
+      if (!band) return { runs: 0 }
+      /*
+       * A SLIDE OF A CAROUSEL IS MEASURED AS THE CAROUSEL.
+       *
+       * THE REGRESSION THIS FIXES, and it was caught by counting the checks in
+       * a green sweep rather than by anything going red. The band used to be
+       * found by the hero scale class, which sits on the carousel; the common
+       * ancestor of a photograph and the words over it is the SLIDE. The dots
+       * are a sibling of the slide, so slide discovery found no tablist, the
+       * drive measured one photograph of five, and the homepage printed 12
+       * green checks where it had printed 60. Smaller, greener, and silent -
+       * which is exactly the failure the slide walk was built to end.
+       *
+       * Pressing a dot also swaps which slide is in layout, so a tag left on
+       * one slide addresses a hidden element for every press after the first.
+       * Tagging the carousel fixes both at once.
+       */
+      for (let up = band.parentElement; up; up = up.parentElement) {
+        if (up.querySelectorAll('[role="tab"]').length > 1) {
+          band = up
+          break
+        }
+        if (up === document.body) break
+      }
+      if (band.hasAttribute('data-photo-band')) return { runs: runs.length, sharedWith: band.getAttribute('data-photo-band') }
+      band.setAttribute('data-photo-band', String(k))
+      return {
+        runs: runs.length,
+        tagged: String(k),
+        band: band.tagName.toLowerCase() + (band.id ? `#${band.id}` : ''),
+        photo: photo.tagName === 'IMG' ? 'img' : 'background-image',
+        rect: { w: Math.round(pr.width), h: Math.round(pr.height) },
+      }
+    },
+    { i: idx, k: key },
+  )
+
+/** Address a derived band by the key it was tagged with, never by position. */
+const bandSel = key => `[data-photo-band="${key}"]`
+
 const checks = []
 const failures = []
 function check(id, ok, detail) {
@@ -340,41 +565,45 @@ const raw = async buf => {
  * renders), never counted in this file, so a sixth featured event is measured
  * the day it is published and nothing here has to be told.
  */
-async function discoverSlides(page, sel, band) {
+async function discoverSlides(page, sel) {
   return page.evaluate(
-    ({ s, b }) => {
-      const el = document.querySelectorAll(s)[b]
+    s => {
+      const el = document.querySelector(s)
       if (!el) return { count: 1, labels: [] }
       const tabs = [...el.querySelectorAll('[role="tab"]')]
       return { count: Math.max(1, tabs.length), labels: tabs.map(t => t.getAttribute('aria-label') ?? '') }
     },
-    { s: sel, b: band },
+    sel,
   )
 }
 
 /** Press slide `idx` and wait until the component reports it selected and its raster has decoded. */
-async function selectSlide(page, sel, band, idx) {
+async function selectSlide(page, sel, idx) {
   await page.evaluate(
-    ({ s, b, n }) => {
-      const el = document.querySelectorAll(s)[b]
-      const tabs = [...el.querySelectorAll('[role="tab"]')]
-      tabs[n]?.click()
+    ({ s, n }) => {
+      const el = document.querySelector(s)
+      ;[...el.querySelectorAll('[role="tab"]')][n]?.click()
     },
-    { s: sel, b: band, n: idx },
+    { s: sel, n: idx },
   )
   await page.waitForFunction(
-    ({ s, b, n }) => {
-      const el = document.querySelectorAll(s)[b]
+    ({ s, n }) => {
+      const el = document.querySelector(s)
       if (!el) return false
       const tabs = [...el.querySelectorAll('[role="tab"]')]
       if (tabs[n]?.getAttribute('aria-selected') !== 'true') return false
+      /* THIS BAND'S photographs, not the page's. Widening it to the document
+       * was tried and hangs: a homepage carries 10 to 27 images and the ones
+       * below the fold are lazy, so they never report complete and every press
+       * after the first timed out at 30 seconds. The band is the carousel, so
+       * its own images are exactly the slides'. */
       const live = [...el.querySelectorAll('img')].filter(i => {
         const r = i.getBoundingClientRect()
         return r.width > 2 && r.height > 2
       })
       return live.length > 0 && live.every(i => i.complete && i.naturalWidth > 0)
     },
-    { s: sel, b: band, n: idx },
+    { s: sel, n: idx },
     { timeout: 30000 },
   )
   /* The crossfade is a 700ms eased opacity transition (FeaturedHeroClient).
@@ -383,6 +612,8 @@ async function selectSlide(page, sel, band, idx) {
 }
 
 const rows = []
+/** Bands found per route, summed over viewports. A route at zero everywhere is judged. */
+const bandsByRoute = new Map()
 const browser = await chromium.launch()
 try {
   for (const route of TARGETS) {
@@ -408,37 +639,63 @@ try {
         continue
       }
 
-      /* The hero image owns the LCP; measuring before it decodes would measure
-       * the empty box behind it. Wait for every image inside the hero band to
-       * report complete, then let one frame settle. */
-      const heroSel = ':is(.hero-marketing, .hero-marketing-grow)'
-      /* EVERY BAND, NOT THE FIRST. This read `document.querySelector` until
-       * 20 September 2026, so a page with a second hero further down was
-       * measured on its first one and reported clean. The shared empty state
-       * (`CategoryHeroEmpty`) is exactly that shape: it paints its own
-       * photograph and its own text below the page hero, and no sweep had ever
-       * looked at it. */
-      const bandCount = await page.locator(heroSel).count()
-      if (bandCount === 0) {
-        check(pageId, false, 'renders no hero band at the locked scale to measure')
-        await ctx.close()
-        continue
-      }
+      /* Every photograph on the page must have decoded before anything is
+       * derived from it: an `<img>` that has not decoded is not a painted
+       * photograph, and a band would simply not be found. */
       await page.waitForFunction(
-        sel => [...document.querySelectorAll(sel)].every(b => [...b.querySelectorAll('img')].every(i => i.complete && i.naturalWidth > 0)),
-        heroSel,
+        () => [...document.querySelectorAll('img')].every(i => i.complete && i.naturalWidth > 0),
+        null,
         { timeout: 30000 },
       ).catch(() => {})
       await page.waitForTimeout(400)
 
+      /*
+       * DERIVE THE SURFACES. Each photograph is brought into view before it is
+       * hit-tested, because `getBoundingClientRect` and `elementsFromPoint` are
+       * both viewport-relative and a band below the fold answers "nothing is
+       * over this photograph" for the same reason a band off-screen yields no
+       * pixels. The /about story band was invisible to the first version of
+       * this derivation for exactly that reason and it is the surface the
+       * derivation was written to find.
+       */
+      const photoCount = await tagPhotos(page)
+      const bands = []
+      for (let p = 0; p < photoCount; p += 1) {
+        await page.evaluate(i => document.querySelector(`[data-photo="${i}"]`)?.scrollIntoView({ block: 'center', behavior: 'instant' }), p)
+        await page.waitForTimeout(80)
+        const found = await bandForPhoto(page, p, bands.length)
+        if (found?.tagged) bands.push(found)
+      }
+      const bandCount = bands.length
+      bandsByRoute.set(route, (bandsByRoute.get(route) ?? 0) + bandCount)
+      if (bandCount === 0) {
+        /*
+         * NOT A FAILURE HERE, AND THE DISTINCTION COST A FALSE ACCUSATION.
+         * The auth brand panel is `hidden lg:flex`, so at 390 and 768 there is
+         * genuinely no photograph and genuinely nothing to measure. The first
+         * version of this rule called that a product defect on four checks and
+         * printed it in the same red as a 1.00:1 wordmark. A surface that is
+         * deliberately absent at a width is absent, not broken.
+         *
+         * THE ANTI-FALSE-PASS SURVIVES, one level out: a route that yields no
+         * photographic text surface at ANY viewport has stopped rendering the
+         * thing this sweep exists to watch, and that IS judged, below.
+         */
+        console.log(`  [${pageId}] ${photoCount} photograph(s), none painting text over one`)
+        await ctx.close()
+        continue
+      }
+      console.log(`  [${pageId}] ${photoCount} photograph(s), ${bandCount} painting text over one`)
+
       for (let bandIdx = 0; bandIdx < bandCount; bandIdx += 1) {
+      const heroSel = bandSel(bandIdx)
       /* A band below the fold has to be brought into the viewport before it is
        * screenshotted: the captures are viewport-sized and every run rectangle
        * is in viewport coordinates, so an off-screen band yields no pixels at
        * all, which the drive would otherwise report as "the run is invisible". */
       await page.evaluate(
-        ({ s, b }) => document.querySelectorAll(s)[b]?.scrollIntoView({ block: 'center', behavior: 'instant' }),
-        { s: heroSel, b: bandIdx },
+        s => document.querySelector(s)?.scrollIntoView({ block: 'center', behavior: 'instant' }),
+        heroSel,
       )
       /*
        * AND THEN WAIT FOR IT TO STOP MOVING. Scrolling a band into view is what
@@ -457,8 +714,8 @@ try {
        */
       await page
         .waitForFunction(
-          ({ s, b }) => {
-            const band = document.querySelectorAll(s)[b]
+          s => {
+            const band = document.querySelector(s)
             if (!band) return false
             const settled = el => {
               const cs = getComputedStyle(el)
@@ -468,13 +725,13 @@ try {
             if (!settled(band)) return false
             return [...band.querySelectorAll('*')].every(settled)
           },
-          { s: heroSel, b: bandIdx },
+          heroSel,
           { timeout: 15000 },
         )
         .catch(() => {})
       await page.waitForTimeout(250)
 
-      const slides = await discoverSlides(page, heroSel, bandIdx)
+      const slides = await discoverSlides(page, heroSel)
       const id = bandCount > 1 ? `${pageId} band ${bandIdx + 1} of ${bandCount}` : pageId
       /* The headline of each slide, collected as it is measured. Two slides that
        * report the same headline mean a press did not take and the drive
@@ -495,8 +752,8 @@ try {
        * method below reveals whatever is genuinely behind the glyphs, so a pill
        * is judged on its pill and a headline on its photograph.
        */
-      const runs = await page.evaluate(({ sel, b }) => {
-        const band = document.querySelectorAll(sel)[b]
+      const runs = await page.evaluate(sel => {
+        const band = document.querySelector(sel)
         if (!band) return []
         /*
          * CLEAR EVERY PREVIOUS TAG IN THE DOCUMENT FIRST. The runs are addressed
@@ -517,6 +774,48 @@ try {
          * DOCUMENT, because that is the scope querySelector uses.
          */
         for (const stale of document.querySelectorAll('[data-hero-run]')) stale.removeAttribute('data-hero-run')
+        /*
+         * THE PHOTOGRAPHS OF THIS BAND, RE-READ NOW. A carousel changes its
+         * picture between slides, so the photograph a run sits on is not the
+         * one the band was derived from, and asking again is the only way to
+         * measure the slide that is actually showing.
+         */
+        const photos = [...band.querySelectorAll('*'), band].filter(el => {
+          const cs = getComputedStyle(el)
+          if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) return false
+          const r = el.getBoundingClientRect()
+          if (r.width < 24 || r.height < 24) return false
+          const decoded = el.tagName === 'IMG' && el.complete && el.naturalWidth > 0
+          return decoded || /url\(/.test(cs.backgroundImage)
+        })
+        const opaque = el => {
+          const m = getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/)
+          if (!m) return false
+          const parts = m[1].split(',').map(v => parseFloat(v))
+          return parts.length < 4 || parts[3] >= 0.99
+        }
+        /* A run is over a photograph when the browser's own stacking puts one
+         * of this band's photographs under it with nothing fully opaque
+         * between. Text that merely sits INSIDE the band - a card title below
+         * its image, a trust pillar under an empty state - is not text on a
+         * photograph and is not this sweep's business. */
+        const overAPhotograph = el => {
+          const r = el.getBoundingClientRect()
+          const cx = Math.round(r.left + r.width / 2)
+          const cy = Math.round(r.top + r.height / 2)
+          if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) return false
+          const stack = document.elementsFromPoint(cx, cy)
+          const iRun = stack.findIndex(n => n === el || n.contains(el))
+          if (iRun < 0) return false
+          for (const ph of photos) {
+            if (ph.contains(el)) continue
+            const iPhoto = stack.indexOf(ph)
+            if (iPhoto < 0 || iRun >= iPhoto) continue
+            if (stack.slice(iRun + 1, iPhoto).some(opaque)) continue
+            return true
+          }
+          return false
+        }
         const found = []
         for (const el of band.querySelectorAll('*')) {
           const own = [...el.childNodes]
@@ -529,6 +828,7 @@ try {
           if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue
           const b = el.getBoundingClientRect()
           if (b.width < 2 || b.height < 2) continue
+          if (!overAPhotograph(el)) continue
           /* The browser resolves the colour, whatever space the stylesheet
            * wrote it in. A 1x1 canvas filled with the computed string reports
            * the sRGB triple and the alpha, which is exactly what is painted. */
@@ -560,7 +860,7 @@ try {
           el.setAttribute('data-hero-run', String(found.length - 1))
         }
         return found
-      }, { sel: heroSel, b: bandIdx })
+      }, heroSel)
 
       if (runs.length === 0) {
         check(label, false, 'hero band holds no text run to measure')
@@ -692,7 +992,7 @@ try {
       for (let s = 0; s < slides.count; s += 1) {
         if (s > 0) {
           try {
-            await selectSlide(page, heroSel, bandIdx, s)
+            await selectSlide(page, heroSel, s)
           } catch (e) {
             check(`${id} slide ${s + 1} of ${slides.count}`, false, `could not be reached: ${e.message.split('\n')[0]}`)
             continue
@@ -724,6 +1024,26 @@ try {
   }
 } finally {
   await browser.close()
+}
+
+/*
+ * A ROUTE THAT PAINTS TEXT ON A PHOTOGRAPH AT NO WIDTH AT ALL has either lost
+ * its photograph or lost its text, and either way this sweep has stopped
+ * watching it while continuing to report on it. That is the failure mode the
+ * whole file exists to prevent, so it is judged per route rather than per
+ * viewport, which is what lets a `hidden lg:flex` panel be absent at 390
+ * without being called broken.
+ */
+for (const route of TARGETS) {
+  /* Only routes this drive DERIVED are judged. A list handed in with
+   * --routes-file is an ad-hoc question - "what does this organiser page paint
+   * over its cover?" - and ZERO is a legitimate answer to it, which is exactly
+   * the answer that became the evidence for two register entries. Asserting on
+   * a handed-in list would turn that evidence into a failure. */
+  if (FROM_FILE.length) break
+  if ((bandsByRoute.get(route) ?? 0) === 0) {
+    check(`${route} coverage`, false, 'no text over a photograph at any of the three viewports')
+  }
 }
 
 /*

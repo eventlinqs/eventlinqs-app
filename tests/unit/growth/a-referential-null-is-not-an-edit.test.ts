@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readRepoFile } from '../../helpers/read-repo-file'
 import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 /*
@@ -349,7 +349,7 @@ describe('the defect the drive found on the way, which was not this item’s sub
    * `window.scrollTo(2000, 0)` really moved the page. `relative` on the wrapper
    * returns it to 390 and the table still scrolls inside its own box.
    */
-  const page = readFileSync(join(ROOT, 'src', 'app', 'admin', '(authed)', 'pricing', 'page.tsx'), 'utf8')
+  const page = readRepoFile(join(ROOT, 'src', 'app', 'admin', '(authed)', 'pricing', 'page.tsx'))
 
   it('every horizontal scroll wrapper on the pricing screen is a containing block', () => {
     const wrappers = [...page.matchAll(/className="([^"]*overflow-x-auto[^"]*)"/g)].map(m => m[1])
@@ -363,14 +363,14 @@ describe('the defect the drive found on the way, which was not this item’s sub
 })
 
 describe('the migration itself', () => {
-  const sql = readFileSync(MIGRATION, 'utf8')
+  const sql = readRepoFile(MIGRATION)
 
   it('changes the floor function by exactly one line, the stamp it no longer owns', () => {
     const body = (text: string) =>
       text
         .slice(text.indexOf('create or replace function public.refuse_group_rate_below_the_floor'))
         .split('$$;')[0]
-    const before = body(readFileSync(GROUP_RATE_MIGRATION, 'utf8')).split('\n')
+    const before = body(readRepoFile(GROUP_RATE_MIGRATION)).split('\n')
     const after = body(sql).split('\n')
     expect(before.filter(line => !after.includes(line))).toEqual(['  new.updated_at := now();'])
     expect(after.filter(line => !before.includes(line))).toEqual([])

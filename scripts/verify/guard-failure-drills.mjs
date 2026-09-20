@@ -968,8 +968,14 @@ const DRILLS = [
     name: 'the no-event hero paints its text outside the caption wash',
     guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
     file: 'src/components/features/home/FeaturedHero.tsx',
-    find: '<HeroCaption className="max-w-2xl hero-enter">',
-    replace: '<div className="max-w-2xl hero-enter">',
+    /* The anchor moved on 20 September 2026 and this drill went stale without
+     * failing: <HeroCaption> gained `contentClassName`, because `.hero-enter`
+     * staggers its DIRECT children and the caption puts two elements between
+     * its own className and the text. A drill whose anchor no longer exists
+     * reports "stale" rather than "guarded", which is the harness doing its
+     * job; the fix is to follow the code, never to delete the drill. */
+    find: '<HeroCaption className="max-w-2xl" contentClassName="hero-enter">',
+    replace: '<div className="max-w-2xl">',
     expect: 'does not wrap its text in <HeroCaption>',
   },
   {
@@ -3083,6 +3089,48 @@ const DRILLS = [
       'alter table public.connect_requirement_watch add column a_column_the_drill_adds text;\n',
     expect:
       'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
+  },
+  /*
+   * generated-types-are-generated (20 September 2026), four drills. Three of
+   * them put back a hand-edit that was really in src/types/database.ts on the
+   * morning of that day, found when a push of 234 commits was refused at
+   * types-drift: six arguments of write_pricing_rule typed as `| null`, a form
+   * the generator has no way of emitting, and two entries sitting where a person
+   * would put them rather than in the generator's ascending order. The fourth
+   * drills the half neither of those exercised, a parameter's optionality, which
+   * the generator decides from whether the SQL gives it a default.
+   */
+  {
+    name: 'a table is typed into the generated types in the place a person would put it',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '\n      payments: {',
+    replace: '\n      aaa_payments: {',
+    expect: 'Tables lists "organiser_sales_digest_sends" before "aaa_payments"',
+  },
+  {
+    name: 'a function argument is hand-typed as nullable, which the generator never writes',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n',
+    replace: '          p_created_by: string | null\n',
+    expect: 'write_pricing_rule.Args.p_created_by is typed "string | null"',
+  },
+  {
+    name: 'a function argument is renamed in the types and no longer matches its migration',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_value_integer: number\n',
+    replace: '          p_value_integers: number\n',
+    expect: 'write_pricing_rule takes [',
+  },
+  {
+    name: 'a required argument is typed optional although its migration gives it no default',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n          p_currency: string',
+    replace: '          p_created_by: string\n          p_currency?: string',
+    expect: 'write_pricing_rule.Args.p_currency is optional in the types',
   },
   /*
    * read-failure-is-not-not-found, three drills, one per fault. 12 September
@@ -5345,6 +5393,106 @@ const DRILLS = [
     find: 'background: HERO_CAPTION_SCRIM,',
     replace: 'background: undefined,',
     expect: 'sits on nothing',
+  },
+
+  /*
+   * hero-text-over-a-photograph, six more drills (20 September 2026), for the
+   * SECOND derivation: the subject set stopped keying on the locked hero scale
+   * and went from 13 files to 22. Five of the six below exercise a file the old
+   * derivation could not see at all, and the sixth is the anti-false-positive.
+   */
+  {
+    /*
+     * THE ONE THAT PROVES THE WIDENING. `auth-shell.tsx` carries no hero scale
+     * token, because it is not a hero, so no drill written before today could
+     * have touched it and the guard could not have failed. It is also the file
+     * whose wordmark was measured at 1.00:1 on every sign-in page.
+     */
+    name: 'the auth brand panel, which no hero-scale derivation could see, loses its caption',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/auth/auth-shell.tsx',
+    find: '<HeroCaption className="z-10 flex w-full"',
+    replace: '<div className="z-10 flex w-full"',
+    expect: 'src/components/auth/auth-shell.tsx paints hero text without <HeroCaption>',
+  },
+  {
+    /*
+     * THE HOLE IN CLAUSE 1. It matched `rgba(10,22,40`, written out, so a wash
+     * in ANY other dark colour walked past it. The auth panel's was
+     * rgba(10,14,26), which the design system's "no new colours" rule forbids
+     * twice over and which the old pattern would have waved through.
+     */
+    name: 'a surface washes its photograph in a navy that is not the brand navy',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/features/city/city-hero.tsx',
+    find: 'style={{ background: HERO_HEADER_SCRIM }}',
+    replace: "style={{ background: 'linear-gradient(135deg, rgba(10,14,26,0.88) 0%, rgba(10,14,26,0.55) 50%)' }}",
+    expect: 'writes its own navy gradient',
+  },
+  {
+    /*
+     * THE FLOW-BOX CLAUSE MUST NOT HIDE A REAL DEFECT. The derivation stops
+     * climbing at a photograph's own flow box, which is what correctly excludes
+     * the organiser banner: its cover fills a box with a declared height and
+     * every word sits below that box on the canvas. The clause would be worth
+     * nothing if it also excluded a caption painted INSIDE that box, so this
+     * drill paints one there and the guard has to see it.
+     */
+    name: 'the organiser banner gains a caption inside the container its cover fills',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/features/organisers/organiser-profile-hero.tsx',
+    /* The caption has to be a SIBLING of the cover, inside the banner box: the
+     * derivation skips the painter's own subtree, so text nested inside the
+     * cover div would prove nothing. */
+    find: "          }}\n        />\n      </div>\n",
+    replace:
+      "          }}\n        />\n        <p className=\"absolute bottom-4 left-4 text-white\">Presented by</p>\n      </div>\n",
+    expect: 'src/components/features/organisers/organiser-profile-hero.tsx paints hero text without <HeroCaption>',
+  },
+  {
+    /*
+     * AND A REGISTER ENTRY THAT SAYS "its own wash is already at least as strong
+     * as the shared one" has to die the day somebody lightens it. This is the
+     * entry doing the work the conversion would otherwise have done.
+     */
+    name: 'the queue room lightens the wash its register entry rests on',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/queue/[slug]/queue-room.tsx',
+    find: '<div className="absolute inset-0 bg-ink-900/85" />',
+    replace: '<div className="absolute inset-0 bg-ink-900/40" />',
+    expect: 'has stopped being true',
+  },
+  {
+    /*
+     * THE SAME CLAUSE FROM THE OTHER SIDE. `/squad/[token]` shows a cover card
+     * in flow with the event title underneath it, and the derivation is right
+     * to walk past it. It must stop being right the moment a caption is
+     * painted over the card itself.
+     */
+    name: 'the squad cover card gains a caption painted over the picture',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/squad/[token]/page.tsx',
+    find: '          <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-6 bg-ink-200">',
+    replace:
+      '          <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-6 bg-ink-200">\n            <p className="absolute bottom-2 left-2 z-10 text-white">Your squad is going</p>',
+    expect: 'src/app/squad/[token]/page.tsx paints hero text without <HeroCaption>',
+  },
+  {
+    /*
+     * THE ANTI-FALSE-POSITIVE, and it is not hypothetical: it fired on the real
+     * tree the hour clause 1 was widened. Every conversion in this class quotes
+     * the gradient it DELETED, so the next reader can see what was wrong, and
+     * `auth-shell.tsx` does exactly that. Testing the raw source made the guard
+     * fail on its own paper trail, which is how a guard gets switched off. The
+     * clause reads code, not comments, and this drill holds that.
+     */
+    name: 'a converted surface documents the wash it deleted, in a comment',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/PhotographicCityHero.tsx',
+    find: 'export function PhotographicCityHero',
+    replace:
+      '/* Superseded: linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.92) 100%) */\nexport function PhotographicCityHero',
+    expectPass: 'PASS hero-text-over-a-photograph',
   },
 
   {

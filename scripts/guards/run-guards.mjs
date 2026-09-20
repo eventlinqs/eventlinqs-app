@@ -559,6 +559,14 @@
  *                              migration committed without regenerating the types is
  *                              refused on that commit and not on the push two days later
  *                              when production catches up (11 September 2026)
+ *   generated-types-are-generated  the generated section of src/types/database.ts is in
+ *                              the generator's own ascending order, no function argument
+ *                              carries a hand-written "| null", and every exposed
+ *                              function takes exactly the parameters its migration
+ *                              declares. Three hand-edits were found in one file on
+ *                              20 September 2026, one of which refused a 234 commit push
+ *                              at types-drift and two of which no semantic comparison
+ *                              could ever have seen
  *   platform-notifications-installed  the build's own database carries the six triggers
  *                              that record a new organiser, a Stripe onboarding, a
  *                              published event and a paid order, so none of the five can
@@ -2154,6 +2162,18 @@ const GUARDS = [
   // newest migration; proven red against the committed types of 4d0fda21 and
   // green against the regenerated file (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11).
   'scripts/guards/types-cover-migrations.mjs',
+
+  // The other half of the same lesson, 20 September 2026. types-cover-migrations
+  // asks whether the committed types carry every object; this asks whether the
+  // generated section was GENERATED at all. A push of 234 commits was refused at
+  // types-drift because six arguments of write_pricing_rule had been typed in by
+  // hand as `| null`, a form the generator has no way of emitting, and
+  // regenerating found two more entries sitting in the place a person would put
+  // them rather than in the generator's ascending order. types-drift could not
+  // see any of it while production was behind, and could never see the ordering
+  // at all, because a correctly-shaped entry in the wrong position is
+  // semantically identical. Drilled red once per clause.
+  'scripts/guards/generated-types-are-generated.mjs',
 
   // Found while auditing the notification routing for close-out UX4:
   // /api/cron/queue-admit documented itself as running every minute and had no
