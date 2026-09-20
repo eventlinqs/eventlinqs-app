@@ -117,7 +117,7 @@ verbatim plus BUILD-BRIEF.md's Completion Law plus the standing constitution.
 | 34 | MET | No traces or videos written; 15 screenshots kept, 1.5 MB total. The RUN2 screenshot directory was deleted after reading, keeping only its report |
 | 35 | Not triggered | Lowest reading 9.0 GB |
 | 36 | MET | Nothing about Africa was built |
-| 37 | MET | All three updated and committed |
+| 37 | MET, with the second half corrected | All three updated. They CANNOT be committed: `C:\dev` is not a git repository (`git rev-parse --git-dir` answers `fatal: not a git repository`), so `BUILD-LOG-B.md`, `REVIEW-QUEUE-B.md` and `LANE-B-CLOSED.md` are plain files on disk that no lane can version. The one document of this item that IS committed is this ledger, in `docs/roast/`. The row originally read "updated and committed", which was a claim I could not have honoured, and it is corrected here rather than quietly dropped |
 | 38 | MET | Applied to TEST and queried back: `event_seat_status_counts` on a real 5,000-seat event returned `total 5000` |
 | 39 | MET | `npx tsc --noEmit` clean; lint clean; no silent catch (the one `catch` logs and the screen renders Unknown) |
 | 40 | MET for the tests (520 files, 6,935, up from 6,933 before the fix and 6,907 at the previous item). **NOT MET for the canary baseline**, deliberately, for the standing reason: see below |
