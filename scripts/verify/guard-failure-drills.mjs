@@ -7190,6 +7190,138 @@ const DRILLS = [
       "    supabase.from('profiles').select('*').eq('id', user.id).single(),",
     expect: 'destructures',
   },
+
+  /*
+   * the-attendee-list-is-every-attendee (lane B, 20 September 2026), seven
+   * drills, one per clause plus the two plausible WRONG fixes.
+   *
+   * This guard holds the data-ownership promise, which is the growth plan's
+   * second blade: an organiser owns every attendee relationship and nothing is
+   * withheld. A read that quietly hands back the first thousand rows is that
+   * promise broken with nobody to blame, so each drill below restores exactly
+   * the shape the surface shipped with before 20 September.
+   */
+  {
+    name: 'the attendee list goes back to one unbounded read of its tickets',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .eq('event_id', eventId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    replace: "      .eq('event_id', eventId),",
+    expect: 'reads tickets with no bound',
+  },
+  {
+    /*
+     * THE CONSENT ONE, which is the wedge rather than a screen.
+     * `organiser_marketing_consents` carries unique (organisation_id, email),
+     * so truncation DROPS people and a dropped person reads as NOT consented.
+     * The organiser is shown their own lawful audience as smaller than it is,
+     * in the one column nobody second-guesses.
+     */
+    name: 'the marketing consents go back to an unbounded read',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "        .eq('organisation_id', eventRow.organisation_id)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to) as unknown as PromiseLike<{ data: ConsentRow[] | null; error: { message: string } | null }>,',
+    replace: "        .eq('organisation_id', eventRow.organisation_id),",
+    expect: 'reads organiser_marketing_consents with no bound',
+  },
+  {
+    name: 'the orders report pages with no order at all',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .eq('event_id', eventId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawOrder[] | null; error: { message: string } | null }>,',
+    replace:
+      "      .eq('event_id', eventId)\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawOrder[] | null; error: { message: string } | null }>,',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX, and only clause 3 sees it. The attendee list
+     * wants oldest-first, so paging on `created_at` looks like the tidy answer
+     * and reads better than paging on a uuid. `tickets.created_at` is not
+     * unique, so two tickets sold in the same instant can land in two windows
+     * or in none: the door list gains a duplicate and loses somebody, and both
+     * look completely ordinary on the page.
+     */
+    name: 'the attendee list is paged on created_at, which is not unique',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    replace:
+      "      .order('created_at', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    expect: 'is not unique on that table',
+  },
+  {
+    /*
+     * THE OTHER PLAUSIBLE WRONG FIX. One `.in()` holding every buyer id looks
+     * like one fewer round trip. An `in` list is bounded by BYTES, and past the
+     * row ceiling it truncates too, so the buyers past it resolve to no profile
+     * and fall through to the guest columns, which are NULL for a signed-in
+     * buyer. Real named people render as blank rows on their own financial
+     * report.
+     */
+    name: 'the orders report buyer profiles go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find: "          .in('id', chunk)",
+    replace: "          .in('id', userIds)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    name: 'the door review winners go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/door-review.ts',
+    find: "        .in('ticket_id', chunk)",
+    replace: "        .in('ticket_id', ticketIds)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    /*
+     * The waiting-list count on the organiser's orders screen. `count ?? 0`
+     * rendered a FAILED count as "nobody is waiting", which is the answer that
+     * stops an organiser releasing more tickets.
+     */
+    name: 'the orders screen goes back to coalescing a failed waiting-list count',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx',
+    find:
+      '        const waiting = countOrRaise(\n' +
+      '          `the waiting list for ${t.name}`,\n' +
+      '          await adminClient\n' +
+      "            .from('waitlist')\n" +
+      "            .select('id', { count: 'exact', head: true })\n" +
+      "            .eq('ticket_tier_id', t.id)\n" +
+      "            .eq('status', 'waiting'),\n" +
+      '        )',
+      replace:
+      '        const { count } = await adminClient\n' +
+      "          .from('waitlist')\n" +
+      "          .select('id', { count: 'exact', head: true })\n" +
+      "          .eq('ticket_tier_id', t.id)\n" +
+      "          .eq('status', 'waiting')\n" +
+      '        const waiting = count ?? 0',
+    /*
+     * MATCHED ON THE CLAUSE'S OWN SENTENCE, NOT ON THE WORD "destructures".
+     * That word also appears in this guard's work report ("20 await
+     * destructures judged"), which prints on every run including a passing
+     * one, so a drill expecting it would be satisfied by a guard that failed
+     * for some completely unrelated reason. The phrase below appears only in
+     * the clause 5 failure.
+     */
+    expect: 'indistinguishable from an event nobody has bought a ticket to',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

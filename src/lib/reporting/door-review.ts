@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { earliestScanPerTicket } from './ordering'
 
 /**
  * THE DOOR REVIEW LIST (Scope v5 3.12: "if two scanners validate the same
@@ -27,6 +30,7 @@ type FlaggedScan = {
 }
 
 type WinningScan = {
+  id: string
   ticket_id: string | null
   device_id: string | null
   device_scanned_at: string | null
@@ -36,34 +40,61 @@ type WinningScan = {
 
 export async function fetchDoorReview(eventId: string): Promise<DoorReviewRow[]> {
   const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('ticket_scans')
-    .select('id, ticket_id, result, device_id, device_scanned_at, scanned_at, ticket:tickets!ticket_scans_ticket_id_fkey(ticket_code, holder_name)')
-    .eq('event_id', eventId)
-    .eq('review_status', 'needs_review')
-    .order('scanned_at', { ascending: true })
-  if (error) {
-    throw new Error(`The door review list could not be read (${error.code}: ${error.message})`)
-  }
-  const flagged = (data ?? []) as unknown as FlaggedScan[]
+
+  /*
+   * PAGED ON THE KEY, READ BACK IN SYNC ORDER. Both reads here were unbounded,
+   * and a busy door produces a scan row per tap: an event with more than a
+   * thousand flagged scans showed the organiser an arbitrary thousand of them
+   * and called it the review list. Paging needs a UNIQUE order, so this pages on
+   * `id` and the sync order the panel reads in is restored afterwards.
+   */
+  const flagged = (await readEveryRow<FlaggedScan>('the door review list', (from, to) =>
+    admin
+      .from('ticket_scans')
+      .select('id, ticket_id, result, device_id, device_scanned_at, scanned_at, ticket:tickets!ticket_scans_ticket_id_fkey(ticket_code, holder_name)')
+      .eq('event_id', eventId)
+      .eq('review_status', 'needs_review')
+      .order('id', { ascending: true })
+      .range(from, to) as unknown as PromiseLike<{ data: FlaggedScan[] | null; error: { message: string } | null }>,
+  )).sort((a, b) => {
+    const at = a.scanned_at ?? ''
+    const bt = b.scanned_at ?? ''
+    if (at !== bt) return at < bt ? -1 : 1
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  })
   if (flagged.length === 0) return []
 
+  /*
+   * THE WINNING ADMISSION, AND IT HAS TO BE THE FIRST ONE.
+   *
+   * This read had no `order by` at all and the loop below it kept the first row
+   * it happened to meet. So which admission "won" was whichever one Postgres
+   * returned first, which is undefined and could differ between two loads of
+   * the same page: the organiser was shown a door and a time, presented as the
+   * scan that beat this one, that need not have been either. The earliest sync
+   * is now chosen explicitly, in `earliestScanPerTicket`, where it is pure and
+   * tested against the rule in Scope v5 3.12.
+   *
+   * The `in` list is chunked for the same reason it is everywhere else: it is
+   * bounded by BYTES, and one flagged scan per ticket means this list is as long
+   * as the flagged list.
+   */
   const ticketIds = [...new Set(flagged.map((f) => f.ticket_id).filter((id): id is string => Boolean(id)))]
-  const winners = new Map<string, WinningScan>()
-  if (ticketIds.length > 0) {
-    const { data: admitted, error: admittedError } = await admin
-      .from('ticket_scans')
-      .select('ticket_id, device_id, device_scanned_at, scanned_at, scanned_offline')
-      .eq('event_id', eventId)
-      .eq('result', 'admitted')
-      .in('ticket_id', ticketIds)
-    if (admittedError) {
-      throw new Error(`The winning admissions could not be read (${admittedError.code}: ${admittedError.message})`)
-    }
-    for (const row of (admitted ?? []) as WinningScan[]) {
-      if (row.ticket_id && !winners.has(row.ticket_id)) winners.set(row.ticket_id, row)
-    }
+  const admitted: WinningScan[] = []
+  for (const chunk of chunkInFilterValues(ticketIds)) {
+    const rows = await readEveryRow<WinningScan>('the winning admissions', (from, to) =>
+      admin
+        .from('ticket_scans')
+        .select('id, ticket_id, device_id, device_scanned_at, scanned_at, scanned_offline')
+        .eq('event_id', eventId)
+        .eq('result', 'admitted')
+        .in('ticket_id', chunk)
+        .order('id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<{ data: WinningScan[] | null; error: { message: string } | null }>,
+    )
+    admitted.push(...rows)
   }
+  const winners = earliestScanPerTicket(admitted)
 
   return flagged.map((f) => {
     const winner = f.ticket_id ? winners.get(f.ticket_id) : undefined

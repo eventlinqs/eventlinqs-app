@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { Order, OrderItem, Payment } from '@/types/database'
 import { getOrderForAdmin } from '@/lib/admin/orders'
@@ -111,11 +112,14 @@ export default async function OrderDetailPage({ params }: Props) {
   let buyerEmail = fullOrder.guest_email ?? ''
 
   if (fullOrder.user_id) {
-    const { data: profile } = await adminClient
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', fullOrder.user_id)
-      .single()
+    // readOrThrow, not a discarded error. A failed profile read left these two
+    // on the guest fields, which are NULL for a signed-in buyer, so the
+    // organiser was shown a blank name and a blank email on a real order placed
+    // by a real named person. readOrThrow answers null for a genuinely absent
+    // row and throws for a read that failed, which are different facts.
+    const profile = await readOrThrow('the order buyer profile', () =>
+      adminClient.from('profiles').select('full_name, email').eq('id', fullOrder.user_id!).single(),
+    )
     if (profile) {
       buyerName = profile.full_name ?? ''
       buyerEmail = profile.email ?? ''
@@ -129,18 +133,30 @@ export default async function OrderDetailPage({ params }: Props) {
    * refundable orders, because the state that most needs explaining is the one
    * AFTER a refund, when the order is no longer refundable at all.
    */
-  const { data: refundRowsRaw } = await adminClient
-    .from('refunds')
-    .select('id, amount_cents, currency, status, created_at')
-    .eq('order_id', orderId)
-    .order('created_at', { ascending: false })
-  const refundRows = (refundRowsRaw ?? []) as {
+  //
+  // PAGED AND LOUD, like every other read in this family. One order carries few
+  // refunds, so the ceiling is not the live risk here; the DISCARDED ERROR was.
+  // `badgeFor` decides what this page says about the order's money from these
+  // rows, so a failed read rendered a refunded order as though nothing had ever
+  // been given back, which is the one sentence on the page an organiser would
+  // act on. It pages on the primary key and is sorted newest-first for reading.
+  const refundRows = (await readEveryRow<{
     id: string
     amount_cents: number
     currency: string
     status: string
     created_at: string
-  }[]
+  }>('the refunds on this order', (from, to) =>
+    adminClient
+      .from('refunds')
+      .select('id, amount_cents, currency, status, created_at')
+      .eq('order_id', orderId)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )).sort((a, b) => {
+    if (a.created_at !== b.created_at) return a.created_at > b.created_at ? -1 : 1
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  })
 
   const statusInfo = badgeFor(fullOrder.status, refundRows)
 

@@ -647,6 +647,13 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   the-attendee-list-is-every-attendee  the data-ownership promise itself: the
+ *                             attendee list, the door list, the orders report
+ *                             and all four exports hand back every attendee,
+ *                             every marketing consent and every order, chunk
+ *                             every `in` list, page on a UNIQUE column, and
+ *                             throw rather than exporting nobody when a read
+ *                             fails
  *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
  *                             error a PostgREST client REPORTS rather than
  *                             throws, report every failure in every environment
@@ -2387,6 +2394,38 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // the-attendee-list-is-every-attendee: the organiser's ATTENDEE list, their
+  // door list, their orders report and all four exports, 20 September 2026.
+  //
+  // THIS ONE IS THE WEDGE RATHER THAN A SCREEN. The growth plan's second blade
+  // is data ownership: "you own every attendee relationship: no walled gardens,
+  // no withheld emails". DICE withholds attendee emails and Eventbrite limits
+  // them, and the entire switching argument is that EventLinqs does not. Every
+  // read behind those surfaces was unbounded, so past a thousand attendees the
+  // platform handed an organiser part of their own audience and presented it as
+  // all of it. That is the same withholding with nobody to blame.
+  //
+  // The directions differed and each one mattered on its own. `tickets` was
+  // read OLDEST-first, so the door list lost the LATEST buyers: people holding
+  // a valid ticket, turned away at a door. `organiser_marketing_consents` holds
+  // one row per attendee per organiser, so truncation DROPPED people and a
+  // dropped person reads as not consented, shrinking the organiser's own lawful
+  // audience. `orders` was NEWEST-first, so the financial report lost its
+  // earliest sales; on the orders screen that also left
+  // `remaining = capacity - ticketsSold` too HIGH, offering inventory that was
+  // already sold. `refunds` are SUBTRACTED, so truncating them left net revenue
+  // too high. And `ticket_scans` had no `order by` at all while the code kept
+  // the first row it met, so which admission "won" a double-scan was undefined.
+  //
+  // IT SCANS DIRECTORIES, NOT A FILE LIST, unlike the two guards above it: the
+  // export routes are the surfaces most likely to gain a sibling, and a new
+  // file should be judged the day it lands rather than the day somebody
+  // remembers to add it here. It found two further discarded errors the moment
+  // it was first run, both on reads nobody had looked at.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-ATTENDEEWHOLE\drills.txt).
+  'scripts/guards/the-attendee-list-is-every-attendee.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

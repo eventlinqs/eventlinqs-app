@@ -207,19 +207,37 @@ for (const MODULE of MODULES) {
    * URL problem. Anything else must name a chunk.
    */
   const ALLOWED_IN_VALUES = [/^SOLD_STATUSES\b/]
-  for (const chain of selectChainsIn(absolute)) {
-    for (const call of chain.text.matchAll(/\.in\(\s*(['"])[A-Za-z0-9_]+\1\s*,\s*([^)]*)\)/g)) {
-      work.inFilters += 1
-      const values = call[2].trim()
-      if (/\bchunk\b/.test(values)) continue
-      if (ALLOWED_IN_VALUES.some(re => re.test(values))) continue
-      failures.push(
-        `${MODULE}:${chain.line} spells an \`in\` filter from \`${values.slice(0, 48)}\` rather than ` +
-          'from a chunk. An `in` list is bounded by BYTES, not by how many things are in it: Supabase ' +
-          'bounds URL and headers together at 16 KB and names lengthy `in` clauses as the usual cause, ' +
-          'so about 400 uuids is the break. Wrap it in `for (const chunk of chunkInFilterValues(ids))`.',
-      )
-    }
+  /*
+   * READ FROM THE FILE, NOT FROM `chain.text`.
+   *
+   * This clause used to scan `chain.text`, which is TRUNCATED TO 220 CHARACTERS
+   * for legibility, so an `in` filter sitting past that point in a long chain
+   * was invisible and the clause reported PASS about a filter it could not see.
+   * That is the same defect a drill found in clause 4 of
+   * `the-organiser-dashboard-reads-every-row` on 20 September 2026, where a
+   * planted `.order('created_at')` on a 300-character chain went unnoticed: a
+   * display string used as data.
+   *
+   * When this was changed, all 13 `in` filters across these three modules were
+   * still short enough to be visible, so nothing was being missed YET. It was
+   * fixed anyway, because "not yet" is not a property of the guard. It is a
+   * property of the files the guard happens to be pointed at today.
+   *
+   * Scanning the source also widens the clause from select chains to EVERY
+   * chain, so an `in` on an update or a delete is judged too. That is more
+   * coverage, never less.
+   */
+  for (const call of source.matchAll(/\.in\(\s*(['"])[A-Za-z0-9_]+\1\s*,\s*([^)]*)\)/g)) {
+    work.inFilters += 1
+    const values = call[2].trim()
+    if (/\bchunk\b/.test(values)) continue
+    if (ALLOWED_IN_VALUES.some(re => re.test(values))) continue
+    failures.push(
+      `${MODULE}:${lineAt(source, call.index)} spells an \`in\` filter from \`${values.slice(0, 48)}\` rather than ` +
+        'from a chunk. An `in` list is bounded by BYTES, not by how many things are in it: Supabase ' +
+        'bounds URL and headers together at 16 KB and names lengthy `in` clauses as the usual cause, ' +
+        'so about 400 uuids is the break. Wrap it in `for (const chunk of chunkInFilterValues(ids))`.',
+    )
   }
 }
 
