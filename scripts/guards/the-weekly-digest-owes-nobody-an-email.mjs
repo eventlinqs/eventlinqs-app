@@ -53,6 +53,13 @@
  * and a guard that cannot go green is a guard somebody switches off. Those
  * remainders are enumerated in REVIEW-QUEUE-B.md rather than hidden here.
  *
+ * `share-links.ts` IS in scope, and was added after its own eight discarded
+ * errors were corrected rather than declared out of reach. It belongs here
+ * because the digest reaches it: every event line in the email is a tracked
+ * short link, and a failed lookup used to read as "no such link" and mint a
+ * SECOND code for an event that already had one, splitting that event's clicks
+ * into two buckets.
+ *
  * Clause 6 is the one that belongs to no other guard: it judges the SEND LOOP
  * rather than a read, because defect 4 was invisible to every read-shaped
  * check.
@@ -85,6 +92,7 @@ const SCOPE = [
   'src/lib/broadcast/digest.ts',
   'src/lib/broadcast/digest-audience.ts',
   'src/lib/broadcast/digest-run.ts',
+  'src/lib/broadcast/share-links.ts',
   'src/app/api/cron/weekly-digest/route.ts',
 ]
 

@@ -7576,6 +7576,21 @@ const DRILLS = [
     replace: '    if (already && live) {',
     expect: 'never reads completed_at off the row it found',
   },
+  {
+    /*
+     * THE SCOPE ITSELF, DRILLED. `share-links.ts` was added to this guard after
+     * its own eight discarded errors were corrected, rather than being declared
+     * out of reach. This drill proves the guard actually judges that file: put
+     * one discard back and it must say so. Without it, "the scope was widened"
+     * would be a claim about a list rather than about behaviour.
+     */
+    name: 'the share link lookup goes back to discarding its error',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/share-links.ts',
+    find: '  const { data: existing, error: lookupError } = await lookup.maybeSingle()',
+    replace: '  const { data: existing } = await lookup.maybeSingle()',
+    expect: 'indistinguishable from an answer',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
