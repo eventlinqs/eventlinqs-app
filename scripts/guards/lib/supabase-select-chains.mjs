@@ -83,11 +83,29 @@ export function selectChainsIn(path) {
       cursor = after
     }
 
+    /*
+     * `text` IS FOR READING AND `orderColumns` IS FOR JUDGING, and the two are
+     * separate because using the first for the second is a bug that reports
+     * PASS.
+     *
+     * `text` is truncated to 220 characters so a failure message stays legible.
+     * A guard that regexes it for `.order('x')` therefore cannot see the order
+     * of any chain longer than that, and long chains are the norm on a screen
+     * that selects eight columns and filters on four. Found on 20 September
+     * 2026 by a drill that planted `.order('created_at')` on the organiser
+     * dashboard's 300-character orders read and watched the guard pass.
+     *
+     * So the columns a chain is ORDERED BY are extracted here, from the whole
+     * chain, and exposed as data. Added as a NEW FIELD: every existing reader
+     * takes `table`, `methods`, `line` or `text` and is unaffected.
+     */
+    const whole = withStrings.slice(start, cursor)
     chains.push({
       table,
       methods,
       line: lineAt(raw, start),
-      text: withStrings.slice(start, cursor).replace(/\s+/g, ' ').slice(0, 220),
+      text: whole.replace(/\s+/g, ' ').slice(0, 220),
+      orderColumns: [...whole.matchAll(/\.order\(\s*(['"])([A-Za-z0-9_]+)\1/g)].map((m) => m[2]),
     })
   }
 

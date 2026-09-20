@@ -7116,6 +7116,80 @@ const DRILLS = [
     replace: "          .select('id, name')\n" + "          .in('id', [...byArtist.keys()])",
     expect: 'rather than from a chunk',
   },
+
+  /*
+   * the-organiser-dashboard-reads-every-row (lane B, 20 September 2026), five
+   * drills. The third is the one the fourth clause exists for: it plants the
+   * fix a reader would reach for first, ordering the paged read by the column
+   * the page actually wants to sort on, and that column is not unique.
+   */
+  {
+    name: 'the organiser home goes back to one unbounded read of its orders',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      "          .gte('created_at', since60Days)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .gte('created_at', since60Days),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the organiser home pages its orders with no order at all',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      "          .gte('created_at', since60Days)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .gte('created_at', since60Days)\n" + '          .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX. The page wants newest first, so paging on
+     * `created_at` descending looks like the tidy answer and reads better than
+     * what is there. It is not unique, so two orders taken in the same instant
+     * can land in two windows or in none, and revenue is then double counted or
+     * lost with nothing on the screen able to say so. Only clause 4 sees this.
+     */
+    name: 'the orders are paged on created_at, which is not unique',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find: "          .order('id', { ascending: true })\n" + '          .range(from, to),',
+    replace: "          .order('created_at', { ascending: false })\n" + '          .range(from, to),',
+    expect: 'is not unique on that table',
+  },
+  {
+    name: 'the event overview goes back to an unbounded, unordered read',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/page.tsx',
+    find:
+      "      .eq('event_id', id)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('event_id', id),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    /*
+     * The organiser's own profile. A failed read leaves `profile` null,
+     * `isOrganiser` false, and an organiser looking at the dashboard of
+     * somebody who has never run an event.
+     */
+    name: 'the organiser profile read goes back to discarding its error',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      '  const [profile, scope] = await Promise.all([\n' +
+      "    readOrThrow('dashboard profile', () =>\n" +
+      "      supabase.from('profiles').select('*').eq('id', user.id).single(),\n" +
+      '    ),',
+    replace:
+      '  const [{ data: profile }, scope] = await Promise.all([\n' +
+      "    supabase.from('profiles').select('*').eq('id', user.id).single(),",
+    expect: 'destructures',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

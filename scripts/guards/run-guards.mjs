@@ -642,6 +642,11 @@
  *                             against a count the SERVER performed rather than
  *                             one it accumulated itself in the loop it is
  *                             checking, which made `reconciles` a constant true
+ *   the-organiser-dashboard-reads-every-row  the organiser's HOME and their
+ *                             per-event overview read every order, paged on a
+ *                             UNIQUE column so a row cannot land in two windows
+ *                             and double-count revenue, and fail loudly rather
+ *                             than rendering a business that has sold nothing
  *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
  *                             error a PostgREST client REPORTS rather than
  *                             throws, report every failure in every environment
@@ -2357,6 +2362,31 @@ const GUARDS = [
   //
   // Drilled red six ways and green (C:\dev\EVIDENCE\LB-REACHWHOLE\drills.txt).
   'scripts/guards/the-attribution-panels-count-every-row.mjs',
+
+  // the-organiser-dashboard-reads-every-row: the organiser's HOME and their
+  // per-event overview, 20 September 2026. Both read `orders` unbounded with
+  // the error discarded.
+  //
+  // The home screen is the one that pointed the flattering way. Its read is
+  // newest-first over a 60-day window, so the 1,000-row ceiling keeps the
+  // newest and drops the oldest, and the oldest rows in that window are the
+  // PRIOR 30 days, which is the denominator of both percentage changes on the
+  // KPI row. Past a thousand orders an organiser was shown growth that was too
+  // HIGH, because last month had been trimmed while this month survived. That
+  // is the number they repeat to a promoter.
+  //
+  // The event overview had no `order by` at all, so a capped read returns an
+  // arbitrary thousand rows and its gross revenue moved between page loads.
+  //
+  // CLAUSE 4 IS THE ONE THE OTHER TWO ROW-CEILING GUARDS DO NOT HAVE, and it
+  // exists because the obvious fix here is the wrong one: the home screen wants
+  // newest-first, so `.order('created_at', {ascending:false}).range(...)` looks
+  // exactly right and is not. `created_at` is not unique, so the window
+  // boundaries are undefined and a row can land in two pages, which
+  // double-counts revenue. The read pages on the primary key and sorts after.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
+  'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context
