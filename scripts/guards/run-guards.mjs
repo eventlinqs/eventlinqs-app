@@ -628,7 +628,7 @@
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
- *   the-reach-panel-counts-every-row  the ORGANISER'S reach and attribution
+ *   the-attribution-panels-count-every-row  the ORGANISER'S reach and attribution
  *                             panel reads every tracked row, spells every `in`
  *                             list in byte-bounded chunks, and reconciles
  *                             against a count the SERVER performed rather than
@@ -2308,7 +2308,7 @@ const GUARDS = [
   // and six more for the demand signal (C:\dev\EVIDENCE\LB-DEMANDSIGNAL\drills.txt).
   'scripts/guards/the-founder-screens-read-every-row.mjs',
 
-  // the-reach-panel-counts-every-row: the ORGANISER'S side of the same family,
+  // the-attribution-panels-count-every-row: the ORGANISER'S side of the same family,
   // 20 September 2026. /dashboard/events/[id]/reach, fed by reach.ts and
   // sales-attribution.ts, is where the platform proves its own wedge to an
   // organiser, and all eight of its reads were unbounded with `error`
@@ -2336,7 +2336,7 @@ const GUARDS = [
   // in REVIEW-QUEUE-B.md rather than hidden.
   //
   // Drilled red six ways and green (C:\dev\EVIDENCE\LB-REACHWHOLE\drills.txt).
-  'scripts/guards/the-reach-panel-counts-every-row.mjs',
+  'scripts/guards/the-attribution-panels-count-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

@@ -6826,7 +6826,7 @@ const DRILLS = [
   },
 
   /*
-   * the-reach-panel-counts-every-row (lane B, 20 September 2026), six drills.
+   * the-attribution-panels-count-every-row (lane B, 20 September 2026), six drills.
    *
    * The organiser's reach panel read eight tables with no bound and no error
    * check, and the reconciliation that decides whether it shows a percentage at
@@ -6836,7 +6836,7 @@ const DRILLS = [
    */
   {
     name: 'the reach panel reads an event’s tracked links with no bound again',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/reach.ts',
     find:
       "        .eq('event_id', eventId)\n" +
@@ -6851,7 +6851,7 @@ const DRILLS = [
      * the fastest growing read on the panel and the first to pass the ceiling.
      */
     name: 'the view and click events go back to a single unbounded select',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/reach.ts',
     find:
       "            .in('link_id', chunk)\n" +
@@ -6866,7 +6866,7 @@ const DRILLS = [
      * row in two windows and another in none.
      */
     name: 'the reach panel pages its links without a stable order',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/reach.ts',
     find:
       "        .eq('event_id', eventId)\n" +
@@ -6882,7 +6882,7 @@ const DRILLS = [
      * discarded error and a panel of zeros.
      */
     name: 'the conversion read spells every link id into one in clause',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/sales-attribution.ts',
     find: "              .in('link_id', chunk)",
     replace: "              .in('link_id', links.map(l => l.id))",
@@ -6895,7 +6895,7 @@ const DRILLS = [
      * it at all, which is what it did until this item.
      */
     name: 'the reconciliation goes back to comparing totals against itself',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/sales-attribution.ts',
     find: '    orders: ledgerSoldOrders - bucketOrders,',
     replace: '    orders: totals.orders - bucketOrders,',
@@ -6909,13 +6909,64 @@ const DRILLS = [
      * module would pass while proving nothing.
      */
     name: 'the reconciliation drops the server count and uses a local number',
-    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
     file: 'src/lib/broadcast/sales-attribution.ts',
     find:
       '    orders: ledgerSoldOrders - bucketOrders,\n' +
       '    tickets: ledgerSoldTickets - bucketTickets,',
     replace: '    orders: sold.length - bucketOrders,\n' + '    tickets: bucketTickets - bucketTickets,',
     expect: 'without any value that came from',
+  },
+
+  /*
+   * The artist half of the same guard, four more. The last two are the reads
+   * whose failure is not a shrunken number: an event meta row that does not
+   * arrive DELETES a show from the artist's history (`if (!meta) continue`),
+   * and an artist name that does not arrive is rendered as the words "Unknown
+   * artist" on the organiser's lineup panel (`?? 'Unknown artist'`).
+   */
+  {
+    name: 'the artist profile lookup goes back to discarding its error',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "  const data = await readOrThrow('artist-by-slug', () =>\n" +
+      "    admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle(),\n" +
+      '  )',
+    replace:
+      "  const { data } = await admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle()",
+    expect: 'destructures the result without',
+  },
+  {
+    name: 'the artist proof-of-draw links go back to an unbounded select',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "        .eq('artist_id', artistId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('artist_id', artistId),",
+    expect: 'reads share_links with no bound',
+  },
+  {
+    name: 'the show that a lost row would delete goes back to an unbounded select',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "            .select('id, title, slug, start_date')\n" +
+      "            .in('id', chunk)\n" +
+      "            .order('id', { ascending: true })\n" +
+      '            .range(from, to),',
+    replace: "            .select('id, title, slug, start_date')\n" + "            .in('id', chunk),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the artist names go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find: "          .select('id, name')\n" + "          .in('id', chunk)",
+    replace: "          .select('id, name')\n" + "          .in('id', [...byArtist.keys()])",
+    expect: 'rather than from a chunk',
   },
 ]
 

@@ -1,18 +1,28 @@
 /**
- * GUARD: THE ONE SCREEN THAT PROVES THE PLATFORM'S OWN WEDGE COUNTS EVERY ROW,
- * SPELLS ITS `in` LISTS IN CHUNKS, AND RECONCILES AGAINST A TOTAL IT DID NOT
- * COUNT ITSELF.
+ * GUARD: EVERY TRACKED-LINK ATTRIBUTION SURFACE COUNTS EVERY ROW, SPELLS ITS
+ * `in` LISTS IN CHUNKS, AND RECONCILES AGAINST A TOTAL IT DID NOT COUNT ITSELF.
+ *
+ * RENAMED FROM `the-reach-panel-counts-every-row` ON 20 SEPTEMBER 2026, hours
+ * after it was written, when the artist panels joined it. The rule was always
+ * "an attribution surface counts every row"; the first name described the first
+ * screen. `the-founder-screens-read-every-row` carries the same note for the
+ * same reason, and the reason is worth repeating: a guard whose name is
+ * narrower than its scope is a guard somebody adds the wrong file to.
  *
  * ---------------------------------------------------------------------------
- * THE SCREEN. `/dashboard/events/[id]/reach`, fed by `fetchReachSummary` and
- * `fetchSalesAttribution`, with `fetchReachSummary` also rendered on the launch
- * kit. It is where an organiser is told what EventLinqs brought them, which is
- * one of the two edges the whole growth doctrine turns on. Every number on it
+ * THE SURFACES. `/dashboard/events/[id]/reach`, fed by `fetchReachSummary` and
+ * `fetchSalesAttribution` and also rendered on the launch kit; and the artist
+ * layer, `fetchArtistAttribution` on the artist's own dashboard and
+ * `fetchEventArtistAttribution` on the organiser's lineup page. Together they
+ * are where an organiser is told what EventLinqs brought them and where an
+ * artist gets the portable proof of draw they show the next promoter, which is
+ * one of the two edges the whole growth doctrine turns on. Every number on them
  * being smaller than the truth is an argument for leaving the platform, and
- * that is the direction all three defects below pushed it.
+ * that is the direction all of the defects below pushed them.
  *
  * ---------------------------------------------------------------------------
- * DEFECT ONE: EIGHT UNBOUNDED READS. Every read in both modules was a bare
+ * DEFECT ONE: EIGHTEEN UNBOUNDED READS, eight in the reach pair and ten in the
+ * artist layer. Every one was a bare
  * `.select()`. Supabase caps a response at 1,000 rows and the cap is invisible,
  * HTTP 200, `error` null, a full-looking array
  * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19;
@@ -56,15 +66,16 @@
  * WHY A SEPARATE GUARD RATHER THAN A WIDER SCOPE, stated so the next person
  * does not "simplify" it. `no-silent-row-ceiling` judges nine directories and
  * `src/lib/broadcast` is not one of them. Adding it would go red today on
- * `artists.ts` (10 reads) and `digest.ts` (5, and the digest is another lane's
- * territory), and a guard that cannot go green is a guard somebody switches
- * off. Those reads are real and are enumerated in REVIEW-QUEUE-B.md rather than
- * hidden. This list grows one screen at a time, as each is fixed.
+ * `digest.ts`, whose five reads are the owner digest and therefore another
+ * lane's territory, and a guard that cannot go green is a guard somebody
+ * switches off. Those reads are real and are raised as a BORDER in
+ * REVIEW-QUEUE-B.md rather than hidden. This list grows one surface at a time,
+ * as each is fixed, and the day the digest lands the whole directory can go
+ * into `no-silent-row-ceiling` and this guard keeps only the clauses that one
+ * does not have.
  *
- * It is also NOT added to `the-founder-screens-read-every-row`, whose own
- * header records being renamed for exactly this reason: these are the
- * ORGANISER'S screens, not the founder's, and a guard whose name is narrower
- * than its scope is a guard somebody adds the wrong file to.
+ * It is also NOT added to `the-founder-screens-read-every-row`: these are the
+ * ORGANISER'S and the ARTIST'S screens, not the founder's.
  */
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -73,18 +84,32 @@ import { selectChainsIn, boundednessOf, headOnlySelectLines } from './lib/supaba
 import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
-const TAG = '[the-reach-panel-counts-every-row]'
+const TAG = '[the-attribution-panels-count-every-row]'
 
 /**
- * The modules behind the reach panel, each with the decision it is read for.
+ * The modules behind the attribution panels, each with the decision it is read
+ * for.
  *
  *   reach.ts             views, clicks, conversions and tickets per channel.
  *                        The organiser's answer to "did sharing work".
  *   sales-attribution.ts the denominator and the three buckets, and the
  *                        reconciliation that decides whether a percentage is
  *                        shown at all.
+ *   artists.ts           the artist's per-show proof of draw and the
+ *                        organiser's per-artist lineup split. TWO of its reads
+ *                        do not merely shrink a number when they come back
+ *                        short: the `events` read is followed by
+ *                        `if (!meta) continue`, so a lost row DELETES a show
+ *                        from the artist's history, and the `artists` read is
+ *                        followed by `?? 'Unknown artist'`, so a lost row puts
+ *                        those words on the organiser's lineup panel beside a
+ *                        real performer's real click count.
  */
-const MODULES = ['src/lib/broadcast/reach.ts', 'src/lib/broadcast/sales-attribution.ts']
+const MODULES = [
+  'src/lib/broadcast/reach.ts',
+  'src/lib/broadcast/sales-attribution.ts',
+  'src/lib/broadcast/artists.ts',
+]
 
 /** The module whose reconciliation clause 6 judges, and the names it turns on. */
 const RECONCILER = 'src/lib/broadcast/sales-attribution.ts'
@@ -115,10 +140,12 @@ for (const MODULE of MODULES) {
     if (!boundednessOf(chain, { headSelects: heads })) {
       failures.push(
         `${MODULE}:${chain.line} reads ${chain.table} with no bound. Supabase stops at 1,000 rows ` +
-          'silently (HTTP 200, no error, a full-looking array), and on this screen every number then ' +
-          'reads SMALLER than the truth: dropped `conversion` rows are attributed SALES, so the panel ' +
-          'tells an organiser their own sharing sold fewer tickets than it did. Page it through ' +
-          'readEveryRow, or state a bound in the chain where a reader can see it.',
+          'silently (HTTP 200, no error, a full-looking array), and on these screens every number ' +
+          'then reads SMALLER than the truth: dropped `conversion` rows are attributed SALES, so the ' +
+          'panel tells an organiser their own sharing sold fewer tickets than it did, and an artist ' +
+          'that their draw was weaker. Two reads here are worse than a shrunken number, because a ' +
+          'lost row is dropped outright or rendered as "Unknown artist"; see the MODULES note. Page ' +
+          'it through readEveryRow, or state a bound in the chain where a reader can see it.',
       )
       continue
     }
@@ -159,9 +186,10 @@ for (const MODULE of MODULES) {
       if (/\berror\b/.test(names)) continue
       failures.push(
         `${MODULE}:${lineAt(source, match.index)} destructures the result without \`error\`, so a ` +
-          'read that FAILED is indistinguishable from an event nobody shared. On this panel that ' +
+          'read that FAILED is indistinguishable from nothing having happened. On these panels that ' +
           'renders zero views, zero clicks and zero attributed sales under a heading that calls them ' +
-          'measured facts. Use readEveryRow or countOrRaise, both of which raise.',
+          'measured facts; on an artist lookup whose null decides a 404 it deletes a real public ' +
+          'profile. Use readEveryRow, readOrThrow or countOrRaise, all of which raise.',
       )
     }
   }
@@ -266,9 +294,9 @@ if (failures.length > 0) {
   console.error(TAG + ' ' + failures.length + ' failure(s).')
 }
 
-declareWork('the-reach-panel-counts-every-row', {
+declareWork('the-attribution-panels-count-every-row', {
   did: {
-    'reach module judged': MODULES.length,
+    'attribution module judged': MODULES.length,
     'read judged': work.reads,
     'read paged with an order': work.ordered,
     'in filter judged': work.inFilters,
@@ -281,6 +309,6 @@ declareWork('the-reach-panel-counts-every-row', {
 if (failures.length > 0) process.exit(1)
 
 console.log(
-  TAG + ' OK - the reach panel reads every row, chunks every in list, and reconciles against a ' +
-    'total it did not count itself.',
+  TAG + ' OK - every attribution panel reads every row, chunks every in list, and reconciles ' +
+    'against a total it did not count itself.',
 )

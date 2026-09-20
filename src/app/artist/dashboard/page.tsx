@@ -119,9 +119,9 @@ export default async function ArtistDashboardPage({
   }
 
   const stats = [
-    { label: 'Link clicks', value: attribution.totals.clicks },
-    { label: 'Orders you drove', value: attribution.totals.conversions },
-    { label: 'Tickets you drove', value: attribution.totals.tickets },
+    { key: 'clicks', label: 'Link clicks', value: attribution.totals.clicks },
+    { key: 'conversions', label: 'Orders you drove', value: attribution.totals.conversions },
+    { key: 'tickets', label: 'Tickets you drove', value: attribution.totals.tickets },
   ]
 
   return (
@@ -158,7 +158,19 @@ export default async function ArtistDashboardPage({
 
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-ink-200 bg-white px-4 py-4">
+              <div
+                key={s.label}
+                className="rounded-xl border border-ink-200 bg-white px-4 py-4"
+                /*
+                 * READABLE BY A DRIVE, for the same reason the reach panel's
+                 * are: the claim these numbers make is "every tracked row, not
+                 * the first thousand", and the only way to prove it is to put
+                 * more than a thousand rows behind a real artist and read what
+                 * this page says.
+                 */
+                data-artist-stat={s.key}
+                data-artist-value={s.value}
+              >
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
                   {s.label}
                 </p>
