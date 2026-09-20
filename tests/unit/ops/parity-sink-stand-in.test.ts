@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { createServer, type Server } from 'node:http'
+import { createServer, type RequestListener, type Server } from 'node:http'
 import { parityStandInAnswers } from '../../../scripts/verify/sentry-parity-sink.mjs'
 
 /**
@@ -32,7 +32,7 @@ afterEach(async () => {
 })
 
 /** Start a server on an ephemeral port and return it. */
-async function listening(handler: Parameters<typeof createServer>[0]): Promise<number> {
+async function listening(handler: RequestListener): Promise<number> {
   const server = createServer(handler)
   servers.push(server)
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
@@ -42,7 +42,7 @@ async function listening(handler: Parameters<typeof createServer>[0]): Promise<n
 }
 
 /** Exactly what scripts/verify/sentry-parity-sink.mjs answers. */
-const realSink: Parameters<typeof createServer>[0] = (req, res) => {
+const realSink: RequestListener = (req, res) => {
   req.resume()
   req.on('end', () => {
     res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' })

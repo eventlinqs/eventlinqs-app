@@ -3760,6 +3760,85 @@ const DRILLS = [
     expect: 'judges nothing',
   },
   /*
+   * MONEY FIX A3 LAYER TWO, the four drills for clause five.
+   *
+   * The first is the defect itself. The five sale columns are a CACHE of what
+   * Stripe last said and nothing recorded WHEN, so a row that said "enabled"
+   * six weeks ago and has heard nothing since was accepted exactly like one
+   * confirmed a minute ago. The event publishes, tickets sell, and the first
+   * person to find out is the organiser whose transfer fails after the night.
+   */
+  {
+    name: 'a paid event publishes on a cached Stripe posture of any age again (the A3 layer two defect)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: 'if (reconcile === null || connectVerificationIsFresh(verifiedAt)) {',
+    replace: 'if (reconcile === null || verifiedAt !== undefined) {',
+    expect: 'never calls connectVerificationIsFresh',
+  },
+  {
+    name: 'the publish gate stops reading the date its cached posture was verified',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: ".select(`${ORG_SALE_FIELDS_SELECT}, stripe_status_verified_at`)",
+    replace: '.select(ORG_SALE_FIELDS_SELECT)',
+    expect: 'does not SELECT stripe_status_verified_at',
+  },
+  {
+    name: 'the publish grant goes back to canSell, which the checkout would then refuse',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: 'if (fresh.sellable) return { ok: true }',
+    replace: 'if (fresh.canSell) return { ok: true }',
+    expect: "grants a publish on reconcile's canSell",
+  },
+  {
+    name: 'reading the account from Stripe stops recording that it was read',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/stripe/reconcile-connect.ts',
+    find: '    stripe_status_verified_at: new Date().toISOString(),\n  }',
+    replace: '  }',
+    expect: 'never writes stripe_status_verified_at into the payload BEFORE the change test',
+  },
+  /*
+   * MONEY FIX A4, the four drills for clause six.
+   *
+   * The first is the Afro-Fusion failure itself: two charges settled to the
+   * platform account with nothing anywhere recording who they belonged to.
+   */
+  {
+    name: 'a ticket charge stops recording where its money is owed (the Afro-Fusion failure)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  await recordOrderDestination({',
+    replace: '  await Promise.resolve({',
+    expect: "does not record where this order's money is owed",
+  },
+  {
+    name: 'the order record loses one of the four facts A4 asks for',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/order-destination.ts',
+    find: '    destination_recorded_at: now.toISOString(),',
+    replace: '    recorded_at: now.toISOString(),',
+    expect: 'the order record is missing destination_recorded_at',
+  },
+  {
+    name: 'the record stops insisting it touched exactly one order, so an UPDATE matching nothing passes',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/order-destination.ts',
+    find: 'if (!Array.isArray(data) || data.length !== 1) {',
+    replace: 'if (!Array.isArray(data)) {',
+    expect: 'does not assert that exactly one order row was updated',
+  },
+  {
+    name: 'a checkout call site stops handing the charge its own order id',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/app/actions/squad-checkout.ts',
+    find: '      transferGroup: order_id,',
+    replace: '      transferGroup: squad.id,',
+    expect: 'pass transferGroup: order_id 2 time(s), not 3',
+  },
+  /*
    * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
    *
    * The first two are the defect itself from both directions: an organiser

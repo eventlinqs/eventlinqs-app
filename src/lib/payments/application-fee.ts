@@ -38,6 +38,17 @@ export type ChargePreconditionFailure =
   | 'fee_breakdown_invalid'
   /** The event sells its tickets on another platform. We never take money for it. */
   | 'event_externally_ticketed'
+  /**
+   * MONEY FIX A4. The order could not be made to record where its money is
+   * owed, so no charge may be created against it.
+   *
+   * It is a REFUSAL rather than a warning because of what happened without it:
+   * two charges settled to the platform account on 10 September 2026 with
+   * nothing anywhere saying who they belonged to, and reconstructing that took
+   * reading Stripe by hand against the catalogue. A charge nobody can attribute
+   * is the defect; refusing to create one is the fix.
+   */
+  | 'destination_not_recorded'
 
 export class ChargePreconditionError extends Error {
   readonly reason: ChargePreconditionFailure

@@ -473,3 +473,44 @@ export function describeTierUnavailable(
       }
   }
 }
+
+/**
+ * THE SAME FIVE CONDITIONS, AS SENTENCES, FOR THE ONES AN ACCOUNT FAILS.
+ *
+ * IT LIVES HERE, NEXT TO THE PREDICATE, AND THAT IS THE WHOLE POINT. It was
+ * written in reconcile-connect.ts first and the one-sellability-source guard
+ * refused it: two or more of the five columns tested in conditionals outside
+ * this file is a second copy of the rule, and the guard is right even though
+ * this one only DESCRIBES the verdict. A description that drifts from the
+ * predicate names the wrong cause to the person trying to fix it, which is the
+ * same class of harm as a verdict that drifts.
+ *
+ * So the rule and its explanation are written once, in one file, where a change
+ * to either is visible beside the other. Pure, and derived from the same columns isOrganiserSellable reads, so
+ * it cannot describe a refusal the predicate did not make.
+ *
+ * ORDERED BY WHAT THE ORGANISER CAN DO ABOUT IT: connect, then finish
+ * onboarding, then the two the platform owns.
+ */
+export function describeSaleBlockers(
+  state: Pick<
+    OrgSaleFields,
+    'stripe_account_id' | 'stripe_charges_enabled' | 'stripe_payouts_enabled' | 'stripe_account_country'
+  >,
+  payoutStatus: string,
+): string[] {
+  const blockers: string[] = []
+  if (!state.stripe_account_id) blockers.push('no Stripe account is connected')
+  if (state.stripe_charges_enabled !== true) blockers.push('Stripe has not enabled charges on the account')
+  if (state.stripe_payouts_enabled !== true) blockers.push('Stripe has not enabled payouts on the account')
+  if (payoutStatus === 'on_hold') blockers.push('EventLinqs has placed payouts on hold')
+  else if (payoutStatus !== 'active') blockers.push(`the payout status is "${payoutStatus}" rather than active`)
+  if (!getCurrencyForCountry(state.stripe_account_country)) {
+    blockers.push(
+      state.stripe_account_country
+        ? `EventLinqs cannot settle in ${state.stripe_account_country}`
+        : 'the account has no country set, so EventLinqs cannot choose a settlement currency',
+    )
+  }
+  return blockers
+}
