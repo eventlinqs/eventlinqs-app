@@ -8477,14 +8477,14 @@ export type Database = {
       write_pricing_rule: {
         Args: {
           p_country_code: string
-          p_created_by: string | null
+          p_created_by: string
           p_currency: string
-          p_event_id: string | null
-          p_organisation_id: string | null
+          p_event_id?: string
+          p_organisation_id?: string
           p_rule_type: string
-          p_value_cents: number | null
-          p_value_integer: number | null
-          p_value_percentage: number | null
+          p_value_cents?: number
+          p_value_integer?: number
+          p_value_percentage?: number
           p_value_type: string
         }
         Returns: Json

@@ -85,18 +85,32 @@ describe('writePricingField goes through the one lawful writer', () => {
       { field: 'platform_fee_percentage', countryCode: 'AU', currency: 'AUD', value: 4.75 },
       SESSION,
     )
-    expect(rpc.mock.calls[0][1]).toMatchObject({
+    /*
+     * THE OPTIONAL ARGUMENTS ARE ABSENT, NOT NULL, AND THE DIFFERENCE IS THE
+     * MECHANISM.
+     *
+     * These four used to assert `p_organisation_id: null`. Since migration
+     * 20260920000011 the five optional arguments carry `default null` in the
+     * database, and supabase-js OMITS an undefined key from the JSON body, so
+     * PostgREST does not name the argument and Postgres applies the default.
+     * The value that reaches the column is NULL either way; asserting the key
+     * is absent is what pins the route by which it gets there.
+     *
+     * `toMatchObject` with an expected `undefined` would pass on an absent key
+     * too, which is why absence is asserted separately and explicitly.
+     */
+    const args = rpc.mock.calls[0][1]
+    expect(args).toMatchObject({
       p_rule_type: 'platform_fee_percentage',
       p_country_code: 'AU',
       p_currency: 'AUD',
-      p_organisation_id: null,
-      p_event_id: null,
       p_value_type: 'percentage',
       p_value_percentage: 4.75,
-      p_value_cents: null,
-      p_value_integer: null,
       p_created_by: SESSION.userId,
     })
+    for (const absent of ['p_organisation_id', 'p_event_id', 'p_value_cents', 'p_value_integer']) {
+      expect(args[absent], `${absent} must be omitted so the database default applies`).toBeUndefined()
+    }
   })
 
   test('an event override outranks an organisation passed alongside it', async () => {
@@ -114,10 +128,12 @@ describe('writePricingField goes through the one lawful writer', () => {
     // Event wins, and the organisation is cleared rather than sent alongside:
     // the resolver matches an event rule on (rule_type, event_id) ALONE, so a
     // row carrying both would be closed by one scope and read by another.
-    expect(rpc.mock.calls[0][1]).toMatchObject({
-      p_event_id: 'e1000000-0000-4000-8000-000000000009',
-      p_organisation_id: null,
-    })
+    const args = rpc.mock.calls[0][1]
+    expect(args).toMatchObject({ p_event_id: 'e1000000-0000-4000-8000-000000000009' })
+    expect(
+      args.p_organisation_id,
+      'the organisation is CLEARED, which is now an omitted key rather than an explicit null',
+    ).toBeUndefined()
   })
 
   test('a fixed fee goes to value_cents as a whole number, never to the percentage', async () => {
@@ -126,12 +142,10 @@ describe('writePricingField goes through the one lawful writer', () => {
       { field: 'platform_fee_fixed', countryCode: 'AU', currency: 'AUD', value: 119.6 },
       SESSION,
     )
-    expect(rpc.mock.calls[0][1]).toMatchObject({
-      p_value_type: 'fixed',
-      p_value_cents: 120,
-      p_value_percentage: null,
-      p_value_integer: null,
-    })
+    const args = rpc.mock.calls[0][1]
+    expect(args).toMatchObject({ p_value_type: 'fixed', p_value_cents: 120 })
+    expect(args.p_value_percentage).toBeUndefined()
+    expect(args.p_value_integer).toBeUndefined()
   })
 
   test('who carries the fee goes to value_integer', async () => {
@@ -140,12 +154,10 @@ describe('writePricingField goes through the one lawful writer', () => {
       { field: 'processing_fee_pass_through', countryCode: 'AU', currency: 'AUD', value: 0 },
       SESSION,
     )
-    expect(rpc.mock.calls[0][1]).toMatchObject({
-      p_value_type: 'integer',
-      p_value_integer: 0,
-      p_value_percentage: null,
-      p_value_cents: null,
-    })
+    const args = rpc.mock.calls[0][1]
+    expect(args).toMatchObject({ p_value_type: 'integer', p_value_integer: 0 })
+    expect(args.p_value_percentage).toBeUndefined()
+    expect(args.p_value_cents).toBeUndefined()
   })
 })
 

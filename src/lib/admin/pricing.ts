@@ -215,17 +215,34 @@ export async function writePricingField(
    * version. It returns the old value, so the audit entry below still records
    * old -> new without a second read that could disagree with the write.
    */
+  /*
+   * `undefined` AND NOT `null` FOR THE FIVE OPTIONAL ARGUMENTS, and the reason
+   * is that this is what the function now DECLARES.
+   *
+   * These five carry `default null` in the database (migration 20260920000011);
+   * supabase-js omits an undefined key from the JSON body, PostgREST then does
+   * not name the argument, and Postgres applies the default. The value that
+   * reaches every one of them is NULL, exactly as before.
+   *
+   * It used to pass `null` explicitly, which reads the same and is not: the
+   * generated Args type derives optionality from the DEFAULT, so with no
+   * defaults declared it emitted all ten as required and non-nullable, and the
+   * generated section of src/types/database.ts had been hand-widened to `|
+   * null` to let this call compile. That widening is a shape the generator can
+   * never produce, and the types-drift guard went red on it the hour production
+   * caught up. The schema says what is optional now, so nothing has to lie.
+   */
   const { data, error } = await admin.rpc('write_pricing_rule', {
     p_rule_type: input.field,
     p_country_code: input.countryCode,
     p_currency: input.currency,
-    p_organisation_id: orgId,
-    p_event_id: eventId,
     p_value_type: valueType,
-    p_value_percentage: valueType === 'percentage' ? newValue : null,
-    p_value_cents: valueType === 'fixed' ? newValue : null,
-    p_value_integer: valueType === 'integer' ? newValue : null,
     p_created_by: session.userId,
+    p_organisation_id: orgId ?? undefined,
+    p_event_id: eventId ?? undefined,
+    p_value_percentage: valueType === 'percentage' ? newValue : undefined,
+    p_value_cents: valueType === 'fixed' ? newValue : undefined,
+    p_value_integer: valueType === 'integer' ? newValue : undefined,
   })
   if (error) return { ok: false, changed: false, error: error.message }
 
