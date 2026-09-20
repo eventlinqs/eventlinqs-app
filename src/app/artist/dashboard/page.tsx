@@ -1,3 +1,4 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
@@ -94,11 +95,9 @@ export default async function ArtistDashboardPage({
     gigBoardOn ? fetchArtistApplications(admin, artist.id) : Promise.resolve([]),
     gigBoardOn || showcaseOn ? fetchArtistRequests(admin, artist.id) : Promise.resolve([]),
     showcaseOn ? fetchShowcaseArtistForOwner(admin, user.id) : Promise.resolve(null),
-    showcaseOn
-      ? admin.from('cities').select('slug, name').order('tier').order('name')
-      : Promise.resolve({ data: [] }),
+    showcaseOn ? fetchPickerCities(admin) : Promise.resolve([]),
   ])
-  const cities = ((citiesResult as { data: unknown }).data ?? []) as { slug: string; name: string }[]
+  const cities = citiesResult as { slug: string; name: string }[]
 
   // One tracked share link per upcoming show for the artist's own channels.
   const origin = getSiteUrl()

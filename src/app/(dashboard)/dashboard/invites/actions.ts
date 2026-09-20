@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { resolveOrganisationScope } from '@/lib/organisations/scope'
 import { isFlagEnabled } from '@/lib/flags'
 import {
@@ -44,25 +46,49 @@ export async function generateMyFoundingInvite(citySlug: string): Promise<{ code
   // 20260808000010), because that role serves both the owner and any logged-in
   // visitor and a grant cannot tell them apart. The ownership filter is what makes
   // the service-role read safe.
+  // A FAILED READ IS NOT A MISSING ORGANISATION. The error was discarded, so a
+  // dropped socket answered "Organisation not found." to an organiser who has
+  // one, which is unanswerable: there is nothing for them to do about it and
+  // nothing in the log about it either.
   const scope = await resolveOrganisationScope()
   if (!scope.ok) return { error: 'Organisation not found.' }
-  const { data: org } = await createAdminClient()
-    .from('organisations')
-    .select('id, name, is_founding')
-    .eq('id', scope.active.id)
-    .maybeSingle()
+  const org = await readOrThrow('founding-invite-issuer', () =>
+    createAdminClient()
+      .from('organisations')
+      .select('id, name, is_founding')
+      .eq('id', scope.active.id)
+      .maybeSingle(),
+  )
   if (!org) return { error: 'Organisation not found.' }
   if (!org.is_founding) {
     return { error: 'Founding invites are available to Founding Organisers. Yours is not one yet.' }
   }
 
   // Enforce the per-organiser allowance against real issued rows.
+  //
+  // A FAILED COUNT NO LONGER READS AS NOUGHT ISSUED. It was `(count ?? 0) >=
+  // INVITES_PER_FOUNDING_ORGANISER`, and `error` was not bound, so a count that
+  // could not be taken came back null, `null ?? 0` was zero, and the one check
+  // standing between the offer and its own scarcity minted another code. Every
+  // founding invite is a founding spot and six fee-free months, so the failure
+  // direction was the expensive one. countOrRaise turns the failure into a
+  // failure; the organiser sees the screen refuse and tries again, which is
+  // true, instead of quietly receiving an invite they were not owed.
+  //
+  // The database says the same thing independently, since migration
+  // 20260920000050: trg_founding_invite_allowance refuses the sixth row. This
+  // check stays because it produces a readable refusal rather than a raised
+  // constraint, and the catch below turns the constraint into the same
+  // sentence when the two ever disagree.
   const admin = createAdminClient()
-  const { count } = await admin
-    .from('founding_invites')
-    .select('id', { count: 'exact', head: true })
-    .eq('inviter_org_id', org.id)
-  if ((count ?? 0) >= INVITES_PER_FOUNDING_ORGANISER) {
+  const issued = countOrRaise(
+    'founding invites this organiser has issued',
+    await admin
+      .from('founding_invites')
+      .select('id', { count: 'exact', head: true })
+      .eq('inviter_org_id', org.id),
+  )
+  if (issued >= INVITES_PER_FOUNDING_ORGANISER) {
     return { error: `You have used all ${INVITES_PER_FOUNDING_ORGANISER} of your founding invites.` }
   }
 

@@ -35,6 +35,45 @@ import { recordTierChanges, TIER_COLUMNS, LEDGER_EVENT_COLUMNS, type EventForLed
 import { afterResponse } from '@/lib/after-response'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
 import { normaliseTags } from '@/lib/events/normalise-tags'
+import { readEventTicketTiers } from '@/lib/organisers/event-tier-config'
+
+/** What the publish gate judges a ticket type on. */
+type SellableTierRow = { price: number; name: string; total_capacity: number; is_active: boolean }
+
+/** What the slot ledger records a ticket type as, before and after a save. */
+type LedgerTierRow = { id: string; name: string; price: number; total_capacity: number; updated_at: string }
+
+/**
+ * THE TICKET TYPES AS THE LEDGER SEES THEM, OR NOTHING AT ALL.
+ *
+ * recordTierChanges DIFFERENCES two of these lists and writes the difference as
+ * inventory history. Both reads used to discard their error, which is the worst
+ * possible shape for a difference: a refused `before` makes every ticket type
+ * look newly opened, and a refused `after` makes every one look closed. Either
+ * way a false price and inventory history is written once, silently, into the
+ * ledger the pace curve is computed from.
+ *
+ * So this answers null rather than a short list, and the caller writes NO
+ * history rather than wrong history. The ledger row was already documented as
+ * never fatal to the organiser's save, and that stays true: the event is
+ * created or updated either way.
+ */
+async function tiersForLedger(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  what: string,
+): Promise<LedgerTierRow[] | null> {
+  try {
+    return await readEventTicketTiers<LedgerTierRow>(admin, eventId, TIER_COLUMNS)
+  } catch (error) {
+    console.error('[slot-ledger] no inventory history written; the ticket types could not be read', {
+      what,
+      eventId,
+      error,
+    })
+    return null
+  }
+}
 
 // Resolve the organiser media fields from a create/update input into the columns
 // the events table stores. Validates the video URL against the provider allowlist
@@ -448,16 +487,16 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
      * types, so the pace curve has a starting price and a starting capacity to
      * measure everything else against. Never fatal: the event is created.
      */
-    const { data: opened } = await admin.from('ticket_tiers').select(TIER_COLUMNS).eq('event_id', input.eventId)
+    const opened = await tiersForLedger(admin, input.eventId, 'the opening inventory rows')
     const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', input.eventId).maybeSingle()
-    if (slotEvent) {
+    if (slotEvent && opened) {
       // After the answer (close-out D1's reversal condition): the organiser is
       // waiting on Save, and this is history about what they saved.
       afterResponse('the opening inventory rows', () =>
         recordTierChanges({
           event: slotEvent as unknown as EventForLedger,
           before: [],
-          after: (opened ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
+          after: opened,
         }),
       )
     }
@@ -765,10 +804,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
    */
   // What the ticket types were, read BEFORE the save, so the ledger can record
   // what actually moved rather than what was submitted (close-out D1).
-  const { data: tiersBefore } = await admin
-    .from('ticket_tiers')
-    .select(TIER_COLUMNS)
-    .eq('event_id', input.eventId)
+  const tiersBefore = await tiersForLedger(admin, input.eventId, 'the inventory before this save')
 
   const { data: tierVerdictRaw, error: tierRpcError } = await admin.rpc('save_event_ticket_tiers', {
     p_event_id: input.eventId,
@@ -799,19 +835,16 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
    * Never fatal: the organiser's event is saved either way.
    */
   {
-    const { data: tiersAfter } = await admin
-      .from('ticket_tiers')
-      .select(TIER_COLUMNS)
-      .eq('event_id', input.eventId)
+    const tiersAfter = await tiersForLedger(admin, input.eventId, 'the inventory after this save')
     const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', input.eventId).maybeSingle()
-    if (slotEvent) {
+    if (slotEvent && tiersBefore && tiersAfter) {
       // After the answer, same reason: an organiser pressing Save should not
       // wait on a row that describes what the Save did.
       afterResponse('the inventory rows for this save', () =>
         recordTierChanges({
           event: slotEvent as unknown as EventForLedger,
-          before: (tiersBefore ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
-          after: (tiersAfter ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
+          before: tiersBefore,
+          after: tiersAfter,
         }),
       )
     }
@@ -962,11 +995,33 @@ async function refuseUnlessPublishable(
   const authority = await assertCallerMayActForOrganisation(userId, event.organisation_id, 'owner_or_manager')
   if (!authority.ok) return { refusal: { error: 'Event not found' }, tiers: [] }
 
-  const { data } = await supabase
-    .from('ticket_tiers')
-    .select('price, name, total_capacity, is_active')
-    .eq('event_id', eventId)
-  const tiers = data ?? []
+  /*
+   * A REFUSED READ IS NOT AN EMPTY EVENT, and the message this gate produces
+   * makes the difference visible to the organiser.
+   *
+   * This was `const { data } = await ...` then `data ?? []`, so any refusal
+   * arrived at `checkSellable` as an event with no ticket types, and an
+   * organiser holding ten of them was told to "add at least one ticket type
+   * before publishing. Right now this event would go live with nothing to
+   * buy." That sentence is unanswerable: the thing it asks for is already
+   * there, so there is no action that clears it.
+   */
+  let tiers: SellableTierRow[]
+  try {
+    tiers = await readEventTicketTiers<SellableTierRow>(
+      supabase,
+      eventId,
+      'price, name, total_capacity, is_active',
+    )
+  } catch (error) {
+    console.error('[publish-gate] the ticket types could not be read', { eventId, error })
+    return {
+      refusal: {
+        error: 'Your ticket types could not be read just now, so publishing was not attempted. Nothing was changed. Try again in a moment.',
+      },
+      tiers: [],
+    }
+  }
 
   const gate = await checkPublishGate(createAdminClient(), {
     organisationId: event.organisation_id,

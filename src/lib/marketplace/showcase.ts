@@ -1,4 +1,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow, type PagedResult } from '@/lib/supabase/read-every-row'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import type { VideoProvider } from '@/lib/media/limits'
 import type { ArtistRow } from '@/lib/broadcast/artists'
@@ -89,26 +92,57 @@ function normaliseLinks(raw: unknown): Record<string, string> {
   return out
 }
 
+/**
+ * The showcase behind the PUBLIC performer profile.
+ *
+ * Null used to mean two different things and the page could not tell them
+ * apart. `src/app/artists/[slug]/page.tsx` renders the showcase section only
+ * when this is non-null, so a dropped socket took the embeds, the genres, the
+ * booking availability and the draw off a working performer's public profile
+ * and still answered 200. The promoter who came to book them saw a profile that
+ * looked deliberately empty. readOrThrow retries a blink, throws a real fault,
+ * and answers null only for a performer who genuinely has not set one up.
+ */
 export async function fetchShowcaseArtistBySlug(
   admin: Admin,
   slug: string,
 ): Promise<ShowcaseArtist | null> {
   if (!/^[a-z0-9-]{1,200}$/i.test(slug)) return null
-  const { data } = await admin.from('artists').select(SHOWCASE_COLUMNS).eq('slug', slug).maybeSingle()
-  return data ? toShowcaseArtist(data as Record<string, unknown>) : null
+  const row = await readOrThrow(
+    'showcase-artist-by-slug',
+    () =>
+      admin
+        .from('artists')
+        .select(SHOWCASE_COLUMNS)
+        .eq('slug', slug)
+        .maybeSingle() as unknown as Read<Record<string, unknown>>,
+  )
+  return row ? toShowcaseArtist(row) : null
 }
 
+/**
+ * The performer's own showcase, for their own dashboard.
+ *
+ * `src/app/artist/dashboard/page.tsx` renders `ShowcaseEditor` only when this
+ * is non-null, so a failed read did not reset the editor, it REMOVED it: the
+ * performer opened their dashboard and the only control they have over their
+ * public profile was simply not on the page, with nothing saying why.
+ */
 export async function fetchShowcaseArtistForOwner(
   admin: Admin,
   userId: string,
 ): Promise<ShowcaseArtist | null> {
-  const { data } = await admin
-    .from('artists')
-    .select(SHOWCASE_COLUMNS)
-    .eq('owner_user_id', userId)
-    .limit(1)
-    .maybeSingle()
-  return data ? toShowcaseArtist(data as Record<string, unknown>) : null
+  const row = await readOrThrow(
+    'showcase-artist-for-owner',
+    () =>
+      admin
+        .from('artists')
+        .select(SHOWCASE_COLUMNS)
+        .eq('owner_user_id', userId)
+        .limit(1)
+        .maybeSingle() as unknown as Read<Record<string, unknown>>,
+  )
+  return row ? toShowcaseArtist(row) : null
 }
 
 export interface DirectoryFilters {
@@ -128,6 +162,12 @@ export async function fetchDirectoryArtists(
     .from('artists')
     .select(SHOWCASE_COLUMNS)
     .order('name', { ascending: true })
+    // `name` is not unique, so on its own it leaves the 48 that survive the
+    // bound undefined among ties and the directory can reshuffle between two
+    // renders of the same query. `id` is the table's primary key, which makes
+    // the order total. The same reasoning is written out in
+    // src/lib/marketplace/cities.ts.
+    .order('id', { ascending: true })
     .limit(filters.limit ?? 48)
 
   if (filters.citySlug) query = query.eq('city_slug', filters.citySlug)
@@ -135,14 +175,40 @@ export async function fetchDirectoryArtists(
   if (filters.availableOnly) query = query.eq('available_for_booking', true)
   if (filters.mentorOnly) query = query.eq('mentor_open', true)
 
-  const { data } = await query
+  // A FAILED READ IS NOT AN EMPTY MARKETPLACE. The error was discarded, so a
+  // dropped socket rendered /artists as "No performers match those filters
+  // yet", with a 200, to the promoter the supply side exists for. The bound
+  // above is deliberate and stays (this is a browse surface with a page size,
+  // not a set that must be read whole); what changes is that a failure is now
+  // a failure. Same shape, same sentence, as fetchOpenGigs.
+  const { data, error } = await query
+  if (error) throw new Error(`the performer directory could not be read: ${error.message}`)
   return ((data ?? []) as Record<string, unknown>[]).map(toShowcaseArtist)
 }
 
 /**
- * Attributed draw totals for a set of artists in three batch queries
- * (links, attribution events, tickets), so the directory can show and sort
- * by REAL sales without one query per performer.
+ * Attributed draw totals for a set of artists in three batched, paged queries
+ * (links, attribution events, tickets), so the directory can show and sort by
+ * REAL sales without one query per performer.
+ *
+ * ---------------------------------------------------------------------------
+ * THIS IS THE DIRECTORY'S COPY OF A FUNCTION THAT WAS FIXED ONCE ALREADY.
+ * `fetchArtistAttribution` in src/lib/broadcast/artists.ts is the same
+ * computation for ONE performer and was routed through the pager on 19
+ * September, in its own words: "share_link_events takes one row per click, so a
+ * working artist passes the 1,000-row ceiling and their proof quietly shrinks".
+ * This one reads the links of every performer on the page at once, so it
+ * reaches that ceiling sooner rather than later, and it was left behind.
+ *
+ * THE COST IS NOT ONLY AN UNDER-REPORTED NUMBER. src/app/artists/page.tsx sorts
+ * on `draw?.tickets ?? 0` for sort=draw, so a truncated count RE-ORDERS the
+ * directory: the performer who sells most can be ranked below one who sells
+ * less. The page's own promise is "the exact tickets their sharing sold".
+ *
+ * All three reads are paged through `readEveryRow` (which throws rather than
+ * returning what it managed to collect) and every `in` list is split by
+ * `chunkInFilterValues`, because a full directory's worth of link ids does not
+ * fit in one request's filter.
  */
 export async function fetchDrawTotalsForArtists(
   admin: Admin,
@@ -151,19 +217,41 @@ export async function fetchDrawTotalsForArtists(
   const totals = new Map<string, { clicks: number; orders: number; tickets: number }>()
   if (artistIds.length === 0) return totals
 
-  const { data: links } = await admin
-    .from('share_links')
-    .select('id, artist_id')
-    .in('artist_id', artistIds)
-  const linkRows = (links ?? []) as { id: string; artist_id: string }[]
+  const linkRows: { id: string; artist_id: string }[] = []
+  for (const chunk of chunkInFilterValues(artistIds)) {
+    linkRows.push(
+      ...(await readEveryRow<{ id: string; artist_id: string }>(
+        'the tracked links carrying these performers',
+        (from, to) =>
+          admin
+            .from('share_links')
+            .select('id, artist_id')
+            .in('artist_id', chunk)
+            .order('id', { ascending: true })
+            .range(from, to) as unknown as PromiseLike<PagedResult<{ id: string; artist_id: string }>>,
+      )),
+    )
+  }
   if (linkRows.length === 0) return totals
   const artistByLink = new Map(linkRows.map((l) => [l.id, l.artist_id]))
 
-  const { data: events } = await admin
-    .from('share_link_events')
-    .select('link_id, kind, order_id')
-    .in('link_id', linkRows.map((l) => l.id))
-  const rows = (events ?? []) as { link_id: string; kind: string; order_id: string | null }[]
+  const rows: { link_id: string; kind: string; order_id: string | null }[] = []
+  for (const chunk of chunkInFilterValues(linkRows.map((l) => l.id))) {
+    rows.push(
+      ...(await readEveryRow<{ link_id: string; kind: string; order_id: string | null }>(
+        'the clicks and conversions on these performers links',
+        (from, to) =>
+          admin
+            .from('share_link_events')
+            .select('link_id, kind, order_id')
+            .in('link_id', chunk)
+            .order('id', { ascending: true })
+            .range(from, to) as unknown as PromiseLike<
+            PagedResult<{ link_id: string; kind: string; order_id: string | null }>
+          >,
+      )),
+    )
+  }
 
   const orderToArtist = new Map<string, string>()
   for (const row of rows) {
@@ -181,10 +269,18 @@ export async function fetchDrawTotalsForArtists(
     }
   }
 
-  const orderIds = [...orderToArtist.keys()]
-  if (orderIds.length > 0) {
-    const { data: tickets } = await admin.from('tickets').select('order_id').in('order_id', orderIds)
-    for (const t of (tickets ?? []) as { order_id: string }[]) {
+  for (const chunk of chunkInFilterValues([...orderToArtist.keys()])) {
+    const tickets = await readEveryRow<{ order_id: string }>(
+      'the tickets on these performers attributed orders',
+      (from, to) =>
+        admin
+          .from('tickets')
+          .select('id, order_id')
+          .in('order_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to) as unknown as PromiseLike<PagedResult<{ order_id: string }>>,
+    )
+    for (const t of tickets) {
       const artistId = orderToArtist.get(t.order_id)
       if (!artistId) continue
       const entry = totals.get(artistId)
@@ -206,17 +302,38 @@ export interface ArtistCredit {
   venueLabel: string
 }
 
-/** Past confirmed shows: the auto-populated credits and lineup history. */
+/**
+ * Past confirmed shows: the auto-populated credits and lineup history.
+ *
+ * PAGED RATHER THAN BOUNDED, and the distinction matters here more than it
+ * looks. The `limit` is applied in JavaScript, AFTER the allow-list filter and
+ * after sorting newest first, because the filter reads a nested event and the
+ * sort key is on it. So the twelve that render are chosen from the whole set:
+ * a read that stopped at the 1,000-row ceiling would not have shown twelve
+ * fewer credits, it would have shown the WRONG twelve, silently, with the
+ * performer's most recent work being exactly what was missing.
+ *
+ * A failure throws. This is a public profile and the credits are the performer's
+ * history; drawing an empty list says they have never played.
+ */
 export async function fetchArtistCredits(
   admin: Admin,
   artistId: string,
   limit = 12,
 ): Promise<ArtistCredit[]> {
-  const { data } = await admin
-    .from('event_artists')
-    .select('status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)')
-    .eq('artist_id', artistId)
-    .eq('status', 'confirmed')
+  const data = await readEveryRow<Record<string, unknown>>(
+    'this performer past confirmed shows',
+    (from, to) =>
+      admin
+        .from('event_artists')
+        .select(
+          'id, status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)',
+        )
+        .eq('artist_id', artistId)
+        .eq('status', 'confirmed')
+        .order('id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<PagedResult<Record<string, unknown>>>,
+  )
 
   type Row = {
     status: string

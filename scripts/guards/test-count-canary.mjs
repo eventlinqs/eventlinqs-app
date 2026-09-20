@@ -2976,6 +2976,78 @@ const ROOT = join(HERE, '..', '..')
  *   521 + 1 = 522 files
  *   6952 + 20 + 2 + 1 = 6975 tests
  *
+ * 2026-09-20 (lane B, LB-PRICEWHOLE): raised 522/6975 -> 523/6992.
+ *
+ * ONE OF THE SEVENTEEN NEW CASES IS A REPLACEMENT RATHER THAN AN ADDITION, and
+ * the count below says so. `tests/unit/pricing/save-dynamic-pricing-action.test.ts`
+ * carried a test called "switching dynamic pricing off sends no steps" which
+ * asserted `p_steps: []`. It was a faithful description of the code and a pin on
+ * a data-loss defect: the database function deleted every rule before deciding
+ * whether to insert any, so an empty list destroyed the organiser's ladder the
+ * moment they paused it. That test now asserts the opposite and the file's case
+ * count is unchanged, so this raise is +1 file and +17 cases, not +18.
+ *
+ * MEASURED: 523 files, 6992 tests, 0 failed, 0 skipped
+ * (`npx vitest run --reporter=dot`, 235s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and SEVENTEEN cases:
+ *   tests/unit/dashboard/the-price-ladder-survives-a-blink.test.ts  17  (new file)
+ *   522 + 1 = 523 files
+ *   6975 + 17 = 6992 tests
+ *
+ * 2026-09-20 (lane B, LB-INVITEWHOLE): raised 523/6992 -> 524/7014.
+ *
+ * ONE EXISTING TEST WAS REWRITTEN AND ADDS NO CASE, and the count below says so.
+ * `tests/unit/growth/founding-organiser-terms.test.ts` carried "the conversion
+ * path reads the switch before it grants anything", which compared the offset of
+ * `isFeatureEnabled('founding_open'` with the offset of `rpc('claim_founding_spot'`
+ * in the RAW file. The conversion is now one call to accept_founding_invite, so
+ * the only remaining occurrence of that string is the doc comment quoting the
+ * defective line, and the test was comparing code against prose. It now strips
+ * comments and reads the new shape. Same file, same case count, 38 either way.
+ *
+ * MEASURED: 524 files, 7014 tests, 0 skipped
+ * (`npx vitest run --reporter=dot`, 216s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and TWENTY-TWO cases:
+ *   tests/unit/growth/a-founding-invite-is-spent-once.test.ts  22  (new file)
+ *   523 + 1 = 524 files
+ *   6992 + 22 = 7014 tests
+ *
+ * 2026-09-21 (lane B, LB-GIGWHOLE): raised 524/7014 -> 525/7029.
+ *
+ * ONE EXISTING TEST WAS LOOSENED AND ADDS NO CASE, and the count below says so.
+ * `tests/unit/seo/read-failure-is-not-not-found.test.ts` asserted an EXACT
+ * number of `readOrThrow(` calls per module, counted over the whole file. That
+ * is an equality over a count that rises when a DIFFERENT read in the same
+ * module is made safe, which is exactly what happened: LB-GIGWHOLE routed
+ * `isPairBlocked` and `fetchRequestById` in src/lib/marketplace/gigs.ts through
+ * the door, the file went from one call to three, and the test failed because
+ * more reads were correct. It is a floor now. Same file, same case count, 22
+ * either way.
+ *
+ * MEASURED: 525 files, 7029 tests, 0 skipped
+ * (`npx vitest run --reporter=dot`, 208s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and FIFTEEN cases:
+ *   tests/unit/growth/a-marketplace-block-holds.test.ts  15  (new file)
+ *   524 + 1 = 525 files
+ *   7014 + 15 = 7029 tests
  * ---------------------------------------------------------------------------
  * 2026-09-20 (lane A, the push lane): 524/6975 and 522/6975 -> 525/7003.
  *
@@ -2999,8 +3071,71 @@ const ROOT = join(HERE, '..', '..')
  * spawns takes 2.1. The timeout was NOT touched: a floor is not lowered to
  * accommodate a busy machine, and the count written here is the one the GREEN
  * run measured.
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane A, MONEY FIX A3 layer two and A4): 525/7003 -> 530/7050.
+ *
+ * FIVE NEW FILES AND FORTY-SEVEN CASES, and the number below is the
+ * MEASUREMENT rather than the sum, for the reason the blocks above record twice
+ * over:
+ *   tests/unit/payments/stripe-processing-estimate.test.ts
+ *   tests/unit/payments/order-records-its-destination.test.ts
+ *   tests/unit/events/connect-verification-freshness.test.ts
+ *   tests/unit/events/publish-needs-a-fresh-enabled-account.test.ts
+ *   tests/unit/ops/parity-sink-stand-in.test.ts
+ * plus four cases added to create-platform-charge and one case restated in
+ * connect-reconcile, whose premise MONEY FIX A3 layer two changed.
+ *
+ * MEASURED: 530 files, 7050 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, C:\dev\_a-r23-suite-money.txt).
+ * ---------------------------------------------------------------------------
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, resolving the merge of verify/l5-launch-readiness into
+ * lane/b-growth): 530/7050 and 525/7029 -> MEASURED BELOW.
+ *
+ * BOTH HISTORY BLOCKS ABOVE ARE KEPT VERBATIM because each names tests that
+ * exist in this tree. Neither number describes it: lane A measured 530/7050 on
+ * a tree without lane B's last three commits (the price ladder, the founding
+ * invite and the marketplace block, three new files and 54 cases), and lane B
+ * measured 525/7029 on a tree without lane A's MONEY FIX A3 layer two and A4.
+ * Taking the higher of the two would have written 530, which is below what this
+ * tree runs.
+ *
+ * SO IT WAS RUN ON THE MERGED TREE rather than summed, for the eleventh time
+ * this conflict has been settled and the first time by the lane that owns the
+ * branch being merged.
+ *
+ * MEASURED: 533 files, 7104 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 112s, on this merge).
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT HERE and that is worth recording rather
+ * than assumed: 530 + 3 = 533 and 7050 + 54 = 7104, the three files being
+ * tests/unit/dashboard/the-price-ladder-survives-a-blink.test.ts (17),
+ * tests/unit/growth/a-founding-invite-is-spent-once.test.ts (22) and
+ * tests/unit/growth/a-marketplace-block-holds.test.ts (15). Agreement is not
+ * the reason the number is trusted; the run is. It is written down because a
+ * sum that DISAGREES with a measurement is the signal that something stopped
+ * collecting, and next time there will be nothing to compare against unless
+ * somebody wrote this line.
+ * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-SHOWCASEWHOLE): raised 533/7104 -> 534/7125.
+ *
+ * ONE NEW FILE AND TWENTY-ONE CASES, and nothing else moved:
+ *   tests/unit/growth/a-performers-proof-of-draw-is-whole.test.ts  21  (new file)
+ *   533 + 1 = 534 files
+ *   7104 + 21 = 7125 tests
+ *
+ * MEASURED: 534 files, 7125 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 148s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED by this item, which the last three
+ * lane B raises each had to declare and this one does not. The subject module
+ * had no unit test of its own before this file.
  * ---------------------------------------------------------------------------
  */
+
 /*
  * ---------------------------------------------------------------------------
  * 2026-09-20 (lane C, merging verify/l5-launch-readiness into lane/c-ux for
@@ -3027,8 +3162,39 @@ const ROOT = join(HERE, '..', '..')
  * 525/6979, lane B's account of the same hour, and lane A's merged measurement
  * all stand where they were written.
  */
-const MIN_FILES = 531
-const MIN_TESTS = 7054
+
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, merging verify/l5-launch-readiness into lane/c-ux to
+ * clear the returned overlap): 532/7062 and 534/7125 -> MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE THIRTEENTH CONFLICT ON THIS ONE INTEGER. Resolved the same way as the
+ * twelve before it, by RUNNING the suite on the merged tree.
+ *
+ * WHAT EACH SIDE COULD SEE, so the next reader knows why neither number is the
+ * answer. Lane C's tree runs 532/7062 (the last item added
+ * tests/unit/guards/top-level-body.test.ts, six cases, and the floor was left
+ * at 531/7054, which is legal because the floor only ever has to be BELOW the
+ * truth, but it is stale and is corrected here). The verify branch declares
+ * 534/7125, measured on a tree without lane C's last two commits. Taking the
+ * higher would write 7125, which is below what this tree runs.
+ *
+ * MEASURED: 536 files, 7137 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 130s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, AGAIN. The merged tree carries FOUR
+ * files and seventy-five cases that lane C's worktree could not see, and TWO
+ * files and twelve cases that the verify branch could not see. Neither side's
+ * sum reaches 7137. Every derived figure on this integer has been wrong and
+ * every measured one has been right; that record is now thirteen for thirteen.
+ *
+ * NOTHING ABOVE WAS DELETED. Lane A's, lane B's and lane C's accounts all
+ * stand exactly where they were written.
+ */
+const MIN_FILES = 536
+const MIN_TESTS = 7137
+
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

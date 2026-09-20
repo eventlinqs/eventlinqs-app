@@ -1,3 +1,4 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -54,11 +55,10 @@ export default async function PerformerDirectoryPage({
   }
 
   const admin = createAdminClient()
-  const [artists, citiesResult] = await Promise.all([
+  const [artists, cities] = await Promise.all([
     fetchDirectoryArtists(admin, filters),
-    admin.from('cities').select('slug, name').order('tier').order('name'),
+    fetchPickerCities(admin),
   ])
-  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]
   const cityName = (slug: string | null) => cities.find((c) => c.slug === slug)?.name ?? null
 
   const draw = await fetchDrawTotalsForArtists(admin, artists.map((a) => a.id))
@@ -130,7 +130,13 @@ export default async function PerformerDirectoryPage({
 
                     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-200/70 pt-3">
                       {artist.available_for_booking && (
-                        <span className="inline-flex items-center rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
+                        /* text-success-strong, not text-success: #0F9D58 on the
+                           bg-success/15 wash (#dbf0e6) measures 2.94:1, under the
+                           4.5:1 AA floor, found by axe at 1440, 768 and 390.
+                           #0B7038 on the same wash measures 5.20:1. The token is
+                           the one globals.css already carries for this exact
+                           case; no colour is introduced here. */
+                        <span className="inline-flex items-center rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success-strong">
                           Open to bookings
                         </span>
                       )}

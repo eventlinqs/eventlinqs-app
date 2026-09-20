@@ -7,6 +7,17 @@ import { readStreamLink } from '@/lib/stream/link'
 import { classifyStreamLink } from '@/lib/stream/embed'
 import { describeCountries } from '@/lib/stream/countries'
 import { answerStreamQuestion, setStreamMessageHidden, postOrganiserMessage } from './stream-actions'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEventTicketTiers } from '@/lib/organisers/event-tier-config'
+
+/** What the room needs of a ticket type: who it admits and how many are sold. */
+type StreamTierRow = {
+  id: string
+  name: string
+  access_mode: string | null
+  sold_count: number | null
+  total_capacity: number | null
+}
 
 export const metadata: Metadata = {
   title: 'Stream room | EventLinqs',
@@ -80,22 +91,47 @@ export default async function StreamRoomPage({ params, searchParams }: Props) {
   const errorCopy = errorCode ? (ERROR_COPY[errorCode] ?? ERROR_COPY.save_failed) : null
 
   const admin = createAdminClient()
-  const [{ data: row }, link, { data: tiers }, { data: messages }] = await Promise.all([
-    admin.from('events').select('event_type, stream_geo_allow').eq('id', id).maybeSingle(),
+  /*
+   * ALL THREE READS ARE LOUD NOW, AND EACH ONE LIED DIFFERENTLY.
+   *
+   * The TIER read carries a number. `livestreamSold` below is a SUM over these
+   * rows, so a discarded refusal reported "0 sold" on a room that was full. It
+   * goes through the one reader, which pages it, orders it totally and throws
+   * rather than summing what it managed to collect.
+   *
+   * The EVENT read decides `eventType` and the geo allowlist. Discarded, a
+   * refusal fell through to `'in_person'` and `[]`, so a virtual event drew as
+   * an in-person one and a room restricted to three countries reported that it
+   * was open to everybody.
+   *
+   * The MESSAGES read is the room. Discarded, a refusal drew an empty Q&A on a
+   * live event: no unanswered questions, no chat, nothing to moderate. An
+   * organiser watching that screen concludes their audience is silent.
+   *
+   * Both go through readOrThrow, which retries a transient fault and then
+   * throws into the route's error boundary, so the organiser is told to try
+   * again rather than shown a room that is not theirs.
+   */
+  const [row, link, tiers, messages] = await Promise.all([
+    readOrThrow('dashboard stream room event', () =>
+      admin.from('events').select('event_type, stream_geo_allow').eq('id', id).maybeSingle(),
+    ),
     readStreamLink(admin, id),
-    admin.from('ticket_tiers').select('id, name, access_mode, sold_count, total_capacity').eq('event_id', id).order('sort_order'),
-    admin
-      .from('stream_messages')
-      .select('id, author_kind, author_name, kind, body, answer_body, answered_at, hidden_at, created_at')
-      .eq('event_id', id)
-      .order('created_at', { ascending: true })
-      .limit(500),
+    readEventTicketTiers<StreamTierRow>(admin, id, 'id, name, access_mode, sold_count, total_capacity'),
+    readOrThrow('dashboard stream room messages', () =>
+      admin
+        .from('stream_messages')
+        .select('id, author_kind, author_name, kind, body, answer_body, answered_at, hidden_at, created_at')
+        .eq('event_id', id)
+        .order('created_at', { ascending: true })
+        .limit(500),
+    ),
   ])
 
   const eventType = (row?.event_type ?? 'in_person') as 'in_person' | 'virtual' | 'hybrid'
   const geo = (row?.stream_geo_allow ?? []) as string[]
   const classified = classifyStreamLink(link)
-  const livestreamTiers = (tiers ?? []).filter(t => eventType === 'virtual' || t.access_mode === 'virtual')
+  const livestreamTiers = tiers.filter(t => eventType === 'virtual' || t.access_mode === 'virtual')
   const livestreamSold = livestreamTiers.reduce((s, t) => s + (t.sold_count ?? 0), 0)
   const all = (messages ?? []) as RoomRow[]
   const questions = all.filter(m => m.kind === 'question')

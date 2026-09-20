@@ -157,6 +157,56 @@ export const BASELINE = [
     why: 'the same fixture needs an organiser profile that resolves, because the structured data references it',
   },
   /*
+   * LB-GIGWHOLE'S ORGANISER, AND WHY 'active' IS NOT A PUBLICATION HERE.
+   *
+   * Posting a gig is refused for any organisation that is not active
+   * (requireActiveOrganisation in src/app/actions/gigs.ts), so `pending` would
+   * make the surface under test unreachable rather than merely invisible.
+   *
+   * It is not a sitemap hazard, and that is CHECKED rather than asserted.
+   * src/lib/seo/sitemap-catalogue.ts filters active organisations through
+   * isOrganiserProfileIndexable(eventCount, hasBiography, threshold), which is
+   * `hasBiography || isDiscoveryIndexable(eventCount, threshold)`. The fixture
+   * sets no `description` and owns no event, so both halves are false and the
+   * row never reaches the sitemap. The drive would have to start writing a
+   * description, or publishing an event, for that to stop being true.
+   */
+  {
+    drive: 'lb-gigwhole-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
+  },
+  /*
+   * LB-SHOWCASEWHOLE'S PAST SHOW, AND WHY 'unlisted' WOULD DEFEAT THE CHECK.
+   *
+   * The drive needs a CREDIT on a public performer profile, and a credit is a
+   * show that has already happened. fetchArtistCredits filters through
+   * `isPubliclyDiscoverable`, which since the child-safety ruling of 9 August
+   * 2026 is an ALLOW-LIST of exactly `public`. So an unlisted fixture would not
+   * appear as a credit at all, and the drive would be asserting the absence of
+   * the thing it exists to prove. The guard's usual advice, "use unlisted, the
+   * page still renders", is sound everywhere it is offered and is the one case
+   * it does not fit.
+   *
+   * IT IS NOT A SITEMAP HAZARD, AND THAT IS CHECKED TWICE RATHER THAN ASSERTED.
+   * Statically: both sitemap catalogues select through `PUBLIC_EVENT_MATCH`
+   * (`src/lib/seo/sitemap-catalogue.ts`), which is
+   * `{ status: 'published', visibility: 'public' }`, and this row is written
+   * `status: 'completed'`, so neither the event entry nor the venue entry
+   * derived from `venue_name` can match it. This guard reads text and cannot
+   * see the sibling literal in the same insert, which is why the entry is here
+   * rather than the guard being widened to accept a second literal it would
+   * then have to keep believing after a later UPDATE.
+   * At RUNTIME: the drive calls `sitemapFootprint` on that slug and its venue
+   * name and fails if the footprint is anything but empty, which is the half
+   * this guard's own header says belongs in the drive.
+   */
+  {
+    drive: 'lb-showcasewhole-drive.mjs',
+    write: "events.visibility='public'",
+    why: "a credit is a PAST show and the credits allow-list admits only 'public', so unlisted would delete the thing under test; the row is status 'completed', which PUBLIC_EVENT_MATCH excludes from both sitemap catalogues, and the drive proves the empty footprint at runtime",
+  },
+  /*
    * LANE A'S SHARED BUILDER, and the one entry here that is NOT comfortable.
    *
    * scripts/verify/lib/refund-proof-fixture.mjs builds a SELLABLE organisation
