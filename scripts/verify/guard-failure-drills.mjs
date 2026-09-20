@@ -3569,6 +3569,37 @@ const DRILLS = [
     expect: "THIS GUARD'S PREMISE HAS MOVED",
   },
   /*
+   * fixtures-are-not-published, THE BULK SEED (lane B, 21 September 2026).
+   *
+   * `writesIn` was widened that day to read a row literal out of a `.map(`,
+   * because lb-proofcount-drive is the first drive in the tree that seeds a
+   * thousand rows and the guard's only remedy for an unreadable write is
+   * "inline the literal at the call", which for a thousand rows means a
+   * thousand round trips or an exemption.
+   *
+   * A widening is a place a rule can quietly stop applying, so this drills the
+   * widened path itself: a mapped bulk insert that publishes its fixtures must
+   * still be named. If this ever passes, the guard is reading the shape and
+   * judging nothing.
+   *
+   * THE FIRST VERSION OF THIS DRILL WAS BLIND, and it is worth writing down
+   * because it passed. It expected `events.visibility='public'`, which the
+   * guard prints on EVERY run as part of its excused baseline, for other
+   * drives. So the drill went green off a line that had nothing to do with the
+   * mutation, and would have gone green with the widening judging nothing at
+   * all. It is anchored now on `lb-proofcount-drive.mjs:`, the file-and-line
+   * form the guard only ever emits for a real finding: a baseline line reads
+   * "<drive>.mjs excused", with no colon and no line number.
+   */
+  {
+    name: 'a thousand-row seed publishes its fixtures through a mapped insert',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/lb-proofcount-drive.mjs',
+    find: "          visibility: 'unlisted',",
+    replace: "          visibility: 'public',",
+    expect: 'lb-proofcount-drive.mjs:',
+  },
+  /*
    * proof-reads-never-discard-their-error, two drills, one per way a read on
    * that surface can stop telling a failure from an absence.
    *
@@ -4979,6 +5010,62 @@ const DRILLS = [
     find: "    table: 'push_subscriptions',",
     replace: "    table: 'push_subscriptions_bounded_now',",
     expect: 'no such read was found',
+  },
+
+  /*
+   * no-silent-row-ceiling, THE STATS SCOPE AND THE COUNT CLAUSE (lane B,
+   * 21 September 2026), four drills.
+   *
+   * `getPlatformStats` asked for `{ count: 'exact' }` and then deduped the BODY
+   * of the same response for two of its three numbers, so past a thousand
+   * published events /organisers would have printed a true total beside a
+   * sample of it. The first two drills put each half of that back.
+   *
+   * THE THIRD IS THE ONE WORTH HAVING, and it is why the count clause is a
+   * separate clause rather than a stricter bound. A `.limit()` satisfies the
+   * boundedness clause completely while leaving the lie exactly as it was: the
+   * header still carries the true total, the body is still a sample, and the
+   * number derived from it is still printed beside a total it does not
+   * describe. If the clause could be bought off with a bound, it would be
+   * bought off by the first person who read the failure message and reached for
+   * the cheapest thing that made it go away.
+   *
+   * The fourth aims at the scope entry itself: a directory name that no longer
+   * exists sweeps nothing and reports PASS, which is how a scanner lies.
+   */
+  {
+    name: 'the platform social proof goes back to reading every published event unbounded',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find: "        .order('id', { ascending: true })\n        .range(from, to),",
+    replace: "        .order('id', { ascending: true })\n        .range2(from, to),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the social proof asks for an exact count and takes the rows back as well',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find: "        .select('organisation_id, venue_city')",
+    replace: "        .select('organisation_id, venue_city', { count: 'exact' })",
+    expect: 'with a count: and no head: true',
+  },
+  {
+    name: 'the count beside a sampled body is bought off with a stated limit, and must not be',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find:
+      "        .select('organisation_id, venue_city')\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .range(from, to),",
+    replace:
+      "        .select('organisation_id, venue_city', { count: 'exact' })\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .limit(5000),",
+    expect: 'with a count: and no head: true',
+  },
+  {
+    name: 'the stats scope is pointed at a directory that does not exist and would sweep nothing',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'scripts/guards/no-silent-row-ceiling.mjs',
+    find: "  'src/lib/stats',",
+    replace: "  'src/lib/platform-stats',",
+    expect: 'a scope that scans nothing reports PASS',
   },
 
   /*

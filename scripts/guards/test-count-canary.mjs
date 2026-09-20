@@ -3150,10 +3150,35 @@ const ROOT = join(HERE, '..', '..')
  *
  * MEASURED: 536 files, 7187 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, GREEN, 149s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21, LB-PROOFCOUNT (lane B): raised 536/7187 -> 536/7194. No new
+ * files, seven new tests in two existing ones, and the arithmetic is written
+ * out because a baseline moved without it is a number nobody can check:
+ *
+ *   +3  tests/unit/stats/platform-stats (3 -> 6). The platform's own social
+ *       proof counted organisers and cities by deduping a response body that
+ *       stops at the row ceiling, and printed the result beside an exact total
+ *       taken from the header. The fake client that file used could not express
+ *       a ceiling at all, so no value of any argument could have shown it. The
+ *       three new cases are the ceiling itself (2,500 events behind a 1,000-row
+ *       cap), a project ceiling LOWER than the page size, and a later page
+ *       failing, which must hide the band rather than publish the first
+ *       thousand as the whole platform.
+ *   +4  tests/unit/guards/fixtures-are-not-published (21 -> 25). `writesIn` was
+ *       widened to read a row literal out of a `.map(`, because the first
+ *       thousand-row seed in the tree came back unjudgeable and the guard's
+ *       only remedy was a thousand round trips or an exemption. The four hold
+ *       the widening to its promise: the mapped row is FOUND, a mapped insert
+ *       that publishes an organiser or an event is still CAUGHT, and an arrow
+ *       that does not return a literal is still unjudgeable rather than clean.
+ *
+ * MEASURED: 536 files, 7194 tests, 0 failed, 0 skipped
+ * (`scripts/guards/test-count-canary.mjs`, PASS, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
 const MIN_FILES = 536
-const MIN_TESTS = 7187
+const MIN_TESTS = 7194
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

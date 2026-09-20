@@ -171,3 +171,28 @@ export function headOnlySelectLines(path) {
   while ((m = re.exec(withStrings))) lines.add(lineAt(raw, m.index))
   return lines
 }
+
+/**
+ * `.select('id', { count: 'exact' })` asks the server for the TRUE TOTAL in a
+ * Content-Range header while the body still stops at the project's row ceiling.
+ *
+ * On its own that is not a bound, which `boundednessOf` already says. This
+ * exists for the sharper question a caller in a counting path has to answer:
+ * did it ask for a count AND take rows back? That pairing is how a number
+ * derived from a thousand-row sample gets printed beside a true total and reads
+ * as one measurement. Measured on TEST on 21 September 2026: 14,433 rows in the
+ * table, HTTP 206, `error` null, 1,000 rows in the body, and
+ * `Content-Range: 0-999/14433`.
+ *
+ * The anchor is deliberately the SAME as `headOnlySelectLines`, so a select
+ * this cannot see is one that cannot see either, and the two can never
+ * disagree about the same line and manufacture a false failure.
+ */
+export function countSelectLines(path) {
+  const { raw, withStrings } = readSource(path)
+  const lines = new Set()
+  const re = /\.from\(\s*['"][A-Za-z0-9_]+['"]\s*\)\s*\.?\s*\n?\s*\.select\([^)]*count:/g
+  let m
+  while ((m = re.exec(withStrings))) lines.add(lineAt(raw, m.index))
+  return lines
+}
