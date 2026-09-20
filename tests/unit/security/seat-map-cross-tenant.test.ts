@@ -63,16 +63,37 @@ describe('saveSeatMap cannot write across tenants', () => {
     ).toBe(true)
   })
 
+  /*
+   * TWO SHAPES SATISFY THIS PROPERTY, AND THE TEST NOW KNOWS BOTH. 20 September
+   * 2026, LB-SEATWHOLE.
+   *
+   * The update is filtered on `id`, which is the primary key, so it matches at
+   * most one row. `.maybeSingle()` says that in the call, and it is what lets a
+   * reader and a scanner both see that the returned representation has no row
+   * ceiling to hit. It also makes the zero-row case `updated === null` rather
+   * than an empty array.
+   *
+   * THE PROPERTY IS UNCHANGED AND IS STILL PINNED, in whichever shape the code
+   * is written in: a zero-row update is REFUSED, and `mapId` is REASSIGNED from
+   * the row the database returned rather than kept from the caller. What is no
+   * longer pinned is the array literal, which was the expression of the
+   * property and never the property itself.
+   */
+  const asSingleRow = /\.select\([^)]*\)\s*\.maybeSingle\(\)/.test(body)
+
   it('refuses when the update matched no row', () => {
     expect(
-      /updated\.length === 0|!updated\?\.length|updated\.length < 1/.test(body),
-      'saveSeatMap must return an error when the update matched zero rows',
+      asSingleRow
+        ? /if\s*\(\s*!updated\s*\)/.test(body)
+        : /updated\.length === 0|!updated\?\.length|updated\.length < 1/.test(body),
+      'saveSeatMap must return an error when the update matched zero rows. With ' +
+        '.maybeSingle() that is `if (!updated)`; with an array it is a length test.',
     ).toBe(true)
   })
 
   it('reassigns mapId from the row the DATABASE returned, never the caller', () => {
     expect(
-      /mapId\s*=\s*updated\[0\]/.test(body),
+      asSingleRow ? /mapId\s*=\s*updated\.id/.test(body) : /mapId\s*=\s*updated\[0\]/.test(body),
       'after the update, mapId must come from the returned row so it can only ever ' +
         'be a seat map inside the verified venue',
     ).toBe(true)

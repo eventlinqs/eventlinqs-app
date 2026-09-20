@@ -8084,6 +8084,11 @@ export type Database = {
         Returns: Json
       }
       event_referencing_tables: { Args: never; Returns: Json }
+      event_seat_status_counts: { Args: { p_event_id: string }; Returns: Json }
+      event_seat_status_counts_many: {
+        Args: { p_event_ids: string[] }
+        Returns: Json
+      }
       event_tags_normalised: { Args: { tags: Json }; Returns: boolean }
       events_within_distance: {
         Args: { p_lat: number; p_lng: number; p_radius_km: number }

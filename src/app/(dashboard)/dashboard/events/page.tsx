@@ -15,6 +15,8 @@ import type { Event } from '@/types/database'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { ARCHIVED_STATUS } from '@/lib/event-lifecycle'
 import { judgeDeleteEligibility, readMoneyRecordCountsMany } from '@/lib/events/delete-eligibility'
+import { readSeatStatusCountsMany } from '@/lib/events/seat-counts'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { LifecycleEligibility } from '@/components/features/dashboard/event-lifecycle-actions'
 
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled' | 'archived'
@@ -62,54 +64,115 @@ export default async function MyEventsPage({ searchParams }: Props) {
   // These are the organiser's own events, so this is not a cross-tenant leak. It
   // is unnecessary width at a trust boundary, and the narrow list also documents
   // what the table actually depends on.
-  let query = supabase
-    .from('events')
-    .select(
-      'id, slug, title, status, archived_from_status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
-    )
-    .eq('organisation_id', org.id)
-    .order('created_at', { ascending: false })
-
   const now = new Date().toISOString()
 
   /*
+   * THE LIST ITSELF IS PAGED, AND IT IS BUILT BY A FUNCTION FOR THAT REASON.
+   *
+   * A PostgREST builder is a thenable and resolves once, so a pager cannot be
+   * handed the same `query` object twice: the second `.range()` never reissues
+   * it and page one comes back for ever. The filter is therefore built afresh
+   * for each window. The chain is byte for byte the one that was here, with
+   * `id` appended to the order so the paging is a total order, and the tab
+   * predicates in the same sequence.
+   *
    * ARCHIVED EVENTS LEAVE THE DEFAULT LIST (close-out C13.4). Every tab but the
    * Archived one excludes them, so an organiser's working list is what they are
    * working on, and the Archived tab is where a restore starts.
    */
-  if (activeTab === 'archived') {
-    query = query.eq('status', ARCHIVED_STATUS)
-  } else {
-    query = query.neq('status', ARCHIVED_STATUS)
-    if (activeTab === 'draft') {
-      query = query.eq('status', 'draft')
-    } else if (activeTab === 'published') {
-      query = query.eq('status', 'published').or(listingWindowOrPredicate(new Date(now)))
-    } else if (activeTab === 'past') {
-      query = query.lt('start_date', now).in('status', ['published', 'completed'])
-    } else if (activeTab === 'cancelled') {
-      query = query.eq('status', 'cancelled')
+  const eventsPage = (from: number, to: number) => {
+    // EXPLICIT COLUMNS, NOT (*). This result is passed to <EventsTable>, a CLIENT
+    // component, so every column crosses into the RSC payload and is readable with
+    // view-source. `events` has 64 columns; the table renders nine. ASVS 8.2.3.
+    //
+    // These are the organiser's own events, so this is not a cross-tenant leak. It
+    // is unnecessary width at a trust boundary, and the narrow list also documents
+    // what the table actually depends on.
+    let query = supabase
+      .from('events')
+      .select(
+        'id, slug, title, status, archived_from_status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
+      )
+      .eq('organisation_id', org.id)
+      /*
+       * THE ORDER AND THE WINDOW SIT IN THE OPENING CHAIN, NOT AT THE END.
+       *
+       * A PostgREST builder accumulates parameters and issues one request when
+       * it is awaited, so where in the chain `.order()` and `.range()` are
+       * called makes no difference to the request. It makes a difference to a
+       * READER, and to `scripts/guards/lib/supabase-select-chains.mjs`, which
+       * follows a chain across `.method(...)` links and cannot follow one that
+       * continues through a reassigned variable. A bound that a scanner cannot
+       * see is a bound the next guard cannot enforce.
+       */
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to)
+
+    if (activeTab === 'archived') {
+      query = query.eq('status', ARCHIVED_STATUS)
+    } else {
+      query = query.neq('status', ARCHIVED_STATUS)
+      if (activeTab === 'draft') {
+        query = query.eq('status', 'draft')
+      } else if (activeTab === 'published') {
+        query = query.eq('status', 'published').or(listingWindowOrPredicate(new Date(now)))
+      } else if (activeTab === 'past') {
+        query = query.lt('start_date', now).in('status', ['published', 'completed'])
+      } else if (activeTab === 'cancelled') {
+        query = query.eq('status', 'cancelled')
+      }
     }
+
+    return query
   }
 
-  const { data: events } = await query as { data: (Event & { ticket_tiers: { sold_count: number; total_capacity: number }[] })[] | null }
+  const events = await readEveryRow<Event & { ticket_tiers: { sold_count: number; total_capacity: number }[] }>(
+    'organiser events list',
+    eventsPage as (from: number, to: number) => PromiseLike<{
+      data: (Event & { ticket_tiers: { sold_count: number; total_capacity: number }[] })[] | null
+      error: { message: string } | null
+    }>,
+  )
 
-  // For reserved seating events, sold count must come from seats table, not ticket_tiers.sold_count
-  const reservedEventIds = (events ?? [])
+  /*
+   * FOR RESERVED-SEATING EVENTS THE SOLD COUNT COMES FROM THE SEATS, AND THE
+   * DATABASE DOES THE COUNTING.
+   *
+   * This used to read one row per sold seat and tally them here:
+   *
+   *     .from('seats').select('event_id').in('event_id', reservedEventIds)
+   *       .eq('status', 'sold')
+   *     for (const row of soldSeats ?? []) map[row.event_id] += 1
+   *
+   * Supabase caps a response at 1,000 rows in silence (HTTP 200, `error` null,
+   * a full-looking array; https://supabase.com/docs/reference/javascript/select,
+   * fetched 2026-09-19). The cap is on the RESPONSE, not on each event, so the
+   * thousand was shared across every reserved-seating event at once: two
+   * sold-out 800-seat shows reported 1,000 sold between them. There was no
+   * `order by`, so which thousand arrived was arbitrary and the shortfall moved
+   * between page loads. And the error was dropped, so a read that FAILED
+   * rendered as nought sold on every row.
+   *
+   * One RPC, counted by the database, cannot be truncated. A failure now leaves
+   * the map EMPTY and the column says so, because nought sold and could-not-be
+   * -read are different facts and an organiser is owed the difference.
+   */
+  const reservedEventIds = events
     .filter(e => (e as Event & { has_reserved_seating?: boolean }).has_reserved_seating)
     .map(e => e.id)
 
   const seatSoldCountMap: Record<string, number> = {}
   if (reservedEventIds.length > 0) {
-    // Use admin client so RLS never blocks reading seat counts for the organiser's own events
+    // Admin client so RLS never blocks the organiser's own events.
     const adminClient = createAdminClient()
-    const { data: soldSeats } = await adminClient
-      .from('seats')
-      .select('event_id')
-      .in('event_id', reservedEventIds)
-      .eq('status', 'sold')
-    for (const row of soldSeats ?? []) {
-      seatSoldCountMap[row.event_id] = (seatSoldCountMap[row.event_id] ?? 0) + 1
+    try {
+      const counts = await readSeatStatusCountsMany(adminClient, reservedEventIds)
+      for (const [id, c] of counts) {
+        seatSoldCountMap[id] = c.byStatus.sold ?? 0
+      }
+    } catch (err) {
+      console.error('[dashboard/events] could not count sold seats; the column reads Unknown:', err)
     }
   }
 
@@ -121,7 +184,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
    * "nothing sold". The failure is logged, never swallowed.
    */
   const eligibilityById: Record<string, LifecycleEligibility> = {}
-  const ids = (events ?? []).map((e) => e.id)
+  const ids = events.map((e) => e.id)
   if (ids.length > 0) {
     try {
       const counts = await readMoneyRecordCountsMany(supabase, ids)
@@ -194,7 +257,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
       </div>
 
       <EventsTable
-        events={events ?? []}
+        events={events}
         seatSoldCountMap={seatSoldCountMap}
         eligibilityById={eligibilityById}
         emptyTab={activeTab}

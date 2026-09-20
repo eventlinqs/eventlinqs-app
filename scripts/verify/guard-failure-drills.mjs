@@ -48,6 +48,23 @@ const BSL = String.fromCharCode(92)
 const GUARDS = 'scripts/guards'
 
 /*
+ * The five seating screens, and the one anchor three of their drills share.
+ * Named here because the seat chart's paging order is four lines long, and
+ * repeating a four-line anchor in three drills is how an anchor drifts out of
+ * step with the file it has to match exactly.
+ */
+const SEATING_SEATS = 'src/app/(dashboard)/dashboard/events/[id]/seats/page.tsx'
+const SEATING_KIT = 'src/app/(dashboard)/dashboard/events/[id]/launch-kit/page.tsx'
+const SEATING_LIST = 'src/app/(dashboard)/dashboard/events/page.tsx'
+const SEATING_MAPS = 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/page.tsx'
+const SEATING_ACTIONS = 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/actions.ts'
+const SEATING_SEAT_ORDER =
+  "        .order('row_label')\n" +
+  "        .order('seat_number')\n" +
+  "        .order('id')\n" +
+  '        .range(from, to),'
+
+/*
  * `--restore` RUNS BEFORE ANYTHING ELSE IN THIS FILE, and that placement is the
  * point rather than tidiness.
  *
@@ -7321,6 +7338,134 @@ const DRILLS = [
      * the clause 5 failure.
      */
     expect: 'indistinguishable from an event nobody has bought a ticket to',
+  },
+
+  /*
+   * the-seating-surfaces-count-every-seat (lane B, 20 September 2026), eight
+   * drills, one per clause plus the plausible wrong fix plus BOTH shapes of
+   * clause 5.
+   *
+   * Clause 5 is the reason this guard exists rather than a sixth clause on the
+   * organiser-dashboard one. Two of the three ceilings on these screens were
+   * BOUNDS: `.range(0, 1999)` in the launch kit and `from < 10000` in the seat
+   * manager's own pager. Every other guard in this family asks "is this read
+   * bounded" and would have answered PASS about both, which is exactly what
+   * they did for as long as they existed alongside them.
+   */
+  {
+    name: 'the seat chart goes back to an unbounded read of its seats',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace: "        .order('row_label'),",
+    expect: 'reads seats with no bound',
+  },
+  {
+    name: 'the seat chart pages its seats with no order at all',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace: '        .range(from, to),',
+    expect: 'and no order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX. A seat chart is read row by row and seat by
+     * seat, so ordering the paged read by exactly the two columns the chart is
+     * drawn in looks like the obvious and tidy answer. Neither is unique, and a
+     * two thousand seat chart has plenty of rows sharing a label, so a window
+     * boundary can land between two seats in row K and return one of them in
+     * both pages and the other in neither. Only clause 3 sees this.
+     */
+    name: 'the seats are paged on row and seat number, neither of which is unique',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace:
+      "        .order('row_label')\n" +
+      "        .order('seat_number')\n" +
+      '        .range(from, to),',
+    expect: 'is unique on that table',
+  },
+  {
+    /*
+     * The organiser's own list of events. Unbounded here is not the seat
+     * ceiling, it is the list the sold count is joined to.
+     */
+    name: 'the My Events list goes back to reading every event unbounded',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_LIST,
+    find:
+      "      .order('created_at', { ascending: false })\n" +
+      "      .order('id')\n" +
+      '      .range(from, to)',
+    replace: "      .order('created_at', { ascending: false })",
+    expect: 'reads events with no bound',
+  },
+  {
+    /*
+     * The protected-seat count on the chart list: the number that decides
+     * whether an organiser is warned before editing a chart people already hold
+     * seats on. `count ?? 0` with no error bound rendered a FAILED count as
+     * nought protected seats, which reads as "safe to edit".
+     */
+    name: 'the protected-seat count goes back to discarding its error',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_MAPS,
+    find: '      const { count, error: protectedError } = await admin',
+    replace: '      const { count } = await admin',
+    expect: 'indistinguishable from an event that has sold nothing',
+  },
+  {
+    /*
+     * CLAUSE 5, FIRST SHAPE, and the exact literal that was in the tree: the
+     * launch kit printed its seat count and its open-seat count out of an array
+     * capped at two thousand.
+     */
+    name: 'the launch kit goes back to a literal two thousand seat ceiling',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_KIT,
+    find:
+      "          .order('row_label')\n" +
+      "          .order('seat_number')\n" +
+      "          .order('id')\n" +
+      '          .range(from, to),',
+    replace:
+      "          .order('row_label')\n" +
+      "          .order('seat_number')\n" +
+      '          .range(0, 1999),',
+    expect: 'caps a read at the literal 1999',
+  },
+  {
+    /*
+     * CLAUSE 5, SECOND SHAPE, and the exact loop that was in the tree: a
+     * hand-rolled pager written to defeat the 1,000-row cap, which stopped at
+     * ten thousand and said nothing. A bound, and therefore invisible to every
+     * scanner that only asks whether a read is bounded.
+     */
+    name: 'a hand-rolled pager with a literal ten thousand ceiling comes back',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: '  const [seats, sections, unassigned] = await Promise.all([',
+    replace:
+      '  let from = 0\n' +
+      '  while (from < 10000) from += 1000\n' +
+      '  const [seats, sections, unassigned] = await Promise.all([',
+    expect: 'stops paging when the cursor reaches the literal 10000',
+  },
+  {
+    /*
+     * CLAUSE 6. An insert of more rows than the response ceiling SUCCEEDS and
+     * hands back fewer rows than it wrote, with no error. Paging is not the
+     * remedy, because the rows are already in; noticing is, and the only way to
+     * notice is to compare the count returned with the count sent.
+     */
+    name: 'the section insert stops comparing what it got back with what it sent',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_ACTIONS,
+    find: '  if (returnedSections.length !== sectionInserts.length) {',
+    replace: '  if (returnedSections.length < 0) {',
+    expect: 'reads the representation back with no',
   },
 ]
 
