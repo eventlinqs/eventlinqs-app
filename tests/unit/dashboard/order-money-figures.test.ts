@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readRepoFile } from '../../helpers/read-repo-file'
 
 /*
  * THE "AUD NaN" CLASS.
@@ -31,8 +31,15 @@ const REVENUE_MODULE = 'src/lib/organisers/event-revenue.ts'
  * as though it were code is the same mistake in miniature as the one being
  * guarded against.
  */
+/*
+ * READ THROUGH readRepoFile, NOT readFileSync. A tracked file arrives CRLF in a
+ * worktree that received it through a merge and LF in the one that wrote it
+ * (core.autocrlf, `* text=auto`), so an offset or a line taken from raw bytes
+ * differs between lanes on the same commit. Three tests were fixed in the push
+ * lane for exactly this on 20 September 2026.
+ */
 const codeOf = (path: string) =>
-  readFileSync(path, 'utf8')
+  readRepoFile(path)
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/^\s*\/\/.*$/gm, ' ')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
