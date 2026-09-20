@@ -8479,12 +8479,12 @@ export type Database = {
           p_country_code: string
           p_created_by: string
           p_currency: string
-          p_event_id: string
-          p_organisation_id: string
+          p_event_id?: string
+          p_organisation_id?: string
           p_rule_type: string
-          p_value_cents: number
-          p_value_integer: number
-          p_value_percentage: number
+          p_value_cents?: number
+          p_value_integer?: number
+          p_value_percentage?: number
           p_value_type: string
         }
         Returns: Json
