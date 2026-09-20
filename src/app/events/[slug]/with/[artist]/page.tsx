@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchArtistBySlug } from '@/lib/broadcast/artists'
 import { RedirectNow } from '@/components/broadcast/redirect-now'
@@ -19,7 +20,30 @@ type Props = { params: Promise<{ slug: string; artist: string }> }
  * engines never treat it as a duplicate.
  */
 
-async function loadPair(slug: string, artistSlug: string) {
+/**
+ * READ ONCE PER REQUEST.
+ *
+ * `generateMetadata` renders the head and the default export renders the body,
+ * from the same request, and this whole route exists FOR its head: it is the
+ * share card behind an artist-tagged short link. Both called this, so both
+ * bought the event row and the artist row.
+ *
+ * Next's own reference expects the second call to be free ("fetch requests are
+ * automatically memoized for the same data across generateMetadata ... React
+ * `cache` can be used if `fetch` is unavailable",
+ * node_modules/next/dist/docs/01-app/03-api-reference/04-functions/
+ * generate-metadata.md, Next 16.3.0). On this platform it is not: every
+ * Supabase request carries its own AbortSignal so that a retry inside a render
+ * is a real second request, and a signal is that deduplicator's documented
+ * opt-OUT (src/lib/supabase/undeduped-fetch.ts).
+ *
+ * THIS ROUTE IS NOT IN THE SITEMAP, so the sweep in
+ * scripts/verify/one-question-per-page-view-drive.mjs cannot reach it and did
+ * not measure it. It is fixed here because it is the same defect in the same
+ * shape, two directories from the one that was measured, and leaving it would
+ * have meant the guard that holds the rule failing on its own neighbour.
+ */
+const loadPair = cache(async function loadPair(slug: string, artistSlug: string) {
   const admin = createAdminClient()
   const [{ data: event }, artist] = await Promise.all([
     admin
@@ -31,7 +55,7 @@ async function loadPair(slug: string, artistSlug: string) {
   ])
   if (!event || event.status !== 'published' || !artist) return null
   return { event, artist }
-}
+})
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, artist: artistSlug } = await params

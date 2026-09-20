@@ -696,22 +696,46 @@ const DRILLS = [
   },
   {
     /*
-     * RE-ANCHORED 20 September 2026. The layout used to call
-     * `afterTheFactEventExists(slug)` and now calls `fetchAfterTheFactEvent`,
-     * the row-returning reader on the same module, because it needs the hero's
-     * columns to preload the LCP image from above the loading boundary and that
-     * is the SAME round trip rather than a second one. The guard's clause was
-     * re-derived at the same time: it now accepts any function the door
-     * EXPORTS, so it judges whether the door is consulted rather than which of
-     * its two names was typed. This drill therefore removes the CALL, which is
-     * still the only thing that makes the clause true.
+     * RE-ANCHORED TWICE, and the second time is the interesting one.
+     *
+     * 20 September 2026: the layout moved from `afterTheFactEventExists(slug)`
+     * to `fetchAfterTheFactEvent`, the row-returning reader on the same module,
+     * and the guard's clause was re-derived to accept any function the door
+     * EXPORTS rather than one typed name.
+     *
+     * 21 September 2026, close-out C8: the layout, `generateMetadata` and the
+     * page were collapsed onto ONE memoised resolver, so neither surface names
+     * the door any more - the resolver does, once, for both. The guard now
+     * follows value imports to find who consults it. This drill therefore
+     * removes the CALL from the resolver, which takes the door away from BOTH
+     * surfaces at once, and the guard has to name both.
      */
-    name: 'the route existence guard stops consulting the after-the-fact door',
+    name: 'the shared event resolver stops consulting the after-the-fact door',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/events/event-detail-read.ts',
+    find: '  return fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)',
+    replace: '  return null // lane-C drill: the door removed',
+    expect: 'no longer consults the after-the-fact door',
+  },
+  {
+    /*
+     * THE OTHER HALF OF THE SAME CLAUSE, AND IT IS NEW ON 21 SEPTEMBER 2026.
+     *
+     * The drill above breaks the door. This one leaves the door alone and
+     * breaks the PATH TO IT from one surface, which is the failure the
+     * import-following derivation exists to catch and which the old
+     * one-file-one-name version could not have expressed: the layout stops
+     * importing the shared resolver, so it reaches the after-the-fact door
+     * through nothing, while the page still does. A guard that only asked
+     * "does this file say the name" would have been satisfied by neither file
+     * saying it, which is the state the tree is legitimately in.
+     */
+    name: 'the events layout stops reaching the after-the-fact door at all',
     guard: `${GUARDS}/event-lifecycle-total.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
-    find: '  const afterTheFact = await fetchAfterTheFactEvent<EventHeroFields>(slug, EVENT_HERO_SELECT)',
-    replace: '  const afterTheFact = null // lane-C drill: the door removed',
-    expect: 'no longer consults the after-the-fact door',
+    find: "import { readEventForRoute } from '@/lib/events/event-detail-read'",
+    replace: 'const readEventForRoute = async (_slug: string) => null // lane-C drill: the path removed',
+    expect: 'src/app/events/[slug]/layout.tsx no longer consults the after-the-fact door',
   },
   {
     name: 'the after-the-fact door stops constraining visibility',
@@ -3196,32 +3220,29 @@ const DRILLS = [
     guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
     /*
-     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. The
-     * existence read used to select 'id' and return `children`; it now selects
-     * EVENT_HERO_SELECT and returns `withHeroPreload(...)`, because the hero's
-     * columns have to be in hand ABOVE the loading boundary to preload the LCP
-     * image on the SAME round trip rather than a second one.
+     * RE-ANCHORED 21 September 2026, by the lane whose change moved it. The
+     * layout no longer performs a read at all: close-out C8 collapsed this
+     * route's three reads of one row onto one memoised resolver in
+     * src/lib/events/event-detail-read.ts, and the layout now awaits that.
      *
-     * THE REPLACE IS LEFT AS THE HISTORICAL INCIDENT VERBATIM, and that is the
-     * point of this drill rather than an oversight: its job is to put back the
-     * shape that really shipped on 12 September, which discarded the error and
-     * decided existence on `if (data)`. Only the aim moved.
+     * THE DRILL STILL BELONGS ON THE LAYOUT AND NOT ON THE RESOLVER, and the
+     * reason is a real limit of the guard rather than a preference: it judges
+     * src/app alone, and says so in its own header. A drill planted in
+     * src/lib would not go red, and a drill that cannot go red is worse than no
+     * drill. The layout is where a future edit would most plausibly put this
+     * shape back, because it is the file whose job is to decide existence.
+     *
+     * THE REPLACE IS THE HISTORICAL INCIDENT VERBATIM IN ITS ESSENTIALS: a
+     * destructure that never binds `error`, deciding a 404. It keeps the
+     * notFound() call, because without one the guard does not judge the file at
+     * all and the drill would go green for the wrong reason.
      */
-    find:
-      "  const row = await readOrThrow('event-route', () =>\n" +
-      "    supabase.from('events').select(EVENT_HERO_SELECT).eq('slug', slug).maybeSingle() as unknown as Read<EventHeroFields>,\n" +
-      '  )\n' +
-      '\n' +
-      '  if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)',
+    find: '  const event = await readEventForRoute(slug)\n  if (!event) notFound()',
     replace:
-      '  const { data } = await supabase\n' +
-      "    .from('events')\n" +
-      "    .select('id')\n" +
-      "    .eq('slug', slug)\n" +
-      '    .maybeSingle()\n' +
-      '\n' +
-      '  if (data) return children',
-    expect: 'discards the error of the read that decides if (data) return children',
+      '  const supabase = createPublicClient()\n' +
+      "  const { data: event } = await supabase.from('events').select('id').eq('slug', slug).maybeSingle()\n" +
+      '  if (!event) notFound()',
+    expect: 'discards the error of the read that decides',
   },
   {
     name: 'a dashboard page folds the read error into the notFound() condition',
@@ -6400,6 +6421,62 @@ const DRILLS = [
     find: "export const AUDIT_FLAG = 'headless'",
     replace: 'export const AUDIT_FLAG = FLAG_KEY',
     expect: 'declares no AUDIT_FLAG',
+  },
+
+  /*
+   * the-head-and-the-body-ask-once (close-out C8, 21 September 2026), four
+   * drills: one per mechanism the guard has to hold.
+   *
+   * Every one of these is the tree as it actually stood on the morning of
+   * 21 September. The counter measured ten duplicate database calls across four
+   * public SEO route families in one warmed page view each; these four drills
+   * put four of them back.
+   */
+  {
+    name: 'the event route goes back to buying its row for the head and again for the body',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/lib/events/event-detail-read.ts',
+    find: 'export const readEventForRoute = cache(async function readEventForRoute(',
+    replace: 'export const readEventForRoute = (async function readEventForRoute(',
+    expect: 'buys the same rows twice in one request',
+  },
+  {
+    name: 'the organiser profile goes back to reading its status gate twice',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: 'const fetchOrganiser = cache(async function fetchOrganiser(',
+    replace: 'const fetchOrganiser = (async function fetchOrganiser(',
+    expect: 'buys the same rows twice in one request',
+  },
+  {
+    /*
+     * THE VENUE PAGE'S WRAPPER IS A BARE `cache(reader)` RATHER THAN A WRAPPED
+     * FUNCTION BODY, so this drill takes a different shape from the two above
+     * and is worth having for exactly that reason: it proves the guard judges
+     * what the identifier is ASSIGNED, not whether the word `cache` appears
+     * somewhere in the file.
+     */
+    name: 'the venue profile goes back to resolving its venue twice',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: 'const venueForRoute = cache(resolveVenueProfile)',
+    replace: 'const venueForRoute = resolveVenueProfile',
+    expect: 'buys the same rows twice in one request',
+  },
+  {
+    /*
+     * THE ANTI-FALSE-PASS FOR THE DERIVATION ITSELF. A route that stops
+     * exporting `generateMetadata` is not judged at all, which is correct - it
+     * has no head of its own to buy anything for - and this drill proves the
+     * guard NOTICES rather than quietly dropping the subject: the identifier
+     * moves out of reach, so the clause that looks it up must say so.
+     */
+    name: 'a route awaits a reader this guard cannot find the definition of',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/artists/[slug]/page.tsx',
+    find: 'const artistForRoute = cache(async function artistForRoute(slug: string) {',
+    replace: 'const artistForRouteRenamedAway = cache(async function artistForRouteRenamedAway(slug: string) {',
+    expect: 'could not find where it is defined',
   },
 
 

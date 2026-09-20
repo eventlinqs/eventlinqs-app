@@ -19,14 +19,24 @@
  *     always <slug>           fail every events read for the slug
  *
  * A matching read is a PostgREST request for `events` filtered to that slug.
- * `always` fails all of them (the layout's existence read, the page's row read,
- * the proxy's queue check), which is what an outage looks like. `once` fails
- * only the layout's existence read, `select=id&slug=eq.<slug>`, because that is
- * the read whose blink answered 404 on 12 September and the retry being proven
- * is that read's own. The failure is the exact shape the gate caught on
- * 10 September: `TypeError: fetch failed` caused by a closed socket
- * (UND_ERR_SOCKET). Every intercepted call is appended to a log file so the
- * drive can prove an injection happened and that the retry followed it.
+ * `always` fails all of them, which is what an outage looks like. `once` fails
+ * the FIRST events read for the slug, because that is the read whose blink
+ * answered 404 on 12 September and the retry being proven is that read's own.
+ * The failure is the exact shape the gate caught on 10 September:
+ * `TypeError: fetch failed` caused by a closed socket (UND_ERR_SOCKET). Every
+ * intercepted call is appended to a log file so the drive can prove an
+ * injection happened and that the retry followed it.
+ *
+ * THAT MATCH USED TO NAME A COLUMN LIST AND IT HAD SILENTLY STOPPED MATCHING.
+ * It read `select=id&slug=eq.<slug>`, which was the existence read's exact
+ * shape when this file was written. The read was widened to the hero's columns
+ * on 20 September and to the page's whole column list on 21 September, so this
+ * condition had been false for a day before anybody looked at it: `once` mode
+ * would have injected nothing, the drive would have reported no injection, and
+ * the accusation would have landed on the product. An anchor written as a
+ * column list is a claim about a select that nothing keeps true. The condition
+ * is now the slug alone, which is the property that actually identifies the
+ * read and cannot go stale when a column is added.
  *
  * Local only, by construction: it is loaded only by a process the proof spawns.
  */
@@ -66,8 +76,10 @@ globalThis.fetch = async function blinkFetch(input, init) {
   const { mode, slug, nonce } = readControl()
   const matches = slug !== '' && url.includes('/rest/v1/events?') && url.includes(`slug=eq.${slug}`)
   if (matches) {
-    const existenceRead = url.includes(`select=id&slug=eq.${slug}`)
-    const fail = mode === 'always' || (mode === 'once' && existenceRead && !injectedForNonce.has(nonce))
+    // `matches` has already established that this IS an events read for the
+    // slug under test, so in `once` mode the only remaining question is whether
+    // this nonce has had its one injection yet.
+    const fail = mode === 'always' || (mode === 'once' && !injectedForNonce.has(nonce))
     if (fail) {
       if (mode === 'once') injectedForNonce.add(nonce)
       note(`INJECTED ${mode} ${nonce} ${url}`)

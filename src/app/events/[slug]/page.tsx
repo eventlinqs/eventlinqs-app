@@ -1,13 +1,11 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
-import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
+import { readEventForRoute } from '@/lib/events/event-detail-read'
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import type {
-  Event, TicketTier, Organisation, EventCategory, EventAddon,
-} from '@/types/database'
+import type { TicketTier } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { priceLabel } from '@/lib/events/price-label'
 // Types only: erased at compile time, so they never pull the seating engine
@@ -43,7 +41,6 @@ import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
 import { eventRobotsDirective } from '@/lib/events/visibility'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
-import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). The next/dynamic call
 // used to live HERE, which split nothing: this file is a Server Component, and
@@ -85,8 +82,6 @@ import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
-import { fetchArchivedEventForHolder } from '@/lib/events/archived-view'
-import { fetchAfterTheFactEvent } from '@/lib/events/after-the-fact-view'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
@@ -127,79 +122,12 @@ type Props = {
   params: Promise<{ slug: string }>
 }
 
-type FullEvent = Event & {
-  ticket_tiers: TicketTier[]
-  organisation: Organisation
-  category: EventCategory | null
-  event_addons?: EventAddon[]
-}
-
 type EnrichedTier = TicketTier & {
   display_price_cents: number
   sale_pending: boolean
   // The last price move in words, from ticket_price_history (Scope v5 3.3).
   price_history_note: string | null
 }
-
-async function fetchEvent(slug: string): Promise<FullEvent | null> {
-  // Density fixture (Preview + local only, double-guarded in fetchFixtureEvent):
-  // the homepage rails and this detail path read ONE fixture, so a fixture
-  // card resolves to a fully rendered detail page instead of a 404. Returns
-  // null for unknown slugs and is a no-op on production, so the real-DB query
-  // below stays the single path for every live event.
-  const fixture = await fetchFixtureEvent(slug)
-  if (fixture) return fixture as unknown as FullEvent
-
-  /*
-   * A FAILED READ IS NOT AN ABSENT EVENT. This used to log the error and return
-   * null, and the caller turned null into notFound(): a buyer whose read blinked
-   * was told the event does not exist (12 September 2026, the fourth occurrence
-   * of the class; src/lib/supabase/read-or-throw.ts records it). readOrThrow
-   * retries a transient fault and throws a real one, so the answer is "try
-   * again" and never "not here".
-   */
-  const supabase = createPublicClient()
-  const data = await readOrThrow('event-detail', () =>
-    supabase
-      .from('events')
-      // organisations is embedded with an EXPLICIT column list, never (*). This is
-      // a public page read as `anon`, and organisations carries email, phone,
-      // owner_id and the full Stripe Connect posture. Those columns are now
-      // revoked from anon by column privilege (migration 20260808000010), so a
-      // (*) embed would fail the whole query with "permission denied for column
-      // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
-      .select(EVENT_PAGE_SELECT)
-      .eq('slug', slug)
-      .maybeSingle() as unknown as Read<FullEvent>,
-  )
-  if (data) return data
-
-  /*
-   * NOTHING PUBLIC AT THIS SLUG, and the database said so; the log says so too,
-   * so a bare 404 can never again be mistaken for a blink. Row-level security
-   * keeps drafts and ARCHIVED events out of the anonymous read, which is right
-   * for a stranger. For an archived event, and only then, a viewer who holds a
-   * ticket may still see the page (docs/EVENT-LIFECYCLE.md, close-out C13.5 and
-   * C13.6), so the second look is taken here with the service role. It returns
-   * null for everyone else, and the caller's notFound() stands.
-   */
-  console.warn(`[event-detail] no public row for ${slug}`)
-  const holderView = await fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
-  if (holderView) return holderView
-
-  /*
-   * THE FOUR AFTER-THE-FACT STATES, which this read could not see either.
-   * `docs/EVENT-LIFECYCLE.md` says a paused, postponed, cancelled or completed
-   * event answers a full page with its banner; the RLS policies admit published
-   * alone, so all four were a 404 and the banner code on this page had never run
-   * for a stranger. See src/lib/event-lifecycle.ts, PUBLIC_AFTER_THE_FACT_STATUSES.
-   */
-  return fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)
-}
-
-/** The one column list the public read and the holder's archived read share. */
-const EVENT_PAGE_SELECT =
-  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)'
 
 /**
  * CAN THIS EVENT'S ORGANISER ACTUALLY TAKE MONEY? Asked with a privileged client,
@@ -272,7 +200,7 @@ async function organiserCanSell(
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const event = await fetchEvent(slug)
+  const event = await readEventForRoute(slug)
 
   if (!event) {
     return { title: 'Event not found | EventLinqs' }
@@ -280,14 +208,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   /*
    * THE HERO'S PRELOAD IS NOT REGISTERED HERE, AND THAT WAS MEASURED RATHER
-   * THAN ASSUMED. It is registered in this route's layout.tsx, which renders
-   * ABOVE the loading boundary and therefore while the head is still open.
+   * THAN ASSUMED. It is registered in this route's layout.tsx.
    *
-   * Registering it in this function was the first attempt and it does nothing:
+   * Registering it in this function was the first attempt and it did nothing:
    * Next resolves metadata through its own boundary, so the link still came out
    * at byte 85,038 of a 205,151 byte document and the `Link:` response header
-   * still carried only the two fonts and two stylesheets. The full account and
-   * the per-route byte offsets are in src/lib/images/hero-preload.ts.
+   * still carried only the two fonts and two stylesheets. That measurement was
+   * taken while this route had a `loading.tsx`, which close-out C8 deleted on
+   * 20 September 2026; the placement is unchanged because the layout is where
+   * the lifecycle branches are decided and the row is already in hand there.
+   * The full account and the per-route byte offsets are in
+   * src/lib/images/hero-preload.tsx.
    */
 
   // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
@@ -436,7 +367,7 @@ export default async function EventDetailPage({ params }: Props) {
    *
    * `isFeatureEnabled('broadcast_artists')` does not depend on the event: it
    * reads a Redis-cached flag, falling back to a `feature_flags` row. It was
-   * awaited AFTER `fetchEvent`, so this page paid two round trips end to end
+   * awaited AFTER the event read, so this page paid two round trips end to end
    * where one would do, on the page a buyer is standing on when they decide
    * to pay.
    *
@@ -465,7 +396,7 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
   availabilityAndAccessPromise.catch(() => {})
-  const event = await fetchEvent(slug)
+  const event = await readEventForRoute(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
   // real 404 (the cookie-free createPublicClient fetch above keeps this guard
@@ -557,7 +488,8 @@ export default async function EventDetailPage({ params }: Props) {
     event.status === 'cancelled' ? 'cancelled' as const :
     event.status === 'postponed' ? 'postponed' as const :
     event.status === 'completed' ? 'past' as const :
-    // Only a ticket holder ever reaches an archived event's page (fetchEvent).
+    // Only a ticket holder ever reaches an archived event's page
+    // (readEventForRoute, branch 3).
     event.status === 'archived' ? 'archived' as const :
     null
 
@@ -698,7 +630,7 @@ export default async function EventDetailPage({ params }: Props) {
    * MEASURED, on this tree's production build with the route's loading boundary
    * removed so the render is in front of the first byte where it can be seen:
    * warm TTFB 926ms on /events/cat-indie-sounds-live-at-the-enmore-sydney. The
-   * chain was fetchEvent -> lineup -> this list -> tier inventory -> sale gate
+   * chain was the event read -> lineup -> this list -> tier inventory -> sale gate
    * -> consent wording, six stages against a Sydney pool.
    *
    * WHAT IS AND IS NOT SAFE TO MOVE HERE. Every entry added below reads only
@@ -1461,7 +1393,8 @@ export default async function EventDetailPage({ params }: Props) {
                   experiment, and a flag that hid it would hide it from the one
                   person who cannot work around its absence.
 
-                  The event row is read with `EVENT_PAGE_SELECT`, which begins
+                  The event row is read with `EVENT_PAGE_SELECT`
+                  (src/lib/events/event-detail-read.ts), which begins
                   with `*`, so these columns arrive here the moment the founder
                   applies docs/migrations-pending/20260914000002_accessibility_fields.sql
                   and are simply `undefined` until then. Undefined reads as "not

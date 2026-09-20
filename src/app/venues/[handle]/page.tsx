@@ -16,7 +16,7 @@ import { EventCard, type EventCardData } from '@/components/features/events/even
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { cache, type ComponentType } from 'react'
 
 import { resolveVenueProfile, venueSlugify } from '@/lib/venues/resolver'
 import { VenueSchemaJsonLd } from '@/components/features/venues/venue-schema-jsonld'
@@ -31,6 +31,37 @@ import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
 
 export const revalidate = 300
+
+/*
+ * MEASURED ON 21 SEPTEMBER 2026, close-out C8 clause C8B.3. Counted at the
+ * global fetch on a production build against TEST
+ * (scripts/verify/lib/count-supabase-reads.mjs), one view of
+ * /venues/170-russell made 9 PostgREST calls of which only 6 were distinct.
+ * All three repeats were inside `resolveVenueProfile`: the venues list, the
+ * venue-name event scan and the geo/city event read, each bought once for the
+ * head and once for the body of the same page.
+ */
+
+/**
+ * READ ONCE PER REQUEST.
+ *
+ * `generateMetadata` renders the head and the default export renders the body,
+ * from the same request, and both need this. Next's own reference expects the
+ * second one to be free ("fetch requests are automatically memoized for the
+ * same data across generateMetadata ... React `cache` can be used if `fetch` is
+ * unavailable", node_modules/next/dist/docs/01-app/03-api-reference/
+ * 04-functions/generate-metadata.md, Next 16.3.0). On this platform it is not:
+ * every Supabase request carries its own AbortSignal so that a retry inside a
+ * render is a real second request, and a signal is that deduplicator's
+ * documented opt-OUT (src/lib/supabase/undeduped-fetch.ts). So the memo has to
+ * be asked for, and React's `cache` is the mechanism the reference names. It
+ * memoises for ONE request: no TTL, nothing shared between requests or viewers.
+ *
+ * THE WRAPPER LIVES HERE AND NOT IN THE LIBRARY DELIBERATELY. The duplication
+ * is a property of THIS ROUTE, not of the reader, and the reader is imported by
+ * unit tests that run outside any React request scope.
+ */
+const venueForRoute = cache(resolveVenueProfile)
 
 interface Props {
   params: Promise<{ handle: string }>
@@ -114,7 +145,7 @@ async function fetchSimilarVenues(currentHandle: string, city: string | null, ca
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params
-  const venue = await resolveVenueProfile(handle)
+  const venue = await venueForRoute(handle)
   if (!venue) return { title: 'Venue not found | EventLinqs' }
 
   const baseUrl = getSiteUrl()
@@ -151,7 +182,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VenueProfilePage({ params }: Props) {
   const { handle } = await params
-  const venue = await resolveVenueProfile(handle)
+  const venue = await venueForRoute(handle)
   if (!venue) notFound()
 
   const { upcoming, past } = await fetchVenueEventsByName(venue.name)

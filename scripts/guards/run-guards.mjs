@@ -587,6 +587,15 @@
  *                              ken-burns layer all mounted inside every Lighthouse run,
  *                              each one a suppression written to keep decoration out of
  *                              a measurement
+ *   the-head-and-the-body-ask-once  no route buys the same rows twice, once for
+ *                              generateMetadata and once for the page. Next's own
+ *                              reference expects that to be memoised and on this
+ *                              platform it is not, because every Supabase request
+ *                              carries its own AbortSignal, which is the framework
+ *                              deduplicator's documented opt-OUT. Counted at the global
+ *                              fetch: ten duplicate database calls across four public
+ *                              SEO route families in one warmed page view each
+ *                              (21 September 2026, close-out C8 clause C8B.3)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1845,6 +1854,22 @@ const GUARDS = [
   // compares the writer against the reader so the next move of the flag fails
   // here rather than in a score three weeks later. Drilled red four ways.
   'scripts/guards/audit-flag-is-read-where-it-is-written.mjs',
+  // 21 September 2026, close-out C8 clause C8B.3. A Next route renders its head
+  // and its body from ONE request and each half loads what it needs. Next's own
+  // reference says the second load is free ("React `cache` can be used if
+  // `fetch` is unavailable", generate-metadata.md, Next 16.3.0) and on this
+  // platform it is not, because every Supabase request carries its own
+  // AbortSignal - the framework deduplicator's documented opt-OUT - so that a
+  // retry inside a render is a real second request. Nothing had counted the
+  // cost: ten duplicate database calls across four public SEO route families in
+  // one warmed page view each, on routes whose observed LCP is dominated by
+  // time to first byte. The subject list is DERIVED (every page.tsx exporting
+  // both generateMetadata and a default component) and the guard knows Next's
+  // data cache counts too, which it learned from a counted measurement rather
+  // than from reading: /categories/music awaits the same reader twice and makes
+  // one call, because that reader is behind unstable_cache. Drilled red and
+  // green.
+  'scripts/guards/the-head-and-the-body-ask-once.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
