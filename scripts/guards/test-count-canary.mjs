@@ -3435,7 +3435,8 @@ const ROOT = join(HERE, '..', '..')
  * with 25 cases: the manifest parser, the label summariser, the four contract
  * clauses and the two built ones against a `.next` written for the test.
  *
- * MEASURED: 542 files, 7307 tests, 0 failed, 0 skipped, twice in a row.
+ * MEASURED: 542 files, 7308 tests, 0 failed, 0 skipped (7307 before the
+ * precedence correction added one case to the same file).
  *
  * THE FIRST READING WAS 7306 AND IS NOT THE ONE WRITTEN HERE, because that run
  * was RED: the registry test that names every guard in the runner's header had
@@ -3444,7 +3445,7 @@ const ROOT = join(HERE, '..', '..')
  * rule this integer has had to be taught fourteen times.
  */
 const MIN_FILES = 542
-const MIN_TESTS = 7307
+const MIN_TESTS = 7308
 
 
 /**
