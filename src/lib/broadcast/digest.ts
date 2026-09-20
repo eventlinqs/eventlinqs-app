@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { priceLabel } from '@/lib/events/price-label'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
@@ -57,28 +60,55 @@ export function resolveDigestPeriod(now: Date): { start: string; end: string } {
  * Cities with at least one lawful recipient, across BOTH consent sources.
  * A city whose only audience is the waitlist is a real city with a real
  * audience, and before the bridge it was never even considered for a send.
+ *
+ * THIS READ IS PLATFORM WIDE AND IT WAS THE FIRST CEILING THE DIGEST WOULD HAVE
+ * HIT. Both halves selected every matching row with no bound and no order, only
+ * to reduce them to a set of city slugs. A Supabase project caps a response at
+ * a fixed number of rows, 1,000 by default, in silence: HTTP 200, `error` null,
+ * a full-looking array
+ * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19).
+ * So past a thousand consent rows ACROSS THE WHOLE PLATFORM, an arbitrary
+ * subset came back, cities whose members fell outside it were never considered
+ * for a send at all, and nobody in them ever received a digest. With no `order`
+ * the subset is not even stable, so which cities vanished could change between
+ * one week and the next.
+ *
+ * It pages instead. A DISTINCT in the database would be cheaper and is
+ * deliberately not used: the waitlist half is only lawful when its stored
+ * wording covers the digest, that rule is `consentVersionCoversDigest` in
+ * TypeScript, and a SQL function would have to carry a second copy of it.
+ * Paging a text column once a week is the cheaper mistake to avoid.
  */
 export async function fetchDigestCities(admin: Admin): Promise<string[]> {
   const [consents, waitlist] = await Promise.all([
-    admin
-      .from('marketing_consents')
-      .select('city_slug')
-      .eq('status', 'granted')
-      .not('city_slug', 'is', null),
-    admin
-      .from('city_waitlist_signups')
-      .select('city_slug, consent_version')
-      .is('unsubscribed_at', null),
+    readEveryRow<{ city_slug: string | null }>('digest cities, consent rows', (from, to) =>
+      admin
+        .from('marketing_consents')
+        .select('city_slug')
+        .eq('status', 'granted')
+        .not('city_slug', 'is', null)
+        .order('granted_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    readEveryRow<{ city_slug: string | null; consent_version: string | null }>(
+      'digest cities, waitlist rows',
+      (from, to) =>
+        admin
+          .from('city_waitlist_signups')
+          .select('city_slug, consent_version')
+          .is('unsubscribed_at', null)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+    ),
   ])
 
   const cities = new Set<string>()
-  for (const row of (consents.data ?? []) as { city_slug: string | null }[]) {
+  for (const row of consents) {
     if (row.city_slug) cities.add(row.city_slug)
   }
-  for (const row of (waitlist.data ?? []) as {
-    city_slug: string | null
-    consent_version: string | null
-  }[]) {
+  for (const row of waitlist) {
     if (row.city_slug && consentVersionCoversDigest(row.consent_version)) {
       cities.add(row.city_slug)
     }
@@ -93,39 +123,89 @@ export async function fetchDigestCities(admin: Admin): Promise<string[]> {
  * Withdrawn rows are excluded at the query and again in the merge, which is
  * the mechanical guarantee behind "unsubscribe stops the next send" holding
  * across both lists rather than only the one the person unsubscribed from.
+ *
+ * ---------------------------------------------------------------------------
+ * THE SUPPRESSION READ USED TO FAIL OPEN, AND IT IS THE REASON THIS FUNCTION
+ * THROWS RATHER THAN RETURNING WHAT IT MANAGED TO COLLECT.
+ *
+ * It was one `.in('email', waitlistEmails)` spelled from the WHOLE of a city's
+ * waitlist, un-chunked, with `const { data }` discarding the error. An `in`
+ * list is bounded by BYTES: Supabase bounds URL and headers together at 16 KB
+ * and names lengthy `in` clauses as the usual cause
+ * (https://supabase.com/docs/guides/troubleshooting/fixing-520-errors-in-the-database-rest-api-Ur5-B2,
+ * fetched 2026-09-19), and the break was measured on this project's TEST
+ * instance between 15,038 and 16,083 joined bytes, on this very table
+ * (src/lib/supabase/in-chunks.ts). A few hundred addresses in one city
+ * therefore produced a request that failed, `data` came back null, `suppressed`
+ * was `[]`, and rule 1 of `mergeDigestAudience`, "SUPPRESSION WINS", was not
+ * weakened but switched off: every address that had withdrawn was put back into
+ * the audience by its waitlist row.
+ *
+ * That is the wrong direction to fail in. A marketing email that does not go
+ * out costs us a marketing email; one that goes to somebody who asked us to
+ * stop is the thing the whole consent layer exists to prevent. So the read is
+ * chunked by bytes, paged past the row ceiling, and any failure RAISES. The
+ * caller skips that city rather than sending to it.
+ *
+ * THE LEDGER RESOLVER IS NOT AN EXCUSE FOR THIS. `filterPermittedRecipients`
+ * sits behind this function in the cron route and would have caught most of
+ * these addresses. It is a second door, not a reason to leave the first one
+ * open, and it only holds for withdrawals recorded through a route that writes
+ * the ledger.
  */
 export async function fetchDigestRecipients(
   admin: Admin,
   citySlug: string,
 ): Promise<DigestRecipient[]> {
-  const [consentResult, waitlistResult] = await Promise.all([
-    admin
-      .from('marketing_consents')
-      .select('email, unsubscribe_token, status')
-      .eq('status', 'granted')
-      .eq('city_slug', citySlug),
-    admin
-      .from('city_waitlist_signups')
-      .select('email, unsubscribe_token, consent_version, unsubscribed_at')
-      .eq('city_slug', citySlug)
-      .is('unsubscribed_at', null),
+  /*
+   * OLDEST FIRST, ON A TOTAL ORDER. The order is not decoration: the cron
+   * resumes an unfinished period at a COUNT into this list, so a list that
+   * reorders between two invocations would step over real people. `granted_at`
+   * and `created_at` are not unique on their own, so the primary key breaks
+   * every tie and the window boundaries are defined. See digest-run.ts.
+   */
+  const [consents, waitlist] = await Promise.all([
+    readEveryRow<ConsentAudienceRow>(`digest consent audience for ${citySlug}`, (from, to) =>
+      admin
+        .from('marketing_consents')
+        .select('email, unsubscribe_token, status')
+        .eq('status', 'granted')
+        .eq('city_slug', citySlug)
+        .order('granted_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    readEveryRow<WaitlistAudienceRow>(`digest waitlist audience for ${citySlug}`, (from, to) =>
+      admin
+        .from('city_waitlist_signups')
+        .select('email, unsubscribe_token, consent_version, unsubscribed_at')
+        .eq('city_slug', citySlug)
+        .is('unsubscribed_at', null)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
   ])
-
-  const consents = (consentResult.data ?? []) as ConsentAudienceRow[]
-  const waitlist = (waitlistResult.data ?? []) as WaitlistAudienceRow[]
 
   // Suppression: an address that withdrew stays out even when a waitlist row
   // would otherwise re-add it. Scoped to the waitlist addresses, because the
   // consent rows above are already filtered to granted.
   const waitlistEmails = [...new Set(waitlist.map((r) => normaliseAudienceEmail(r.email)))]
-  let suppressed: string[] = []
-  if (waitlistEmails.length > 0) {
-    const { data } = await admin
-      .from('marketing_consents')
-      .select('email')
-      .eq('status', 'withdrawn')
-      .in('email', waitlistEmails)
-    suppressed = ((data ?? []) as { email: string }[]).map((r) => r.email)
+  const suppressed: string[] = []
+  for (const chunk of chunkInFilterValues(waitlistEmails)) {
+    const rows = await readEveryRow<{ email: string }>(
+      `digest suppression for ${citySlug}`,
+      (from, to) =>
+        admin
+          .from('marketing_consents')
+          .select('email')
+          .eq('status', 'withdrawn')
+          .in('email', chunk)
+          .order('granted_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    for (const row of rows) suppressed.push(row.email)
   }
 
   return mergeDigestAudience({
@@ -203,7 +283,17 @@ export async function fetchDigestEvents(
   origin = '',
   cityName = '',
 ): Promise<DigestEvent[]> {
-  const { data } = await admin
+  /*
+   * THE ERROR IS NOT DISCARDED, because on this surface a failed read and a
+   * quiet week are the same shape. `const { data }` left `data` null, the
+   * caller read that as zero events, and the city was skipped with
+   * `skipped: 'no_events'` while its organisers' published events sat in the
+   * database. A city silently dropped from the week's send is exactly the
+   * failure this whole pass is about, and a broken query must not be able to
+   * look like one.
+   */
+  const data = await readOrThrow(`digest events for ${citySlug}`, () =>
+    admin
     .from('events')
     .select(
       'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, ticket_tiers(price, currency)',
@@ -219,7 +309,8 @@ export async function fetchDigestEvents(
     .gte('start_date', `${period.start}T00:00:00Z`)
     .lte('start_date', `${period.end}T23:59:59Z`)
     .order('start_date', { ascending: true })
-    .limit(limit * 2)
+    .limit(limit * 2),
+  )
 
   type Row = {
     id: string

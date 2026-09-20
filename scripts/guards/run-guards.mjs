@@ -661,6 +661,15 @@
  *                             every `in` list, page on a UNIQUE column, and
  *                             throw rather than exporting nobody when a read
  *                             fails
+ *   the-weekly-digest-owes-nobody-an-email  the weekly city email, the only
+ *                             send path that writes to strangers: every
+ *                             audience read paged on a UNIQUE column, every
+ *                             `in` list chunked by bytes so the suppression
+ *                             read cannot come back EMPTY, every failed read
+ *                             raised rather than read as an answer, and the
+ *                             send window taken from the pure planner so a city
+ *                             can never be recorded as finished while it still
+ *                             owes four hundred people an email
  *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
  *                             error a PostgREST client REPORTS rather than
  *                             throws, report every failure in every environment
@@ -2464,6 +2473,46 @@ const GUARDS = [
   //
   // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-ATTENDEEWHOLE\drills.txt).
   'scripts/guards/the-attendee-list-is-every-attendee.mjs',
+
+  // the-weekly-digest-owes-nobody-an-email: the weekly city digest, the only
+  // send path on this platform that writes to STRANGERS, 20 September 2026.
+  //
+  // THE ONE THAT FAILED OPEN. `fetchDigestRecipients` asked which of a city's
+  // waitlist addresses had withdrawn with a single un-chunked `.in()` over the
+  // whole list, and discarded the error. An `in` list is bounded by bytes, not
+  // by count, and the break was measured on this project's own TEST instance on
+  // this very table between 15,038 and 16,083 joined bytes. A few hundred
+  // addresses in one city therefore produced a request that FAILED, `data` came
+  // back null, the suppression list was empty, and rule 1 of
+  // `mergeDigestAudience`, "SUPPRESSION WINS", was not weakened but switched
+  // off: everybody who had unsubscribed was put back into the send by their
+  // waitlist row. The consent ledger resolver behind it is a second door, not a
+  // reason to leave the first one open.
+  //
+  // Three more, in the same path. The per-city audience reads were unbounded,
+  // so past a thousand people in a city the rest were not written to.
+  // `fetchDigestCities` read every consent row ON THE WHOLE PLATFORM with no
+  // bound and no order, only to reduce them to a set of city slugs, so past the
+  // ceiling whole cities were never considered for a send and which ones
+  // vanished was not stable between weeks. And the send loop did
+  // `recipients.slice(0, 500)` and then wrote the period's audit row, whose
+  // unique key the next invocation read as "already sent": the cron fires once
+  // a week, so a city with nine hundred lawful recipients wrote to five hundred
+  // and the other four hundred never received that week's email.
+  //
+  // CLAUSE 6 JUDGES THE SEND LOOP, NOT A READ, and it is why this is a file of
+  // its own. Every read-shaped scanner in this repository judged that slice
+  // BOUNDED, correctly. A bound is not safety, which is the lesson the seating
+  // screens taught the same day.
+  //
+  // It names FOUR FILES rather than `src/lib/broadcast`, because that directory
+  // is thirty modules and most of them render pictures; the poster and
+  // social-card renderers are red today on the error-destructure clause and a
+  // guard that cannot go green is a guard somebody switches off. They are
+  // enumerated in REVIEW-QUEUE-B.md instead of hidden here.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-DIGESTWHOLE\drills.txt).
+  'scripts/guards/the-weekly-digest-owes-nobody-an-email.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

@@ -36,15 +36,28 @@ type Call = { table: string; filters: Filters }
 
 /**
  * A stub client that dispatches per table AND per call, because the recipient
- * resolution now issues three distinct queries: granted consents for the
- * city, live waitlist rows for the city, and the withdrawal suppression
- * lookup. Every filter applied is recorded, so the consent gate is provable
- * rather than assumed.
+ * resolution issues three distinct queries: granted consents for the city, live
+ * waitlist rows for the city, and the withdrawal suppression lookup. Every
+ * filter applied is recorded, so the consent gate is provable rather than
+ * assumed.
+ *
+ * IT SERVES RANGES, AND IT SERVES THEM WITH A CEILING OF ITS OWN. Every
+ * audience read now pages through `readEveryRow`, and a fake that ignored
+ * `.range()` and handed back the whole set on every page would prove nothing
+ * except that the loop terminates. `serverCeiling` is the number of rows this
+ * fake will return in one response REGARDLESS of the window asked for, which is
+ * exactly what a Supabase project does and exactly the shape that breaks a
+ * pager written to stop on a short page (see the header of
+ * src/lib/supabase/read-every-row.ts). It defaults BELOW any page size the
+ * tests use, so a pager that stopped early would fail here rather than in
+ * production.
  */
 function stubClient(
   resolve: (table: string, filters: Filters) => Row[],
   calls: Call[] = [],
+  options: { serverCeiling?: number; failOn?: (table: string, filters: Filters) => string | null } = {},
 ) {
+  const serverCeiling = options.serverCeiling ?? 3
   return {
     from: (table: string) => {
       const filters: Filters = {}
@@ -58,9 +71,27 @@ function stubClient(
       for (const method of ['select', 'eq', 'gte', 'lte', 'not', 'order', 'is', 'in']) {
         builder[method] = chain(method)
       }
+      let window: { from: number; to: number } | null = null
+      builder.range = ((from: number, to: number) => {
+        window = { from, to }
+        filters['range'] = `${from}-${to}`
+        return builder
+      }) as unknown
       builder.limit = (() => builder) as unknown
-      builder.then = ((r: (v: { data: Row[] }) => void) =>
-        r({ data: resolve(table, filters) })) as unknown
+      builder.then = ((r: (v: { data: Row[] | null; error: { message: string } | null }) => void) => {
+        const failure = options.failOn?.(table, filters) ?? null
+        if (failure) return r({ data: null, error: { message: failure } })
+        const all = resolve(table, filters)
+        /*
+         * THE CEILING APPLIES TO A READ WITH NO WINDOW TOO, and that is the
+         * whole point of this fake. A stub that handed the complete set back to
+         * an UNBOUNDED read would let every test below pass against the exact
+         * code they exist to stop: the truncation is what the server does, not
+         * what the caller asks for.
+         */
+        const asked = window ? all.slice(window.from, window.to + 1) : all
+        return r({ data: asked.slice(0, serverCeiling), error: null })
+      }) as unknown
       return builder
     },
   } as never
@@ -365,5 +396,146 @@ describe('the digest email', () => {
     })
     expect(evil.html).not.toContain('<script>alert(1)</script>')
     expect(evil.html).toContain('&lt;script&gt;')
+  })
+})
+
+/**
+ * THE CEILINGS THIS SEND PATH CARRIED UNTIL 20 SEPTEMBER 2026.
+ *
+ * Every read below was unbounded, and a Supabase project stops at 1,000 rows in
+ * silence: HTTP 200, `error` null, a full-looking array
+ * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19).
+ * The stub above serves ranges with a ceiling of its own, so a read that stopped
+ * early fails here rather than in somebody's inbox.
+ */
+describe('nobody is dropped from the weekly email', () => {
+  const consentRows = (n: number, prefix = 'person') =>
+    Array.from({ length: n }, (_, i) => ({
+      email: `${prefix}-${i}@example.com`,
+      unsubscribe_token: `tok-${prefix}-${i}`,
+      status: 'granted',
+    }))
+
+  test('a city with more consenting people than one response can carry is written to in full', async () => {
+    const all = consentRows(2500)
+    const client = stubClient(
+      (table) => (table === 'marketing_consents' ? all : []),
+      [],
+      // The documented default. A pager that trusted the page size it asked for
+      // would stop after one window and report 1,000 of 2,500 as everybody.
+      { serverCeiling: 1000 },
+    )
+
+    const recipients = await fetchDigestRecipients(client, 'geelong')
+    expect(recipients).toHaveLength(2500)
+    expect(recipients[0].email).toBe('person-0@example.com')
+    expect(recipients[2499].email).toBe('person-2499@example.com')
+  })
+
+  test('the audience is ordered oldest first and broken on the primary key, because it is also the resume order', async () => {
+    const calls: Call[] = []
+    stubClient((table) => (table === 'marketing_consents' ? consentRows(1) : []), calls)
+    await fetchDigestRecipients(
+      stubClient((table) => (table === 'marketing_consents' ? consentRows(1) : []), calls),
+      'geelong',
+    )
+    const granted = calls.find(
+      (c) => c.table === 'marketing_consents' && c.filters['eq:status'] === 'granted',
+    )
+    // `granted_at` alone is not unique, so a tie across a page boundary could
+    // put one person in two windows and another in none. The cron resumes an
+    // unfinished period at a COUNT into this list, so that is a second copy of
+    // a marketing email and somebody who never hears from us.
+    expect(granted?.filters['order:granted_at']).toBeTruthy()
+    expect(granted?.filters['order:id']).toBeTruthy()
+  })
+
+  test('the city list survives a consent table larger than one response', async () => {
+    const spread = Array.from({ length: 2400 }, (_, i) => ({
+      city_slug: i === 2399 ? 'broken-hill' : 'geelong',
+    }))
+    const client = stubClient(
+      (table) => (table === 'marketing_consents' ? spread : []),
+      [],
+      { serverCeiling: 1000 },
+    )
+    // Before this pass the platform-wide read stopped at the ceiling, so a city
+    // whose only members sorted late was never considered for a send at all and
+    // nobody in it ever received a digest.
+    expect(await fetchDigestCities(client)).toEqual(['broken-hill', 'geelong'])
+  })
+})
+
+/**
+ * THE SUPPRESSION READ, which did not come back SHORT. It came back EMPTY.
+ *
+ * It was one un-chunked `.in('email', waitlistEmails)` over a city's whole
+ * waitlist, and an `in` list is bounded by bytes rather than by count: Supabase
+ * bounds URL and headers together at 16 KB and names lengthy `in` clauses as the
+ * usual cause
+ * (https://supabase.com/docs/guides/troubleshooting/fixing-520-errors-in-the-database-rest-api-Ur5-B2,
+ * fetched 2026-09-19), measured on this project's TEST instance between 15,038
+ * and 16,083 joined bytes. So the request failed, the discarded error left the
+ * list empty, and rule 1 of the merge, "SUPPRESSION WINS", was switched off.
+ */
+describe('a person who unsubscribed stays unsubscribed', () => {
+  const waitlistRows = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      email: `waiter-${i}@example.com`,
+      unsubscribe_token: `wl-${i}`,
+      consent_version: CONSENT_VERSION,
+      unsubscribed_at: null,
+    }))
+
+  test('a withdrawal past the first chunk of addresses still suppresses', async () => {
+    const waitlist = waitlistRows(400)
+    const withdrawnAddress = 'waiter-399@example.com'
+    const calls: Call[] = []
+    const client = stubClient((table, filters) => {
+      if (table === 'city_waitlist_signups') return waitlist
+      if (table === 'marketing_consents' && filters['eq:status'] === 'withdrawn') {
+        const asked = (filters['in:email'] ?? []) as string[]
+        return asked.includes(withdrawnAddress) ? [{ email: withdrawnAddress }] : []
+      }
+      return []
+    }, calls)
+
+    const recipients = await fetchDigestRecipients(client, 'geelong')
+    expect(recipients.map((r) => r.email)).not.toContain(withdrawnAddress)
+    expect(recipients).toHaveLength(399)
+
+    // More than one request, because four hundred addresses do not fit in one
+    // URL. A single request here is the defect, not an optimisation.
+    const suppressionCalls = calls.filter(
+      (c) => c.table === 'marketing_consents' && c.filters['eq:status'] === 'withdrawn',
+    )
+    expect(suppressionCalls.length).toBeGreaterThan(1)
+  })
+
+  test('a suppression read that FAILS raises, rather than handing back an unsuppressed audience', async () => {
+    const client = stubClient(
+      (table) => (table === 'city_waitlist_signups' ? waitlistRows(10) : []),
+      [],
+      {
+        failOn: (table, filters) =>
+          table === 'marketing_consents' && filters['eq:status'] === 'withdrawn'
+            ? 'TypeError: fetch failed'
+            : null,
+      },
+    )
+    // The old code answered with ten recipients and no suppression at all. The
+    // caller skips the city instead: one week of one city's marketing email is
+    // the cheaper failure than writing to somebody who asked us to stop.
+    await expect(fetchDigestRecipients(client, 'geelong')).rejects.toThrow(/suppression/i)
+  })
+
+  test('an audience read that FAILS raises, so a partial city is never sent to', async () => {
+    const client = stubClient(() => [], [], {
+      failOn: (table, filters) =>
+        table === 'marketing_consents' && filters['eq:status'] === 'granted'
+          ? 'upstream connect error'
+          : null,
+    })
+    await expect(fetchDigestRecipients(client, 'geelong')).rejects.toThrow(/could not be read in full/)
   })
 })
