@@ -42,6 +42,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
 import { buildFixture, purgeFixtures } from './lib/refund-proof-fixture.mjs'
@@ -133,6 +134,36 @@ async function readRevenueCard(page) {
     rows[key] = value ? centsFromCard(value) : null
   }
   return rows
+}
+
+/**
+ * AXE AT EVERY IMPACT LEVEL, not only serious and critical.
+ *
+ * C:\dev\BUILD-BRIEF.md's COMPLETION LAW clause 6 asks for "axe zero violations
+ * at EVERY impact level on affected surfaces", which is stricter than the
+ * serious-or-critical filter the sibling lane B drives use. The counts are
+ * reported per level either way, so a minor one cannot hide behind a pass.
+ *
+ * The fixture is populated deliberately: an authed screen scanned against an
+ * empty fixture is scanning an empty state, and the states a screen can render
+ * are the states axe can judge. That is why the refunds line, which only exists
+ * when a refund does, is on the screen while this runs.
+ */
+async function axeCheck(page, screen, viewport) {
+  const axe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  const byImpact = { critical: 0, serious: 0, moderate: 0, minor: 0, null: 0 }
+  for (const v of axe.violations) byImpact[v.impact ?? 'null'] += 1
+  const named = axe.violations.map(v => `${v.id}(${v.impact}, ${v.nodes.length})`).join(', ')
+  check(
+    `lb-editrevenue.axe.${screen}.${viewport}`,
+    axe.violations.length === 0,
+    axe.violations.length === 0
+      ? `0 violations at any impact level across ${axe.passes.length} passing check(s)`
+      : `${axe.violations.length} violation(s): ${named}`,
+  )
+  if (axe.violations.length) log(`  axe detail ${screen} ${viewport} ${JSON.stringify(byImpact)}`)
 }
 
 async function main() {
@@ -298,6 +329,7 @@ async function main() {
           )
           cards[screen] = await readRevenueCard(page)
           log(`${screen} ${vp.label} card ${JSON.stringify(cards[screen])}`)
+          await axeCheck(page, screen, vp.label)
           await page.screenshot({
             path: join(OUT, 'drive', `${screen}-${vp.label}.png`),
             fullPage: true,
@@ -332,6 +364,7 @@ async function main() {
           categoryOptions > 1,
           `${categoryOptions} option(s) in the first select on the create form`,
         )
+        await axeCheck(page, 'create', vp.label)
         await page.screenshot({
           path: join(OUT, 'drive', `create-${vp.label}.png`),
           fullPage: true,
