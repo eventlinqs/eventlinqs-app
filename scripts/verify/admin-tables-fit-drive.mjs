@@ -20,6 +20,15 @@
  * prediction, and predictions about layout have been wrong twice in this lane
  * already this week. The browser decides.
  *
+ * WHAT THIS DRIVE FOUND AND WHAT WAS THEN DONE, 21 September 2026. The first
+ * run enforced two clauses and printed two more: thirteen tables lost the row's
+ * own name when swiped to the right edge, and thirty-one controls measured
+ * between 19 and 39 pixels tall. Sixteen of the eighteen tables were then
+ * rebuilt as cards below `lg` (src/components/admin/table-card.ts) and ALL FOUR
+ * clauses are enforced here now. The two that are not rebuilt are another
+ * lane's files under the three-lane protocol and are named below with their
+ * reason, rather than quietly dropped from the route list.
+ *
  * ============================================================================
  * THE SAME CLAUSES AS THE ORGANISER DRIVE, FROM THE SAME MODULE
  * ============================================================================
@@ -132,26 +141,41 @@ let failures = 0
 const known = new Map()
 
 /*
- * WHAT THIS RUN REFUSES TO EXIT ZERO ON, AND WHAT IT ONLY REPORTS.
+ * ALL FOUR CLAUSES ARE ENFORCED, ON EVERY ROUTE BUT TWO.
  *
- * Two of the four clauses are ENFORCED here: a clip a finger cannot scroll,
- * and a control that cannot be reached. Both were true of /admin/audit on 21
- * September 2026 and both are now closed, so a return of either is a
- * regression and this command says so with an exit code.
+ * It used to be two, with the other two printed as KNOWN and counted so the
+ * number could only go down. They went down to zero on 21 September 2026 when
+ * sixteen admin tables were rebuilt as cards below `lg`, so the bar was raised
+ * to where the platform now stands. That is the whole point of having written
+ * the bar where it could be raised.
  *
- * The other two are MEASURED AND NOT ENFORCED, and that is a scope rather than
- * a silence: thirteen admin tables lose the row's own name when swiped to the
- * right edge, and their controls run from 19 to 39 pixels tall against a 44px
- * law. Those are a rebuild of every admin table, they are the next item, and
- * they are printed on every run with their counts so the number can only go
- * down. A clause moves from KNOWN to enforced by deleting one line here, which
- * is the point: the bar is written where it can be raised.
+ * THE TWO EXCEPTIONS ARE ANOTHER LANE'S FILES, NOT A WEAKER STANDARD. The
+ * three-lane protocol gives "pricing configuration" and "analytics" to lane B,
+ * and /admin/pricing and /admin/network are lane B's by that wording and by its
+ * commits of 20 September. Lane C raised both as BORDER lines in
+ * C:/dev/REVIEW-QUEUE-C.md instead of editing a file another lane is working
+ * in: on 20 September two lanes fixed the same sideways scroll on the same day
+ * and the duplicate refused the merge five times.
+ *
+ * AND THE EXEMPTION CLEARS ITSELF. If a bordered route passes every clause,
+ * this drive FAILS and says to delete it, so the list cannot outlive its
+ * reason. scripts/guards/a-table-a-phone-can-read.mjs holds the identical pair
+ * for the same files.
  */
-const ENFORCED = ['nothing is clipped', 'can be reached']
-const isEnforced = (name) => ENFORCED.some((fragment) => name.includes(fragment))
+const BORDERED_ROUTES = new Map([
+  ['/admin/pricing', 'lane B owns pricing configuration (three-lane protocol)'],
+  ['/admin/network', 'lane B owns the growth and analytics screens (three-lane protocol)'],
+])
+const borderedSeen = new Map()
 
 const check = (name, ok, detail) => {
-  const enforced = isEnforced(name)
+  const route = name.match(/^\d+ (\S+):/)?.[1]
+  const enforced = !BORDERED_ROUTES.has(route)
+  if (route && BORDERED_ROUTES.has(route)) {
+    const seen = borderedSeen.get(route) ?? { pass: 0, fail: 0 }
+    seen[ok ? 'pass' : 'fail'] += 1
+    borderedSeen.set(route, seen)
+  }
   results.push({ name, ok: Boolean(ok), enforced, detail })
   if (!ok && enforced) failures += 1
   if (!ok && !enforced) {
@@ -232,6 +256,26 @@ try {
           continue
         }
         /*
+         * A TABLE THAT IS NOT DISPLAYED CANNOT PASS A FIT CHECK, AND IT USED TO.
+         *
+         * /admin/health carried `hidden ... sm:block` on its wrapper and a
+         * separate `<ul>` of cards for phones. At 390 the table was still
+         * ATTACHED, so every measurement below ran against a `display: none`
+         * element: zero width, zero controls, a first cell at 0..0, and four
+         * green ticks about nothing. Four vacuous passes read exactly like four
+         * real ones in a report.
+         *
+         * The `<ul>` is gone and health is one DOM now, so nothing hits this
+         * today. It stays because the next person to hide a table on a phone
+         * should get a line saying so rather than a pass.
+         */
+        const visible = await table.isVisible()
+        if (!visible) {
+          empties.push({ viewport: vp.label, route: target.route, why: 'the table is not displayed at this width' })
+          console.log(`${TAG} HIDDEN ${vp.label} ${target.route} - not displayed at this width, not counted`)
+          continue
+        }
+        /*
          * A `colSpan` MESSAGE IS NOT A ROW, and counting it as one is how this
          * drive first reported /admin/disputes as failing "a row still says
          * whose row it is" with the row being the sentence "No open disputes.
@@ -293,7 +337,25 @@ try {
 
         measurements.push({ viewport: vp.label, route: target.route, file: target.file, rows: bodyRows, ...measured, rowName })
         if (vp.label === '390') {
-          await page.screenshot({ path: join(OUT, `${LABEL}-390-${target.route.replace(/\//g, '_')}.png`), fullPage: false })
+          /*
+           * THE TABLE ITSELF, NOT THE VIEWPORT.
+           *
+           * The first version shot the viewport, and on a fresh browser context
+           * the consent banner and the page header filled it: fifteen
+           * screenshots of a heading and a cookie prompt, with the cards
+           * starting one pixel below the fold. Reading the report instead of
+           * the picture is how three defects reached a commit in this lane
+           * already, so the picture has to contain the thing being judged.
+           *
+           * `locator.screenshot` scrolls the element into view first, which is
+           * safe HERE and would not be inside the measurement: the clauses are
+           * all measured at the arrival scroll position, on purpose, and this
+           * runs after every one of them.
+           */
+          await table.screenshot({ path: join(OUT, `${LABEL}-390-${target.route.replace(/\//g, '_')}.png`) }).catch(async (error) => {
+            console.log(`${TAG} could not shoot the table on ${target.route}: ${error.message}; shooting the viewport instead`)
+            await page.screenshot({ path: join(OUT, `${LABEL}-390-${target.route.replace(/\//g, '_')}.png`), fullPage: false })
+          })
         }
       }
       await context.close()
@@ -317,11 +379,31 @@ try {
       2,
     ),
   )
-  console.log(`${TAG} measured ${measurements.length} table view(s); ${empties.length} were empty or absent and were not counted`)
+  console.log(`${TAG} measured ${measurements.length} table view(s); ${empties.length} were empty, hidden or absent and were not counted`)
   if (known.size > 0) {
-    console.log(`${TAG} KNOWN AND NOT ENFORCED, printed so the number can only go down:`)
+    console.log(`${TAG} KNOWN AND NOT ENFORCED, on the two bordered routes only:`)
     for (const [clause, count] of known) console.log(`${TAG}   ${count} x ${clause}`)
-    console.log(`${TAG}   These are the admin table rebuild, recorded with their numbers in C:/dev/REVIEW-QUEUE-C.md.`)
+    for (const [route, why] of BORDERED_ROUTES) console.log(`${TAG}   ${route}: ${why}`)
+    console.log(`${TAG}   Both are BORDER lines in C:/dev/REVIEW-QUEUE-C.md, raised rather than edited.`)
+  }
+  /*
+   * THE EXEMPTION CANNOT OUTLIVE ITS REASON. A bordered route that was measured
+   * and failed nothing has been fixed by the lane that owns it, and the line
+   * keeping it out of the count is now the only thing hiding that.
+   */
+  for (const [route, why] of BORDERED_ROUTES) {
+    const seen = borderedSeen.get(route)
+    if (!seen) {
+      check(`the bordered route ${route} was measured`, false, 'it rendered no measurable table, so the border cannot be judged')
+      continue
+    }
+    if (seen.fail === 0) {
+      check(
+        `the border on ${route} is still needed`,
+        false,
+        `${seen.pass} clause(s) passed and none failed: ${why} has been paid, so remove ${route} from BORDERED_ROUTES here and from BORDERED in scripts/guards/a-table-a-phone-can-read.mjs`,
+      )
+    }
   }
 } finally {
   if (stopServer) await stopServer()

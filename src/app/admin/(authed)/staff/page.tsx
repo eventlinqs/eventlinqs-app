@@ -7,6 +7,18 @@ import { listAdminStaff, ASSIGNABLE_ADMIN_ROLES } from '@/lib/admin/admin-staff'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import type { AdminRole } from '@/lib/admin/types'
 import { addAdminAction } from './actions'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -101,9 +113,11 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
       </section>
 
       {/* Staff list */}
-      <div className="relative mb-10 overflow-x-auto rounded-lg border border-white/[0.08]">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
+      {/* Below lg this stops being a table and each admin becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative mb-10 ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[760px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
               <th scope="col" className="px-4 py-3 font-medium">Admin</th>
               <th scope="col" className="px-4 py-3 font-medium">Role</th>
@@ -113,25 +127,38 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Manage</span></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {staff.map((s) => (
-              <tr key={s.id} className="border-b border-white/[0.05] align-middle">
-                <td className="px-4 py-3">
+              <tr key={s.id} className={`${ADMIN_ROW} align-middle`}>
+                <td className={ADMIN_CELL_NAME}>
                   <div className="font-medium text-white">{s.displayName}</div>
                   <div className="text-[12px] text-white/50">{s.email}</div>
                 </td>
-                <td className="px-4 py-3">{ROLE_LABELS[s.role]}</td>
-                <td className="px-4 py-3">
+                <td className={ADMIN_CELL}>
+                  <span className={ADMIN_CELL_LABEL}>Role</span>
+                  {ROLE_LABELS[s.role]}
+                </td>
+                <td className={ADMIN_CELL}>
+                  <span className={ADMIN_CELL_LABEL}>Status</span>
                   {s.disabled ? (
                     <span className="rounded bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-red-300">Disabled</span>
                   ) : (
                     <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">Active</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-white/70">{s.totpEnrolled ? 'Enrolled' : 'Pending'}</td>
-                <td className="px-4 py-3 text-white/50">{fmtDate(s.lastLoginAt)}</td>
-                <td className="px-4 py-3">
-                  <Link href={`/admin/staff/${s.id}`} className="rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white">
+                <td className={`${ADMIN_CELL} text-white/70`}>
+                  <span className={ADMIN_CELL_LABEL}>2FA</span>
+                  {s.totpEnrolled ? 'Enrolled' : 'Pending'}
+                </td>
+                <td className={`${ADMIN_CELL} text-white/50`}>
+                  <span className={ADMIN_CELL_LABEL}>Last sign-in</span>
+                  {fmtDate(s.lastLoginAt)}
+                </td>
+                <td className={ADMIN_CELL_ACTIONS}>
+                  <Link
+                    href={`/admin/staff/${s.id}`}
+                    className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white`}
+                  >
                     Manage
                   </Link>
                 </td>
@@ -148,9 +175,11 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
           The baseline each role carries. Per-admin overrides (set on a staff member) tune this for
           one person; a super admin always has everything.
         </p>
-        <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead>
+        {/* Below lg this stops being a table and each capability becomes a card
+            carrying its own headings: src/components/admin/table-card.ts. */}
+        <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+          <table className={`${ADMIN_TABLE} lg:min-w-[680px]`}>
+            <thead className={ADMIN_THEAD}>
               <tr className="border-b border-white/[0.08] text-left text-white/50">
                 <th scope="col" className="px-4 py-3 font-medium">Capability</th>
                 {ASSIGNABLE_ADMIN_ROLES.map((r) => (
@@ -158,15 +187,16 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className={ADMIN_TBODY}>
               {ALL_CAPABILITIES.map((cap) => (
-                <tr key={cap} className="border-b border-white/[0.05]">
-                  <td className="px-4 py-3">
+                <tr key={cap} className={ADMIN_ROW}>
+                  <td className={ADMIN_CELL_NAME}>
                     <div className="text-white">{CAPABILITY_LABELS[cap]}</div>
                     <div className="font-mono text-[11px] text-white/40">{cap}</div>
                   </td>
                   {ASSIGNABLE_ADMIN_ROLES.map((r: AdminRole) => (
-                    <td key={r} className="px-4 py-3 text-center">
+                    <td key={r} className={`${ADMIN_CELL} lg:text-center`}>
+                      <span className={ADMIN_CELL_LABEL}>{ROLE_LABELS[r]}</span>
                       {roleCapabilities(r).has(cap) ? (
                         <span className="text-emerald-300" aria-label="yes">&#10003;</span>
                       ) : (

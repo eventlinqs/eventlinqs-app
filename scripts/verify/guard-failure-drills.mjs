@@ -6732,7 +6732,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
     find: '<thead className="max-lg:hidden">',
     replace: '<thead>',
-    expect: 'stays visible below lg',
+    expect: 'stays visible below `lg`',
   },
   {
     name: 'the minimum width that forces the phone-width scroller comes back',
@@ -6740,7 +6740,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/reach/page.tsx',
     find: '<table className="w-full text-sm max-lg:block lg:min-w-[560px]">',
     replace: '<table className="w-full text-sm max-lg:block min-w-[560px]">',
-    expect: 'unqualified `min-w-[...]`',
+    expect: 'forces a phone-width scroller',
   },
   {
     /*
@@ -6753,7 +6753,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
     find: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:overflow-visible',
     replace: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent',
-    expect: 'applies at phone width',
+    expect: 'applies below `lg`',
   },
   {
     name: 'a row control goes back to eleven pixels of underlined text',
@@ -6765,17 +6765,83 @@ const DRILLS = [
   },
   {
     /*
-     * THE ADMIN HALF, WHICH IS A DIFFERENT CLAUSE ON A DIFFERENT SCOPE. This is
-     * the exact class attribute /admin/audit carried until 21 September 2026,
-     * restored character for character: fifty View buttons outside a box
-     * showing a third of its own table.
+     * THE ADMIN HALF. This is the class attribute /admin/audit carried until
+     * 21 September 2026: fifty View buttons outside a box showing a third of
+     * its own table. The wrapper is a shared constant now, so the drill puts
+     * the literal back at the call site, which is exactly how the defect would
+     * return.
      */
     name: 'the admin audit log goes back to clipping its own table',
     guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
     file: 'src/app/admin/(authed)/audit/page.tsx',
-    find: '<div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">',
+    find: '<div className={ADMIN_TABLE_WRAP}>',
     replace: '<div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#131A2A]">',
     expect: 'is a CLIP and not a scroller',
+  },
+
+  /*
+   * a-table-a-phone-can-read, THE ADMIN SCOPE (21 September 2026), six drills.
+   *
+   * The first four mutate the SHARED constants, and that is the point rather
+   * than a shortcut: sixteen admin tables now render their classes from
+   * src/components/admin/table-card.ts, so one character there is a regression
+   * on sixteen screens at once. A drill that only poked one call site would
+   * leave the file that actually matters undrilled.
+   *
+   * The last two are call sites, because a screen can also opt itself out.
+   */
+  {
+    name: 'the shared admin table stops being a card on a phone, on sixteen screens at once',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "export const ADMIN_TABLE = 'w-full text-left text-sm max-lg:block'",
+    replace: "export const ADMIN_TABLE = 'w-full text-left text-sm'",
+    expect: 'no phone presentation',
+  },
+  {
+    name: 'the shared admin wrapper becomes a phone-width scroller again',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "'rounded-xl max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto'",
+    replace: "'rounded-xl max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent overflow-x-auto'",
+    expect: 'applies below `lg`',
+  },
+  {
+    name: 'the shared admin header stays while the cells stack',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "  'bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50 max-lg:hidden'",
+    replace: "  'bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50'",
+    expect: 'stays visible below',
+  },
+  {
+    /*
+     * THE CONSTANT THE GUARD ACCEPTS BY NAME. Clause FIVE passes any control
+     * mentioning ADMIN_ROW_CONTROL, for a call site the resolver cannot reach,
+     * so the guard REFUSES to run at all if that name stops being 44px.
+     */
+    name: 'the admin row control stops being 44px, and the guard refuses to run',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "export const ADMIN_ROW_CONTROL = 'inline-flex min-h-11 items-center'",
+    replace: "export const ADMIN_ROW_CONTROL = 'inline-flex items-center'",
+    expect: 'carries no 44px floor',
+  },
+  {
+    name: 'an admin table takes back the unqualified minimum width',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/kyc/page.tsx',
+    find: '<table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>',
+    replace: '<table className={`${ADMIN_TABLE} min-w-[720px]`}>',
+    expect: 'forces a phone-width scroller',
+  },
+  {
+    name: 'an admin row link goes back to nineteen pixels of text',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/payouts/page.tsx',
+    find: 'className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}',
+    replace: 'className="text-[var(--brand-accent)] hover:underline"',
+    expect: 'no 44px floor',
   },
 
   /*

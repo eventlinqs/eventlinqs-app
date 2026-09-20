@@ -3414,8 +3414,20 @@ const ROOT = join(HERE, '..', '..')
  * and sixty-nine the verify branch could not. Every derived figure on this
  * integer has been wrong and every measured one has been right.
  */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the admin table rebuild): 7257 -> 7282.
+ * ---------------------------------------------------------------------------
+ *
+ * Twenty-five cases added to tests/unit/guards/a-table-a-phone-can-read.test.ts
+ * when that guard grew a derived breakpoint, a constant resolver and a border
+ * list. No file added, so MIN_FILES does not move.
+ *
+ * MEASURED: 541 files, 7282 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 193s).
+ */
 const MIN_FILES = 541
-const MIN_TESTS = 7257
+const MIN_TESTS = 7282
 
 
 /**
