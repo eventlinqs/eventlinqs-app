@@ -67,6 +67,9 @@
  * reader.
  */
 
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+
 /**
  * The reviewed markers, most specific first.
  *
@@ -175,6 +178,20 @@ export const FEATURE_MARKERS = [
     alwaysPresent: false,
     absentWhen: 'nothing on a client path references Buffer any more, which is the goal rather than a fault',
   },
+  {
+    feature: 'product analytics',
+    // The measurement layer's own vendor key name and host. Added 21 September
+    // 2026, when the driven cost table showed this as the only `unattributed`
+    // row left on the homepage once the manifests were being read.
+    test: /NEXT_PUBLIC_POSTHOG_KEY|posthog\.com/,
+    why: "the analytics vendor's own key name and host",
+    counted: 1,
+    alwaysPresent: false,
+    // It is loaded by dynamic import after the visitor consents (close-out
+    // AQ1), so it is in no route's first load and first-load-budget correctly
+    // never sees it. That is the arrangement working, not a missing feature.
+    absentWhen: 'it is loaded by dynamic import only after consent, so it is in no route first load',
+  },
   { feature: 'Supabase client', test: /GoTrueClient|PostgrestClient/, why: "the client classes' own names", counted: 4, alwaysPresent: false, absentWhen: 'no client component reaches the browser client' },
   { feature: 'Stripe elements', test: /StripeElement|js\.stripe\.com/, why: "Stripe's own class name and host", counted: 2, alwaysPresent: false, absentWhen: 'checkout is not in the build' },
   { feature: 'Google Maps', test: /google\.maps|maps\.googleapis\.com/, why: "the Maps API's own namespace and host", counted: 2, alwaysPresent: false, absentWhen: 'the venue map is not built' },
@@ -221,4 +238,149 @@ export function markerCoverage(bodies) {
       .filter((m) => !m.alwaysPresent)
       .map((m) => `${m.feature} (${m.absentWhen ?? 'declared conditional'})`),
   }
+}
+
+/* ==========================================================================
+ * THE OTHER HALF: WHAT A CHUNK SERVES WHEN IT IS OURS AND NOT A LIBRARY.
+ * Added 21 September 2026.
+ * ==========================================================================
+ *
+ * THE MARKERS ABOVE CAN ONLY EVER NAME A DEPENDENCY, and that ceiling is a
+ * number rather than an opinion: run `attribute()` over the build of that day
+ * and 131 of its 154 chunks come back `unattributed`. Every one of those 131 is
+ * OUR code, and no string marker will ever name it, because our chunks have no
+ * vendor identifier in them to match.
+ *
+ * Driven on the same day, `scripts/perf/chunk-cost-table.mjs` reported, on all
+ * thirteen gated routes:
+ *
+ *     | 2qonc2w2umx49.js | 9.4 KB | 32.8 KB | yes | unattributed |
+ *
+ * That is the fourth heaviest thing on the homepage, it is ours, and the table
+ * close-out P0.5 says "decides the work order" could not say which component it
+ * was. A work order cannot rank a chunk nobody can name; the same sentence is
+ * already written at the top of this file about the App Router runtime, and the
+ * answer there was a better marker. There is no marker for our own code.
+ *
+ * NEXT ALREADY KNOWS. It writes one `page_client-reference-manifest.js` per app
+ * route, and each maps a client module's SOURCE PATH to the chunks it needs.
+ * That is not a heuristic, it is the loader's own answer, and on that build it
+ * named 126 of the 154 chunks. `2qonc2w2umx49.js` becomes
+ * `src/components/features/home/FeaturedHeroClient.tsx +10 more`.
+ *
+ * WHAT IT CANNOT DO, so the caller can say so rather than degrade quietly:
+ *   - it needs the BUILT TREE on disk, so a table driven against a deployed
+ *     preview gets the markers alone
+ *   - a chunk reached only by a lazy `import()` inside a client component is in
+ *     no route's manifest. Six such chunks existed on that build, the largest
+ *     32.3 KB (the seat selector), and none is requested on any gated route.
+ */
+
+/**
+ * The JSON out of one `globalThis.__RSC_MANIFEST["/route"] = {...}` assignment.
+ *
+ * Pure and separate so it can be tested without a build on disk, and because it
+ * is the one part a framework version can change underneath this file. An
+ * unreadable manifest returns null and is SKIPPED by the caller rather than
+ * throwing: one unreadable route must not take the whole table down. That it
+ * returns null rather than throwing is what
+ * `scripts/guards/the-cost-table-can-name-what-it-measures.mjs` counts.
+ */
+export function parseClientReferenceManifest(source) {
+  const at = source.indexOf('] = ')
+  if (at === -1) return null
+  try {
+    return JSON.parse(source.slice(at + 4).trim().replace(/;\s*$/, ''))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * EVERY CLIENT MODULE'S CHUNKS, out of Next's own per-route manifests.
+ *
+ * @param {string} nextDir the built `.next` directory
+ * @returns {Map<string, Set<string>>} chunk file name -> module source paths
+ */
+export function readClientModuleChunks(nextDir) {
+  const appDir = join(nextDir, 'server', 'app')
+  const byChunk = new Map()
+  if (!existsSync(appDir)) return byChunk
+
+  const manifests = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (entry === 'page_client-reference-manifest.js') manifests.push(full)
+    }
+  }
+  walk(appDir)
+
+  for (const file of manifests) {
+    const parsed = parseClientReferenceManifest(readFileSync(file, 'utf8'))
+    if (!parsed) continue
+    for (const [module_, info] of Object.entries(parsed.clientModules ?? {})) {
+      for (const chunk of info.chunks ?? []) {
+        const name = chunk.split('/').pop()
+        if (!byChunk.has(name)) byChunk.set(name, new Set())
+        byChunk.get(name).add(module_)
+      }
+    }
+  }
+  return byChunk
+}
+
+/** Every `page_client-reference-manifest.js` in a build, parsed or not. */
+export function listClientReferenceManifests(nextDir) {
+  const appDir = join(nextDir, 'server', 'app')
+  const out = []
+  if (!existsSync(appDir)) return out
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (entry === 'page_client-reference-manifest.js') out.push(full)
+    }
+  }
+  walk(appDir)
+  return out
+}
+
+/**
+ * A SHORT LABEL FOR A SET OF MODULE PATHS, OURS FIRST.
+ *
+ * `[project]/src/...` is this platform's own code and is what a work order acts
+ * on; `node_modules/...` is what it cannot. When a chunk holds both, the label
+ * leads with ours, because "next/dist/client/app-dir/link.js" as the headline
+ * for a chunk that also holds the event form sends the reader to the wrong file.
+ */
+export function summariseModules(modules) {
+  const all = [...modules].map((m) => m.replace(/^\[project\]\//, ''))
+  if (all.length === 0) return UNATTRIBUTED
+  const ours = all.filter((m) => m.startsWith('src/'))
+  const lead = (ours.length > 0 ? ours : all).sort()[0]
+  const rest = all.length - 1
+  return rest > 0 ? `${lead} +${rest} more` : lead
+}
+
+/**
+ * NAME ONE CHUNK. The build's own answer first, then the reviewed markers.
+ *
+ * `how` is returned beside the label because an exact answer and a reviewed
+ * guess must never read the same in a table somebody is about to act on.
+ *
+ * @param {{ file: string, body?: string, modules?: Set<string>, known?: string }} chunk
+ * @returns {{ label: string, how: 'manifest'|'marker'|'build'|'none' }}
+ */
+export function nameChunk({ file, body, modules, known }) {
+  if (known) return { label: known, how: 'build' }
+  if (modules && modules.size > 0) return { label: summariseModules(modules), how: 'manifest' }
+  const found = attribute(body ?? '')
+  if (found[0] !== UNATTRIBUTED) return { label: found.join(' + '), how: 'marker' }
+  // The bundler's own runtime names itself in the file name, and nothing else
+  // in the build is called this. Last, because a naming convention belongs to
+  // the bundler and can change without notice.
+  if (/^turbopack-/.test(file ?? '')) return { label: 'Turbopack runtime', how: 'marker' }
+  return { label: UNATTRIBUTED, how: 'none' }
 }

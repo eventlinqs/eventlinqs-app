@@ -3426,8 +3426,25 @@ const ROOT = join(HERE, '..', '..')
  * MEASURED: 541 files, 7282 tests, 0 failed, 0 skipped
  * (npm run gate:push -- --only suite, GREEN, 193s).
  */
-const MIN_FILES = 541
-const MIN_TESTS = 7282
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the cost table's attribution): 541/7282 -> 542/7306.
+ * ---------------------------------------------------------------------------
+ *
+ * One file added, tests/unit/guards/the-cost-table-can-name-what-it-measures.test.ts,
+ * with 25 cases: the manifest parser, the label summariser, the four contract
+ * clauses and the two built ones against a `.next` written for the test.
+ *
+ * MEASURED: 542 files, 7307 tests, 0 failed, 0 skipped, twice in a row.
+ *
+ * THE FIRST READING WAS 7306 AND IS NOT THE ONE WRITTEN HERE, because that run
+ * was RED: the registry test that names every guard in the runner's header had
+ * not been satisfied yet, and a run with a failure is not a measurement of a
+ * green suite. Both green runs read 7307. Measured, not derived, which is the
+ * rule this integer has had to be taught fourteen times.
+ */
+const MIN_FILES = 542
+const MIN_TESTS = 7307
 
 
 /**

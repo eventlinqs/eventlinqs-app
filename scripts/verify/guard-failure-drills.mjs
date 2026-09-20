@@ -6845,6 +6845,60 @@ const DRILLS = [
   },
 
   /*
+   * the-cost-table-can-name-what-it-measures (21 September 2026), four drills,
+   * one per contract clause.
+   *
+   * WHAT IS DRILLED HERE AND WHAT IS NOT, said plainly. These four mutate the
+   * SOURCE and the guard reads source, so the harness can aim at them. Clauses
+   * five and six read a real `.next`, which this harness does not own and does
+   * not restore, so they are proven instead by running the guard with --built
+   * (postbuild runs it on every build, and it reports its own coverage on every
+   * run) and by the unit test that pins `parseClientReferenceManifest` returning
+   * null rather than throwing on a manifest whose shape has changed. Saying
+   * which half a drill set covers is the difference between a proof and a count.
+   */
+  {
+    /*
+     * THE ONE THAT WAS REALLY THERE. The cost table carried its own copy of the
+     * reviewed markers, made before the shared module existed, and that copy
+     * still held three markers the shared module had recorded as dead on
+     * 15 September. Its second row read `unattributed` for a chunk the shared
+     * list names correctly.
+     */
+    name: 'the cost table stops reading the one reviewed marker list',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/chunk-cost-table.mjs',
+    find: "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'",
+    replace: "const attributionIsSomebodyElsesProblem = true",
+    expect: 'does not read',
+  },
+  {
+    name: 'the cost table takes back a private copy of the reviewed marker list',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/chunk-cost-table.mjs',
+    find: "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'",
+    replace:
+      "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'\nconst FEATURE_MARKERS = [{ feature: 'React DOM', test: /__reactContainer/ }]",
+    expect: 'declares its own FEATURE_MARKERS',
+  },
+  {
+    name: 'a marker starts matching the empty string, and would claim every chunk in the build',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/lib/chunk-attribution.mjs',
+    find: "  { feature: 'Lucide icons', test: /lucide/,",
+    replace: "  { feature: 'Lucide icons', test: /lucide|/,",
+    expect: 'EMPTY STRING',
+  },
+  {
+    name: 'two markers claim one feature, so one of them can never be the answer',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/lib/chunk-attribution.mjs',
+    find: "  { feature: 'Supabase client', test: /GoTrueClient|PostgrestClient/,",
+    replace: "  { feature: 'React DOM', test: /GoTrueClient|PostgrestClient/,",
+    expect: 'both claim the feature',
+  },
+
+  /*
    * no-punctuation-standing-in-for-a-value (21 September 2026), three drills.
    *
    * The first two are the exact lines the em-dash scrub left behind, restored

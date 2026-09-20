@@ -615,12 +615,23 @@
  *                              away, so "Connect Stripe" was advice with no door. The type, the
  *                              door's field name, the actions that can carry one and their
  *                              callers are all derived (21 September 2026)
- *   a-table-a-phone-can-read  every organiser data table has a presentation below lg
+ *   the-cost-table-can-name-what-it-measures  the instrument close-out P0.5 says
+ *                              "decides the work order" reads the ONE reviewed marker
+ *                              list and the build's own client-reference manifests.
+ *                              Measured: its second row on all thirteen gated routes
+ *                              read `unattributed` for a 29.9 KB chunk the shared list
+ *                              had named correctly since 15 September, because the
+ *                              table was reading a private copy made before that
+ *                              module existed (21 September 2026, close-out C8B.1)
+ *   a-table-a-phone-can-read  every organiser and admin data table has a presentation
+ *                              below its breakpoint
  *                              that is not a five-column table. Measured: the discount
  *                              codes table clipped Deactivate and Delete outside an
- *                              `overflow-hidden` box at 390 and 768, and reach and the
- *                              GST report lost the row's own name when swiped to the
- *                              right edge. Subjects walked, comments stripped
+ *                              `overflow-hidden` box at 390 and 768, and thirteen admin
+ *                              tables lost the row's own name when swiped to the right
+ *                              edge. The breakpoint is derived from each table and the
+ *                              shared class constants are resolved before judging;
+ *                              subjects walked, comments stripped
  *                              (21 September 2026, close-out C8 clause C8B.3)
  *   no-punctuation-standing-in-for-a-value  a lone separator mark may not be the
  *                              fallback a person reads where a value should be. The
@@ -1972,6 +1983,16 @@ const GUARDS = [
   // text-7xl. Found in a driven screenshot on 21 September 2026, weeks after
   // the sweep. The cause was mechanical, so the check has to be too.
   'scripts/guards/no-punctuation-standing-in-for-a-value.mjs',
+  // The C8 work order comes from scripts/perf/chunk-cost-table.mjs and from
+  // nothing else ("measure first, and never optimise blind"), and on
+  // 21 September 2026 that table reported its SECOND BIGGEST ROW on all
+  // thirteen gated routes as `unattributed`: 126 of 154 chunks unnamed, 413 KB
+  // of blind. Attribution is derived from Next's own client-reference
+  // manifests now. This holds the mechanism rather than any one chunk: the
+  // failure worth a gate is the derivation silently collapsing while the table
+  // keeps printing confident rows. Contract mode here; postbuild runs it again
+  // with --built against the real .next.
+  'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the

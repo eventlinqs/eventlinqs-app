@@ -29,6 +29,31 @@
  * same reason: a reporter that starts refusing things becomes a gate nobody
  * can read.
  *
+ * ============================================================================
+ * WHERE `serves` COMES FROM, AND THE TWO WAYS IT WAS WRONG UNTIL
+ * 21 SEPTEMBER 2026
+ * ============================================================================
+ *
+ * ONE. THIS FILE WAS READING THE WRONG LIST. `scripts/perf/lib/chunk-attribution.mjs`
+ * was created on 15 September to be the single reviewed marker list, and its
+ * own opening paragraph names this file as one of the two readers that "must
+ * never disagree". This file never started importing it, and kept its own older
+ * copy, which still held the three markers that module documents as DEAD:
+ * `react-stack-bottom-frame`, `prefetchReducer` and `APP_ROUTER_ACTION`. The
+ * result, driven that morning on all thirteen gated routes, was the SECOND ROW
+ * reading `unattributed` for a 29.9 KB chunk the shared list names correctly.
+ *
+ * TWO. A STRING MARKER CAN ONLY NAME A DEPENDENCY. Over the whole build, the
+ * shared list leaves 131 of 154 chunks unnamed, and every one of those is OUR
+ * code: there is no vendor identifier in it to match. Next's own per-route
+ * client-reference manifests map a client module's SOURCE PATH to its chunks,
+ * and that is what the `named by` column now says `manifest` about.
+ *
+ * Driven against a DEPLOYED preview there is no `.next` to read, so the
+ * manifest half is absent and every row falls back to the markers. The run says
+ * so in its own closing lines rather than reporting a thinner answer as the
+ * same one.
+ *
  * ROUTES ARE ENUMERATED, NEVER GUESSED. With no --routes the set is read from
  * lighthouse-gate-urls.json, which is the pinned, reviewed set the Lighthouse
  * gate itself audits, so this table and that gate always talk about the same
@@ -47,49 +72,14 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-/**
- * What a chunk serves, decided by strings that survive minification.
- *
- * REVIEWED, and every entry names why that marker identifies that feature. A
- * marker chosen because it "looks Sentry-ish" produces a table that reads
- * confidently and attributes the wrong 123KB, which is worse than an unnamed
- * chunk. Anything unmatched is reported as `unattributed` rather than guessed.
- */
-const FEATURE_MARKERS = [
-  {
-    feature: 'Session Replay (rrweb)',
-    // `recordCrossOriginIframes` and `maskAllText` are replayIntegration's own
-    // option names and appear nowhere else in the tree; `rrweb` is the vendored
-    // recorder's own identifier.
-    test: /recordCrossOriginIframes|replayIntegration|rrweb/,
-  },
-  {
-    feature: 'error reporting SDK',
-    // `__SENTRY__` is the SDK's global carrier. Checked AFTER Replay, because
-    // the Replay chunk also carries it and the more specific answer wins.
-    test: /__SENTRY__|sentryWrapped/,
-  },
-  {
-    feature: 'React DOM',
-    test: /react-stack-bottom-frame|__reactContainer|createPortal/,
-  },
-  {
-    feature: 'Next.js app router',
-    test: /app-router|prefetchReducer|APP_ROUTER_ACTION/,
-  },
-  { feature: 'Supabase client', test: /GoTrueClient|PostgrestClient/ },
-  { feature: 'Stripe elements', test: /StripeElement|js\.stripe\.com/ },
-  { feature: 'Google Maps', test: /google\.maps|maps\.googleapis\.com/ },
-  { feature: 'Lucide icons', test: /lucide/ },
-]
+import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'
 
-function attribute(body) {
-  const found = []
-  for (const { feature, test } of FEATURE_MARKERS) {
-    if (test.test(body)) found.push(feature)
-  }
-  return found.length > 0 ? found : ['unattributed']
-}
+/*
+ * THE MARKER LIST IS NOT HERE. It is scripts/perf/lib/chunk-attribution.mjs,
+ * imported above, and scripts/guards/the-cost-table-can-name-what-it-measures.mjs
+ * fails the build if this file ever declares one of its own again.
+ */
+
 
 function parseArgs(argv) {
   const args = { base: '', routes: null, lhr: null, settleMs: 8000 }
@@ -163,6 +153,15 @@ async function main() {
   const bootup = bootupByUrl(args.lhr)
 
   const { chromium, devices } = await import('playwright')
+  /*
+   * The manifests describe the tree on THIS disk, so they are only meaningful
+   * when `base` is serving that tree. Against a deployed preview the map is
+   * empty and every row falls back to the markers, which the closing lines say
+   * out loud rather than leaving the reader to infer from a thinner table.
+   */
+  const manifestChunks = readClientModuleChunks(join(process.cwd(), '.next'))
+  const bodiesSeen = []
+
   const browser = await chromium.launch()
   let totalRoutes = 0
 
@@ -201,11 +200,15 @@ async function main() {
           // table must say why rather than look like an ordinary miss.
           unreadable.push(`body unreadable: ${error.message}`)
         }
+        const file = url.split('/').pop().split('?')[0]
+        const named = nameChunk({ file, body, modules: manifestChunks.get(file) })
+        bodiesSeen.push(body)
         requested.set(url, {
           url,
           transferred,
           raw: body.length,
-          features: unreadable.length > 0 ? unreadable : attribute(body),
+          how: unreadable.length > 0 ? 'none' : named.how,
+          features: unreadable.length > 0 ? unreadable : [named.label],
         })
       })
 
@@ -242,8 +245,8 @@ async function main() {
           `${kb(deferred.reduce((s, r) => s + r.transferred, 0))} KB by dynamic import`,
       )
       console.log('')
-      console.log('| chunk | transferred | on disk | evaluation | in document | serves |')
-      console.log('|---|---|---|---|---|---|')
+      console.log('| chunk | transferred | on disk | evaluation | in document | serves | named by |')
+      console.log('|---|---|---|---|---|---|---|')
       for (const row of rows) {
         const path = row.url.replace(base, '')
         const evaluation = bootup.get(path)
@@ -251,7 +254,7 @@ async function main() {
           `| ${path.replace(/^\/_next\/static\/(immutable\/)?chunks\//, '')} ` +
             `| ${kb(row.transferred)} KB | ${kb(row.raw)} KB ` +
             `| ${evaluation == null ? '-' : `${Math.round(evaluation)} ms`} ` +
-            `| ${inDocument.has(row.url) ? 'yes' : 'no'} | ${row.features.join(', ')} |`,
+            `| ${inDocument.has(row.url) ? 'yes' : 'no'} | ${row.features.join(', ')} | ${row.how} |`,
         )
       }
       await context.close()
@@ -263,6 +266,28 @@ async function main() {
 
   console.log('')
   console.log(`[chunk-cost] did ${totalRoutes} route(s) driven against ${base}`)
+  if (manifestChunks.size === 0) {
+    console.log(
+      '[chunk-cost] NO BUILD ON DISK: every `serves` above came from the reviewed markers alone, which can only ' +
+        'name a dependency. Drive a locally served build for the manifest answer.',
+    )
+  } else {
+    console.log(`[chunk-cost] ${manifestChunks.size} chunk(s) in this build are named by Next's own client-reference manifests.`)
+  }
+  /*
+   * The shared module splits an unmatched marker into DEAD (it claims to be
+   * always present and is not, which is the table going blind) and ABSENT (it
+   * can legitimately not be built here, with the reason). Both are printed;
+   * neither fails, because scripts/guards/initial-bundle-budget.mjs already
+   * fails the build on the first and this file is a reporter.
+   */
+  const coverage = markerCoverage(bodiesSeen)
+  if (coverage.dead.length > 0) {
+    console.log(`[chunk-cost] DEAD marker(s), claiming to be always present and matching nothing: ${coverage.dead.join(', ')}.`)
+  }
+  if (coverage.absent.length > 0) {
+    console.log(`[chunk-cost] absent on these routes, declared conditional: ${coverage.absent.join('; ')}.`)
+  }
   console.log('[chunk-cost] this is a report, not a gate: it sets no threshold and fails no build.')
 }
 
