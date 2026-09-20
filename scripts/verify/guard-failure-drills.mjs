@@ -6260,7 +6260,7 @@ const DRILLS = [
    * write it that way" is not a defence: somebody already had.
    */
   /*
-   * the-money-screens-read-every-row (lane B, 20 September 2026), six drills.
+   * the-founder-screens-read-every-row (lane B, 20 September 2026), nine drills, plus six more below for the demand signal.
    *
    * The screen the founder reads the business off summed two unbounded selects
    * with no order and a discarded error. TEST held 801 AUD orders against a
@@ -6269,7 +6269,7 @@ const DRILLS = [
    */
   {
     name: 'the GMV orders read goes back to an unbounded select',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -6280,7 +6280,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read goes back to an unbounded select',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -6296,7 +6296,7 @@ const DRILLS = [
      * directions at once.
      */
     name: 'the GMV orders read pages without a stable order',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -6307,7 +6307,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read pages without a stable order',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -6323,7 +6323,7 @@ const DRILLS = [
      * acts on zero revenue and cannot tell it from a payments outage.
      */
     name: 'a GMV read goes back to discarding its error',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find: '    const { data: orgs, error: orgError } = await db',
     replace: '    const { data: orgs } = await db',
@@ -6337,7 +6337,7 @@ const DRILLS = [
      * being charged vanishes from the only screen that lists overrides.
      */
     name: 'the fee-override list goes back to an unbounded read of pricing_rules',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find:
       "      .order('version', { ascending: false })\n" +
@@ -6354,7 +6354,7 @@ const DRILLS = [
      * at all, and the second key is why the header says what it says.
      */
     name: 'the fee-override list pages pricing_rules with no order at all',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find:
       "      .order('version', { ascending: false })\n" +
@@ -6372,7 +6372,7 @@ const DRILLS = [
      * no fee configured.
      */
     name: 'the current-fee read goes back to discarding its error',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find: '  const { data, error } = await admin',
     replace: '  const { data } = await admin',
@@ -6383,15 +6383,221 @@ const DRILLS = [
      * A GUARD THAT CANNOT FIND ITS SUBJECT MUST NOT REPORT PASS. Move the money
      * dashboard and this has to say so rather than scanning nothing quietly.
      */
-    name: 'a money screen moves and the guard is left judging nothing for it',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
-    file: 'scripts/guards/the-money-screens-read-every-row.mjs',
-    find: "const SCREENS = ['src/lib/admin/analytics.ts', 'src/lib/admin/pricing.ts']",
-    replace: "const SCREENS = ['src/lib/admin/analytics-moved-away.ts', 'src/lib/admin/pricing.ts']",
+    name: 'a founder screen moves and the guard is left judging nothing for it',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'scripts/guards/the-founder-screens-read-every-row.mjs',
+    find: "  'src/lib/admin/analytics.ts',\n",
+    replace: "  'src/lib/admin/analytics-moved-away.ts',\n",
     expect: 'does not exist',
   },
   /*
-   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.
+   * The demand signal joined the guard on 20 September 2026, six more drills.
+   *
+   * /admin/network is where the founder decides which city has tipped and who
+   * to invite next. Its per-city read was unbounded AND unordered, five of its
+   * figures were `count ?? 0`, and the read that subtracts the already-invited
+   * is the one that fails towards doing too much rather than too little.
+   */
+  {
+    name: 'the per-city waitlist demand goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '  )\n',
+    expect: 'reads city_waitlist_signups with no bound',
+  },
+  {
+    name: 'the per-city waitlist demand pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '      .range(from, to),\n  )\n',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * CLAUSE 5, THE ONE THE FIRST FIX WOULD HAVE WALKED PAST. Name the result
+     * rather than destructuring it, coalesce the count, and every figure on the
+     * screen is a lie again while clause 4 sees nothing to judge.
+     */
+    name: 'a Launch Kit figure goes back to rendering a failed count as zero',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find: "      eventsPublished: countOrRaise('events published', publishedRes),",
+    replace: '      eventsPublished: publishedRes.count ?? 0,',
+    expect: 'coalesces the count',
+  },
+  {
+    /*
+     * THE SUPPRESSION LIST. Truncated or failed, this read puts organisers who
+     * have already had their founding invitation back on the list to be emailed
+     * a second one.
+     */
+    name: 'the already-invited list goes back to an unbounded read of founding_invites',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find:
+      "        .eq('inviter_kind', 'founder')\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('inviter_kind', 'founder'),",
+    expect: 'reads founding_invites with no bound',
+  },
+  {
+    /*
+     * The bound moved back off the builder and onto the await, which is the
+     * same query and an invisible bound: the chain walker cannot follow a
+     * variable across statements and neither can a reader.
+     */
+    name: 'the founding terms list is bounded somewhere the reader cannot see',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '    .limit(FOUNDING_TERMS_SHOWN)\n',
+    replace: '\n',
+    expect: 'reads organisations with no bound',
+  },
+  {
+    name: 'the founding terms read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '  const { data: termRows, error: termError } = await termQuery',
+    replace: '  const { data: termRows } = await termQuery',
+    expect: 'destructures `data` and not `error`',
+  },
+  /*
+   * The organiser screens joined the guard on 20 September 2026, five drills.
+   *
+   * `countEventsAndVolume` exists because a stored counter drifted, and its own
+   * header promises the figure "cannot be wrong" now that the rows are counted.
+   * Both counting reads were unbounded, so the drift returns by another route.
+   */
+  {
+    name: 'the organiser event count goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the organiser event count pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds)\n        .range(from, to),",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    name: 'the organiser lifetime volume goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "          .eq('status', 'confirmed')\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .eq('status', 'confirmed'),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    /*
+     * A failed read returned null, and the route above renders null as "not
+     * found": the screen told the founder a live organisation did not exist.
+     */
+    name: 'the organiser detail read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '  const { data: org, error: orgError } = await admin',
+    replace: '  const { data: org } = await admin',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * CLAUSE 5 AGAIN, and this one fired on the fix itself while it was being
+     * written: `(cascade.count ?? 0) > 0` files "nothing needed pausing" and
+     * "the count did not come back" under the same audit entry.
+     */
+    name: 'the suspend cascade goes back to coalescing the count it audits',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '    } else if (cascade.count === null) {',
+    replace: '    } else if ((cascade.count ?? 0) < 0) {',
+    expect: 'coalesces the count',
+  },
+  /*
+   * the-audit-log-says-when-it-could-not-write (lane B, 20 September 2026),
+   * five drills.
+   *
+   * Both writers inserted with no destructure, and a PostgREST client reports a
+   * refused write in `error` rather than throwing, so the try/catch could not
+   * see the failure it was written for. The catch then logged only outside
+   * production. Every drill below is one of the two defects, or the half of the
+   * contract that was right.
+   */
+  {
+    name: 'the audit insert goes back to ignoring whether the row was written',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    expect: 'without binding `error`',
+  },
+  {
+    name: 'the anonymous audit insert goes back to ignoring it too',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    expect: 'without binding `error`',
+  },
+  {
+    /*
+     * THE ONE THAT MADE IT SILENT WHERE IT MATTERS. Reporting only outside
+     * production is how this module went quiet in the environment where a
+     * missing entry is evidence of nothing having happened.
+     */
+    name: 'the audit failure path is gated on the environment again',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: "  console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    replace:
+      "  if (process.env.NODE_ENV !== 'production') console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    expect: 'gates something on NODE_ENV',
+  },
+  {
+    name: 'a writer stops reaching the error reporter',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))\n    return { recorded: true }\n  } catch (err) {\n    return auditCouldNotBeWritten(action, err)\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    replace: '    if (error) return { recorded: false }\n    return { recorded: true }\n  } catch (err) {\n    void err\n    return { recorded: false }\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    expect: 'never reaches captureException',
+  },
+  {
+    /*
+     * THE HALF OF THE ORIGINAL CONTRACT THAT WAS RIGHT, and the easiest thing
+     * to lose while fixing the rest: an audit failure must not fail the action
+     * that was already taken.
+     */
+    name: 'the audit writer starts throwing, and fails the action it was only supposed to record',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))',
+    replace: '    if (error) throw new Error(error.message)',
+    expect: 'contains a `throw`',
+  },
+  /*
+   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), eleven drills.
    *
    * The guard exists because two guards already stood over this engine and both
    * were satisfied while the abandoned-checkout sender mailed people who had
@@ -6415,6 +6621,62 @@ const DRILLS = [
       "      .select('contact_email')\n" +
       "      .eq('source_system', SOURCE),",
     expect: 'reads recovery_suppressions with no bound',
+  },
+  /*
+   * Clause 1 widened from one table to the three the engine owns on
+   * 20 September 2026, four more drills. The send log is the one nearest the
+   * cliff: 452 rows on the busiest slot on TEST against a ceiling of 1,000, and
+   * short it writes to somebody a second time.
+   */
+  {
+    name: 'the already-sent set goes back to an unbounded read, and somebody is written to twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "        .select('contact_email, message_number')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, message_number')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the holds on a slot go back to an unbounded read, and a held seat is offered twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of what it sent',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "        .select('contact_email, sent_at')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, sent_at')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of the holds it reports',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "          .select('claimed_at, released_at, expires_at')\n" +
+      "          .eq('slot_id', slotId)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .select('claimed_at, released_at, expires_at')\n          .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
   },
   {
     /*

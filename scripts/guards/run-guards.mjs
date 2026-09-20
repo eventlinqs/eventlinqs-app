@@ -619,13 +619,21 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
- *   the-money-screens-read-every-row  the admin GMV dashboard and the fee-override
- *                             screen read every row, in a stable order, and fail
- *                             loudly rather than rendering a silent zero or
- *                             hiding a live fee override
+ *   the-founder-screens-read-every-row  the admin GMV dashboard, the fee-override
+ *                             screen and the demand signal read every row, in a
+ *                             stable order, and fail loudly rather than
+ *                             rendering a silent zero, hiding a live fee
+ *                             override, or putting an already-invited founding
+ *                             organiser back on the list to be emailed again
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
+ *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
+ *                             error a PostgREST client REPORTS rather than
+ *                             throws, report every failure in every environment
+ *                             including production, and still never throw, so an
+ *                             entry nobody can find cannot be mistaken for an
+ *                             action nobody took
  *   recovery-only-writes-to-people-who-asked  every recovery message names the
  *                             recorded engagement that authorised it, the six
  *                             refusals still exist, and no message goes without a
@@ -2233,10 +2241,36 @@ const GUARDS = [
   // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
   'scripts/guards/the-recovery-stop-list-is-whole.mjs',
 
+  // Lane B, 20 September 2026, found while adding two audit actions to the
+  // organiser suspend cascade and reading what happens when one fails.
+  //
+  // the-audit-log-says-when-it-could-not-write: BOTH writers in
+  // src/lib/admin/audit.ts inserted with no destructure at all, and a PostgREST
+  // client REPORTS a refused write in `error` rather than throwing, so the
+  // try/catch around them could not see the failure it was written for: it only
+  // ever guarded headers(). And the catch logged only when NODE_ENV is not
+  // production, so the one environment where an audit trail is evidence is the
+  // one where its absence left no trace.
+  //
+  // This platform suspends organisers, moves fee-free windows and holds payouts
+  // through those two functions. An entry nobody can find afterwards cannot be
+  // told apart from an action nobody took.
+  //
+  // Clause 4 holds the half of the original contract that was RIGHT: neither
+  // writer may throw, because failing the caller would leave the platform in a
+  // state its own error says did not happen.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-AUDITLOUD\drills.txt).
+  'scripts/guards/the-audit-log-says-when-it-could-not-write.mjs',
+
   // Lane B, 20 September 2026, found by the same scan that produced the guard
   // above and in the same failure family.
   //
-  // the-money-screens-read-every-row: TWO screens. getAnalyticsDashboard summed two UNBOUNDED
+  // the-founder-screens-read-every-row: FIVE screens, renamed from
+  // the-money-screens-read-every-row on 20 September 2026 when the demand
+  // signal joined it and the name stopped describing the rule.
+  //
+  // getAnalyticsDashboard summed two UNBOUNDED
   // selects over orders and refunds, with no .order() and with `error`
   // discarded. Supabase stops at 1,000 rows in silence, so past the ceiling the
   // founder's GMV would have been the total of an ARBITRARY thousand rows, and
@@ -2253,8 +2287,20 @@ const GUARDS = [
   // so a live per-event fee override that IS being charged vanishes from the only
   // screen that lists what overrides the default.
   //
-  // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt).
-  'scripts/guards/the-money-screens-read-every-row.mjs',
+  // The demand signal joined it on 20 September 2026: /admin/network and the
+  // two modules behind it. The per-city waitlist read was unbounded AND
+  // unordered, so past the ceiling each city's demand would have been an
+  // arbitrary subset that moved between page loads, on the screen whose whole
+  // purpose is to say which city has tipped. Five figures were `count ?? 0`, so
+  // an unreachable database rendered as "0 events published, 45 of 50 founding
+  // spots free". And the bridge's `founding_invites` read is a SUPPRESSION
+  // list: failed or truncated, it puts organisers who were already invited back
+  // on the list, and a founding invitation is a fee-free window and a personal
+  // email. That read is the reason clause 5 exists.
+  //
+  // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt),
+  // and six more for the demand signal (C:\dev\EVIDENCE\LB-DEMANDSIGNAL\drills.txt).
+  'scripts/guards/the-founder-screens-read-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

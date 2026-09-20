@@ -106,6 +106,17 @@ const NOT_YET_CONVERTED = [
   { path: 'scripts/verify/ux5-enrol-2fa-proof.mjs', lane: 'C', why: '2FA enrolment' },
   { path: 'scripts/verify/auth-journey-e2e.mjs', lane: 'shared', why: 'the generic auth journey, owned by no single item' },
   { path: 'scripts/verify-event-media-cleanup.ts', lane: 'shared', why: 'a media cleanup utility, owned by no single item' },
+  /*
+   * ADDED BY LANE B ON 20 SEPTEMBER 2026, AT A MERGE, AND NOT BY LANE B'S
+   * CHOICE. Both arrived on the verify line while this guard was on lane B's,
+   * so the two together are red and neither lane's own tree was. They are lane
+   * C's files and lane B does not edit another lane's drives, which is exactly
+   * the case this register was built for: name the owner rather than convert
+   * it silently or switch the guard off. Raised as a BORDER line in
+   * REVIEW-QUEUE-B.md the same day.
+   */
+  { path: 'scripts/verify/admin-search-comma-drive.mjs', lane: 'C', why: 'the admin search fix, lane C, merged 20 September 2026' },
+  { path: 'scripts/verify/mobile-viewport-width-drive.mjs', lane: 'C', why: 'the mobile viewport sweep, lane C, merged 20 September 2026' },
 ]
 
 /**

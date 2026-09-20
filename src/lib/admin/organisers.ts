@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { retrieveAccount } from '@/lib/stripe/connect'
@@ -91,27 +92,59 @@ async function countEventsAndVolume(
   for (const id of orgIds) out.set(id, { events: 0, volumeCents: 0 })
   if (orgIds.length === 0) return out
 
-  const [{ data: events, error: eventError }, { data: orders, error: orderError }] = await Promise.all([
-    admin.from('events').select('organisation_id').in('organisation_id', orgIds),
-    admin
-      .from('orders')
-      .select('organisation_id, total_cents')
-      .in('organisation_id', orgIds)
-      .eq('status', 'confirmed'),
+  /*
+   * AND THE COUNT IS OF EVERY ROW, WHICH IS THE WHOLE POINT OF COUNTING THEM.
+   *
+   * The header above says the fix for a drifting counter was to stop keeping a
+   * second copy and to COUNT THE ROWS, "so the figure cannot be wrong". Both
+   * reads were unbounded, and an unbounded read cannot count rows: Supabase
+   * caps one response at a fixed number, 1,000 by default
+   * (https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19). Measured against this project on 20 September 2026:
+   *
+   *     Prefer: count=exact    HTTP 206   Content-Range: 0-999/14381
+   *     no count requested     HTTP 200   Content-Range: 0-999/*
+   *
+   * An ordinary read is the second line: the server withholds the total and
+   * answers 200 with no error, so nothing in the response says rows were left
+   * out. The page size is 25 organisations, which bounds the QUESTION and not
+   * the ANSWER: twenty-five organisers with forty confirmed orders each is a
+   * thousand rows, and past that the lifetime volume beside a real organiser
+   * simply stops growing. That is the drift this function was written to end,
+   * arriving by a different route.
+   *
+   * Paged, ordered by id so the windows are a partition rather than a lottery,
+   * and still loud on failure: `readEveryRow` throws rather than returning what
+   * it managed to collect.
+   */
+  const [events, orders] = await Promise.all([
+    readEveryRow<{ organisation_id: string }>('the admin organiser event counts', (from, to) =>
+      admin
+        .from('events')
+        .select('organisation_id')
+        .in('organisation_id', orgIds)
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    readEveryRow<{ organisation_id: string; total_cents: number }>(
+      'the admin organiser lifetime volume',
+      (from, to) =>
+        admin
+          .from('orders')
+          .select('organisation_id, total_cents')
+          .in('organisation_id', orgIds)
+          .eq('status', 'confirmed')
+          .order('id', { ascending: true })
+          .range(from, to),
+    ),
   ])
 
-  // A read failure must be LOUD. Returning zeroes silently would print "0
-  // events, $0 lifetime" beside a real organiser, which is a worse lie than the
-  // stale counter this replaces.
-  if (eventError) throw eventError
-  if (orderError) throw orderError
-
-  for (const e of events ?? []) {
-    const bucket = out.get(e.organisation_id as string)
+  for (const e of events) {
+    const bucket = out.get(e.organisation_id)
     if (bucket) bucket.events += 1
   }
-  for (const o of orders ?? []) {
-    const bucket = out.get(o.organisation_id as string)
+  for (const o of orders) {
+    const bucket = out.get(o.organisation_id)
     if (bucket) bucket.volumeCents += Number(o.total_cents ?? 0)
   }
   return out
@@ -266,18 +299,68 @@ export async function applyOrganiserAction(
   // events off sale (published or scheduled -> paused) and audit the count.
   // Best-effort: the suspension itself has already succeeded and is recorded.
   if (input.action === 'suspend') {
-    const { data: paused, error: cascadeErr } = await admin
+    /*
+     * THE NUMBER IS ASKED FOR, NOT INFERRED FROM THE ROWS THAT CAME BACK.
+     *
+     * This counted `paused.length`, the RETURNED representation of the update,
+     * which is a different question from how many rows were updated. Whether
+     * PostgREST's row ceiling caps that representation is UNSOURCED: its own
+     * configuration page describes db-max-rows only as "a hard limit to the
+     * number of rows PostgREST will fetch from a view, table, or function"
+     * (https://docs.postgrest.org/en/v12/references/configuration.html, fetched
+     * 2026-09-20) and says nothing about a non-GET verb.
+     *
+     * So the dependency is removed rather than the question answered. The
+     * installed postgrest-js 2.101.1 documents `update(values, { count })` as
+     * the "count algorithm to use to count UPDATED rows", with `exact`
+     * performing a COUNT(*), and separately that updated rows are not returned
+     * at all unless `.select()` is chained. Asking for the count and not the
+     * rows is therefore both correct and cheaper, and it cannot be truncated.
+     *
+     * AND A CASCADE THAT FAILED NOW SAYS SO. The old `if (!cascadeErr && ...)`
+     * wrote an audit entry on success and nothing at all on failure, so a
+     * suspended organiser whose events stayed ON SALE left no record anywhere.
+     * The suspension itself has already succeeded and is audited, so this stays
+     * best-effort and does not throw; it is the SILENCE that is fixed.
+     */
+    const cascade = await admin
       .from('events')
-      .update({ status: 'paused', updated_at: new Date().toISOString() })
+      .update({ status: 'paused', updated_at: new Date().toISOString() }, { count: 'exact' })
       .eq('organisation_id', input.organisationId)
       .in('status', ['published', 'scheduled'])
-      .select('id')
-    if (!cascadeErr && paused && paused.length > 0) {
+
+    /*
+     * THREE OUTCOMES, THREE RECORDS, because they are three different facts and
+     * the audit log is where somebody looks to find out what happened. The
+     * count is NOT coalesced: `count ?? 0` would file "nothing needed pausing"
+     * and "the count was not returned" under the same entry, and the guard over
+     * this file refuses it for exactly that reason. This cascade stays
+     * best-effort and never throws, because the suspension itself has already
+     * succeeded and is already audited.
+     */
+    if (cascade.error) {
+      console.error('[admin/organisers] suspend cascade failed for %s:', input.organisationId, cascade.error)
+      await recordAuditEvent({
+        action: 'admin.organiser.events_unpublish_failed',
+        targetType: 'organisation',
+        targetId: input.organisationId,
+        metadata: { name: current.name, error: cascade.error.message, reason: 'organiser suspended' },
+        session,
+      })
+    } else if (cascade.count === null) {
+      await recordAuditEvent({
+        action: 'admin.organiser.events_unpublish_count_unknown',
+        targetType: 'organisation',
+        targetId: input.organisationId,
+        metadata: { name: current.name, reason: 'organiser suspended' },
+        session,
+      })
+    } else if (cascade.count > 0) {
       await recordAuditEvent({
         action: 'admin.organiser.events_unpublished',
         targetType: 'organisation',
         targetId: input.organisationId,
-        metadata: { name: current.name, count: paused.length, reason: 'organiser suspended' },
+        metadata: { name: current.name, count: cascade.count, reason: 'organiser suspended' },
         session,
       })
     }
@@ -399,11 +482,19 @@ export interface AdminOrganiserDetail {
 
 export async function getOrganiserDetail(orgId: string): Promise<AdminOrganiserDetail | null> {
   const admin = createAdminClient()
-  const { data: org } = await admin
+  // A READ THAT FAILED IS NOT AN ORGANISER WHO IS NOT THERE. This dropped
+  // `error`, so a database that could not be reached returned null, and the
+  // route above it renders that as "not found": the admin screen told the
+  // founder that a live organisation, one he had just clicked through to, does
+  // not exist. Null now means only what it says.
+  const { data: org, error: orgError } = await admin
     .from('organisations')
     .select('id, name, slug, status, email, payout_status, stripe_account_id, created_at')
     .eq('id', orgId)
     .maybeSingle()
+  if (orgError) {
+    throw new Error(`the organiser ${orgId} could not be read: ${orgError.message}`)
+  }
   if (!org) return null
 
   // Live Stripe verification. Read-only; never let a Stripe error break the page.

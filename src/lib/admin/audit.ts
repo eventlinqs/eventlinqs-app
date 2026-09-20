@@ -1,13 +1,39 @@
 import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureException } from '@/lib/observability/sentry'
 import type { AdminSession, AuditLogRow } from './types'
 
 /**
  * Append-only audit log writer.
  *
- * Every admin action records an entry. Failures here MUST NOT throw to
- * the caller - audit failures are logged separately. Session 2 owns the
- * Sentry hook that this module's failure path will eventually call.
+ * Every admin action records an entry. Failures here MUST NOT throw to the
+ * caller: an audit write that fails is not a reason to fail the action that was
+ * already taken.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THAT PROMISE USED TO MEAN, until 20 September 2026: nothing, quietly.
+ *
+ * ONE. THE TRY/CATCH COULD NOT SEE THE FAILURE IT WAS WRITTEN FOR. The insert
+ * was `await createAdminClient().from('audit_log').insert({...})` with no
+ * destructure at all. A PostgREST client REPORTS a refused write in `error` and
+ * does not throw, so a refusal, an RLS denial, a constraint, a bad column, came
+ * back as a resolved promise and fell straight through the `try`. The catch
+ * only ever guarded `headers()`.
+ *
+ * TWO. IN PRODUCTION IT SAID NOTHING AT ALL. The catch logged only when
+ * `NODE_ENV !== 'production'`, so the one environment where an audit trail is
+ * evidence is the one where its absence left no trace. The comment said the
+ * Sentry hook "lands in Session 2 hardening"; Session 2 was months ago.
+ *
+ * Together those two mean the audit log could silently not exist. On a platform
+ * that suspends organisers, moves fee-free windows and holds payouts, the
+ * entry nobody can find afterwards is indistinguishable from the action nobody
+ * took.
+ *
+ * Both writers now bind the insert's `error`, report every failure through the
+ * error reporter in EVERY environment, and return whether the entry was
+ * recorded so a caller that cares can ask. Neither throws, which is the part of
+ * the original contract that was right.
  *
  * Reserved action namespaces (Phase A1):
  *   admin.session.login.success
@@ -20,6 +46,16 @@ import type { AdminSession, AuditLogRow } from './types'
  *   admin.invite.revoked
  *   admin.audit.viewed
  */
+
+/**
+ * Whether the entry reached the table. Callers are free to ignore it, and most
+ * do, because an audit failure never fails the action. It exists so that a
+ * caller who WANTS to know can ask, instead of the answer being unavailable to
+ * everybody.
+ */
+export interface AuditWriteResult {
+  recorded: boolean
+}
 
 export interface AuditWriteInput {
   action: string
@@ -37,14 +73,33 @@ export interface AuditAnonInput {
   userAgent?: string
 }
 
-export async function recordAuditEvent(input: AuditWriteInput): Promise<void> {
+/**
+ * THE ONE PLACE AN AUDIT FAILURE IS REPORTED, so the two writers cannot drift
+ * into reporting it differently, and so a future third writer has somewhere
+ * obvious to call.
+ *
+ * It reports in EVERY environment, deliberately. A missing audit entry matters
+ * most in production and that is exactly where the old code was silent.
+ */
+function auditCouldNotBeWritten(action: string, cause: unknown): { recorded: false } {
+  const reason = cause instanceof Error ? cause.message : String(cause)
+  console.error('[audit] the entry for %s was NOT written: %s', action, reason)
+  captureException(cause instanceof Error ? cause : new Error(`audit write failed for ${action}: ${reason}`), {
+    scope: 'admin-audit',
+    handler: 'record',
+    action,
+  })
+  return { recorded: false }
+}
+
+export async function recordAuditEvent(input: AuditWriteInput): Promise<AuditWriteResult> {
   const { action, targetType, targetId, metadata = {}, session } = input
   try {
     const headerList = await headers()
     const ip = clientIpFromHeaders(headerList)
     const userAgent = headerList.get('user-agent')
 
-    await createAdminClient()
+    const { error } = await createAdminClient()
       .from('audit_log')
       .insert({
         actor_id: session.userId,
@@ -57,21 +112,20 @@ export async function recordAuditEvent(input: AuditWriteInput): Promise<void> {
         ip,
         user_agent: userAgent,
       })
+    if (error) return auditCouldNotBeWritten(action, new Error(error.message))
+    return { recorded: true }
   } catch (err) {
-    // Sentry hook lands in Session 2 hardening. Until then, swallow.
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[audit] failed to record event', action, err)
-    }
+    return auditCouldNotBeWritten(action, err)
   }
 }
 
-export async function recordAnonAuditEvent(input: AuditAnonInput): Promise<void> {
+export async function recordAnonAuditEvent(input: AuditAnonInput): Promise<AuditWriteResult> {
   const { action, metadata = {}, actorEmail, ip, userAgent } = input
   try {
     const headerList = await headers()
     const resolvedIp = ip ?? clientIpFromHeaders(headerList)
     const resolvedUa = userAgent ?? headerList.get('user-agent')
-    await createAdminClient()
+    const { error } = await createAdminClient()
       .from('audit_log')
       .insert({
         actor_id: null,
@@ -84,10 +138,10 @@ export async function recordAnonAuditEvent(input: AuditAnonInput): Promise<void>
         ip: resolvedIp,
         user_agent: resolvedUa,
       })
+    if (error) return auditCouldNotBeWritten(action, new Error(error.message))
+    return { recorded: true }
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[audit] failed to record anon event', action, err)
-    }
+    return auditCouldNotBeWritten(action, err)
   }
 }
 
