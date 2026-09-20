@@ -4014,6 +4014,61 @@ const DRILLS = [
     expect: 'which is not a byte count',
   },
   /*
+   * Clause 6, the attributedMoves register. Five drills rather than one,
+   * because a single planted fault cannot tell a guard that checks six things
+   * from a guard that checks one and returns early, which is how three blind
+   * gates were found in this tree in four days.
+   *
+   * Every anchor below is a SINGLE line on purpose. perf-budget.json is
+   * written with LF and checked out with CRLF on this host, and a multi-line
+   * anchor is one normalisation away from silently matching nothing.
+   *
+   * The last drill is the one with teeth. It moves the MARK rather than the
+   * explanation, which is the real way this rots: the number moves again, the
+   * attribution beside it does not, and a superseded explanation reads exactly
+   * like a current one.
+   */
+  {
+    name: 'the register that explains why a mark went up is dropped',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"attributedMoves": {',
+    replace: '"attributedMovesGone": {',
+    expect: 'rather than an object',
+  },
+  {
+    name: 'an attributed move loses the cause it attributes to',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"cause": "Commit 97c88c27,',
+    replace: '"causeGone": "Commit 97c88c27,',
+    expect: 'has no `cause`',
+  },
+  {
+    name: 'an attributed move loses the method that established it',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"method": "esbuild bundle of the route client graph',
+    replace: '"methodGone": "esbuild bundle of the route client graph',
+    expect: 'has no `method`',
+  },
+  {
+    name: "an attributed move's arithmetic stops closing",
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"delta": 312,',
+    replace: '"delta": 311,',
+    expect: 'The arithmetic must close',
+  },
+  {
+    name: 'the mark moves again and leaves its explanation behind',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"/waitlist": 175939,',
+    replace: '"/waitlist": 176939,',
+    expect: 'past the 64-byte jitter allowance',
+  },
+  /*
    * API1, eleven drills, one per check in api-v1-organiser-scope.
    *
    * Every one of these is a way the public API could quietly start serving one
