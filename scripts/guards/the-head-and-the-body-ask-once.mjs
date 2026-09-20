@@ -82,6 +82,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { resolveSpec, norm } from './lib/import-graph.mjs'
+import { topLevelBody as bodyAfter } from '../lib/js-source.mjs'
 
 const TAG = '[the-head-and-the-body-ask-once]'
 const APP = join('src', 'app')
@@ -193,53 +194,6 @@ function walk(dir, out = []) {
     else out.push(norm(full))
   }
   return out
-}
-
-/**
- * The body of a declaration.
- *
- * THE FIRST VERSION OF THIS BRACE-MATCHED FROM THE FIRST `{` AFTER THE
- * DECLARATION AND WAS BLIND, WHICH IS WORSE THAN ABSENT. Every subject here is
- * declared `function generateMetadata({ params }: Props)`, so the first `{` is
- * the DESTRUCTURED PARAMETER, it closes two tokens later, and the "body" was
- * the string `{ params }`. The guard reported 20 routes judged and 0 faults, on
- * a tree where four of them were provably buying the same rows twice, and it
- * said PASS in a full sentence. It was caught by asking it to name what it had
- * found rather than by reading it.
- *
- * So the parameter list is skipped by matching its parentheses first, and the
- * body is the first `{` after the `)` that closes them. Braces inside strings
- * and comments are not excluded, which is acceptable: the only use is to
- * collect `await NAME(` occurrences, and a body that ends a few characters
- * early or late cannot invent one.
- */
-export function bodyAfter(source, declarationIndex) {
-  const paren = source.indexOf('(', declarationIndex)
-  if (paren === -1) return ''
-  let depth = 0
-  let afterParams = -1
-  for (let i = paren; i < source.length; i += 1) {
-    if (source[i] === '(') depth += 1
-    else if (source[i] === ')') {
-      depth -= 1
-      if (depth === 0) {
-        afterParams = i + 1
-        break
-      }
-    }
-  }
-  if (afterParams === -1) return ''
-  const open = source.indexOf('{', afterParams)
-  if (open === -1) return ''
-  depth = 0
-  for (let i = open; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1
-    else if (source[i] === '}') {
-      depth -= 1
-      if (depth === 0) return source.slice(open, i + 1)
-    }
-  }
-  return source.slice(open)
 }
 
 /** Every identifier awaited as a call inside a body. */

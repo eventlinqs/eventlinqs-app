@@ -192,3 +192,57 @@ export function tryTouchesTheWorld(tryBody) {
     /stripe\.|\bresend\b|sendMail|webpush|\bsharp\s*\(/.test(tryBody)
   )
 }
+
+/**
+ * THE BODY OF A TOP-LEVEL DECLARATION, from its start to the closing brace in
+ * the first column.
+ *
+ * ==========================================================================
+ * WHY NOT BRACE-MATCH FROM THE FIRST `{` AFTER THE PARAMETER LIST
+ * ==========================================================================
+ *
+ * Because a RETURN TYPE can contain one, and two guards were written on 21
+ * September 2026 that did exactly that and went blind in two different ways.
+ *
+ *   `function generateMetadata({ params }: Props)` - the first `{` is the
+ *   DESTRUCTURED PARAMETER, so the "body" was the string `{ params }`. The
+ *   guard reported 20 routes judged and 0 faults on a tree with four real
+ *   faults in it, and said PASS in a full sentence.
+ *
+ *   `async function refuseUnlessPublishable(...): Promise<{ refusal:
+ *   ActionResult | null; tiers: ... }>` - skipping the parameter list is not
+ *   enough, because the next `{` belongs to the RETURN TYPE. The body came back
+ *   as a type literal, so the helper that carries the refusal's door was not
+ *   recognised as carrying it, and the guard derived one action where there are
+ *   two.
+ *
+ * A closing brace in the FIRST COLUMN is the end of a top-level declaration in
+ * every file in this repository, because nested code is indented. It costs the
+ * signature being included in the returned text, which is stated here rather
+ * than hidden: a caller asking "does this body mention X" is also asking it of
+ * the parameter list and the return type. Every current caller wants that
+ * anyway, and one that does not should slice the signature off itself.
+ *
+ * @param {string} source the module text
+ * @param {number} at the index where the declaration starts, or -1
+ * @returns {string} the declaration text, or '' when there is none
+ */
+export function topLevelBody(source, at) {
+  if (at === undefined || at < 0) return ''
+  /*
+   * THE LINE ENDING IS NOT ASSUMED, AND THAT IS NOT A PRECAUTION.
+   *
+   * The first version of this searched for the literal newline-brace-newline
+   * with UNIX endings. Every file in this worktree is checked out CRLF, so it
+   * never matched, every body came back as THE WHOLE REST OF THE FILE, and the
+   * two guards using it went from 0 faults to 9 and from 2 door-carrying
+   * actions to 3. Both answers were wrong and both were confident. A guard that
+   * is wrong only in one checkout is the worst kind: the lane that writes it
+   * sees one answer and the lane that merges it sees another.
+   */
+  const rest = source.slice(at)
+  const end = rest.search(/\r?\n\}\r?\n/)
+  if (end === -1) return rest
+  const closing = rest.slice(end).match(/^\r?\n\}/)[0]
+  return rest.slice(0, end + closing.length)
+}

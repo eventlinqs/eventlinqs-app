@@ -596,6 +596,12 @@
  *                              fetch: ten duplicate database calls across four public
  *                              SEO route families in one warmed page view each
  *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   a-refusal-keeps-its-door  a caller of an action that can refuse with a
+ *                              nextAction must read it and must render role="alert". The gate
+ *                              works out where to send an organiser and three callers threw it
+ *                              away, so "Connect Stripe" was advice with no door. The type, the
+ *                              door's field name, the actions that can carry one and their
+ *                              callers are all derived (21 September 2026)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1870,6 +1876,20 @@ const GUARDS = [
   // one call, because that reader is behind unstable_cache. Drilled red and
   // green.
   'scripts/guards/the-head-and-the-body-ask-once.mjs',
+  // 21 September 2026. A refusal that names an action must offer it, and must
+  // be announced. checkPublishGate returns the door beside its sentence
+  // (nextAction: Connect Stripe -> /dashboard/payouts); the event form was
+  // found dropping it on 28 August and fixed, and TWO more callers had never
+  // inherited either half. Driven against the served build, the events list
+  // rendered that 172-character sentence as a <span> with no role inside the
+  // ACTIONS column of a table: 69px of a 356px list at 390, 19 per cent of the
+  // width and 256px tall, beside an event whose own title sat at x -58. The
+  // third caller was found by this guard rather than by reading: restoreEvent
+  // runs the publish gate when the restore target is `published`, so the same
+  // sentence reaches a person from Restore as well as from Publish. Everything
+  // is derived: the type, the door's field name, the actions that can carry
+  // one, and their callers. Drilled red and green.
+  'scripts/guards/a-refusal-keeps-its-door.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the

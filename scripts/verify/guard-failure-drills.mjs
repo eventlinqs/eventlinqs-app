@@ -6479,6 +6479,65 @@ const DRILLS = [
     expect: 'could not find where it is defined',
   },
 
+  /*
+   * a-refusal-keeps-its-door (21 September 2026), four drills.
+   *
+   * Every one of these is a state the tree was really in. The event form had
+   * the first on 28 August; the events list and the lifecycle actions both had
+   * it until this commit, and the third was found by the guard rather than by
+   * reading.
+   */
+  {
+    name: 'the events list throws away the door the publish gate worked out',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/events-table.tsx',
+    find:
+      '      {refusal.nextAction && (' + '\n' +
+      '        <Link' + '\n' +
+      '          href={refusal.nextAction.href}' + '\n' +
+      '          className="ml-2 font-semibold underline underline-offset-2"' + '\n' +
+      '        >' + '\n' +
+      '          {refusal.nextAction.label}' + '\n' +
+      '        </Link>' + '\n' +
+      '      )}',
+    replace: '      {null}',
+    expect: 'never reads `nextAction`',
+  },
+  {
+    name: 'the events list stops announcing its refusal',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/events-table.tsx',
+    find: '      role="alert"',
+    replace: '      data-refusal="true"',
+    expect: 'without role="alert"',
+  },
+  {
+    name: 'the restore path throws away the door, which is the copy nobody knew about',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/components/features/dashboard/event-lifecycle-actions.tsx',
+    find:
+      '          {refusal.nextAction && (' + '\n' +
+      '            <Link href={refusal.nextAction.href} className="ml-2 font-semibold underline underline-offset-2">' + '\n' +
+      '              {refusal.nextAction.label}' + '\n' +
+      '            </Link>' + '\n' +
+      '          )}',
+    replace: '          {null}',
+    expect: 'never reads `nextAction`',
+  },
+  {
+    /*
+     * THE ANTI-BLINDNESS DRILL. Take the door off the CONTRACT and the guard
+     * has nothing to look for; a version that shrugged would report PASS on a
+     * tree where every refusal had silently lost its link.
+     */
+    name: 'the ActionResult contract loses the door itself',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/actions.ts',
+    find: "export type ActionResult = { error?: string; nextAction?: { label: string; href: string } }",
+    replace: 'export type ActionResult = { error?: string }',
+    expect: 'no { label, href } member',
+  },
+
 
   /*
    * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.
