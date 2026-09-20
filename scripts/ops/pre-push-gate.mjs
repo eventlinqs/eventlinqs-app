@@ -87,7 +87,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { calibrationReport } from '../ci/lighthouse-calibration.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
-import { PARITY_SINK_PORT } from '../verify/sentry-parity-sink.mjs'
+import { PARITY_SINK_PORT, parityStandInAnswers } from '../verify/sentry-parity-sink.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -840,14 +840,42 @@ async function runLighthouse(env) {
     // page logs a failed telemetry request and best practices drops to 0.93 on
     // all thirteen URLs, which reads like a product regression and is not one.
     const sinkUp = await waitForServer(`http://127.0.0.1:${PARITY_SINK_PORT}`, sentrySink, 20_000)
+    /*
+     * "I COULD NOT BIND" IS NOT "THERE IS NO SINK" (20 September 2026).
+     *
+     * Three lanes share this laptop and one fixed port, so the ordinary case
+     * when our own sink cannot start is that a SIBLING LANE'S IDENTICAL SINK is
+     * already listening. A push that had passed 15 of 16 steps was refused here
+     * in 11 seconds with "the server exited with 1 before answering", and a
+     * probe sent to that port a moment later answered 200 with the sink's own
+     * body: the condition this check exists to establish was satisfied the
+     * whole time, and the build was refused for owning a socket rather than for
+     * anything about the build.
+     *
+     * So when ours does not start, ASK THE PORT. The probe is strict (status,
+     * CORS header and a 32-character event id, all three), so a foreign server
+     * holding the port still refuses, which is the case the original message
+     * was written for and which is preserved word for word below.
+     */
+    let borrowedSink = false
     if (sinkUp) {
-      console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
-      console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
-      console.error('[gate] this step measures a console error the deployed build does not have.')
-      console.error(tailOf(SERVER_LOG))
-      return 1
+      const standIn = await parityStandInAnswers(PARITY_SINK_PORT)
+      if (!standIn.ok) {
+        console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
+        console.error(`[gate] and nothing else on that port answers like one either: ${standIn.detail}`)
+        console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
+        console.error('[gate] this step measures a console error the deployed build does not have.')
+        console.error(tailOf(SERVER_LOG))
+        return 1
+      }
+      borrowedSink = true
+      console.log(`[gate] our own Sentry parity sink could not start (${sinkUp}), but one is ALREADY`)
+      console.log(`[gate] answering on 127.0.0.1:${PARITY_SINK_PORT} (${standIn.detail}), so parity holds and this step continues.`)
+      console.log('[gate] It belongs to another lane on this machine. If that lane finishes mid-audit the')
+      console.log('[gate] console error comes back and best practices drops; the check after the audit says so by name.')
+    } else {
+      console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
     }
-    console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
 
     const resolved = spawnSync(NODE, ['scripts/ci/resolve-gate-urls.mjs'], {
       cwd: ROOT,
@@ -890,6 +918,26 @@ async function runLighthouse(env) {
     if (asserted !== 0) {
       console.error('')
       console.error(calibrationReport(readCollectedReports()))
+      /*
+       * A THIRD POSSIBLE CAUSE, WHEN THE SINK WAS BORROWED. If another lane's
+       * gate finished during this audit its sink went with it, every page after
+       * that logged a failed telemetry request, and best practices fell from
+       * 1.00 to 0.93 on the remaining URLs. That is not the product and it is
+       * not this machine being slow either, so it gets its own sentence rather
+       * than being left to look like one of the other two.
+       *
+       * It is a DIAGNOSIS and it changes nothing: `asserted` is returned
+       * untouched, exactly as the calibration report is.
+       */
+      if (borrowedSink) {
+        const stillThere = await parityStandInAnswers(PARITY_SINK_PORT)
+        console.error('')
+        console.error(
+          stillThere.ok
+            ? `[gate] The borrowed Sentry parity sink on 127.0.0.1:${PARITY_SINK_PORT} is STILL answering (${stillThere.detail}),\n[gate] so it is not the cause of the failure above.`
+            : `[gate] THE BORROWED SENTRY PARITY SINK IS GONE: ${stillThere.detail}.\n[gate] It belonged to another lane and that lane finished during this audit. Every page\n[gate] measured after it went logged a failed telemetry request, which costs best\n[gate] practices 1.00 -> 0.93. Re-run this step on a machine that owns the port before\n[gate] reading the failure above as a regression:  npm run gate:push -- --only lighthouse`,
+        )
+      }
     }
     return asserted
   } finally {

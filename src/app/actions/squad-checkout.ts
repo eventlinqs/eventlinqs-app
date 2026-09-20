@@ -298,6 +298,11 @@ function chargePreconditionMessage(reason: ChargePreconditionError['reason']): s
       return 'Payments for this organiser are temporarily paused. Please try again later.'
     case 'org_country_unsupported':
       return 'Payments for this region are not yet supported.'
+    case 'destination_not_recorded':
+      // MONEY FIX A4. The buyer is told the truth, which is that this is ours:
+      // nothing about their card or their details is wrong, and retrying will
+      // not help until the platform can record where the money is owed.
+      return 'We could not set this order up correctly, so no payment was taken. This is a fault on our side. Please try again in a moment.'
     case 'fee_breakdown_invalid':
       return 'There was a pricing issue with this checkout. Please refresh and try again.'
     case 'event_externally_ticketed':

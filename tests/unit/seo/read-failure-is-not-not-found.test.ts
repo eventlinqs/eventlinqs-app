@@ -155,7 +155,16 @@ describe('the event route separates "not there" from "could not ask"', () => {
   it('the layout, which decides existence above the loading boundary, reads through the door', () => {
     usesTheDoor(layout, 1)
     expect(layout).not.toMatch(/const \{ data \} = await supabase/)
-    expect(layout).toContain('if (row) return children')
+    /*
+     * THE PROPERTY, NOT THE SPELLING. This read `if (row) return children` until
+     * 20 September 2026, when that branch became
+     * `if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)`:
+     * the layout now also starts the LCP image, because it is the only code on
+     * this route that renders above the loading boundary and can reach the open
+     * head. What this test is about is unchanged - a row that exists renders the
+     * page instead of 404ing - so it asks that.
+     */
+    expect(layout).toMatch(/if \(row\) return .*children/)
   })
 
   it('the layout says in the log when a slug genuinely has no public row, then still 404s', () => {

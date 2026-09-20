@@ -235,6 +235,52 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 
 ---
 
+## 10b. Text on a photograph - the two captions
+
+Nothing in this document used to say how words are made readable on top of a
+picture, and the platform paid for that twice inside two days.
+
+**The rule.** Any text painted over a photograph sits inside one of exactly two
+components, and neither a page nor a card may write a wash of its own:
+
+| Component | Use when | What it guarantees |
+|---|---|---|
+| `<HeroCaption>` | Words over a FULL-BLEED photograph: every hero band, the auth brand panel, a marketing story band | The wash begins `HERO_CAPTION_FADE` above the caption's own top edge and runs to the foot of the band, in ABSOLUTE LENGTHS, so every pixel from the first line downward carries at least `HERO_CAPTION_MIN_ALPHA` whatever the headline's length or the viewport |
+| `<TileCaption>` | A label over a TILE photograph: city tiles, community tiles, event bentos | The same guarantee at tile scale, with its own `TILE_CAPTION_FADE`, and it owns its own bottom anchoring so a caller cannot move the label off the wash computed for it |
+
+Both read one floor, declared once in `src/components/media/hero-photo-scrim.ts`
+and imported by `tile-photo-scrim.ts`. It is arithmetic rather than taste: at
+that alpha, gold-400 and translucent white both clear WCAG 2.2 SC 1.4.3 over the
+worst photograph a surface can carry, which is a white one.
+
+**Why a percentage can never work, which is the part worth keeping.** Every wash
+these replaced declared its stops as a percentage of the BAND or of the TILE,
+while the text is bottom-anchored and hugs its own content. The height the text
+starts at therefore moves with the copy and the viewport, and a gradient that
+cannot locate the words cannot make a promise about them. On
+/categories/technology the gold eyebrow measured 1.38:1 at 390 and 10.67:1 at
+1440 on the same photograph; on /cities the city name measured 1.00:1 on a white
+sky at 390 and passed at 1440. Same markup, same picture, three widths.
+
+**And a caption must FIT its tile.** Anchoring alone fixes the contrast and
+introduces the opposite defect: on /cities at 390 the tile is 173x108 and its
+caption measured 112px, so the wash covered the whole picture.
+`TILE_CAPTION_MAX_SHARE` caps the darkened band and
+`scripts/verify/tile-caption-fit-drive.mjs` measures it at 390, 768 and 1440. A
+caption over the cap means its secondary lines belong below the image, which is
+what the design system asks for first ("Image alone, all details below the
+image ... the single allowed on-photo overlay is a place name on a
+darkened-gradient band on city/venue tiles, one line of identity only").
+
+**Enforced by** `scripts/guards/hero-text-over-a-photograph.mjs` and
+`scripts/guards/tile-label-over-a-photograph.mjs`, both registered and blocking,
+each deriving its own subject set from the tree. The ratio against real
+photographs is measured by
+`scripts/verify/hero-text-over-photograph-drive.mjs`, which is what found both
+defects: the guards are the ratchet, the drive is the detector.
+
+---
+
 ## 11. Forbidden patterns (mirror of MEDIA-INCONSISTENCIES.md §Forbidden)
 
 1. ❌ `background-image: url(...)` for content imagery

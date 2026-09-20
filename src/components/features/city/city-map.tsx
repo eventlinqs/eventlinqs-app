@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
 import { createBrandPin } from '@/lib/maps/brand-pin'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 
 export interface MapEventPin {
   id: string
@@ -72,7 +73,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
     // No key: the render below already shows the static fallback for !configured,
     // so we do not setState here (avoids a synchronous set-state-in-effect).
     if (!configured) return
-    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
+    if (isAuditRun()) return
     const el = containerRef.current
     if (!el || typeof IntersectionObserver === 'undefined') {
       const t = setTimeout(() => setInView(true), 0)

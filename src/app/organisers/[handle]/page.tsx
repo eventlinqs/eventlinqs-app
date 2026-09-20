@@ -8,6 +8,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
@@ -491,17 +492,9 @@ export default async function OrganiserProfilePage({ params }: Props) {
                         }}
                       />
                     )}
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                      style={{
-                        background:
-                          'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                      }}
-                      aria-hidden
-                    />
-                    <div className="absolute inset-x-0 bottom-0 p-3">
+                    <TileCaption className="p-3">
                       <p className="font-display text-sm font-semibold text-white">{name}</p>
-                    </div>
+                    </TileCaption>
                   </div>
                 </Link>
               ))}

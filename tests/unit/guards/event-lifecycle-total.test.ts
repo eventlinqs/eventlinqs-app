@@ -27,7 +27,10 @@ function goodFacts() {
     // full page with a banner, the two surfaces that must consult the one door,
     // and the two constraints that keep that door narrow.
     afterTheFact: ['paused', 'postponed', 'cancelled', 'completed'],
-    afterTheFactCallers: AFTER_THE_FACT_CALLERS.map(({ file }) => ({ file, consults: true })),
+    // AFTER_THE_FACT_CALLERS is a list of paths since 20 September 2026: which
+    // CALL counts as consulting the door is derived from the door's own exports
+    // rather than typed per caller, so the two entries carry no regex any more.
+    afterTheFactCallers: AFTER_THE_FACT_CALLERS.map((file) => ({ file, consults: true })),
     afterTheFactDoorReads: 2,
     afterTheFactDoorConstrainsStatus: true,
     afterTheFactDoorConstrainsVisibility: true,

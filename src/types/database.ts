@@ -4062,6 +4062,8 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           currency: string
+          destination_account_id: string | null
+          destination_recorded_at: string | null
           discount_cents: number
           discount_code_id: string | null
           event_id: string
@@ -4074,10 +4076,13 @@ export type Database = {
           metadata: Json
           order_number: string
           organisation_id: string
+          organiser_amount_due_cents: number | null
           platform_fee_cents: number
+          platform_fee_retained_cents: number | null
           processing_fee_cents: number
           reservation_id: string | null
           status: Database["public"]["Enums"]["order_status"]
+          stripe_processing_estimate_cents: number | null
           subtotal_cents: number
           tax_cents: number
           total_cents: number
@@ -4090,6 +4095,8 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           currency?: string
+          destination_account_id?: string | null
+          destination_recorded_at?: string | null
           discount_cents?: number
           discount_code_id?: string | null
           event_id: string
@@ -4102,10 +4109,13 @@ export type Database = {
           metadata?: Json
           order_number: string
           organisation_id: string
+          organiser_amount_due_cents?: number | null
           platform_fee_cents?: number
+          platform_fee_retained_cents?: number | null
           processing_fee_cents?: number
           reservation_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_processing_estimate_cents?: number | null
           subtotal_cents?: number
           tax_cents?: number
           total_cents?: number
@@ -4118,6 +4128,8 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           currency?: string
+          destination_account_id?: string | null
+          destination_recorded_at?: string | null
           discount_cents?: number
           discount_code_id?: string | null
           event_id?: string
@@ -4130,10 +4142,13 @@ export type Database = {
           metadata?: Json
           order_number?: string
           organisation_id?: string
+          organiser_amount_due_cents?: number | null
           platform_fee_cents?: number
+          platform_fee_retained_cents?: number | null
           processing_fee_cents?: number
           reservation_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_processing_estimate_cents?: number | null
           subtotal_cents?: number
           tax_cents?: number
           total_cents?: number
@@ -4268,6 +4283,7 @@ export type Database = {
           stripe_onboarding_complete: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
+          stripe_status_verified_at: string | null
           total_event_count: number
           total_volume_cents: number
           updated_at: string
@@ -4310,6 +4326,7 @@ export type Database = {
           stripe_onboarding_complete?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_status_verified_at?: string | null
           total_event_count?: number
           total_volume_cents?: number
           updated_at?: string
@@ -4352,6 +4369,7 @@ export type Database = {
           stripe_onboarding_complete?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_status_verified_at?: string | null
           total_event_count?: number
           total_volume_cents?: number
           updated_at?: string

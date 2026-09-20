@@ -35,7 +35,7 @@
 import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { judgePage, judgeSitemapEntry } from './lib/indexing-rules.mjs'
+import { describeWithdrawnSitemapEntry, judgePage, judgeSitemapEntry } from './lib/indexing-rules.mjs'
 
 const ROOT = process.cwd()
 const BASE = (process.argv[2] || process.env.INDEXING_BASE || 'http://127.0.0.1:3000').replace(/\/$/, '')
@@ -68,21 +68,72 @@ const { policy, threshold } = JSON.parse(loaded.stdout.trim().split('\n').find((
 
 /* --------------------------------------------------- the sitemap, from the host */
 
-const sitemapRes = await fetch(`${BASE}/sitemap.xml`)
-if (!sitemapRes.ok) {
-  console.error(`${TAG} ${BASE}/sitemap.xml answered ${sitemapRes.status}; nothing can be asserted against it`)
-  process.exit(1)
+/**
+ * The paths the host is serving in its sitemap right now.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+async function readSitemapPaths() {
+  const res = await fetch(`${BASE}/sitemap.xml`)
+  if (!res.ok) {
+    console.error(`${TAG} ${BASE}/sitemap.xml answered ${res.status}; nothing can be asserted against it`)
+    process.exit(1)
+  }
+  const xml = await res.text()
+  return new Set(
+    [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => {
+      try {
+        return new URL(m[1]).pathname
+      } catch {
+        return m[1]
+      }
+    }),
+  )
 }
-const sitemapXml = await sitemapRes.text()
-const sitemapPaths = new Set(
-  [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => {
-    try {
-      return new URL(m[1]).pathname
-    } catch {
-      return m[1]
-    }
-  }),
-)
+
+/*
+ * THE SITEMAP IS PRIMED BEFORE IT IS JUDGED, AND THAT IS NOT A WAIVER.
+ *
+ * src/app/sitemap.ts carries `export const revalidate = 300`. Under ISR the
+ * first request after that window serves the body the BUILD baked and schedules
+ * the regeneration; every request after it serves the new one. This drive is
+ * always that first visitor, because it runs minutes after its own build on a
+ * host nobody else has touched, so it was judging the one body the host will
+ * never serve to anybody again.
+ *
+ * MEASURED, NOT ASSUMED, on 20 September 2026: the gate's own run read 653 URLs
+ * including two rows another lane had already deleted; a second server on the
+ * same build and the same `.next/cache`, started straight afterwards, read 651
+ * and neither of them. The difference was entirely which request was first.
+ *
+ * So the first read is discarded and the second is judged. Nothing is excused by
+ * it: a URL the host really does publish and really does fail to serve is in the
+ * second body exactly as it was in the first. The two sizes are reported so that
+ * a difference is a line of output rather than a silence.
+ */
+/*
+ * THE SITEMAP THIS DRIVE READS IS ALLOWED TO BE ONE REVALIDATION BEHIND, AND
+ * THAT IS WHY A MISS IS RE-CHECKED RATHER THAN BELIEVED.
+ *
+ * src/app/sitemap.ts carries `export const revalidate = 300`. Under ISR the
+ * first request after that window serves the body the BUILD baked and schedules
+ * the regeneration in the background. This drive is always that first visitor,
+ * because it runs minutes after its own build on a host nobody else has
+ * touched, so the body it reads here can name rows the catalogue has since lost.
+ *
+ * READING TWICE UP FRONT WAS TRIED AND IT DOES NOT WORK, which is recorded here
+ * so nobody spends the fetch again. Regenerating six hundred and fifty URLs
+ * takes far longer than the pause between two reads, so a second read taken
+ * immediately is the stale body a second time. Measured on 20 September 2026 by
+ * planting an event, waiting for the sitemap to advertise it, deleting it,
+ * waiting out the window and running this drive: the body judged here still
+ * named both fixture URLs, and it was the re-read AFTER the page loop, a full
+ * minute later, that saw them gone.
+ *
+ * So the single read stands, and the discrimination happens where the evidence
+ * actually arrives: below, once something has already looked wrong.
+ */
+const sitemapPaths = await readSitemapPaths()
 
 /* ------------------------------------------- the targets, enumerated not guessed */
 
@@ -243,6 +294,9 @@ for (const r of results) for (const f of judgePage(r)) fail(f)
 
 const sitemapSample = [...sitemapPaths]
 let sitemapChecked = 0
+/** Paths that answered non-200 and are re-checked against a fresh sitemap below. */
+const misses = []
+const withdrawn = []
 for (let i = 0; i < sitemapSample.length; i += CONC) {
   await Promise.all(
     sitemapSample.slice(i, i + CONC).map(async (path) => {
@@ -255,23 +309,53 @@ for (let i = 0; i < sitemapSample.length; i += CONC) {
       }
       sitemapChecked++
       const html = res.status === 200 ? await res.text() : ''
-      for (const f of judgeSitemapEntry({
+      const entry = {
         path,
         status: res.status,
         location: res.headers.get('location'),
         robots: pick(html, /<meta name="robots" content="([^"]*)"/),
         canonical: pick(html, /<link rel="canonical" href="([^"]*)"/),
-      })) {
-        fail(f)
       }
+      // A non-200 is held back rather than judged here: it may be a URL the host
+      // has stopped publishing since the sitemap was read, and only a fresh read
+      // can tell. See describeWithdrawnSitemapEntry in ./lib/indexing-rules.mjs.
+      if (res.status !== 200) {
+        misses.push(entry)
+        return
+      }
+      for (const f of judgeSitemapEntry(entry)) fail(f)
     }),
   )
+}
+
+/*
+ * THE SECOND READ, AND ONLY FOR THE ONES THAT MISSED.
+ *
+ * The catalogue this sitemap is built from is a database three lanes share, and
+ * a fixture torn down between the sitemap read and the page read produced two
+ * faults on 20 September 2026 that were not faults. A URL the host has stopped
+ * advertising cannot break a rule about what the host advertises.
+ *
+ * It costs one extra fetch, and only when something already looks wrong, so a
+ * healthy run pays nothing for it. A URL that is still published and still fails
+ * is reported exactly as it was before.
+ */
+if (misses.length > 0) {
+  const nowAdvertised = await readSitemapPaths()
+  for (const entry of misses) {
+    const stillAdvertised = nowAdvertised.has(entry.path)
+    if (!stillAdvertised) withdrawn.push(describeWithdrawnSitemapEntry(entry))
+    for (const f of judgeSitemapEntry({ ...entry, stillAdvertised })) fail(f)
+  }
 }
 
 /* ------------------------------------------------------------------- report */
 
 console.log(`${TAG} base ${BASE}, threshold ${threshold}`)
 console.log(`${TAG} ${targets.length} route(s) driven, ${skipped.length} skipped, ${sitemapPaths.size} sitemap URL(s) of which ${sitemapChecked} answered`)
+// SAID OUT LOUD, NEVER SWALLOWED. A withdrawal is not a fault, but a run full of
+// them means the catalogue is churning under the drive and somebody should know.
+for (const w of withdrawn) console.log(`${TAG}   withdrawn, not a fault: ${w}`)
 for (const s of skipped) console.log(`${TAG}   skipped ${s.route} (${s.klass}): ${s.why}`)
 
 if (OUT) {

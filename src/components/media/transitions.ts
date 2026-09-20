@@ -29,4 +29,14 @@ export const MEDIA_TRANSITIONS = {
   ease: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
 } as const
 
-export const MEDIA_AUDIT_FLAG = 'headless'
+/*
+ * THE AUDIT FLAG MOVED OUT OF THIS FILE on 20 September 2026 and is now
+ * `AUDIT_FLAG` in src/lib/ui/audit-mode.ts, beside the predicate that reads it.
+ *
+ * It lived here and was exported to exactly one consumer, which then read it
+ * off `document.body` while the flag is written to `documentElement`. A
+ * constant that names the key without naming the ELEMENT is half a contract,
+ * and the missing half cost six dead suppressions across the platform. The new
+ * module exports the question (`isAuditRun()`) rather than the key, so a caller
+ * cannot get the element wrong.
+ */

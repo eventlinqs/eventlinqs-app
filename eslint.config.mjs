@@ -64,6 +64,27 @@ const eslintConfig = defineConfig([
     ignores: [
       // Permanent - the media library IS the wrapper layer.
       "src/components/media/**",
+      // PERMANENT, AND REASONED, NOT TRANSITIONAL (lane A, 20 September 2026).
+      //
+      // src/lib/images/hero-preload.tsx imports `getImageProps`, not the
+      // `<Image>` component, and the file begins `import 'server-only'`. Its
+      // whole job is to compute the EXACT URL and srcset that HeroMedia's own
+      // <Image> will request, so the preload in <head> and the raster in the
+      // body cannot disagree; hand-rolling that arithmetic is the alternative
+      // and it goes stale the moment a device-size ladder in next.config.ts
+      // moves.
+      //
+      // `getImageProps` HAS NO SERVER-ONLY ENTRY POINT. The documented import
+      // is `from 'next/image'` and nothing else
+      // (node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md,
+      // "getImageProps"), so there is no supported way to reach the framework's
+      // own srcset arithmetic without naming that specifier.
+      //
+      // The thing the rule exists to prevent is next/image reaching a CLIENT
+      // bundle through feature code. This file cannot: it is server-only, and
+      // the chunk consequence of the one client component it renders is
+      // measured and written up in src/components/media/hero-preload-link.tsx.
+      "src/lib/images/hero-preload.tsx",
       // Transitional - refactored to media/ surfaces in Pre-Task 2.
       // Removing each entry from this list is the migration milestone.
       "src/components/ui/CategoryHeroEmpty.tsx",
