@@ -73,6 +73,28 @@ const SKIP_EXACT = new Set(['/sitemap.xml', '/robots.txt'])
  * finding, and conflating them makes the crawler untrustworthy in the one
  * environment where it is cheapest to run. The default is unchanged; a local run
  * lowers it.
+ *
+ * IT IS WORSE THAN TIMEOUTS, AND THIS IS THE PART THAT COSTS AN HOUR
+ * (20 September 2026, lane B). Run at the default twelve against `next dev`, the
+ * server does not merely refuse the requests it cannot serve: it can poison
+ * itself. Four heavy pages compiled at once, and from the next request onwards
+ * EVERY route on the platform answered 500 with
+ *
+ *     SyntaxError: Unexpected non-whitespace character after JSON at position 724
+ *
+ * including `/manifest.webmanifest` and the generated `/icon?...` assets, which
+ * no product change can break. The report that came out of that run listed
+ * /organisers, /pricing, /legal/terms, /login and thirty more as dead, and it
+ * reads exactly like a platform that has just been broken by the commit you are
+ * holding.
+ *
+ * THE TELL is a static asset in the dead list. A product defect does not take
+ * out the web manifest. THE TEST is to request one of them with curl, one at a
+ * time: they answer 200. THE RECOVERY is to restart the dev server, after which
+ * the same 322 links all resolve, which is what happened here at concurrency 3.
+ *
+ *     LINK_CRAWL_CONCURRENCY=3 LINK_CRAWL_TIMEOUT_MS=90000 \
+ *       node scripts/link-integrity-crawl.mjs http://localhost:3100
  */
 const CONCURRENCY = Number(process.env.LINK_CRAWL_CONCURRENCY) || 12
 const TIMEOUT_MS = Number(process.env.LINK_CRAWL_TIMEOUT_MS) || 30000

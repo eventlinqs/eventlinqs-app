@@ -265,11 +265,26 @@ export const STORED_AGGREGATES = [
   {
     column: 'digest_sends.recipient_count',
     summarises: null,
-    maintenance: 'not-in-class',
-    maintainedBy: 'written once, by the send that created the row.',
+    maintenance: 'application',
+    maintainedBy:
+      'src/app/api/cron/weekly-digest/route.ts, written as a SUM of what previous invocations wrote plus what this one wrote.',
     reconciled: false,
-    caveat: null,
-    decision: 'Same as digest_sends.event_count: a log row.',
+    caveat:
+      'It stopped being a write-once log row on 20 September 2026 and this entry said otherwise until then. It is now the RESUME POINT: the next invocation of an unfinished period starts at this number, so a value that is too high steps over real people and one that is too low writes to them twice. It counts sends that SUCCEEDED, never the window that was planned, because one address failing must not close the period over the top of everybody after it.',
+    decision:
+      'APPLICATION MAINTAINED AND DELIBERATELY NOT RECONCILED AGAINST A ROW COUNT, because there is no per-recipient row to reconcile against: the platform does not store who received a marketing email, only how many did. The thing that can be checked is the invariant beside it, and the database checks it: `digest_sends_sent_within_audience` refuses any row whose recipient_count exceeds audience_count, so the resume point can never point past the end of the audience it is an offset into.',
+  },
+  {
+    column: 'digest_sends.audience_count',
+    summarises: null,
+    maintenance: 'application',
+    maintainedBy:
+      'src/app/api/cron/weekly-digest/route.ts, written from the length of the lawful audience each invocation resolves.',
+    reconciled: false,
+    caveat:
+      'It is re-resolved on every invocation rather than frozen at the first, so a city whose audience changes mid-week records the LAST resolution. That is the honest number for judging whether the period finished, which is the only thing it is read for.',
+    decision:
+      'NOT A LIVE AGGREGATE OF A TABLE, and not reconcilable against one: the audience is whoever survives the consent merge, the suppression list and the ledger resolver at the moment of asking, and no table holds that set. It exists because `recipient_count` alone could not tell "we wrote to everybody" from "we stopped at the cap", which is exactly what let a city of nine hundred be recorded as sent after five hundred emails (close-out LB-DIGESTWHOLE). The pair is judged by `completed_at`, not by arithmetic anybody re-runs.',
   },
   {
     column: 'organiser_sales_digest_sends.sale_count',

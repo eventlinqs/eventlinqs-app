@@ -33,7 +33,12 @@ export default async function AttendeesPage({ params }: Props) {
           ← Back to event
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Attendees</h1>
-        <span className="text-sm text-ink-400">·</span>
+        {/*
+          HIDDEN UNTIL THE TITLE FITS BESIDE IT. This row is `flex-wrap`, so at
+          390 the event title wraps to a second line and the separator stayed
+          behind on the first, leaving "Attendees ·" with nothing after it.
+        */}
+        <span className="hidden text-sm text-ink-400 sm:inline">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
@@ -65,19 +70,27 @@ export default async function AttendeesPage({ params }: Props) {
         </Link>
       </div>
 
-      {/* Summary tiles */}
+      {/*
+        Summary tiles.
+
+        GROUPED, and carrying their raw value in `data-stat-value`. The grouping
+        is for a reader: an organiser past a thousand attendees was shown "1000"
+        here with no separator and no sign that it was a ceiling rather than a
+        count. The raw attribute is for the drive, which has to compare against
+        a number the database counted rather than against a formatted string.
+      */}
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="attendees" data-stat-value={attendees.length}>
           <p className="text-xs uppercase tracking-wider text-ink-600">Attendees</p>
-          <p className="mt-1 text-2xl font-bold text-ink-900">{attendees.length}</p>
+          <p className="mt-1 text-2xl font-bold text-ink-900">{attendees.length.toLocaleString('en-AU')}</p>
         </div>
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="checked-in" data-stat-value={checkedIn}>
           <p className="text-xs uppercase tracking-wider text-ink-600">Checked in</p>
-          <p className="mt-1 text-2xl font-bold text-ink-900">{checkedIn}</p>
+          <p className="mt-1 text-2xl font-bold text-ink-900">{checkedIn.toLocaleString('en-AU')}</p>
         </div>
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="not-checked-in" data-stat-value={notCheckedIn}>
           <p className="text-xs uppercase tracking-wider text-ink-600">Not checked in</p>
-          <p className="mt-1 text-2xl font-bold text-ink-900">{notCheckedIn}</p>
+          <p className="mt-1 text-2xl font-bold text-ink-900">{notCheckedIn.toLocaleString('en-AU')}</p>
         </div>
       </div>
 

@@ -11,6 +11,19 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readSubjectHistory } from '@/lib/consent/ledger'
 import { normaliseSubjectEmail } from '@/lib/consent/purposes'
 import { consentEventSentence, suppressionSentence } from '@/lib/consent/sentences'
+import { readCaptureConversion } from '@/lib/consent/capture-conversion'
+import {
+  conversionSentence,
+  formatRate,
+  CAPTURE_CONVERSION_FALL_LIMIT_POINTS,
+  CONVERSION_VERDICT_WORDS,
+} from '@/lib/consent/capture-conversion-math'
+import {
+  CAPTURE_PLACEMENTS,
+  DEFAULT_CAPTURE_PLACEMENT,
+  type CapturePlacement,
+} from '@/lib/consent/capture-placement-math'
+import { moveCaptureAskAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -65,7 +78,7 @@ function CountList({ title, counts, label }: { title: string; counts: AudienceCo
   )
 }
 
-type Props = { searchParams: Promise<{ subject?: string }> }
+type Props = { searchParams: Promise<{ subject?: string; placement?: string }> }
 
 export default async function AdminAudiencePage({ searchParams }: Props) {
   const session = await requireAdminSession()
@@ -73,14 +86,33 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
 
   await recordAuditEvent({ action: 'admin.audience.view', session })
 
-  const { subject } = await searchParams
+  const { subject, placement: placementStatus } = await searchParams
   const lookupEmail = normaliseSubjectEmail(subject ?? '')
 
-  const [dashboard, capturing, history] = await Promise.all([
+  const [dashboard, capturing, history, conversion] = await Promise.all([
     getAudienceDashboard(),
     isFeatureEnabled('audience_capture'),
     lookupEmail ? readSubjectHistory(createAdminClient(), lookupEmail) : Promise.resolve(null),
+    readCaptureConversion(createAdminClient()),
   ])
+
+  const placementNow = conversion.currentPlacement ?? DEFAULT_CAPTURE_PLACEMENT
+  const placementDecision = conversion.decisions[conversion.decisions.length - 1] ?? null
+  const arriving = conversion.theQuestionArriving
+  /*
+   * When the rule says move, the reason is written for the owner rather than
+   * left to them. A placement row's whole value six months from now is being
+   * able to ask why the question moved, and "because conversion fell 3.1
+   * points, 466 of 1120 against 512 of 1100" answers that where "moving it"
+   * does not. They can still type over it.
+   */
+  const suggestedReason =
+    arriving.verdict === 'move'
+      ? `Conversion fell ${Math.abs(arriving.deltaPoints ?? 0).toFixed(1)} points once the question ` +
+        `was asked at checkout (${arriving.before.converted} of ${arriving.before.settled} before, ` +
+        `${arriving.after.converted} of ${arriving.after.settled} after), past the ` +
+        `${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} point limit, so the capture moves to the ticket page.`
+      : ''
 
   /*
    * A LOOKUP IS A READ OF SOMEBODY'S RECORD, SO IT IS AUDITED AS ONE.
@@ -139,6 +171,21 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
           hint="Feature flags, audience_capture"
           status={capturing ? 'ok' : 'warn'}
         />
+        {/*
+          AQ1's rule, in the row a person reads first.
+          The verdict is computed and spelled out further down the page, but a
+          rule nobody remembers to scroll to is a rule that never fires. When it
+          says move, this tile says move, and the control below carries the
+          measurement into its own reason so the click is evidenced.
+        */}
+        <div data-capture-verdict-tile={conversion.theQuestionArriving.verdict}>
+          <AdminStatTile
+            label="Does asking cost sales"
+            value={CONVERSION_VERDICT_WORDS[conversion.theQuestionArriving.verdict]}
+            hint={`The ${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} point rule, asked at checkout`}
+            status={conversion.theQuestionArriving.verdict === 'move' ? 'warn' : 'ok'}
+          />
+        </div>
       </div>
 
       <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
@@ -161,6 +208,136 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section
+        className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+        data-capture-placement={placementNow}
+      >
+        <h2 className="font-display text-lg font-semibold text-white">
+          Where the question is asked, and what it costs
+        </h2>
+        <p className="mt-1 text-sm text-white/60">
+          AQ1 puts the discovery question on the surface that sells tickets, so the platform has
+          to be able to say whether that costs the organiser sales. Every number here is counted
+          off public.reservations: a reservation is one buyer reaching the payment step, and it
+          is counted once its outcome is settled.
+        </p>
+
+        <dl className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            { label: 'Before the question existed', rate: conversion.beforeTheQuestion },
+            { label: 'Asked at checkout', rate: conversion.underCheckout },
+            { label: 'Asked on the ticket page', rate: conversion.underTicketPage },
+          ].map(({ label, rate }) => {
+            const r = rate
+            return (
+              <div
+                key={label}
+                className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
+                data-conversion-cell={label}
+              >
+                <dt className="text-[11px] uppercase tracking-[0.16em] text-white/50">{label}</dt>
+                <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-white">
+                  {formatRate(r.percent)}
+                </dd>
+                <dd className="mt-1 text-xs text-white/50 tabular-nums">
+                  {r.converted} of {r.settled} settled
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+
+        <p className="mt-5 text-sm text-white/80" data-conversion-verdict={conversion.theQuestionArriving.verdict}>
+          {conversionSentence(conversion.theQuestionArriving, {
+            before: 'Before the question existed',
+            after: 'Asked at checkout',
+          })}
+        </p>
+        <p className="mt-2 text-sm text-white/70" data-conversion-move-verdict={conversion.theMove.verdict}>
+          {conversionSentence(conversion.theMove, {
+            before: 'Asked at checkout',
+            after: 'Asked on the ticket page',
+          })}
+        </p>
+        {conversion.theQuestionArriving.standardErrorPoints !== null && (
+          <p className="mt-2 text-xs text-white/40 tabular-nums">
+            Standard error of that difference: {conversion.theQuestionArriving.standardErrorPoints.toFixed(2)} points.
+            {conversion.theQuestionArriving.deltaRelativePercent !== null &&
+              ` Read as a relative change instead: ${conversion.theQuestionArriving.deltaRelativePercent.toFixed(1)}%.`}
+            {` ${conversion.inFlight} reservation${conversion.inFlight === 1 ? '' : 's'} not settled yet, so in neither half.`}
+          </p>
+        )}
+
+        <div className="mt-6 rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-white/50">
+            In force now
+          </p>
+          <p className="mt-1 text-sm text-white/80">
+            The question is asked {placementNow === 'checkout' ? 'at the payment step' : 'on the ticket page'}
+            {placementDecision ? `, since ${placementDecision.effectiveFrom.slice(0, 10)}.` : '.'}
+          </p>
+          {placementDecision && (
+            <p className="mt-2 text-xs text-white/50">{placementDecision.reason}</p>
+          )}
+
+          <form action={moveCaptureAskAction} className="mt-5 flex flex-wrap items-end gap-3">
+            <div>
+              <label htmlFor="placement" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+                Move it to
+              </label>
+              <select
+                id="placement"
+                name="placement"
+                defaultValue={placementNow === 'checkout' ? 'ticket_page' : 'checkout'}
+                className="mt-1 h-11 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+              >
+                {CAPTURE_PLACEMENTS.map((value: CapturePlacement) => (
+                  <option key={value} value={value} className="text-[#0A1628]">
+                    {value === 'checkout' ? 'The payment step' : 'The ticket page'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label htmlFor="reason" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+                Why
+              </label>
+              <input
+                id="reason"
+                name="reason"
+                type="text"
+                required
+                minLength={10}
+                defaultValue={suggestedReason}
+                placeholder="Conversion fell past the limit, so the capture moves"
+                className="mt-1 h-11 w-full min-w-[18rem] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:border-[var(--brand-accent)] focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center rounded-lg bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[#0A1628] transition-opacity hover:opacity-90"
+            >
+              Move the question
+            </button>
+          </form>
+          <p className="mt-3 text-xs text-white/40">
+            Appending a decision, never editing one. The rule is a fall of more than
+            {` ${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} `}
+            percentage points, and moving the question never removes it: the buyer is still asked,
+            one screen earlier.
+          </p>
+          {placementStatus === 'moved' && (
+            <p className="mt-3 text-sm text-[var(--brand-accent)]">The decision is recorded and is in force now.</p>
+          )}
+          {placementStatus === 'error' && (
+            <p className="mt-3 text-sm text-red-300">The decision could not be written. Nothing changed.</p>
+          )}
+          {placementStatus === 'invalid' && (
+            <p className="mt-3 text-sm text-red-300">A placement needs a known surface and a reason of at least ten characters.</p>
+          )}
+        </div>
       </section>
 
       <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">

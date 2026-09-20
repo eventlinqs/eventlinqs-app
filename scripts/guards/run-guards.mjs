@@ -148,6 +148,19 @@
  *                              number, currency or percentage is typed into the
  *                              rendering path, and the database refuses a stored
  *                              snapshot holding a figure nothing sources
+ *   the-group-rate-and-the-sharer-are-honest
+ *                              AQ2. The group-rate floor is derived from pricing_rules
+ *                              and never typed, the currency to country map agrees in
+ *                              all three places, both ticket surfaces carry a tracked
+ *                              share bar, the referral coefficient counts only what it
+ *                              can prove, and no surface shows a rate nothing charges
+ *   discovery-consent-is-asked-once-and-never-preticked
+ *                              AQ1. No consent checkbox anywhere is pre ticked, the
+ *                              discovery question is asked on exactly one surface,
+ *                              every reader of the audience asks the consent door or
+ *                              is registered as counts-only, the placement decision
+ *                              log refuses UPDATE, and the two percent rule is decided
+ *                              in whole numbers rather than in floating point
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -178,6 +191,36 @@
  *                              error, because a failure there is written into an
  *                              append-only ledger as a sentence about a named
  *                              person and counted onto /admin/campaigns
+ *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
+ *                              drives a browser waits for the server's observable
+ *                              view, because a drive process cannot invalidate the
+ *                              server's flag cache and one render can be made from
+ *                              a value up to the cache TTL out of date
+ *   organic-is-not-direct     the traffic-channel table is Google's published answer and
+ *                              is sealed with a digest, no client component ships its 819
+ *                              rows, and no surface reports the organic search figure
+ *                              without reading the direct one beside it (AQ3)
+ *   one-way-to-delete-an-account  a drive deletes an account in ONE place, which can
+ *                              tell an account that was already gone from a deletion that
+ *                              was REFUSED, and fails the run on the second; the files not
+ *                              yet converted are listed with the lane that owns them and
+ *                              the list can only shrink
+ *   evidence-outlives-the-account  no table whose UPDATE or DELETE is refused outright
+ *                              carries a foreign key that cascades into it, because the
+ *                              referential action runs its statement whether or not a row
+ *                              matches and the parent then cannot be deleted by anybody
+ *   a-referential-null-is-not-an-edit  the row-level half: a BEFORE UPDATE FOR EACH ROW
+ *                              trigger that can raise, on a table carrying an
+ *                              `on delete set null` key, must decline to judge the UPDATE
+ *                              the database issues when the parent goes, by an event list,
+ *                              a when clause or an early return, so an account closure is
+ *                              never refused on the grounds of a price or a consent age
+ *   one-lawful-writer-of-the-fee  every write to pricing_rules goes through the one
+ *                              database function that stamps the open row and inserts the
+ *                              next version in ONE transaction, the Zod bound on the fee
+ *                              percentage is DERIVED from the live CHECK rather than typed
+ *                              in, no control offers a value the constraint refuses, and
+ *                              execute on the writer is granted to service_role alone
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -543,6 +586,14 @@
  *                              migration committed without regenerating the types is
  *                              refused on that commit and not on the push two days later
  *                              when production catches up (11 September 2026)
+ *   generated-types-are-generated  the generated section of src/types/database.ts is in
+ *                              the generator's own ascending order, no function argument
+ *                              carries a hand-written "| null", and every exposed
+ *                              function takes exactly the parameters its migration
+ *                              declares. Three hand-edits were found in one file on
+ *                              20 September 2026, one of which refused a 234 commit push
+ *                              at types-drift and two of which no semantic comparison
+ *                              could ever have seen
  *   platform-notifications-installed  the build's own database carries the six triggers
  *                              that record a new organiser, a Stripe onboarding, a
  *                              published event and a paid order, so none of the five can
@@ -603,6 +654,55 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
+ *   the-founder-screens-read-every-row  the admin GMV dashboard, the fee-override
+ *                             screen and the demand signal read every row, in a
+ *                             stable order, and fail loudly rather than
+ *                             rendering a silent zero, hiding a live fee
+ *                             override, or putting an already-invited founding
+ *                             organiser back on the list to be emailed again
+ *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
+ *                             abandoned-checkout sender, and its suppression list
+ *                             is read whole rather than to the first 1,000 names
+ *   the-attribution-panels-count-every-row  the ORGANISER'S reach and attribution
+ *                             panel reads every tracked row, spells every `in`
+ *                             list in byte-bounded chunks, and reconciles
+ *                             against a count the SERVER performed rather than
+ *                             one it accumulated itself in the loop it is
+ *                             checking, which made `reconciles` a constant true
+ *   the-organiser-dashboard-reads-every-row  the organiser's HOME and their
+ *                             per-event overview read every order, paged on a
+ *                             UNIQUE column so a row cannot land in two windows
+ *                             and double-count revenue, and fail loudly rather
+ *                             than rendering a business that has sold nothing
+ *   the-seating-surfaces-count-every-seat  the five organiser screens that
+ *                             decide who has a seat read every seat, page on a
+ *                             TOTAL order, fail loudly, and carry no ceiling
+ *                             that is a number somebody typed: not the
+ *                             `.range(0, 1999)` the launch kit printed its seat
+ *                             count out of, and not the 10,000 loop bound in
+ *                             the pager written to defeat the 1,000-row cap
+ *   the-attendee-list-is-every-attendee  the data-ownership promise itself: the
+ *                             attendee list, the door list, the orders report
+ *                             and all four exports hand back every attendee,
+ *                             every marketing consent and every order, chunk
+ *                             every `in` list, page on a UNIQUE column, and
+ *                             throw rather than exporting nobody when a read
+ *                             fails
+ *   the-weekly-digest-owes-nobody-an-email  the weekly city email, the only
+ *                             send path that writes to strangers: every
+ *                             audience read paged on a UNIQUE column, every
+ *                             `in` list chunked by bytes so the suppression
+ *                             read cannot come back EMPTY, every failed read
+ *                             raised rather than read as an answer, and the
+ *                             send window taken from the pure planner so a city
+ *                             can never be recorded as finished while it still
+ *                             owes four hundred people an email
+ *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
+ *                             error a PostgREST client REPORTS rather than
+ *                             throws, report every failure in every environment
+ *                             including production, and still never throw, so an
+ *                             entry nobody can find cannot be mistaken for an
+ *                             action nobody took
  *   recovery-only-writes-to-people-who-asked  every recovery message names the
  *                             recorded engagement that authorised it, the six
  *                             refusals still exist, and no message goes without a
@@ -1349,6 +1449,22 @@ const GUARDS = [
   // path registry (and a marketing one without calling the resolver), and no
   // unsubscribe or privacy rights surface reads a session.
   'scripts/guards/consent-ledger-is-evidence.mjs',
+  // AQ1. The discovery question is asked in exactly one place, is never pre
+  // ticked on any surface, and a buyer who declines it is excluded from every
+  // query that chooses who hears about somebody else's event. Also holds the
+  // placement decision log append only, because the conversion measurement
+  // reads that log to decide what before and after mean, and holds the two
+  // percent rule in integer arithmetic, because 580/1000 is 57.99999999999999
+  // in binary floating point and an exact two point fall was moving the capture
+  // off the surface that sells tickets on a rounding error.
+  'scripts/guards/discovery-consent-is-asked-once-and-never-preticked.mjs',
+  // AQ2. The group rate's floor is derived from pricing_rules rather than typed,
+  // the currency to country map agrees in all three places that hold it, both
+  // ticket surfaces carry a tracked share bar, the referral coefficient counts
+  // only referrals it can prove, and no surface presents a group rate while no
+  // payment path charges one. That last clause releases itself the day the
+  // squad payment step reads the rate, which is a border this lane cannot cross.
+  'scripts/guards/the-group-rate-and-the-sharer-are-honest.mjs',
   // The 1,000-row ceiling. Supabase truncates a response at a project setting
   // this repository cannot read, with HTTP 200 and no error, so a read that
   // states no bound is a read that may already be wrong. Measured the day this
@@ -2144,6 +2260,18 @@ const GUARDS = [
   // green against the regenerated file (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11).
   'scripts/guards/types-cover-migrations.mjs',
 
+  // The other half of the same lesson, 20 September 2026. types-cover-migrations
+  // asks whether the committed types carry every object; this asks whether the
+  // generated section was GENERATED at all. A push of 234 commits was refused at
+  // types-drift because six arguments of write_pricing_rule had been typed in by
+  // hand as `| null`, a form the generator has no way of emitting, and
+  // regenerating found two more entries sitting in the place a person would put
+  // them rather than in the generator's ascending order. types-drift could not
+  // see any of it while production was behind, and could never see the ordering
+  // at all, because a correctly-shaped entry in the wrong position is
+  // semantically identical. Drilled red once per clause.
+  'scripts/guards/generated-types-are-generated.mjs',
+
   // Found while auditing the notification routing for close-out UX4:
   // /api/cron/queue-admit documented itself as running every minute and had no
   // entry in vercel.json, so the virtual-queue admission batch had never run
@@ -2219,6 +2347,242 @@ const GUARDS = [
   'scripts/guards/fillrate-reads-only-the-ledger.mjs',
   'scripts/guards/recovery-only-writes-to-people-who-asked.mjs',
 
+  // Lane B, 20 September 2026. A THIRD guard on the same engine, and it exists
+  // because the two above were both satisfied while the sender was mailing
+  // people who had unsubscribed.
+  //
+  // the-recovery-stop-list-is-whole: a marketing withdrawal reaches the
+  // abandoned-checkout sender, and its suppression list is read whole. Measured
+  // on TEST before the fix: 147 people carried a suppression event and
+  // recovery_suppressions held 19 rows, because the engine reads only its own
+  // table (correctly, by D2) and nothing carried the ledger across. The same
+  // read was also unbounded, and Supabase stops at 1,000 rows in silence
+  // (Content-Range: 0-999/14364, measured the same day), which on a suppression
+  // list fails OPEN. no-silent-row-ceiling could not see it: its scope is nine
+  // directories and src/lib/fillrate is not one of them.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
+  'scripts/guards/the-recovery-stop-list-is-whole.mjs',
+
+  // Lane B, 20 September 2026, found while adding two audit actions to the
+  // organiser suspend cascade and reading what happens when one fails.
+  //
+  // the-audit-log-says-when-it-could-not-write: BOTH writers in
+  // src/lib/admin/audit.ts inserted with no destructure at all, and a PostgREST
+  // client REPORTS a refused write in `error` rather than throwing, so the
+  // try/catch around them could not see the failure it was written for: it only
+  // ever guarded headers(). And the catch logged only when NODE_ENV is not
+  // production, so the one environment where an audit trail is evidence is the
+  // one where its absence left no trace.
+  //
+  // This platform suspends organisers, moves fee-free windows and holds payouts
+  // through those two functions. An entry nobody can find afterwards cannot be
+  // told apart from an action nobody took.
+  //
+  // Clause 4 holds the half of the original contract that was RIGHT: neither
+  // writer may throw, because failing the caller would leave the platform in a
+  // state its own error says did not happen.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-AUDITLOUD\drills.txt).
+  'scripts/guards/the-audit-log-says-when-it-could-not-write.mjs',
+
+  // Lane B, 20 September 2026, found by the same scan that produced the guard
+  // above and in the same failure family.
+  //
+  // the-founder-screens-read-every-row: FIVE screens, renamed from
+  // the-money-screens-read-every-row on 20 September 2026 when the demand
+  // signal joined it and the name stopped describing the rule.
+  //
+  // getAnalyticsDashboard summed two UNBOUNDED
+  // selects over orders and refunds, with no .order() and with `error`
+  // discarded. Supabase stops at 1,000 rows in silence, so past the ceiling the
+  // founder's GMV would have been the total of an ARBITRARY thousand rows, and
+  // a read that FAILED rendered a GMV of zero, which is indistinguishable on
+  // that screen from a payments outage. TEST held 801 AUD orders, 199 short.
+  //
+  // Scoped to the one file on purpose: no-silent-row-ceiling does not cover
+  // src/lib/admin, and widening it would go red on about twenty reads today.
+  // Those are raised in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // readActiveOverrides on /admin/pricing had the same shape over `pricing_rules`,
+  // which is append-only and versioned and so grows for ever. Truncation there is
+  // an ABSENCE rather than an undercount: the loop keeps the first row per target,
+  // so a live per-event fee override that IS being charged vanishes from the only
+  // screen that lists what overrides the default.
+  //
+  // The demand signal joined it on 20 September 2026: /admin/network and the
+  // two modules behind it. The per-city waitlist read was unbounded AND
+  // unordered, so past the ceiling each city's demand would have been an
+  // arbitrary subset that moved between page loads, on the screen whose whole
+  // purpose is to say which city has tipped. Five figures were `count ?? 0`, so
+  // an unreachable database rendered as "0 events published, 45 of 50 founding
+  // spots free". And the bridge's `founding_invites` read is a SUPPRESSION
+  // list: failed or truncated, it puts organisers who were already invited back
+  // on the list, and a founding invitation is a fee-free window and a personal
+  // email. That read is the reason clause 5 exists.
+  //
+  // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt),
+  // and six more for the demand signal (C:\dev\EVIDENCE\LB-DEMANDSIGNAL\drills.txt).
+  'scripts/guards/the-founder-screens-read-every-row.mjs',
+
+  // the-attribution-panels-count-every-row: the ORGANISER'S side of the same family,
+  // 20 September 2026. /dashboard/events/[id]/reach, fed by reach.ts and
+  // sales-attribution.ts, is where the platform proves its own wedge to an
+  // organiser, and all eight of its reads were unbounded with `error`
+  // discarded. share_link_events takes one row per VIEW and one per CLICK and
+  // share_links one per ATTENDEE SHARE, so the ceiling is reachable in a night,
+  // and the rows it drops include `conversion` rows, which are attributed
+  // SALES. Every number on the panel therefore read SMALLER than the truth,
+  // which is the one direction that argues for leaving the platform.
+  //
+  // The third clause is the reason this is a guard rather than only tests. The
+  // reconciliation that decides whether a percentage is shown AT ALL compared
+  // `totals.orders` against the bucket sum, and both were incremented once per
+  // iteration of the same loop, so it was one number compared against itself
+  // and `reconciles` was a constant `true`. Its own test file's header claimed
+  // the opposite above seven assertions that it is true and none that it is
+  // ever false. It now compares against a server-side count, which no row
+  // ceiling applies to, and clause 5 fails the build if that is ever rewired to
+  // a number the module counted itself.
+  //
+  // NOT folded into the guard above, whose own header records being renamed
+  // because a name narrower than its scope is one somebody adds the wrong file
+  // to: these are the organiser's screens, not the founder's. NOT added to
+  // no-silent-row-ceiling's SCOPE either, which would go red today on
+  // artists.ts and on the digest, another lane's territory. Both are enumerated
+  // in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-REACHWHOLE\drills.txt).
+  'scripts/guards/the-attribution-panels-count-every-row.mjs',
+
+  // the-organiser-dashboard-reads-every-row: the organiser's HOME and their
+  // per-event overview, 20 September 2026. Both read `orders` unbounded with
+  // the error discarded.
+  //
+  // The home screen is the one that pointed the flattering way. Its read is
+  // newest-first over a 60-day window, so the 1,000-row ceiling keeps the
+  // newest and drops the oldest, and the oldest rows in that window are the
+  // PRIOR 30 days, which is the denominator of both percentage changes on the
+  // KPI row. Past a thousand orders an organiser was shown growth that was too
+  // HIGH, because last month had been trimmed while this month survived. That
+  // is the number they repeat to a promoter.
+  //
+  // The event overview had no `order by` at all, so a capped read returns an
+  // arbitrary thousand rows and its gross revenue moved between page loads.
+  //
+  // CLAUSE 4 IS THE ONE THE OTHER TWO ROW-CEILING GUARDS DO NOT HAVE, and it
+  // exists because the obvious fix here is the wrong one: the home screen wants
+  // newest-first, so `.order('created_at', {ascending:false}).range(...)` looks
+  // exactly right and is not. `created_at` is not unique, so the window
+  // boundaries are undefined and a row can land in two pages, which
+  // double-counts revenue. The read pages on the primary key and sorts after.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
+  'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // the-seating-surfaces-count-every-seat: the five organiser screens that
+  // decide who has a seat, 20 September 2026. THREE DIFFERENT CEILINGS, and
+  // only one of them was the PostgREST default.
+  //
+  // 1,000 on the My Events sold tally, which read one row per sold seat and
+  // counted the rows here. The cap is on the RESPONSE, so that thousand was
+  // shared across every reserved-seating event in the list at once: two
+  // sold-out 800-seat shows reported 1,000 sold between them, with no order by
+  // to say which thousand and the error discarded so a failed read rendered as
+  // nought sold. 1,000 again on the list of paid holders waiting to be given a
+  // seat, which is the list the seating tool IS: past a thousand of them the
+  // organiser could not seat the rest, because the only screen that can do it
+  // did not show them.
+  //
+  // 2,000 in the launch kit, as `.range(0, 1999)`, printed to the organiser as
+  // "{n} seats . {m} open right now" on the artefact they promote with.
+  //
+  // 10,000 as a loop bound in the seat manager's own hand-rolled pager, in a
+  // helper written specifically to defeat the 1,000-row cap, which also stopped
+  // on a SHORT page rather than an empty one and so would report half a chart
+  // as a whole chart the day the project ceiling is lowered.
+  //
+  // CLAUSE 5 IS THE ONE NO OTHER GUARD IN THIS FAMILY HAS, and it is the whole
+  // reason this is a fourth file rather than a widened third. The other three
+  // ask "is this read bounded". Two of the three ceilings here WERE bounds, so
+  // that question answers PASS about both. A numeric literal may not be a seat
+  // ceiling: a venue is as big as it is.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-SEATWHOLE\drills.txt).
+  'scripts/guards/the-seating-surfaces-count-every-seat.mjs',
+
+  // the-attendee-list-is-every-attendee: the organiser's ATTENDEE list, their
+  // door list, their orders report and all four exports, 20 September 2026.
+  //
+  // THIS ONE IS THE WEDGE RATHER THAN A SCREEN. The growth plan's second blade
+  // is data ownership: "you own every attendee relationship: no walled gardens,
+  // no withheld emails". DICE withholds attendee emails and Eventbrite limits
+  // them, and the entire switching argument is that EventLinqs does not. Every
+  // read behind those surfaces was unbounded, so past a thousand attendees the
+  // platform handed an organiser part of their own audience and presented it as
+  // all of it. That is the same withholding with nobody to blame.
+  //
+  // The directions differed and each one mattered on its own. `tickets` was
+  // read OLDEST-first, so the door list lost the LATEST buyers: people holding
+  // a valid ticket, turned away at a door. `organiser_marketing_consents` holds
+  // one row per attendee per organiser, so truncation DROPPED people and a
+  // dropped person reads as not consented, shrinking the organiser's own lawful
+  // audience. `orders` was NEWEST-first, so the financial report lost its
+  // earliest sales; on the orders screen that also left
+  // `remaining = capacity - ticketsSold` too HIGH, offering inventory that was
+  // already sold. `refunds` are SUBTRACTED, so truncating them left net revenue
+  // too high. And `ticket_scans` had no `order by` at all while the code kept
+  // the first row it met, so which admission "won" a double-scan was undefined.
+  //
+  // IT SCANS DIRECTORIES, NOT A FILE LIST, unlike the two guards above it: the
+  // export routes are the surfaces most likely to gain a sibling, and a new
+  // file should be judged the day it lands rather than the day somebody
+  // remembers to add it here. It found two further discarded errors the moment
+  // it was first run, both on reads nobody had looked at.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-ATTENDEEWHOLE\drills.txt).
+  'scripts/guards/the-attendee-list-is-every-attendee.mjs',
+
+  // the-weekly-digest-owes-nobody-an-email: the weekly city digest, the only
+  // send path on this platform that writes to STRANGERS, 20 September 2026.
+  //
+  // THE ONE THAT FAILED OPEN. `fetchDigestRecipients` asked which of a city's
+  // waitlist addresses had withdrawn with a single un-chunked `.in()` over the
+  // whole list, and discarded the error. An `in` list is bounded by bytes, not
+  // by count, and the break was measured on this project's own TEST instance on
+  // this very table between 15,038 and 16,083 joined bytes. A few hundred
+  // addresses in one city therefore produced a request that FAILED, `data` came
+  // back null, the suppression list was empty, and rule 1 of
+  // `mergeDigestAudience`, "SUPPRESSION WINS", was not weakened but switched
+  // off: everybody who had unsubscribed was put back into the send by their
+  // waitlist row. The consent ledger resolver behind it is a second door, not a
+  // reason to leave the first one open.
+  //
+  // Three more, in the same path. The per-city audience reads were unbounded,
+  // so past a thousand people in a city the rest were not written to.
+  // `fetchDigestCities` read every consent row ON THE WHOLE PLATFORM with no
+  // bound and no order, only to reduce them to a set of city slugs, so past the
+  // ceiling whole cities were never considered for a send and which ones
+  // vanished was not stable between weeks. And the send loop did
+  // `recipients.slice(0, 500)` and then wrote the period's audit row, whose
+  // unique key the next invocation read as "already sent": the cron fires once
+  // a week, so a city with nine hundred lawful recipients wrote to five hundred
+  // and the other four hundred never received that week's email.
+  //
+  // CLAUSE 6 JUDGES THE SEND LOOP, NOT A READ, and it is why this is a file of
+  // its own. Every read-shaped scanner in this repository judged that slice
+  // BOUNDED, correctly. A bound is not safety, which is the lesson the seating
+  // screens taught the same day.
+  //
+  // It names FOUR FILES rather than `src/lib/broadcast`, because that directory
+  // is thirty modules and most of them render pictures; the poster and
+  // social-card renderers are red today on the error-destructure clause and a
+  // guard that cannot go green is a guard somebody switches off. They are
+  // enumerated in REVIEW-QUEUE-B.md instead of hidden here.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-DIGESTWHOLE\drills.txt).
+  'scripts/guards/the-weekly-digest-owes-nobody-an-email.mjs',
+
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context
   // of any ancestor carrying a transform: it PAINTS correctly and cannot be
@@ -2277,6 +2641,89 @@ const GUARDS = [
   // through the doors, and the matcher sees ARRAY destructuring, which the
   // sibling guard cannot and which is the spelling two of those sites used.
   'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+
+  // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
+  // row on "locator.click: Timeout" at a disabled button, while the flag row
+  // read true and the cache key read null. A drive process has an EMPTY
+  // UPSTASH_REDIS_REST_URL and the server has the local shim, so
+  // invalidateFeatureFlag opens "if (!redis) return" and does nothing, silently,
+  // while the server holds the old value for the cache TTL. The drive had been
+  // given that invalidation on 14 September to fix this exact failure and its
+  // header said so; it could never have worked, and it looked fixed because
+  // whether a run straddles a TTL depends on when it runs. Three more drives are
+  // exposed the same way, including one that had already thought about it and
+  // wrote a third spelling of the same silent no-op. The guard prints them.
+  'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+
+  // Close-out AQ3 (lane B, 19 September 2026). AQ3's acceptance line is "organic
+  // attributed orders reported separately from direct", and the three ways of
+  // losing it are all source-level. FIRST, which sites are search engines is a
+  // third-party specification: Google's own published table carries the bare
+  // token `google` and NO entry for google.com.au, so the obvious
+  // host-against-the-list implementation would have reported every visit Google
+  // sends us as a referral and answered "is the search work paying off" with a
+  // confident permanent no. The table is fetched, not typed, and sealed with a
+  // digest this guard recomputes, so the hand edit somebody will want to make
+  // (adding `brave`, which really is absent) fails the build instead. SECOND, it
+  // is 819 rows and about 26 KB, and one import from a client component ships
+  // all of it, which is the exact shape lane A measured on 19 September when 28
+  // dashboard routes each carried 21,005 bytes of image hints to draw one 32px
+  // circle. THIRD, the acceptance line itself: a surface naming the organic
+  // figure must name direct beside it.
+  'scripts/guards/organic-is-not-direct.mjs',
+
+  // Found 19 September 2026 while tearing down the AQ3 drive: NO ACCOUNT ON THE
+  // PLATFORM COULD BE DELETED. `marketing_capture_placement.decided_by` carried
+  // `on delete set null` and the table carried a FOR EACH STATEMENT refusal of
+  // every UPDATE, both written the same morning and each correct alone. The
+  // referential action runs its UPDATE whether or not one row matches, and a
+  // statement-level trigger fires on an update of nothing, so a thirteen-row
+  // table made every auth.users delete fail, everywhere, including account
+  // closure in the product. It was invisible because every drive teardown ends
+  // `.catch(() => {})`, so eighteen accounts piled up on TEST while every run
+  // reported a clean tear-down. The guard replays the migrations in order,
+  // honours later drops, and refuses the pair.
+  'scripts/guards/evidence-outlives-the-account.mjs',
+
+  // The ROW-LEVEL half of the same fault, found on 19 September 2026 by reading
+  // the note `evidence-outlives-the-account` left about what it deliberately did
+  // NOT cover. `on delete set null` issues `UPDATE child SET fk = NULL`, which
+  // is how an account, an order or an event is deleted; a BEFORE UPDATE FOR EACH
+  // ROW trigger with no column list re-judges the whole row on it, against
+  // TODAY'S configuration. Driven on TEST: moving the fee in /admin/pricing made
+  // the person who set a group rate undeletable with a complaint about a price,
+  // and tightening the consent age policy made an audience member, the order
+  // they last bought and the event they last attended all undeletable. The
+  // second arms itself with the calendar, because consent ages out at 24 months
+  // and nothing sweeps. The guard accepts all three protective constructs this
+  // tree already uses (an event list, a when clause, an early return) rather
+  // than imposing one on two triggers that were correct before it existed.
+  'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+
+  // LB-OVERRIDE0, 20 September 2026. The founder's only control over the
+  // platform fee could not save anything, and the database had already written
+  // down why: uq_pricing_rules_one_open_per_scope (migration 20260727000002)
+  // says in its own COMMENT that "writers must stamp the previous row before
+  // inserting the next version", and no writer was changed that day. So from
+  // 27 July every save on /admin/pricing was refused by the index it had just
+  // been handed, region defaults included, and nothing in the tree could
+  // notice, because the obligation lived in a database comment and the breach
+  // lived in TypeScript. Driven on TEST: 23505 on the AU region default at
+  // version 3. A second refusal sat on top, 23514, because the override form
+  // shipped defaultValue={0} on a column constrained to > 0. This guard holds
+  // the seam between the migration and the code: one writer, a Zod bound
+  // DERIVED from the CHECK rather than typed in, no control that offers a
+  // value the database refuses, and execute granted to service_role alone.
+  'scripts/guards/one-lawful-writer-of-the-fee.mjs',
+
+  // The same incident from the other side. `evidence-outlives-the-account`
+  // guards the CAUSE (a cascading key into a table that refuses UPDATE); this
+  // guards the BLINDFOLD that let the cause survive five days, which is the
+  // more general fault: every teardown discarded the deletion error and then
+  // asserted "left as found" from a read of `profiles`, which the line above it
+  // had already deleted. One place deletes an account now, and it fails the run
+  // on a refusal instead of printing a clean tear-down and exiting 0.
+  'scripts/guards/one-way-to-delete-an-account.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

@@ -212,8 +212,18 @@ export function EventsTable({
         </thead>
         <tbody className="divide-y divide-ink-100">
           {events.map(event => {
+            /*
+             * A RESERVED-SEATING EVENT WITH NO ENTRY IN THE MAP HAS NOT SOLD
+             * NOTHING. IT HAS NOT BEEN COUNTED.
+             *
+             * This was `?? 0`, which collapsed the two. The count comes from
+             * one RPC over every reserved-seating event at once, so when that
+             * call fails the map is empty and every such row would have read
+             * "0 / 2000" to an organiser whose show is sold out. Absent is now
+             * carried through as undefined and rendered as Unknown.
+             */
             const soldCount = event.has_reserved_seating
-              ? (seatSoldCountMap[event.id] ?? 0)
+              ? seatSoldCountMap[event.id]
               : event.ticket_tiers.reduce((sum, t) => sum + t.sold_count, 0)
             const totalCapacity = event.ticket_tiers.reduce((sum, t) => sum + t.total_capacity, 0)
 
@@ -238,7 +248,11 @@ export function EventsTable({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-ink-600">
-                  {totalCapacity > 0 ? `${soldCount} / ${totalCapacity}` : ':'}
+                  {totalCapacity > 0
+                    ? soldCount === undefined
+                      ? <span className="text-ink-400">Unknown</span>
+                      : `${soldCount} / ${totalCapacity}`
+                    : ':'}
                 </td>
                 <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                   <RowActions

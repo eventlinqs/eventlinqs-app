@@ -56,6 +56,7 @@ import { createClient } from '@supabase/supabase-js'
 import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { gzipSync } from 'node:zlib'
+import { tearDownAccount } from './lib/teardown-account.mjs'
 
 const BASE = (process.argv.find((a) => /^https?:\/\//.test(a)) || process.env.C8C_BASE || 'http://localhost:3200').replace(/\/$/, '')
 const OUT = process.env.C8C_OUT || join('C:', 'dev', 'EVIDENCE', 'C8C', 'after')
@@ -139,8 +140,8 @@ async function createSignInAccount() {
 
 async function deleteSignInAccount() {
   if (!userId) return
-  const { error } = await db.auth.admin.deleteUser(userId)
-  say(error ? `could not delete ${EMAIL}: ${error.message}` : `TEST account ${EMAIL} deleted`)
+  const removal = await tearDownAccount(db, userId)
+  say(removal.gone ? `TEST account ${EMAIL} deleted` : `could not delete ${EMAIL}: ${removal.detail}`)
 }
 
 /** An event slug enumerated from the database, never typed. */

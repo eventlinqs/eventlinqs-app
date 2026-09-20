@@ -63,6 +63,7 @@ import { chromium, BASE } from '../journeys/harness.mjs'
 import { invalidateFeatureFlag, FEATURE_FLAG_CACHE_TTL_SECONDS } from '../../src/lib/flags/broadcast.ts'
 import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
 import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 /*
  * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
@@ -157,6 +158,67 @@ async function setMatcherFlag(enabled) {
   await invalidateFeatureFlag('marketing_matcher_enabled')
 }
 
+/**
+ * THE INVALIDATION ABOVE CANNOT REACH THE SERVER FROM HERE, AND THE COMMENT
+ * ABOVE IT BELIEVED IT COULD FOR FIVE DAYS.
+ *
+ * Measured on 19 September 2026, after this drive failed three runs in a row on
+ * `locator.click: Timeout` with the button's own `disabled` attribute in the
+ * error, while `feature_flags.enabled` read TRUE and the cache key read null:
+ *
+ *   .env.local   UPSTASH_REDIS_REST_URL   EMPTY
+ *   the server   UPSTASH_REDIS_REST_URL   http://127.0.0.1:8179, the local shim
+ *                                         injected by lane-b-serve-with-stripe.mjs
+ *
+ * `invalidateFeatureFlag` opens with `const redis = getRedisClient(); if
+ * (!redis) return`. In THIS process there is no client, so it returns having
+ * done nothing, silently, while the SERVER holds the cached value in the shim
+ * for FEATURE_FLAG_CACHE_TTL_SECONDS. The header above says the write-plus-
+ * invalidate pair fixed exactly this failure. It never could here, and it
+ * looked fixed only because whether a run straddles a TTL expiry depends on
+ * when it runs - which is the same "not a check" that header says about the FT1
+ * fee check.
+ *
+ * SO THE DRIVE WAITS FOR THE SERVER'S VIEW INSTEAD OF ASSERTING ITS OWN. This
+ * is correct whatever the two processes agree about: no Redis, a shared Redis,
+ * a longer TTL, an invalidation that works. The page is RELOADED, because the
+ * button's disabled state is decided at render and a page already on screen
+ * will never change its mind however long it is clicked at.
+ *
+ * AND A TIMEOUT SAYS WHICH OF THE THREE CONDITIONS IT IS. The button disables
+ * on `pending || !matcherEnabled || !eventId`, and the failure this replaces
+ * named none of them. Four readings of the source each looked sufficient and
+ * each was a guess; what settled it was opening the page and asking, which is
+ * what this now does on every failure.
+ */
+async function waitForProduceButton(page, { enabled, url }) {
+  const budgetMs = (FEATURE_FLAG_CACHE_TTL_SECONDS + 20) * 1000
+  const deadline = Date.now() + budgetMs
+  for (;;) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 })
+    await page.waitForTimeout(1200)
+    await answerTheCookieBanner(page)
+
+    const button = page.getByRole('button', { name: /produce a match/i })
+    const isDisabled = await button.isDisabled().catch(() => null)
+    if (isDisabled === !enabled) return
+
+    if (Date.now() > deadline) {
+      const eventIdField = await page.locator('input[name="event_id"]').inputValue().catch(() => '<no field>')
+      const body = (await page.locator('body').innerText().catch(() => '')).toLowerCase()
+      throw new Error(
+        `"Produce a match" is ${isDisabled === null ? 'not on the page' : isDisabled ? 'disabled' : 'enabled'} ` +
+          `and this block needs it ${enabled ? 'enabled' : 'disabled'}, after ${Math.round(budgetMs / 1000)}s of reloading. ` +
+          `It disables on pending || !matcherEnabled || !eventId. ` +
+          `event_id is "${eventIdField}"; the page ${/the matcher is switched off/.test(body) ? 'SAYS' : 'does not say'} the matcher is switched off. ` +
+          `The flag row and the server's cached copy can disagree for up to ${FEATURE_FLAG_CACHE_TTL_SECONDS}s: ` +
+          `this process cannot invalidate the server's cache, see setMatcherFlag above.`,
+      )
+    }
+    await page.waitForTimeout(2000)
+  }
+}
+
 async function newAdminContext(browser, viewportOptions) {
   return browser.newContext({ ...viewportOptions, storageState: ADMIN_SESSION() })
 }
@@ -181,12 +243,9 @@ async function signInAsAdmin(page) {
  * that is usually long enough is a test that is occasionally a lie.
  */
 async function pressProduceAMatch(page) {
-  await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 120000,
-  })
-  await page.waitForTimeout(2000)
-  await answerTheCookieBanner(page)
+  // Reloads until the server agrees the button is pressable, rather than
+  // clicking at a render made while its cached flag still said off.
+  await waitForProduceButton(page, { enabled: true, url: `${BASE}/admin/matches?event=${fixture.eventId}` })
 
   const cap = page.locator('#cap')
   await cap.fill(String(CAP))
@@ -384,7 +443,18 @@ async function teardown() {
     await db.from('events').delete().eq('id', fixture.eventId)
   }
   if (fixture.organisationId) await db.from('organisations').delete().eq('id', fixture.organisationId)
-  if (fixture.ownerId) await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+  if (fixture.ownerId) await tearDownAccountOrFailTheRun(db, fixture.ownerId)
+  // THE ADMIN THIS DRIVE CREATES WAS NEVER REMOVED. Found on 19 September 2026
+  // by counting what was left on TEST rather than by reading this function: 42
+  // lane B accounts remained and most of them were named `-admin`, one per GA2
+  // run since the drive was written, each carrying a `super_admin` row in
+  // `admin_users`. The teardown deleted the owner and stopped. Same shape as
+  // ga3, ga4 and ga5, which all remove both.
+  if (fixture.adminId) {
+    await db.from('admin_users').delete().eq('id', fixture.adminId)
+    await db.from('profiles').delete().eq('id', fixture.adminId)
+    await tearDownAccountOrFailTheRun(db, fixture.adminId)
+  }
 }
 
 async function run() {
@@ -643,9 +713,14 @@ async function run() {
     const page = await context.newPage()
     try {
       await setMatcherFlag(false)
-      await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-      await page.waitForTimeout(2500)
-      await answerTheCookieBanner(page)
+      /*
+       * THE SAME WAIT, IN THE OTHER DIRECTION, AND IT MATTERS AS MUCH. This
+       * block asserts the button IS disabled. With the cached copy possibly
+       * still saying `true` for up to the TTL, a single render could show it
+       * enabled and this check would report the switch broken when it is not.
+       * The fragility ran both ways and only one way had ever been seen.
+       */
+      await waitForProduceButton(page, { enabled: false, url: `${BASE}/admin/matches?event=${fixture.eventId}` })
       await page.screenshot({ path: join(out, 'switch-off.png'), fullPage: true })
       const offText = (await page.locator('body').innerText()).toLowerCase()
       const buttonDisabled = await page.getByRole('button', { name: /produce a match/i }).isDisabled().catch(() => false)

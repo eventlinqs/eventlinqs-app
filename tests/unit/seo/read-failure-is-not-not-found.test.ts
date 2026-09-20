@@ -208,8 +208,21 @@ describe('the helpers one layer down, which the guard cannot follow, read throug
     usesTheDoor(source, 3)
   })
 
-  it('getOrganiserEvent: the event and the organisation', () => {
-    usesTheDoor(read('src/lib/reporting/attendees.ts'), 2)
+  /**
+   * Three, not two, since 20 September 2026. The first two are
+   * getOrganiserEvent's: the event, then the organisation, both of which decide
+   * a notFound().
+   *
+   * The third is the attendee list's own resolution of the event's
+   * organisation, which decides the MARKETING CONSENT lookup rather than a 404,
+   * and it belongs here for the same reason as the others. It discarded its
+   * error, and a failure there does not produce an error page: the consent
+   * index comes back empty, `isEmailConsented` defaults everybody to false, and
+   * the organiser's export tells them that not one of their attendees may
+   * lawfully be emailed. A wrong consent answer is worse than no page.
+   */
+  it('attendees.ts: the event, the organisation, and the consent lookup', () => {
+    usesTheDoor(read('src/lib/reporting/attendees.ts'), 3)
   })
 
   it('fetchGigById', () => {

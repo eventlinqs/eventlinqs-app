@@ -88,6 +88,7 @@ import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
 import { readLadder } from '../guards/lib/candidate-ladder.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const TAG = '[image-hint-fidelity-drive]'
 const args = process.argv.slice(2)
@@ -204,7 +205,7 @@ async function buildAuthedFixture(browser) {
       await db.from('events').delete().eq('id', made.eventId)
     }
     if (made.organisationId) await db.from('organisations').delete().eq('id', made.organisationId)
-    if (made.userId) await db.auth.admin.deleteUser(made.userId)
+    if (made.userId) await tearDownAccountOrFailTheRun(db, made.userId)
   }
 
   try {

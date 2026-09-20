@@ -5,6 +5,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
 import { createFoundingInvite, isFoundingCity } from '@/lib/founding/invites'
@@ -33,23 +34,42 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
   if (!can(session, 'admin.network.manage')) return { error: 'Not authorised.' }
 
   const admin = createAdminClient()
-  const { data: entry } = await admin
+  // A READ THAT FAILED IS NOT AN ENTRY THAT IS ABSENT. This dropped `error` and
+  // answered "Waitlist entry not found.", so a database hiccup told the founder
+  // that a person he was looking at on the same screen did not exist.
+  const { data: entry, error: entryError } = await admin
     .from('city_waitlist_signups')
     .select('id, city_slug, full_name, email, role, unsubscribe_token, unsubscribed_at')
     .eq('id', signupId)
     .maybeSingle()
 
+  if (entryError) {
+    console.error('[admin/network] could not read waitlist entry %s:', signupId, entryError)
+    return { error: 'Could not read that waitlist entry. Nothing was sent. Try again.' }
+  }
   if (!entry) return { error: 'Waitlist entry not found.' }
   if (!isFoundingCity(entry.city_slug)) return { error: 'That entry has no valid Australian city recorded.' }
   if (entry.unsubscribed_at) return { error: 'This person has left the waitlist and cannot be emailed.' }
 
   // One founder invite per waitlist email: reuse an existing pending invite.
-  const { data: existing } = await admin
+  //
+  // THE ERROR IS FATAL HERE RATHER THAN IGNORED, because this read is the only
+  // thing standing between one invitation and two. Dropping it left `existing`
+  // undefined, which falls through to the `else` below and mints a SECOND
+  // founding code for somebody who already holds a pending one: two warm
+  // emails, two links, one fee-free window, and the person deciding whether to
+  // trust a new platform receiving both.
+  const { data: existing, error: existingError } = await admin
     .from('founding_invites')
     .select('code, status')
     .eq('invitee_email', entry.email.toLowerCase())
     .eq('inviter_kind', 'founder')
     .maybeSingle()
+
+  if (existingError) {
+    console.error('[admin/network] could not check for an existing invite for %s:', entry.email, existingError)
+    return { error: 'Could not check whether they already hold an invite. Nothing was sent. Try again.' }
+  }
 
   let code: string
   if (existing?.status === 'pending') {
@@ -171,13 +191,25 @@ export async function setFoundingWaiver(input: {
   const opensANewWindow = next !== null && !previous
   let overrode = false
   if (opensANewWindow) {
-    const { count: holders } = await admin
+    // A FAILED COUNT IS NOT ZERO HOLDERS. `holders ?? 0` made an unreachable
+    // database look like a programme nobody had joined, so the cap check passed
+    // for a reason that had nothing to do with the cap. The database trigger is
+    // still the backstop and would have refused the fifty-first, but the owner
+    // would have been told "the database refused that change" for a grant that
+    // was in fact perfectly lawful, which is the wrong explanation of the wrong
+    // fault. Refuse here, name the real reason, and change nothing.
+    const holdersRes = await admin
       .from('organisations')
       .select('id', { count: 'exact', head: true })
       .not('founding_fee_free_until', 'is', null)
-    const atTheCap = (holders ?? 0) >= FOUNDING_WAIVER_CAP
+    if (holdersRes.error) {
+      console.error('[admin/network] could not count open founding windows:', holdersRes.error)
+      return { error: 'Could not check how many founding windows are open. Nothing was changed.' }
+    }
+    const holders = countOrRaise('open founding windows', holdersRes)
+    const atTheCap = holders >= FOUNDING_WAIVER_CAP
     const verdict = foundingGrantVerdict({
-      holders: holders ?? 0,
+      holders,
       opensNewWindow: true,
       override: input.overrideCap === true,
     })
@@ -187,7 +219,7 @@ export async function setFoundingWaiver(input: {
         session,
         targetType: 'organisation',
         targetId: org.id,
-        metadata: { holders: holders ?? 0, cap: FOUNDING_WAIVER_CAP },
+        metadata: { holders, cap: FOUNDING_WAIVER_CAP },
       })
       return {
         error: `All ${FOUNDING_WAIVER_CAP} founding windows are taken. Tick "override the cap" to grant anyway.`,

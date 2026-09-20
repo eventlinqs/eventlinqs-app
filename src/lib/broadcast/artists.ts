@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { isPubliclyDiscoverable } from '@/lib/events/visibility'
 
 /**
@@ -67,25 +70,47 @@ function toArtistRow(data: Record<string, unknown>): ArtistRow {
   }
 }
 
+/*
+ * THE NULL THESE THREE RETURN DECIDES A 404, so they may never answer "not
+ * there" because they could not ask.
+ *
+ * `src/app/artists/[slug]/page.tsx:89` is `if (!artist) notFound()`. All three
+ * of these were `const { data } = await ...`, error discarded, so a dropped
+ * socket, a pool refusal or a statement timeout left `data` null and was
+ * indistinguishable from an artist who does not exist. A real artist's public
+ * profile answered 404, and a crawler following our own sitemap was told to
+ * delete the page.
+ *
+ * That class is the reason `src/lib/supabase/read-or-throw.ts` exists; its
+ * header records the first four occurrences, on the event route, the organiser
+ * profile twice and the squad payment page. These are the next three, found by
+ * this module's own guard rather than by a 404 in the wild.
+ */
 export async function fetchArtistBySlug(admin: Admin, slug: string): Promise<ArtistRow | null> {
   if (!/^[a-z0-9-]{1,200}$/i.test(slug)) return null
-  const { data } = await admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle()
+  const data = await readOrThrow('artist-by-slug', () =>
+    admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle(),
+  )
   return data ? toArtistRow(data as Record<string, unknown>) : null
 }
 
 export async function fetchArtistById(admin: Admin, id: string): Promise<ArtistRow | null> {
-  const { data } = await admin.from('artists').select(ARTIST_COLUMNS).eq('id', id).maybeSingle()
+  const data = await readOrThrow('artist-by-id', () =>
+    admin.from('artists').select(ARTIST_COLUMNS).eq('id', id).maybeSingle(),
+  )
   return data ? toArtistRow(data as Record<string, unknown>) : null
 }
 
 /** The artist profile a signed-in user has claimed, if any. */
 export async function fetchArtistForOwner(admin: Admin, userId: string): Promise<ArtistRow | null> {
-  const { data } = await admin
-    .from('artists')
-    .select(ARTIST_COLUMNS)
-    .eq('owner_user_id', userId)
-    .limit(1)
-    .maybeSingle()
+  const data = await readOrThrow('artist-for-owner', () =>
+    admin
+      .from('artists')
+      .select(ARTIST_COLUMNS)
+      .eq('owner_user_id', userId)
+      .limit(1)
+      .maybeSingle(),
+  )
   return data ? toArtistRow(data as Record<string, unknown>) : null
 }
 
@@ -95,13 +120,30 @@ export async function fetchArtistUpcomingShows(
   artistId: string,
   limit = 12,
 ): Promise<ArtistShow[]> {
-  const { data } = await admin
-    .from('event_artists')
-    .select(
-      'status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)',
-    )
-    .eq('artist_id', artistId)
-    .eq('status', 'confirmed')
+  /*
+   * THE BOUND IS ON THE QUESTION, NOT ON THE ANSWER, and that is why this read
+   * is paged rather than limited.
+   *
+   * `limit` below is applied AFTER the filter, which is correct: the filter
+   * drops unpublished, undiscoverable and PAST shows, so limiting the read
+   * would bound the wrong thing. But an unbounded read is bounded anyway, at
+   * 1,000 rows, silently
+   * (https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19), and the rows it drops are in an arbitrary order. A long-running
+   * artist's NEXT show is as likely to be past that ceiling as any other row, so
+   * the panel would drop the one thing it exists to show.
+   */
+  const data = await readEveryRow<unknown>('the shows this artist is confirmed on', (from, to) =>
+    admin
+      .from('event_artists')
+      .select(
+        'status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)',
+      )
+      .eq('artist_id', artistId)
+      .eq('status', 'confirmed')
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
   type Row = {
     status: string
@@ -146,11 +188,22 @@ export async function fetchEventLineup(
   admin: Admin,
   eventId: string,
 ): Promise<{ artist: ArtistRow; status: 'confirmed' | 'invited'; inviteToken: string | null; billingOrder: number }[]> {
-  const { data } = await admin
-    .from('event_artists')
-    .select('status, invite_token, billing_order, artist:artists(id, slug, name, bio, image_url, links, owner_user_id)')
-    .eq('event_id', eventId)
-    .order('billing_order', { ascending: true })
+  /*
+   * PAGED ON `id` AND SORTED ON BILLING ORDER AFTERWARDS, which looks like the
+   * wrong way round and is not. `billing_order` is NOT unique: two artists can
+   * share a slot, and ranged paging over a non-deterministic order may return
+   * one row in two windows and another in none. So the read is ordered by the
+   * primary key, which is total, and the billing order is applied in memory
+   * where it costs nothing and cannot lose a row.
+   */
+  const data = await readEveryRow<unknown>('the lineup for this event', (from, to) =>
+    admin
+      .from('event_artists')
+      .select('status, invite_token, billing_order, artist:artists(id, slug, name, bio, image_url, links, owner_user_id)')
+      .eq('event_id', eventId)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
   type Row = {
     status: 'confirmed' | 'invited'
@@ -159,6 +212,7 @@ export async function fetchEventLineup(
     artist: Record<string, unknown> | null
   }
   return ((data ?? []) as unknown as Row[])
+    .sort((a, b) => a.billing_order - b.billing_order)
     .filter((r) => !!r.artist)
     .map((r) => ({
       artist: toArtistRow(r.artist as Record<string, unknown>),
@@ -177,21 +231,43 @@ export async function fetchArtistAttribution(
   admin: Admin,
   artistId: string,
 ): Promise<{ shows: ArtistShowAttribution[]; totals: { clicks: number; conversions: number; tickets: number } }> {
-  const { data: links } = await admin
-    .from('share_links')
-    .select('id, event_id')
-    .eq('artist_id', artistId)
-  const linkRows = (links ?? []) as { id: string; event_id: string }[]
+  /*
+   * THIS IS THE ARTIST'S PORTABLE PROOF OF DRAW, so under-reporting it is the
+   * expensive direction: it is the number they show the next promoter. Every
+   * read here was unbounded with its `error` discarded, and
+   * `share_link_events` takes one row per click, so a working artist passes the
+   * 1,000-row ceiling and their proof quietly shrinks.
+   */
+  const linkRows = await readEveryRow<{ id: string; event_id: string }>(
+    'the tracked links carrying this artist',
+    (from, to) =>
+      admin
+        .from('share_links')
+        .select('id, event_id')
+        .eq('artist_id', artistId)
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   const totals = { clicks: 0, conversions: 0, tickets: 0 }
   if (linkRows.length === 0) return { shows: [], totals }
 
   const eventByLink = new Map(linkRows.map((l) => [l.id, l.event_id]))
 
-  const { data: events } = await admin
-    .from('share_link_events')
-    .select('link_id, kind, order_id')
-    .in('link_id', linkRows.map((l) => l.id))
-  const rows = (events ?? []) as { link_id: string; kind: string; order_id: string | null }[]
+  const rows: { link_id: string; kind: string; order_id: string | null }[] = []
+  for (const chunk of chunkInFilterValues(linkRows.map((l) => l.id))) {
+    rows.push(
+      ...(await readEveryRow<{ link_id: string; kind: string; order_id: string | null }>(
+        'the clicks and conversions on this artist’s links',
+        (from, to) =>
+          admin
+            .from('share_link_events')
+            .select('link_id, kind, order_id')
+            .in('link_id', chunk)
+            .order('id', { ascending: true })
+            .range(from, to),
+      )),
+    )
+  }
 
   const byEvent = new Map<string, { clicks: number; conversions: number; orderIds: string[] }>()
   for (const row of rows) {
@@ -211,26 +287,44 @@ export async function fetchArtistAttribution(
 
   const allOrderIds = [...byEvent.values()].flatMap((e) => e.orderIds)
   const ticketCountByOrder = new Map<string, number>()
-  if (allOrderIds.length > 0) {
-    const { data: tickets } = await admin
-      .from('tickets')
-      .select('order_id')
-      .in('order_id', allOrderIds)
-    for (const t of (tickets ?? []) as { order_id: string }[]) {
+  for (const chunk of chunkInFilterValues(allOrderIds)) {
+    const tickets = await readEveryRow<{ order_id: string }>(
+      'the tickets on this artist’s attributed orders',
+      (from, to) =>
+        admin
+          .from('tickets')
+          .select('id, order_id')
+          .in('order_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    for (const t of tickets) {
       ticketCountByOrder.set(t.order_id, (ticketCountByOrder.get(t.order_id) ?? 0) + 1)
     }
   }
 
-  const eventIds = [...byEvent.keys()]
-  const { data: eventMeta } = await admin
-    .from('events')
-    .select('id, title, slug, start_date')
-    .in('id', eventIds)
-  const metaById = new Map(
-    ((eventMeta ?? []) as { id: string; title: string; slug: string; start_date: string }[]).map(
-      (e) => [e.id, e],
-    ),
-  )
+  /*
+   * A SHOW WITH NO META ROW IS DROPPED ENTIRELY by the loop below
+   * (`if (!meta) continue`), so a short read here does not shrink a number, it
+   * deletes whole shows from the artist's history. That is why this is paged
+   * and chunked rather than merely bounded.
+   */
+  const eventMeta: { id: string; title: string; slug: string; start_date: string }[] = []
+  for (const chunk of chunkInFilterValues([...byEvent.keys()])) {
+    eventMeta.push(
+      ...(await readEveryRow<{ id: string; title: string; slug: string; start_date: string }>(
+        'the shows those links belong to',
+        (from, to) =>
+          admin
+            .from('events')
+            .select('id, title, slug, start_date')
+            .in('id', chunk)
+            .order('id', { ascending: true })
+            .range(from, to),
+      )),
+    )
+  }
+  const metaById = new Map(eventMeta.map((e) => [e.id, e]))
 
   const shows: ArtistShowAttribution[] = []
   for (const [eventId, entry] of byEvent) {
@@ -259,21 +353,36 @@ export async function fetchEventArtistAttribution(
   admin: Admin,
   eventId: string,
 ): Promise<{ artistId: string; artistName: string; clicks: number; conversions: number; tickets: number }[]> {
-  const { data: links } = await admin
-    .from('share_links')
-    .select('id, artist_id')
-    .eq('event_id', eventId)
-    .not('artist_id', 'is', null)
-  const linkRows = (links ?? []) as { id: string; artist_id: string }[]
+  const linkRows = await readEveryRow<{ id: string; artist_id: string }>(
+    'the artist-tagged links on this event',
+    (from, to) =>
+      admin
+        .from('share_links')
+        .select('id, artist_id')
+        .eq('event_id', eventId)
+        .not('artist_id', 'is', null)
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   if (linkRows.length === 0) return []
 
   const artistByLink = new Map(linkRows.map((l) => [l.id, l.artist_id]))
 
-  const { data: events } = await admin
-    .from('share_link_events')
-    .select('link_id, kind, order_id')
-    .in('link_id', linkRows.map((l) => l.id))
-  const rows = (events ?? []) as { link_id: string; kind: string; order_id: string | null }[]
+  const rows: { link_id: string; kind: string; order_id: string | null }[] = []
+  for (const chunk of chunkInFilterValues(linkRows.map((l) => l.id))) {
+    rows.push(
+      ...(await readEveryRow<{ link_id: string; kind: string; order_id: string | null }>(
+        'the clicks and conversions on those links',
+        (from, to) =>
+          admin
+            .from('share_link_events')
+            .select('link_id, kind, order_id')
+            .in('link_id', chunk)
+            .order('id', { ascending: true })
+            .range(from, to),
+      )),
+    )
+  }
 
   const byArtist = new Map<string, { clicks: number; conversions: number; orderIds: string[] }>()
   for (const row of rows) {
@@ -294,21 +403,42 @@ export async function fetchEventArtistAttribution(
 
   const allOrderIds = [...byArtist.values()].flatMap((e) => e.orderIds)
   const ticketCountByOrder = new Map<string, number>()
-  if (allOrderIds.length > 0) {
-    const { data: tickets } = await admin
-      .from('tickets')
-      .select('order_id')
-      .in('order_id', allOrderIds)
-    for (const t of (tickets ?? []) as { order_id: string }[]) {
+  for (const chunk of chunkInFilterValues(allOrderIds)) {
+    const tickets = await readEveryRow<{ order_id: string }>(
+      'the tickets on the orders those links drove',
+      (from, to) =>
+        admin
+          .from('tickets')
+          .select('id, order_id')
+          .in('order_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    for (const t of tickets) {
       ticketCountByOrder.set(t.order_id, (ticketCountByOrder.get(t.order_id) ?? 0) + 1)
     }
   }
 
-  const { data: artists } = await admin
-    .from('artists')
-    .select('id, name')
-    .in('id', [...byArtist.keys()])
-  const nameById = new Map(((artists ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name]))
+  /*
+   * A MISSING NAME IS RENDERED, NOT SKIPPED: the row below falls back to
+   * "Unknown artist". So a short or failed read here does not hide a number, it
+   * puts the words "Unknown artist" on the organiser's own lineup panel beside
+   * a real performer's real click count.
+   */
+  const artists: { id: string; name: string }[] = []
+  for (const chunk of chunkInFilterValues([...byArtist.keys()])) {
+    artists.push(
+      ...(await readEveryRow<{ id: string; name: string }>('the names of those artists', (from, to) =>
+        admin
+          .from('artists')
+          .select('id, name')
+          .in('id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+      )),
+    )
+  }
+  const nameById = new Map(artists.map((a) => [a.id, a.name]))
 
   return [...byArtist.entries()]
     .map(([artistId, entry]) => ({

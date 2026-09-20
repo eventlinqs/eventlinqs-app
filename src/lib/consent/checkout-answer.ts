@@ -4,7 +4,12 @@ import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { resolveDigestCity } from './digest-city'
-import { getCurrentConsentWording, consentFieldsFromWording, recordConsentEvent } from './ledger'
+import {
+  getCurrentConsentWording,
+  consentFieldsFromWording,
+  recordConsentEvent,
+  type ConsentWordingRecord,
+} from './ledger'
 import { FACILITATED_MARKETING_PURPOSE } from './purposes'
 import { resolveSend } from './resolver'
 
@@ -53,6 +58,16 @@ export async function recordCheckoutMarketingAnswer(
     eventId: string
     reference?: string | null
     at?: string
+    /**
+     * AQ1. The wording the buyer actually read, when the question was put to
+     * them on an EARLIER surface than this one. Omitted means the question was
+     * asked here, so the wording in force now is the wording they read.
+     *
+     * It is passed in rather than re-read because under AQ1's reversal the two
+     * moments are different requests, and a wording version published between
+     * them would otherwise rewrite what was agreed to.
+     */
+    wording?: ConsentWordingRecord | null
   },
 ): Promise<CheckoutMarketingResult> {
   try {
@@ -60,7 +75,7 @@ export async function recordCheckoutMarketingAnswer(
       return { recorded: 'none', reason: 'the marketing question is switched off' }
     }
 
-    const wording = await getCurrentConsentWording(admin, FACILITATED_MARKETING_PURPOSE)
+    const wording = params.wording ?? (await getCurrentConsentWording(admin, FACILITATED_MARKETING_PURPOSE))
     if (!wording) {
       return { recorded: 'none', reason: 'no wording record could be read, so nothing was asked' }
     }

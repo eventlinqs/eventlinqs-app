@@ -9,8 +9,24 @@ interface RevenueSummaryProps {
   currency: string
 }
 
+/*
+ * GROUPED, AND THE SAME WAY THE TILE ABOVE IT GROUPS.
+ *
+ * This was `${currency} ${(cents / 100).toFixed(2)}`, which prints an
+ * unseparated "AUD 28750.00" directly beneath a Total Revenue tile on the SAME
+ * screen that prints "AUD 28,750.00" through Intl. One page, one figure, two
+ * formats, and the unseparated one is the harder of the two to read at a
+ * glance, on the panel an organiser reads their takings off.
+ *
+ * en-AU with currencyDisplay: 'code' is what the tile uses, so the two now
+ * agree by construction rather than by coincidence.
+ */
 function formatCents(cents: number, currency: string) {
-  return `${currency.toUpperCase()} ${(cents / 100).toFixed(2)}`
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    currencyDisplay: 'code',
+  }).format(cents / 100)
 }
 
 export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCents, refundedCents = 0, currency }: RevenueSummaryProps) {

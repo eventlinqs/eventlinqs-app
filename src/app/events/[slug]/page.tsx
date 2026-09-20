@@ -21,6 +21,10 @@ import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
+import { TicketPageDiscoveryConsent } from '@/components/checkout/ticket-page-discovery-consent'
+import { resolveCapturePlacement } from '@/lib/consent/capture-placement'
+import { getCurrentConsentWording } from '@/lib/consent/ledger'
+import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
 import { GetTicketsCta } from '@/components/features/events/get-tickets-cta'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
@@ -885,6 +889,41 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const availabilityAndAccessOn = await availabilityAndAccessPromise
 
+  /*
+   * AQ1. THE DISCOVERY QUESTION, WHEN THE PLACEMENT SAYS IT IS ASKED HERE.
+   *
+   * AQ1's reversal condition moves the capture off the payment step rather
+   * than removing it, and this is the surface it moves to. Resolved once and
+   * threaded as a SLOT, so a page that is not asking pays nothing for it:
+   * the panel is a server component and the client bundle carries one
+   * attribute string.
+   *
+   * THIS PAGE IS ISR (revalidate = 300), SO THE PLACEMENT HERE CAN BE UP TO
+   * FIVE MINUTES STALE, and that is stated rather than discovered later. Both
+   * stale directions are safe because the PAYMENT STEP is dynamic and decides
+   * for itself: a stale question that is answered is refused by the action
+   * (the placement no longer says ticket page) and the payment step asks
+   * again; a stale page with no question leaves the payment step to ask,
+   * which is exactly what it does when the placement is checkout. Neither
+   * direction can record twice, because one carried answer per reservation is
+   * the primary key.
+   */
+  const captureAdmin = createAdminClient()
+  const capturePlacement = await resolveCapturePlacement(captureAdmin)
+  const discoveryWording =
+    capturePlacement === 'ticket_page' && (await isFeatureEnabled('audience_capture'))
+      ? await getCurrentConsentWording(captureAdmin, FACILITATED_MARKETING_PURPOSE)
+      : null
+  const discoveryConsentSlot = discoveryWording ? (
+    <TicketPageDiscoveryConsent
+      wording={{
+        label: discoveryWording.label,
+        body: discoveryWording.body,
+        version: discoveryWording.version,
+      }}
+    />
+  ) : null
+
   const eventAccessibility = availabilityAndAccessOn
     ? accessibilityItems(event as unknown as Record<string, unknown>, 'event')
     : NO_ACCESSIBILITY_INFO
@@ -902,8 +941,27 @@ export default async function EventDetailPage({ params }: Props) {
    *
    * The waitlist IS at that anchor, so the label now names it. One value, three
    * consumers, and the sold-out panel is the thing it scrolls to.
+   *
+   * THE SAME DEFECT HAD A SECOND CASE AND IT WAS LEFT BEHIND (MONEY FIX, found
+   * 20 September 2026 by driving acceptance line 7). When `saleBlocked` is true
+   * because the organiser has no connected account, the panel at that anchor
+   * reads "Tickets not yet on sale. This organiser is still finishing their
+   * payment setup", and all three controls still read "Get tickets" over a
+   * price and an "Only 10 left" pill. That is the identical false affordance the
+   * paragraph above describes, on the surface where the money actually is, and
+   * the fix above never reached it because the condition only asked about
+   * `isSoldOut`.
+   *
+   * `saleBlocked` is tested FIRST, because an event can be both blocked and
+   * sold out and "Join the waitlist" would then still promise something the
+   * platform cannot deliver: the waitlist exists to convert into a sale, and
+   * there is no sale to convert into while the organiser cannot be paid.
    */
-  const ticketCtaLabel = isSoldOut && !saleBlocked ? 'Join the waitlist' : 'Get tickets'
+  const ticketCtaLabel = saleBlocked
+    ? 'Not on sale yet'
+    : isSoldOut
+      ? 'Join the waitlist'
+      : 'Get tickets'
 
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
@@ -1531,6 +1589,7 @@ export default async function EventDetailPage({ params }: Props) {
                           saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
                           feePassType={eventFeePassType}
+                          discoveryConsentSlot={discoveryConsentSlot}
                         />
                       </div>
                     )}
@@ -1575,6 +1634,7 @@ export default async function EventDetailPage({ params }: Props) {
                         saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}
                         feePassType={eventFeePassType}
+                        discoveryConsentSlot={discoveryConsentSlot}
                       />
                     </div>
 

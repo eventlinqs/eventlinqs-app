@@ -214,6 +214,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/admin/refunds', klass: 'never', why: 'staff only' },
   { route: '/admin/search', klass: 'never', why: 'staff only' },
   { route: '/admin/staff', klass: 'never', why: 'staff only' },
+  { route: '/admin/traffic', klass: 'never', why: 'staff only' },
   { route: '/admin/staff/[id]', klass: 'never', why: 'staff only' },
   { route: '/admin/users', klass: 'never', why: 'staff only' },
   { route: '/admin/users/[id]', klass: 'never', why: 'staff only' },

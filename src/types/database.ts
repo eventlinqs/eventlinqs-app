@@ -905,7 +905,9 @@ export type Database = {
       }
       digest_sends: {
         Row: {
+          audience_count: number
           city_slug: string
+          completed_at: string | null
           event_count: number
           id: string
           period_end: string
@@ -914,7 +916,9 @@ export type Database = {
           sent_at: string
         }
         Insert: {
+          audience_count?: number
           city_slug: string
+          completed_at?: string | null
           event_count?: number
           id?: string
           period_end: string
@@ -923,7 +927,9 @@ export type Database = {
           sent_at?: string
         }
         Update: {
+          audience_count?: number
           city_slug?: string
+          completed_at?: string | null
           event_count?: number
           id?: string
           period_end?: string
@@ -1329,6 +1335,61 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      event_group_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          min_group_size: number
+          ticket_tier_id: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          min_group_size?: number
+          ticket_tier_id: string
+          unit_price_cents: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          min_group_size?: number
+          ticket_tier_id?: string
+          unit_price_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_group_rates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_group_rates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_group_rates_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: true
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_stream_links: {
         Row: {
@@ -2613,6 +2674,78 @@ export type Database = {
           test_domain?: string
           unsubscribe_path?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_capture_answer: {
+        Row: {
+          created_at: string
+          placement: string
+          reservation_id: string
+          ticked: boolean
+          wording: string
+          wording_purpose: string
+          wording_version: string
+        }
+        Insert: {
+          created_at?: string
+          placement: string
+          reservation_id: string
+          ticked: boolean
+          wording: string
+          wording_purpose: string
+          wording_version: string
+        }
+        Update: {
+          created_at?: string
+          placement?: string
+          reservation_id?: string
+          ticked?: boolean
+          wording?: string
+          wording_purpose?: string
+          wording_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_capture_answer_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_capture_answer_wording_purpose_fkey"
+            columns: ["wording_purpose"]
+            isOneToOne: false
+            referencedRelation: "consent_purposes"
+            referencedColumns: ["purpose"]
+          },
+        ]
+      }
+      marketing_capture_placement: {
+        Row: {
+          created_at: string
+          decided_by: string | null
+          effective_from: string
+          id: string
+          placement: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          decided_by?: string | null
+          effective_from?: string
+          id?: string
+          placement: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          decided_by?: string | null
+          effective_from?: string
+          id?: string
+          placement?: string
+          reason?: string
         }
         Relationships: []
       }
@@ -4288,41 +4421,6 @@ export type Database = {
           },
         ]
       }
-      organiser_sales_digest_sends: {
-        Row: {
-          currency: string
-          digest_date: string
-          gross_cents: number
-          organisation_id: string
-          sale_count: number
-          sent_at: string
-        }
-        Insert: {
-          currency?: string
-          digest_date: string
-          gross_cents?: number
-          organisation_id: string
-          sale_count?: number
-          sent_at?: string
-        }
-        Update: {
-          currency?: string
-          digest_date?: string
-          gross_cents?: number
-          organisation_id?: string
-          sale_count?: number
-          sent_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organiser_sales_digest_sends_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organiser_balance_ledger: {
         Row: {
           created_at: string
@@ -4464,6 +4562,41 @@ export type Database = {
           },
           {
             foreignKeyName: "organiser_marketing_consents_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organiser_sales_digest_sends: {
+        Row: {
+          currency: string
+          digest_date: string
+          gross_cents: number
+          organisation_id: string
+          sale_count: number
+          sent_at: string
+        }
+        Insert: {
+          currency?: string
+          digest_date: string
+          gross_cents?: number
+          organisation_id: string
+          sale_count?: number
+          sent_at?: string
+        }
+        Update: {
+          currency?: string
+          digest_date?: string
+          gross_cents?: number
+          organisation_id?: string
+          sale_count?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_sales_digest_sends_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -7957,6 +8090,11 @@ export type Database = {
         Returns: Json
       }
       event_referencing_tables: { Args: never; Returns: Json }
+      event_seat_status_counts: { Args: { p_event_id: string }; Returns: Json }
+      event_seat_status_counts_many: {
+        Args: { p_event_ids: string[] }
+        Returns: Json
+      }
       event_tags_normalised: { Args: { tags: Json }; Returns: boolean }
       events_within_distance: {
         Args: { p_lat: number; p_lng: number; p_radius_km: number }
@@ -8080,6 +8218,15 @@ export type Database = {
       gen_ticket_code: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       get_current_tier_price: { Args: { p_tier_id: string }; Returns: number }
+      group_rate_floor_cents: {
+        Args: {
+          p_country_code: string
+          p_currency: string
+          p_event_id: string
+          p_organisation_id: string
+        }
+        Returns: number
+      }
       increment_discount_uses: { Args: { p_code_id: string }; Returns: boolean }
       increment_sold_count: {
         Args: { p_quantity: number; p_tier_id: string }
@@ -8233,6 +8380,40 @@ export type Database = {
         Args: { p_dispute_id: string; p_outcome: string }
         Returns: Json
       }
+      resolve_pricing_value: {
+        Args: {
+          p_country_code: string
+          p_currency: string
+          p_event_id: string
+          p_organisation_id: string
+          p_rule_type: string
+        }
+        Returns: {
+          country_code: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_until: string | null
+          event_id: string | null
+          event_type: string
+          id: string
+          organisation_id: string | null
+          organiser_tier: string
+          rule_type: string
+          value_cents: number | null
+          value_integer: number | null
+          value_percentage: number | null
+          value_type: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pricing_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       resolve_scan_review: {
         Args: { p_note?: string; p_scan_id: string }
         Returns: boolean
@@ -8302,6 +8483,21 @@ export type Database = {
       }
       void_venue_payout: {
         Args: { p_payout_id: string; p_reason?: string; p_status?: string }
+        Returns: Json
+      }
+      write_pricing_rule: {
+        Args: {
+          p_country_code: string
+          p_created_by: string
+          p_currency: string
+          p_event_id?: string
+          p_organisation_id?: string
+          p_rule_type: string
+          p_value_cents?: number
+          p_value_integer?: number
+          p_value_percentage?: number
+          p_value_type: string
+        }
         Returns: Json
       }
     }

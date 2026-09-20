@@ -43,6 +43,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
 import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 /*
  * THE PLATFORM'S OWN REFUSAL, FIRST, BEFORE ANYTHING ELSE RUNS.
@@ -189,7 +190,7 @@ async function setup() {
 async function teardown() {
   if (!adminId) return
   await db.from('admin_users').delete().eq('id', adminId)
-  await db.auth.admin.deleteUser(adminId).catch(() => {})
+  await tearDownAccountOrFailTheRun(db, adminId)
   console.log(`fixture: admin ${adminEmail} deleted`)
 }
 

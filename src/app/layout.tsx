@@ -9,6 +9,7 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { MeasurementBoot } from '@/components/analytics/measurement-boot'
+import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
 import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
 import { siteVerificationMetadata } from '@/lib/seo/site-verification'
@@ -176,7 +177,10 @@ const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs
 // Load Plausible only on the production deployment. On localhost and Vercel
 // preview deployments VERCEL_ENV is undefined or 'preview', so the script does
 // not load and dev/preview traffic never counts against the production domain.
-const PLAUSIBLE_ENABLED = process.env.VERCEL_ENV === 'production'
+// AN1's reversal condition rides on top of that: one flag and this script goes
+// too, so "all analytics and ad scripts" is literally all of them rather than
+// all of the ones behind the consent banner.
+const PLAUSIBLE_ENABLED = process.env.VERCEL_ENV === 'production' && !MEASUREMENT_OFF
 
 export default function RootLayout({
   children,

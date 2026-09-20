@@ -277,7 +277,10 @@ export default async function AdminEventDetailPage({
               <input type="hidden" name="currency" value="AUD" />
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ev-pct" className="text-[11px] uppercase tracking-wider text-white/50">Fee percent</label>
-                <input id="ev-pct" name="platform_fee_percentage" type="number" step="0.01" min="0" max="100" defaultValue={fee.percent}
+                {/* min is 0.01, not 0: pricing_rules_value_split_check requires
+                    value_percentage > 0, so 0 is the one value this control must
+                    not offer. Zero fee is the Founding Organiser waiver. */}
+                <input id="ev-pct" name="platform_fee_percentage" type="number" step="0.01" min="0.01" max="100" required defaultValue={fee.percent || undefined}
                   className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">

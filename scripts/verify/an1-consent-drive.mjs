@@ -13,10 +13,13 @@
  *   2. THE BANNER IS THERE, both buttons are real, and the refusal is the one a
  *      keyboard reaches first.
  *   3. WITH CONSENT GIVEN, the platform asks for what it is configured to ask
- *      for, and nothing it is not. On a machine with no provider keys that is
- *      NOTHING, which the drive reports as the honest result rather than
- *      dressing up as a pass: what it proves here is that accepting changes the
- *      gate's answer, and the identifiers are the owner's to mint.
+ *      for, and nothing it is not, judged from the GATE'S OWN OUTPUT IN THE
+ *      BROWSER. On a server started with no provider identifiers the gate
+ *      renders no script at all, there is no positive half to prove, and this
+ *      drive REFUSES rather than printing a pass: start the server with
+ *      `node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids`.
+ *      Why it is not read from this process's environment, and what the version
+ *      that did cost, is in scripts/verify/lib/an1-accepted-loads.mjs.
  *   4. AN ORGANISER SIGNS UP through the real form with
  *      ?src=organisers&utm_campaign=test on the first page they land on, and
  *      the account carries src, utm_campaign, the landing path and the
@@ -56,18 +59,37 @@
  *                     node throws ERR_MODULE_NOT_FOUND part way through and the
  *                     run ends with checks unexecuted.
  *
- * Start the server first: node scripts/dev/lane-b-serve-with-stripe.mjs
+ * Start the server first, and with the identifiers, or check 3 refuses:
+ *   node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE, linkFromInbox } from '../journeys/harness.mjs'
-import { ANALYTICS_HOSTS } from '../../src/lib/analytics/providers.ts'
+import { ANALYTICS_HOSTS, ANALYTICS_PROVIDERS } from '../../src/lib/analytics/providers.ts'
+import { judgeAcceptedLoads, GATE_SCRIPT_IDS, THE_COMMAND } from './lib/an1-accepted-loads.mjs'
+import { tearDownAccount } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
 for (let i = 0; i < args.length; i += 1) if (args[i] === '--out') out = args[++i]
+/**
+ * AN1's REVERSAL CONDITION, DRIVEN.
+ *
+ * With this flag the drive asserts the OPPOSITE of check 3: the server holds
+ * all four identifiers AND NEXT_PUBLIC_MEASUREMENT_OFF, so the gate must render
+ * nothing and the browser must ask for nothing, for a person who ACCEPTED.
+ *
+ * It is a separate mode rather than a separate drive because it has to assert
+ * against the same accept click, in the same browser, at the same three
+ * viewports: a reversal proven on a different path is a reversal proven
+ * somewhere else.
+ *
+ *   node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids --measurement-off
+ *   ... an1-consent-drive.mjs --out <dir> --expect-measurement-off
+ */
+const expectMeasurementOff = args.includes('--expect-measurement-off')
 if (!out) {
   console.error('FAIL: --out <directory> is required')
   process.exit(1)
@@ -318,8 +340,13 @@ try {
       `${afterRefusal.length} tracker request(s) after refusing; the banner ${bannerBack ? 'came back' : 'stayed down'}`,
     )
 
-    // 4. ACCEPT. The gate's answer changes; what it then asks for is whatever
-    //    the owner has configured, which on this machine is nothing.
+    // 4. ACCEPT. The gate's answer changes, and what it then loads is judged
+    //    from the GATE'S OWN OUTPUT IN THIS BROWSER rather than from this
+    //    process's environment. The two are different machines' answers: a
+    //    NEXT_PUBLIC value reaches the browser because the SERVER inlined it,
+    //    and the version of this check that read `process.env` here both passed
+    //    without proving anything and could fail a working platform. The whole
+    //    account is in scripts/verify/lib/an1-accepted-loads.mjs.
     await context.clearCookies()
     requested.length = 0
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 120000 })
@@ -327,19 +354,39 @@ try {
     await page.getByRole('button', { name: 'That is fine' }).click()
     await page.waitForTimeout(4000)
     const afterAccept = hits(requested)
-    const configured = [
-      process.env.NEXT_PUBLIC_POSTHOG_KEY,
-      process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID,
-      process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
-      process.env.NEXT_PUBLIC_META_PIXEL_ID,
-    ].filter(Boolean).length
-    check(
-      `an1.${vp.label}.accepting-loads-only-what-is-configured`,
-      configured === 0 ? afterAccept.length === 0 : afterAccept.length > 0,
-      configured === 0
-        ? 'no provider identifier is configured on this machine, so accepting correctly loads nothing. The identifiers are the owner to mint (FOUNDER STEPS in AN1) and this check becomes a positive the day one is pasted in'
-        : `${configured} provider(s) configured, ${afterAccept.length} request(s) attempted to ${JSON.stringify([...new Set(afterAccept.map(u => new URL(u).host))])}, every one of them aborted at the route layer so nothing left this machine`,
+    // The gate's own script elements, by the ids the gate gives them. Whether
+    // the gate has grown one this list does not name is a question answered at
+    // BUILD time by clause 7 of no-analytics-before-consent.mjs, not here: an
+    // earlier version of this line collected every `el-` script and refused all
+    // three viewports over `el-headless-flag` and `el-real-user-bootstrap`,
+    // which belong to the root layout and reach nothing.
+    const emitted = await page.evaluate(
+      ids => ids.filter(id => document.getElementById(id) !== null),
+      GATE_SCRIPT_IDS,
     )
+    if (expectMeasurementOff) {
+      // The reversal, asserted where it matters: a person who said YES, on a
+      // server that holds every identifier, and still nothing is emitted and
+      // nothing is asked for.
+      check(
+        `an1.${vp.label}.the-one-flag-removes-every-script`,
+        emitted.length === 0 && afterAccept.length === 0,
+        emitted.length === 0 && afterAccept.length === 0
+          ? 'a person who ACCEPTED, on a server holding all four identifiers: the gate emitted no script and the browser asked for no measurement host'
+          : `the kill switch did not hold: the gate emitted ${JSON.stringify(emitted)} and ${afterAccept.length} request(s) reached a provider host`,
+      )
+    } else {
+      const verdict = judgeAcceptedLoads({
+        emitted,
+        requested: afterAccept,
+        registry: ANALYTICS_PROVIDERS,
+      })
+      check(
+        `an1.${vp.label}.accepting-loads-only-what-is-configured`,
+        verdict.verdict === 'proven',
+        verdict.detail,
+      )
+    }
     const bannerGone = await page.evaluate(() => Boolean(document.querySelector('[aria-label="Cookies and measurement"]')))
     check(`an1.${vp.label}.banner-closes-on-accept`, bannerGone === false, 'the banner is gone once answered')
     await page.screenshot({ path: join(out, `${vp.label}-02-after-accept.png`), fullPage: false })
@@ -474,9 +521,16 @@ try {
   // as it was found.
   if (createdUserId) {
     await db.from('profiles').delete().eq('id', createdUserId)
-    await db.auth.admin.deleteUser(createdUserId).catch(() => {})
+    // THE DELETION IS REPORTED, NEVER SWALLOWED. This line used to end
+    // `.catch(() => {})`, and the re-read below only asks about `profiles`,
+    // which has already gone: so a refused `deleteUser` left an auth account
+    // behind while the check printed "left as found". That is exactly how
+    // eighteen lane B accounts accumulated on TEST unnoticed until AQ3's
+    // teardown refused to build a fixture (19 September 2026). A teardown that
+    // cannot fail is not a teardown.
+    const removal = await tearDownAccount(db, createdUserId)
     const { data: gone } = await db.from('profiles').select('id').eq('id', createdUserId).maybeSingle()
-    check('an1.teardown.left-as-found', !gone, `the drive account ${createdUserId} is removed`)
+    check('an1.teardown.left-as-found', !gone && removal.gone, removal.detail)
   }
   if (browser) await browser.close()
 }
@@ -489,6 +543,9 @@ console.log(`\n${checks.filter(c => c.ok).length} of ${checks.length} checks pas
 if (failures.length > 0) {
   console.error(`FAIL: ${failures.length}`)
   for (const f of failures) console.error(`  ${f}`)
+  if (failures.some(f => f.includes('the gate rendered no provider script'))) {
+    console.error(`\nThe positive half of acceptance 2 needs a server that was given the identifiers:\n  ${THE_COMMAND}`)
+  }
   process.exit(1)
 }
 console.log('PASS - nothing loads before consent, and an account remembers where it came from.')

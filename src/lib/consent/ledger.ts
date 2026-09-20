@@ -51,12 +51,35 @@ export async function getCurrentConsentWording(
   admin: Admin,
   purpose: string,
 ): Promise<ConsentWordingRecord | null> {
+  return getConsentWordingAsAt(admin, purpose, new Date().toISOString())
+}
+
+/**
+ * THE WORDING THAT WAS IN FORCE AT A GIVEN MOMENT.
+ *
+ * AQ1 separates the moment a buyer READS the sentence from the moment their
+ * consent is WRITTEN: under the reversal condition the question is asked on the
+ * ticket page and recorded at the payment step. The version in force when the
+ * reservation was created is the closest thing the server itself knows to what
+ * was on screen, and it is knowable without trusting anything the browser says,
+ * which a version sent up from the client would not be.
+ *
+ * THE RESIDUAL WINDOW IS STATED RATHER THAN HIDDEN: a wording version published
+ * between the page rendering and the reservation being created would be missed,
+ * because the server has nothing that records the render. That window is
+ * sub-second and the alternative closes it only by believing the client.
+ */
+export async function getConsentWordingAsAt(
+  admin: Admin,
+  purpose: string,
+  at: string,
+): Promise<ConsentWordingRecord | null> {
   try {
     const { data, error } = await admin
       .from('consent_wordings')
       .select('purpose, version, label, body, channel_scope, third_party_scope, suppression_scope')
       .eq('purpose', purpose)
-      .lte('effective_from', new Date().toISOString())
+      .lte('effective_from', at)
       .order('effective_from', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -71,7 +94,45 @@ export async function getCurrentConsentWording(
       suppressionScope: data.suppression_scope,
     }
   } catch (error) {
-    captureException(error, { where: 'lib/consent/ledger:getCurrentConsentWording' })
+    captureException(error, { where: 'lib/consent/ledger:getConsentWordingAsAt' })
+    return null
+  }
+}
+
+/**
+ * ONE SPECIFIC VERSION OF A WORDING, read back by the version that was shown.
+ *
+ * AQ1 moves the question to the ticket page under its reversal condition, so
+ * the sentence a buyer reads and the moment their consent is written are no
+ * longer the same request. consent_wordings refuses UPDATE and DELETE, so a
+ * version is the same row it was when they read it: reading it back cannot
+ * widen a consent after the fact, and the alternative (re-reading whichever
+ * version is in force at payment time) silently could.
+ */
+export async function getConsentWordingByVersion(
+  admin: Admin,
+  purpose: string,
+  version: string,
+): Promise<ConsentWordingRecord | null> {
+  try {
+    const { data, error } = await admin
+      .from('consent_wordings')
+      .select('purpose, version, label, body, channel_scope, third_party_scope, suppression_scope')
+      .eq('purpose', purpose)
+      .eq('version', version)
+      .maybeSingle()
+    if (error || !data) return null
+    return {
+      purpose: data.purpose,
+      version: data.version,
+      label: data.label,
+      body: data.body,
+      channelScope: data.channel_scope as ConsentChannelScope,
+      thirdPartyScope: data.third_party_scope,
+      suppressionScope: data.suppression_scope,
+    }
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:getConsentWordingByVersion' })
     return null
   }
 }

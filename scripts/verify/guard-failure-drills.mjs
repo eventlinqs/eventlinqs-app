@@ -48,6 +48,23 @@ const BSL = String.fromCharCode(92)
 const GUARDS = 'scripts/guards'
 
 /*
+ * The five seating screens, and the one anchor three of their drills share.
+ * Named here because the seat chart's paging order is four lines long, and
+ * repeating a four-line anchor in three drills is how an anchor drifts out of
+ * step with the file it has to match exactly.
+ */
+const SEATING_SEATS = 'src/app/(dashboard)/dashboard/events/[id]/seats/page.tsx'
+const SEATING_KIT = 'src/app/(dashboard)/dashboard/events/[id]/launch-kit/page.tsx'
+const SEATING_LIST = 'src/app/(dashboard)/dashboard/events/page.tsx'
+const SEATING_MAPS = 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/page.tsx'
+const SEATING_ACTIONS = 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/actions.ts'
+const SEATING_SEAT_ORDER =
+  "        .order('row_label')\n" +
+  "        .order('seat_number')\n" +
+  "        .order('id')\n" +
+  '        .range(from, to),'
+
+/*
  * `--restore` RUNS BEFORE ANYTHING ELSE IN THIS FILE, and that placement is the
  * point rather than tidiness.
  *
@@ -235,6 +252,17 @@ console.log(
   `[drills] open pull requests for one-pull-request-at-a-time to judge: ` +
     `${PR_LIST_STALE ? `NONE (${PR_LIST_STALE})` : `readable; rot drill moves #${LAST_PARKED.number} onto closed #${CLOSED_PR_NUMBER ?? '?'}`}`,
 )
+
+/**
+ * The digest's per-city consent audience, paged and totally ordered. Shared by
+ * three drills because clause 1, clause 2 and the plausible wrong fix are three
+ * different ways to break the same four lines.
+ */
+const AUDIENCE_PAGE =
+  "        .eq('city_slug', citySlug)\n" +
+  "        .order('granted_at', { ascending: true })\n" +
+  "        .order('id', { ascending: true })\n" +
+  '        .range(from, to),\n'
 
 const DRILLS = [
   /*
@@ -2989,8 +3017,15 @@ const DRILLS = [
     name: 'the recovery engine queries a table belonging to the source system',
     guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
     file: 'src/lib/fillrate/read.ts',
-    find: "    .from('recovery_suppressions')\n    .select('contact_email')",
-    replace: "    .from('profiles')\n    .select('contact_email')",
+    /*
+     * RE-ANCHORED 20 September 2026: the read was wrapped in readEveryRow so it
+     * PAGES instead of stopping at the thousandth suppression, which indented the
+     * chain by two. The anchor carries that indentation deliberately, because the
+     * bare .from('recovery_suppressions') also appears on an upsert in this file
+     * and an anchor that matched both would rewrite whichever came first.
+     */
+    find: "      .from('recovery_suppressions')\n      .select('contact_email')",
+    replace: "      .from('profiles')\n      .select('contact_email')",
     expect: 'which is not the ledger',
   },
   {
@@ -3102,6 +3137,54 @@ const DRILLS = [
       'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
   },
   /*
+   * generated-types-are-generated (20 September 2026), four drills. Three of
+   * them put back a hand-edit that was really in src/types/database.ts on the
+   * morning of that day, found when a push of 234 commits was refused at
+   * types-drift: six arguments of write_pricing_rule typed as `| null`, a form
+   * the generator has no way of emitting, and two entries sitting where a person
+   * would put them rather than in the generator's ascending order. The fourth
+   * drills the half neither of those exercised, a parameter's optionality, which
+   * the generator decides from whether the SQL gives it a default.
+   */
+  {
+    name: 'a table is typed into the generated types in the place a person would put it',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '\n      payments: {',
+    replace: '\n      aaa_payments: {',
+    expect: 'Tables lists "organiser_sales_digest_sends" before "aaa_payments"',
+  },
+  {
+    name: 'a function argument is hand-typed as nullable, which the generator never writes',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n',
+    replace: '          p_created_by: string | null\n',
+    expect: 'write_pricing_rule.Args.p_created_by is typed "string | null"',
+  },
+  {
+    name: 'a function argument is renamed in the types and no longer matches its migration',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    /*
+     * RE-ANCHORED 20 September 2026 on the merged tree. 20260920000011 gave the
+     * writer's five optional arguments real DEFAULTs, so the generator now emits
+     * this one as `p_value_integer?`. That is the fix working, and the drill
+     * follows the generator rather than pinning the shape it was written against.
+     */
+    find: '          p_value_integer?: number\n',
+    replace: '          p_value_integers?: number\n',
+    expect: 'write_pricing_rule takes [',
+  },
+  {
+    name: 'a required argument is typed optional although its migration gives it no default',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n          p_currency: string',
+    replace: '          p_created_by: string\n          p_currency?: string',
+    expect: 'write_pricing_rule.Args.p_currency is optional in the types',
+  },
+  /*
    * read-failure-is-not-not-found, three drills, one per fault. 12 September
    * 2026, the fourth occurrence of the class: the events layout's existence read
    * discarded its error and a real event answered 404 to the gate's own drive.
@@ -3112,12 +3195,24 @@ const DRILLS = [
     name: 'the events layout discards the error of the read that decides existence (the incident)',
     guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
+    /*
+     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. The
+     * existence read used to select 'id' and return `children`; it now selects
+     * EVENT_HERO_SELECT and returns `withHeroPreload(...)`, because the hero's
+     * columns have to be in hand ABOVE the loading boundary to preload the LCP
+     * image on the SAME round trip rather than a second one.
+     *
+     * THE REPLACE IS LEFT AS THE HISTORICAL INCIDENT VERBATIM, and that is the
+     * point of this drill rather than an oversight: its job is to put back the
+     * shape that really shipped on 12 September, which discarded the error and
+     * decided existence on `if (data)`. Only the aim moved.
+     */
     find:
       "  const row = await readOrThrow('event-route', () =>\n" +
-      "    supabase.from('events').select('id').eq('slug', slug).maybeSingle(),\n" +
+      "    supabase.from('events').select(EVENT_HERO_SELECT).eq('slug', slug).maybeSingle() as unknown as Read<EventHeroFields>,\n" +
       '  )\n' +
       '\n' +
-      '  if (row) return children',
+      '  if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)',
     replace:
       '  const { data } = await supabase\n' +
       "    .from('events')\n" +
@@ -4982,8 +5077,17 @@ const DRILLS = [
     name: 'the matcher door stops composing the visibility rule and offers every event ever published',
     guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
     file: 'src/lib/matching/events.ts',
-    find: 'await applyPublicEventVisibility(',
-    replace: 'await noVisibilityRuleAtAll(',
+    /*
+     * THE ANCHOR CARRIES ITS NEXT LINE, and it has to. The call was unwrapped
+     * from an `await` into a `readOrThrow(... () => ...)` thunk so the order and
+     * the limit sit inside the chain no-silent-row-ceiling walks, which left
+     * this drill matching `await applyPublicEventVisibility(` and finding
+     * nothing: STALE, reported on 20 September 2026. The bare name is no good
+     * either, because the comment fifteen lines above mentions it and would be
+     * rewritten instead of the call.
+     */
+    find: "    applyPublicEventVisibility(\n      admin.from(\'events\')",
+    replace: "    noVisibilityRuleAtAll(\n      admin.from(\'events\')",
     expect: 'no longer composes applyPublicEventVisibility',
   },
   {
@@ -5756,8 +5860,14 @@ const DRILLS = [
     name: 'every interior template stops skipping below-fold layout because ContentSection dropped the class',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
     file: 'src/components/layout/ContentSection.tsx',
-    find: "className={`${skipOffscreen ? 'cv-section ' : ''}relative",
-    replace: "className={`${skipOffscreen ? '' : ''}relative",
+    /*
+     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. A
+     * `cv-measured` branch was added AHEAD of the `cv-section` one, for the six
+     * sections too tall for the intrinsic-size estimate to be honest about, so
+     * the ternary the old anchor described is now the inner arm of a nested one.
+     */
+    find: "className={`${intrinsicSize ? 'cv-measured ' : skipOffscreen ? 'cv-section ' : ''}relative",
+    replace: "className={`${intrinsicSize ? 'cv-measured ' : skipOffscreen ? '' : ''}relative",
     expect: 'does not reference cv-section',
   },
   {
@@ -6201,6 +6311,1569 @@ const DRILLS = [
     find: '            <HeroMedia',
     replace: '            <HeroMediaRenamed',
     expect: 'no hero-bearing page was found behind any loading boundary',
+  },
+
+  /*
+   * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.
+   *
+   * The guard exists because a drive process cannot invalidate the server's
+   * feature-flag cache, and three separate drives wrote three spellings of a
+   * helper that returns silently when it cannot. The GA2 matcher drive failed
+   * three consecutive runs on a 30-second click at a button that was never
+   * going to enable, and the error named none of the three conditions that
+   * disable it.
+   *
+   * THE FIRST DRILL IS THE REAL REGRESSION: take the wait out of ga2 and the
+   * guard must refuse, because that is the state the tree was in this morning.
+   */
+  {
+    name: 'the matcher drive goes back to clicking at whatever the first render showed',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/verify/ga2-matcher-drive.mjs',
+    find: 'async function waitForProduceButton(page, { enabled, url }) {',
+    replace: 'async function notAWaiter(page, { enabled, url }) {',
+    expect: 'writes public.feature_flags and drives a browser',
+  },
+  {
+    name: 'a register entry names a drive that no longer flips a flag',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: "file: 'scripts/verify/waitlist-bridge-e2e.mjs',",
+    replace: "file: 'scripts/verify/waitlist-bridge-renamed.mjs',",
+    expect: 'a register entry no longer matches',
+  },
+  {
+    name: "the flag-write matcher quietly stops seeing a supabase-js write",
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    replace: `const SUPABASE_WRITE = /never-matches-anything-at-all/g; const UNUSED_SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard stops being able to see that a drive opens a page',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const DRIVES_A_BROWSER = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    replace: `const DRIVES_A_BROWSER = /never-matches-a-browser-at-all/; const UNUSED_DRIVES = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    expect: 'REFUSING: the calibration probe',
+  },
+
+  /*
+   * discovery-consent-is-asked-once-and-never-preticked (lane B, 19 September 2026), five drills, one per clause.
+   *
+   * The guard shipped having ALREADY found one live defect: the homepage email
+   * signup panel rendered "I agree to receive community event updates from
+   * EventLinqs" beside a box carrying `defaultChecked`, and stored consent:
+   * true for an agreement nobody made. The first drill puts that back, because
+   * that is the state the tree was in this morning.
+   */
+  {
+    name: 'a consent checkbox is pre ticked again, which is where the tree actually was',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/components/features/home/email-signup-panel.tsx',
+    find: `                type="checkbox"
+                name="consent"`,
+    replace: `                type="checkbox"
+                name="consent"
+                defaultChecked`,
+    expect: 'renders a consent checkbox and carries defaultChecked',
+  },
+  {
+    name: 'the payment step stops reading the placement, so it asks whatever the placement says',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/app/checkout/[reservation_id]/page.tsx',
+    find: 'resolveCapturePlacement(admin)',
+    replace: "Promise.resolve('checkout' as const)",
+    expect: 'does not resolve the capture placement',
+  },
+  {
+    name: 'a discovery reader stops asking the consent door',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/matching/run.ts',
+    find: 'filterPermittedRecipients(admin, emails,',
+    replace: 'Promise.resolve(new Set<string>()), ((admin, emails,',
+    expect: 'reads public.audience_members',
+  },
+  {
+    name: 'the placement decision log stops refusing UPDATE',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'supabase/migrations/20260919000110_marketing_capture_placement.sql',
+    find: 'before update on public.marketing_capture_placement',
+    replace: 'before insert on public.marketing_capture_placement',
+    expect: 'does not refuse UPDATE',
+  },
+  {
+    name: 'the two percent rule goes back to comparing a rounded delta',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/consent/capture-conversion-math.ts',
+    find: '} else if (fallExceedsLimit(b, a, fallLimit)) {',
+    replace: '} else if (deltaPoints < -fallLimit) {',
+    expect: 'no longer decides the two percent rule in whole numbers',
+  },
+
+  /*
+   * the-group-rate-and-the-sharer-are-honest (lane B, 19 September 2026), five drills, one
+   * per clause. The fifth is the interesting one: it asserts the guard refuses
+   * a surface that SHOWS a price nothing charges, which is the placeholder the
+   * Definition of Done calls a defect, and it releases itself the day the squad
+   * payment step reads the rate.
+   */
+  {
+    name: 'the group rate floor stops reading the fee and becomes a second copy of it',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'supabase/migrations/20260919000120_group_rate_and_its_floor.sql',
+    find: "    'platform_fee_percentage', p_event_id, p_organisation_id, p_country_code, p_currency);",
+    replace: "    'platform_fee_percentage_renamed', p_event_id, p_organisation_id, p_country_code, p_currency);",
+    expect: 'does not resolve platform_fee_percentage from pricing_rules',
+  },
+  {
+    name: 'a currency is added to the calculator and the SQL never hears about it',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/lib/payments/payment-calculator.ts',
+    find: "  ZAR: 'ZA',",
+    replace: "  ZAR: 'ZA',\n  SGD: 'SG',",
+    expect: 'maps SGD to nothing',
+  },
+  {
+    name: 'the ticket page loses its share bar again',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/app/t/[code]/page.tsx',
+    find: '            <EventShareBar',
+    replace: '            <NoShareBarHere',
+    expect: 'carries no tracked share bar',
+  },
+  {
+    name: 'the coefficient starts counting sharers it cannot identify',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/lib/growth/referral-coefficient-math.ts',
+    find: 'const coefficient = referralCoefficient(fromAKnownBuyer, soldOrders)',
+    replace: 'const coefficient = referralCoefficient(attributed, soldOrders)',
+    expect: 'no longer computed from the known-buyer count',
+  },
+  {
+    name: 'a page shows a group rate that nothing on the platform charges',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/app/tickets/page.tsx',
+    find: "  const shares = await fetchMyShares(user.id)",
+    replace: "  const shares = await fetchMyShares(user.id)\n  await supabase.from('event_group_rates').select('id')",
+    expect: 'shows the group rate, and nothing charges it',
+  },
+
+  /*
+   * organic-is-not-direct (lane B, close-out AQ3, 19 September 2026), five
+   * drills, one per way of losing the acceptance line.
+   *
+   * THE FIRST IS THE EDIT SOMEBODY WILL ACTUALLY MAKE. search.brave.com really
+   * is absent from Google's published table, so Brave traffic really does read
+   * as a referral, and adding `brave` by hand looks like fixing a bug. It is
+   * not: it is this repository asserting a third-party specification from
+   * memory, which is exactly what Law 7 forbids and what the seal refuses.
+   */
+  {
+    name: 'a search engine is added to the published table by hand',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: `  "bing": 'search',`,
+    replace: `  "bing": 'search',\n  "brave": 'search',`,
+    expect: 'has been edited by hand',
+  },
+  {
+    name: 'the generated table loses the banner that is a reader only warning',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: ' * GENERATED FILE. DO NOT EDIT BY HAND.',
+    replace: ' * A perfectly ordinary file somebody may edit.',
+    expect: 'has lost its',
+  },
+  {
+    name: 'the table loses the citation that makes it evidence rather than an opinion',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: '  rules:',
+    replace: '  notTheRules:',
+    expect: 'no longer carries its provenance',
+  },
+  {
+    name: 'a client component imports the classifier and ships the whole table to a phone',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/components/analytics/consent-banner.tsx',
+    find: "import { useConsent } from './consent-provider'",
+    replace:
+      "import { useConsent } from './consent-provider'\n" +
+      "import { channelForVisit } from '@/lib/growth/traffic-channel'\n" +
+      'void channelForVisit',
+    expect: 'client component(s) reach',
+  },
+  {
+    name: 'the free traffic page stops naming direct beside organic search',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/app/admin/(authed)/traffic/page.tsx',
+    find: '  const direct = summary.direct',
+    replace: '  const direct = summary.organicSearch',
+    expect: 'never name direct',
+  },
+
+  /*
+   * evidence-outlives-the-account (lane B, 19 September 2026), four drills.
+   *
+   * THE FIRST IS THE TREE AS IT ACTUALLY STOOD THIS MORNING: put the foreign key
+   * back and no account on the platform can be deleted again, which is what the
+   * AQ3 teardown discovered after eighteen of them had quietly piled up on TEST.
+   */
+  {
+    name: 'the foreign key that made every account undeletable is put back',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'supabase/migrations/20260919000130_evidence_outlives_the_account.sql',
+    find: 'alter table public.marketing_capture_placement\n  drop constraint if exists marketing_capture_placement_decided_by_fkey;',
+    replace: '-- the drop, removed by a drill',
+    expect: 'a parent row can never be deleted',
+  },
+  {
+    name: 'the guard stops recognising a statement level refusal',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: "export const REFUSAL = 'refuse_ledger_mutation'",
+    replace: "const REFUSAL = 'a_function_no_migration_in_this_tree_uses'",
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard stops honouring a constraint that was later dropped',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: 'const DROP_CONSTRAINT = /alter',
+    replace: 'const DROP_CONSTRAINT = /never-matches-a-drop-at-all/gi\nconst UNUSED_DROP_CONSTRAINT = /alter',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard starts believing a drop that was only ever written in a comment',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: "    .map(line => line.replace(/--.*$/, ''))",
+    replace: '    .map(line => line)',
+    expect: 'REFUSING: the calibration probe',
+  },
+
+  /*
+   * one-way-to-delete-an-account (lane B, 19 September 2026), four drills.
+   *
+   * THE SAME INCIDENT FROM THE OTHER SIDE. `evidence-outlives-the-account`
+   * guards the CAUSE; this guards the BLINDFOLD that let the cause live for
+   * five days. Every teardown discarded the deletion error and then asserted
+   * "left as found" from a read of `profiles`, which the line above it had
+   * already deleted, so the assertion was true whether or not the account
+   * still existed.
+   *
+   * THE FIRST IS THE LINE AS IT STOOD IN TWENTY DRIVES THIS MORNING.
+   */
+  {
+    name: 'a drive goes back to swallowing the deletion error',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: 'await tearDownAccountOrFailTheRun(db, id)',
+    replace: 'await db.auth.admin.deleteUser(id).catch(() => {})',
+    expect: 'calls auth.admin.deleteUser directly',
+  },
+  {
+    name: 'a baselined file is converted and its debt line is left behind',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/guards/one-way-to-delete-an-account.mjs',
+    find: "  { path: 'scripts/verify/quiet-hours-proof.mjs', lane: 'C', why: 'the notification router' },",
+    replace: "  { path: 'scripts/verify/a-file-no-lane-has-ever-written.mjs', lane: 'C', why: 'a drill' },",
+    expect: 'Delete the line',
+  },
+  {
+    name: 'the one place stops telling an account that was already gone from a refusal',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/lib/teardown-account.mjs',
+    find: 'export function accountIsGone',
+    replace: 'function accountIsGone',
+    expect: 'no longer has',
+  },
+  {
+    name: 'the one place prints the refusal and stops failing the run',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/lib/teardown-account.mjs',
+    find: 'process.exitCode = 1',
+    replace: 'void 0',
+    expect: 'no longer fails the run',
+  },
+
+  /*
+   * a-referential-null-is-not-an-edit (lane B, 19 September 2026), seven drills.
+   *
+   * THE FIRST TWO ARE THE TREE AS IT ACTUALLY STOOD THIS MORNING: take the
+   * column list off either trigger and the defect comes straight back. Both
+   * were driven against TEST before the fix was written, and the second one
+   * arms itself with the calendar, so "nobody would do that" is not a defence.
+   */
+  {
+    name: 'the group rate floor goes back to judging a price on an account closure',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update on public.event_group_rates',
+    expect: 'event_group_rates.trg_event_group_rates_floor',
+  },
+  {
+    name: 'the consent check goes back to judging a deleted order',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of email\n  on public.audience_members',
+    replace: '  before insert or update on public.audience_members',
+    expect: 'audience_members.trg_audience_requires_live_consent',
+  },
+  {
+    name: 'a column list is made to name the very key a parent delete blanks',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update of event_id, ticket_tier_id, unit_price_cents, created_by\n  on public.event_group_rates',
+    expect: 'which the database blanks when a parent row is deleted',
+  },
+  {
+    /*
+     * THE DRIFT, WHICH IS THE WORSE HALF. A column list that stops covering
+     * what the function reads does not refuse anything loudly: the check simply
+     * stops running, and a group rate under the floor goes in unopposed.
+     */
+    name: 'a column list stops covering a column the function still reads',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update of event_id, ticket_tier_id\n  on public.event_group_rates',
+    expect: 'silently stops running',
+  },
+  {
+    name: 'the guard stops being able to read an event list at all',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: 'const UPDATE_OF = /',
+    replace: 'const UPDATE_OF = /never-matches-a-column-list/\nconst UNUSED_UPDATE_OF = /',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard starts demanding a column the function only stamps',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+    find: '    if (!readElsewhere) read.delete(name)',
+    replace: '    void readElsewhere',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    /*
+     * THE LIST CAN ONLY SHRINK. An entry that stops matching a real defect is
+     * a finding, which is the only thing that stops a baseline rotting into an
+     * unexamined list.
+     */
+    name: 'a trigger is excused as another lane’s when it does not have the defect',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+    find: 'const NOT_THIS_LANE = []',
+    replace:
+      "const NOT_THIS_LANE = [{ table: 'audience_members', trigger: 'trg_audience_requires_live_consent', lane: 'a drill', why: 'a drill' }]",
+    expect: 'no longer matches a trigger with the defect',
+  },
+
+  /*
+   * one-lawful-writer-of-the-fee (lane B, 20 September 2026), seven drills.
+   *
+   * THE FIRST ONE IS THE TREE AS IT ACTUALLY STOOD THIS MORNING, and it is the
+   * whole reason the guard exists: put the direct INSERT back and /admin/pricing
+   * stops being able to save anything at all, exactly as it could not between
+   * 27 July and 20 September. It was driven against TEST before the fix was
+   * written, 23505 on the AU region default at version 3, so "nobody would
+   * write it that way" is not a defence: somebody already had.
+   */
+  /*
+   * the-founder-screens-read-every-row (lane B, 20 September 2026), nine drills, plus six more below for the demand signal.
+   *
+   * The screen the founder reads the business off summed two unbounded selects
+   * with no order and a discarded error. TEST held 801 AUD orders against a
+   * ceiling of 1,000, so it was 199 sales from reporting a GMV that stops
+   * growing, and a failed read already rendered zero revenue.
+   */
+  {
+    name: 'the GMV orders read goes back to an unbounded select',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "      .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('currency', ANALYTICS_CURRENCY),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the GMV refunds read goes back to an unbounded select',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "        .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('currency', ANALYTICS_CURRENCY),",
+    expect: 'reads refunds with no bound',
+  },
+  {
+    /*
+     * A ranged read with no total order is not paging: Postgres may hand back
+     * one row in two windows and another in none, so the total is wrong in both
+     * directions at once.
+     */
+    name: 'the GMV orders read pages without a stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "      .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('currency', ANALYTICS_CURRENCY)\n" + '      .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    name: 'the GMV refunds read pages without a stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "        .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('currency', ANALYTICS_CURRENCY)\n" + '        .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE SECOND HALF OF THE ORIGINAL DEFECT. `const { data } = await ...`
+     * dropped `error`, so a read that FAILED rendered a GMV of zero. A founder
+     * acts on zero revenue and cannot tell it from a payments outage.
+     */
+    name: 'a GMV read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find: '    const { data: orgs, error: orgError } = await db',
+    replace: '    const { data: orgs } = await db',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * `pricing_rules` is APPEND-ONLY and versioned, so it grows for ever by
+     * design. Truncation here is not an undercount, it is an ABSENCE: the loop
+     * keeps the first row per target, so a live per-event override that IS
+     * being charged vanishes from the only screen that lists overrides.
+     */
+    name: 'the fee-override list goes back to an unbounded read of pricing_rules',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find:
+      "      .order('version', { ascending: false })\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{',
+    replace: "      .order('version', { ascending: false }) as unknown as PromiseLike<{",
+    expect: 'reads pricing_rules with no bound',
+  },
+  {
+    /*
+     * `version` is NOT unique across scopes, so paging on it alone is undefined:
+     * Postgres may hand one row back in two windows and another in none. The
+     * guard cannot check uniqueness, but it can insist a paged read is ordered
+     * at all, and the second key is why the header says what it says.
+     */
+    name: 'the fee-override list pages pricing_rules with no order at all',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find:
+      "      .order('version', { ascending: false })\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{',
+    replace: '      .range(from, to) as unknown as PromiseLike<{',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * The fee screen's own read of the CURRENT value. Dropping `error` made a
+     * failed read indistinguishable from a scope with no rule yet, and since
+     * LB-OVERRIDE0 a null value renders the control on its placeholder, so an
+     * unreachable database showed a fee screen that looked like a platform with
+     * no fee configured.
+     */
+    name: 'the current-fee read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find: '  const { data, error } = await admin',
+    replace: '  const { data } = await admin',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * A GUARD THAT CANNOT FIND ITS SUBJECT MUST NOT REPORT PASS. Move the money
+     * dashboard and this has to say so rather than scanning nothing quietly.
+     */
+    name: 'a founder screen moves and the guard is left judging nothing for it',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'scripts/guards/the-founder-screens-read-every-row.mjs',
+    find: "  'src/lib/admin/analytics.ts',\n",
+    replace: "  'src/lib/admin/analytics-moved-away.ts',\n",
+    expect: 'does not exist',
+  },
+  /*
+   * The demand signal joined the guard on 20 September 2026, six more drills.
+   *
+   * /admin/network is where the founder decides which city has tipped and who
+   * to invite next. Its per-city read was unbounded AND unordered, five of its
+   * figures were `count ?? 0`, and the read that subtracts the already-invited
+   * is the one that fails towards doing too much rather than too little.
+   */
+  {
+    name: 'the per-city waitlist demand goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '  )\n',
+    expect: 'reads city_waitlist_signups with no bound',
+  },
+  {
+    name: 'the per-city waitlist demand pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '      .range(from, to),\n  )\n',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * CLAUSE 5, THE ONE THE FIRST FIX WOULD HAVE WALKED PAST. Name the result
+     * rather than destructuring it, coalesce the count, and every figure on the
+     * screen is a lie again while clause 4 sees nothing to judge.
+     */
+    name: 'a Launch Kit figure goes back to rendering a failed count as zero',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find: "      eventsPublished: countOrRaise('events published', publishedRes),",
+    replace: '      eventsPublished: publishedRes.count ?? 0,',
+    expect: 'coalesces the count',
+  },
+  {
+    /*
+     * THE SUPPRESSION LIST. Truncated or failed, this read puts organisers who
+     * have already had their founding invitation back on the list to be emailed
+     * a second one.
+     */
+    name: 'the already-invited list goes back to an unbounded read of founding_invites',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find:
+      "        .eq('inviter_kind', 'founder')\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('inviter_kind', 'founder'),",
+    expect: 'reads founding_invites with no bound',
+  },
+  {
+    /*
+     * The bound moved back off the builder and onto the await, which is the
+     * same query and an invisible bound: the chain walker cannot follow a
+     * variable across statements and neither can a reader.
+     */
+    name: 'the founding terms list is bounded somewhere the reader cannot see',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '    .limit(FOUNDING_TERMS_SHOWN)\n',
+    replace: '\n',
+    expect: 'reads organisations with no bound',
+  },
+  {
+    name: 'the founding terms read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '  const { data: termRows, error: termError } = await termQuery',
+    replace: '  const { data: termRows } = await termQuery',
+    expect: 'destructures `data` and not `error`',
+  },
+  /*
+   * The organiser screens joined the guard on 20 September 2026, five drills.
+   *
+   * `countEventsAndVolume` exists because a stored counter drifted, and its own
+   * header promises the figure "cannot be wrong" now that the rows are counted.
+   * Both counting reads were unbounded, so the drift returns by another route.
+   */
+  {
+    name: 'the organiser event count goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the organiser event count pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds)\n        .range(from, to),",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    name: 'the organiser lifetime volume goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "          .eq('status', 'confirmed')\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .eq('status', 'confirmed'),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    /*
+     * A failed read returned null, and the route above renders null as "not
+     * found": the screen told the founder a live organisation did not exist.
+     */
+    name: 'the organiser detail read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '  const { data: org, error: orgError } = await admin',
+    replace: '  const { data: org } = await admin',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * CLAUSE 5 AGAIN, and this one fired on the fix itself while it was being
+     * written: `(cascade.count ?? 0) > 0` files "nothing needed pausing" and
+     * "the count did not come back" under the same audit entry.
+     */
+    name: 'the suspend cascade goes back to coalescing the count it audits',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '    } else if (cascade.count === null) {',
+    replace: '    } else if ((cascade.count ?? 0) < 0) {',
+    expect: 'coalesces the count',
+  },
+  /*
+   * the-audit-log-says-when-it-could-not-write (lane B, 20 September 2026),
+   * five drills.
+   *
+   * Both writers inserted with no destructure, and a PostgREST client reports a
+   * refused write in `error` rather than throwing, so the try/catch could not
+   * see the failure it was written for. The catch then logged only outside
+   * production. Every drill below is one of the two defects, or the half of the
+   * contract that was right.
+   */
+  {
+    name: 'the audit insert goes back to ignoring whether the row was written',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    expect: 'without binding `error`',
+  },
+  {
+    name: 'the anonymous audit insert goes back to ignoring it too',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    expect: 'without binding `error`',
+  },
+  {
+    /*
+     * THE ONE THAT MADE IT SILENT WHERE IT MATTERS. Reporting only outside
+     * production is how this module went quiet in the environment where a
+     * missing entry is evidence of nothing having happened.
+     */
+    name: 'the audit failure path is gated on the environment again',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: "  console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    replace:
+      "  if (process.env.NODE_ENV !== 'production') console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    expect: 'gates something on NODE_ENV',
+  },
+  {
+    name: 'a writer stops reaching the error reporter',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))\n    return { recorded: true }\n  } catch (err) {\n    return auditCouldNotBeWritten(action, err)\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    replace: '    if (error) return { recorded: false }\n    return { recorded: true }\n  } catch (err) {\n    void err\n    return { recorded: false }\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    expect: 'never reaches captureException',
+  },
+  {
+    /*
+     * THE HALF OF THE ORIGINAL CONTRACT THAT WAS RIGHT, and the easiest thing
+     * to lose while fixing the rest: an audit failure must not fail the action
+     * that was already taken.
+     */
+    name: 'the audit writer starts throwing, and fails the action it was only supposed to record',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))',
+    replace: '    if (error) throw new Error(error.message)',
+    expect: 'contains a `throw`',
+  },
+  /*
+   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), eleven drills.
+   *
+   * The guard exists because two guards already stood over this engine and both
+   * were satisfied while the abandoned-checkout sender mailed people who had
+   * unsubscribed. Measured on TEST before the fix: 147 people carried a
+   * suppression event, recovery_suppressions held 19 rows, and the read of it
+   * was unbounded against a server that stops at 1,000 rows in silence
+   * (Content-Range: 0-999/14364, measured the same day).
+   */
+  {
+    name: 'the suppression list goes back to an unbounded read of the first thousand names',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "      .from('recovery_suppressions')\n" +
+      "      .select('contact_email')\n" +
+      "      .eq('source_system', SOURCE)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace:
+      "      .from('recovery_suppressions')\n" +
+      "      .select('contact_email')\n" +
+      "      .eq('source_system', SOURCE),",
+    expect: 'reads recovery_suppressions with no bound',
+  },
+  /*
+   * Clause 1 widened from one table to the three the engine owns on
+   * 20 September 2026, four more drills. The send log is the one nearest the
+   * cliff: 452 rows on the busiest slot on TEST against a ceiling of 1,000, and
+   * short it writes to somebody a second time.
+   */
+  {
+    name: 'the already-sent set goes back to an unbounded read, and somebody is written to twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "        .select('contact_email, message_number')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, message_number')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the holds on a slot go back to an unbounded read, and a held seat is offered twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of what it sent',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "        .select('contact_email, sent_at')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, sent_at')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of the holds it reports',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "          .select('claimed_at, released_at, expires_at')\n" +
+      "          .eq('slot_id', slotId)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .select('claimed_at, released_at, expires_at')\n          .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
+  },
+  {
+    /*
+     * The reversal condition's own numerator. Truncate it while the denominator
+     * stays an exact count and both rates read smaller than they are, so the
+     * brake that should stop the engine holds off exactly when it ought to fire.
+     */
+    name: 'the reversal condition goes back to counting only the first page of suppressions',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/rates.ts',
+    find:
+      "        .from('recovery_suppressions')\n" +
+      "        .select('reason')\n" +
+      "        .eq('source_system', SOURCE_SYSTEM)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace:
+      "        .from('recovery_suppressions')\n" +
+      "        .select('reason')\n" +
+      "        .eq('source_system', SOURCE_SYSTEM),",
+    expect: 'reads recovery_suppressions with no bound',
+  },
+  {
+    name: 'the bridge stops asking the consent ledger who has withdrawn',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/recovery/consent-stops.ts',
+    find: 'await addressesStoppedForFacilitatedMail(db)',
+    replace: 'await Promise.resolve(new Set())',
+    expect: 'does not call addressesStoppedForFacilitatedMail',
+  },
+  {
+    name: 'the bridge writes the suppression row itself instead of through the engine',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/recovery/consent-stops.ts',
+    find: "    await suppress(address, 'unsubscribed', db)",
+    replace: "    await db.from('recovery_suppressions').upsert({ contact_email: address })",
+    expect: "does not write through the engine's own suppress()",
+  },
+  {
+    name: 'the sweep stops reconciling at all, and every unit test still passes',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/app/api/cron/recovery-sweep/route.ts',
+    find: '    const stops = await syncConsentStopsIntoRecovery()',
+    replace: '    const stops = { stopped: 0, added: 0, alreadyHeld: 0 }',
+    expect: 'never calls syncConsentStopsIntoRecovery()',
+  },
+  {
+    /*
+     * ORDER IS THE WHOLE CLAUSE. A sweep that reconciles afterwards has already
+     * mailed the people it was about to learn had unsubscribed.
+     */
+    name: 'the sweep reconciles AFTER it sweeps, which is the same as not at all',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/app/api/cron/recovery-sweep/route.ts',
+    find: '    const stops = await syncConsentStopsIntoRecovery()',
+    replace:
+      '    await sweepAbandonedCheckouts(eventLinqsLinks, new Date())\n' +
+      '    const stops = await syncConsentStopsIntoRecovery()',
+    expect: 'AFTER sweepAbandonedCheckouts()',
+  },
+  {
+    /*
+     * The boundary the fix could have broken. Close-out D2: the engine reads
+     * the ledger and nothing else, so the bridge lives outside it and the
+     * engine never reaches back across.
+     */
+    name: 'the engine reaches back across its own boundary and imports the bridge',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/rates.ts',
+    find: "import { readEveryRow } from '@/lib/supabase/read-every-row'",
+    replace:
+      "import { readEveryRow } from '@/lib/supabase/read-every-row'\n" +
+      "import { syncConsentStopsIntoRecovery } from '@/lib/recovery/consent-stops'",
+    expect: 'imports the bridge',
+  },
+  {
+    name: 'the fee writer goes back to inserting directly and leaving the old row open',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find: "const { data, error } = await admin.rpc('write_pricing_rule', {",
+    replace: "const { data, error } = await admin.from('pricing_rules').insert({",
+    expect: 'calls .insert() on pricing_rules directly',
+  },
+  {
+    /*
+     * THE SECOND REFUSAL, 23514. The form shipped defaultValue={0} against a
+     * column constrained to > 0, so the override form as rendered submitted the
+     * one value the database rejects and the screen blamed the target id.
+     */
+    name: 'the percentage bound drifts back to admitting the zero the database refuses',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/actions.ts',
+    find: '  currency: z.string().length(3),\n  platform_fee_percentage: z.coerce.number().gt(0).max(100),',
+    replace: '  currency: z.string().length(3),\n  platform_fee_percentage: z.coerce.number().min(0).max(100),',
+    expect: 'so the schema must use .gt(0)',
+  },
+  {
+    name: 'a fee control offers a minimum the database will not accept',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: '              min="0.01"\n              max="100"\n              required\n              placeholder="e.g. 2.5"',
+    replace: '              min="0"\n              max="100"\n              required\n              placeholder="e.g. 2.5"',
+    expect: 'offers min="0" on platform_fee_percentage',
+  },
+  {
+    /*
+     * THE ZERO FALLBACK. On TEST the IE/EUR scope holds none of the three
+     * rules, so `?? 0` is not hypothetical: it is what the Europe row rendered,
+     * and it is why that row could not be saved.
+     */
+    name: 'a scope with no rule yet goes back to being handed a zero it cannot save',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: 'defaultValue={row.platformFeePercentage.value ?? undefined}',
+    replace: 'defaultValue={row.platformFeePercentage.value ?? 0}',
+    expect: 'defaults platform_fee_percentage to 0',
+  },
+  {
+    name: 'the fee writer is opened up to a browser session',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'supabase/migrations/20260920000010_the_writer_stamps_the_previous_row.sql',
+    find: ') to service_role;',
+    replace: ') to service_role, authenticated;',
+    expect: 'to authenticated',
+  },
+  {
+    /*
+     * RE-AIMED AT THE GUARD 20 September 2026, ON THE MERGED TREE, and the
+     * reason is the whole value of this drill so it is written down.
+     *
+     * This drill used to rename the writer inside 20260920000010 and the guard
+     * refused. It PASSED ON A VIOLATING TREE here, which is worse than failing:
+     * a drill that cannot make its clause fire is a clause nobody is checking.
+     * The cause is that TWO migrations now declare the writer. 20260920000011
+     * drops 20260920000010's ten-argument signature and declares a new one with
+     * five defaults, so both files carry the text clause 4 looks for, and
+     * renaming it in either one leaves the other declaring it.
+     *
+     * NEITHER LANE COULD HAVE SEEN THIS. 20260920000011 and this drill arrived
+     * from different lanes; the second declaration exists only on the tree that
+     * holds both. A drill edits ONE file, so no single-file aim at a migration
+     * can empty the list any more.
+     *
+     * So it is aimed at the guard, the calibration-probe shape this file already
+     * uses wherever a clause cannot be reached from product code. Emptying the
+     * candidate list is the narrowest possible probe: the WRITER constant was
+     * tried first and is NO GOOD, because renaming it also takes the call-site
+     * and grant counts to zero and the guard then refuses on its own
+     * did-nothing check instead, which is failing for the wrong reason. Under
+     * this probe the other clauses still count 2 writers and 2 grants and only
+     * clause 4 speaks.
+     *
+     * WHAT THIS PROBE NO LONGER PROVES, stated plainly rather than left to be
+     * discovered: that clause 4 fires when a REAL migration loses the writer.
+     * It cannot, while a dropped declaration still counts as a declaration.
+     * Raised for the lane that owns the fee writer as a BORDER in
+     * REVIEW-QUEUE-C.md: clause 4 should judge the LIVE writer, not any
+     * migration that ever declared one, and then this drill can aim at a
+     * migration again.
+     */
+    name: 'the writer the code is required to call stops existing',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    find: 'const declaring = files.filter((f) =>',
+    replace: 'const declaring = [].filter((f) =>',
+    expect: 'no migration declares public.write_pricing_rule',
+  },
+  {
+    /*
+     * THE BOUND IS DERIVED, NOT TYPED. Relax the CHECK and the guard must turn
+     * round and demand `.min(0)` of the code it currently requires `.gt(0)` of.
+     * A guard carrying the number itself would go quietly green here, which is
+     * how the code and the constraint drifted apart in the first place.
+     */
+    name: 'the constraint is relaxed and the code is not brought with it',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'supabase/migrations/20260520000001_schema_hygiene.sql',
+    find: '       AND value_percentage > 0',
+    replace: '       AND value_percentage >= 0',
+    expect: 'so the schema must use .min(0)',
+  },
+
+  /*
+   * the-attribution-panels-count-every-row (lane B, 20 September 2026), six drills.
+   *
+   * The organiser's reach panel read eight tables with no bound and no error
+   * check, and the reconciliation that decides whether it shows a percentage at
+   * all compared one number against itself. The last two drills are the ones
+   * that matter most: they put the self-referential check back, which is the
+   * shape a later tidy-up would most plausibly reach for.
+   */
+  {
+    name: 'the reach panel reads an event’s tracked links with no bound again',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "        .eq('event_id', eventId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('event_id', eventId),",
+    expect: 'reads share_links with no bound',
+  },
+  {
+    /*
+     * share_link_events takes one row per view and one per click, so this is
+     * the fastest growing read on the panel and the first to pass the ceiling.
+     */
+    name: 'the view and click events go back to a single unbounded select',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "            .in('link_id', chunk)\n" +
+      "            .order('id', { ascending: true })\n" +
+      '            .range(from, to),',
+    replace: "            .in('link_id', chunk),",
+    expect: 'reads share_link_events with no bound',
+  },
+  {
+    /*
+     * Paging without a total order is not paging: Postgres may hand back one
+     * row in two windows and another in none.
+     */
+    name: 'the reach panel pages its links without a stable order',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "        .eq('event_id', eventId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('event_id', eventId)\n" + '        .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * An `in` list is bounded by BYTES. Spelling every link id into one URL is
+     * the 16 KB break at about 400 shares, and the failure arrives as a
+     * discarded error and a panel of zeros.
+     */
+    name: 'the conversion read spells every link id into one in clause',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find: "              .in('link_id', chunk)",
+    replace: "              .in('link_id', links.map(l => l.id))",
+    expect: 'rather than from a chunk',
+  },
+  {
+    /*
+     * THE ONE THAT MATTERS. Put the self-referential comparison back and the
+     * panel returns to showing a share-of-sales percentage with no check over
+     * it at all, which is what it did until this item.
+     */
+    name: 'the reconciliation goes back to comparing totals against itself',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find: '    orders: ledgerSoldOrders - bucketOrders,',
+    replace: '    orders: totals.orders - bucketOrders,',
+    expect: 'computes `discrepancy` from `totals.`',
+  },
+  {
+    /*
+     * The other half of clause 5, and neither alone is enough: this one does
+     * NOT mention `totals.`, so only the "came from countOrRaise" half can
+     * catch it. Without that half, an expected side counted anywhere in this
+     * module would pass while proving nothing.
+     */
+    name: 'the reconciliation drops the server count and uses a local number',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find:
+      '    orders: ledgerSoldOrders - bucketOrders,\n' +
+      '    tickets: ledgerSoldTickets - bucketTickets,',
+    replace: '    orders: sold.length - bucketOrders,\n' + '    tickets: bucketTickets - bucketTickets,',
+    expect: 'without any value that came from',
+  },
+
+  /*
+   * The artist half of the same guard, four more. The last two are the reads
+   * whose failure is not a shrunken number: an event meta row that does not
+   * arrive DELETES a show from the artist's history (`if (!meta) continue`),
+   * and an artist name that does not arrive is rendered as the words "Unknown
+   * artist" on the organiser's lineup panel (`?? 'Unknown artist'`).
+   */
+  {
+    name: 'the artist profile lookup goes back to discarding its error',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "  const data = await readOrThrow('artist-by-slug', () =>\n" +
+      "    admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle(),\n" +
+      '  )',
+    replace:
+      "  const { data } = await admin.from('artists').select(ARTIST_COLUMNS).eq('slug', slug).maybeSingle()",
+    expect: 'destructures the result without',
+  },
+  {
+    name: 'the artist proof-of-draw links go back to an unbounded select',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "        .eq('artist_id', artistId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('artist_id', artistId),",
+    expect: 'reads share_links with no bound',
+  },
+  {
+    name: 'the show that a lost row would delete goes back to an unbounded select',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find:
+      "            .select('id, title, slug, start_date')\n" +
+      "            .in('id', chunk)\n" +
+      "            .order('id', { ascending: true })\n" +
+      '            .range(from, to),',
+    replace: "            .select('id, title, slug, start_date')\n" + "            .in('id', chunk),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the artist names go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attribution-panels-count-every-row.mjs`,
+    file: 'src/lib/broadcast/artists.ts',
+    find: "          .select('id, name')\n" + "          .in('id', chunk)",
+    replace: "          .select('id, name')\n" + "          .in('id', [...byArtist.keys()])",
+    expect: 'rather than from a chunk',
+  },
+
+  /*
+   * the-organiser-dashboard-reads-every-row (lane B, 20 September 2026), five
+   * drills. The third is the one the fourth clause exists for: it plants the
+   * fix a reader would reach for first, ordering the paged read by the column
+   * the page actually wants to sort on, and that column is not unique.
+   */
+  {
+    name: 'the organiser home goes back to one unbounded read of its orders',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      "          .gte('created_at', since60Days)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .gte('created_at', since60Days),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the organiser home pages its orders with no order at all',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      "          .gte('created_at', since60Days)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .gte('created_at', since60Days)\n" + '          .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX. The page wants newest first, so paging on
+     * `created_at` descending looks like the tidy answer and reads better than
+     * what is there. It is not unique, so two orders taken in the same instant
+     * can land in two windows or in none, and revenue is then double counted or
+     * lost with nothing on the screen able to say so. Only clause 4 sees this.
+     */
+    name: 'the orders are paged on created_at, which is not unique',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find: "          .order('id', { ascending: true })\n" + '          .range(from, to),',
+    replace: "          .order('created_at', { ascending: false })\n" + '          .range(from, to),',
+    expect: 'is not unique on that table',
+  },
+  {
+    name: 'the event overview goes back to an unbounded, unordered read',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/page.tsx',
+    find:
+      "      .eq('event_id', id)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('event_id', id),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    /*
+     * The organiser's own profile. A failed read leaves `profile` null,
+     * `isOrganiser` false, and an organiser looking at the dashboard of
+     * somebody who has never run an event.
+     */
+    name: 'the organiser profile read goes back to discarding its error',
+    guard: `${GUARDS}/the-organiser-dashboard-reads-every-row.mjs`,
+    file: 'src/app/(dashboard)/dashboard/page.tsx',
+    find:
+      '  const [profile, scope] = await Promise.all([\n' +
+      "    readOrThrow('dashboard profile', () =>\n" +
+      "      supabase.from('profiles').select('*').eq('id', user.id).single(),\n" +
+      '    ),',
+    replace:
+      '  const [{ data: profile }, scope] = await Promise.all([\n' +
+      "    supabase.from('profiles').select('*').eq('id', user.id).single(),",
+    expect: 'destructures',
+  },
+
+  /*
+   * the-attendee-list-is-every-attendee (lane B, 20 September 2026), seven
+   * drills, one per clause plus the two plausible WRONG fixes.
+   *
+   * This guard holds the data-ownership promise, which is the growth plan's
+   * second blade: an organiser owns every attendee relationship and nothing is
+   * withheld. A read that quietly hands back the first thousand rows is that
+   * promise broken with nobody to blame, so each drill below restores exactly
+   * the shape the surface shipped with before 20 September.
+   */
+  {
+    name: 'the attendee list goes back to one unbounded read of its tickets',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .eq('event_id', eventId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    replace: "      .eq('event_id', eventId),",
+    expect: 'reads tickets with no bound',
+  },
+  {
+    /*
+     * THE CONSENT ONE, which is the wedge rather than a screen.
+     * `organiser_marketing_consents` carries unique (organisation_id, email),
+     * so truncation DROPS people and a dropped person reads as NOT consented.
+     * The organiser is shown their own lawful audience as smaller than it is,
+     * in the one column nobody second-guesses.
+     */
+    name: 'the marketing consents go back to an unbounded read',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "        .eq('organisation_id', eventRow.organisation_id)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to) as unknown as PromiseLike<{ data: ConsentRow[] | null; error: { message: string } | null }>,',
+    replace: "        .eq('organisation_id', eventRow.organisation_id),",
+    expect: 'reads organiser_marketing_consents with no bound',
+  },
+  {
+    name: 'the orders report pages with no order at all',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .eq('event_id', eventId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawOrder[] | null; error: { message: string } | null }>,',
+    replace:
+      "      .eq('event_id', eventId)\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawOrder[] | null; error: { message: string } | null }>,',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX, and only clause 3 sees it. The attendee list
+     * wants oldest-first, so paging on `created_at` looks like the tidy answer
+     * and reads better than paging on a uuid. `tickets.created_at` is not
+     * unique, so two tickets sold in the same instant can land in two windows
+     * or in none: the door list gains a duplicate and loses somebody, and both
+     * look completely ordinary on the page.
+     */
+    name: 'the attendee list is paged on created_at, which is not unique',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    replace:
+      "      .order('created_at', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{ data: RawTicket[] | null; error: { message: string } | null }>,',
+    expect: 'is not unique on that table',
+  },
+  {
+    /*
+     * THE OTHER PLAUSIBLE WRONG FIX. One `.in()` holding every buyer id looks
+     * like one fewer round trip. An `in` list is bounded by BYTES, and past the
+     * row ceiling it truncates too, so the buyers past it resolve to no profile
+     * and fall through to the guest columns, which are NULL for a signed-in
+     * buyer. Real named people render as blank rows on their own financial
+     * report.
+     */
+    name: 'the orders report buyer profiles go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/attendees.ts',
+    find: "          .in('id', chunk)",
+    replace: "          .in('id', userIds)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    name: 'the door review winners go back to one unchunked in clause',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/lib/reporting/door-review.ts',
+    find: "        .in('ticket_id', chunk)",
+    replace: "        .in('ticket_id', ticketIds)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    /*
+     * The waiting-list count on the organiser's orders screen. `count ?? 0`
+     * rendered a FAILED count as "nobody is waiting", which is the answer that
+     * stops an organiser releasing more tickets.
+     */
+    name: 'the orders screen goes back to coalescing a failed waiting-list count',
+    guard: `${GUARDS}/the-attendee-list-is-every-attendee.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx',
+    find:
+      '        const waiting = countOrRaise(\n' +
+      '          `the waiting list for ${t.name}`,\n' +
+      '          await adminClient\n' +
+      "            .from('waitlist')\n" +
+      "            .select('id', { count: 'exact', head: true })\n" +
+      "            .eq('ticket_tier_id', t.id)\n" +
+      "            .eq('status', 'waiting'),\n" +
+      '        )',
+      replace:
+      '        const { count } = await adminClient\n' +
+      "          .from('waitlist')\n" +
+      "          .select('id', { count: 'exact', head: true })\n" +
+      "          .eq('ticket_tier_id', t.id)\n" +
+      "          .eq('status', 'waiting')\n" +
+      '        const waiting = count ?? 0',
+    /*
+     * MATCHED ON THE CLAUSE'S OWN SENTENCE, NOT ON THE WORD "destructures".
+     * That word also appears in this guard's work report ("20 await
+     * destructures judged"), which prints on every run including a passing
+     * one, so a drill expecting it would be satisfied by a guard that failed
+     * for some completely unrelated reason. The phrase below appears only in
+     * the clause 5 failure.
+     */
+    expect: 'indistinguishable from an event nobody has bought a ticket to',
+  },
+
+  /*
+   * the-seating-surfaces-count-every-seat (lane B, 20 September 2026), eight
+   * drills, one per clause plus the plausible wrong fix plus BOTH shapes of
+   * clause 5.
+   *
+   * Clause 5 is the reason this guard exists rather than a sixth clause on the
+   * organiser-dashboard one. Two of the three ceilings on these screens were
+   * BOUNDS: `.range(0, 1999)` in the launch kit and `from < 10000` in the seat
+   * manager's own pager. Every other guard in this family asks "is this read
+   * bounded" and would have answered PASS about both, which is exactly what
+   * they did for as long as they existed alongside them.
+   */
+  {
+    name: 'the seat chart goes back to an unbounded read of its seats',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace: "        .order('row_label'),",
+    expect: 'reads seats with no bound',
+  },
+  {
+    name: 'the seat chart pages its seats with no order at all',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace: '        .range(from, to),',
+    expect: 'and no order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX. A seat chart is read row by row and seat by
+     * seat, so ordering the paged read by exactly the two columns the chart is
+     * drawn in looks like the obvious and tidy answer. Neither is unique, and a
+     * two thousand seat chart has plenty of rows sharing a label, so a window
+     * boundary can land between two seats in row K and return one of them in
+     * both pages and the other in neither. Only clause 3 sees this.
+     */
+    name: 'the seats are paged on row and seat number, neither of which is unique',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: SEATING_SEAT_ORDER,
+    replace:
+      "        .order('row_label')\n" +
+      "        .order('seat_number')\n" +
+      '        .range(from, to),',
+    expect: 'is unique on that table',
+  },
+  {
+    /*
+     * The organiser's own list of events. Unbounded here is not the seat
+     * ceiling, it is the list the sold count is joined to.
+     */
+    name: 'the My Events list goes back to reading every event unbounded',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_LIST,
+    find:
+      "      .order('created_at', { ascending: false })\n" +
+      "      .order('id')\n" +
+      '      .range(from, to)',
+    replace: "      .order('created_at', { ascending: false })",
+    expect: 'reads events with no bound',
+  },
+  {
+    /*
+     * The protected-seat count on the chart list: the number that decides
+     * whether an organiser is warned before editing a chart people already hold
+     * seats on. `count ?? 0` with no error bound rendered a FAILED count as
+     * nought protected seats, which reads as "safe to edit".
+     */
+    name: 'the protected-seat count goes back to discarding its error',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_MAPS,
+    find: '      const { count, error: protectedError } = await admin',
+    replace: '      const { count } = await admin',
+    expect: 'indistinguishable from an event that has sold nothing',
+  },
+  {
+    /*
+     * CLAUSE 5, FIRST SHAPE, and the exact literal that was in the tree: the
+     * launch kit printed its seat count and its open-seat count out of an array
+     * capped at two thousand.
+     */
+    name: 'the launch kit goes back to a literal two thousand seat ceiling',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_KIT,
+    find:
+      "          .order('row_label')\n" +
+      "          .order('seat_number')\n" +
+      "          .order('id')\n" +
+      '          .range(from, to),',
+    replace:
+      "          .order('row_label')\n" +
+      "          .order('seat_number')\n" +
+      '          .range(0, 1999),',
+    expect: 'caps a read at the literal 1999',
+  },
+  {
+    /*
+     * CLAUSE 5, SECOND SHAPE, and the exact loop that was in the tree: a
+     * hand-rolled pager written to defeat the 1,000-row cap, which stopped at
+     * ten thousand and said nothing. A bound, and therefore invisible to every
+     * scanner that only asks whether a read is bounded.
+     */
+    name: 'a hand-rolled pager with a literal ten thousand ceiling comes back',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_SEATS,
+    find: '  const [seats, sections, unassigned] = await Promise.all([',
+    replace:
+      '  let from = 0\n' +
+      '  while (from < 10000) from += 1000\n' +
+      '  const [seats, sections, unassigned] = await Promise.all([',
+    expect: 'stops paging when the cursor reaches the literal 10000',
+  },
+  {
+    /*
+     * CLAUSE 6. An insert of more rows than the response ceiling SUCCEEDS and
+     * hands back fewer rows than it wrote, with no error. Paging is not the
+     * remedy, because the rows are already in; noticing is, and the only way to
+     * notice is to compare the count returned with the count sent.
+     */
+    name: 'the section insert stops comparing what it got back with what it sent',
+    guard: `${GUARDS}/the-seating-surfaces-count-every-seat.mjs`,
+    file: SEATING_ACTIONS,
+    find: '  if (returnedSections.length !== sectionInserts.length) {',
+    replace: '  if (returnedSections.length < 0) {',
+    expect: 'reads the representation back with no',
+  },
+
+  /*
+   * the-weekly-digest-owes-nobody-an-email (lane B, 20 September 2026), seven
+   * drills, one per clause plus the plausible wrong fix plus both halves of the
+   * send-loop clause.
+   *
+   * This is the only send path on the platform that writes to STRANGERS, and
+   * the drill that matters most is the fourth: the suppression read failed
+   * OPEN. One un-chunked `.in()` over a city's whole waitlist exceeded the
+   * documented 16 KB URL bound, the request failed, the discarded error left
+   * the list EMPTY, and every address that had unsubscribed was put back into
+   * the send by its waitlist row. Each drill below restores exactly the shape
+   * the digest shipped with before 20 September.
+   */
+  {
+    name: 'the city audience goes back to an unbounded read of its consents',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace: "        .eq('city_slug', citySlug),\n",
+    expect: 'reads marketing_consents with no bound',
+  },
+  {
+    name: 'the city audience pages its consents with no order at all',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace: "        .eq('city_slug', citySlug)\n        .range(from, to),\n",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX, and only clause 3 sees it. The audience wants
+     * oldest first, so ordering on `granted_at` alone reads better than
+     * breaking the tie on a uuid. It is not unique, so two people who consented
+     * in the same instant can land in two windows or in none. On this path the
+     * audience is ALSO the resume order, so the duplicate is a second copy of a
+     * marketing email and the loss is somebody who never hears from us.
+     */
+    name: 'the city audience pages on granted_at alone, which is not unique',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace:
+      "        .eq('city_slug', citySlug)\n" +
+      "        .order('granted_at', { ascending: true })\n" +
+      '        .range(from, to),\n',
+    expect: 'none of those is unique on that table',
+  },
+  {
+    /*
+     * THE ONE THAT FAILED OPEN. Not a truncation: a REFUSAL. The joined address
+     * list passes the documented 16 KB URL and header bound at a few hundred
+     * ordinary addresses, measured on this project's TEST instance between
+     * 15,038 and 16,083 bytes, and the request never reaches the database at
+     * all. The suppression list is then empty rather than short.
+     */
+    name: 'the suppression read goes back to one in() over the whole waitlist',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: "          .in('email', chunk)",
+    replace: "          .in('email', waitlistEmails)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    name: 'the idempotence read goes back to discarding its error',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    const { data: openRows, error: openError } = await admin',
+    replace: '    const { data: openRows } = await admin',
+    expect: 'indistinguishable from an answer',
+  },
+  {
+    /*
+     * CLAUSE 6, THE HALF NO READ-SHAPED GUARD COULD CARRY. A slice IS a bound
+     * and every scanner in this repository agreed it was one, for as long as it
+     * was dropping four hundred people a week in silence.
+     */
+    name: 'the send loop goes back to slicing its recipients',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    for (const recipient of plan.toSend) {',
+    replace: '    for (const recipient of recipients.slice(0, DIGEST_MAX_RECIPIENTS_PER_RUN)) {',
+    expect: 'slices `recipients` directly',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT WEARING THE NEW COLUMN: the row is read, the column
+     * is selected, and the decision still asks only whether a row exists. A row
+     * exists as soon as the first batch goes out.
+     */
+    name: 'the skip goes back to asking whether a row exists rather than whether it closed',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    if (already?.completed_at && live) {',
+    replace: '    if (already && live) {',
+    expect: 'never reads completed_at off the row it found',
+  },
+  {
+    /*
+     * THE SCOPE ITSELF, DRILLED. `share-links.ts` was added to this guard after
+     * its own eight discarded errors were corrected, rather than being declared
+     * out of reach. This drill proves the guard actually judges that file: put
+     * one discard back and it must say so. Without it, "the scope was widened"
+     * would be a claim about a list rather than about behaviour.
+     */
+    name: 'the share link lookup goes back to discarding its error',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/share-links.ts',
+    find: '  const { data: existing, error: lookupError } = await lookup.maybeSingle()',
+    replace: '  const { data: existing } = await lookup.maybeSingle()',
+    expect: 'indistinguishable from an answer',
   },
 ]
 

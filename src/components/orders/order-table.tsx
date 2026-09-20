@@ -118,7 +118,17 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                     <td className="px-4 py-3">
                       <Link
                         href={`/dashboard/events/${eventId}/orders/${order.id}`}
-                        className="text-xs text-gold-500 hover:underline whitespace-nowrap"
+                        /*
+                         * gold-800, NOT gold-500. Gold as text on a light
+                         * surface fails AA at gold-500: globals.css records it
+                         * as 2.27:1 on canvas, and `--brand-accent-strong`
+                         * exists for exactly this. axe reported it as a SERIOUS
+                         * colour-contrast violation on every row, so on an
+                         * event with 1,150 orders it was 1,150 failing nodes on
+                         * one screen. Found on 20 September 2026 by running axe
+                         * against the real, populated, signed-in surface.
+                         */
+                        className="text-xs text-gold-800 hover:text-gold-700 hover:underline whitespace-nowrap"
                       >
                         View →
                       </Link>

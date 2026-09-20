@@ -4,6 +4,15 @@ type Props = {
   delta?: { value: number; label?: string } | null
   sparkline?: number[] | null
   emptyHint?: string
+  /**
+   * A stable name for this figure, so a drive can read it without matching on
+   * the label copy. The claim these cards make is "every order, not the first
+   * thousand", and the only way to prove it is to put more than a thousand
+   * orders behind a real organisation and read what the card says. Matching the
+   * label text instead would pin the copy, which is the one thing here that is
+   * allowed to change.
+   */
+  testId?: string
 }
 
 function Sparkline({ points }: { points: number[] }) {
@@ -59,12 +68,17 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint }: Props) {
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId }: Props) {
   const hasSparkline = Array.isArray(sparkline) && sparkline.length >= 2
   const hasData = value !== '0' || hasSparkline
 
   return (
-    <div className="panel-elevated rounded-2xl border border-ink-100 bg-white p-5 transition-colors hover:border-ink-200">
+    <div
+      className="panel-elevated rounded-2xl border border-ink-100 bg-white p-5 transition-colors hover:border-ink-200"
+      data-kpi={testId}
+      data-kpi-value={testId ? value : undefined}
+      data-kpi-delta={testId && delta ? String(delta.value) : undefined}
+    >
       <p className="type-eyebrow text-ink-400">{label}</p>
       <div className="mt-2 flex items-baseline gap-2">
         <p className="font-headline text-2xl font-extrabold tabular-nums tracking-tight text-ink-900 sm:text-3xl">
@@ -72,10 +86,26 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint }: Props) {
         </p>
         {delta && hasData && <DeltaPill delta={delta} />}
       </div>
+      {/*
+        THE HINT IS FOR AN EMPTY CARD, AND IT USED TO SHOW ON A FULL ONE.
+
+        This branch was `hasSparkline ? <Sparkline/> : <hint/>`, so the two
+        cards that never carry a sparkline at all, Upcoming events and Total
+        events, printed their empty hint whatever their value was. Caught by
+        reading a driven screenshot rather than the drive's own report, at 390
+        on 20 September 2026, where the organiser's home screen said:
+
+            TOTAL EVENTS
+            1
+            Create your first event
+
+        The height is still reserved when the hint is withheld, so nothing
+        shifts between a card that has data and one that does not.
+      */}
       <div className="mt-3 h-8">
         {hasSparkline ? (
           <Sparkline points={sparkline as number[]} />
-        ) : (
+        ) : hasData ? null : (
           <p className="text-xs text-ink-400">
             {emptyHint ?? 'No data yet'}
           </p>

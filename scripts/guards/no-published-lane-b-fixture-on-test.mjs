@@ -44,12 +44,27 @@
  *
  * THE ONE EXCEPTION, and it is a real one rather than a convenience.
  * `lane-b-fo1-` fixtures are PERSISTENT BY DESIGN: fo1-founding-offer-drive tops
- * the tree up to two sellable lane B organisations and REUSES them rather than
- * churning them, and fo1-founding-purchase-drive keeps its rows because they
- * carry the orders that are its evidence. Nothing about them ever disappears, so
- * nothing about them ever 404s, which is the entire hazard. They also cannot be
- * anything other than published: the sale gate refuses an organisation that is
- * not active.
+ * the tree up to two sellable lane B organisations, and fo1-founding-purchase-drive
+ * keeps its rows because they carry the orders that are its evidence. Nothing
+ * about them ever disappears, so nothing about them ever 404s, which is the
+ * entire hazard. They also cannot be anything other than published: the sale
+ * gate refuses an organisation that is not active.
+ *
+ * THE COUNT GROWS, AND THIS PARAGRAPH USED TO SAY IT DID NOT. Until 19 September
+ * 2026 the sentence above read "and REUSES them rather than churning them",
+ * which is true of the CONTROL and false of the TARGET: the offer drive GRANTS
+ * the target a founding window, which is what it exists to prove, and an
+ * organisation that holds a window is no longer a standard one. So every run
+ * consumes one and tops the tree up with a replacement. Counted on 19 September:
+ * EIGHT, not two, each owning one published event, seven of them carrying
+ * orders.
+ *
+ * THAT IS RECORDED RATHER THAN FIXED, deliberately. Revoking the window in the
+ * teardown would cap the set at two, and it would also remove the only founding
+ * organisation on TEST, which `fo1-founding-purchase-drive` needs and which
+ * LANE-RETURNS.md of 18 September assigns to lane A. A fixture lifecycle that
+ * two lanes depend on is not changed by one of them in passing. It is a BORDER
+ * in REVIEW-QUEUE-B.md with the measurement and the proposed change.
  *
  * SKIPS BY NAME where there is no database, exactly as schema-ahead-of-code
  * does, because CI's typecheck build carries placeholder values by design.
@@ -68,7 +83,7 @@ const TAG = '[no-published-lane-b-fixture-on-test]'
 const PERSISTENT = [
   {
     prefix: 'lane-b-fo1-',
-    why: 'FO1 tops the tree up to two SELLABLE lane B organisations and reuses them; they are never deleted, so they never 404, and the sale gate refuses an organisation that is not active',
+    why: 'FO1 tops the tree up to two STANDARD sellable lane B organisations; the offer drive then grants its target a founding window, so the set GROWS by one per run (8 on 19 September 2026). They are never deleted, so they never 404, and the sale gate refuses an organisation that is not active',
   },
 ]
 
@@ -192,7 +207,10 @@ async function main() {
 
   declareWork('no-published-lane-b-fixture-on-test', {
     did: { 'lane B organisation read': organisations.length, 'lane B event read': events.length },
-    found: { 'lane B fixture the sitemap publishes': published.length },
+    // NAMED SO IT PLURALISES. declareWork appends an s to the key, so
+    // 'lane B fixture the sitemap publishes' printed as 'publisheses' on every
+    // run of a blocking guard.
+    found: { 'published lane B fixture in the sitemap': published.length },
     zeroIsFine: {
       'lane B organisation read': 'a tree with no lane B fixtures on TEST is the clean state, not a failure to look',
       'lane B event read': 'the same',

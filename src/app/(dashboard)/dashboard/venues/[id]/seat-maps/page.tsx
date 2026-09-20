@@ -3,8 +3,19 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { PROTECTED_SEAT_STATUSES } from '@/lib/events/seat-counts'
 import { requireVenueSeatingAccess } from '@/lib/organisations/access'
 import { SeatMapsClient } from './seat-maps-client'
+
+/** The chart columns this screen reads, named so the pager's generic is explicit. */
+type SeatMapRow = {
+  id: string
+  name: string
+  total_seats: number | null
+  created_at: string
+  layout: unknown
+}
 
 type Props = {
   params: Promise<{ id: string }>
@@ -40,16 +51,33 @@ export default async function SeatMapsPage({ params }: Props) {
 
   if (!venue) notFound()
 
-  const { data: seatMaps, error: mapsError } = await admin
-    .from('seat_maps')
-    .select('id, name, total_seats, created_at, layout')
-    .eq('venue_id', venueId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-
-  if (mapsError) {
-    console.error('[seat-maps/page] failed to load seat maps:', mapsError)
-  }
+  /*
+   * EVERY CHART THIS VENUE HAS, AND EVERY ONE OF THEM COUNTED.
+   *
+   * The three reads below were unbounded, so each was capped at a thousand
+   * rows in silence. A venue with more charts than that is not the likely
+   * case; a busy venue whose charts have carried more than a thousand
+   * PUBLISHED EVENTS between them over a few years is entirely ordinary, and
+   * that read feeds the "live usage" figure an organiser checks before editing
+   * a chart that people already hold seats on. An undercount there reads as
+   * "safe to edit".
+   *
+   * The paging order carries `id` last in each, so no row can fall between two
+   * windows. The chart list keeps newest first for display. `readEveryRow`
+   * raises on failure, which is why `mapsError` is gone: it was logged and
+   * then ignored, and an empty chart list is the organiser's cue to build one
+   * they already have.
+   */
+  const seatMaps = await readEveryRow<SeatMapRow>('venue seat maps', (from, to) =>
+    admin
+      .from('seat_maps')
+      .select('id, name, total_seats, created_at, layout')
+      .eq('venue_id', venueId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
 
   // Live usage per chart: which published events sit on it, and how many
   // of their seats are sold, reserved or held (the protected inventory).
@@ -57,34 +85,61 @@ export default async function SeatMapsPage({ params }: Props) {
   // a surprise: edits stay template-side until reviewed per event.
   const liveUsage: Record<string, { events: number; protectedSeats: number }> = {}
   const sectionViews: Record<string, Record<string, string>> = {}
-  const mapIds = (seatMaps ?? []).map(m => m.id)
+  const mapIds = seatMaps.map(m => m.id)
   if (mapIds.length > 0) {
-    const { data: views } = await admin
-      .from('seat_section_views')
-      .select('seat_map_id, section_name, photo_url')
-      .in('seat_map_id', mapIds)
-    for (const view of views ?? []) {
+    const views = await readEveryRow<{ seat_map_id: string; section_name: string; photo_url: string }>(
+      'venue seat section views',
+      (from, to) =>
+        admin
+          .from('seat_section_views')
+          .select('seat_map_id, section_name, photo_url')
+          .in('seat_map_id', mapIds)
+          .order('id')
+          .range(from, to),
+    )
+    for (const view of views) {
       const chart = (sectionViews[view.seat_map_id] ??= {})
       chart[view.section_name.toLowerCase()] = view.photo_url
     }
-    const { data: liveEvents } = await admin
-      .from('events')
-      .select('id, seat_map_id')
-      .in('seat_map_id', mapIds)
-      .eq('status', 'published')
+    const liveEvents = await readEveryRow<{ id: string; seat_map_id: string | null }>(
+      'venue seat map live events',
+      (from, to) =>
+        admin
+          .from('events')
+          .select('id, seat_map_id')
+          .in('seat_map_id', mapIds)
+          .eq('status', 'published')
+          .order('id')
+          .range(from, to),
+    )
     const byMap = new Map<string, string[]>()
-    for (const ev of liveEvents ?? []) {
+    for (const ev of liveEvents) {
       if (!ev.seat_map_id) continue
       const list = byMap.get(ev.seat_map_id) ?? []
       list.push(ev.id)
       byMap.set(ev.seat_map_id, list)
     }
+    /*
+     * THE PROTECTED SEATS ARE THE ONES PEOPLE ALREADY HOLD, AND A READ THAT
+     * FAILS MUST NOT READ AS "SAFE TO EDIT".
+     *
+     * This was `const { count } = await ...` with `count ?? 0`. The error was
+     * not destructured at all, so a read that failed produced nought protected
+     * seats, which is the sentence the chart list prints beside an Edit button.
+     * It is the same flattering direction as every other defect on these
+     * screens: the number that decides whether the organiser is warned was the
+     * number that defaulted to no warning. It throws now, in a screen that
+     * already throws on its other reads.
+     */
     for (const [mapId, eventIds] of byMap) {
-      const { count } = await admin
+      const { count, error: protectedError } = await admin
         .from('seats')
         .select('id', { count: 'exact', head: true })
         .in('event_id', eventIds)
-        .in('status', ['reserved', 'sold', 'held'])
+        .in('status', [...PROTECTED_SEAT_STATUSES])
+      if (protectedError) {
+        throw new Error(`protected seats for seat map ${mapId} could not be counted: ${protectedError.message}`)
+      }
       liveUsage[mapId] = { events: eventIds.length, protectedSeats: count ?? 0 }
     }
   }
@@ -99,7 +154,7 @@ export default async function SeatMapsPage({ params }: Props) {
       <SeatMapsClient
         venueId={venueId}
         venueName={venue.name}
-        seatMaps={(seatMaps ?? []) as unknown as Parameters<typeof SeatMapsClient>[0]['seatMaps']}
+        seatMaps={seatMaps as unknown as Parameters<typeof SeatMapsClient>[0]['seatMaps']}
         liveUsage={liveUsage}
         sectionViews={sectionViews}
       />

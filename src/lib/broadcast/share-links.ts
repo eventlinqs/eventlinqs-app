@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureException } from '@/lib/observability/sentry'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 
 /**
@@ -148,14 +150,44 @@ export async function getOrCreateShareLink(
   const artistId = input.artistId ?? null
   const createdBy = input.createdBy ?? null
 
+  /*
+   * THE BOUND SITS IN THE FIRST CHAIN, NOT ON THE LAST LINE, and the move is
+   * worth a comment because nothing about the behaviour changed.
+   *
+   * This read has always ended `.limit(1).maybeSingle()`. It was applied to
+   * `lookup` after two conditional filters had been assigned back to it, and a
+   * scanner that walks a PostgREST builder as a CHAIN cannot follow a variable
+   * across an assignment: `scripts/verify/unbounded-read-census.mjs` reported
+   * this line as an unbounded read for as long as it has existed. A bound only
+   * a human can see is a bound the next guard will miss.
+   */
   let lookup = client
     .from('share_links')
     .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
+    .limit(1)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
   lookup = createdBy === null ? lookup.is('created_by', null) : lookup.eq('created_by', createdBy)
-  const { data: existing } = await lookup.limit(1).maybeSingle()
+  /*
+   * A READ THAT FAILED IS NOT AN ANSWER OF "NO SUCH LINK".
+   *
+   * This asks whether this event and channel already have a tracked code, and
+   * the error used to be discarded. A dropped socket therefore read as "none
+   * exists" and the lines below MINTED A SECOND ONE. The comment on
+   * `readExternalCodesForDraft` in this same file already says why that is the
+   * worst outcome available here: a poster on a wall and the card beside it
+   * would carry different codes and their clicks would land in two buckets,
+   * splitting the only measurement these events produce.
+   *
+   * Answering null instead costs this render an untracked URL, once, and every
+   * caller already handles null by falling back to the plain event page.
+   */
+  const { data: existing, error: lookupError } = await lookup.maybeSingle()
+  if (lookupError) {
+    captureException(lookupError, { where: 'lib/broadcast/share-links:getOrCreateShareLink lookup' })
+    return null
+  }
   if (existing) return existing as ShareLinkRow
 
   const code = await mintCode(
@@ -222,11 +254,23 @@ async function mintCode(
 
   for (const candidate of candidates) {
     if (!isValidReadableCode(candidate)) continue
-    const { data: taken } = await client
+    /*
+     * A FAILED COLLISION CHECK MUST NOT READ AS "THIS CODE IS FREE". The error
+     * was discarded, so a blink handed back a candidate nobody had checked; the
+     * insert then hits the unique index and the whole link fails to mint. The
+     * random code below cannot collide and is already this function's own
+     * floor, so taking it early is the cheap, correct answer rather than a new
+     * failure mode.
+     */
+    const { data: taken, error: takenError } = await client
       .from('share_links')
       .select('id, event_id')
       .eq('code', candidate)
       .maybeSingle()
+    if (takenError) {
+      captureException(takenError, { where: 'lib/broadcast/share-links:mintCode collision check' })
+      return generateShareCode()
+    }
     if (!taken) return candidate
     // Held by this same event under another creator: reuse is safe and keeps
     // one readable address per event per channel.
@@ -268,24 +312,46 @@ export async function getOrCreateExternalShareLink(
 ): Promise<ShareLinkRow | null> {
   const client = opts?.client ?? createAdminClient()
 
-  const { data: existing } = await client
+  // Same as getOrCreateShareLink above: a failed read used to read as "no such
+  // link" and mint a second code for a draft that already had one.
+  const { data: existing, error: existingError } = await client
     .from('share_links')
     .select(SHARE_LINK_COLUMNS)
     .eq('draft_code', input.draftCode)
     .eq('channel', input.channel)
     .limit(1)
     .maybeSingle()
+  if (existingError) {
+    captureException(existingError, {
+      where: 'lib/broadcast/share-links:getOrCreateExternalShareLink lookup',
+    })
+    return null
+  }
   if (existing) {
     // The destination can change when the organiser edits their draft, and the
     // link must follow it: a poster already carrying this code has to keep
     // working and has to point at the right place.
     if ((existing as ShareLinkRow).destination_url !== input.destinationUrl) {
-      const { data: updated } = await client
+      /*
+       * A FAILED UPDATE MUST NOT FALL THROUGH TO THE STALE ROW. The organiser
+       * has edited where their draft points, a poster already carrying this
+       * code has to follow it, and the error was discarded so the old
+       * destination was returned as though it were current. Answering null
+       * makes the caller fall back rather than hand out a code pointing at a
+       * page the organiser has moved away from.
+       */
+      const { data: updated, error: updateError } = await client
         .from('share_links')
         .update({ destination_url: input.destinationUrl })
         .eq('id', (existing as ShareLinkRow).id)
         .select(SHARE_LINK_COLUMNS)
         .single()
+      if (updateError) {
+        captureException(updateError, {
+          where: 'lib/broadcast/share-links:getOrCreateExternalShareLink destination update',
+        })
+        return null
+      }
       if (updated) return updated as ShareLinkRow
     }
     return existing as ShareLinkRow
@@ -327,12 +393,27 @@ export async function readExternalCodesForDraft(
   opts?: { client?: BroadcastClient },
 ): Promise<Record<string, string>> {
   const client = opts?.client ?? createAdminClient()
-  const { data } = await client
-    .from('share_links')
-    .select('channel, code')
-    .eq('draft_code', draftCode)
+  /*
+   * PAGED AND ORDERED, though a draft holds a handful of channels today. The
+   * row ceiling is silent (HTTP 200, `error` null, a full-looking array:
+   * https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19), and the cost of being wrong here is a launch kit artefact
+   * quietly falling back to the untracked kit URL, which reads as "this channel
+   * produced no clicks" rather than as a missing row.
+   */
+  const rows = await readEveryRow<{ channel: string; code: string }>(
+    `external share codes for draft ${draftCode}`,
+    (from, to) =>
+      client
+        .from('share_links')
+        .select('channel, code')
+        .eq('draft_code', draftCode)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   const out: Record<string, string> = {}
-  for (const row of (data ?? []) as { channel: string; code: string }[]) {
+  for (const row of rows) {
     out[row.channel] = row.code
   }
   return out
@@ -351,11 +432,18 @@ async function mintExternalCode(
   }
   for (const candidate of candidates) {
     if (!isValidReadableCode(candidate)) continue
-    const { data: taken } = await client
+    // As in mintCode: a failed check is not evidence that a code is free.
+    const { data: taken, error: takenError } = await client
       .from('share_links')
       .select('id')
       .eq('code', candidate)
       .maybeSingle()
+    if (takenError) {
+      captureException(takenError, {
+        where: 'lib/broadcast/share-links:mintExternalCode collision check',
+      })
+      return generateShareCode()
+    }
     if (!taken) return candidate
   }
   return generateShareCode()
@@ -399,7 +487,20 @@ export async function recordShareLinkEvent(
   if (DEDUPED_KINDS.includes(input.kind) && input.visitorHash) {
     const dayStart = new Date()
     dayStart.setUTCHours(0, 0, 0, 0)
-    const { data: dupe } = await client
+    /*
+     * A FAILED DE-DUPLICATION CHECK FAILS TOWARDS NOT COUNTING, and the
+     * direction is the whole decision.
+     *
+     * The error was discarded, so a blink read as "this visitor has not been
+     * counted today" and the row below was written anyway. That re-introduces
+     * exactly the defect the header above records: a click count that is not a
+     * count of people, which an organiser reads as a number and acts on.
+     *
+     * The two directions are one click lost, or a number that over-states their
+     * reach. This file has already chosen once between those and chose the
+     * smaller number, deliberately, so a failure here takes the same side.
+     */
+    const { data: dupe, error: dupeError } = await client
       .from('share_link_events')
       .select('id')
       .eq('link_id', input.linkId)
@@ -408,6 +509,12 @@ export async function recordShareLinkEvent(
       .gte('occurred_at', dayStart.toISOString())
       .limit(1)
       .maybeSingle()
+    if (dupeError) {
+      captureException(dupeError, {
+        where: 'lib/broadcast/share-links:recordShareLinkEvent daily de-duplication',
+      })
+      return true
+    }
     if (dupe) return true
   }
 
@@ -418,7 +525,8 @@ export async function recordShareLinkEvent(
   // so far ahead of the view number.
   if (input.kind === 'click' && input.visitorHash) {
     const since = new Date(Date.now() - CLICK_DEDUPE_WINDOW_SECONDS * 1000)
-    const { data: recent } = await client
+    // Same decision as the daily check above, for the same reason.
+    const { data: recent, error: recentError } = await client
       .from('share_link_events')
       .select('id')
       .eq('link_id', input.linkId)
@@ -427,6 +535,12 @@ export async function recordShareLinkEvent(
       .gte('occurred_at', since.toISOString())
       .limit(1)
       .maybeSingle()
+    if (recentError) {
+      captureException(recentError, {
+        where: 'lib/broadcast/share-links:recordShareLinkEvent click cool-off',
+      })
+      return true
+    }
     if (recent) return true
   }
 

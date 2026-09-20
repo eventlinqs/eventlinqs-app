@@ -288,8 +288,24 @@ describe('GA1: the checkout records the answer either way, behind one switch', (
   const squad = readFileSync(join(ROOT, 'src', 'app', 'actions', 'squad-checkout.ts'), 'utf8')
 
   it('a tick grants and an untouched box declines, on the main checkout', () => {
+    /*
+     * WIDENED BY AQ1, 19 September 2026, and the intent is unchanged.
+     *
+     * This used to assert the literal `ticked: params.platformConsent`. AQ1's
+     * reversal condition moves the question to the ticket page, where the buyer
+     * has no address yet, so the answer can arrive from the carrier instead:
+     *
+     *     ticked: carried ? carried.ticked : params.platformConsent
+     *
+     * The GA1 rule this test exists for is that the form's answer is what gets
+     * recorded WHEN THE FORM IS WHAT ASKED, and that is still asserted, on the
+     * same expression. The new branch is asserted beside it rather than in
+     * place of it, so neither half can be dropped quietly.
+     */
     expect(checkout).toContain('recordCheckoutMarketingAnswer')
-    expect(checkout).toContain('ticked: params.platformConsent')
+    expect(checkout).toContain('params.platformConsent')
+    expect(checkout).toMatch(/ticked: carried \? carried\.ticked : params\.platformConsent/)
+    expect(checkout).toMatch(/captureSurface: carried \? 'ticket-page' : 'checkout'/)
   })
 
   it('the squad checkout answers the question through the same one rule', () => {

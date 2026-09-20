@@ -9,6 +9,13 @@
  * directions: it holds when the data is sound, and `reconciles` goes FALSE the
  * moment it does not.
  *
+ * THAT SECOND HALF WAS UNTRUE FROM THE DAY IT WAS WRITTEN UNTIL 20 SEPTEMBER
+ * 2026, and this header said it anyway. The check compared one number against
+ * itself, so no input could make it false and no test below asserted that it
+ * ever was. The four cases under "the reconciliation compares against a total it
+ * did not count itself" are the ones that could not be written before; two of
+ * them go red against the old wiring.
+ *
  * IT ALSO PINS THE DEFINITION OF A SALE. Three different ones were live at the
  * same time: ['confirmed'], ['confirmed','partially_refunded','refunded'], and
  * no filter at all. Any two produce a different percentage for the same event,
@@ -43,25 +50,110 @@ const data = {
 }
 
 /**
- * A chainable stub shaped like the PostgREST builder. Every terminal method
- * resolves to the rows for that table; the filters are ignored because the test
- * supplies exactly the rows the query would return.
+ * TWO DIFFERENT THINGS THAT BOTH LOOK LIKE "FEWER ROWS CAME BACK", KEPT APART
+ * ON PURPOSE, because conflating them is how the defect survived.
+ *
+ * `perResponseCeiling` is the REAL server. Supabase caps each RESPONSE at 1,000
+ * rows with HTTP 200, `error` null and a full-looking array
+ * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19).
+ * It applies to the window that was asked for, so a caller that PAGES walks
+ * straight past it and collects everything. Setting this proves `readEveryRow`
+ * does that, and it is the thing the old unpaged code could not survive.
+ *
+ * `shortRead` is a read that lost rows and said nothing: it serves the first N
+ * rows in total and then reports empty, whatever window is asked for. That is
+ * what the old code did on every event past a thousand orders, and it is what
+ * the reconciliation exists to CATCH. It is kept separate because a per-response
+ * cap is survivable and a short read is not, and a stub with only one knob
+ * cannot tell the two apart.
+ *
+ * Neither applies to a COUNT, exactly as neither applies to `count(*)` in
+ * Postgres. That asymmetry is the whole mechanism by which the panel can notice.
+ */
+const perResponseCeiling: Partial<Record<keyof typeof data, number>> = {}
+const shortRead: Partial<Record<keyof typeof data, number>> = {}
+
+/** A read that FAILS, per table, so "error discarded" can be tested. */
+const failOn: Partial<Record<keyof typeof data, string>> = {}
+
+/**
+ * A chainable stub shaped like the PostgREST builder.
+ *
+ * IT HONOURS THREE THINGS IT USED TO IGNORE, and each was load-bearing:
+ *
+ *   `.range(from, to)`  the reads are paged now, so a stub that returns the
+ *                       whole array for every window pages for ever.
+ *   `{ count, head }`   the reconciliation asks the SERVER to count, so the
+ *                       stub has to be able to answer a question about rows it
+ *                       is not returning. That is the entire mechanism.
+ *   `.eq` / `.in`       ONLY on a column the fixture row actually carries. The
+ *                       old contract was "the test supplies exactly the rows
+ *                       the query would return", and keeping a filter on an
+ *                       ABSENT column as a no-op preserves it: the conversion
+ *                       fixtures carry no `kind`, so `.eq('kind','conversion')`
+ *                       stays pre-applied. Where the column IS present, such as
+ *                       an order's `status`, the filter is applied, because
+ *                       otherwise the head-count would count refunded and
+ *                       pending orders and invent a discrepancy.
  */
 function stubAdmin() {
   return {
     from(table: keyof typeof data) {
-      const rows = data[table]
+      const preds: ((r: Record<string, unknown>) => boolean)[] = []
+      let head = false
+      let lo = 0
+      let hi = Number.MAX_SAFE_INTEGER
+
+      const matching = () =>
+        (data[table] as unknown as Record<string, unknown>[]).filter(r =>
+          preds.every(p => p(r)),
+        )
+
       const builder: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'not', 'order', 'limit']) {
-        builder[m] = () => builder
+      builder.select = (_cols?: unknown, opts?: { count?: string; head?: boolean }) => {
+        if (opts?.head) head = true
+        return builder
+      }
+      builder.eq = (col: string, val: unknown) => {
+        preds.push(r => !(col in r) || r[col] === val)
+        return builder
+      }
+      builder.in = (col: string, vals: unknown[]) => {
+        preds.push(r => !(col in r) || vals.includes(r[col]))
+        return builder
+      }
+      for (const m of ['not', 'order', 'limit']) builder[m] = () => builder
+      builder.range = (from: number, to: number) => {
+        lo = from
+        hi = to
+        return builder
       }
       // A single-row terminal, for the events lookup. Resolves the FIRST row or
       // null, which is what PostgREST does, so a test that empties `events` gets
       // the same null the real client would return.
       builder.maybeSingle = () =>
-        Promise.resolve({ data: (rows as unknown[])[0] ?? null, error: null })
-      builder.then = (resolve: (v: { data: unknown; error: null }) => unknown) =>
-        Promise.resolve({ data: rows, error: null }).then(resolve)
+        Promise.resolve({ data: matching()[0] ?? null, error: null })
+      builder.then = (resolve: (v: Record<string, unknown>) => unknown) => {
+        const failure = failOn[table]
+        if (failure) {
+          return Promise.resolve({ data: null, count: null, error: { message: failure } }).then(
+            resolve,
+          )
+        }
+        const all = matching()
+        if (head) {
+          // The server counts the whole table. Neither knob applies to a count,
+          // which is the only reason a count can catch a short row read.
+          return Promise.resolve({ data: null, count: all.length, error: null }).then(resolve)
+        }
+        // A short read loses rows outright, whatever window is asked for.
+        const visible = typeof shortRead[table] === 'number' ? all.slice(0, shortRead[table]) : all
+        // The per-response cap applies to the window, so paging survives it.
+        const window = visible.slice(lo, hi + 1)
+        const cap = perResponseCeiling[table]
+        const served = typeof cap === 'number' ? window.slice(0, cap) : window
+        return Promise.resolve({ data: served, error: null }).then(resolve)
+      }
       return builder
     },
   }
@@ -81,6 +173,9 @@ beforeEach(() => {
   data.share_link_events = []
   // Internal by default. The external case sets this explicitly.
   data.events = [{ external_ticket_url: null }]
+  for (const knob of [perResponseCeiling, shortRead, failOn]) {
+    for (const k of Object.keys(knob)) delete knob[k as keyof typeof data]
+  }
 })
 
 /** One order, one ticket each, so ticket counts are easy to reason about. */
@@ -269,5 +364,109 @@ describe('the buckets reconcile to the order ledger', () => {
       a.buckets.organiserShared.orders + a.buckets.platformChannel.orders + a.buckets.untracked.orders
     expect(summed, 'a stray conversion must not inflate the buckets past the ledger').toBe(1)
     expect(a.reconciles).toBe(true)
+  })
+})
+
+/**
+ * THE RECONCILIATION USED TO BE INCAPABLE OF FAILING, AND THIS IS THE PROOF
+ * THAT IT NO LONGER IS.
+ *
+ * WHAT IT USED TO COMPARE. `totals.orders` was incremented once per iteration
+ * of the bucket loop, and every iteration also called `add()` exactly once,
+ * which incremented exactly one bucket's `orders`. `discrepancy.orders` was
+ * therefore `n - n` for every possible input, and the same held for tickets,
+ * which added the same local value on both sides of the same iteration. The
+ * check was one number compared against itself.
+ *
+ * WHY THAT MATTERED RATHER THAN BEING MERELY UGLY. The panel shows a
+ * share-of-sales percentage ONLY when this passes, and its own comment says
+ * "REFUSE RATHER THAN GUESS ... Showing one anyway is how a wrong number ends
+ * up in a pitch deck". So the one safeguard over the only number on this
+ * platform that gets quoted to an organiser was wired to a constant.
+ *
+ * THE EVIDENCE THAT NOBODY NOTICED: this file's own header has claimed since it
+ * was written that "`reconciles` goes FALSE the moment it does not", and the
+ * seven assertions above it are all `toBe(true)`. Not one asserts false, because
+ * with the old wiring not one could be written. These four can.
+ */
+describe('the reconciliation compares against a total it did not count itself', () => {
+  it('goes FALSE when the ledger read comes back short, and names what is missing', async () => {
+    seed([{ id: 'o1' }, { id: 'o2' }, { id: 'o3' }, { id: 'o4' }, { id: 'o5' }])
+    // The rows path loses three orders; the server still counts five.
+    shortRead.orders = 2
+
+    const a = await fetchSalesAttribution(EVENT)
+
+    expect(a.reconciles, 'a short ledger read must not render a percentage').toBe(false)
+    expect(a.discrepancy.orders).toBe(3)
+  })
+
+  it('goes FALSE when the ticket read comes back short', async () => {
+    seed([{ id: 'o1', tickets: 3 }, { id: 'o2', tickets: 3 }])
+    shortRead.tickets = 2
+
+    const a = await fetchSalesAttribution(EVENT)
+
+    expect(a.reconciles).toBe(false)
+    expect(a.discrepancy.tickets, 'six sold, two seen').toBe(4)
+  })
+
+  it('STAYS TRUE when nothing is lost, so the check is not simply always false', async () => {
+    seed([{ id: 'o1', tickets: 2 }, { id: 'o2', tickets: 1 }])
+
+    const a = await fetchSalesAttribution(EVENT)
+
+    expect(a.reconciles).toBe(true)
+    expect(a.discrepancy).toEqual({ orders: 0, tickets: 0 })
+  })
+
+  it('SURVIVES the real 1,000-row cap, because that applies per response and this pages', async () => {
+    /*
+     * The distinction the two knobs exist for. A per-response cap is what
+     * Supabase actually does, and a paged reader walks past it: 7 orders read
+     * 2 at a time is still 7 orders, and the panel reconciles.
+     */
+    seed(Array.from({ length: 7 }, (_, i) => ({ id: `o${i}`, tickets: 1 })))
+    perResponseCeiling.orders = 2
+    perResponseCeiling.tickets = 3
+
+    const a = await fetchSalesAttribution(EVENT)
+
+    expect(a.totals.orders, 'every order, collected across pages').toBe(7)
+    expect(a.totals.tickets).toBe(7)
+    expect(a.reconciles).toBe(true)
+  })
+})
+
+/**
+ * A READ THAT FAILED IS NOT AN EVENT THAT SOLD NOTHING.
+ *
+ * Every read in this module used to be `const { data } = await ...` followed by
+ * `?? []`, so an unreachable database rendered a reach panel reporting zero
+ * sales, zero tickets and zero attribution for an event that had sold out. On
+ * this screen that is indistinguishable from an organiser whose sharing did
+ * nothing, which is the opposite of the fact, and it is the number they would
+ * act on.
+ */
+describe('a failed read throws rather than rendering an event that sold nothing', () => {
+  it('throws when the order ledger cannot be read', async () => {
+    seed([{ id: 'o1' }])
+    failOn.orders = 'connection terminated'
+
+    await expect(fetchSalesAttribution(EVENT)).rejects.toThrow(/order ledger/i)
+  })
+
+  it('throws when the tickets cannot be read', async () => {
+    seed([{ id: 'o1' }])
+    failOn.tickets = 'connection terminated'
+
+    await expect(fetchSalesAttribution(EVENT)).rejects.toThrow(/tickets/i)
+  })
+
+  it('throws when the tracked links cannot be read', async () => {
+    seed([{ id: 'o1' }])
+    failOn.share_links = 'connection terminated'
+
+    await expect(fetchSalesAttribution(EVENT)).rejects.toThrow(/tracked links/i)
   })
 })
