@@ -202,6 +202,42 @@ export const SCOPE = [
   ],
 
   /*
+   * THE TOKEN DOORS, added 21 September 2026. Three pages a person reaches by
+   * following a link out of their own inbox, and every one of them answered a
+   * blinked read with a sentence about that link.
+   *
+   *     "This link is not valid ... It may have already been used."
+   *     "This invite is not valid ... It may have already been claimed."
+   *
+   * THE FIRST IS A STATUTORY REMEDY. The Spam Act unsubscribe facility has to
+   * work, and a dropped socket told the reader it had already been spent. They
+   * stop pressing, the mail keeps arriving, and the one control they had over it
+   * has been declared used. The waitlist page is the same shape and its own
+   * header is the sharpest evidence against it: it says these links are already
+   * sitting in inboxes and every one of them has to keep working, nine lines
+   * above the read that made a live one invalid.
+   *
+   * THE THIRD IS SINGLE-USE, which is what makes a false answer expensive: the
+   * performer is sent back to the organiser for a fresh link, and the organiser
+   * cannot mint one, because the first was never claimed.
+   */
+  [
+    'src/app/unsubscribe',
+    "a person exercising a statutory right told their live unsubscribe link is not valid and may " +
+      "already have been used, so they stop pressing it and the mail keeps arriving",
+  ],
+  [
+    'src/app/waitlist',
+    "a live city-waitlist unsubscribe link called invalid, nine lines under a header promising " +
+      "that every link already in an inbox keeps working",
+  ],
+  [
+    'src/app/artists',
+    "an invited performer told their single-use invite has already been claimed, and sent back " +
+      "to an organiser who cannot mint a second one because the first was never used",
+  ],
+
+  /*
    * TWO FILES RATHER THAN THEIR DIRECTORY, and the third element says why on
    * each. src/app/actions holds 26 files and, on the day these two were fixed,
    * 46 further reads of this shape in files belonging to the other two lanes:

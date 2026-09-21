@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { ClaimInviteButton } from '@/components/broadcast/claim-invite-button'
 import { contactAddress } from '@/lib/email/sender'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 export const metadata: Metadata = {
   title: 'Claim your artist profile | EventLinqs',
@@ -28,11 +29,21 @@ export default async function ClaimInvitePage({ params }: Props) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) notFound()
 
   const admin = createAdminClient()
-  const { data: tag } = await admin
-    .from('event_artists')
-    .select('id, artist:artists(name), event:events(title, slug)')
-    .eq('invite_token', token)
-    .maybeSingle()
+  /*
+   * THROUGH THE DOOR. A blink here told an invited performer "This invite is not
+   * valid ... It may have already been claimed", and sent them back to the
+   * organiser for a fresh link that the organiser cannot mint because the first
+   * one was never used. The token is single-use, so the false sentence is the
+   * expensive one: it burns a real invitation in the reader's mind. A token that
+   * matches no row still resolves to null and still gets that sentence.
+   */
+  const tag = await readOrThrow('the performer claim invite token', () =>
+    admin
+      .from('event_artists')
+      .select('id, artist:artists(name), event:events(title, slug)')
+      .eq('invite_token', token)
+      .maybeSingle(),
+  )
 
   const artistName =
     (tag as { artist?: { name?: string } | null } | null)?.artist?.name ?? null

@@ -6602,6 +6602,54 @@ const DRILLS = [
   },
 
   /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TOKEN DOORS (lane B,
+   * 21 September 2026), four drills.
+   *
+   * Three pages a person reaches by following a link out of their own inbox,
+   * each of which answered a blinked read with a sentence about that link.
+   * Drill 1 is the one that matters most: the Spam Act unsubscribe facility has
+   * to work, and a dropped socket told the reader it had already been spent.
+   *
+   * EACH DRILL ASSERTS ITS OWN SENTENCE rather than its file path, and that is
+   * deliberate. On the morning these were written, two drills in the block above
+   * asserted a path the guard prints on EVERY run, in the "narrowed to one file"
+   * line, so both would have gone green against a guard that never judged the
+   * file at all. Only judgeFile() can emit the sentences below.
+   */
+  {
+    name: "a live unsubscribe link goes back to being called spent when a socket drops",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/unsubscribe/[token]/page.tsx",
+    find: "  const data = await readOrThrow('the organiser unsubscribe token', () =>\n    admin\n      .from('organiser_marketing_consents')",
+    replace: "  const { data } = await admin\n      .from('organiser_marketing_consents')",
+    expect: "told their live unsubscribe link is not valid",
+  },
+  {
+    name: "a live city-waitlist unsubscribe link goes back to being called invalid",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/waitlist/unsubscribe/[token]/page.tsx",
+    find: "  const data = await readOrThrow('the city waitlist unsubscribe token', () =>\n    admin\n      .from('city_waitlist_signups')",
+    replace: "  const { data } = await admin\n      .from('city_waitlist_signups')",
+    expect: "a live city-waitlist unsubscribe link called invalid",
+  },
+  {
+    name: "a single-use performer invite goes back to being reported as already claimed",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/artists/claim/[token]/page.tsx",
+    find: "  const tag = await readOrThrow('the performer claim invite token', () =>\n    admin\n      .from('event_artists')",
+    replace: "  const { data: tag } = await admin\n      .from('event_artists')",
+    expect: "single-use invite has already been claimed",
+  },
+  {
+    name: "the guard scans none of the three token doors while still reporting a pass",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/unsubscribe',",
+    replace: "    'src/app/unsubscribe-gone',",
+    expect: "A scope that scans nothing reports a pass",
+  },
+
+  /*
    * tile-label-over-a-photograph, nine drills (20 September 2026).
    *
    * The hero guard above was written on 19 September, the four heroes were

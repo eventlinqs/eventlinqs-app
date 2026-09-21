@@ -3457,10 +3457,37 @@ const ROOT = join(HERE, '..', '..')
  *
  * MEASURED: 545 files, 7333 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, GREEN, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-INVALIDLINK): 546 files, 7352 tests.
+ *
+ *   545 + 1 = 546 files
+ *   7333 + 19 = 7352 tests
+ *
+ * ONE NEW FILE, tests/unit/growth/a-live-link-is-not-an-invalid-one.test.ts,
+ * nineteen tests, for three pages a person reaches by following a link out of
+ * their own inbox. Each looked a token up, discarded that read's error, and
+ * therefore answered a blink with a sentence about the link: "This link is not
+ * valid ... It may have already been used." The first of the three is the Spam
+ * Act unsubscribe facility, which is a statutory remedy: a dropped socket told
+ * the reader theirs had been spent, so they stop pressing it and the mail keeps
+ * arriving.
+ *
+ * FIVE OF THE NINETEEN WERE DRIVEN RED, and the fifth is the one worth keeping.
+ * Three restorations of the pre-fix read shape fired two failures each. One
+ * planting of a try/catch in the page itself fired the propagation pin. The
+ * fifth deleted the not-valid HEADING, and on its first attempt it could not be
+ * planted at all, because the sentence appears TWICE in the file: once in the
+ * JSX and once inside the comment that explains the defect. The assertion was
+ * a toContain, so it was passing on the comment and would not have noticed the
+ * heading being deleted. Both assertions of that shape now match the JSX.
+ *
+ * MEASURED: 546 files, 7352 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 108s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 545
-const MIN_TESTS = 7333
+const MIN_FILES = 546
+const MIN_TESTS = 7352
 
 
 /**
