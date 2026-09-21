@@ -61,6 +61,34 @@ const TAG = '[ux6]'
 const BASE = (process.argv[2] || process.env.UX6_BASE || 'http://127.0.0.1:3311').replace(/\/$/, '')
 const OUT = process.env.UX6_OUT || join(process.cwd(), '.tmp', 'ux6')
 const WIDTHS = (process.env.UX6_WIDTHS || '390,768,1440').split(',').map((w) => Number(w.trim()))
+
+/**
+ * HOW MANY TICKETS ONE WALK TAKES, and the reason this is a constant rather
+ * than a literal in two places.
+ *
+ * 21 September 2026: this proof failed the push gate at 1440 with
+ *
+ *     FAIL: free @ 1440: no quantity control on the event page
+ *     FAIL: free @ 1440: ticket selection offers no way to continue to checkout
+ *
+ * and both were TRUE STATEMENTS ABOUT A CORRECT PRODUCT. The screenshot shows
+ * the free event reading "Sold Out", "100 people going", "This event is sold
+ * out" and offering "Join the waitlist", which is exactly what a sold-out event
+ * should do and exactly why there was no stepper to click.
+ *
+ * THE PROOF SOLD THE EVENT OUT ITSELF. The stepper loop below takes TWO tickets
+ * so the attendee block repeats, and the free walk COMPLETES the purchase, at
+ * every width. Three widths therefore consume six places. The pick required
+ * four. So the run could start legitimately, buy at 390 and at 768, and find
+ * nothing left at 1440, and the report would blame the product.
+ *
+ * Deriving the requirement from this constant means the pick can never again
+ * promise less room than the run consumes, whatever UX6_WIDTHS is set to.
+ */
+const TICKETS_PER_WALK = 2
+/** What one run of this proof consumes from ONE tier, across every width. */
+const PLACES_A_RUN_CONSUMES = WIDTHS.length * TICKETS_PER_WALK
+
 /*
  * The widths BETWEEN the three the law names, where the header defect of
  * 10 September 2026 lived unseen. 1024 and 1280 are the two Tailwind
@@ -249,7 +277,11 @@ async function pickEvent({ free }) {
     if ((t.max_per_order ?? 1) < 2) return drop('the tier allows fewer than two per order')
     const left = (t.total_capacity ?? 0) - (t.sold_count ?? 0) - (t.reserved_count ?? 0)
     if ((t.total_capacity ?? 0) <= 0) return drop('the tier has no capacity')
-    if (left < 4) return drop('the tier has fewer than four places left, sold or held by a reservation')
+    // Room for the WHOLE run, not for one width. See TICKETS_PER_WALK above.
+    if (left < PLACES_A_RUN_CONSUMES)
+      return drop(
+        `the tier has fewer than ${PLACES_A_RUN_CONSUMES} places left (${WIDTHS.length} width(s) x ${TICKETS_PER_WALK} tickets), sold or held by a reservation`,
+      )
     return true
   })
   if (usable.length === 0) {
@@ -507,7 +539,8 @@ async function walk({ browser, width, slug, label, complete }) {
     await m.measure('1-event-page')
 
     // Two tickets, through the real stepper, so the attendee block repeats.
-    for (let i = 0; i < 2; i++) {
+    // The count is TICKETS_PER_WALK so the pick above reserves room for it.
+    for (let i = 0; i < TICKETS_PER_WALK; i++) {
       const plus = await clickText(page, /^\+$/)
       if (!plus) {
         fail(`${label} @ ${width}: no quantity control on the event page`)
@@ -781,8 +814,8 @@ mkdirSync(OUT, { recursive: true })
 sweepCounts.before = await sweep('before the pick')
 const paid = await pickEvent({ free: false })
 const free = await pickEvent({ free: true })
-if (!paid) fail('no published, unseated, sellable PAID event with room for two on this database')
-if (!free) fail('no published, unseated, sellable FREE event with room for two on this database')
+if (!paid) fail(`no published, unseated, sellable PAID event with room for ${PLACES_A_RUN_CONSUMES} on this database`)
+if (!free) fail(`no published, unseated, sellable FREE event with room for ${PLACES_A_RUN_CONSUMES} on this database`)
 if (!paid || !free) {
   console.error(`${TAG} cannot drive without both events`)
   process.exit(1)
