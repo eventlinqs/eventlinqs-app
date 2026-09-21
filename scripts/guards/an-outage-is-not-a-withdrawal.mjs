@@ -377,12 +377,68 @@ if (migration && taxonomy) {
   }
 }
 
+// ---------------------------------------------------------------- clause 8
+/*
+ * THE ONE SURFACE THAT SHOWS THE VERDICT TO THE PERSON IT IS ABOUT.
+ *
+ * /marketing/preferences/[token] built its sentence inline from `permitted`
+ * alone, so an unreadable ledger printed, to the person whose consent it is:
+ * "Right now, EventLinqs sends you no marketing: the consent ledger could not be
+ * read, so the message is refused." The leading clause asserts their state on a
+ * read that failed and the trailing clause is the internal reason pasted after a
+ * colon. That page exists so somebody can SEE AND CHANGE their marketing state,
+ * and a person who reads that they are sent no marketing stops pressing: the
+ * same harm this platform already ruled on when a live unsubscribe link was
+ * called spent because a socket dropped.
+ *
+ * The sentence is pure and lives in one place now, so it is testable and so a
+ * second surface cannot grow a second wording.
+ */
+const SENTENCES = 'src/lib/consent/sentences.ts'
+const PREFERENCES = 'src/app/marketing/preferences/[token]/page.tsx'
+const sentences = read(SENTENCES)
+const preferences = read(PREFERENCES)
+let statefulSurfacesJudged = 0
+if (sentences) {
+  statefulSurfacesJudged += 1
+  if (!/export function marketingStateSentence/.test(sentences)) {
+    failures.push(
+      `${SENTENCES} no longer exports \`marketingStateSentence\`. The sentence a person reads about their own ` +
+        `marketing state is pure and lives here so that it can be tested and so a second surface cannot grow a ` +
+        `second wording for it.`,
+    )
+  } else if (!/if \(!verdict\.ledgerWasRead\)/.test(sentences)) {
+    failures.push(
+      `${SENTENCES} builds the marketing-state sentence without branching on \`ledgerWasRead\`. The resolver ` +
+        `fails closed, so without that branch an outage prints "EventLinqs sends you no marketing" to somebody ` +
+        `whose consent may be perfectly live, on the one page they use to check it.`,
+    )
+  }
+}
+if (preferences) {
+  statefulSurfacesJudged += 1
+  if (!preferences.includes('marketingStateSentence(verdict)')) {
+    failures.push(
+      `${PREFERENCES} does not render the state through \`marketingStateSentence(verdict)\`. It built that ` +
+        `sentence inline until 21 September 2026, which is how it came to assert a person's marketing state ` +
+        `from a read that had failed.`,
+    )
+  }
+  if (/sends you no marketing/.test(preferences)) {
+    failures.push(
+      `${PREFERENCES} spells the marketing-state sentence inline again. One wording, in ${SENTENCES}, or the ` +
+        `branch that keeps an outage out of it can be lost in a copy nobody tests.`,
+    )
+  }
+}
+
 declareWork('an-outage-is-not-a-withdrawal', {
   did: {
     'send verdict judged': verdictsJudged,
     'consent writer judged': writersJudged,
     'read in the city door judged': cityReads,
     'city slug compared against the migration': slugsCompared,
+    'surface that shows a verdict to a person judged': statefulSurfacesJudged,
   },
   found: {
     'outage that could be written down as a decision': failures.length,
@@ -398,5 +454,7 @@ if (failures.length > 0) {
 console.log(
   `${TAG} PASS: ${verdictsJudged} send verdict(s) answer whether the ledger was read, ${writersJudged} consent ` +
     `writer(s) consult it, the city door makes ${cityReads} read(s) through the door with the taxonomy behind it, ` +
-    `and all ${slugsCompared} slug(s) it can fall back to are seeded into public.cities.`,
+    `all ${slugsCompared} slug(s) it can fall back to are seeded into public.cities, and ` +
+    `${statefulSurfacesJudged} surface(s) that show a verdict to the person it is about never assert a state ` +
+    `the ledger did not answer.`,
 )

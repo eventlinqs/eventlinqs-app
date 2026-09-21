@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { findSubjectByToken, readSubjectHistory } from '@/lib/consent/ledger'
 import {
   consentEventSentence,
+  marketingStateSentence,
   sourceDisclosureSentences,
   suppressionSentence,
 } from '@/lib/consent/sentences'
@@ -97,9 +98,7 @@ export default async function MarketingPreferencesPage({ params }: Props) {
               data-testid="marketing-state"
               className="mt-4 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-700"
             >
-              {verdict?.permitted
-                ? 'Right now, EventLinqs can send you marketing about events near you.'
-                : `Right now, EventLinqs sends you no marketing: ${verdict?.reason ?? 'no consent is recorded for this address'}.`}
+              {marketingStateSentence(verdict)}
             </p>
 
             <section className="mt-8 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">

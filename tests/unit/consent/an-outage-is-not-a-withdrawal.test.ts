@@ -3,6 +3,7 @@ import { resolveSend } from '@/lib/consent/resolver'
 import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
 import { recordPlatformDigestDecline } from '@/lib/consent/record'
 import { resolveDigestCityFor } from '@/lib/consent/digest-city'
+import { marketingStateSentence } from '@/lib/consent/sentences'
 import {
   FACILITATED_MARKETING_PURPOSE,
   LOCAL_DIGEST_PURPOSE,
@@ -311,5 +312,52 @@ describe('a consent is never lost to its city', () => {
     expect(result.recorded).toBe('granted')
     expect(result.reason).not.toMatch(/could not be read/)
     expect(declinesIn(admin)[0]).toMatchObject({ decision: 'granted', city_slug: 'melbourne' })
+  })
+})
+
+describe('what the person is told on their own preferences page', () => {
+  it('says the platform can send when the ledger says so', () => {
+    expect(
+      marketingStateSentence({ permitted: true, reason: 'granted on 14 Sept 2026', ledgerWasRead: true }),
+    ).toMatch(/can send you marketing/)
+  })
+
+  it('says why nothing is sent when the ledger genuinely says so', () => {
+    expect(
+      marketingStateSentence({
+        permitted: false,
+        reason: 'the latest consent event is withdrawn',
+        ledgerWasRead: true,
+      }),
+    ).toBe('Right now, EventLinqs sends you no marketing: the latest consent event is withdrawn.')
+  })
+
+  it('does NOT state their marketing position when the ledger could not be read', () => {
+    const sentence = marketingStateSentence({
+      permitted: false,
+      reason: 'the consent ledger could not be read, so the message is refused',
+      ledgerWasRead: false,
+    })
+    // The page exists so a person can see and change their own state. Telling
+    // them "EventLinqs sends you no marketing" on a read that failed is the same
+    // harm as calling a live unsubscribe link spent: they stop pressing.
+    expect(sentence).not.toMatch(/sends you no marketing/)
+    expect(sentence).not.toMatch(/can send you marketing/)
+    expect(sentence).toMatch(/could not check/)
+    expect(sentence).toMatch(/Nothing on it has changed/)
+  })
+
+  it('never pastes the internal reason after a colon when the ledger was unread', () => {
+    expect(
+      marketingStateSentence({
+        permitted: false,
+        reason: 'the consent ledger could not be read, so the message is refused',
+        ledgerWasRead: false,
+      }),
+    ).not.toMatch(/consent ledger/)
+  })
+
+  it('still answers for an address with no verdict at all', () => {
+    expect(marketingStateSentence(null)).toMatch(/no consent is recorded for this address/)
   })
 })

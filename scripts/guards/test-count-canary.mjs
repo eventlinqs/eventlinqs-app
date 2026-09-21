@@ -3675,7 +3675,58 @@ const ROOT = join(HERE, '..', '..')
  * fails reads only now, and its own header records why.
  *
  * MEASURED: 549 files, 7461 tests, 0 failed, 0 skipped
- * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of this commit).
+ * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of that commit).
+ *
+ * THEN +5 IN THE SAME RUN, on the same file, for the surface that SHOWS the
+ * verdict to the person it is about: 7461 -> 7466.
+ *
+ *   tests/unit/consent/an-outage-is-not-a-withdrawal.test.ts   +5  (22 -> 27)
+ *
+ * /marketing/preferences/[token] built its sentence inline from `permitted`
+ * alone, so an unreadable ledger printed "Right now, EventLinqs sends you no
+ * marketing: the consent ledger could not be read, so the message is refused."
+ * to the person whose consent it is, on the page that exists so they can SEE AND
+ * CHANGE their own state. It asserts their position from a read that failed, and
+ * somebody who believes it stops pressing: the same harm this platform already
+ * ruled on when a live unsubscribe link was called spent because a socket
+ * dropped (162c6d28). The sentence is pure and in one place now, and one of the
+ * five was driven RED.
+ *
+ * MEASURED: 549 files, 7466 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 118s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane A, UNSUB500): 549/7466 -> 554/7510.
+ *
+ * A MANGLED UNSUBSCRIBE LINK ANSWERED 500. `readOrThrow`, landed at 10:21 the
+ * same morning so a dropped socket could never tell somebody their statutory
+ * unsubscribe link was spent, throws on ANY error, and `unsubscribe_token` is a
+ * uuid column, so `/unsubscribe/zzzzzzzzzzzz` is `22P02 invalid input syntax
+ * for type uuid` rather than a row that is not there. The push gate's route
+ * sweep refused 348 commits on it.
+ *
+ * THE ARITHMETIC, AND THE PART OF IT THAT IS NOT MINE. The baseline above was
+ * measured on lane B's branch (14fce3dc), which had not yet met lane C's work.
+ * Merging both brought four test files lane B never counted, so the jump is
+ * larger than this item and says so rather than absorbing it:
+ *
+ *     549 + 4 (lane C, arriving in the merge) + 1 (this item) = 554 files
+ *    7466 + 33 (those same four files) + 11 (this item)       = 7510 tests
+ *
+ *   the four, enumerated with `git ls-tree` against 14fce3dc rather than
+ *   guessed, and re-run together to confirm the 33:
+ *     tests/unit/auth/safe-redirect.test.ts
+ *     tests/unit/cron/notify-just-announced.test.ts
+ *     tests/unit/notifications/audience.test.ts
+ *     tests/unit/supabase/read-every-row-in.test.ts
+ *
+ *   the one: tests/unit/consent/a-mangled-link-is-not-an-outage.test.ts, whose
+ *   point is that a token that CANNOT be a token is answered without asking the
+ *   database at all, asserted with an admin client that throws on contact. Two
+ *   of the eleven were driven RED before the fix.
+ *
+ * MEASURED: 554 files, 7510 tests, 0 failed, 0 skipped
+ * (`node scripts/guards/test-count-canary.mjs`, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
 /*
@@ -3742,8 +3793,33 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 241s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 554
-const MIN_TESTS = 7505
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21, THE MERGE: 554/7505 -> 555/7521.
+ * ---------------------------------------------------------------------------
+ *
+ * NOT A LANE'S WORK, A RECONCILIATION, and it is written down because this one
+ * integer is the single most frequent reason a merge of this lane has been
+ * refused: eleven times in one day at one point, and never once because either
+ * side was wrong about its own tree.
+ *
+ * Both sides of this merge were correct and neither number was the answer.
+ * lane/c-ux measured 554/7505 with the LC-BLINK tests and without the
+ * unsubscribe work; verify/l5-launch-readiness measured 554/7510 with the
+ * unsubscribe work and without LC-BLINK. Neither tree existed any more the
+ * moment they were joined.
+ *
+ * So the merged tree was RUN rather than added up, which is this file's own
+ * standing rule, and it answers 555 files and 7521 tests. Choosing the larger
+ * of the two candidates would have set a floor of 7510 and left eleven real
+ * tests unprotected.
+ *
+ * MEASURED: 555 files, 7521 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 167s, on the merge commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 555
+const MIN_TESTS = 7521
 
 
 /**

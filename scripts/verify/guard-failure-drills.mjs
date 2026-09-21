@@ -9953,6 +9953,103 @@ const DRILLS = [
     replace: '  push_enabled: true,\n  email_enabled: false,',
     expect: 'DEFAULT_PREFS.email_enabled is no longer `true`',
   },
+  {
+    /*
+     * CLAUSE 8, THE SENTENCE. The page that exists so somebody can see and change
+     * their own marketing state printed "Right now, EventLinqs sends you no
+     * marketing" on a read that had failed. This restores the inline spelling.
+     */
+    name: 'the preferences page builds its own marketing-state sentence again',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/app/marketing/preferences/[token]/page.tsx',
+    find: '              {marketingStateSentence(verdict)}',
+    replace: [
+      '              {verdict?.permitted',
+      "                ? 'Right now, EventLinqs can send you marketing about events near you.'",
+      '                : `Right now, EventLinqs sends you no marketing: ${verdict?.reason}.`}',
+    ].join('\n'),
+    expect: 'spells the marketing-state sentence inline again',
+  },
+  {
+    /*
+     * AND THE BRANCH INSIDE IT. Keeping the sentence in one place is worth
+     * nothing if the one place stops telling an outage apart from an answer.
+     */
+    name: 'the one sentence stops telling an outage from an answer',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: '  if (!verdict.ledgerWasRead) {',
+    replace: '  if (false) {',
+    expect: 'without branching on `ledgerWasRead`',
+  },
+
+  /*
+   * an-unsubscribe-link-never-500s. Six drills.
+   *
+   * The first is the defect itself, restored exactly: the route sweep in the
+   * push gate refused 348 commits with
+   * `/unsubscribe/zzzzzzzzzzzz: server error 500`, because unsubscribe_token is
+   * a uuid column and a mangled link is `22P02 invalid input syntax for type
+   * uuid` rather than a row that is not there.
+   *
+   * The third drill is the one that matters most for a guard, and it is the
+   * lesson this repository has already learned twice: EVERY occurrence, never
+   * one per file. src/lib/consent/record.ts holds three separate resolvers with
+   * three separate reads, and a guard that only asked whether the predicate
+   * appeared SOMEWHERE in the file would pass with two of the three deleted.
+   */
+  {
+    name: 'the organiser unsubscribe page reads a uuid column without testing the shape (the 21 September defect)',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/app/unsubscribe/[token]/page.tsx',
+    find: '  const data = isUnsubscribeToken(token)',
+    replace: '  const data = (true as boolean)',
+    expect: 'filters on unsubscribe_token with no isUnsubscribeToken() above it',
+  },
+  {
+    name: 'the city waitlist unsubscribe page reads a uuid column without testing the shape',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/app/waitlist/unsubscribe/[token]/page.tsx',
+    find: '  const data = isUnsubscribeToken(token)',
+    replace: '  const data = (true as boolean)',
+    expect: 'filters on unsubscribe_token with no isUnsubscribeToken() above it',
+  },
+  {
+    name: 'only the first of the three consent resolvers keeps its shape test',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/lib/consent/record.ts',
+    find: `): Promise<{ source: DigestUnsubscribeSource; alreadyWithdrawn: boolean } | null> {
+  if (!isUnsubscribeToken(token)) {
+    return null
+  }`,
+    replace: '): Promise<{ source: DigestUnsubscribeSource; alreadyWithdrawn: boolean } | null> {',
+    expect: 'filters on unsubscribe_token with no isUnsubscribeToken() above it',
+  },
+  {
+    name: 'the shape test is commented out rather than deleted',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/lib/consent/ledger.ts',
+    find: '  if (!isUnsubscribeToken(token)) {',
+    replace: `  // if (!isUnsubscribeToken(token)) {
+  if (false) {`,
+    expect: 'filters on unsubscribe_token with no isUnsubscribeToken() above it',
+  },
+  {
+    name: 'somebody writes the uuid shape out again in the consent module',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/lib/consent/ledger.ts',
+    find: '  if (!isUnsubscribeToken(token)) {',
+    replace: '  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {',
+    expect: 'the unsubscribe token shape is spelled again in',
+  },
+  {
+    name: 'the predicate loses its anchors, so anything CONTAINING a uuid is accepted',
+    guard: `${GUARDS}/an-unsubscribe-link-never-500s.mjs`,
+    file: 'src/lib/consent/token.ts',
+    find: '  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+    replace: '  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i',
+    expect: 'no longer anchored with ^ and $',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

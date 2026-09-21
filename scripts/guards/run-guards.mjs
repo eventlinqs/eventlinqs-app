@@ -191,6 +191,12 @@
  *                              error, because a failure there is written into an
  *                              append-only ledger as a sentence about a named
  *                              person and counted onto /admin/campaigns
+ *   an-unsubscribe-link-never-500s  every read of an unsubscribe token tests the
+ *                              token's SHAPE first, at every occurrence, because
+ *                              unsubscribe_token is a uuid column: a mangled link
+ *                              is 22P02 rather than no row, readOrThrow raises it,
+ *                              and the page answers 500 to somebody exercising a
+ *                              statutory right. Fourth occurrence of one mistake
  *   an-outage-is-not-a-withdrawal  a send verdict says whether the LEDGER WAS
  *                              READ, and both consent writers consult it, because
  *                              the resolver fails closed and "could not read" is
@@ -3045,6 +3051,22 @@ const GUARDS = [
   //
   // Drilled red six ways and green (C:\dev\EVIDENCE\LC-BLINK\drills.txt).
   'scripts/guards/a-blink-defers-the-message.mjs',
+  // The push gate's own route sweep refused 348 commits on 21 September 2026
+  // with `/unsubscribe/zzzzzzzzzzzz: server error 500`. unsubscribe_token is a
+  // uuid column, so a mangled link is `22P02 invalid input syntax for type
+  // uuid` rather than a row that is not there, and readOrThrow, landed hours
+  // earlier so that a dropped socket could never tell somebody their link was
+  // spent, raises it. The outage fix turned a mangled link into a 500.
+  //
+  // It is a guard rather than two fixed files because it was the FOURTH
+  // occurrence: /artists/claim survived only because it happened to test the
+  // shape, /unsubscribe/recovery answered 500 on PRODUCTION on 12 September for
+  // the same reason, and each earlier fix was written in one file and stayed
+  // there. Its first run found a FIFTH, in src/app/waitlist/actions.ts, where a
+  // /^[0-9a-f-]{36}$/ length test admits three values TEST answers 22P02 to.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\UNSUB500\drills.txt).
+  'scripts/guards/an-unsubscribe-link-never-500s.mjs',
 
   // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
   // row on "locator.click: Timeout" at a disabled button, while the flag row

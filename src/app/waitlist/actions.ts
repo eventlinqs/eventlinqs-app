@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { isFlagEnabled } from '@/lib/flags'
 import { sendEmail } from '@/lib/email/send'
@@ -150,7 +151,17 @@ export async function joinCityWaitlist(input: {
  * silently remove anyone. Clears the marketing opt-in with it.
  */
 export async function leaveCityWaitlistAction(token: string): Promise<void> {
-  if (!token || !/^[0-9a-f-]{36}$/i.test(token)) return
+  /*
+   * THE SHAPE, NOT THE LENGTH. This used to read `/^[0-9a-f-]{36}$/i`, which
+   * counts characters rather than testing a uuid, and the difference was
+   * measured against TEST rather than argued: it admits
+   * "------------------------------------", "aaaa...a" (36, no hyphens) and
+   * "-aaa...a", and Postgres answers all three with
+   * `22P02 invalid input syntax for type uuid`. The update discards its error,
+   * so somebody exercising a statutory right would have been shown the
+   * confirmation while nothing at all was written down.
+   */
+  if (!isUnsubscribeToken(token)) return
   const admin = createAdminClient()
   await admin
     .from('city_waitlist_signups')
