@@ -540,9 +540,18 @@ async function main() {
   }
 
   if (built) {
-    // Deliberately NOT "no public route over the budget". Three are, they are
+    // Deliberately NOT "no public route over the budget". When any are, they are
     // registered, and a pass line that rounded that away would be the exact
     // reporting C8B.6 forbids.
+    //
+    // THE COUNT IS DELIBERATELY NOT WRITTEN HERE, because it was. This sentence
+    // read "Three are" until 21 September 2026, and it had been false since the
+    // 18th: 5ebaf4d9 got @upstash/redis and its 16 KB Buffer polyfill out of the
+    // browser, took /e/[code], /events/[slug] and /events/[slug]/holder from
+    // 205,185 to 198,065 gzip, and correctly emptied the register in the same
+    // commit. It updated the data and left the prose counting it. The live count
+    // is in the summary note below, which reads it off the build on every run
+    // and therefore cannot rot the way this sentence did.
     //
     // And deliberately NOT "no route is above its mark" when the ratchet only
     // REPORTED. It said that once, on a host it had already told the reader it
