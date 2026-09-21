@@ -1,107 +1,70 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { DiscountCode } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
-import { resolveDiscountCents } from '@/lib/payments/discount-math'
+import { validateDiscountCodeWith, type ValidateDiscountResult } from '@/lib/pricing/discount-validation'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 
-// ─── Validate a discount code at checkout ────────────────────────────────────
+/**
+ * THE ONE SENTENCE FOR A READ THAT COULD NOT BE MADE, on the ORGANISER side.
+ *
+ * The three functions below each opened with a read whose error was discarded
+ * and whose empty answer became a statement of FACT: "Event not found" and
+ * "Discount code not found". A dropped socket therefore told an organiser that
+ * their own event, or a code they were looking at a second earlier, did not
+ * exist. That is the same defect as the buyer-facing one this file was opened
+ * to fix, pointed at the other user, and it was three more instances of it.
+ *
+ * The not-found sentences are KEPT and still reached, because a code that has
+ * genuinely been deleted in another tab must still say so. What changed is
+ * that a failure is no longer allowed to borrow them.
+ */
+const COULD_NOT_READ = 'We could not reach the database just now. Please try again.'
 
-export interface ValidateDiscountResult {
-  valid: boolean
-  discount_cents: number
-  discount_code_id?: string
-  error?: string
-}
+// ─── Validate a discount code at checkout ────────────────────────────
 
+/**
+ * THE BUYER-FACING DOOR.
+ *
+ * TWO THINGS THIS RESOLVES THAT THE CALLER MAY NOT BE TRUSTED WITH, and both
+ * were live defects until 21 September 2026.
+ *
+ *   THE CLIENT. `discount_codes` and `discount_code_usages` are service-role
+ *   only by policy (asked of the live database, not read off the source), so
+ *   the SESSION client this used to pass saw zero rows and every valid code on
+ *   the platform came back "Invalid discount code". A wider policy is the wrong
+ *   answer, because a code is a secret and a buyer-readable table is a listable
+ *   one. See the reader's own header.
+ *
+ *   THE USER. The `user_id` ARGUMENT IS IGNORED. This action is called from a
+ *   client component, so an id arriving through it is an id the browser chose,
+ *   and it decides the per-user cap that nothing else holds. The signed-in user
+ *   is read from the session here instead. `src/app/actions/checkout.ts` passes
+ *   its own server-resolved id, so that call site is unaffected either way; the
+ *   parameter is kept so neither caller has to change, and removing it is a
+ *   BORDER line for the lane that owns checkout.ts.
+ */
 export async function validateDiscountCode(
   code: string,
   event_id: string,
-  user_id: string | null,
+  _ignored_user_id: string | null,
   order_subtotal_cents: number,
   tier_ids: string[]
 ): Promise<ValidateDiscountResult> {
-  const supabase = await createClient()
+  const session = await createClient()
+  const { data: { user } } = await session.auth.getUser()
 
-  const { data: dc, error } = await supabase
-    .from('discount_codes')
-    .select('*')
-    .eq('code', code.toUpperCase().trim())
-    .eq('event_id', event_id)
-    .maybeSingle()
-
-  if (error || !dc) return { valid: false, discount_cents: 0, error: 'Invalid discount code' }
-
-  if (!dc.is_active) return { valid: false, discount_cents: 0, error: 'This code is no longer active' }
-
-  const now = new Date().toISOString()
-  if (dc.valid_from && dc.valid_from > now) return { valid: false, discount_cents: 0, error: 'This code is not yet active' }
-  if (dc.valid_until && dc.valid_until < now) return { valid: false, discount_cents: 0, error: 'This code has expired' }
-
-  /*
-   * THE CAP COUNTS HELD USES AS WELL AS CONFIRMED ONES.
-   *
-   * This used to read `dc.current_uses >= dc.max_uses`, and current_uses only
-   * moves after an order is CONFIRMED. So two buyers arriving at the same time
-   * both read 0, both passed this test, and both were granted the discount;
-   * only one of them ever advanced the counter. The counter was bounded and the
-   * money was not. Measured on 29 August 2026: on a code capped at 1, the second
-   * buyer still paid the discounted price and the organiser still lost the
-   * difference.
-   *
-   * reserved_uses is the hold, taken by claim_discount_use under a row lock at
-   * the moment the code is applied to a reservation (migration 20260829000003),
-   * and released when that reservation lapses. Reading it here is what makes the
-   * second buyer see the code as exhausted while the first is still paying.
-   *
-   * This read is still only advisory: it is what the BUYER is told. The binding
-   * decision is the claim itself, because only the claim holds a lock. A check
-   * without a claim is exactly what this defect was.
-   */
-  const heldAndUsed = (dc.current_uses ?? 0) + (dc.reserved_uses ?? 0)
-  if (dc.max_uses !== null && heldAndUsed >= dc.max_uses) {
-    return { valid: false, discount_cents: 0, error: 'This code has reached its usage limit' }
-  }
-
-  if (user_id && dc.max_uses_per_user > 0) {
-    const { count } = await supabase
-      .from('discount_code_usages')
-      .select('*', { count: 'exact', head: true })
-      .eq('discount_code_id', dc.id)
-      .eq('user_id', user_id)
-
-    if ((count ?? 0) >= dc.max_uses_per_user) {
-      return { valid: false, discount_cents: 0, error: "You've already used this code" }
-    }
-  }
-
-  if (dc.min_order_amount_cents !== null && order_subtotal_cents < dc.min_order_amount_cents) {
-    const minFormatted = (dc.min_order_amount_cents / 100).toFixed(2)
-    return { valid: false, discount_cents: 0, error: `Minimum order of $${minFormatted} required for this code` }
-  }
-
-  if (dc.applicable_tier_ids !== null && dc.applicable_tier_ids.length > 0) {
-    const hasMatchingTier = tier_ids.some(id => dc.applicable_tier_ids!.includes(id))
-    if (!hasMatchingTier) {
-      return { valid: false, discount_cents: 0, error: "This code doesn't apply to your selected tickets" }
-    }
-  }
-
-  /*
-   * THE AMOUNT, through the one pure function that owns this arithmetic.
-   *
-   * This read `dc.discount_value`, a column migration 20260520000001 (P1-4)
-   * DROPPED and split in two. The field was simply `undefined`, so a percentage
-   * code computed NaN and a fixed code returned undefined, and BOTH were handed
-   * back as `valid: true`. The math now lives in src/lib/payments/discount-math.ts
-   * where it is tested against every shape the table allows.
-   */
-  const amount = resolveDiscountCents(dc, order_subtotal_cents)
-  if (!amount.ok) return { valid: false, discount_cents: 0, error: amount.reason }
-
-  return { valid: true, discount_cents: amount.discount_cents, discount_code_id: dc.id }
+  return validateDiscountCodeWith(createAdminClient(), {
+    code,
+    event_id,
+    user_id: user?.id ?? null,
+    order_subtotal_cents,
+    tier_ids,
+  })
 }
 
 // ─── Organiser: Create discount code ────────────────────────────────────────
@@ -136,12 +99,20 @@ export async function createDiscountCode(
   if (!user) return { error: 'Not authenticated' }
 
   // Verify organiser owns the event
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, organisation_id')
-    .eq('id', parsed.data.event_id)
-    .single()
+  const { data: event, error: eventError } = await withBuildRetry(
+    () =>
+      supabase
+        .from('events')
+        .select('id, organisation_id')
+        .eq('id', parsed.data.event_id)
+        .maybeSingle() as unknown as PromiseLike<{ data: { id: string; organisation_id: string } | null; error: unknown }>,
+    { label: 'discount-create-event-lookup' },
+  )
 
+  if (eventError) {
+    console.error('[discount-codes] could not read the event, so no verdict is given about it:', eventError)
+    return { error: COULD_NOT_READ }
+  }
   if (!event) return { error: 'Event not found' }
 
   /*
@@ -232,12 +203,20 @@ export async function updateDiscountCode(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: dc } = await supabase
-    .from('discount_codes')
-    .select('event_id, organisation_id')
-    .eq('id', id)
-    .single()
+  const { data: dc, error: dcError } = await withBuildRetry(
+    () =>
+      supabase
+        .from('discount_codes')
+        .select('event_id, organisation_id')
+        .eq('id', id)
+        .maybeSingle() as unknown as PromiseLike<{ data: { event_id: string; organisation_id: string } | null; error: unknown }>,
+    { label: 'discount-update-code-lookup' },
+  )
 
+  if (dcError) {
+    console.error('[discount-codes] could not read the code before updating it:', dcError)
+    return { error: COULD_NOT_READ }
+  }
   if (!dc) return { error: 'Discount code not found' }
 
   /*
@@ -270,14 +249,36 @@ export async function deleteDiscountCode(id: string): Promise<{ error?: string }
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: dc } = await supabase
-    .from('discount_codes')
-    .select('event_id, organisation_id, current_uses')
-    .eq('id', id)
-    .single()
+  const { data: dc, error: dcError } = await withBuildRetry(
+    () =>
+      supabase
+        .from('discount_codes')
+        .select('event_id, organisation_id, current_uses, reserved_uses')
+        .eq('id', id)
+        .maybeSingle() as unknown as PromiseLike<{ data: { event_id: string; organisation_id: string; current_uses: number; reserved_uses: number } | null; error: unknown }>,
+    { label: 'discount-delete-code-lookup' },
+  )
 
+  if (dcError) {
+    console.error('[discount-codes] could not read the code before deleting it:', dcError)
+    return { error: COULD_NOT_READ }
+  }
   if (!dc) return { error: 'Discount code not found' }
-  if (dc.current_uses > 0) return { error: 'Cannot delete a code that has been used. Deactivate it instead.' }
+  /*
+   * A HELD USE IS A USE, and this read only current_uses.
+   *
+   * Migration 20260829000003 split the count in two: `current_uses` moves when
+   * an order CONFIRMS, `reserved_uses` the moment a buyer applies the code to
+   * their reservation. Every other place that asks "is this code in use" adds
+   * the two, which is the whole point of the hold. This one did not, so a code
+   * a buyer was holding at that instant looked untouched and could be deleted
+   * out from under them: `discount_code_claims` cascades, `orders
+   * .discount_code_id` is ON DELETE SET NULL, and the organiser is left with a
+   * discounted order and no record of which promotion gave it away.
+   */
+  if ((dc.current_uses ?? 0) + (dc.reserved_uses ?? 0) > 0) {
+    return { error: 'Cannot delete a code that has been used. Deactivate it instead.' }
+  }
 
   /*
    * ACCESS, VIA THE SHARED GATE.
