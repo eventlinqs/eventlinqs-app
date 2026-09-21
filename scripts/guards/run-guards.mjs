@@ -85,6 +85,8 @@
  *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
  *   no-loadable-in-platform-chrome  nor does anything behind the site header or footer,
  *                              which the root-shell closure does not reach
+ *   the-consent-banner-is-in-the-first-paint  the consent strip is server rendered and
+ *                              revealed by a pre-paint script, never painted after hydration
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -1388,6 +1390,16 @@ const GUARDS = [
   // other. This one is rooted at the header and the footer, the two client
   // subtrees that are on every page by construction.
   'scripts/guards/no-loadable-in-platform-chrome.mjs',
+  // THE OTHER HALF OF THE SAME BILL. Deferring the measurement tree was right
+  // about the bytes and wrong about one component in it: the consent banner is
+  // the only member that RENDERS anything, so deferring it meant a full width
+  // block of text arriving after hydration, which is the largest contentful
+  // element on a phone. It became the LCP element on five of the thirteen gated
+  // URLs and took /events to 0.87 against its floor of 0.88, refusing every
+  // lane's push, eight days after it landed. Four of the five pages it damaged
+  // never failed anything at all. The strip is server rendered and revealed by
+  // a pre-paint script now, and this refuses the way back.
+  'scripts/guards/the-consent-banner-is-in-the-first-paint.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

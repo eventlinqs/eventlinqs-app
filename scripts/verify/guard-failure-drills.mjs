@@ -10050,6 +10050,132 @@ const DRILLS = [
     replace: '  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i',
     expect: 'no longer anchored with ^ and $',
   },
+
+  /*
+   * THE CONSENT STRIP GOING BACK TO PAINTING AFTER HYDRATION.
+   *
+   * It did exactly that for eight days: a client component inside the deferred
+   * measurement tree, arriving about four seconds in, and therefore the largest
+   * contentful element on five of the thirteen gated URLs. /events went from 91
+   * to 87 against a floor of 0.88 and refused every lane's push; the other four
+   * pages simply got slower and kept passing, which is why a gate was written
+   * rather than a comment. Each drill below is one way back to that.
+   *
+   * EVERY ANCHOR HERE IS A SINGLE LINE, on purpose. A fresh clone on Windows
+   * checks these files out with CRLF, so an anchor spanning a line break would
+   * silently match nothing and the drill would report a guard that never fired.
+   */
+  {
+    name: 'the consent strip becomes a client component again, so it cannot paint until React hydrates',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/components/analytics/consent-banner-shell.tsx',
+    find: "import Link from 'next/link'",
+    replace: "'use client'; import Link from 'next/link'",
+    expect: "carries 'use client'",
+  },
+  {
+    name: 'the root layout stops rendering the strip, so the markup leaves the HTML',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '        <ConsentBannerShell />',
+    replace: '        {null}',
+    expect: 'does not render <ConsentBannerShell />',
+  },
+  {
+    /*
+     * THE ONE THAT ALREADY HAPPENED. `<Script strategy="beforeInteractive">`
+     * is the documented, idiomatic, correct-looking way to run something
+     * early, and in the App Router it is queued onto self.__next_s and
+     * replayed by the Next runtime after a chunk loads. The first version of
+     * this guard DEMANDED it.
+     */
+    name: 'the reveal flag is moved into next/script, so it waits on a chunk again',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '<script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />',
+    replace: '<Script strategy="beforeInteractive">{CONSENT_ASK_FLAG_SCRIPT}</Script>',
+    expect: 'goes through next/script',
+  },
+  {
+    name: 'the reveal flag is dropped entirely, so nobody is ever asked',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '<script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />',
+    replace: '',
+    expect: 'does not render CONSENT_ASK_FLAG_SCRIPT as an inline script',
+  },
+  {
+    name: 'the bootstrap is moved above the strip, so it measures an element that does not exist yet',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '<script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />',
+    replace: '<script dangerouslySetInnerHTML={{ __html: CONSENT_SHELL_BOOTSTRAP_SCRIPT }} /><script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />',
+    expect: 'is rendered before the strip',
+  },
+  {
+    name: 'the in-body bootstrap is dropped, so the strip covers controls and neither button answers until the chunk lands',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '<script dangerouslySetInnerHTML={{ __html: CONSENT_SHELL_BOOTSTRAP_SCRIPT }} />',
+    replace: '<script />',
+    expect: 'does not render CONSENT_SHELL_BOOTSTRAP_SCRIPT',
+  },
+  {
+    name: 'the stylesheet stops hiding the strip by default, so it is shown to people who already answered',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/globals.css',
+    find: '#el-consent-shell { display: none; }',
+    replace: '#el-consent-shell { display: block; }',
+    expect: 'does not hide #el-consent-shell by default',
+  },
+  {
+    name: 'the reveal rule drifts from the attribute the script sets, so nobody is ever asked',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/app/globals.css',
+    find: "html[data-consent='ask'] #el-consent-shell",
+    replace: "html[data-consent='asked'] #el-consent-shell",
+    expect: 'has no rule revealing #el-consent-shell',
+  },
+  {
+    name: 'a browser the script cannot read is treated as having decided, so it is never asked',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/lib/analytics/consent-first-paint.ts',
+    find: '}catch(e){d.setAttribute(A,V)}',
+    replace: '}catch(e){d.removeAttribute(A)}',
+    expect: 'does not fall back to asking',
+  },
+  {
+    name: 'the stored version stops being compared, so bumping the provider list no longer asks again',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/lib/analytics/consent-first-paint.ts',
+    find: "r.v===${CONSENT_VERSION}&&typeof r.t==='string'",
+    replace: "typeof r.t==='string'",
+    expect: 'does not compare the stored version',
+  },
+  {
+    name: 'the flag asks everybody, so somebody who answered months ago is asked on every page',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/lib/analytics/consent-first-paint.ts',
+    find: 'var decided=!!r&&',
+    replace: 'var decided=false&&!!r&&',
+    expect: 'asks somebody who has already answered',
+  },
+  {
+    name: 'the deferred client half renders the strip again, so the page carries two banners',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/components/analytics/consent-banner.tsx',
+    find: '  return null',
+    replace: '  return <button type="button" />',
+    expect: 'renders banner markup',
+  },
+  {
+    name: 'the refusal loses its intent attribute, so the safe answer cannot be pressed before hydration',
+    guard: `${GUARDS}/the-consent-banner-is-in-the-first-paint.mjs`,
+    file: 'src/components/analytics/consent-banner-shell.tsx',
+    find: 'data-el-consent="refuse"',
+    replace: 'data-el-consent="refused"',
+    expect: 'has no data-el-consent="refuse"',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

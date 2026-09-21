@@ -86,6 +86,13 @@ describe('the deferred measurement tree', () => {
     // The boundary, not the members. Importing any member back into the layout
     // puts its bytes into the first load of every route again, which is the
     // whole defect this arrangement exists to hold shut.
+    //
+    // THE SPECIFIER IS MATCHED, NOT THE SUBSTRING, and 21 September 2026 is why.
+    // The layout now imports `consent-banner-shell`, which is a SERVER component
+    // and therefore costs no client bytes at all; a substring test on
+    // 'consent-banner' reads that as the deferred client member coming back and
+    // fails a tree that is correct. What this must refuse is a CLIENT member
+    // being value-imported here, so it asks for the import line.
     for (const member of [
       'consent-provider',
       'consent-banner',
@@ -95,8 +102,9 @@ describe('the deferred measurement tree', () => {
       'arrival-capture',
       'click-identifier-relay',
     ]) {
+      const imported = new RegExp(`from ['"][^'"]*/${member}['"]`).test(stripNonCode(layout))
       expect(
-        layout.includes(member),
+        imported,
         LAYOUT +
           ' imports ' +
           member +
@@ -106,6 +114,28 @@ describe('the deferred measurement tree', () => {
           ' instead.',
       ).toBe(false)
     }
+  })
+
+  /**
+   * THE ONE THING THE LAYOUT MAY MOUNT FROM THIS FAMILY, AND WHY.
+   *
+   * The consent strip's MARKUP is a server component in the root layout, so it
+   * is in the HTML of every route and paints with the page. That is not a hole
+   * in the rule above: a server component contributes nothing to any client
+   * chunk, so the 3938 bytes this arrangement exists to keep out of 133 routes
+   * stay out. Asserted rather than assumed, because the day somebody adds
+   * 'use client' to that file the bytes come back on every route AND the strip
+   * goes back to painting after hydration, which is the regression that cost
+   * /events its performance floor.
+   */
+  it('the_server_rendered_consent_strip_is_mounted_and_stays_a_server_component', () => {
+    const layout = readFileSync(LAYOUT, 'utf8')
+    expect(layout).toContain('<ConsentBannerShell />')
+    const shell = readFileSync('src/components/analytics/consent-banner-shell.tsx', 'utf8')
+    expect(
+      /['"]use client['"]/.test(shell),
+      'the consent strip became a client component, so it is back in the first load of every route and back to painting after hydration',
+    ).toBe(false)
   })
 
   it('the_boot_boundary_is_a_client_component_because_a_server_one_cannot_split', () => {

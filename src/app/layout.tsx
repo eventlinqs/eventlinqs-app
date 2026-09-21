@@ -9,6 +9,8 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { MeasurementBoot } from '@/components/analytics/measurement-boot'
+import { ConsentBannerShell } from '@/components/analytics/consent-banner-shell'
+import { CONSENT_ASK_FLAG_SCRIPT, CONSENT_SHELL_BOOTSTRAP_SCRIPT } from '@/lib/analytics/consent-first-paint'
 import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
 import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
@@ -249,6 +251,41 @@ export default function RootLayout({
            *  after `load`, so it is outside every window Lighthouse measures. */}
           <RegisterAppWorker />
         </HeroPresenceProvider>
+        {/* THE CONSENT STRIP'S REVEAL, DECIDED BEFORE THE STRIP IS PAINTED.
+         *
+         *  IT IS A PLAIN INLINE SCRIPT AND IT MUST STAY ONE. The obvious way to
+         *  write this is <Script strategy="beforeInteractive">, which is what it
+         *  was for half a day, and in the App Router that DOES NOT RUN AT PARSE
+         *  TIME. Next emits it as
+         *      <script>(self.__next_s=self.__next_s||[]).push([0,{"children":"..."}])</script>
+         *  a queue its own runtime replays once the framework chunk has loaded.
+         *  Measured on this build: the strip was still hidden when the parser
+         *  reached it, the bootstrap below found no flag and returned without
+         *  reserving the height or arming either button, and the reveal waited
+         *  on JavaScript all over again. That is the whole defect this change
+         *  exists to remove, so the mechanism is part of the contract and the
+         *  registered guard refuses next/script here by name.
+         *
+         *  It marks the document for a visitor who has not answered, and the
+         *  markup below is identical for everybody, so no page varies by a
+         *  cookie and no cache key moves.
+         *  src/lib/analytics/consent-first-paint.ts carries the measurement. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />
+        {/* THE CONSENT STRIP (close-out AN1, moved into the first paint on
+         *  21 September 2026). Server rendered, so it is in the HTML of every
+         *  route and paints with the page; hidden by default and revealed only
+         *  by the flag above. It used to be a client component inside the
+         *  deferred measurement tree, which made it the LCP element on five of
+         *  the thirteen gated URLs and took /events below its performance
+         *  floor. A direct child of the body, so its fixed position can never
+         *  be captured by a transformed ancestor. */}
+        <ConsentBannerShell />
+        {/* Reserves the strip's height from the first paint and holds an answer
+         *  pressed before the deferred chunk lands, so neither button is ever a
+         *  control that does nothing. It runs where it stands, immediately
+         *  after the strip is parsed, which is the only place it can measure
+         *  an element that exists. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_SHELL_BOOTSTRAP_SCRIPT }} />
       </body>
     </html>
   )

@@ -32,10 +32,12 @@ import { useEffect, useState, type ComponentType } from 'react'
  *   ArrivalCapture, ClickIdentifierRelay  render null, always
  *   GatedAnalytics                        emits nothing until consent is given
  *   FunnelLanded                          renders null, always
- *   ConsentBanner                         returns null until the stored
- *                                         decision has been read on the
- *                                         client, so its server output is
- *                                         empty on every render
+ *   ConsentBanner                         renders null, always. The strip
+ *                                         itself is a SERVER component in the
+ *                                         root layout; this only wires it to
+ *                                         the consent context once the chunk
+ *                                         lands (corrected 21 September 2026,
+ *                                         see consent-first-paint.ts)
  *
  * So deferring removes no markup from any page: the server already sent none.
  * What changes is only WHEN the JavaScript arrives, and it now arrives in its
@@ -44,8 +46,17 @@ import { useEffect, useState, type ComponentType } from 'react'
  * bytes agree with the claim.
  *
  * The consent banner is `position: fixed` at the foot of the window and
- * reserves its own space through `useReservedSpace`, so arriving a chunk later
- * moves nothing that was already painted.
+ * reserves its own space, so arriving a chunk later moves nothing that was
+ * already painted.
+ *
+ * THAT SENTENCE WAS TRUE AND INCOMPLETE, and the incomplete half cost /events
+ * its performance floor eight days later. Nothing was MOVED by the banner
+ * arriving late, so no layout shift was ever recorded; what happened instead is
+ * that the largest contentful element on the page became a block of text that
+ * could not paint until this chunk landed, on five of the thirteen gated URLs.
+ * The strip is now server rendered in the root layout and only its BEHAVIOUR is
+ * deferred here, which is the part that genuinely needs the consent context.
+ * `src/lib/analytics/consent-first-paint.ts` carries the measurement.
  *
  * ============================================================================
  * WHY THIS IS A BARE `import()` AND NOT `next/dynamic`, WITH THE MEASUREMENT

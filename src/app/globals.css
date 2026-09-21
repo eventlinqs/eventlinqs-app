@@ -749,6 +749,31 @@ body {
   padding-bottom: var(--el-consent-banner-height, 0px);
 }
 
+/* THE CONSENT STRIP IS IN THE HTML FOR EVERYBODY AND SHOWN TO ALMOST NOBODY
+   (close-out AN1, corrected 21 September 2026).
+
+   It used to be a client component inside the lazily fetched measurement tree,
+   so it could not paint until React had hydrated and a second chunk had
+   arrived: about four seconds on a throttled phone, for a full width block of
+   text that is the largest contentful element on the screen. It became the LCP
+   element on five of the thirteen gated URLs and took /events from 91 to 87,
+   below its floor of 0.88, which refused every lane's push.
+
+   So the markup moved into the server HTML and the DECISION moved here. Hidden
+   by default, which is what a browser with no JavaScript and a visitor who
+   answered months ago both see; revealed only under the attribute the pre-paint
+   script in the root layout sets for somebody who has not answered. The HTML is
+   identical for every viewer, so no page varies by a cookie, and nothing
+   flashes in either direction. src/lib/analytics/consent-first-paint.ts carries
+   the whole reasoning; the registered guard
+   the-consent-banner-is-in-the-first-paint holds both halves together. */
+/* ONE LINE EACH, DELIBERATELY. The guard failure drills mutate these two rules
+   to prove the gate fires, and an anchor that spans a line break cannot match a
+   file checked out with CRLF, which is what a fresh clone gets on Windows. */
+#el-consent-shell { display: none; }
+
+html[data-consent='ask'] #el-consent-shell { display: block; }
+
 /* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */
 /* No border-radius here (close-out C14.12, 6 September 2026). This rule used
    to set 4px, and because it sits outside every layer it beat the element's

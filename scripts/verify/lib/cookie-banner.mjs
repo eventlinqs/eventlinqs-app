@@ -98,5 +98,30 @@ export async function answerTheCookieBanner(page, options = {}) {
     return false
   }
   await banner.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {})
+
+  /*
+   * HIDDEN IS NOT ANSWERED, AND FROM 21 SEPTEMBER 2026 THE DIFFERENCE IS REAL.
+   *
+   * The strip is now server rendered and visible from the first paint, and an
+   * inline bootstrap takes it down the instant a button is pressed, so a press
+   * can land BEFORE the deferred measurement chunk has arrived. The provider is
+   * still the only writer of the cookie, so for those few hundred milliseconds
+   * the banner is down and the decision is not yet recorded. A caller that
+   * navigated in that window would be asked again on the next page, and the
+   * banner would sit across the foot of every capture that followed: the exact
+   * defect this file was written to end, arriving by a new route.
+   *
+   * So the wait is on the RECORD, not on the pixels. It is a poll rather than a
+   * single read because the write happens in a React effect, and it is bounded
+   * and non-fatal because a browser that refuses cookies genuinely cannot store
+   * one and the press still took effect for this document.
+   */
+  for (let i = 0; i < 40; i += 1) {
+    const recorded = await page
+      .evaluate(() => document.cookie.split('; ').some(c => c.startsWith('el_consent=')))
+      .catch(() => false)
+    if (recorded) break
+    await page.waitForTimeout(250)
+  }
   return true
 }

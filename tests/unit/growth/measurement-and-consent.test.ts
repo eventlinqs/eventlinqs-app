@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { CONSENT_BANNER_HEIGHT_VAR } from '@/lib/analytics/consent-first-paint'
 import {
   ARRIVAL_COOKIE,
   arrivalIsEmpty,
@@ -461,10 +462,16 @@ describe('AN1: the consent banner reserves the space it occupies', () => {
   const banner = readFileSync(join(ROOT, 'src/components/analytics/consent-banner.tsx'), 'utf8')
   const globals = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8')
   const bottomNav = readFileSync(join(ROOT, 'src/components/layout/mobile-bottom-nav.tsx'), 'utf8')
-  const VARIABLE = '--el-consent-banner-height'
+  // Read out of the contract module rather than typed here, so the name cannot
+  // drift between the script, the stylesheet and the component that writes it.
+  const VARIABLE = CONSENT_BANNER_HEIGHT_VAR
+
+  it('the contract names the variable the stylesheet reads', () => {
+    expect(VARIABLE).toBe('--el-consent-banner-height')
+  })
 
   it('measures its own height rather than guessing one', () => {
-    expect(banner).toContain(VARIABLE)
+    expect(banner).toContain('CONSENT_BANNER_HEIGHT_VAR')
     expect(banner).toContain('ResizeObserver')
     expect(banner).toContain('getBoundingClientRect')
     // And gives the space back, so an answered banner costs nothing.
