@@ -79,7 +79,10 @@ export function JoinWaitlistModal({
     if (!result.success) {
       if (result.error?.includes('signed in')) {
         // Redirect to login, return to event page after
-        router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)
+        // `redirect`, not `returnUrl`: a third spelling of this parameter that
+        // nothing read, so somebody joining a waitlist from an event page signed
+        // in and landed on the dashboard, without the event they came for.
+        router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
         return
       }
       setError(result.error ?? 'Something went wrong. Please try again.')

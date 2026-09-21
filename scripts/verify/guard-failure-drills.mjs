@@ -5215,6 +5215,59 @@ const DRILLS = [
   },
 
   /*
+   * one-name-for-where-you-were-going (lane C, 21 September 2026), four drills,
+   * one per clause.
+   *
+   * The guard exists because twelve pages emitted /login?redirect= and NINE
+   * emitted /login?next=, against a sign-in form that read only 'redirect'. All
+   * nine of those deep links silently dropped the person on the dashboard. The
+   * guard then found a TENTH the hand count had missed, ?returnUrl= on the
+   * waitlist modal, which is drill three below and is the real regression.
+   *
+   * Clause four is the security half: the two copies of the is-this-path-safe
+   * check had drifted, and the copy on the sign-in page accepted a backslash.
+   */
+  {
+    name: 'the sign-in form goes back to reading the deep link itself',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/components/auth/login-form.tsx',
+    find: 'router.push(readRedirectParam(searchParams))',
+    replace: "router.push(searchParams.get('redirect') ?? '/dashboard')",
+    // The NEGATIVE clause is the one with teeth and so it is the one named
+    // here: the form still calls readRedirectParam in its magic-link branch, so
+    // a drill that only removed one of the two calls would have been satisfied
+    // by a guard that could not tell two occurrences from one. That is exactly
+    // what happened on the first run of this drill.
+    expect: "reads the 'redirect' parameter directly",
+  },
+  {
+    name: 'the resolver stops reading the spelling nine pages emit',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/lib/auth/safe-redirect.ts',
+    find: "params.get('redirect') ?? params.get('next')",
+    replace: "params.get('redirect')",
+    expect: "does not read the 'next' parameter",
+  },
+  {
+    name: 'the waitlist modal goes back to a third spelling nothing reads',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: 'router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)',
+    replace: 'router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)',
+    expect: '/login?returnUrl=<a path>',
+  },
+  {
+    name: 'an auth surface grows a second copy of the is-this-path-safe check',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/app/api/auth/magic-link/route.ts',
+    find: 'export const safeNextPath = safeRedirectPath',
+    replace:
+      'export const safeNextPath = (c) =>\n' +
+      "  c && c.startsWith('/') && !c.startsWith('//') ? c : '/dashboard'",
+    expect: 'tests for a protocol-relative path itself',
+  },
+
+  /*
    * marketing-mail-carries-one-click (lane B, 19 September 2026), six drills,
    * one per clause plus the blindness case.
    *

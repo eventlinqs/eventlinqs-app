@@ -449,6 +449,14 @@
  *                              expression that decides it, no scarcity count is a literal,
  *                              and the accessibility section refuses to render empty or to
  *                              render a negative (SEO5)
+ *   one-name-for-where-you-were-going
+ *                             every /login deep link that carries a destination uses a
+ *                              spelling the sign-in form actually reads, and one function
+ *                              decides whether any of them may be followed. Twelve pages
+ *                              emitted ?redirect= and nine emitted ?next= against a form
+ *                              that read only the first, so nine deep links silently went
+ *                              to the dashboard; and the two copies of the safety check had
+ *                              drifted, so the sign-in page accepted a backslash
  *   discovery-indexability    the page and the sitemap count the same dimension for every
  *                              templated family, nothing overrides or re-spells the owner's
  *                              threshold, and every category in event_categories is a real
@@ -2304,6 +2312,16 @@ const GUARDS = [
   // that nothing on this platform has ever sent. Each was true-looking and none
   // was true. The badge engine, which DOES count tickets, was correct all along.
   'scripts/guards/no-false-urgency.mjs',
+  // A parameter written by one half of the platform and read by the other half
+  // is held together by nothing but a shared memory of its name, and this one had
+  // already come apart: twelve pages emitted /login?redirect= and NINE emitted
+  // /login?next=, against a sign-in form that read only 'redirect'. All nine deep
+  // links dropped the person on the dashboard instead of where they were going,
+  // including the door scanner and a group-booking payment. The guard also found a
+  // tenth, ?returnUrl= on the waitlist modal, that the hand count had missed. Its
+  // second clause is a security one: the two copies of the is-this-path-safe check
+  // had drifted, and the copy on the sign-in page accepted a backslash.
+  'scripts/guards/one-name-for-where-you-were-going.mjs',
   // Close-out PARITY1 (14 September 2026): the structured data gap, the noindex
   // discovery layer and the undisclosed buyer total were all found because the
   // owner asked a question, not because the build noticed. The table stakes are
