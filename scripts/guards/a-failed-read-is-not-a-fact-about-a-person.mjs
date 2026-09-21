@@ -260,6 +260,21 @@ export const SCOPE = [
       'had just given dropped with it',
     "the same directory, and the same 46 reads in the other two lanes' files",
   ],
+  /*
+   * THE FOURTH COPY OF ONE READ, added 21 September 2026. The registration
+   * digest opt-in resolved its city with the same discarded-error read as
+   * `src/lib/consent/digest-city.ts` and `src/app/actions/consent.ts`, and this
+   * directory was not in scope, so the guard that had just learned the shape
+   * could not see it. It goes through the one rule now, and this entry is what
+   * stops a fifth copy landing here.
+   */
+  [
+    'src/app/api/auth/signup/route.ts',
+    'somebody who ticked the digest box at registration filed against no city, which puts them ' +
+      'on no send list at all, in an append-only ledger whose rows are never rewritten',
+    'src/app/api/auth holds the sign-in, callback, confirm and reset routes, whose reads answer ' +
+      'about a token rather than about a person and belong to a different argument',
+  ],
 ]
 
 /**
@@ -320,14 +335,27 @@ export const DOORS = ['readOrThrow', 'readEveryRow', 'mustRead', 'mustReadEvery'
  * something no one re-reads.
  */
 export const REGISTER = [
-  {
-    file: 'src/lib/consent/digest-city.ts',
-    since: '2026-09-19',
-    why:
-      'its own header states the contract: "It NEVER throws. A consent that could not be scoped ' +
-      'must not fail a purchase." Its fallback, null, means "no local digest", which is an honest ' +
-      'answer rather than a false one, and a throw here would lose a consent over a blink.',
-  },
+  /*
+   * EMPTY since 21 September 2026, and the entry that went is worth recording
+   * because the guard was RIGHT about the shape and the exception was wrong
+   * about the harm.
+   *
+   * `src/lib/consent/digest-city.ts` was excused here on 19 September on the
+   * reasoning that "its fallback, null, means no local digest, which is an
+   * honest answer rather than a false one, and a throw here would lose a consent
+   * over a blink". Two days later commit 4bfb0fd0 fixed the IDENTICAL read, on
+   * the same column of the same table, in `src/app/actions/consent.ts`, and
+   * wrote the true sentence next to it: "somebody who chose Geelong filed as
+   * having chosen nowhere". Both halves of the exception were answerable. A null
+   * from a read that gave up is the false answer, not the honest one; and a
+   * throw was never the only alternative to believing it, which is why the file
+   * now retries through the door, falls back to the city taxonomy in code, and
+   * still never throws into a purchase.
+   *
+   * An exception is a claim about harm. This one survived because nobody
+   * re-argued it, which is the failure mode this register was built to prevent
+   * and did not.
+   */
 ]
 
 const EXT = /\.(ts|tsx)$/
@@ -617,6 +645,25 @@ function main() {
        * stops being counted is a list that stops being read.
        */
       'fault raised with another lane': 'an empty border list is the goal: every raised fault has been fixed by the lane that owns it',
+      /*
+       * ZERO IS ALSO THE DESIRED STATE HERE, since 21 September 2026, and for a
+       * sharper reason than the border list above.
+       *
+       * An exception is a CLAIM ABOUT HARM: this read is correct as written,
+       * and here is the argument. The one entry this register ever held,
+       * src/lib/consent/digest-city.ts, was wrong, and it was wrong in a way
+       * nobody was ever going to notice, because an argument written down once
+       * is an argument that stops being read. The platform disproved it two days
+       * later in another file and the entry sat here unchallenged.
+       *
+       * So the count stays DECLARED rather than removed, for the same reason the
+       * border list does: a list that stops being counted is a list that stops
+       * being read, and the next person to add an entry should have to notice
+       * that they are the only one.
+       */
+      'registered exception':
+        'an empty register is the goal: every read in scope either binds its error or goes through a door, ' +
+        'and no file is excused by an argument nobody re-reads',
     },
   })
 

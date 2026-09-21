@@ -9669,6 +9669,167 @@ const DRILLS = [
     replace: "'bg-success/15 text-success-strong' : 'bg-ink-100 text-ink-600'",
     expect: 'worst of the three is 4.51:1 (over ink-100)',
   },
+
+  /*
+   * an-outage-is-not-a-withdrawal (lane B, 21 September 2026), eight drills.
+   *
+   * THE FIRST TWO PLANT THE DEFECT IN ITS ORIGINAL FORM, which is the only way
+   * to know the guard would have caught the thing it was written for: drill 2
+   * restores the exact decline branch that turned a blinked consent read into a
+   * withdrawal of a live consent, and drill 5 restores the third city read that
+   * could only ever return what it was handed or fail.
+   *
+   * THREE OF THE EIGHT AIM AT THE GUARD rather than at the product: a clause
+   * that stops aiming (drill 4), a deletion whose justification has gone
+   * (drill 6), and a fallback that could break the write it is protecting
+   * (drill 7). A guard is a claim about the world and each of those is the
+   * world moving under it.
+   */
+  {
+    name: 'the send verdict stops carrying whether the ledger was read at all',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/decide.ts',
+    find: '  ledgerWasRead: boolean',
+    replace: '  ledgerWasReadRenamed: boolean',
+    expect: 'does not declare `ledgerWasRead: boolean` on the send verdict',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, restored exactly. Without the two lines this deletes,
+     * an untouched checkbox over an unreadable ledger writes a `declined` event
+     * and the ledger's latest-event rule revokes a live consent.
+     */
+    name: 'the checkout answer goes back to writing a decline over an unreadable ledger',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/checkout-answer.ts',
+    find: '    if (!live.ledgerWasRead) {',
+    replace: '    if (false) {',
+    expect: 'never consults `ledgerWasRead`',
+  },
+  {
+    name: 'the resolver answers an unreadable ledger without saying so',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/resolver.ts',
+    find: "      reason: 'the consent ledger could not be read, so the message is refused',\n      decidingEventId: null,\n      ledgerWasRead: false,",
+    replace: "      reason: 'the consent ledger could not be read, so the message is refused',\n      decidingEventId: null,",
+    expect: 'answers an unreadable ledger without `ledgerWasRead: false`',
+  },
+  {
+    /*
+     * THE CLAUSE THAT STOPS AIMING. Clause 4 finds its subjects by pattern, and
+     * a pattern that stops matching has no symptom: it judges nothing and prints
+     * PASS. This takes one of the two known writers out of its sight.
+     *
+     * TWO EARLIER VERSIONS OF THIS DRILL DID NOT FIRE, and the harness caught
+     * both. The first renamed the DEFINITION of recordConsentEvent in ledger.ts,
+     * which leaves every call site spelling the old name. The second renamed ONE
+     * of the two recordConsentEvent calls in this file, and the other one kept
+     * the file matching: a single find-and-replace cannot tell two occurrences
+     * from one, which is the same lesson three earlier guards on this project
+     * have already been taught. This aims at `resolveSend(`, which appears here
+     * exactly once (the import spells it `resolveSend }`, not `resolveSend(`).
+     *
+     * The clause was also weaker then: it only complained when it found ZERO
+     * writers, and there are two, so no aimed single-file drill could have
+     * fired it. It holds the count now.
+     */
+    name: 'a known consent writer drops out of clause 4’s sight',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/checkout-answer.ts',
+    find: '    const live = await resolveSend(admin, {',
+    replace: '    const live = await resolveSendElsewhere(admin, {',
+    expect: 'clause 4 found 1 file(s)',
+  },
+  {
+    /*
+     * THE RISK THE CLAUSE ACTUALLY EXISTS FOR: a THIRD place that turns a send
+     * verdict into a written fact about a person. Two became two because nobody
+     * was counting; this plants the third and asserts it is judged on arrival.
+     */
+    name: 'a third module starts writing consent events from a send verdict',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/status.ts',
+    find: '/** True only when a granted, non-withdrawn consent exists for this email. */',
+    replace: [
+      'export async function recordDeclineFromVerdict(admin: never, email: string) {',
+      "  const live = await resolveSend(admin, { email, purpose: 'x', channel: 'email' })",
+      "  if (live.permitted) return false",
+      "  return await recordConsentEvent(admin, { email, decision: 'declined' })",
+      '}',
+      '',
+      '/** True only when a granted, non-withdrawn consent exists for this email. */',
+    ].join('\n'),
+    expect: 'turns a send verdict into a written consent event and never consults `ledgerWasRead`',
+  },
+  {
+    /*
+     * THE DELETED READ, RESTORED. This is the re-validation of
+     * `events.city_primary` against `cities` that the foreign key already
+     * guarantees, and whose every null was an outage wearing the costume of a
+     * validation.
+     */
+    name: 'the city door re-reads cities to validate what events just told it',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/digest-city.ts',
+    find: "    return event?.city_primary ? { city: event.city_primary, unresolved: false } : NO_CITY",
+    replace: [
+      "    if (!event?.city_primary) return NO_CITY",
+      "    const { data: city } = await adminClient",
+      "      .from('cities')",
+      "      .select('slug')",
+      "      .eq('slug', event.city_primary)",
+      "      .maybeSingle()",
+      "    return city?.slug ? { city: city.slug, unresolved: false } : NO_CITY",
+    ].join('\n'),
+    expect: 'must read exactly [cities, events]',
+  },
+  {
+    /*
+     * THE JUSTIFICATION FOR THE DELETION, REMOVED. The read above is only safe
+     * to delete for as long as the foreign key exists. If it goes, the read has
+     * to come back rather than the guard being relaxed.
+     */
+    name: 'the foreign key the deleted read rested on is dropped from the migration',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'supabase/migrations/20260507000001_city_taxonomy.sql',
+    find: '  add column if not exists city_primary text references public.cities(slug) on delete set null,',
+    replace: '  add column if not exists city_primary text,',
+    expect: 'no longer declares `city_primary text references public.cities(slug)`',
+  },
+  {
+    /*
+     * THE FALLBACK THAT WOULD LOSE THE CONSENT IT IS PROTECTING. The city door
+     * falls back to the taxonomy in code when the table cannot be read, and a
+     * consent row's city is a foreign key into that table. A slug the code
+     * accepts and the table does not hold would fail the write, which is worse
+     * than the defect the fallback exists to fix.
+     */
+    name: 'a city is added to the taxonomy in code that the migration never seeds',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/cities/data.ts',
+    find: '  sydney: {',
+    replace: "  'not-seeded-anywhere': {\n    slug: 'sydney', name: 'X', state: 'NSW', region: 'X',\n  } as unknown as CityContent,\n  sydney: {",
+    expect: "accepts 'not-seeded-anywhere'",
+  },
+  {
+    /*
+     * ONE READ BACK TO BELIEVING ONE DROPPED PACKET, which is exactly how this
+     * shipped: the cookie city gave up on the first failure and filed somebody
+     * who chose Geelong as having chosen nowhere.
+     *
+     * THE FIRST VERSION OF THIS DRILL DID NOT FIRE either, and again the harness
+     * caught it. It renamed the IMPORT, which leaves both call sites spelling
+     * `readOrThrow(`, and the clause only asked whether the name appeared
+     * anywhere in the file. It counts them against the reads now, so half a fix
+     * is no longer a pass.
+     */
+    name: 'one city read stops retrying and goes back to believing one dropped packet',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/digest-city.ts',
+    find: "      const city = await readOrThrow('the digest consent city, chosen', () =>\n        adminClient.from('cities').select('slug').eq('slug', cookieCity).maybeSingle(),\n      )",
+    replace: "      const { data: city } = await adminClient.from('cities').select('slug').eq('slug', cookieCity).maybeSingle()",
+    expect: 'only 1 of them go through `readOrThrow`',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

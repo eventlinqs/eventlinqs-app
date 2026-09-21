@@ -3636,8 +3636,50 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 122s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 548
-const MIN_TESTS = 7439
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-OUTAGEWITHDRAW): 548/7439 -> 549/7461.
+ * ---------------------------------------------------------------------------
+ *
+ * ONE FILE ADDED AND TWENTY-TWO CASES, counted by RUNNING them rather than by
+ * reading their headers:
+ *
+ *   tests/unit/consent/an-outage-is-not-a-withdrawal.test.ts   +22
+ *
+ *   548 + 1 = 549 files
+ *   7439 + 22 = 7461 tests
+ *
+ * THE NEW FILE holds one rule with four victims: a read that FAILED was used as
+ * a FACT ABOUT A PERSON and then written into a ledger that is append only and
+ * is never corrected. `resolveSend` fails CLOSED, which is right for "may this
+ * message go out" and is not an answer to "does this address already hold a
+ * live consent", and two callers were asking the second question so that an
+ * untouched checkbox is not recorded as a withdrawal. Both refusals were the
+ * same `permitted: false`. Driven on TEST on a person who touched nothing, with
+ * the consent read failing on cue: before, "granted on 14 Sept 2026 under
+ * wording v1"; after, "the latest consent event is declined". The same shape
+ * scoped a consent to no city, which puts somebody on no digest send list at
+ * all, for ever, on a row that still reads "granted".
+ *
+ * SIX OF THE TWENTY-TWO WERE DRIVEN RED, by planting each defect back and
+ * watching the named assertion catch it
+ * (scripts/verify/lb-outagewithdraw-test-drills.mjs, 6 of 6,
+ * C:/dev/EVIDENCE/LB-OUTAGEWITHDRAW/test-drills.txt).
+ *
+ * TWO OF THOSE SIX ARE THE REASON THIS COUNT IS TRUSTWORTHY AT ALL. The first
+ * run of that harness reported the tests GREEN on a tree carrying the live
+ * defect, twice. `tests/helpers/consent-ledger-fake.ts` failed a table's INSERT
+ * as well as its reads, and the consent ledger reads and writes ONE table, so a
+ * test that blinked the read also blocked the write it was watching for and
+ * could not tell "the rule held" from "the write was blocked too". The fake
+ * fails reads only now, and its own header records why.
+ *
+ * MEASURED: 549 files, 7461 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 549
+const MIN_TESTS = 7461
 
 
 /**

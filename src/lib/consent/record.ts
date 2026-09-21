@@ -187,6 +187,16 @@ export async function recordPlatformDigestDecline(
       channel: 'email',
     })
     if (live.permitted) return false
+    /*
+     * AN OUTAGE IS NOT A WITHDRAWAL. The same defect as the checkout answer, in
+     * the second of the two places that turn a send verdict into a written fact
+     * about a person; the reasoning is recorded once, in
+     * src/lib/consent/checkout-answer.ts. Measured on TEST on 21 September 2026
+     * with the consent read failing on cue: a live local-digest grant went from
+     * "granted on 14 Sept 2026 under wording v1" to "the latest consent event is
+     * declined", in an append-only ledger, because a socket dropped.
+     */
+    if (!live.ledgerWasRead) return false
 
     const scopes = scopesForPurpose(LOCAL_DIGEST_PURPOSE)
     return await recordConsentEvent(admin, {

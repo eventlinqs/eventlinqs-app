@@ -42,6 +42,23 @@ export interface FakeAdminOptions {
    * The same gap was found a day earlier in the platform-stats fake, which
    * could not express a row ceiling. A fake that cannot express the fault can
    * never show it, and its green is a statement about the fake.
+   *
+   * READS ONLY, AND THAT WORD IS LOAD BEARING, since 21 September 2026. It used
+   * to fail the table's INSERT as well, and the consent ledger reads and writes
+   * ONE table, `consent_events`. So a test that failed that table's read also
+   * blocked the write it was watching for, and could not tell "the rule held"
+   * from "the write was blocked too".
+   *
+   * That was not theoretical. Two drills in
+   * scripts/verify/lb-outagewithdraw-test-drills.mjs planted the live defect
+   * back into both consent writers and the tests stayed GREEN, because with the
+   * defect present the code DID take the decline branch and the insert then
+   * failed for the same reason the read had. The drill harness is what found
+   * it. Nothing in the tree ever relied on the insert failing; every caller of
+   * this option is about a read.
+   *
+   * A WRITE THAT FAILS IS A REAL THING TO WANT TO TEST and it needs its own
+   * option, added deliberately, rather than this one quietly meaning both.
    */
   failing?: Record<string, FakeReadError>
 }
@@ -49,6 +66,20 @@ export interface FakeAdminOptions {
 export interface FakeAdmin {
   tables: FakeTables
   inserts: { table: string; rows: FakeRow[] }[]
+  /**
+   * The name of every table this client was actually asked to READ, in order,
+   * one entry per resolved read.
+   *
+   * WHY A COUNT OF READS IS WORTH KEEPING. Some rules are about a read that is
+   * NOT made. `src/lib/consent/digest-city.ts` used to re-read `public.cities`
+   * to validate the slug `public.events` had just handed it, and that read was
+   * redundant (the column is a foreign key into exactly that table) and could
+   * only ever return the row it was given or FAIL, so every null it produced
+   * was an outage dressed as a validation. Deleting it is the fix, and an
+   * assertion about the returned city cannot tell a deleted read from one that
+   * happened to succeed. This can.
+   */
+  reads: string[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any
 }
@@ -59,6 +90,7 @@ export function fakeConsentAdmin(tables: FakeTables, options: FakeAdminOptions =
   const state: FakeTables = {}
   for (const [name, rows] of Object.entries(tables)) state[name] = rows.map((r) => ({ ...r }))
   const inserts: { table: string; rows: FakeRow[] }[] = []
+  const reads: string[] = []
 
   function builder(table: string) {
     /*
@@ -127,23 +159,26 @@ export function fakeConsentAdmin(tables: FakeTables, options: FakeAdminOptions =
         return api
       },
       maybeSingle() {
+        reads.push(table)
         if (fault) return Promise.resolve(failed)
         const found = rows()[0] ?? null
         return Promise.resolve({ data: found, error: null })
       },
       single() {
+        reads.push(table)
         if (fault) return Promise.resolve(failed)
         const found = rows()[0] ?? null
         return Promise.resolve({ data: found, error: found ? null : { message: 'no rows' } })
       },
       insert(payload: FakeRow | FakeRow[]) {
-        if (fault) return Promise.resolve(failed)
+        // Deliberately NOT gated on `fault`: see FakeAdminOptions.failing.
         const list = Array.isArray(payload) ? payload : [payload]
         inserts.push({ table, rows: list })
         state[table] = [...(state[table] ?? []), ...list]
         return Promise.resolve({ data: list, error: null })
       },
       then(resolve: (value: { data: FakeRow[] | null; error: FakeReadError | null }) => unknown) {
+        reads.push(table)
         if (fault) return Promise.resolve(failed).then(resolve)
         return Promise.resolve({ data: rows(), error: null }).then(resolve)
       },
@@ -154,6 +189,7 @@ export function fakeConsentAdmin(tables: FakeTables, options: FakeAdminOptions =
   return {
     tables: state,
     inserts,
+    reads,
     client: { from: (table: string) => builder(table) },
   }
 }
