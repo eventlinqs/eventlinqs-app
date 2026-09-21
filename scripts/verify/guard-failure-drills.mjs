@@ -4014,6 +4014,61 @@ const DRILLS = [
     expect: 'which is not a byte count',
   },
   /*
+   * Clause 6, the attributedMoves register. Five drills rather than one,
+   * because a single planted fault cannot tell a guard that checks six things
+   * from a guard that checks one and returns early, which is how three blind
+   * gates were found in this tree in four days.
+   *
+   * Every anchor below is a SINGLE line on purpose. perf-budget.json is
+   * written with LF and checked out with CRLF on this host, and a multi-line
+   * anchor is one normalisation away from silently matching nothing.
+   *
+   * The last drill is the one with teeth. It moves the MARK rather than the
+   * explanation, which is the real way this rots: the number moves again, the
+   * attribution beside it does not, and a superseded explanation reads exactly
+   * like a current one.
+   */
+  {
+    name: 'the register that explains why a mark went up is dropped',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"attributedMoves": {',
+    replace: '"attributedMovesGone": {',
+    expect: 'rather than an object',
+  },
+  {
+    name: 'an attributed move loses the cause it attributes to',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"cause": "Commit 97c88c27,',
+    replace: '"causeGone": "Commit 97c88c27,',
+    expect: 'has no `cause`',
+  },
+  {
+    name: 'an attributed move loses the method that established it',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"method": "esbuild bundle of the route client graph',
+    replace: '"methodGone": "esbuild bundle of the route client graph',
+    expect: 'has no `method`',
+  },
+  {
+    name: "an attributed move's arithmetic stops closing",
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"delta": 312,',
+    replace: '"delta": 311,',
+    expect: 'The arithmetic must close',
+  },
+  {
+    name: 'the mark moves again and leaves its explanation behind',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"/waitlist": 175939,',
+    replace: '"/waitlist": 176939,',
+    expect: 'past the 64-byte jitter allowance',
+  },
+  /*
    * API1, eleven drills, one per check in api-v1-organiser-scope.
    *
    * Every one of these is a way the public API could quietly start serving one
@@ -7004,7 +7059,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
     find: '<thead className="max-lg:hidden">',
     replace: '<thead>',
-    expect: 'stays visible below lg',
+    expect: 'stays visible below `lg`',
   },
   {
     name: 'the minimum width that forces the phone-width scroller comes back',
@@ -7012,7 +7067,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/reach/page.tsx',
     find: '<table className="w-full text-sm max-lg:block lg:min-w-[560px]">',
     replace: '<table className="w-full text-sm max-lg:block min-w-[560px]">',
-    expect: 'unqualified `min-w-[...]`',
+    expect: 'forces a phone-width scroller',
   },
   {
     /*
@@ -7025,7 +7080,7 @@ const DRILLS = [
     file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
     find: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:overflow-visible',
     replace: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent',
-    expect: 'applies at phone width',
+    expect: 'applies below `lg`',
   },
   {
     name: 'a row control goes back to eleven pixels of underlined text',
@@ -7034,6 +7089,140 @@ const DRILLS = [
     find: 'className={`${ROW_CONTROL} text-[var(--color-error-strong)] hover:underline`}',
     replace: 'className="text-xs text-[var(--color-error-strong)] hover:underline"',
     expect: 'no 44px floor',
+  },
+  {
+    /*
+     * THE ADMIN HALF. This is the class attribute /admin/audit carried until
+     * 21 September 2026: fifty View buttons outside a box showing a third of
+     * its own table. The wrapper is a shared constant now, so the drill puts
+     * the literal back at the call site, which is exactly how the defect would
+     * return.
+     */
+    name: 'the admin audit log goes back to clipping its own table',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/audit/page.tsx',
+    find: '<div className={ADMIN_TABLE_WRAP}>',
+    replace: '<div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#131A2A]">',
+    expect: 'is a CLIP and not a scroller',
+  },
+
+  /*
+   * a-table-a-phone-can-read, THE ADMIN SCOPE (21 September 2026), six drills.
+   *
+   * The first four mutate the SHARED constants, and that is the point rather
+   * than a shortcut: sixteen admin tables now render their classes from
+   * src/components/admin/table-card.ts, so one character there is a regression
+   * on sixteen screens at once. A drill that only poked one call site would
+   * leave the file that actually matters undrilled.
+   *
+   * The last two are call sites, because a screen can also opt itself out.
+   */
+  {
+    name: 'the shared admin table stops being a card on a phone, on sixteen screens at once',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "export const ADMIN_TABLE = 'w-full text-left text-sm max-lg:block'",
+    replace: "export const ADMIN_TABLE = 'w-full text-left text-sm'",
+    expect: 'no phone presentation',
+  },
+  {
+    name: 'the shared admin wrapper becomes a phone-width scroller again',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "'rounded-xl max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto'",
+    replace: "'rounded-xl max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent overflow-x-auto'",
+    expect: 'applies below `lg`',
+  },
+  {
+    name: 'the shared admin header stays while the cells stack',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "  'bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50 max-lg:hidden'",
+    replace: "  'bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50'",
+    expect: 'stays visible below',
+  },
+  {
+    /*
+     * THE CONSTANT THE GUARD ACCEPTS BY NAME. Clause FIVE passes any control
+     * mentioning ADMIN_ROW_CONTROL, for a call site the resolver cannot reach,
+     * so the guard REFUSES to run at all if that name stops being 44px.
+     */
+    name: 'the admin row control stops being 44px, and the guard refuses to run',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/components/admin/table-card.ts',
+    find: "export const ADMIN_ROW_CONTROL = 'inline-flex min-h-11 items-center'",
+    replace: "export const ADMIN_ROW_CONTROL = 'inline-flex items-center'",
+    expect: 'carries no 44px floor',
+  },
+  {
+    name: 'an admin table takes back the unqualified minimum width',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/kyc/page.tsx',
+    find: '<table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>',
+    replace: '<table className={`${ADMIN_TABLE} min-w-[720px]`}>',
+    expect: 'forces a phone-width scroller',
+  },
+  {
+    name: 'an admin row link goes back to nineteen pixels of text',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/payouts/page.tsx',
+    find: 'className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}',
+    replace: 'className="text-[var(--brand-accent)] hover:underline"',
+    expect: 'no 44px floor',
+  },
+
+  /*
+   * the-cost-table-can-name-what-it-measures (21 September 2026), four drills,
+   * one per contract clause.
+   *
+   * WHAT IS DRILLED HERE AND WHAT IS NOT, said plainly. These four mutate the
+   * SOURCE and the guard reads source, so the harness can aim at them. Clauses
+   * five and six read a real `.next`, which this harness does not own and does
+   * not restore, so they are proven instead by running the guard with --built
+   * (postbuild runs it on every build, and it reports its own coverage on every
+   * run) and by the unit test that pins `parseClientReferenceManifest` returning
+   * null rather than throwing on a manifest whose shape has changed. Saying
+   * which half a drill set covers is the difference between a proof and a count.
+   */
+  {
+    /*
+     * THE ONE THAT WAS REALLY THERE. The cost table carried its own copy of the
+     * reviewed markers, made before the shared module existed, and that copy
+     * still held three markers the shared module had recorded as dead on
+     * 15 September. Its second row read `unattributed` for a chunk the shared
+     * list names correctly.
+     */
+    name: 'the cost table stops reading the one reviewed marker list',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/chunk-cost-table.mjs',
+    find: "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'",
+    replace: "const attributionIsSomebodyElsesProblem = true",
+    expect: 'does not read',
+  },
+  {
+    name: 'the cost table takes back a private copy of the reviewed marker list',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/chunk-cost-table.mjs',
+    find: "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'",
+    replace:
+      "import { markerCoverage, nameChunk, readClientModuleChunks } from './lib/chunk-attribution.mjs'\nconst FEATURE_MARKERS = [{ feature: 'React DOM', test: /__reactContainer/ }]",
+    expect: 'declares its own FEATURE_MARKERS',
+  },
+  {
+    name: 'a marker starts matching the empty string, and would claim every chunk in the build',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/lib/chunk-attribution.mjs',
+    find: "  { feature: 'Lucide icons', test: /lucide/,",
+    replace: "  { feature: 'Lucide icons', test: /lucide|/,",
+    expect: 'EMPTY STRING',
+  },
+  {
+    name: 'two markers claim one feature, so one of them can never be the answer',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/perf/lib/chunk-attribution.mjs',
+    find: "  { feature: 'Supabase client', test: /GoTrueClient|PostgrestClient/,",
+    replace: "  { feature: 'React DOM', test: /GoTrueClient|PostgrestClient/,",
+    expect: 'both claim the feature',
   },
 
   /*

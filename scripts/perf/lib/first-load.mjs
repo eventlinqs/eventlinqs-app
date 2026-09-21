@@ -56,6 +56,54 @@ import { attribute } from './chunk-attribution.mjs'
 /** Scope v5 section 10.3, quoted above. 200 KB, in bytes, as one named constant. */
 export const SCOPE_10_3_BUDGET_BYTES = 200 * 1024
 
+/**
+ * THE COMMIT SHA IS IN THE CLIENT BUNDLE, SO EVERY COMMIT MOVES EVERY ROUTE BY
+ * A FEW BYTES, AND A MARK WRITTEN TO THE EXACT BYTE CANNOT SURVIVE BEING
+ * COMMITTED.
+ *
+ * Established on 18 September 2026 after four pushes were refused by uniform
+ * overages of +1, +2 and +3 bytes on all 141 routes at once, each time on a tree
+ * whose bundled source had not changed. The chain, read out of the build rather
+ * than reasoned about:
+ *
+ *   1. `@sentry/nextjs` inlines the git HEAD as the release. It is in the
+ *      emitted JavaScript in full:
+ *          release:"35c843f2f6f396f5d8b776e12395db365ddc51a4"
+ *   2. Chunk filenames are content-addressed, so that chunk is renamed by every
+ *      commit.
+ *   3. A chunk in EVERY route's first load LISTS other chunks' filenames,
+ *      including that one. Verified by grep: `static/chunks/3xb4h7ynb_v2_`
+ *      appears inside the shared chunk that all 141 routes load.
+ *   4. The replacement name is the same LENGTH and different CHARACTERS, so the
+ *      chunk's raw size is unchanged and its gzip size moves by a byte or three.
+ *      Measured: raw identical at 20986 both times, gzip 4886 then 4888.
+ *
+ * So writing a mark, committing it, and building again produces a different
+ * number than the mark just written. It is a closed loop, and it is why the
+ * ratchet had started refusing every push regardless of the tree.
+ *
+ * THE BUILD ITSELF IS DETERMINISTIC. Two consecutive builds of one tree both
+ * measured 160550 on the shared shell, to the byte. The variation is per COMMIT,
+ * not per build, which is exactly what makes it invisible: nobody re-measures
+ * after committing.
+ *
+ * THE ALLOWANCE, AND WHY IT IS NOT A WEAKENED GATE. A mark is a HIGH-WATER MARK,
+ * not a measurement, and this is what its head-room is for. 64 bytes is an order
+ * of magnitude above the largest variation measured (5 bytes, across four builds
+ * at four different commits: 160545, 160548, 160550, 160550) and two orders
+ * below the smallest real regression this ratchet has ever caught (303 bytes on
+ * one route; the one that started this was 3938 bytes on every route). It cannot
+ * hide anything the ratchet exists to see.
+ *
+ * IT DOES NOT TOUCH THE ABSOLUTE BUDGET. `overBudget` below and the Scope v5
+ * 10.3 limit are judged against `r.gzip`, the MEASURED value, never against the
+ * mark, so a public route cannot slip over 200 KB by way of this allowance.
+ *
+ * `scripts/guards/initial-bundle-budget.mjs` is untouched and still refuses any
+ * route above its mark.
+ */
+export const SHA_JITTER_ALLOWANCE_BYTES = 64
+
 export const STATS_FILE = join('.next', 'diagnostics', 'route-bundle-stats.json')
 export const BUILD_MANIFEST_FILE = join('.next', 'build-manifest.json')
 

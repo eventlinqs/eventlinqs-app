@@ -3324,6 +3324,24 @@ const ROOT = join(HERE, '..', '..')
  */
 /*
  * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the admin audit log clipped its own table): 539/7182 -> 539/7188.
+ * ---------------------------------------------------------------------------
+ *
+ * NO NEW FILE AND SIX CASES, all in an existing file:
+ *   tests/unit/guards/a-table-a-phone-can-read.test.ts  +6 for judgeClipWrappers,
+ *   the narrower clause the admin scope is held to
+ *   539 + 0 = 539 files
+ *   7182 + 6 = 7188 tests
+ *
+ * MEASURED: 539 files, 7188 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 112s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED.
+ * ---------------------------------------------------------------------------
+ */
+
+/*
+ * ---------------------------------------------------------------------------
  * 2026-09-21 (lane B, merging verify/l5-launch-readiness into lane/b-growth to
  * clear the returned overlap): 536/7194 and 539/7182 -> MEASURED BELOW.
  * ---------------------------------------------------------------------------
@@ -3486,8 +3504,95 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 108s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 546
-const MIN_TESTS = 7352
+
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, merging verify/l5-launch-readiness into lane/c-ux to
+ * clear the returned overlap): 539/7188 and 541/7251 -> MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FOURTEENTH CONFLICT ON THIS ONE INTEGER, and the second this lane has
+ * settled today. Resolved the way all thirteen before it were: by RUNNING the
+ * suite on the merged tree.
+ *
+ * BOTH BLOCKS ABOVE ARE KEPT VERBATIM because each names tests that exist in
+ * this tree, and neither number describes it. Lane C measured 539/7188 without
+ * lane B's last commits; the verify branch declared 541/7251 without lane C's
+ * five. Taking the higher writes a floor below what this tree runs, which is
+ * the mistake this block has refused fourteen times.
+ *
+ * MEASURED: 541 files, 7257 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 103s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, for the fourteenth time. Neither side
+ * reaches 7,257: the merged tree carries six cases this worktree could not see
+ * and sixty-nine the verify branch could not. Every derived figure on this
+ * integer has been wrong and every measured one has been right.
+ */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the admin table rebuild): 7257 -> 7282.
+ * ---------------------------------------------------------------------------
+ *
+ * Twenty-five cases added to tests/unit/guards/a-table-a-phone-can-read.test.ts
+ * when that guard grew a derived breakpoint, a constant resolver and a border
+ * list. No file added, so MIN_FILES does not move.
+ *
+ * MEASURED: 541 files, 7282 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 193s).
+ */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the cost table's attribution): 541/7282 -> 542/7306.
+ * ---------------------------------------------------------------------------
+ *
+ * One file added, tests/unit/guards/the-cost-table-can-name-what-it-measures.test.ts,
+ * with 25 cases: the manifest parser, the label summariser, the four contract
+ * clauses and the two built ones against a `.next` written for the test.
+ *
+ * MEASURED: 542 files, 7308 tests, 0 failed, 0 skipped (7307 before the
+ * precedence correction added one case to the same file).
+ *
+ * THE FIRST READING WAS 7306 AND IS NOT THE ONE WRITTEN HERE, because that run
+ * was RED: the registry test that names every guard in the runner's header had
+ * not been satisfied yet, and a run with a failure is not a measurement of a
+ * green suite. Both green runs read 7307. Measured, not derived, which is the
+ * rule this integer has had to be taught fourteen times.
+ */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, merging verify/l5-launch-readiness into lane/b-growth to
+ * clear the fifteenth conflict on this integer): 546/7352 and 542/7308 ->
+ * MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FIFTEENTH CONFLICT ON THIS ONE INTEGER, and the first this lane has
+ * settled. The watchdog refused to merge lane/b-growth FIFTEEN times between
+ * 09:01 and 10:36 today, every ten minutes, on this file and no other, and each
+ * refusal aborted a merge that was otherwise clean. Resolved the way all
+ * fourteen before it were: by RUNNING the suite on the merged tree.
+ *
+ * BOTH BLOCKS ABOVE ARE KEPT VERBATIM, lane B's three from today and lane C's
+ * three, because each names tests that exist in this tree and neither number
+ * describes it. This lane measured 546/7352 without lane C's admin-table and
+ * cost-table work; the verify branch declared 542/7308 without this lane's last
+ * six commits. Taking the higher of the two writes a floor BELOW what this tree
+ * runs, which is the mistake this block has now refused fifteen times.
+ *
+ * MEASURED: 547 files, 7413 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 124s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, for the fifteenth time. NEITHER SIDE
+ * REACHES EITHER FIGURE: not the file count and not the test count. 547 is one
+ * file above this lane's 546 and five above the verify branch's 542, and 7413
+ * is sixty-one cases above this lane's 7352 and a hundred and five above the
+ * branch's 7308. Had the higher of the two been taken, as the shape of the
+ * conflict invites, the floor would have been written sixty-one cases below
+ * what this tree actually runs, and the canary would have been blind to any
+ * one of those sixty-one being deleted. Measured, not derived.
+ */
+const MIN_FILES = 547
+const MIN_TESTS = 7413
 
 
 /**

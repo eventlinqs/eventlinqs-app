@@ -12,6 +12,20 @@ import {
   type EventAction,
 } from '@/lib/admin/events'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 import { eventActionForm } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -125,9 +139,11 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         </div>
       </form>
 
-      <div className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each event becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[820px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">Event</th>
               <th className="px-4 py-3 font-medium">Organiser</th>
@@ -136,10 +152,10 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {result.rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-white/50">No events match.</td>
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={5} className={ADMIN_EMPTY_CELL}>No events match.</td>
               </tr>
             ) : (
               result.rows.map((row) => <EventRow key={row.id} row={row} returnTo={returnTo} />)
@@ -156,19 +172,26 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
 function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
   const actions = actionsForEventStatus(row.status)
   return (
-    <tr className="border-t border-white/[0.06] align-top">
-      <td className="px-4 py-3">
-        <Link href={`/admin/events/${row.id}`} className="font-medium text-white hover:underline">{row.title}</Link>
+    <tr className={`${ADMIN_ROW} align-top`}>
+      <td className={ADMIN_CELL_NAME}>
+        <Link href={`/admin/events/${row.id}`} className={`${ADMIN_ROW_CONTROL} font-medium text-white hover:underline`}>{row.title}</Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
       </td>
-      <td className="px-4 py-3 text-white/70">{row.organisationName ?? '-'}</td>
-      <td className="px-4 py-3">
+      <td className={`${ADMIN_CELL} text-white/70`}>
+        <span className={ADMIN_CELL_LABEL}>Organiser</span>
+        {row.organisationName ?? '-'}
+      </td>
+      <td className={ADMIN_CELL}>
+        <span className={ADMIN_CELL_LABEL}>Status</span>
         <span className={`inline-block rounded border px-2 py-0.5 text-[11px] uppercase tracking-wider ${STATUS_BADGE[row.status] ?? STATUS_BADGE.draft}`}>
           {row.status}
         </span>
       </td>
-      <td className="px-4 py-3 whitespace-nowrap text-white/60">{row.startDate.slice(0, 10)}</td>
-      <td className="px-4 py-3">
+      <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
+        <span className={ADMIN_CELL_LABEL}>Starts</span>
+        {row.startDate.slice(0, 10)}
+      </td>
+      <td className={ADMIN_CELL_ACTIONS}>
         {actions.length === 0 ? (
           <span className="text-[11px] text-white/40">No actions</span>
         ) : (
@@ -186,11 +209,11 @@ function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
 function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: EventAction; returnTo: string }) {
   const destructive = DESTRUCTIVE.has(action)
   const label = EVENT_ACTION_LABELS[action]
-  const btnClass = action === 'cancel'
+  const btnClass = `${ADMIN_ROW_CONTROL} justify-center ${action === 'cancel'
     ? 'rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/20'
     : action === 'pause'
       ? 'rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/20'
-      : 'rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white'
+      : 'rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white'}`
   return (
     <form action={eventActionForm} className="flex items-center gap-2">
       <input type="hidden" name="eventId" value={row.id} />
@@ -205,7 +228,7 @@ function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: Eve
             type="text"
             placeholder="Reason (optional)"
             maxLength={500}
-            className="w-40 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/40"
+            className="min-h-11 w-40 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/40"
           />
           <ConfirmSubmitButton
             confirmMessage={

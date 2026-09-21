@@ -23,7 +23,11 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+        // 44px, the constitution's standing minimum for a touch target. This
+        // measured 52x26 at every width including 1440, and it is the only
+        // control on the audit row: the whole point of the screen is opening
+        // one of these.
+        className="inline-flex min-h-11 items-center rounded-md border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
       >
         View
       </button>
