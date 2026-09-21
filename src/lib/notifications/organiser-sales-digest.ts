@@ -177,12 +177,42 @@ export async function runOrganiserSalesDigest(
       }
 
       /*
+       * EVERY READ BEFORE THE CLAIM, AND THE CLAIM BEFORE THE SEND.
+       *
+       * The claim is an append to `organiser_sales_digest_sends` and it is what
+       * makes this cron idempotent: the day is spent whether or not the message
+       * goes. It has to happen before the SEND, for the reason below, and it must
+       * NOT happen before a READ, which is what it used to do.
+       *
+       * The recipient and the event titles were resolved AFTER the claim, and
+       * both of them raise when a read cannot be made. So one dropped socket
+       * spent the day, took the catch below, and the organiser never received
+       * that digest and never will: the next run finds the claim row and counts
+       * it as already sent. A transient fault became a permanent hole in
+       * somebody's money summary, silently, at one line of counter.
+       *
+       * Nothing is lost by reading first. A read writes nothing, so a run that
+       * gives up before the claim leaves the day unclaimed and the next run does
+       * it properly. This is the same deferral the alert dispatcher makes, in
+       * the module next door, for the same reason.
+       *
        * CLAIM THE DAY BEFORE SENDING, never after. If the send throws after a
        * successful insert the organiser misses one digest; if the insert
        * happened after the send, a crash between them would send the same day
        * again on the next run. Missing one is recoverable and visible; sending
        * a duplicate money summary is neither.
        */
+      const recipient = await resolveOrganisationOwnerEmail(admin, org.id as string)
+      if (!recipient) {
+        summary.skippedNoRecipient += 1
+        continue
+      }
+
+      const titles = await loadEventTitles(
+        admin,
+        orders.map((o) => o.event_id as string),
+      )
+
       const gross = orders.reduce((n, o) => n + Number(o.total_cents ?? 0), 0)
       const currency = (orders[0].currency as string) ?? 'AUD'
       const { error: claimError } = await admin
@@ -199,17 +229,6 @@ export async function runOrganiserSalesDigest(
         summary.skippedAlreadySent += 1
         continue
       }
-
-      const recipient = await resolveOrganisationOwnerEmail(admin, org.id as string)
-      if (!recipient) {
-        summary.skippedNoRecipient += 1
-        continue
-      }
-
-      const titles = await loadEventTitles(
-        admin,
-        orders.map((o) => o.event_id as string),
-      )
       const rows: DigestSaleRow[] = orders.map((o) => ({
         orderNumber: (o.order_number as string) ?? '',
         eventTitle: titles.get(o.event_id as string) ?? 'your event',

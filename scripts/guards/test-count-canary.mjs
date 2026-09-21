@@ -3678,8 +3678,72 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 549
-const MIN_TESTS = 7461
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, LC-BLINK): 549/7461 -> 554/7505.
+ * ---------------------------------------------------------------------------
+ *
+ * THE MOVE IS FIVE FILES AND FORTY-FOUR CASES, AND ONLY ONE FILE AND ELEVEN CASES
+ * ARE THIS ITEM'S. The rest is the baseline catching up with a merge, and it is
+ * split out rather than claimed, because this integer has been the reason
+ * eleven merges of this lane were refused and an inflated one would make the
+ * twelfth worse.
+ *
+ * THE BASELINE ABOVE WAS MEASURED ON lane/b-growth (commit daeffd67), which did
+ * not carry four test files this lane had already committed. They arrive here by
+ * merge, not by being written today:
+ *
+ *   tests/unit/auth/safe-redirect.test.ts
+ *   tests/unit/cron/notify-just-announced.test.ts
+ *   tests/unit/notifications/audience.test.ts
+ *   tests/unit/supabase/read-every-row-in.test.ts     4 files, 36 cases
+ *
+ * THIS ITEM ADDS:
+ *
+ *   tests/unit/notifications/a-blink-defers-the-message.test.ts   +1 file, +7
+ *   tests/unit/cron/notify-just-announced.test.ts                 +3 (existing file,
+ *                                                                 counted in the 36)
+ *   tests/unit/notifications/organiser-sales-digest.test.ts       +1 (existing file)
+ *
+ *   549 + 4 + 1 = 554 files
+ *   7461 + 36 + 7 + 1 = 7505 tests
+ *
+ * THE LAST ONE was added after the other two, by the adversarial pass over this
+ * item rather than by the scan, and it is the most expensive defect of the set:
+ * the daily digest claimed the day BEFORE resolving who to send it to, so one
+ * dropped socket spent the day and the organiser never received that digest and
+ * never would.
+ *
+ * Counted by RUNNING the five files rather than by reading their headers: the
+ * four report 36 and the new one reports 7.
+ *
+ * THE NEW FILE holds one rule with three victims, all in the one function every
+ * lifecycle alert goes through. A blinked `notification_prefs` read fell through
+ * to DEFAULT_PREFS, which is push and email BOTH ON, so the platform composed an
+ * email to somebody who had switched every channel off and sent another inside
+ * the quiet hours /account/notifications promises in its own words to keep. A
+ * blinked dedupe read answered "not sent yet", and the row is written AFTER the
+ * send, so the unique index stops the second ROW and not the second MESSAGE.
+ *
+ * SIX OF THE SEVEN WERE DRIVEN RED by running them against the unfixed
+ * dispatcher (`git show HEAD:src/lib/notifications/dispatch.ts`), 6 failed and
+ * 1 passed. The one that passes on both trees is deliberate and is the guard
+ * against over-correction: somebody who has genuinely never set a preference
+ * must still get the permissive defaults and stay reachable.
+ *
+ * THE THREE ADDED TO THE CRON FILE are the caller's half of the same bargain:
+ * the dispatcher raising is only a fix if something absorbs the refusal, and
+ * without a per-recipient catch the first flaky read answers 500 and abandons
+ * every recipient and every event left in the pass. Two of the three fail on the
+ * unfixed route; the third asserts the catch stays NARROW, and passes on both
+ * trees because an unfixed route also 500s on a fault that is not a read.
+ *
+ * MEASURED: 554 files, 7505 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 241s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 554
+const MIN_TESTS = 7505
 
 
 /**

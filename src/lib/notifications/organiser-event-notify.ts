@@ -5,6 +5,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { escapeHtml } from '@/lib/email/escape'
 import { captureException } from '@/lib/observability/sentry'
 import { resolveOrganisationOwnerEmail } from './organiser-recipient'
+import { readOrThrow, ReadFailed } from '@/lib/supabase/read-or-throw'
 
 /**
  * "EVENT PUBLISHED OR APPROVED". Close-out MONEY FIX, part B, step B4.
@@ -23,7 +24,7 @@ import { resolveOrganisationOwnerEmail } from './organiser-recipient'
 
 export type EventPublishedNotifyResult =
   | { status: 'sent' }
-  | { status: 'skipped'; reason: 'no_recipient' | 'event_not_found' | 'send_failed' }
+  | { status: 'skipped'; reason: 'no_recipient' | 'event_not_found' | 'send_failed' | 'read_failed' }
 
 export async function notifyOrganiserEventPublished(input: {
   eventId: string
@@ -36,11 +37,18 @@ export async function notifyOrganiserEventPublished(input: {
     // only one of them holds an organisation id, so taking it as an argument
     // would have meant either a second lookup at one call site or two
     // different notifiers.
-    const { data: event } = await admin
-      .from('events')
-      .select('title, slug, organisation_id')
-      .eq('id', input.eventId)
-      .maybeSingle()
+    /*
+     * A BLINKED READ USED TO SAY `event_not_found` ABOUT THE EVENT THAT HAD
+     * JUST BEEN PUBLISHED, one line after the publish that triggered it, and
+     * the organiser was simply never told their event went live.
+     */
+    const event = await readOrThrow('organiser-event-published', () =>
+      admin
+        .from('events')
+        .select('title, slug, organisation_id')
+        .eq('id', input.eventId)
+        .maybeSingle(),
+    )
     if (!event) return { status: 'skipped', reason: 'event_not_found' }
 
     const recipient = await resolveOrganisationOwnerEmail(
@@ -68,7 +76,7 @@ export async function notifyOrganiserEventPublished(input: {
       where: 'notifications/organiser-event-notify',
       event_id: input.eventId,
     })
-    return { status: 'skipped', reason: 'send_failed' }
+    return { status: 'skipped', reason: err instanceof ReadFailed ? 'read_failed' : 'send_failed' }
   }
 }
 

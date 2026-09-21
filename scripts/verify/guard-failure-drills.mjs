@@ -9830,6 +9830,129 @@ const DRILLS = [
     replace: "      const { data: city } = await adminClient.from('cities').select('slug').eq('slug', cookieCity).maybeSingle()",
     expect: 'only 1 of them go through `readOrThrow`',
   },
+
+  /*
+   * -----------------------------------------------------------------------
+   * a-blink-defers-the-message (lane C, 21 September 2026), six drills.
+   *
+   * TWO OF THEM PLANT THE ORIGINAL DEFECT, which is the only way to know the
+   * guard would have caught the thing it was written for. Drill 2 deletes the
+   * per-recipient catch, which is the state the alert cron was in when a single
+   * flaky read would have abandoned every recipient behind it. Drill 5 restores
+   * the exact `count ?? 0` that told an organiser nought tickets sold.
+   *
+   * THREE AIM AT THE GUARD rather than at the product: a counter that stops
+   * being reported (drill 3), a vocabulary that goes back to stating a fact it
+   * cannot know (drill 4), and the PREMISE moving underneath the whole argument
+   * (drill 6). A guard is a claim about the world and each of those is the world
+   * moving under it.
+   *
+   * The sixth is the one worth reading twice. Nothing is broken when
+   * DEFAULT_PREFS becomes restrictive: the code still compiles, every test still
+   * passes, and the defect simply INVERTS, from mailing somebody who refused to
+   * silencing somebody who agreed. That is the kind of change that walks past a
+   * review, so it is made to argue for itself.
+   */
+  {
+    /*
+     * THE GUARD REFUSES WHEN IT CAN NO LONGER SEE WHAT IT JUDGES. Clause 1 has
+     * to tell a per-RECIPIENT catch from a per-RUN one, and the only thing that
+     * distinguishes them is where the recipient loop starts. A restructure that
+     * moves or renames that loop must stop the build rather than quietly turn
+     * the clause into a pass over nothing, which is how a scanner lies.
+     *
+     * This drill exists because the one that used to sit here did not work. It
+     * renamed the ReadFailed IMPORT to test a file-wide "does it mention
+     * ReadFailed" clause, and the rename left `err instanceof ReadFailed` in the
+     * catch, so the mention was still there and the guard passed. The clause was
+     * deleted rather than reworded: every state it could have caught is caught
+     * by the next drill, and a clause nobody can make fail is not a clause.
+     */
+    name: 'the recipient loop is restructured and the guard can no longer tell which catch it is looking at',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/app/api/cron/notify-just-announced/route.ts',
+    find: '      for (const userId of recipients) {',
+    replace: '      for (const recipientId of [...recipients]) {\n        const userId = recipientId',
+    expect: 'no longer has the recipient loop this guard locates',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. Without this catch the dispatcher's refusal
+     * to guess reaches the route's outer handler, the answer is a 500, and every
+     * recipient and every event left in the pass is dropped. The dispatcher
+     * raising and nothing absorbing it is WORSE than the defect it replaced.
+     */
+    name: 'the recipient loop stops absorbing the refusal it asked for',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/app/api/cron/notify-just-announced/route.ts',
+    find: '          if (!(err instanceof ReadFailed)) throw err',
+    replace: '          if (true) throw err',
+    expect: 'does not catch ReadFailed',
+  },
+  {
+    name: 'the deferred-by-a-blink count stops being reported to anybody',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/app/api/cron/notify-just-announced/route.ts',
+    find: '      blinked,\n      settled,',
+    replace: '      settled,',
+    expect: 'never reported in the response',
+  },
+  {
+    /*
+     * THE VOCABULARY GOING BACK. `not_found` is a statement about an order that
+     * exists, written into the warning line an operator reads in the Stripe
+     * webhook, and produced by a dropped socket.
+     */
+    name: 'a money notifier goes back to calling a failed read "not found"',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    find: "  | { status: 'skipped'; reason: 'no_recipient' | 'not_found' | 'send_failed' | 'read_failed' }",
+    replace: "  | { status: 'skipped'; reason: 'no_recipient' | 'not_found' | 'send_failed' }",
+    expect: 'does not declare a `read_failed` reason',
+  },
+  {
+    /*
+     * THE THIRD SPELLING, RESTORED EXACTLY. Neither matcher in
+     * a-failed-read-is-not-a-fact-about-a-person can see this line, which is the
+     * whole reason clause 3 exists, so this drill is also the proof that the
+     * sibling guard would NOT have caught it.
+     */
+    name: 'the ticket count goes back to reading a dropped socket as nought tickets sold',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/lib/notifications/organiser-sale-notify.ts',
+    find: "  const ticketCount = countOrRead(\n    'tickets on this order',\n    await admin.from('tickets').select('id', { count: 'exact', head: true }).eq('order_id', ctx.orderId),\n  )",
+    replace: "  const { count: ticketCount } = await admin\n    .from('tickets')\n    .select('id', { count: 'exact', head: true })\n    .eq('order_id', ctx.orderId)",
+    expect: 'never binds `error`',
+  },
+  {
+    /*
+     * THE ORDER GOING BACK, and this is the defect exactly as it was found by
+     * the adversarial pass rather than by the scan. Reading the owner's address
+     * after the day has been claimed means one dropped socket spends the day and
+     * the organiser never gets that digest: the next run sees the claim row and
+     * calls it already sent. The claim still goes before the SEND either way, so
+     * nothing about this drill is visible in behaviour until a read fails.
+     */
+    name: 'the digest goes back to claiming the day before it knows who to send it to',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/lib/notifications/organiser-sales-digest.ts',
+    find: "      const recipient = await resolveOrganisationOwnerEmail(admin, org.id as string)\n      if (!recipient) {\n        summary.skippedNoRecipient += 1\n        continue\n      }\n\n      const titles = await loadEventTitles(\n        admin,\n        orders.map((o) => o.event_id as string),\n      )\n\n      const gross",
+    replace: "      const gross",
+    expect: 'is read AFTER the day is claimed',
+  },
+  {
+    /*
+     * THE PREMISE MOVING. Nothing breaks when this flips: it compiles, the tests
+     * pass, and the defect inverts from mailing somebody who refused to
+     * silencing somebody who agreed.
+     */
+    name: 'the permissive default this whole family rests on is quietly switched off',
+    guard: `${GUARDS}/a-blink-defers-the-message.mjs`,
+    file: 'src/lib/notifications/policy.ts',
+    find: '  push_enabled: true,\n  email_enabled: true,',
+    replace: '  push_enabled: true,\n  email_enabled: false,',
+    expect: 'DEFAULT_PREFS.email_enabled is no longer `true`',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -43,6 +43,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NextRequest } from 'next/server'
+import { ReadFailed } from '@/lib/supabase/read-or-throw'
 
 const h = vi.hoisted(() => ({
   /** The row ceiling the fake PostgREST applies to any read with no bound. */
@@ -62,6 +63,13 @@ const h = vi.hoisted(() => ({
   /** Every dispatchAlert call, in order. */
   calls: [] as { userId: string; eventId: string }[],
   broadcastArtists: false,
+  /**
+   * Users whose dispatch RAISES because a read could not be made. The real
+   * dispatcher throws ReadFailed rather than deciding, so the route has to
+   * defer that one recipient and carry on; without the catch, the first one
+   * of these abandons every recipient and every event left in the pass.
+   */
+  blinking: new Set<string>(),
 }))
 
 vi.mock('@/lib/cron/auth', () => ({ requireCronAuth: () => null }))
@@ -85,6 +93,7 @@ vi.mock('@/lib/notifications/dispatch', () => ({
   dispatchAlert: vi.fn(async (input: { userId: string; eventId: string; type: string }) => {
     h.calls.push({ userId: input.userId, eventId: input.eventId })
     const key = `${input.userId}|${input.eventId}|${input.type}`
+    if (h.blinking.has(input.userId)) throw new ReadFailed('notification-prefs', new Error('fetch failed'))
     if (h.delivered.has(key)) return { status: 'skipped', reason: 'duplicate' }
     if (h.optedOut.has(input.userId)) return { status: 'skipped', reason: 'opted_out' }
     if (h.quiet.has(input.userId)) return { status: 'skipped', reason: 'quiet_hours' }
@@ -228,6 +237,7 @@ async function run() {
     dispatches: number
     sent: number
     deferred: number
+    blinked: number
   }
 }
 
@@ -244,6 +254,7 @@ beforeEach(() => {
   h.optedOut = new Set()
   h.calls = []
   h.broadcastArtists = false
+  h.blinking = new Set()
   ;(h.db.organisations ||= []).push({ id: 'org-1', name: 'Lane C Presents' })
   ;(h.db.organisations ||= []).push({ id: 'org-2', name: 'Lane C Nights' })
 })
@@ -388,5 +399,70 @@ describe('the just-announced router drains its backlog', () => {
     for (let i = 1_200; i < 1_400; i += 1) {
       expect(h.delivered.has(`u-${String(i).padStart(5, '0')}|e1|just_announced`)).toBe(true)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// FAULT 3: ONE RECIPIENT'S BLINKED READ WOULD HAVE ABANDONED THE WHOLE RUN.
+//
+// Added 21 September 2026 with the fix that made `dispatchAlert` RAISE instead
+// of deciding. That fix is only half a bargain: the dispatcher refuses to guess,
+// and this route has to be the thing that absorbs the refusal. Without the
+// per-recipient catch the first flaky read reaches the route's outer handler,
+// the response is a 500, and every recipient and every event left in the pass is
+// dropped, because the loop never gets back to them.
+//
+// It is counted SEPARATELY from the quiet-hours deferral for the reason this
+// file already gives about `deferred`: a run that held four hundred alerts
+// because the database was blinking and a run that held them because it was
+// midnight must never read the same from outside.
+
+describe('the just-announced router survives a read it could not make', () => {
+  it('defers the one recipient whose read blinked and still reaches everybody else', async () => {
+    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedFollowers('org-1', 5)
+    h.blinking.add('u-00002')
+
+    const result = await run()
+
+    expect(result.ok).toBe(true)
+    expect(result.blinked).toBe(1)
+    expect(result.sent).toBe(4)
+    // The blinked recipient is not marked delivered, so the next run tries again.
+    expect(h.delivered.has('u-00002|e1|just_announced')).toBe(false)
+    for (const i of [0, 1, 3, 4]) {
+      expect(h.delivered.has(`u-0000${i}|e1|just_announced`)).toBe(true)
+    }
+  })
+
+  it('reaches the deferred recipient on the next run, once the read works again', async () => {
+    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedFollowers('org-1', 3)
+    h.blinking.add('u-00001')
+
+    const first = await run()
+    expect(first.blinked).toBe(1)
+    expect(first.sent).toBe(2)
+
+    h.blinking.clear()
+    const second = await run()
+
+    expect(second.blinked).toBe(0)
+    expect(second.sent).toBe(1)
+    expect(h.delivered.has('u-00001|e1|just_announced')).toBe(true)
+  })
+
+  it('does not swallow a fault that is not a read, because a broken cron must say so', async () => {
+    // The catch is deliberately narrow. Anything that is not a ReadFailed is a
+    // fault in this route and still takes the run down loudly, which is what a
+    // 500 on a cron is for. A catch-all here would hide a real bug behind a
+    // counter nobody reads.
+    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedFollowers('org-1', 2)
+    const dispatch = await import('@/lib/notifications/dispatch')
+    vi.mocked(dispatch.dispatchAlert).mockRejectedValueOnce(new TypeError('a genuine bug'))
+
+    const res = await GET(request())
+    expect(res.status).toBe(500)
   })
 })

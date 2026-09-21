@@ -140,3 +140,106 @@ describe('the digest sweep', () => {
     expect(src).toContain(".eq('sales_notification_mode', 'daily')")
   })
 })
+
+// ---------------------------------------------------------------------------
+// A DROPPED SOCKET USED TO SPEND A DAY OF SOMEBODY'S DIGEST, PERMANENTLY.
+//
+// Found 21 September 2026 by the adversarial pass over LC-BLINK, in the caller
+// the read fix had not looked at. The sweep CLAIMS the day by appending to
+// `organiser_sales_digest_sends` before it sends, deliberately, so that a crash
+// costs one digest rather than sending a duplicate money summary. That ordering
+// is right. What was wrong is that two READS sat after the claim: the owner's
+// address and the event titles, and both of them raise when a read cannot be
+// made.
+//
+// So one blinked read spent the day, landed in the per-organisation catch, and
+// the organiser never got that digest and never would: the next run finds the
+// claim row and counts it as already sent. A transient fault became a permanent
+// hole in somebody's money summary, and the only trace was one counter moving.
+//
+// Every read is before the claim now. A read writes nothing, so a run that gives
+// up before the claim leaves the day unclaimed and the next run does it properly.
+
+describe('a read the digest could not make', () => {
+  it('leaves the day unclaimed, so the next run can still send it', async () => {
+    const claims: Record<string, unknown>[] = []
+    let recipientReads = 0
+
+    const admin = {
+      from(table: string) {
+        // The pagers in this module read until a page comes back short, so the
+        // fake has to honour `range` or the first page repeats for ever. The
+        // first version of this test did not, and the sweep gave up at 200,000
+        // rows, which reads exactly like a product fault and is the harness.
+        let page = 0
+        const api = {
+          select: () => api,
+          eq: () => api,
+          gte: () => api,
+          lt: () => api,
+          in: () => api,
+          order: () => api,
+          range: (fromRow: number) => {
+            page = fromRow
+            return api
+          },
+          insert: (payload: Record<string, unknown>) => {
+            if (table === 'organiser_sales_digest_sends') claims.push(payload)
+            return Promise.resolve({ data: null, error: null })
+          },
+          maybeSingle: async () => {
+            if (table === 'organisations') {
+              // The resolver's read. It blinks, every attempt, which is what a
+              // dropped keep-alive socket does.
+              recipientReads += 1
+              return { data: null, error: { message: 'fetch failed', name: 'SocketError' } }
+            }
+            return { data: null, error: null }
+          },
+          then(resolve: (v: unknown) => void) {
+            if (page > 0) {
+              // Past the first page every read is exhausted, which is how the
+              // pagers know to stop.
+              resolve({ data: [], error: null })
+              return
+            }
+            if (table === 'organisations') {
+              // The sweep's own list of organisations on daily mode.
+              resolve({ data: [{ id: 'org-1', name: 'Lane C Presents' }], error: null })
+              return
+            }
+            if (table === 'orders') {
+              resolve({
+                data: [
+                  {
+                    id: 'o-1',
+                    order_number: 'EL-1',
+                    total_cents: 3500,
+                    currency: 'AUD',
+                    event_id: 'e-1',
+                    confirmed_at: '2026-09-17T03:00:00Z',
+                  },
+                ],
+                error: null,
+              })
+              return
+            }
+            resolve({ data: [], error: null })
+          },
+        }
+        return api
+      },
+    } as never
+
+    const { runOrganiserSalesDigest } = await import('@/lib/notifications/organiser-sales-digest')
+    const summary = await runOrganiserSalesDigest(admin, new Date('2026-09-18T07:10:00Z'))
+
+    // The read was attempted and retried rather than believed.
+    expect(recipientReads).toBeGreaterThan(1)
+    // The organisation was considered and the run did not fall over.
+    expect(summary.organisationsConsidered).toBe(1)
+    expect(summary.sent).toBe(0)
+    // THE WHOLE POINT: no claim row, so tomorrow's run is still able to send it.
+    expect(claims).toHaveLength(0)
+  })
+})

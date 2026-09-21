@@ -197,6 +197,15 @@
  *                              not an answer to "does this person hold a consent";
  *                              a blink wrote a decline over a live grant, in an
  *                              append-only ledger that is never corrected
+ *   a-blink-defers-the-message  the alert cron catches a read it could not make
+ *                              PER RECIPIENT and counts it, the three organiser
+ *                              notifiers that cannot throw can say `read_failed`
+ *                              rather than `not_found` about an order that
+ *                              exists, no count in the router coalesces with
+ *                              `?? 0`, and DEFAULT_PREFS is still permissive:
+ *                              a blinked preference read used to mail somebody
+ *                              who had switched every channel off, and send
+ *                              inside the quiet hours the account page promises
  *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
  *                              drives a browser waits for the server's observable
  *                              view, because a drive process cannot invalidate the
@@ -3001,6 +3010,41 @@ const GUARDS = [
   //
   // Drilled red eight ways and green (C:\dev\EVIDENCE\LB-OUTAGEWITHDRAW\drills.txt).
   'scripts/guards/an-outage-is-not-a-withdrawal.mjs',
+
+  // a-blink-defers-the-message: the same family in the notification router,
+  // 21 September 2026, and it is separate from both guards above because the
+  // three properties it holds live where no read-guard can look.
+  //
+  // `dispatchAlert` is the one function every lifecycle alert goes through and
+  // all four of its reads discarded their error, so all three of its decisions
+  // were available to a dropped socket. Driven on TEST on one person with one
+  // table failing on cue, red 10 of 16 and green 16 of 16: a blinked preference
+  // read fell through to DEFAULT_PREFS, which is push and email BOTH ON, so the
+  // platform composed an email to somebody who had switched every channel off
+  // and sent another inside the quiet hours /account/notifications promises to
+  // keep. A blinked dedupe read answered "not sent yet", and since the row is
+  // written AFTER the send, the unique index stops the second ROW and not the
+  // second MESSAGE, on a cron that runs every quarter of an hour.
+  //
+  // CLAUSE 1 is the caller's half, which a read-guard cannot see because it is
+  // in a different file: making the dispatcher raise is only half a fix, and
+  // without a per-recipient catch the first flaky read answers 500 and abandons
+  // every recipient and every event left in the pass.
+  //
+  // CLAUSE 3 is a THIRD SPELLING of the discarded read error that neither shared
+  // matcher can see: `const { count } = await ...` reads neither `data` nor
+  // `error`. It was live in organiser-sale-notify.ts, where `ticketCount ?? 0`
+  // would tell an organiser nought tickets sold and `(confirmedCount ?? 0) <= 1`
+  // would head every message on a sold-out event "Your first sale". Raised for
+  // the tree as a whole in C:\dev\REVIEW-QUEUE-C.md rather than widening a
+  // matcher two other lanes build on.
+  //
+  // CLAUSE 4 asserts the PREMISE: DEFAULT_PREFS is permissive. If that inverts,
+  // a blinked read silences somebody who agreed instead of mailing somebody who
+  // refused, which is a different defect needing a different answer.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LC-BLINK\drills.txt).
+  'scripts/guards/a-blink-defers-the-message.mjs',
 
   // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
   // row on "locator.click: Timeout" at a disabled button, while the flag row

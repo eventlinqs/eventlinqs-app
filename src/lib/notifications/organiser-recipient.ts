@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
  * WHO THE ORGANISER IS, AS AN ADDRESS. Close-out MONEY FIX, part B.
@@ -27,18 +28,26 @@ export async function resolveOrganisationOwnerEmail(
   admin: SupabaseClient,
   organisationId: string,
 ): Promise<OrganiserRecipient | null> {
-  const { data: org, error } = await admin
-    .from('organisations')
-    .select('id, name, owner_id')
-    .eq('id', organisationId)
-    .maybeSingle()
-  if (error || !org?.owner_id) return null
+  /*
+   * BOTH READS RAISE RATHER THAN ANSWERING null, and the difference matters
+   * because every caller turns null into `reason: 'no_recipient'`, which is a
+   * statement about an organiser: that there is nobody to write to. On a
+   * chargeback notice with Stripe's own evidence deadline on it, that sentence
+   * is the last thing anybody sees before the deadline passes.
+   *
+   * The organisation read USED to bind its error and then throw it away on the
+   * same line as a missing owner (`if (error || !org?.owner_id)`), which looks
+   * careful and is the same defect: one branch for "there is no owner" and "we
+   * could not ask". They are separate answers now.
+   */
+  const org = await readOrThrow('organiser-recipient-organisation', () =>
+    admin.from('organisations').select('id, name, owner_id').eq('id', organisationId).maybeSingle(),
+  )
+  if (!org?.owner_id) return null
 
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('email')
-    .eq('id', org.owner_id as string)
-    .maybeSingle()
+  const profile = await readOrThrow('organiser-recipient-profile', () =>
+    admin.from('profiles').select('email').eq('id', org.owner_id as string).maybeSingle(),
+  )
 
   const email = (profile?.email as string | null) ?? null
   if (!email) return null
