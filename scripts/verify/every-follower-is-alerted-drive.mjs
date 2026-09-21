@@ -398,12 +398,23 @@ if (phase === 'ui') {
   const browser = await chromium.launch()
 
   /*
-   * SIGN IN ONCE AND REUSE THE SESSION, for two reasons that both cost a run.
+   * SIGN IN ONCE AND REUSE THE SESSION, and CLICK UNTIL THE HANDLER RUNS.
    *
-   * SIGNING IN THREE TIMES IN A ROW IS REFUSED. The second viewport timed out on
-   * the login form while the first had sailed through: three sign-ins from one
-   * address in a few seconds is exactly what the platform's own rate limiting is
-   * for, and a drive that trips it reads as a broken product.
+   * THE FIRST EXPLANATION WRITTEN HERE WAS WRONG AND IS REPLACED BY A
+   * MEASUREMENT. When the second viewport sat on the login form while the first
+   * had sailed through, this comment said the platform's own rate limiting had
+   * refused it. That was an inference. A probe of six sign-ins settled it: four
+   * failed, and the FOURTH succeeded after three failures, which no rate limit
+   * does. On every failing attempt there was NO POST AT ALL - only the initial
+   * GET of /login - and the button still read "Sign in" rather than its loading
+   * text. The submit handler never ran: the click landed on a button React had
+   * not hydrated yet, and Playwright's auto-waiting does not cover hydration.
+   *
+   * So the click is retried, and the two outcomes are told apart rather than
+   * conflated: if the form has put a message on the screen it has REFUSED us and
+   * that is raised, because a drive that silently retries past a real refusal is
+   * a drive that reports a success it did not have. If nothing happened at all,
+   * the click simply had not landed yet.
    *
    * AND THE `next` PARAMETER IS NOT THE WAY THERE. The first version went to
    * `/login?next=/account/notifications` and waited for a URL matching
@@ -411,18 +422,29 @@ if (phase === 'ui') {
    * immediately. The wait returned while the browser was still on the form, and
    * the photograph was taken wherever the app drifted to a moment later: the
    * dashboard twice and the login form once, all three reported PASS. Reading
-   * the picture is what caught it.
-   *
-   * So: one sign-in, a saved storage state, and the destination reached by
-   * navigating to it. Every URL is matched on the PATHNAME, never the address.
+   * the picture is what caught it. Every URL is matched on the PATHNAME now.
    */
   const signIn = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const gate = await signIn.newPage()
   await gate.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' })
   await gate.fill('input[type="email"]', follower.email)
   await gate.fill('input[type="password"]', follower.password)
-  await gate.click('button[type="submit"]')
-  await gate.waitForURL((url) => url.pathname !== '/login', { timeout: 60_000 })
+
+  let signedIn = false
+  for (let attempt = 1; attempt <= 5 && !signedIn; attempt += 1) {
+    await gate.click('button[type="submit"]')
+    try {
+      await gate.waitForURL((url) => url.pathname !== '/login', { timeout: 20_000 })
+      signedIn = true
+    } catch {
+      const refusal = (
+        await gate.locator('[role="alert"], .text-red-600, .text-red-700').allTextContents().catch(() => [])
+      ).filter(Boolean)
+      if (refusal.length > 0) throw new Error(`sign-in refused: ${refusal.join(' ')}`)
+    }
+  }
+  if (!signedIn) throw new Error('sign-in never completed after five clicks, and the form said nothing')
+
   const session = await signIn.storageState()
   await signIn.close()
 
