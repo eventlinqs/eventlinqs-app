@@ -5098,15 +5098,7 @@ const DRILLS = [
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'scripts/guards/no-silent-row-ceiling.mjs',
     find: 'const RAISED_WITH_ANOTHER_LANE = [',
-    replace:
-      "const RAISED_WITH_ANOTHER_LANE = [\n" +
-      "  {\n" +
-      "    file: 'src/lib/notifications/audience.ts',\n" +
-      "    table: 'saved_organisers',\n" +
-      "    lane: 'a drill',\n" +
-      "    since: '2026-09-21',\n" +
-      "    why: 'a debt that was paid before this entry was written',\n" +
-      "  },",
+    replace: "const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/notify.ts',\n    table: 'push_subscriptions',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n  },",
     expect: 'no such read was found',
   },
 
