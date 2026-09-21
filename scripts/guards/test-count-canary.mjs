@@ -3675,11 +3675,29 @@ const ROOT = join(HERE, '..', '..')
  * fails reads only now, and its own header records why.
  *
  * MEASURED: 549 files, 7461 tests, 0 failed, 0 skipped
- * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of this commit).
+ * (`npm run gate:push -- --only suite`, GREEN, 138s, on the tree of that commit).
+ *
+ * THEN +5 IN THE SAME RUN, on the same file, for the surface that SHOWS the
+ * verdict to the person it is about: 7461 -> 7466.
+ *
+ *   tests/unit/consent/an-outage-is-not-a-withdrawal.test.ts   +5  (22 -> 27)
+ *
+ * /marketing/preferences/[token] built its sentence inline from `permitted`
+ * alone, so an unreadable ledger printed "Right now, EventLinqs sends you no
+ * marketing: the consent ledger could not be read, so the message is refused."
+ * to the person whose consent it is, on the page that exists so they can SEE AND
+ * CHANGE their own state. It asserts their position from a read that failed, and
+ * somebody who believes it stops pressing: the same harm this platform already
+ * ruled on when a live unsubscribe link was called spent because a socket
+ * dropped (162c6d28). The sentence is pure and in one place now, and one of the
+ * five was driven RED.
+ *
+ * MEASURED: 549 files, 7466 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 118s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
 const MIN_FILES = 549
-const MIN_TESTS = 7461
+const MIN_TESTS = 7466
 
 
 /**

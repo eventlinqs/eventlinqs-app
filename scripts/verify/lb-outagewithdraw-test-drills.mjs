@@ -7,7 +7,7 @@
  * expected assertion named in the output. The tree is restored in a finally
  * whether the run passes, fails or throws.
  *
- * FOUR PLANTINGS OF THE LIVE DEFECT and two of the mistake a careless fix makes.
+ * FIVE PLANTINGS OF THE LIVE DEFECT and two of the mistake a careless fix makes.
  * The second pair matters more than it looks: the obvious way to stop an outage
  * being written down is to stop writing anything, and that silently deletes a
  * real rule (a genuine decline IS evidence that the question was put and
@@ -37,6 +37,7 @@ const ANSWER = 'src/lib/consent/checkout-answer.ts'
 const RECORD = 'src/lib/consent/record.ts'
 const RESOLVER = 'src/lib/consent/resolver.ts'
 const CITY = 'src/lib/consent/digest-city.ts'
+const SENTENCES = 'src/lib/consent/sentences.ts'
 
 const EVIDENCE = 'C:/dev/EVIDENCE/LB-OUTAGEWITHDRAW'
 mkdirSync(EVIDENCE, { recursive: true })
@@ -114,6 +115,20 @@ const DRILLS = [
     find: '      if (!ok) return { recorded: \'none\', reason: \'the grant could not be written\' }',
     replace: '      if (!ok || city.unresolved) return { recorded: \'none\', reason: \'the grant could not be written\' }',
     expect: 'records the grant even when the city could not be read',
+  },
+  {
+    /*
+     * THE SENTENCE THE PERSON READS. The preferences page exists so somebody can
+     * see and change their own marketing state, and it printed "Right now,
+     * EventLinqs sends you no marketing" on a read that had failed. Somebody who
+     * reads that stops pressing, which is the same harm as a live unsubscribe
+     * link called spent.
+     */
+    name: 'the one sentence stops telling an outage from an answer',
+    file: SENTENCES,
+    find: '  if (!verdict.ledgerWasRead) {',
+    replace: '  if (false) {',
+    expect: 'does NOT state their marketing position when the ledger could not be read',
   },
 ]
 
