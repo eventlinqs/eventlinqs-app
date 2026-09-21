@@ -10,6 +10,8 @@ import {
   type CapturedAttribution,
 } from '@/lib/growth/referrals'
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
+import { resolveDigestCityFor } from '@/lib/consent/digest-city'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
 import { arrivalUtmObject, decodeArrival } from '@/lib/growth/arrival'
 import { normaliseHeardFrom } from '@/lib/growth/heard-from'
@@ -335,12 +337,37 @@ export async function POST(request: NextRequest) {
    * practice; where they do not, the referral cookie wins, because it is first
    * touch by design and the arrival record is last-page-before-signup.
    */
+  /*
+   * AND A READ THAT GAVE UP IS NOT A CODE THAT NAMES NOBODY, since 21 September
+   * 2026. This read discarded its error, so a dropped socket produced exactly
+   * the sentence below about a referrer who exists, and the referral was thrown
+   * away. That is AN1's own subject matter: the invite-an-organiser loop is
+   * worth what it can be attributed at, and an outage silently zeroing it is
+   * the failure the item was written to prevent.
+   *
+   * THE REFERRAL SURVIVES THE OUTAGE. The confirmation exists because
+   * `profiles.referred_by` is a foreign key and an unconfirmed id would take
+   * the whole update down with it, costing all six arrival fields. So when the
+   * confirmation cannot be made, the id is still WRITTEN, and the write falls
+   * back once without it if the database refuses. A real referral is kept, a
+   * stale code costs nothing, and neither outcome rests on a read that failed.
+   */
   const claimedReferrer = captured?.referredBy ?? decodeRefCode(arrival.ref)
   let referredBy: string | null = null
+  let referrerUnconfirmed = false
   if (claimedReferrer && claimedReferrer !== newUserId) {
-    const { data: referrer } = await admin.from('profiles').select('id').eq('id', claimedReferrer).maybeSingle()
-    if (referrer?.id) referredBy = referrer.id
-    else console.warn('[auth/signup] a referral code decoded to a profile that does not exist; recorded as no referrer')
+    try {
+      const referrer = await readOrThrow('the signup referrer', () =>
+        admin.from('profiles').select('id').eq('id', claimedReferrer).maybeSingle(),
+      )
+      if (referrer?.id) referredBy = referrer.id
+      else console.warn('[auth/signup] a referral code decoded to a profile that does not exist; recorded as no referrer')
+    } catch (error) {
+      captureException(error, { where: 'app/api/auth/signup/route:referrer' })
+      console.warn('[auth/signup] the referrer could not be confirmed, so it is recorded unconfirmed; this is an outage, not a stale code')
+      referredBy = claimedReferrer
+      referrerUnconfirmed = true
+    }
   }
   const hasArrivalToStore =
     Boolean(captured) ||
@@ -351,51 +378,87 @@ export async function POST(request: NextRequest) {
 
   if (hasArrivalToStore && newUserId) {
     try {
-      const { data: existing } = await admin
+      /*
+       * A FAILED READ MUST NOT CLOBBER THE COLUMN IT WAS READING, since 21
+       * September 2026. This read discarded its error, so a blink made `prior`
+       * an empty object and the update below then wrote that empty object OVER
+       * whatever the profile's metadata actually held. A destructive write
+       * standing on a read that failed.
+       *
+       * It goes through the door, and when the door gives up the metadata key
+       * is simply LEFT OUT of the update: the column keeps what it has, and the
+       * six arrival fields underneath it still land. Nothing is written on the
+       * strength of not knowing.
+       *
+       * The `else` branch that used to write `prior` straight back is gone with
+       * it. With no attribution to merge there was never anything to write, and
+       * reading a column in order to write it back unchanged is a clobber
+       * waiting for its first bad read.
+       */
+      let metadata: Record<string, unknown> | undefined
+      if (captured) {
+        try {
+          const existing = await readOrThrow('the signup profile metadata', () =>
+            admin.from('profiles').select('metadata').eq('id', newUserId).maybeSingle(),
+          )
+          const prior = (existing?.metadata ?? {}) as Record<string, unknown>
+          metadata = { ...prior, attribution: toAttributionRecord(captured, new Date().toISOString()) }
+        } catch (error) {
+          captureException(error, { where: 'app/api/auth/signup/route:metadata' })
+          console.warn('[auth/signup] the profile metadata could not be read, so it is left as it is')
+        }
+      }
+
+      const arrivalFields = {
+        signup_heard_from: heard.heardFrom,
+        signup_heard_from_other: heard.heardFromOther,
+        signup_src: arrival.src,
+        signup_landing_path: arrival.landingPath,
+        signup_referrer_host: arrival.referrerHost,
+        signup_utm: arrivalUtmObject(arrival),
+      }
+      const written = await admin
         .from('profiles')
-        .select('metadata')
+        .update({ ...(metadata ? { metadata } : {}), ...arrivalFields, referred_by: referredBy })
         .eq('id', newUserId)
-        .single()
-      const prior = (existing?.metadata ?? {}) as Record<string, unknown>
-      await admin
-        .from('profiles')
-        .update({
-          metadata: captured
-            ? { ...prior, attribution: toAttributionRecord(captured, new Date().toISOString()) }
-            : prior,
-          signup_heard_from: heard.heardFrom,
-          signup_heard_from_other: heard.heardFromOther,
-          signup_src: arrival.src,
-          signup_landing_path: arrival.landingPath,
-          signup_referrer_host: arrival.referrerHost,
-          signup_utm: arrivalUtmObject(arrival),
-          referred_by: referredBy,
-        })
-        .eq('id', newUserId)
+      if (written.error && referrerUnconfirmed) {
+        // The one thing in that row the database could refuse is the unconfirmed
+        // foreign key, so the arrival fields go again without it rather than
+        // being lost to a referral that turned out to be stale after all.
+        console.warn('[auth/signup] the unconfirmed referrer was refused, so the arrival fields are written without it')
+        await admin
+          .from('profiles')
+          .update({ ...(metadata ? { metadata } : {}), ...arrivalFields })
+          .eq('id', newUserId)
+      }
     } catch (error) {
       captureException(error, { where: 'app/api/auth/signup/route:306' })
       // swallow - attribution is non-critical telemetry
     }
   }
 
-  // Record the express digest opt-in (best-effort, never fails the signup).
-  // City scope comes from the el_city cookie when it names a real city.
+  /*
+   * Record the express digest opt-in (best-effort, never fails the signup).
+   * City scope comes from the el_city cookie when it names a real city.
+   *
+   * THROUGH THE ONE RULE, since 21 September 2026. This was the FOURTH copy of
+   * a read of `public.cities` whose error was discarded, and the digest is city
+   * scoped, so a dropped socket filed somebody who chose Geelong as having
+   * chosen nowhere, into an append-only ledger that is never rewritten: they
+   * said yes at registration and would never have heard anything. The other
+   * three were `src/lib/consent/digest-city.ts`, which is where the rule now
+   * lives for every caller, and `src/app/actions/consent.ts`, fixed in 4bfb0fd0.
+   */
   if (body.digestOptIn && newUserId) {
     try {
-      const cookieCity = request.cookies.get('el_city')?.value ?? null
-      let citySlug: string | null = null
-      if (cookieCity) {
-        const { data: city } = await admin
-          .from('cities')
-          .select('slug')
-          .eq('slug', cookieCity)
-          .maybeSingle()
-        citySlug = city?.slug ?? null
-      }
+      const city = await resolveDigestCityFor(admin, {
+        eventId: null,
+        cookieCity: request.cookies.get('el_city')?.value ?? null,
+      })
       await recordPlatformDigestConsent(admin, {
         email: body.email,
         userId: newUserId,
-        citySlug,
+        citySlug: city.city,
         source: 'registration',
         at: new Date().toISOString(),
       })

@@ -69,11 +69,54 @@ export interface SendQuestion {
   maxAgeMonths: number
 }
 
-export interface SendVerdict {
+/**
+ * WHAT THE LEDGER SAYS, decided from rows that were actually read.
+ *
+ * `decideSend` is pure and is only ever handed rows, so it has no opinion about
+ * whether the ledger could be reached. That question belongs to the resolver,
+ * which is the thing that does the reading, and it is answered by `SendVerdict`
+ * below rather than here.
+ */
+export interface SendDecision {
   permitted: boolean
   /** Plain words, naming the deciding event where there is one. */
   reason: string
   decidingEventId: string | null
+}
+
+/**
+ * A DECISION, PLUS WHETHER IT IS EVIDENCE ABOUT A PERSON OR THE ABSENCE OF ANY.
+ *
+ * `resolveSend` fails CLOSED: a ledger it cannot read refuses the send, because
+ * an unreadable consent record is not evidence of consent. That is right for the
+ * question it was built for, "may this message go out", where the cost of being
+ * wrong is one marketing email not sent.
+ *
+ * IT IS THE WRONG ANSWER TO A DIFFERENT QUESTION, and two callers were asking
+ * that different question: "does this address already hold a live consent?" A
+ * refusal means no to the first question and CANNOT MEAN no to the second, and
+ * both callers then wrote a `declined` event on the strength of it. The ledger's
+ * latest event wins and the ledger is append only, so a dropped socket withdrew
+ * a live consent and it could not be taken back.
+ *
+ * Measured on TEST on 21 September 2026, on a returning buyer who touched
+ * nothing, with the consent read failing on cue (4 requests, one call and three
+ * retries):
+ *
+ *     before   permitted true,  "granted on 14 Sept 2026 under wording v1"
+ *     after    permitted false, "the latest consent event is declined"
+ *
+ * So the readability of the ledger travels WITH the verdict rather than being
+ * inferred from the wording of `reason`, which is prose and is not a contract.
+ * A caller about to write down a fact about a person asks this field first.
+ */
+export interface SendVerdict extends SendDecision {
+  /**
+   * True when the ledger was read and this verdict came out of its rows. False
+   * when the read gave up, and then the refusal is an outage rather than an
+   * answer, and may never be recorded as something the person decided.
+   */
+  ledgerWasRead: boolean
 }
 
 function timeOf(iso: string): number {
@@ -126,7 +169,7 @@ export function decideSend(
   question: SendQuestion,
   events: LedgerConsentEvent[],
   suppressions: LedgerSuppressionEvent[],
-): SendVerdict {
+): SendDecision {
   if (isTransactionalPurpose(question.purpose)) {
     return {
       permitted: true,

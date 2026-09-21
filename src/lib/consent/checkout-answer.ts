@@ -81,7 +81,7 @@ export async function recordCheckoutMarketingAnswer(
     }
 
     const at = params.at ?? new Date().toISOString()
-    const citySlug = await resolveDigestCity(admin, params.eventId)
+    const city = await resolveDigestCity(admin, params.eventId)
 
     if (params.ticked) {
       const ok = await recordConsentEvent(admin, {
@@ -89,13 +89,28 @@ export async function recordCheckoutMarketingAnswer(
         email: params.email,
         decision: 'granted',
         captureSurface: params.captureSurface,
-        citySlug,
+        citySlug: city.city,
         reference: params.reference ?? null,
         at,
       })
-      return ok
-        ? { recorded: 'granted', reason: `granted under wording ${wording.version}` }
-        : { recorded: 'none', reason: 'the grant could not be written' }
+      if (!ok) return { recorded: 'none', reason: 'the grant could not be written' }
+      /*
+       * THE CONSENT IS WRITTEN EITHER WAY, AND AN UNSCOPED ONE SAYS SO.
+       *
+       * Losing the grant is the worse mistake: the person said yes, and the
+       * ledger is the evidence that they did. But a grant whose city could not
+       * be read is in no digest send list, so it must not be reported as a clean
+       * one. The reason travels back to the caller and the failure itself is
+       * already in Sentry from `resolveDigestCityFor`, which is the difference
+       * between a gap somebody can find and a person who quietly never hears
+       * anything.
+       */
+      return city.unresolved
+        ? {
+            recorded: 'granted',
+            reason: `granted under wording ${wording.version}, with no city: the city could not be read`,
+          }
+        : { recorded: 'granted', reason: `granted under wording ${wording.version}` }
     }
 
     const live = await resolveSend(admin, {
@@ -109,13 +124,40 @@ export async function recordCheckoutMarketingAnswer(
         reason: 'an untouched box is not a withdrawal and this address already has a live consent',
       }
     }
+    /*
+     * AN OUTAGE IS NOT A WITHDRAWAL, AND THE LEDGER IS APPEND ONLY.
+     *
+     * The resolver fails CLOSED, which is right for "may this message go out"
+     * and wrong for the question asked three lines above, "does this address
+     * already hold a live consent?". Until 21 September 2026 the two answers
+     * were the same `permitted: false`, so a dropped socket on the consent read
+     * sent an untouched checkbox down the decline branch, and the ledger's
+     * latest-event rule turned that into a withdrawal of a live consent that
+     * could never be taken back.
+     *
+     * MEASURED ON TEST, on a returning buyer who touched nothing, with the
+     * consent read failing on cue (4 requests, one call and three retries):
+     * before, "granted on 14 Sept 2026 under wording v1"; after, "the latest
+     * consent event is declined".
+     *
+     * So a verdict that is not evidence records NOTHING. Nothing is lost by
+     * that: a decline is evidence the question was put and answered, the
+     * question will be put again on their next purchase, and the alternative is
+     * revoking a consent on the strength of a socket.
+     */
+    if (!live.ledgerWasRead) {
+      return {
+        recorded: 'none',
+        reason: 'the consent ledger could not be read, and an outage is not a withdrawal',
+      }
+    }
 
     const ok = await recordConsentEvent(admin, {
       ...consentFieldsFromWording(wording),
       email: params.email,
       decision: 'declined',
       captureSurface: params.captureSurface,
-      citySlug,
+      citySlug: city.city,
       reference: params.reference ?? null,
       at,
     })

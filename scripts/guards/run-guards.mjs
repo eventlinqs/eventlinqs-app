@@ -191,6 +191,12 @@
  *                              error, because a failure there is written into an
  *                              append-only ledger as a sentence about a named
  *                              person and counted onto /admin/campaigns
+ *   an-outage-is-not-a-withdrawal  a send verdict says whether the LEDGER WAS
+ *                              READ, and both consent writers consult it, because
+ *                              the resolver fails closed and "could not read" is
+ *                              not an answer to "does this person hold a consent";
+ *                              a blink wrote a decline over a live grant, in an
+ *                              append-only ledger that is never corrected
  *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
  *                              drives a browser waits for the server's observable
  *                              view, because a drive process cannot invalidate the
@@ -2943,6 +2949,40 @@ const GUARDS = [
   // through the doors, and the matcher sees ARRAY destructuring, which the
   // sibling guard cannot and which is the spelling two of those sites used.
   'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+
+  // an-outage-is-not-a-withdrawal: the layer ABOVE the guard directly under
+  // this one, 21 September 2026, and the reason it is separate is that every
+  // read involved was already careful.
+  //
+  // `resolveSend` fails CLOSED, which is the right answer to "may this message
+  // go out" and is NOT an answer to "does this address already hold a live
+  // consent". Two callers were asking the second question, so that a returning
+  // buyer who leaves the marketing checkbox alone is not recorded as declining
+  // (under the Spam Act a withdrawal is a deliberate act and an untouched box is
+  // not one). Both refusals were the same `permitted: false`. Driven on TEST on
+  // a person who touched nothing, with the consent read failing on cue: before,
+  // "granted on 14 Sept 2026 under wording v1"; after, "the latest consent event
+  // is declined". The ledger is APPEND ONLY and a consent row is never rewritten,
+  // so a dropped socket withdrew a live consent and nobody could undo it.
+  //
+  // The same shape scoped a consent to no city: two reads with no retry, so one
+  // dropped packet filed somebody who chose Geelong as having chosen nowhere,
+  // and the digest is city scoped, so they are on no send list at all, for ever,
+  // on a row still reading "granted". That file had been a NAMED EXCEPTION in
+  // the guard above since 19 September, on the argument that its null was "an
+  // honest answer"; the platform disproved that two days later by fixing the
+  // identical read in src/app/actions/consent.ts. The exception is gone and the
+  // register is empty.
+  //
+  // It also guards a DELETION, which is the part most likely to be quietly
+  // undone: the third read re-validated `events.city_primary` against `cities`,
+  // which the foreign key already guarantees, so it could only return what it
+  // was handed or fail. Clause 6 asserts that foreign key is still declared and
+  // clause 7 asserts the code taxonomy it falls back to is a subset of what the
+  // migration seeds, so the fallback can never break the consent write.
+  //
+  // Drilled red eight ways and green (C:\dev\EVIDENCE\LB-OUTAGEWITHDRAW\drills.txt).
+  'scripts/guards/an-outage-is-not-a-withdrawal.mjs',
 
   // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
   // row on "locator.click: Timeout" at a disabled button, while the flag row

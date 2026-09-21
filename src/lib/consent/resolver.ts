@@ -61,13 +61,27 @@ export async function resolveSend(
   const tenantSlug = params.tenantSlug ?? PLATFORM_TENANT_SLUG
   const now = params.now ?? new Date()
 
+  /*
+   * A TRANSACTIONAL PURPOSE IS DECIDED WITHOUT READING THE LEDGER, AND THAT IS
+   * STILL A DECIDED ANSWER RATHER THAN AN OUTAGE. `ledgerWasRead` does not mean
+   * "a query ran"; it means "this verdict is a fact about the person and not the
+   * absence of one". A purpose that needs no rows to be decided is decided.
+   */
   if (isTransactionalPurpose(params.purpose)) {
-    return decideSend({ tenantSlug, purpose: params.purpose, channel: params.channel, now, maxAgeMonths: 0 }, [], [])
+    return {
+      ...decideSend({ tenantSlug, purpose: params.purpose, channel: params.channel, now, maxAgeMonths: 0 }, [], []),
+      ledgerWasRead: true,
+    }
   }
 
   const email = normaliseSubjectEmail(params.email)
   if (!email) {
-    return { permitted: false, reason: 'no subject address was supplied', decidingEventId: null }
+    return {
+      permitted: false,
+      reason: 'no subject address was supplied',
+      decidingEventId: null,
+      ledgerWasRead: true,
+    }
   }
 
   try {
@@ -85,7 +99,12 @@ export async function resolveSend(
       admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
     )
     if (!tenant?.id) {
-      return { permitted: false, reason: `unknown tenant ${tenantSlug}`, decidingEventId: null }
+      return {
+        permitted: false,
+        reason: `unknown tenant ${tenantSlug}`,
+        decidingEventId: null,
+        ledgerWasRead: true,
+      }
     }
 
     /*
@@ -171,17 +190,20 @@ export async function resolveSend(
       occurredAt: row.occurred_at,
     }))
 
-    return decideSend(
-      {
-        tenantSlug,
-        purpose: params.purpose,
-        channel: params.channel,
-        now,
-        maxAgeMonths: policyRow?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK,
-      },
-      events,
-      suppressions,
-    )
+    return {
+      ...decideSend(
+        {
+          tenantSlug,
+          purpose: params.purpose,
+          channel: params.channel,
+          now,
+          maxAgeMonths: policyRow?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK,
+        },
+        events,
+        suppressions,
+      ),
+      ledgerWasRead: true,
+    }
   } catch (error) {
     captureException(error, { where: 'lib/consent/resolver:resolveSend' })
     /*
@@ -191,11 +213,19 @@ export async function resolveSend(
      * fallbacks: an unreadable consent record is not evidence of consent, and
      * the cost of not sending a marketing email is a marketing email. The cost
      * of the other choice is a message to somebody who never agreed to it.
+     *
+     * AND IT SAYS SO, WHICH IS THE PART THAT WAS MISSING. This refusal is not a
+     * fact about the person, and until 21 September 2026 nothing in the verdict
+     * distinguished it from one. Two callers read `permitted: false` as "this
+     * address holds no live consent" and appended a `declined` event, which the
+     * ledger's latest-event rule then treated as a withdrawal the person never
+     * made. `ledgerWasRead: false` is how they tell the difference now.
      */
     return {
       permitted: false,
       reason: 'the consent ledger could not be read, so the message is refused',
       decidingEventId: null,
+      ledgerWasRead: false,
     }
   }
 }

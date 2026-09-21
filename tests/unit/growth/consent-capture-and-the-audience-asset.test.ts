@@ -338,9 +338,17 @@ describe('GA1: the checkout records the answer either way, behind one switch', (
     const shared = readFileSync(join(ROOT, 'src', 'lib', 'consent', 'checkout-answer.ts'), 'utf8')
     expect(shared).toContain("from './digest-city'")
     expect(shared).toContain('resolveDigestCity(admin, params.eventId)')
-    // And the city rides on BOTH writes, the grant and the decline, or a
-    // declined address would be unfindable in the city it was asked in.
-    expect([...shared.matchAll(/citySlug,/g)].length).toBeGreaterThanOrEqual(2)
+    /*
+     * And the city rides on BOTH writes, the grant and the decline, or a
+     * declined address would be unfindable in the city it was asked in.
+     *
+     * THE SPELLING CHANGED ON 21 SEPTEMBER 2026 AND THE RULE DID NOT. This read
+     * `citySlug,`, the shorthand property, until `resolveDigestCity` began
+     * returning a resolution rather than a bare slug, so that a city which could
+     * not be READ stopped being indistinguishable from a person who named none.
+     * Both writes still carry the resolved city and this still counts them.
+     */
+    expect([...shared.matchAll(/citySlug: city\.city,/g)].length).toBeGreaterThanOrEqual(2)
     for (const [name, source] of [['checkout', checkout], ['squad', squad]] as const) {
       expect(source, `${name} does not pass the event the city is resolved from`).toContain('eventId')
     }
