@@ -5,6 +5,7 @@ import { getCity, isCitySlug } from '@/lib/cities/data'
 import { leaveCityWaitlistAction } from '../../actions'
 import { contactAddress } from '@/lib/email/sender'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 
 export const metadata: Metadata = {
   title: 'Stop local alerts | EventLinqs',
@@ -34,14 +35,23 @@ export default async function WaitlistUnsubscribePage({ params }: Props) {
    * link with "This link is not valid" and undid exactly the promise the
    * paragraph above it makes. A genuinely unknown token still resolves to null
    * and still gets that sentence, which is what it was written for.
+   *
+   * AND THE SHAPE IS TESTED FIRST, because the throw above turned a mangled
+   * link into a 500. `unsubscribe_token` is a uuid column, so a value that is
+   * not a uuid is not a query that finds nothing, it is `22P02 invalid input
+   * syntax for type uuid`, which readOrThrow raises. That is a fact about the
+   * token rather than a failed read, it is conclusive, and it costs no database
+   * round trip to establish. See src/lib/consent/token.ts.
    */
-  const data = await readOrThrow('the city waitlist unsubscribe token', () =>
-    admin
-      .from('city_waitlist_signups')
-      .select('city_slug, unsubscribed_at')
-      .eq('unsubscribe_token', token)
-      .maybeSingle(),
-  )
+  const data = isUnsubscribeToken(token)
+    ? await readOrThrow('the city waitlist unsubscribe token', () =>
+        admin
+          .from('city_waitlist_signups')
+          .select('city_slug, unsubscribed_at')
+          .eq('unsubscribe_token', token)
+          .maybeSingle(),
+      )
+    : null
 
   const valid = !!data
   const left = !!data?.unsubscribed_at

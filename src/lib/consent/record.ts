@@ -10,6 +10,7 @@ import {
 } from './wording'
 import { captureException } from '@/lib/observability/sentry'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { isUnsubscribeToken } from './token'
 import { LOCAL_DIGEST_PURPOSE, scopesForPurpose } from './purposes'
 import { recordConsentEvent, recordSuppressionEvent } from './ledger'
 import { resolveSend } from './resolver'
@@ -281,7 +282,7 @@ export async function withdrawDigestByAnyToken(
    */
   captureSurface?: string,
 ): Promise<DigestUnsubscribeResult | null> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+  if (!isUnsubscribeToken(token)) {
     return null
   }
 
@@ -407,7 +408,7 @@ export async function findDigestUnsubscribeTarget(
   admin: Admin,
   token: string,
 ): Promise<{ source: DigestUnsubscribeSource; alreadyWithdrawn: boolean } | null> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+  if (!isUnsubscribeToken(token)) {
     return null
   }
 
@@ -500,7 +501,7 @@ export async function withdrawOrganiserConsentByToken(
   token: string,
   at: string,
 ): Promise<WithdrawResult | null> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+  if (!isUnsubscribeToken(token)) {
     return null
   }
   const row = await readOrThrow('organiser consent token', () =>

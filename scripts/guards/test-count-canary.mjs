@@ -3694,10 +3694,43 @@ const ROOT = join(HERE, '..', '..')
  *
  * MEASURED: 549 files, 7466 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, GREEN, 118s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane A, UNSUB500): 549/7466 -> 554/7510.
+ *
+ * A MANGLED UNSUBSCRIBE LINK ANSWERED 500. `readOrThrow`, landed at 10:21 the
+ * same morning so a dropped socket could never tell somebody their statutory
+ * unsubscribe link was spent, throws on ANY error, and `unsubscribe_token` is a
+ * uuid column, so `/unsubscribe/zzzzzzzzzzzz` is `22P02 invalid input syntax
+ * for type uuid` rather than a row that is not there. The push gate's route
+ * sweep refused 348 commits on it.
+ *
+ * THE ARITHMETIC, AND THE PART OF IT THAT IS NOT MINE. The baseline above was
+ * measured on lane B's branch (14fce3dc), which had not yet met lane C's work.
+ * Merging both brought four test files lane B never counted, so the jump is
+ * larger than this item and says so rather than absorbing it:
+ *
+ *     549 + 4 (lane C, arriving in the merge) + 1 (this item) = 554 files
+ *    7466 + 33 (those same four files) + 11 (this item)       = 7510 tests
+ *
+ *   the four, enumerated with `git ls-tree` against 14fce3dc rather than
+ *   guessed, and re-run together to confirm the 33:
+ *     tests/unit/auth/safe-redirect.test.ts
+ *     tests/unit/cron/notify-just-announced.test.ts
+ *     tests/unit/notifications/audience.test.ts
+ *     tests/unit/supabase/read-every-row-in.test.ts
+ *
+ *   the one: tests/unit/consent/a-mangled-link-is-not-an-outage.test.ts, whose
+ *   point is that a token that CANNOT be a token is answered without asking the
+ *   database at all, asserted with an admin client that throws on contact. Two
+ *   of the eleven were driven RED before the fix.
+ *
+ * MEASURED: 554 files, 7510 tests, 0 failed, 0 skipped
+ * (`node scripts/guards/test-count-canary.mjs`, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 549
-const MIN_TESTS = 7466
+const MIN_FILES = 554
+const MIN_TESTS = 7510
 
 
 /**

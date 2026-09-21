@@ -1,6 +1,7 @@
 import 'server-only'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { ReadFailed, readOrThrow } from '@/lib/supabase/read-or-throw'
+import { isUnsubscribeToken } from './token'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -292,7 +293,7 @@ export async function recordSuppressionEvent(
  * token, so nobody is ever sent a link that does nothing.
  */
 export async function findSubjectByToken(admin: Admin, token: string): Promise<string | null> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+  if (!isUnsubscribeToken(token)) {
     return null
   }
   /*

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { unsubscribeFromOrganiserAction } from '@/app/actions/consent'
 import { contactAddress } from '@/lib/email/sender'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 
 export const metadata: Metadata = {
   title: 'Unsubscribe | EventLinqs',
@@ -34,14 +35,23 @@ export default async function UnsubscribePage({ params }: Props) {
    *
    * A token that genuinely matches no row still resolves to null and still gets
    * the sentence above, which is the case that sentence was written for.
+   *
+   * AND THE SHAPE IS TESTED FIRST, because the throw above turned a mangled
+   * link into a 500. `unsubscribe_token` is a uuid column, so a value that is
+   * not a uuid is not a query that finds nothing, it is `22P02 invalid input
+   * syntax for type uuid`, which readOrThrow raises. That is a fact about the
+   * token rather than a failed read, it is conclusive, and it costs no database
+   * round trip to establish. See src/lib/consent/token.ts.
    */
-  const data = await readOrThrow('the organiser unsubscribe token', () =>
-    admin
-      .from('organiser_marketing_consents')
-      .select('status, organisation:organisations(name)')
-      .eq('unsubscribe_token', token)
-      .maybeSingle(),
-  )
+  const data = isUnsubscribeToken(token)
+    ? await readOrThrow('the organiser unsubscribe token', () =>
+        admin
+          .from('organiser_marketing_consents')
+          .select('status, organisation:organisations(name)')
+          .eq('unsubscribe_token', token)
+          .maybeSingle(),
+      )
+    : null
 
   const organisationName =
     (data as { organisation?: { name?: string } | null } | null)?.organisation?.name ?? 'this organiser'
