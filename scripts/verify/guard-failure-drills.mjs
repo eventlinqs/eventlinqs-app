@@ -5089,6 +5089,20 @@ const DRILLS = [
    * is a drill that stops running on the good days.
    */
   {
+    /*
+     * REWRITTEN BY LANE C, 21 September 2026, BECAUSE IT HAD GONE STALE AND A
+     * STALE DRILL VERIFIES NOTHING WHILE LOOKING LIKE A DRILL.
+     *
+     * It used to mutate the ONE live entry in RAISED_WITH_ANOTHER_LANE. Lane C
+     * bounded that read the same afternoon it was raised, the guard refused the
+     * now-stale entry by name, the entry went, and this drill was left anchored
+     * to text that no longer existed. The harness reported it as STALE rather
+     * than as a pass, which is the only reason it was visible at all.
+     *
+     * It no longer depends on the list having anything in it: it ADDS an entry
+     * naming a read that is bounded, which is precisely the condition the clause
+     * refuses, so it keeps working whether the list is empty or full.
+     */
     name: 'a read raised with another lane is bounded and the exemption is kept anyway',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'scripts/guards/no-silent-row-ceiling.mjs',
@@ -5151,6 +5165,107 @@ const DRILLS = [
     find: "  'src/lib/stats',",
     replace: "  'src/lib/platform-stats',",
     expect: 'a scope that scans nothing reports PASS',
+  },
+
+  /*
+   * no-silent-row-ceiling, THE NOTIFICATION SCOPE (lane C, 21 September 2026),
+   * four drills.
+   *
+   * This is the PRODUCT half of the guard's scope rather than a fourth marketing
+   * surface, so it gets its own drills: the marketing drills above all live under
+   * src/lib/{matching,audience}, and a scope entry with no drill of its own is a
+   * scope entry nobody has watched fail.
+   *
+   * What the scope caught when it was added: the just-announced alert cron read
+   * its follower lists unbounded, so past the ceiling a follower was never a
+   * recipient on any run; and the daily sales digest read an organiser's
+   * confirmed orders unbounded, so an organiser who sold past the ceiling in one
+   * platform day was emailed a smaller amount than they took.
+   */
+  {
+    name: 'the just-announced follower list goes back to being read unbounded',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/audience.ts',
+    find: "        .order('organisation_id')\n        .order('user_id')\n        .range(from, to),",
+    replace: '',
+    expect: 'reads saved_organisers with no bound',
+  },
+  {
+    name: 'the follower page loses the unique column that settles its boundary',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/audience.ts',
+    find: "        .order('followable_id')\n        .order('user_id')\n        .range(from, to),",
+    replace: '        .range(from, to),',
+    expect: 'pages follows with .range() and no .order()',
+  },
+  {
+    name: "the daily sales digest goes back to reading an organiser's orders unbounded",
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/organiser-sales-digest.ts',
+    find: "          .order('order_number')\n          .range(from, to),",
+    replace: '',
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: "the dispatcher's device read loses its stated limit",
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/dispatch.ts',
+    find: '    .limit(MAX_PUSH_ENDPOINTS_PER_USER)',
+    replace: '',
+    expect: 'reads push_subscriptions with no bound',
+  },
+
+  /*
+   * one-name-for-where-you-were-going (lane C, 21 September 2026), four drills,
+   * one per clause.
+   *
+   * The guard exists because twelve pages emitted /login?redirect= and NINE
+   * emitted /login?next=, against a sign-in form that read only 'redirect'. All
+   * nine of those deep links silently dropped the person on the dashboard. The
+   * guard then found a TENTH the hand count had missed, ?returnUrl= on the
+   * waitlist modal, which is drill three below and is the real regression.
+   *
+   * Clause four is the security half: the two copies of the is-this-path-safe
+   * check had drifted, and the copy on the sign-in page accepted a backslash.
+   */
+  {
+    name: 'the sign-in form goes back to reading the deep link itself',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/components/auth/login-form.tsx',
+    find: 'router.push(readRedirectParam(searchParams))',
+    replace: "router.push(searchParams.get('redirect') ?? '/dashboard')",
+    // The NEGATIVE clause is the one with teeth and so it is the one named
+    // here: the form still calls readRedirectParam in its magic-link branch, so
+    // a drill that only removed one of the two calls would have been satisfied
+    // by a guard that could not tell two occurrences from one. That is exactly
+    // what happened on the first run of this drill.
+    expect: "reads the 'redirect' parameter directly",
+  },
+  {
+    name: 'the resolver stops reading the spelling nine pages emit',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/lib/auth/safe-redirect.ts',
+    find: "params.get('redirect') ?? params.get('next')",
+    replace: "params.get('redirect')",
+    expect: "does not read the 'next' parameter",
+  },
+  {
+    name: 'the waitlist modal goes back to a third spelling nothing reads',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: 'router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)',
+    replace: 'router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)',
+    expect: '/login?returnUrl=<a path>',
+  },
+  {
+    name: 'an auth surface grows a second copy of the is-this-path-safe check',
+    guard: `${GUARDS}/one-name-for-where-you-were-going.mjs`,
+    file: 'src/app/api/auth/magic-link/route.ts',
+    find: 'export const safeNextPath = safeRedirectPath',
+    replace:
+      'export const safeNextPath = (c) =>\n' +
+      "  c && c.startsWith('/') && !c.startsWith('//') ? c : '/dashboard'",
+    expect: 'tests for a protocol-relative path itself',
   },
 
   /*

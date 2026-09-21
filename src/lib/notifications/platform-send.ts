@@ -6,6 +6,8 @@ import { alertDestination } from '@/lib/env/destinations'
 import { getSiteUrl } from '@/lib/site-url'
 import { captureException } from '@/lib/observability/sentry'
 import { isPushConfigured, sendWebPush, type StoredSubscription } from './web-push'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readEveryRowIn } from '@/lib/supabase/read-every-row-in'
 import {
   PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS,
   bodyFor,
@@ -111,20 +113,30 @@ async function individualSentToday(
 
 /** Every push subscription belonging to an enabled admin. The second channel. */
 export async function adminPushSubscriptions(admin: Admin): Promise<StoredSubscription[]> {
-  const { data: admins, error: adminError } = await admin
-    .from('admin_users')
-    .select('id')
-    .is('disabled_at', null)
-  if (adminError) throw new Error(`admin_users read failed: ${adminError.message}`)
-  const ids = (admins ?? []).map((a) => (a as { id: string }).id)
+  /*
+   * BOTH READS ARE PAGED, and the second is chunked as well because the id list
+   * travels in the URL. Neither list is large today, which is exactly why an
+   * unbounded read here would have been safe for a long time and then quietly
+   * stopped telling the owner things on the day it was not.
+   */
+  const admins = await readEveryRow<{ id: string }>('enabled admin users', (from, to) =>
+    admin.from('admin_users').select('id').is('disabled_at', null).order('id').range(from, to),
+  )
+  const ids = admins.map((a) => a.id)
   if (ids.length === 0) return []
 
-  const { data, error } = await admin
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .in('user_id', ids)
-  if (error) throw new Error(`push_subscriptions read failed: ${error.message}`)
-  return (data ?? []) as unknown as StoredSubscription[]
+  const rows = await readEveryRowIn<StoredSubscription>(
+    'push subscriptions for enabled admins',
+    ids,
+    (chunk, from, to) =>
+      admin
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .in('user_id', chunk)
+        .order('endpoint')
+        .range(from, to),
+  )
+  return rows
 }
 
 /**

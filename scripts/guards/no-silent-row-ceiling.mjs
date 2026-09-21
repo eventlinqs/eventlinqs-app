@@ -73,10 +73,17 @@ import { declareWork } from '../lib/work-report.mjs'
 const ROOT = resolve(import.meta.dirname, '..', '..')
 
 /**
- * The path a marketing message travels, from the consent that permits it to the
- * proof page that defends the fee it earned. Every one of these directories is
- * checked to exist: a scope that has been renamed away would otherwise scan
- * nothing and report PASS, which is how a scanner lies.
+ * EVERY PATH ON WHICH A TRUNCATED READ DECIDES WHO HEARS SOMETHING.
+ *
+ * Two paths, and they are here together because the defect does not care which
+ * one it is on: the path a MARKETING message travels, from the consent that
+ * permits it to the proof page that defends the fee it earned; and the path a
+ * PRODUCT message travels, from the follow that asked for it to the device it
+ * arrives on.
+ *
+ * Every one of these directories is checked to exist: a scope that has been
+ * renamed away would otherwise scan nothing and report PASS, which is how a
+ * scanner lies.
  */
 const SCOPE = [
   'src/lib/consent',
@@ -111,6 +118,31 @@ const SCOPE = [
    * file's own comment had recorded the cap and deferred it.
    */
   'src/lib/stats',
+  /*
+   * ADDED 21 September 2026, and this is the PRODUCT half of the scope rather
+   * than a fourth marketing surface. The just-announced alert cron is the demand
+   * engine's biggest lever, and it read `saved_organisers` and `follows` with no
+   * bound at all: past the ceiling, a follower was never a recipient of anything,
+   * on any run, for ever. It was not a near miss and nothing was watching it -
+   * the route had no test of its own, so the reads that chose the audience were
+   * the least examined code on the path.
+   *
+   * Two more of the same shape were found in the same sweep, both of them
+   * carrying the platform's own money or the owner's own alerts rather than a
+   * follower's: the DAILY SALES DIGEST read an organiser's confirmed orders
+   * unbounded, so an organiser who sold past the ceiling in one platform day was
+   * emailed a smaller number and a smaller amount than they took, with nothing on
+   * the page to say it was a sample; and `adminPushSubscriptions` read every
+   * enabled admin and their devices unbounded, which is the channel the owner
+   * hears the platform on.
+   *
+   * The directories rather than the files, because the class is the directory's:
+   * every one of these modules exists to decide who is told something.
+   */
+  'src/lib/notifications',
+  'src/app/api/cron/notify-just-announced',
+  'src/app/api/push',
+  'src/app/api/notifications',
 ]
 
 /**
@@ -287,7 +319,7 @@ if (failures.length) {
 
 declareWork('no-silent-row-ceiling', {
   did: {
-    'directory in the marketing and consent path': SCOPE.length,
+    'directory in the marketing, consent and notification paths': SCOPE.length,
     'file swept': files.length,
     'database read judged': readsJudged,
     'read bounded by single or maybeSingle': bounded['single-row'],

@@ -4,6 +4,7 @@ import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { dispatchMagicLink } from '@/lib/auth/dispatch-auth-link'
 import { safeAuthOrigin } from '@/lib/auth/safe-origin'
 import { authMessage, MAGIC_LINK_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
+import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,19 +39,17 @@ async function withFloor<T>(startedAt: number, value: T): Promise<T> {
 }
 
 /**
- * Only same-origin absolute paths survive. Rejects protocol-relative `//host`
- * and any absolute URL, which is the open-redirect shape that matters most
- * here: this value is baked into a link we email, so a permissive check would
- * turn our own mail into a phishing carrier.
+ * Only same-origin absolute paths survive, which matters most here because this
+ * value is baked into a link we EMAIL: a permissive check would turn our own
+ * mail into a phishing carrier.
+ *
+ * The rules moved to src/lib/auth/safe-redirect.ts on 21 September 2026, and this
+ * is now the same function the sign-in form uses. It was the STRICTER of the two
+ * copies and the difference was a backslash: the login form's inline check
+ * accepted `/\evil.com`, which resolves to `https://evil.com/`. Re-exported under
+ * its old name so nothing that imports it has to move.
  */
-export function safeNextPath(candidate: string | undefined): string {
-  if (!candidate) return '/dashboard'
-  if (!candidate.startsWith('/')) return '/dashboard'
-  if (candidate.startsWith('//')) return '/dashboard'
-  if (candidate.includes('://')) return '/dashboard'
-  if (candidate.includes('\\')) return '/dashboard'
-  return candidate
-}
+export const safeNextPath = safeRedirectPath
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now()

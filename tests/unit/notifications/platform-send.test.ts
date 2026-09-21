@@ -62,6 +62,7 @@ const {
 type Filter = [string, string, unknown]
 
 type Op = {
+  window?: { from: number; to: number }
   table: string
   verb: 'select' | 'update' | 'delete'
   head: boolean
@@ -125,8 +126,19 @@ function builder(table: string, verb: Op['verb'], payload?: Record<string, unkno
     limit() {
       return api
     },
+    /*
+     * `range` SLICES, because the reads it serves are paged through
+     * readEveryRow and that loop only terminates on an EMPTY page. A fake that
+     * accepted range and returned everything every time would spin for ever
+     * rather than fail, which is the worst way for a fake to be wrong.
+     */
+    range(from: number, to: number) {
+      op.window = { from, to }
+      return api
+    },
     then(resolve: (v: unknown) => void) {
-      const rows = (db[table] ?? []).filter(r => matches(r, op.filters))
+      let rows = (db[table] ?? []).filter(r => matches(r, op.filters))
+      if (op.window) rows = rows.slice(op.window.from, op.window.to + 1)
       if (op.verb === 'update') {
         for (const r of rows) Object.assign(r, op.payload)
         resolve({ data: null, error: null })

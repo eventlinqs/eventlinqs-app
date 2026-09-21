@@ -65,6 +65,7 @@ function matches(row: Record<string, unknown>, filters: Filter[]): boolean {
 
 function builder(table: string, verb: 'select' | 'insert' | 'delete', payload?: Record<string, unknown>) {
   const filters: Filter[] = []
+  let cap: number | null = null
   const rows = () => (db[table] ?? []).filter((r) => matches(r, filters))
   const api = {
     select() {
@@ -76,6 +77,16 @@ function builder(table: string, verb: 'select' | 'insert' | 'delete', payload?: 
     },
     in(column: string, value: unknown[]) {
       filters.push(['in', column, value])
+      return api
+    },
+    /*
+     * The device read states its own bound (MAX_PUSH_ENDPOINTS_PER_USER) rather
+     * than paging, because it runs once per recipient on the alert cron's
+     * hottest path. The fake honours it so the cap is exercised rather than
+     * merely accepted.
+     */
+    limit(n: number) {
+      cap = n
       return api
     },
     async maybeSingle() {
@@ -93,7 +104,8 @@ function builder(table: string, verb: 'select' | 'insert' | 'delete', payload?: 
         resolve({ data: null, error: null })
         return
       }
-      resolve({ data: rows().map((r) => ({ ...r })), error: null })
+      const found = rows().map((r) => ({ ...r }))
+      resolve({ data: cap === null ? found : found.slice(0, cap), error: null })
     },
   }
   return api

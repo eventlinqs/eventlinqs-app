@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { readRedirectParam } from '@/lib/auth/safe-redirect'
 import { loadSupabaseClient, warmSupabaseClient } from '@/lib/supabase/client-lazy'
 import { assertLoginRateLimit } from '@/app/actions/auth-rate-limit'
 import { GoogleButton } from './google-button'
@@ -91,18 +92,15 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
-    // Honour the ?redirect= deep-link set by middleware/guards when an
-    // unauthenticated user was bounced. Only allow safe internal paths
-    // (no protocol-relative // or absolute URLs) to prevent open redirect.
-    const redirectParam = searchParams.get('redirect')
-    const safeRedirect =
-      redirectParam &&
-      redirectParam.startsWith('/') &&
-      !redirectParam.startsWith('//') &&
-      !redirectParam.includes('://')
-        ? redirectParam
-        : '/dashboard'
-    router.push(safeRedirect)
+    /*
+     * Honour the deep link set by whichever guard bounced this person, under
+     * the ONE safety check. Both `?redirect=` and `?next=` are read: nine pages
+     * in this tree emit `next` and, until 21 September 2026, nothing read it, so
+     * every one of those deep links landed the person on the dashboard instead
+     * of where they were going. The inline check this replaces also accepted a
+     * BACKSLASH, and `/\evil.com` resolves to `https://evil.com/`.
+     */
+    router.push(readRedirectParam(searchParams))
     router.refresh()
   }
 
@@ -125,13 +123,15 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
-    const redirectParam = searchParams.get('redirect')
+    // The same destination, resolved the same way, so a magic link cannot send
+    // somebody somewhere a password sign-in would have refused.
+    const nextPath = readRedirectParam(searchParams)
 
     try {
       const res = await fetch('/api/auth/magic-link', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, next: redirectParam ?? undefined }),
+        body: JSON.stringify({ email, next: nextPath }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
         ok?: boolean
