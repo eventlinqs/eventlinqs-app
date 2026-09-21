@@ -74,7 +74,7 @@ type ReadableParams = { get: (name: string) => string | null }
  * A REFUSED VALUE IS A REFUSAL, NOT A REASON TO TRY THE OTHER SPELLING. If
  * `redirect` is present and unsafe, the answer is the default destination, never
  * whatever `next` happened to say: otherwise an attacker who can set both gets
- * to use the poisoned one to unlock the clean one's code path.
+ * to use the poisoned one to reach the clean one's code path.
  */
 export function readRedirectParam(params: ReadableParams): string {
   const raw = params.get('redirect') ?? params.get('next')
