@@ -6,6 +6,8 @@ import { escapeHtml } from '@/lib/email/escape'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { captureException } from '@/lib/observability/sentry'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readEveryRowIn } from '@/lib/supabase/read-every-row-in'
 import { resolveOrganisationOwnerEmail } from './organiser-recipient'
 
 /**
@@ -117,25 +119,59 @@ export async function runOrganiserSalesDigest(
     failed: 0,
   }
 
-  const { data: orgs, error } = await admin
-    .from('organisations')
-    .select('id, name')
-    .eq('sales_notification_mode', 'daily')
-  if (error) throw new Error(`digest: organisations read failed: ${error.message}`)
+  /*
+   * EVERY ORGANISER ON DAILY MODE, NOT THE FIRST THOUSAND OF THEM. `daily` is
+   * the DEFAULT sales notification mode, so this set is not a subset of the
+   * platform's organisers, it is very nearly all of them. An unbounded read here
+   * meant that past the row ceiling an organiser's digest simply never ran, and
+   * the summary this function returns would have said so in no way at all.
+   */
+  const orgs = await readEveryRow<{ id: string; name: string }>(
+    'organisations on the daily sales digest',
+    (from, to) =>
+      admin
+        .from('organisations')
+        .select('id, name')
+        .eq('sales_notification_mode', 'daily')
+        .order('id')
+        .range(from, to),
+  )
 
-  for (const org of orgs ?? []) {
+  for (const org of orgs) {
     summary.organisationsConsidered += 1
     try {
-      const { data: orders } = await admin
-        .from('orders')
-        .select('order_number, total_cents, currency, event_id, confirmed_at')
-        .eq('organisation_id', org.id as string)
-        .eq('status', 'confirmed')
-        .gte('confirmed_at', startIso)
-        .lt('confirmed_at', endIso)
-        .order('confirmed_at', { ascending: true })
+      /*
+       * THE ORDERS ARE THE MONEY, AND A SAMPLE OF THEM IS A WRONG TOTAL.
+       *
+       * This read was unbounded, so an organiser who sold more than the row
+       * ceiling in one platform day was emailed a digest built from the first
+       * thousand orders: a smaller number of sales and a smaller amount of money
+       * than they actually took, with nothing on the page to say it was partial.
+       *
+       * `confirmed_at` is not unique, so it cannot settle a page boundary on its
+       * own; `order_number` is, and the two together are the stable total order
+       * paging requires.
+       */
+      const orders = await readEveryRow<{
+        order_number: string
+        total_cents: number
+        currency: string
+        event_id: string
+        confirmed_at: string
+      }>(`confirmed orders for ${org.id as string}`, (from, to) =>
+        admin
+          .from('orders')
+          .select('order_number, total_cents, currency, event_id, confirmed_at')
+          .eq('organisation_id', org.id as string)
+          .eq('status', 'confirmed')
+          .gte('confirmed_at', startIso)
+          .lt('confirmed_at', endIso)
+          .order('confirmed_at', { ascending: true })
+          .order('order_number')
+          .range(from, to),
+      )
 
-      if (!orders || orders.length === 0) {
+      if (orders.length === 0) {
         summary.skippedNoSales += 1
         continue
       }
@@ -209,8 +245,15 @@ async function loadEventTitles(
 ): Promise<Map<string, string>> {
   const unique = [...new Set(eventIds.filter(Boolean))]
   if (unique.length === 0) return new Map()
-  const { data } = await admin.from('events').select('id, title').in('id', unique)
-  return new Map((data ?? []).map((e) => [e.id as string, (e.title as string) ?? 'your event']))
+  // Chunked because the id list travels in the URL, paged because the answer
+  // travels in one response. A busy organiser's day spans plenty of events.
+  const rows = await readEveryRowIn<{ id: string; title: string | null }>(
+    'event titles for the daily sales digest',
+    unique,
+    (chunk, from, to) =>
+      admin.from('events').select('id, title').in('id', chunk).order('id').range(from, to),
+  )
+  return new Map(rows.map((e) => [e.id, e.title ?? 'your event']))
 }
 
 /**

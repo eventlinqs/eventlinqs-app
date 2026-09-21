@@ -4,6 +4,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { dispatchAlert } from '@/lib/notifications/dispatch'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import {
+  findUnreachableUsers,
+  readAlreadyAlerted,
+  readConfirmedLineups,
+  readFollowersByArtist,
+  readFollowersByOrganisation,
+  readOrganisationNames,
+} from '@/lib/notifications/audience'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,9 +25,25 @@ const MAX_DISPATCHES = 1000
  *
  * For every recently published, public, upcoming event, alert the people who
  * follow that organiser (saved_organisers) once. The notifications table's
- * unique (user, event, type) makes this idempotent, so this can run on a simple
+ * unique (user, event, type) makes this idempotent, so this runs on a simple
  * schedule without tracking a high-water mark and never double-sends. Push is
  * the primary channel; email is the fallback. Protected by CRON_SECRET.
+ *
+ * THE HEADER USED TO STOP AT THAT SENTENCE, and the claim it made was true of
+ * the dedupe and false of the run. Until 21 September 2026 this route read its
+ * follower lists with no bound, so a Supabase project's row ceiling silently
+ * removed every follower past the first thousand; and it counted its dispatch
+ * budget against every recipient it LOOKED at, so once the work in the fourteen
+ * day window passed the cap, each run spent the whole budget re-confirming
+ * alerts it had already delivered and stopped at the same place. Not a delay: a
+ * livelock, which a newly announced event made worse rather than better, because
+ * events are read newest first and a new one lands at the front.
+ *
+ * Both are closed in src/lib/notifications/audience.ts, which is where the
+ * measurements and the citations live. The invariant this route now holds, and
+ * which tests/unit/cron/notify-just-announced.test.ts pins from eight
+ * directions, is: EVERY FOLLOWER IS EVENTUALLY ALERTED, however many there are,
+ * however the cap falls, and whoever is sitting in front of them.
  */
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
@@ -50,60 +74,28 @@ export async function GET(request: NextRequest) {
     }
 
     const orgIds = [...new Set(events.map((e) => e.organisation_id).filter(Boolean))] as string[]
+    const eventIds = events.map((e) => e.id)
 
-    // Organiser display names for the alert copy.
-    const { data: orgs } = await admin
-      .from('organisations')
-      .select('id, name')
-      .in('id', orgIds)
-    const orgName = new Map((orgs ?? []).map((o) => [o.id, o.name]))
+    // Every read below is PAGED and its `.in()` list is CHUNKED. See
+    // src/lib/notifications/audience.ts for the three defects that cost.
+    const orgName = await readOrganisationNames(admin, orgIds)
+    const followersByOrg = await readFollowersByOrganisation(admin, orgIds)
 
-    // Followers per organisation (a follow is a row in saved_organisers).
-    const { data: follows } = await admin
-      .from('saved_organisers')
-      .select('organisation_id, user_id')
-      .in('organisation_id', orgIds)
-    const followersByOrg = new Map<string, string[]>()
-    for (const f of follows ?? []) {
-      if (!f.organisation_id || !f.user_id) continue
-      const list = followersByOrg.get(f.organisation_id) ?? []
-      list.push(f.user_id)
-      followersByOrg.set(f.organisation_id, list)
-    }
-
-    // Broadcast Stage 3 (SPEC 4.5): when the stage is on, an artist's
-    // followers hear about every show they are confirmed on. Same dedupe
-    // key (user, event, just_announced), so an organiser-follower who also
-    // follows the artist is never alerted twice for one event.
+    // Broadcast Stage 3 (SPEC 4.5): when the stage is on, an artist's followers
+    // hear about every show they are confirmed on. Same dedupe key (user, event,
+    // just_announced), so an organiser-follower who also follows the artist is
+    // never alerted twice for one event.
     const artistFollowersByEvent = new Map<string, string[]>()
     if (await isFeatureEnabled('broadcast_artists')) {
-      const eventIds = events.map((e) => e.id)
-      const { data: lineups } = await admin
-        .from('event_artists')
-        .select('event_id, artist_id')
-        .eq('status', 'confirmed')
-        .in('event_id', eventIds)
-      const lineupRows = (lineups ?? []) as { event_id: string; artist_id: string }[]
-      const artistIds = [...new Set(lineupRows.map((l) => l.artist_id))]
-      if (artistIds.length > 0) {
-        const { data: artistFollows } = await admin
-          .from('follows')
-          .select('followable_id, user_id')
-          .eq('followable_type', 'artist')
-          .in('followable_id', artistIds)
-        const followersByArtist = new Map<string, string[]>()
-        for (const f of (artistFollows ?? []) as { followable_id: string; user_id: string }[]) {
-          const list = followersByArtist.get(f.followable_id) ?? []
-          list.push(f.user_id)
-          followersByArtist.set(f.followable_id, list)
-        }
-        for (const row of lineupRows) {
-          const followers = followersByArtist.get(row.artist_id) ?? []
-          if (followers.length === 0) continue
-          const list = artistFollowersByEvent.get(row.event_id) ?? []
-          list.push(...followers)
-          artistFollowersByEvent.set(row.event_id, list)
-        }
+      const lineups = await readConfirmedLineups(admin, eventIds)
+      const artistIds = [...new Set(lineups.map((l) => l.artist_id))]
+      const followersByArtist = await readFollowersByArtist(admin, artistIds)
+      for (const row of lineups) {
+        const followers = followersByArtist.get(row.artist_id) ?? []
+        if (followers.length === 0) continue
+        const list = artistFollowersByEvent.get(row.event_id) ?? []
+        list.push(...followers)
+        artistFollowersByEvent.set(row.event_id, list)
       }
     }
 
@@ -113,11 +105,39 @@ export async function GET(request: NextRequest) {
     // that deferred four hundred alerts and a run that had nothing to do must
     // never read the same from the outside.
     let deferred = 0
+    // Recipients this run did not have to consider at all: already alerted, or
+    // with every channel switched off. Reported because the difference between
+    // "nothing to do" and "everything already done" is the whole subject here.
+    let settled = 0
+
     outer: for (const event of events) {
       if (!event.organisation_id) continue
       const followers = followersByOrg.get(event.organisation_id) ?? []
       const artistFollowers = artistFollowersByEvent.get(event.id) ?? []
-      const recipients = [...new Set([...followers, ...artistFollowers])]
+      const audience = [...new Set([...followers, ...artistFollowers])]
+      if (audience.length === 0) continue
+
+      /*
+       * THE BUDGET IS SPENT ON WORK, NOT ON LOOKING AT WORK ALREADY DONE.
+       *
+       * `dispatches` used to be incremented before dispatchAlert, so an alert
+       * skipped as a duplicate cost exactly what a send cost. Events are read
+       * newest first, so every run walked the same sequence, spent the whole cap
+       * re-confirming delivered alerts and broke at the same index: the tail was
+       * never reached on any run, and a newly announced event pushed it further
+       * away rather than nearer.
+       *
+       * Both classes of settled recipient are removed BEFORE the budget is
+       * touched. Neither set is written anywhere and both are recomputed each
+       * run, so a user who switches a channel back on is reachable again on the
+       * next one.
+       */
+      const alerted = await readAlreadyAlerted(admin, event.id, 'just_announced')
+      const outstanding = audience.filter((userId) => !alerted.has(userId))
+      const unreachable = await findUnreachableUsers(admin, outstanding)
+      const recipients = outstanding.filter((userId) => !unreachable.has(userId))
+      settled += audience.length - recipients.length
+
       for (const userId of recipients) {
         if (dispatches >= MAX_DISPATCHES) break outer
         dispatches += 1
@@ -148,6 +168,7 @@ export async function GET(request: NextRequest) {
       dispatches,
       sent,
       deferred,
+      settled,
       timestamp: now.toISOString(),
     })
   } catch (err) {

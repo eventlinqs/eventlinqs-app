@@ -5080,11 +5080,33 @@ const DRILLS = [
     expect: 'share_link_events with no bound',
   },
   {
+    /*
+     * REWRITTEN BY LANE C, 21 September 2026, BECAUSE IT HAD GONE STALE AND A
+     * STALE DRILL VERIFIES NOTHING WHILE LOOKING LIKE A DRILL.
+     *
+     * It used to mutate the ONE live entry in RAISED_WITH_ANOTHER_LANE. Lane C
+     * bounded that read the same afternoon it was raised, the guard refused the
+     * now-stale entry by name, the entry went, and this drill was left anchored
+     * to text that no longer existed. The harness reported it as STALE rather
+     * than as a pass, which is the only reason it was visible at all.
+     *
+     * It no longer depends on the list having anything in it: it ADDS an entry
+     * naming a read that is bounded, which is precisely the condition the clause
+     * refuses, so it keeps working whether the list is empty or full.
+     */
     name: 'a read raised with another lane is bounded and the exemption is kept anyway',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'scripts/guards/no-silent-row-ceiling.mjs',
-    find: "    table: 'push_subscriptions',",
-    replace: "    table: 'push_subscriptions_bounded_now',",
+    find: 'const RAISED_WITH_ANOTHER_LANE = [',
+    replace:
+      "const RAISED_WITH_ANOTHER_LANE = [\n" +
+      "  {\n" +
+      "    file: 'src/lib/notifications/audience.ts',\n" +
+      "    table: 'saved_organisers',\n" +
+      "    lane: 'a drill',\n" +
+      "    since: '2026-09-21',\n" +
+      "    why: 'a debt that was paid before this entry was written',\n" +
+      "  },",
     expect: 'no such read was found',
   },
 
@@ -5142,6 +5164,54 @@ const DRILLS = [
     find: "  'src/lib/stats',",
     replace: "  'src/lib/platform-stats',",
     expect: 'a scope that scans nothing reports PASS',
+  },
+
+  /*
+   * no-silent-row-ceiling, THE NOTIFICATION SCOPE (lane C, 21 September 2026),
+   * four drills.
+   *
+   * This is the PRODUCT half of the guard's scope rather than a fourth marketing
+   * surface, so it gets its own drills: the marketing drills above all live under
+   * src/lib/{matching,audience}, and a scope entry with no drill of its own is a
+   * scope entry nobody has watched fail.
+   *
+   * What the scope caught when it was added: the just-announced alert cron read
+   * its follower lists unbounded, so past the ceiling a follower was never a
+   * recipient on any run; and the daily sales digest read an organiser's
+   * confirmed orders unbounded, so an organiser who sold past the ceiling in one
+   * platform day was emailed a smaller amount than they took.
+   */
+  {
+    name: 'the just-announced follower list goes back to being read unbounded',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/audience.ts',
+    find: "        .order('organisation_id')\n        .order('user_id')\n        .range(from, to),",
+    replace: '',
+    expect: 'reads saved_organisers with no bound',
+  },
+  {
+    name: 'the follower page loses the unique column that settles its boundary',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/audience.ts',
+    find: "        .order('followable_id')\n        .order('user_id')\n        .range(from, to),",
+    replace: '        .range(from, to),',
+    expect: 'pages follows with .range() and no .order()',
+  },
+  {
+    name: "the daily sales digest goes back to reading an organiser's orders unbounded",
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/organiser-sales-digest.ts',
+    find: "          .order('order_number')\n          .range(from, to),",
+    replace: '',
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: "the dispatcher's device read loses its stated limit",
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/notifications/dispatch.ts',
+    find: '    .limit(MAX_PUSH_ENDPOINTS_PER_USER)',
+    replace: '',
+    expect: 'reads push_subscriptions with no bound',
   },
 
   /*

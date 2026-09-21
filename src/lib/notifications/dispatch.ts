@@ -16,6 +16,16 @@ import { contactAddress } from '@/lib/email/sender'
 
 type Admin = SupabaseClient<Database>
 
+/**
+ * How many live push registrations one person's alert is fanned out to.
+ *
+ * A generous ceiling on a real number: a person has phones, tablets and
+ * browsers, not a fleet. It exists so the read is bounded in the source rather
+ * than by the project's invisible row ceiling, which stops at a thousand and
+ * says nothing about it.
+ */
+const MAX_PUSH_ENDPOINTS_PER_USER = 20
+
 export type DispatchInput = {
   admin: Admin
   userId: string
@@ -90,10 +100,24 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
    */
   if (isQuietNow(prefs, now)) return { status: 'skipped', reason: 'quiet_hours' }
 
+  /*
+   * ONE PERSON'S DEVICES, WITH THE BOUND WRITTEN DOWN RATHER THAN ASSUMED.
+   *
+   * A stated `.limit()` rather than a page, and the difference is deliberate:
+   * this runs once per recipient on the hottest path in the alert cron, so a
+   * pager's extra round trip would be paid for every follower of every event to
+   * discover, every time, that somebody owns three phones. The bound is the one
+   * the guard asks for, visible in the source and arguable by a reviewer.
+   *
+   * Every endpoint is attempted and one success is enough (`anyOk` below), so
+   * the cost of the cap being hit is that a person with more than this many live
+   * registrations gets the alert on that many devices instead of all of them.
+   */
   const { data: subs } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .eq('user_id', userId)
+    .limit(MAX_PUSH_ENDPOINTS_PER_USER)
 
   const hasPush = isPushConfigured() && !!subs && subs.length > 0
   const channel = chooseChannel(prefs, hasPush)

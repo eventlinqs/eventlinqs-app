@@ -142,6 +142,11 @@ const MUST_BE_LITERAL = ['organisations']
  */
 export const BASELINE = [
   {
+    drive: 'every-follower-is-alerted-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'the just-announced cron it drives selects .eq(visibility, public), so an unlisted fixture is not merely a weaker test, it is invisible to the route under test and the drive would pass by doing nothing',
+  },
+  {
     drive: 'community-threshold-drive.mjs',
     write: "events.visibility='public'",
     why: 'it proves the discovery threshold, which counts publicly visible events; an unlisted fixture is invisible to the thing under test',
