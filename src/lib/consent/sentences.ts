@@ -175,3 +175,42 @@ export function sourceDisclosureSentences(rows: HistoryConsentRow[]): string[] {
     'Every record of what you were shown, and when, is kept below.',
   ]
 }
+
+/**
+ * WHAT THE PLATFORM WILL DO NEXT, said to the person whose consent it is.
+ *
+ * THE DEFECT THIS CLOSES, 21 September 2026. This sentence used to be built
+ * inline on /marketing/preferences/[token] from `permitted` alone:
+ *
+ *     Right now, EventLinqs sends you no marketing: the consent ledger could
+ *     not be read, so the message is refused.
+ *
+ * The resolver fails CLOSED, so an unreadable ledger produces `permitted:
+ * false`, and the page then ASSERTED THEIR STATE on a read that had failed. The
+ * leading clause is a statement about them, the trailing clause is the internal
+ * reason pasted after a colon, and the page exists so that a person can see and
+ * change their own marketing state. Somebody reading "EventLinqs sends you no
+ * marketing" concludes they are already unsubscribed and stops pressing, which
+ * is the same harm this platform already ruled on when a live unsubscribe link
+ * was called spent because a socket dropped (commit 162c6d28).
+ *
+ * So there are THREE sentences, not two, and the third one does not pretend to
+ * know. Nothing on the page changes in that state, which it says, because the
+ * useful thing to tell somebody in the middle of an outage is that their record
+ * is untouched and to come back.
+ */
+export function marketingStateSentence(verdict: {
+  permitted: boolean
+  reason: string
+  ledgerWasRead: boolean
+} | null): string {
+  if (!verdict) {
+    return 'Right now, EventLinqs sends you no marketing: no consent is recorded for this address.'
+  }
+  if (!verdict.ledgerWasRead) {
+    return 'We could not check your marketing record just now. Nothing on it has changed, and nothing has been sent. Please open this link again in a few minutes.'
+  }
+  return verdict.permitted
+    ? 'Right now, EventLinqs can send you marketing about events near you.'
+    : `Right now, EventLinqs sends you no marketing: ${verdict.reason}.`
+}

@@ -9830,6 +9830,35 @@ const DRILLS = [
     replace: "      const { data: city } = await adminClient.from('cities').select('slug').eq('slug', cookieCity).maybeSingle()",
     expect: 'only 1 of them go through `readOrThrow`',
   },
+  {
+    /*
+     * CLAUSE 8, THE SENTENCE. The page that exists so somebody can see and change
+     * their own marketing state printed "Right now, EventLinqs sends you no
+     * marketing" on a read that had failed. This restores the inline spelling.
+     */
+    name: 'the preferences page builds its own marketing-state sentence again',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/app/marketing/preferences/[token]/page.tsx',
+    find: '              {marketingStateSentence(verdict)}',
+    replace: [
+      '              {verdict?.permitted',
+      "                ? 'Right now, EventLinqs can send you marketing about events near you.'",
+      '                : `Right now, EventLinqs sends you no marketing: ${verdict?.reason}.`}',
+    ].join('\n'),
+    expect: 'spells the marketing-state sentence inline again',
+  },
+  {
+    /*
+     * AND THE BRANCH INSIDE IT. Keeping the sentence in one place is worth
+     * nothing if the one place stops telling an outage apart from an answer.
+     */
+    name: 'the one sentence stops telling an outage from an answer',
+    guard: `${GUARDS}/an-outage-is-not-a-withdrawal.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: '  if (!verdict.ledgerWasRead) {',
+    replace: '  if (false) {',
+    expect: 'without branching on `ledgerWasRead`',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
