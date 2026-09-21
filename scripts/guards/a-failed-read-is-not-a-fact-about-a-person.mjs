@@ -238,6 +238,30 @@ export const SCOPE = [
   ],
 
   /*
+   * THE NOTIFICATION ROUTER, added 21 September 2026, and it is the largest
+   * single directory this list has taken in one go: 15 reads across 5 files,
+   * every one of them discarding its error.
+   *
+   * `dispatch.ts` is the one function every lifecycle alert goes through, and
+   * the three decisions it takes were all available to a dropped socket. Driven
+   * on TEST on one person with one table failing on cue: a blinked preference
+   * read fell through to DEFAULT_PREFS, which is push and email BOTH ON, so the
+   * platform composed an email to somebody who had switched every channel off,
+   * and sent another inside the quiet hours the account screen promises in its
+   * own words to keep.
+   *
+   * The organiser notifiers are the same shape wearing the most expensive face
+   * on the platform: a chargeback notice carries Stripe's own evidence deadline,
+   * and a blinked read answered `not_found` about the order it was opened on.
+   */
+  [
+    'src/lib/notifications',
+    'an alert sent to somebody who switched every channel off, or inside the quiet hours the ' +
+      'account screen promises to keep, or a second time; and an organiser never told about a ' +
+      'chargeback, because the read that decided it answered "no such order"',
+  ],
+
+  /*
    * TWO FILES RATHER THAN THEIR DIRECTORY, and the third element says why on
    * each. src/app/actions holds 26 files and, on the day these two were fixed,
    * 46 further reads of this shape in files belonging to the other two lanes:

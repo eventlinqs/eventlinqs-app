@@ -6,6 +6,7 @@ import { escapeHtml } from '@/lib/email/escape'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { captureException } from '@/lib/observability/sentry'
 import { resolveOrganisationOwnerEmail } from './organiser-recipient'
+import { readOrThrow, ReadFailed } from '@/lib/supabase/read-or-throw'
 
 /**
  * THE FOUR MONEY MESSAGES AN ORGANISER WAS NEVER SENT. Close-out MONEY FIX,
@@ -53,7 +54,83 @@ type AdminClient = SupabaseClient
 
 export type OrganiserNotifyResult =
   | { status: 'sent' }
-  | { status: 'skipped'; reason: 'no_recipient' | 'not_found' | 'send_failed' }
+  | { status: 'skipped'; reason: 'no_recipient' | 'not_found' | 'send_failed' | 'read_failed' }
+
+/**
+ * WHY `read_failed` IS ITS OWN REASON AND NOT ONE OF THE OTHER THREE.
+ *
+ * Every read that decides whether the organiser hears about their money used to
+ * discard its error, so a dropped socket answered `not_found` about an order
+ * that exists, or `no_recipient` about an organiser with an address on file.
+ * Both are facts about somebody, written into the warning line an operator reads
+ * in the Stripe webhook, and both were false.
+ *
+ * These are the most expensive messages on the platform to lose. A chargeback
+ * notice carries Stripe's own evidence deadline; a refund that failed at the
+ * bank is, in this module's own words, the single most common cause of the next
+ * chargeback. "We could not ask" has to be distinguishable from "there is
+ * nothing to tell", because only the first one is worth anybody's time.
+ *
+ * The reads RETRY first, through `readOrThrow`, so this reason means a
+ * transient fault survived three further attempts.
+ */
+function whyItStopped(err: unknown): 'read_failed' | 'send_failed' {
+  return err instanceof ReadFailed ? 'read_failed' : 'send_failed'
+}
+
+/**
+ * The order a money message is about, and the title to name its event by.
+ *
+ * ONE HELPER RATHER THAN THE THREE IDENTICAL COPIES THAT WERE HERE, because the
+ * fault was in all three and a fourth was one paste away. This module's own
+ * history is the argument: the fourth money message on the list was found only
+ * by writing a guard clause, after three had been built the same way.
+ *
+ * THE TWO READS ANSWER DIFFERENT KINDS OF QUESTION, and they are treated
+ * differently on purpose rather than uniformly for tidiness.
+ *
+ *   THE ORDER DECIDES whether the organiser hears about their money at all, so
+ *   it goes through `readOrThrow`: it retries, it answers null only when the
+ *   database itself says there is no such row, and it raises otherwise. A
+ *   blinked read used to return `not_found` about an order that exists.
+ *
+ *   THE TITLE IS COSMETIC. It chooses between the event's name and the words
+ *   "your event", and nothing about whether the message is sent rests on it. So
+ *   a failure there degrades to the fallback and is RECORDED, rather than
+ *   holding back a chargeback notice with a deadline on it over one word. The
+ *   error is bound and answered here, which is the other half of the rule.
+ */
+async function orderAndTitle(
+  admin: AdminClient,
+  orderId: string,
+): Promise<{ orderNumber: string | null; organisationId: string; eventTitle: string } | null> {
+  const order = await readOrThrow('organiser-money-order', () =>
+    admin
+      .from('orders')
+      .select('order_number, event_id, organisation_id')
+      .eq('id', orderId)
+      .maybeSingle(),
+  )
+  if (!order?.organisation_id) return null
+
+  const { data: event, error: titleError } = await admin
+    .from('events')
+    .select('title')
+    .eq('id', order.event_id as string)
+    .maybeSingle()
+  if (titleError) {
+    captureException(titleError, {
+      where: 'notifications/organiser-money-notify:title',
+      order_id: orderId,
+    })
+  }
+
+  return {
+    orderNumber: (order.order_number as string | null) ?? null,
+    organisationId: order.organisation_id as string,
+    eventTitle: (event?.title as string | null) ?? 'your event',
+  }
+}
 
 /** The shared shell. Australian English, no dashes of any kind, no exclamation marks. */
 function wrap(title: string, lines: string[], cta?: { label: string; url: string }): { html: string; text: string } {
@@ -93,30 +170,20 @@ export async function notifyOrganiserOfCompletedRefund(
   input: { orderId: string; amountCents: number; currency: string; ticketCount: number },
 ): Promise<OrganiserNotifyResult> {
   try {
-    const { data: order } = await admin
-      .from('orders')
-      .select('order_number, event_id, organisation_id')
-      .eq('id', input.orderId)
-      .maybeSingle()
-    if (!order?.organisation_id) return { status: 'skipped', reason: 'not_found' }
+    const subject = await orderAndTitle(admin, input.orderId)
+    if (!subject) return { status: 'skipped', reason: 'not_found' }
 
-    const { data: event } = await admin
-      .from('events')
-      .select('title')
-      .eq('id', order.event_id as string)
-      .maybeSingle()
-
-    const recipient = await resolveOrganisationOwnerEmail(admin, order.organisation_id as string)
+    const recipient = await resolveOrganisationOwnerEmail(admin, subject.organisationId)
     if (!recipient) return { status: 'skipped', reason: 'no_recipient' }
 
-    const eventTitle = (event?.title as string | null) ?? 'your event'
+    const eventTitle = subject.eventTitle
     const amount = formatMoneyDisplay(input.amountCents, input.currency)
     const tickets = `${input.ticketCount} ticket${input.ticketCount === 1 ? '' : 's'}`
 
     const { html, text } = wrap(
       'A refund has settled on your event',
       [
-        `${amount} has been refunded to a buyer on ${eventTitle}, order ${order.order_number ?? ''}.`,
+        `${amount} has been refunded to a buyer on ${eventTitle}, order ${subject.orderNumber ?? ''}.`,
         `${tickets} on that order no longer scan at the door, so the places are back in your inventory.`,
         'The amount comes off what is owed to you for this event, and your payout figures already reflect it.',
         'There is nothing for you to do. This message exists so the first you hear of it is not a gap in your payout.',
@@ -126,7 +193,7 @@ export async function notifyOrganiserOfCompletedRefund(
 
     await sendEmail({
       to: recipient.email,
-      subject: `Refund settled: ${eventTitle} (order ${order.order_number ?? ''})`,
+      subject: `Refund settled: ${eventTitle} (order ${subject.orderNumber ?? ''})`,
       html,
       text,
       messageType: 'refund_completed',
@@ -135,7 +202,7 @@ export async function notifyOrganiserOfCompletedRefund(
     return { status: 'sent' }
   } catch (err) {
     captureException(err, { where: 'notifications/organiser-money-notify:refund', order_id: input.orderId })
-    return { status: 'skipped', reason: 'send_failed' }
+    return { status: 'skipped', reason: whyItStopped(err) }
   }
 }
 
@@ -169,29 +236,19 @@ export async function notifyOrganiserOfDispute(
   },
 ): Promise<OrganiserNotifyResult> {
   try {
-    const { data: order } = await admin
-      .from('orders')
-      .select('order_number, event_id, organisation_id')
-      .eq('id', input.orderId)
-      .maybeSingle()
-    if (!order?.organisation_id) return { status: 'skipped', reason: 'not_found' }
+    const subject = await orderAndTitle(admin, input.orderId)
+    if (!subject) return { status: 'skipped', reason: 'not_found' }
 
-    const { data: event } = await admin
-      .from('events')
-      .select('title')
-      .eq('id', order.event_id as string)
-      .maybeSingle()
-
-    const recipient = await resolveOrganisationOwnerEmail(admin, order.organisation_id as string)
+    const recipient = await resolveOrganisationOwnerEmail(admin, subject.organisationId)
     if (!recipient) return { status: 'skipped', reason: 'no_recipient' }
 
-    const eventTitle = (event?.title as string | null) ?? 'your event'
+    const eventTitle = subject.eventTitle
     const amount = formatMoneyDisplay(input.disputeAmountCents, input.currency)
 
     const { html, text } = wrap(
       'Urgent: a chargeback has been opened on your event',
       [
-        `A buyer's bank has disputed ${amount} on ${eventTitle}, order ${order.order_number ?? ''}.`,
+        `A buyer's bank has disputed ${amount} on ${eventTitle}, order ${subject.orderNumber ?? ''}.`,
         `That ${amount} is held and will not be paid out to you while the dispute is open. If the dispute is lost the amount stays withheld; if it is won it is released back to you.`,
         deadlineSentence(input.evidenceDueBy),
         'Reply to this email with anything that shows the ticket was sold and the buyer was told what they were buying: the order, the scan record, and any messages between you. We submit the response.',
@@ -201,7 +258,7 @@ export async function notifyOrganiserOfDispute(
 
     await sendEmail({
       to: recipient.email,
-      subject: `Urgent: chargeback opened on ${eventTitle} (order ${order.order_number ?? ''})`,
+      subject: `Urgent: chargeback opened on ${eventTitle} (order ${subject.orderNumber ?? ''})`,
       html,
       text,
       messageType: 'organiser_dispute_opened',
@@ -210,7 +267,7 @@ export async function notifyOrganiserOfDispute(
     return { status: 'sent' }
   } catch (err) {
     captureException(err, { where: 'notifications/organiser-money-notify:dispute', order_id: input.orderId })
-    return { status: 'skipped', reason: 'send_failed' }
+    return { status: 'skipped', reason: whyItStopped(err) }
   }
 }
 
@@ -309,7 +366,7 @@ export async function notifyOrganiserOfPaymentSetupProblem(
       where: 'notifications/organiser-money-notify:payment-setup',
       organisation_id: input.organisationId,
     })
-    return { status: 'skipped', reason: 'send_failed' }
+    return { status: 'skipped', reason: whyItStopped(err) }
   }
 }
 
@@ -358,29 +415,19 @@ export async function notifyOrganiserRefundDidNotComplete(
   input: { orderId: string; amountCents: number; currency: string },
 ): Promise<OrganiserNotifyResult> {
   try {
-    const { data: order } = await admin
-      .from('orders')
-      .select('order_number, event_id, organisation_id')
-      .eq('id', input.orderId)
-      .maybeSingle()
-    if (!order?.organisation_id) return { status: 'skipped', reason: 'not_found' }
+    const subject = await orderAndTitle(admin, input.orderId)
+    if (!subject) return { status: 'skipped', reason: 'not_found' }
 
-    const { data: event } = await admin
-      .from('events')
-      .select('title')
-      .eq('id', order.event_id as string)
-      .maybeSingle()
-
-    const recipient = await resolveOrganisationOwnerEmail(admin, order.organisation_id as string)
+    const recipient = await resolveOrganisationOwnerEmail(admin, subject.organisationId)
     if (!recipient) return { status: 'skipped', reason: 'no_recipient' }
 
-    const eventTitle = (event?.title as string | null) ?? 'your event'
+    const eventTitle = subject.eventTitle
     const amount = formatMoneyDisplay(input.amountCents, input.currency)
 
     const { html, text } = wrap(
       'A refund on your event did not reach the buyer',
       [
-        `A refund of ${amount} on ${eventTitle}, order ${order.order_number ?? ''}, failed at the buyer's bank. The money came back to us and the buyer does not have it.`,
+        `A refund of ${amount} on ${eventTitle}, order ${subject.orderNumber ?? ''}, failed at the buyer's bank. The money came back to us and the buyer does not have it.`,
         'This one is ours to fix and we are arranging another way to pay them. You do not need to refund them yourself, and you should not: it would pay them twice.',
         'You are being told because they may contact you first, and because an unanswered refund is the most common reason a buyer goes to their bank instead, which costs you the amount and a fee on top.',
         'If they do contact you, tell them the refund failed at their bank and is being re-sent, and send us anything they tell you about the card or account.',
@@ -390,7 +437,7 @@ export async function notifyOrganiserRefundDidNotComplete(
 
     await sendEmail({
       to: recipient.email,
-      subject: `A refund on ${eventTitle} did not reach the buyer (order ${order.order_number ?? ''})`,
+      subject: `A refund on ${eventTitle} did not reach the buyer (order ${subject.orderNumber ?? ''})`,
       html,
       text,
       messageType: 'refund_did_not_complete',
@@ -402,6 +449,6 @@ export async function notifyOrganiserRefundDidNotComplete(
       where: 'notifications/organiser-money-notify:refund-did-not-complete',
       order_id: input.orderId,
     })
-    return { status: 'skipped', reason: 'send_failed' }
+    return { status: 'skipped', reason: whyItStopped(err) }
   }
 }

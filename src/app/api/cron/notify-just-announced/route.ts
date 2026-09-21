@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { dispatchAlert } from '@/lib/notifications/dispatch'
+import { ReadFailed } from '@/lib/supabase/read-or-throw'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import {
   findUnreachableUsers,
@@ -109,6 +110,18 @@ export async function GET(request: NextRequest) {
     // with every channel switched off. Reported because the difference between
     // "nothing to do" and "everything already done" is the whole subject here.
     let settled = 0
+    /*
+     * RECIPIENTS DEFERRED BY A READ THAT COULD NOT BE MADE, counted separately
+     * from the quiet-hours deferral and reported for the same reason: a run that
+     * held four hundred alerts because the database was blinking and a run that
+     * held them because it was midnight must never read the same from outside.
+     *
+     * The catch is per RECIPIENT and it is the whole mechanism. `dispatchAlert`
+     * raises rather than deciding when a read fails (see its header), and
+     * without this the first flaky read would abandon every recipient and every
+     * event left in the pass. One person is deferred; the run finishes.
+     */
+    let blinked = 0
 
     outer: for (const event of events) {
       if (!event.organisation_id) continue
@@ -141,23 +154,35 @@ export async function GET(request: NextRequest) {
       for (const userId of recipients) {
         if (dispatches >= MAX_DISPATCHES) break outer
         dispatches += 1
-        const result = await dispatchAlert({
-          admin,
-          userId,
-          eventId: event.id,
-          type: 'just_announced',
-          // ONE clock for the whole pass, so a long run cannot judge the first
-          // follower against 9:59 pm and the last against 10:01 pm.
-          now,
-          ctx: {
-            eventTitle: event.title,
-            eventCity: event.venue_city,
-            organiserName: orgName.get(event.organisation_id) ?? null,
-            url: `${baseUrl}/events/${event.slug}`,
-          },
-        })
-        if (result.status === 'sent') sent += 1
-        if (result.status === 'skipped' && result.reason === 'quiet_hours') deferred += 1
+        try {
+          const result = await dispatchAlert({
+            admin,
+            userId,
+            eventId: event.id,
+            type: 'just_announced',
+            // ONE clock for the whole pass, so a long run cannot judge the first
+            // follower against 9:59 pm and the last against 10:01 pm.
+            now,
+            ctx: {
+              eventTitle: event.title,
+              eventCity: event.venue_city,
+              organiserName: orgName.get(event.organisation_id) ?? null,
+              url: `${baseUrl}/events/${event.slug}`,
+            },
+          })
+          if (result.status === 'sent') sent += 1
+          if (result.status === 'skipped' && result.reason === 'quiet_hours') deferred += 1
+        } catch (err) {
+          // Only a read that could not be made is a deferral. Anything else is a
+          // fault in this route and still takes the run down, loudly, which is
+          // what a 500 on a cron is for.
+          if (!(err instanceof ReadFailed)) throw err
+          blinked += 1
+          console.warn('[cron/notify-just-announced] deferred a recipient; a read could not be made', {
+            event_id: event.id,
+            user_id: userId,
+          })
+        }
       }
     }
 
@@ -168,6 +193,7 @@ export async function GET(request: NextRequest) {
       dispatches,
       sent,
       deferred,
+      blinked,
       settled,
       timestamp: now.toISOString(),
     })
