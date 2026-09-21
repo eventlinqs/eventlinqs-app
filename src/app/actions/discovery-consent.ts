@@ -11,6 +11,7 @@ import { recordTicketPageAnswer } from '@/lib/consent/capture-carrier'
 import { resolveCapturePlacement } from '@/lib/consent/capture-placement'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { captureException } from '@/lib/observability/sentry'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 const Schema = z.object({
   reservation_id: z.string().uuid(),
@@ -70,11 +71,20 @@ export async function carryDiscoveryConsent(input: {
       return { carried: false, reason: 'the question is not asked on the ticket page' }
     }
 
-    const { data: reservation } = await admin
-      .from('reservations')
-      .select('id, status, user_id, session_id, created_at')
-      .eq('id', parsed.data.reservation_id)
-      .maybeSingle()
+    /*
+     * THROUGH THE DOOR, because the sentence below is a statement about somebody
+     * else's reservation. Discarding this error made a dropped socket answer "no
+     * such reservation" about a reservation that exists, and dropped the answer
+     * the person had just given. The catch at the foot of this function says "the
+     * answer could not be carried", which is true, and the question is put again.
+     */
+    const reservation = await readOrThrow('the reservation behind a carried consent', () =>
+      admin
+        .from('reservations')
+        .select('id, status, user_id, session_id, created_at')
+        .eq('id', parsed.data.reservation_id)
+        .maybeSingle(),
+    )
     if (!reservation) return { carried: false, reason: 'no such reservation' }
     if (reservation.status !== 'active') {
       return { carried: false, reason: 'that reservation is no longer active' }

@@ -78,7 +78,7 @@ describe('a truncated consent read decides the opposite way', () => {
     const grants = [grant('e1', '2026-01-04T00:00:00.000Z')]
     const withSuppression = decideSend(question, grants, [suppression('s1', '2026-06-01T00:00:00.000Z')])
     expect(withSuppression.permitted).toBe(false)
-    expect(withSuppression.reason).toMatch(/all_marketing suppression/)
+    expect(withSuppression.reason).toMatch(/an unsubscribe from all EventLinqs marketing/)
 
     const withoutSuppression = decideSend(question, grants, [])
     expect(withoutSuppression.permitted).toBe(true)

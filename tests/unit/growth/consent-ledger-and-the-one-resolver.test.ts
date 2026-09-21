@@ -222,7 +222,10 @@ describe('GA1 v3: scope is what a consent covers, and it only runs one way', () 
       month: 'short',
       year: 'numeric',
     }).format(new Date('2026-09-06T00:00:00.000Z'))
-    expect(verdict.reason).toContain(`facilitation_by_others suppression recorded on ${australian}`)
+    expect(verdict.reason).toContain(`recorded on ${australian}`)
+    // The scope is said in words a person reads, never as the column value.
+    expect(verdict.reason).toContain('on behalf of other organisations')
+    expect(verdict.reason).not.toContain('facilitation_by_others')
     expect(verdict.reason).not.toContain('2026-09-06')
   })
 

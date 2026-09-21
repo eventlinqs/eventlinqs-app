@@ -130,3 +130,23 @@ export function scopesForPurpose(purpose: string): {
 export function normaliseSubjectEmail(email: string): string {
   return email.trim().toLowerCase()
 }
+
+/**
+ * THE AGEING FALLBACK, IN ONE PLACE, AND REACHED ONLY WHEN THE POLICY ROW IS
+ * GENUINELY ABSENT.
+ *
+ * The live value is `public.consent_policy.max_age_months`, which is
+ * configuration so it can move without a deploy. This number is what both
+ * readers use when that single row does not exist at all, and it matches
+ * `coalesce(v_max_age, 24)` in `public.consent_permits`
+ * (supabase/migrations/20260913000040_consent_ledger.sql) deliberately: the
+ * SQL resolver and the TypeScript one are compared across a matrix of subjects
+ * by the GA1 drive, and a missing configuration row is the one case where both
+ * have to guess, so both have to guess the same.
+ *
+ * IT IS NOT A FALLBACK FOR A FAILED READ. It was reached by one on
+ * 21 September 2026, in the resolver and on the audience screen, and a blink
+ * therefore widened a tightened window back to twenty four months in silence.
+ * Both reads go through a door now and a failure raises instead.
+ */
+export const CONSENT_MAX_AGE_MONTHS_FALLBACK = 24

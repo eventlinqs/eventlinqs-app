@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
@@ -213,29 +214,53 @@ async function fetchOrganiserEvents(orgId: string) {
     'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
 
-  const [upcomingResult, pastResult] = await Promise.all([
-    supabase
-      .from('events')
-      .select(baseSelect)
-      .eq('organisation_id', orgId)
-      .match(PUBLIC_EVENT_MATCH)
-      .or(listingWindowOrPredicate(new Date(nowIso)))
-      .order('start_date', { ascending: true })
-      .limit(24),
-    supabase
-      .from('events')
-      .select(baseSelect)
-      .eq('organisation_id', orgId)
-      .eq('visibility', 'public')
-      .lt('start_date', nowIso)
-      .in('status', ['published', 'completed'])
-      .order('start_date', { ascending: false })
-      .limit(12),
+  /*
+   * A FAILED READ IS NOT AN ORGANISER WITH NO EVENTS.
+   *
+   * Both of these discarded their error and coalesced to `[]`, and this page
+   * then renders, on the organiser's OWN public profile, under their own name:
+   *
+   *     "No upcoming events from <name> just yet."
+   *
+   * That is a statement about a business, published to the audience they send
+   * here, produced by a dropped socket. The page answers 200 while it says it,
+   * so nothing on the platform notices and the organiser only hears about it
+   * from somebody who looked.
+   *
+   * This file is the one the door's own header names as the FIRST TWO
+   * occurrences of this defect family, in the destructure spelling, fixed on
+   * 12 September 2026. These two are the same defect in the spelling that
+   * matcher cannot see. Through the door: a throw answers 500, which tells the
+   * reader to try again and is true, rather than telling them a real catalogue
+   * is empty.
+   */
+  const [upcoming, past] = await Promise.all([
+    readOrThrow('the organiser upcoming events', () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .eq('organisation_id', orgId)
+        .match(PUBLIC_EVENT_MATCH)
+        .or(listingWindowOrPredicate(new Date(nowIso)))
+        .order('start_date', { ascending: true })
+        .limit(24),
+    ),
+    readOrThrow('the organiser past events', () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .eq('organisation_id', orgId)
+        .eq('visibility', 'public')
+        .lt('start_date', nowIso)
+        .in('status', ['published', 'completed'])
+        .order('start_date', { ascending: false })
+        .limit(12),
+    ),
   ])
 
   return {
-    upcoming: ((upcomingResult.data ?? []) as unknown as OrganiserEventRow[]),
-    past: ((pastResult.data ?? []) as unknown as OrganiserEventRow[]),
+    upcoming: ((upcoming ?? []) as unknown as OrganiserEventRow[]),
+    past: ((past ?? []) as unknown as OrganiserEventRow[]),
   }
 }
 

@@ -49,6 +49,29 @@ export async function readMatchConfig(admin: Admin): Promise<MatchConfig> {
     )
   }
 
+  /*
+   * THE OTHER TWO READS ARE JUDGED THE SAME WAY AS THE ONE ABOVE, and until
+   * 21 September 2026 they were not.
+   *
+   * `configResult.error` is checked six lines up and the rule was then not
+   * repeated on the two reads below it, which is the shape a rule kept by habit
+   * always fails in. Both were written `result.data ?? []`, so a failed read
+   * arrived as an EMPTY weight set, and the refusal `assertWeightsAreUsable`
+   * then raises says the weights do not sum to one. They do sum to one. The
+   * read failed, and the sentence sent the reader to the configuration table
+   * to fix a row that was never wrong.
+   */
+  if (weightResult.error) {
+    throw new MatchConfigError(
+      `marketing_match_weights could not be read (${weightResult.error.message}), so there is no method to run.`,
+    )
+  }
+  if (bandResult.error) {
+    throw new MatchConfigError(
+      `marketing_match_postcode_bands could not be read (${bandResult.error.message}), so there is no method to run.`,
+    )
+  }
+
   const weights: MatchWeight[] = (weightResult.data ?? []).map(row => ({
     component: row.component,
     weight: Number(row.weight),

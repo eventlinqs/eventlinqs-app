@@ -1,5 +1,6 @@
 import 'server-only'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatMoney } from '@/lib/money/format'
 import { formatPlatformDate } from '@/lib/dates/event-time'
@@ -71,12 +72,25 @@ export async function readAttributionSummary(): Promise<AttributionSummary> {
     admin.from('marketing_attribution').select('order_id', { count: 'exact', head: true }).eq('billable', true),
     admin.from('marketing_attribution_reversal').select('id', { count: 'exact', head: true }),
   ])
+  /*
+   * FIVE COUNTS THROUGH THE COUNT DOOR, AND `?? 0` IS WHY IT EXISTS.
+   *
+   * Every one of these was `counts[n].count ?? 0` until 21 September 2026. A
+   * failed count arrives as `count: null` with an `error` nobody read, so an
+   * outage rendered this summary as "0 orders, 0 attributions, 0 attributed,
+   * 0 billable, 0 reversed" - a platform that has never credited a sale to
+   * anything, stated as fact on the screen the credit is argued from.
+   *
+   * `countOrRaise` is the same door src/lib/supabase/count-or-raise.ts was
+   * written for on the founder's demand-signal screen, for the identical
+   * coalesce. A figure that gave up says so.
+   */
   return {
-    orders: counts[0].count ?? 0,
-    attributions: counts[1].count ?? 0,
-    attributed: counts[2].count ?? 0,
-    billable: counts[3].count ?? 0,
-    reversed: counts[4].count ?? 0,
+    orders: countOrRaise('orders', counts[0]),
+    attributions: countOrRaise('stored attributions', counts[1]),
+    attributed: countOrRaise('attributed orders', counts[2]),
+    billable: countOrRaise('billable attributions', counts[3]),
+    reversed: countOrRaise('attribution reversals', counts[4]),
     modelName: config.modelName,
     modelVersion: config.modelVersion,
     windowDays: config.attributionWindowDays,
@@ -211,23 +225,44 @@ export async function readAttributionForOrder(reference: string): Promise<Attrib
     }
   }
 
+  /*
+   * FOUR NAMES, FOUR DOORS, AND THE REASON IS WHAT THIS SCREEN IS FOR.
+   *
+   * Each of these reads is guarded by an id the decision row already carries,
+   * so a null answer means one thing only: the row it points at is gone. Until
+   * 21 September 2026 all four discarded their error, so a blink produced the
+   * same null, and the screen that exists to explain WHY an order was credited
+   * printed "no campaign", "no channel", "no partner" about a decision that
+   * names all three. A missing name on an explanation is not a smaller version
+   * of the truth, it is a different explanation.
+   *
+   * The absent-id branch keeps answering null, because there it IS the truth.
+   */
   const [campaign, channel, partner, recipient] = await Promise.all([
     row.campaign_id
-      ? admin.from('marketing_campaign').select('name').eq('id', row.campaign_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? readOrThrow('the attributed campaign', () =>
+          admin.from('marketing_campaign').select('name').eq('id', row.campaign_id).maybeSingle(),
+        )
+      : Promise.resolve(null),
     row.channel_code
-      ? admin.from('marketing_channel').select('display_name').eq('code', row.channel_code).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? readOrThrow('the attributed channel', () =>
+          admin.from('marketing_channel').select('display_name').eq('code', row.channel_code).maybeSingle(),
+        )
+      : Promise.resolve(null),
     row.partner_id
-      ? admin.from('marketing_partner').select('name').eq('id', row.partner_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? readOrThrow('the attributed partner', () =>
+          admin.from('marketing_partner').select('name').eq('id', row.partner_id).maybeSingle(),
+        )
+      : Promise.resolve(null),
     row.recipient_id
-      ? admin
-          .from('marketing_recipient')
-          .select('channel_code, audience_members(email)')
-          .eq('id', row.recipient_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? readOrThrow('the attributed recipient', () =>
+          admin
+            .from('marketing_recipient')
+            .select('channel_code, audience_members(email)')
+            .eq('id', row.recipient_id)
+            .maybeSingle(),
+        )
+      : Promise.resolve(null),
   ])
 
   /*
@@ -237,8 +272,8 @@ export async function readAttributionForOrder(reference: string): Promise<Attrib
    * is how a name silently becomes undefined on the one screen that has to be
    * right.
    */
-  const embedded = recipient.data
-    ? (recipient.data as unknown as { audience_members?: { email: string } | { email: string }[] | null }).audience_members
+  const embedded = recipient
+    ? (recipient as unknown as { audience_members?: { email: string } | { email: string }[] | null }).audience_members
     : null
   const recipientMember = Array.isArray(embedded) ? embedded[0] ?? null : embedded ?? null
 
@@ -256,9 +291,9 @@ export async function readAttributionForOrder(reference: string): Promise<Attrib
     modelName: row.model_name,
     modelVersion: row.model_version,
     confidence: Number(row.confidence),
-    campaignName: campaign.data?.name ?? null,
-    channelName: (channel.data as { display_name: string } | null)?.display_name ?? null,
-    partnerName: (partner.data as { name: string } | null)?.name ?? null,
+    campaignName: campaign?.name ?? null,
+    channelName: (channel as { display_name: string } | null)?.display_name ?? null,
+    partnerName: (partner as { name: string } | null)?.name ?? null,
     recipientLabel: recipientMember?.email ?? null,
     forwarded: row.forwarded,
     billable: row.billable,

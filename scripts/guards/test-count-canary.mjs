@@ -3389,6 +3389,121 @@ const ROOT = join(HERE, '..', '..')
  * exactly where they were written.
  * ---------------------------------------------------------------------------
  */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-BLINKDOOR): raised 541/7251 -> 543/7280.
+ * ---------------------------------------------------------------------------
+ *
+ * TWO NEW FILES AND TWENTY-NINE CASES, counted by RUNNING exactly those two
+ * rather than by reading their headers:
+ *   tests/unit/consent/a-blink-does-not-send.test.ts       10  (new file)
+ *   tests/unit/guards/whole-result-bindings.test.ts        19  (new file)
+ *   541 + 2 = 543 files
+ *   7251 + 29 = 7280 tests
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT, which it should on a commit that is not
+ * a merge, and it is written out because a baseline moved without arithmetic is
+ * a number nobody can check.
+ *
+ * FOUR EXISTING TESTS WERE REWRITTEN AND NONE WAS LOOSENED, which is the line
+ * worth reading twice on this entry. Each asserted that a refusal sentence
+ * CONTAINED the database enum `all_marketing` or `facilitation_by_others`, and
+ * this item stopped printing a column value at a member of the public: the
+ * person's own preferences page said "a all_marketing suppression recorded on
+ * 1 July 2026 stops this message", which was driven and photographed at 390,
+ * 768 and 1440 before it was changed. Each of the four now asserts the words
+ * that replaced it AND that the enum is absent, so all four are strictly
+ * tighter than they were:
+ *   tests/unit/consent/facilitated-stop.test.ts
+ *   tests/unit/consent/truncated-ledger-sends.test.ts
+ *   tests/unit/growth/consent-ledger-and-the-one-resolver.test.ts
+ *   tests/unit/consent/a-blink-does-not-send.test.ts (this item's own)
+ *
+ * MEASURED: 543 files, 7280 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 137s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-EMPTYPROFILE): raised 543/7280 -> 544/7294.
+ * ---------------------------------------------------------------------------
+ *
+ * ONE NEW FILE AND FOURTEEN CASES, and nothing else moved:
+ *   tests/unit/growth/a-profile-is-not-emptied-by-a-blink.test.ts  14  (new)
+ *   543 + 1 = 544 files
+ *   7280 + 14 = 7294 tests
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT, which it should on a commit that is not
+ * a merge.
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. Three of the fourteen were driven
+ * RED by restoring the pre-fix shape on both public profiles, and the FIRST
+ * attempt at that red proof is worth the two lines it takes: it wrote
+ * `(upcoming as never as { data: unknown }).data` to keep TypeScript quiet, the
+ * matcher anchors its property test on the NAME, and `.data` after a closing
+ * parenthesis is not `upcoming.data`. Only one test went red and it was the
+ * wrong one. A red proof that does not restore the defect is a false confidence
+ * about the test rather than a fact about the code.
+ *
+ * MEASURED: 544 files, 7294 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 111s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-BLINKLINK): 545 files, 7333 tests.
+ *
+ *   544 + 1 = 545 files
+ *   7294 + 39 = 7333 tests
+ *
+ * ONE NEW FILE, tests/unit/growth/a-blink-is-not-a-stale-link.test.ts, thirty
+ * nine tests, for nine reads across six files on the tracked-link, consent and
+ * campaigner spine that each answered a dropped socket with the fallback written
+ * for a row that is genuinely absent. The one that names the group is the
+ * printed poster: /s/[code] sent a buyer who had just scanned an organiser's QR
+ * code to a generic browse page, so the organiser lost the sale and nothing
+ * reported it.
+ *
+ * SIX OF THE THIRTY NINE WERE DRIVEN RED. Four restorations of the pre-fix read
+ * shape fired eight failures between them (C:/dev/EVIDENCE/LB-BLINKLINK/red-proof.txt),
+ * and two plantings of a try/catch in a CALLER fired the two propagation pins
+ * (red-proof-propagation.txt). That second pair is the one worth having: a
+ * caller that swallows the throw puts the defect back in a file this item never
+ * touched, and every other assertion here would still pass.
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED; the only change to an existing
+ * assertion was to this item own new one, tightened after the no-silent-catch
+ * guard refused the catch block it was asserting.
+ *
+ * MEASURED: 545 files, 7333 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-INVALIDLINK): 546 files, 7352 tests.
+ *
+ *   545 + 1 = 546 files
+ *   7333 + 19 = 7352 tests
+ *
+ * ONE NEW FILE, tests/unit/growth/a-live-link-is-not-an-invalid-one.test.ts,
+ * nineteen tests, for three pages a person reaches by following a link out of
+ * their own inbox. Each looked a token up, discarded that read's error, and
+ * therefore answered a blink with a sentence about the link: "This link is not
+ * valid ... It may have already been used." The first of the three is the Spam
+ * Act unsubscribe facility, which is a statutory remedy: a dropped socket told
+ * the reader theirs had been spent, so they stop pressing it and the mail keeps
+ * arriving.
+ *
+ * FIVE OF THE NINETEEN WERE DRIVEN RED, and the fifth is the one worth keeping.
+ * Three restorations of the pre-fix read shape fired two failures each. One
+ * planting of a try/catch in the page itself fired the propagation pin. The
+ * fifth deleted the not-valid HEADING, and on its first attempt it could not be
+ * planted at all, because the sentence appears TWICE in the file: once in the
+ * JSX and once inside the comment that explains the defect. The assertion was
+ * a toContain, so it was passing on the comment and would not have noticed the
+ * heading being deleted. Both assertions of that shape now match the JSX.
+ *
+ * MEASURED: 546 files, 7352 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 108s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
 
 /*
  * ---------------------------------------------------------------------------
@@ -3444,8 +3559,40 @@ const ROOT = join(HERE, '..', '..')
  * green suite. Both green runs read 7307. Measured, not derived, which is the
  * rule this integer has had to be taught fourteen times.
  */
-const MIN_FILES = 542
-const MIN_TESTS = 7308
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, merging verify/l5-launch-readiness into lane/b-growth to
+ * clear the fifteenth conflict on this integer): 546/7352 and 542/7308 ->
+ * MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FIFTEENTH CONFLICT ON THIS ONE INTEGER, and the first this lane has
+ * settled. The watchdog refused to merge lane/b-growth FIFTEEN times between
+ * 09:01 and 10:36 today, every ten minutes, on this file and no other, and each
+ * refusal aborted a merge that was otherwise clean. Resolved the way all
+ * fourteen before it were: by RUNNING the suite on the merged tree.
+ *
+ * BOTH BLOCKS ABOVE ARE KEPT VERBATIM, lane B's three from today and lane C's
+ * three, because each names tests that exist in this tree and neither number
+ * describes it. This lane measured 546/7352 without lane C's admin-table and
+ * cost-table work; the verify branch declared 542/7308 without this lane's last
+ * six commits. Taking the higher of the two writes a floor BELOW what this tree
+ * runs, which is the mistake this block has now refused fifteen times.
+ *
+ * MEASURED: 547 files, 7413 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 124s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, for the fifteenth time. NEITHER SIDE
+ * REACHES EITHER FIGURE: not the file count and not the test count. 547 is one
+ * file above this lane's 546 and five above the verify branch's 542, and 7413
+ * is sixty-one cases above this lane's 7352 and a hundred and five above the
+ * branch's 7308. Had the higher of the two been taken, as the shape of the
+ * conflict invites, the floor would have been written sixty-one cases below
+ * what this tree actually runs, and the canary would have been blind to any
+ * one of those sixty-one being deleted. Measured, not derived.
+ */
+const MIN_FILES = 547
+const MIN_TESTS = 7413
 
 
 /**

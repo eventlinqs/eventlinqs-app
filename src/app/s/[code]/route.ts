@@ -11,6 +11,7 @@ import {
   visitorHash,
 } from '@/lib/broadcast/share-links'
 import { isPreviewCrawler } from '@/lib/broadcast/crawler'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,20 @@ export const dynamic = 'force-dynamic'
  *
  * With broadcast_share off the redirect still works (a shared link must
  * never break) but no tracking is recorded and no cookie is set.
+ *
+ * A CODE THAT IS STALE AND A READ THAT BLINKED ARE NOT THE SAME ANSWER, and
+ * until 21 September 2026 this route gave them the same one. Both reads below
+ * discarded their error, so a dropped socket left `data` null and fell into the
+ * browse-page fallback written for a deleted event. The buyer had just scanned a
+ * QR code off the organiser's printed poster: they land on a generic browse page,
+ * conclude the poster is wrong, and the organiser loses the sale and is never
+ * told. The artist read did it more quietly still, dropping the artist landing
+ * and the credit for the sale with it.
+ *
+ * Both now go through `readOrThrow` (src/lib/supabase/read-or-throw.ts), which
+ * retries a transient fault and then throws, so a blink is a 500 that says "ask
+ * again" and the poster works on the next scan. The fallback keeps its original
+ * and correct meaning: the row is genuinely not there.
  */
 export async function GET(
   request: NextRequest,
@@ -44,11 +59,9 @@ export async function GET(
   // Resolve the event slug for the destination. A link whose event has been
   // deleted degrades to the browse page rather than a dead end.
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select('slug')
-    .eq('id', link.event_id)
-    .maybeSingle()
+  const event = await readOrThrow('short-link destination event', () =>
+    admin.from('events').select('slug').eq('id', link.event_id).maybeSingle(),
+  )
   if (!event?.slug) return fallback
 
   // Artist-tagged links land on the artist share landing (SPEC 4.3), whose
@@ -56,11 +69,9 @@ export async function GET(
   // "[Artist] live at [Event]". Missing artist degrades to the event page.
   let path = `/events/${event.slug}`
   if (link.artist_id) {
-    const { data: artist } = await admin
-      .from('artists')
-      .select('slug')
-      .eq('id', link.artist_id)
-      .maybeSingle()
+    const artist = await readOrThrow('short-link tagged artist', () =>
+      admin.from('artists').select('slug').eq('id', link.artist_id).maybeSingle(),
+    )
     if (artist?.slug) path = `/events/${event.slug}/with/${artist.slug}`
   }
 

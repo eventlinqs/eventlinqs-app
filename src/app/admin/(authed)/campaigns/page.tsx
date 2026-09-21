@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { listCampaigns, readCampaign } from '@/lib/campaigner/read'
 import { CampaignControls } from './campaign-controls'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -44,12 +45,18 @@ export default async function AdminCampaignsPage({ searchParams }: Props) {
 
   const { campaign: campaignId, channel } = await searchParams
   const admin = createAdminClient()
-  // The channel code table: bounded rather than left to a silent ceiling.
-  const { data: channelRows } = await admin
-    .from('marketing_channel')
-    .select('code, display_name')
-    .order('code')
-    .limit(100)
+  /*
+   * The channel code table: bounded rather than left to a silent ceiling, and
+   * read through the door rather than coalesced. This read decides the channel a
+   * campaign's REACH is counted for: discarding its error left `channels` empty,
+   * `channelCode` the empty string, and this page showing an approver who a send
+   * reaches for a channel that does not exist. An approval is the one control
+   * standing between a draft and somebody's inbox, so a figure it cannot stand
+   * behind is worse here than an error is.
+   */
+  const channelRows = await readOrThrow('the campaign channel table', () =>
+    admin.from('marketing_channel').select('code, display_name').order('code').limit(100),
+  )
   const channels = (channelRows ?? []).map(c => ({ code: c.code, displayName: c.display_name }))
   const channelCode = channel ?? channels[0]?.code ?? ''
 

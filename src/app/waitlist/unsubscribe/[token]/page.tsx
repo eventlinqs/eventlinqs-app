@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCity, isCitySlug } from '@/lib/cities/data'
 import { leaveCityWaitlistAction } from '../../actions'
 import { contactAddress } from '@/lib/email/sender'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 export const metadata: Metadata = {
   title: 'Stop local alerts | EventLinqs',
@@ -26,11 +27,21 @@ type Props = { params: Promise<{ token: string }> }
 export default async function WaitlistUnsubscribePage({ params }: Props) {
   const { token } = await params
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('city_waitlist_signups')
-    .select('city_slug, unsubscribed_at')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  /*
+   * THROUGH THE DOOR. The header above this function says these links are
+   * already sitting in people's inboxes and every one of them has to keep
+   * working. This read discarded its error, so a dropped socket answered a live
+   * link with "This link is not valid" and undid exactly the promise the
+   * paragraph above it makes. A genuinely unknown token still resolves to null
+   * and still gets that sentence, which is what it was written for.
+   */
+  const data = await readOrThrow('the city waitlist unsubscribe token', () =>
+    admin
+      .from('city_waitlist_signups')
+      .select('city_slug, unsubscribed_at')
+      .eq('unsubscribe_token', token)
+      .maybeSingle(),
+  )
 
   const valid = !!data
   const left = !!data?.unsubscribed_at

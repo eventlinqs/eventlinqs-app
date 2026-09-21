@@ -5,6 +5,7 @@ import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import { isValidShareCode } from '@/lib/broadcast/share-codes'
 import { isValidReadableCode } from '@/lib/broadcast/short-links'
 import { recordShareLinkEvent, resolveShareLink, visitorHash } from '@/lib/broadcast/share-links'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
  * Resolve a share code, and record the click.
@@ -70,11 +71,9 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
   if (!link.event_id) return null
 
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select('slug, external_ticket_url')
-    .eq('id', link.event_id)
-    .maybeSingle()
+  const event = await readOrThrow('resolved short link destination event', () =>
+    admin.from('events').select('slug, external_ticket_url').eq('id', link.event_id).maybeSingle(),
+  )
   if (!event?.slug) return null
 
   /*
@@ -91,11 +90,9 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
 
   let artistSlug: string | null = null
   if (link.artist_id) {
-    const { data: artist } = await admin
-      .from('artists')
-      .select('slug')
-      .eq('id', link.artist_id)
-      .maybeSingle()
+    const artist = await readOrThrow('resolved short link tagged artist', () =>
+      admin.from('artists').select('slug').eq('id', link.artist_id).maybeSingle(),
+    )
     artistSlug = artist?.slug ?? null
   }
 

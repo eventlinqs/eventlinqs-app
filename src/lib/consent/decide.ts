@@ -13,7 +13,7 @@
  * and touches nothing else. src/lib/consent/resolver.ts is the half that reads
  * the ledger.
  *
- * ONE IMPORT BEYOND ITS OWN TYPES, AND IT IS THE DATE FORMATTER. The verdict's
+ * TWO IMPORTS BEYOND ITS OWN TYPES, AND BOTH ARE PURE WORDING. The verdict's
  * reason is prose a person reads back as evidence, and it is stored as the
  * detail of every marketing_send_skip row. It used to slice the first ten
  * characters off the ISO instant, which is the UTC calendar date and is a day
@@ -28,6 +28,7 @@
  * rather than assuming they agree.
  */
 import { formatPlatformDate } from '@/lib/dates/event-time'
+import { suppressionScopeWords } from './sentences'
 import {
   type ConsentChannel,
   type ConsentChannelScope,
@@ -191,7 +192,7 @@ export function decideSend(
   if (blocking) {
     return {
       permitted: false,
-      reason: `a ${blocking.scope} suppression recorded on ${formatPlatformDate(blocking.occurredAt)} stops this message`,
+      reason: `${suppressionScopeWords(blocking.scope)}, recorded on ${formatPlatformDate(blocking.occurredAt)}, stops this message`,
       decidingEventId: deciding.id,
     }
   }

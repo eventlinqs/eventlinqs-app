@@ -5079,12 +5079,21 @@ const DRILLS = [
     replace: "            .in('link_id', chunk)\n            .range2(from, to)",
     expect: 'share_link_events with no bound',
   },
+  /*
+   * THIS PLANTS THE ENTRY IT DRILLS, for the reason recorded on the two
+   * border drills of a-failed-read-is-not-a-fact-about-a-person: the entry
+   * it used to edit was the unbounded push_subscriptions read lane B raised
+   * on 21 September, lane C paged it the same afternoon, the guard refused
+   * the stale entry and it went. An empty border list is the GOOD state and
+   * the normal one, so a drill that can only run while a debt is outstanding
+   * is a drill that stops running on the good days.
+   */
   {
     name: 'a read raised with another lane is bounded and the exemption is kept anyway',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'scripts/guards/no-silent-row-ceiling.mjs',
-    find: "    table: 'push_subscriptions',",
-    replace: "    table: 'push_subscriptions_bounded_now',",
+    find: 'const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/notify.ts',\n    table: 'push_subscriptions',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n  },",
     expect: 'no such read was found',
   },
 
@@ -6379,7 +6388,7 @@ const DRILLS = [
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
     find: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {`,
     replace: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {\n    if (m) continue`,
-    expect: 'REFUSING: the calibration probe',
+    expect: 'REFUSING: the destructure calibration probe',
   },
   {
     name: "the guard's own matcher quietly stops seeing an ARRAY destructure",
@@ -6387,7 +6396,103 @@ const DRILLS = [
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
     find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
-    expect: 'REFUSING: the calibration probe',
+    expect: 'REFUSING: the destructure calibration probe',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE WHOLE-RESPONSE SPELLING
+   * (lane B, 21 September 2026), four more drills.
+   *
+   * The guard's first matcher reads a DESTRUCTURE. `src/lib/consent/resolver.ts`
+   * binds the whole response instead, and that file calls itself THE ONE DOOR
+   * every message this platform sends to a person goes through. Driven before
+   * the widening, on one person and one ledger: with the suppression read
+   * failing, somebody who had unsubscribed was PERMITTED, and their grant was
+   * filed as the reason.
+   *
+   * THE LAST TWO AIM AT THE MATCHER, and the fourth is not hypothetical. The
+   * first draft asked "does this FILE read `eventResult.error`", and that one
+   * file binds `eventResult` in two functions: the correct one excused the
+   * defective one, and the two reads at the centre of this item did not appear
+   * in the guard's own output. One `.test()` cannot tell two occurrences apart.
+   */
+  {
+    name: 'the one door goes back to binding the whole suppression response and dropping its error',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/consent/resolver.ts',
+    find: '      readOrThrow(\'consent resolver suppressions\', () =>\n        admin\n          .from(\'suppression_events\')\n          .select(\'id, channel, scope, occurred_at\')\n          .eq(\'tenant_id\', tenant.id)\n          .eq(\'subject_email\', email)\n          .order(\'occurred_at\', { ascending: false })\n          .limit(200),\n      ),\n      readOrThrow(\'consent resolver policy\', () =>\n        admin.from(\'consent_policy\').select(\'max_age_months\').eq(\'id\', true).maybeSingle(),\n      ),\n    ])\n\n    const events: LedgerConsentEvent[] = (eventRows ?? []).map((row) => ({\n      id: row.id,\n      tenantSlug,\n      purpose: row.purpose,\n      channelScope: row.channel_scope as ConsentChannelScope,\n      decision: row.decision as ConsentDecisionValue,\n      occurredAt: row.occurred_at,\n      wordingVersion: row.wording_version,\n    }))\n\n    const suppressions: LedgerSuppressionEvent[] = (suppressionRows ?? []).map((row) => ({\n',
+    replace: '      (() =>\n        admin\n          .from(\'suppression_events\')\n          .select(\'id, channel, scope, occurred_at\')\n          .eq(\'tenant_id\', tenant.id)\n          .eq(\'subject_email\', email)\n          .order(\'occurred_at\', { ascending: false })\n          .limit(200))(),\n      readOrThrow(\'consent resolver policy\', () =>\n        admin.from(\'consent_policy\').select(\'max_age_months\').eq(\'id\', true).maybeSingle(),\n      ),\n    ])\n\n    const events: LedgerConsentEvent[] = (eventRows ?? []).map((row) => ({\n      id: row.id,\n      tenantSlug,\n      purpose: row.purpose,\n      channelScope: row.channel_scope as ConsentChannelScope,\n      decision: row.decision as ConsentDecisionValue,\n      occurredAt: row.occurred_at,\n      wordingVersion: row.wording_version,\n    }))\n\n    const suppressions: LedgerSuppressionEvent[] = (suppressionRows.data ?? []).map((row) => ({\n',
+    expect: 'src/lib/consent/resolver.ts',
+  },
+  {
+    name: 'the five attribution counts go back to reading zero out of a failure',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/attribution/read.ts',
+    find: '    orders: countOrRaise(\'orders\', counts[0]),\n    attributions: countOrRaise(\'stored attributions\', counts[1]),\n    attributed: countOrRaise(\'attributed orders\', counts[2]),\n    billable: countOrRaise(\'billable attributions\', counts[3]),\n    reversed: countOrRaise(\'attribution reversals\', counts[4]),',
+    replace: '    orders: counts[0].count ?? 0,\n    attributions: counts[1].count ?? 0,\n    attributed: counts[2].count ?? 0,\n    billable: counts[3].count ?? 0,\n    reversed: counts[4].count ?? 0,',
+    expect: 'src/lib/attribution/read.ts',
+  },
+  {
+    name: 'the whole-response matcher quietly stops seeing a Promise.all element',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/lib/whole-result-bindings.mjs',
+    find: '      if (!bareChainIn(code, element.start, element.end, doors)) return',
+    replace: '      if (element) return\n      if (!bareChainIn(code, element.start, element.end, doors)) return',
+    expect: 'REFUSING: the whole-response calibration probe',
+  },
+  {
+    name: 'the scope walk goes back to asking a whole file about a name two functions bind',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/lib/whole-result-bindings.mjs',
+    find: 'function scopeEnd(code, from) {',
+    replace: 'function scopeEnd(code, from) {\n  if (from >= 0) return code.length',
+    expect: 'REFUSING: the whole-response calibration probe',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TWO PUBLIC PROFILES
+   * (lane B, 21 September 2026), three drills.
+   *
+   * These two directories joined the scope because of what their pages SAY when
+   * a read fails. The organiser profile renders "No upcoming events from <name>
+   * just yet" under the organiser's own name, to the audience they sent there,
+   * at HTTP 200, because a socket dropped. src/lib/supabase/read-or-throw.ts
+   * names this same file as the first two occurrences of the family and exists
+   * so that "the fifth occurrence has nowhere to happen"; those two were the
+   * destructure spelling and these were the whole-response spelling, nine lines
+   * apart in the same function.
+   *
+   * THE FIRST TWO SPAN THE DOOR AND ITS CONSUMER IN ONE HUNK, because restoring
+   * only the door leaves a name the matcher does not judge: the rule is about a
+   * whole response whose PAYLOAD is read, so both halves have to come back for
+   * the defect to be the defect.
+   *
+   * THE THIRD AIMS AT THE SCOPE rather than at the product, because a directory
+   * renamed away is scanned for nothing and reported as a pass.
+   */
+  {
+    name: 'the organiser profile goes back to publishing an empty catalogue when a socket drops',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: '    readOrThrow(\'the organiser upcoming events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24),\n    ),\n    readOrThrow(\'the organiser past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .eq(\'visibility\', \'public\')\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n\n  return {\n    upcoming: ((upcoming ?? []) as unknown as OrganiserEventRow[]),',
+    replace: '    (() =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24))(),\n    readOrThrow(\'the organiser past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .eq(\'visibility\', \'public\')\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n\n  return {\n    upcoming: ((upcoming.data ?? []) as unknown as OrganiserEventRow[]),',
+    expect: 'src/app/organisers/[handle]/page.tsx',
+  },
+  {
+    name: 'the venue profile goes back to showing a working venue as having nothing on',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: '    readOrThrow(\'the venue upcoming events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .match(PUBLIC_EVENT_MATCH)\n        .ilike(\'venue_name\', venueName)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24),\n    ),\n    readOrThrow(\'the venue past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'visibility\', \'public\')\n        .ilike(\'venue_name\', venueName)\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n  return {\n    upcoming: ((upcoming ?? []) as unknown as VenueEventRow[]),',
+    replace: '    (() =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .match(PUBLIC_EVENT_MATCH)\n        .ilike(\'venue_name\', venueName)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24))(),\n    readOrThrow(\'the venue past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'visibility\', \'public\')\n        .ilike(\'venue_name\', venueName)\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n  return {\n    upcoming: ((upcoming.data ?? []) as unknown as VenueEventRow[]),',
+    expect: 'src/app/venues/[handle]/page.tsx',
+  },
+  {
+    name: 'the guard scans neither public profile while still reporting a pass',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "    'src/app/organisers',",
+    replace: "    'src/app/organisers-gone',",
+    expect: 'A scope that scans nothing reports a pass',
   },
 
   /*
@@ -6415,21 +6520,188 @@ const DRILLS = [
     replace: '  const { data } = await query',
     expect: 'src/lib/marketplace/showcase.ts',
   },
+  /*
+   * THESE TWO PLANT THE ENTRY THEY DRILL, AND THEY DID NOT USED TO.
+   *
+   * Both named `file: 'src/lib/marketplace/notify.ts'` and edited it. That
+   * entry existed for twelve hours on 21 September 2026 and then lane C fixed
+   * the file, the guard refused the now-stale entry, and the entry went - which
+   * is the mechanism working exactly as designed. The drills went stale with
+   * it, and the harness reported them STALE rather than red or green.
+   *
+   * A drill that can only run while a cross-lane debt is outstanding is a drill
+   * that stops running on the good days. The empty list is the NORMAL state, so
+   * each of these now plants its own entry against the list's declaration and
+   * proves the refusal from there.
+   */
   {
     name: 'a fault raised with another lane names a file this guard no longer scans',
     guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
-    find: "file: 'src/lib/marketplace/notify.ts',",
-    replace: "file: 'src/lib/marketplace/notify-renamed.ts',",
+    find: 'export const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "export const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/notify-renamed.ts',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n    raised: 'REVIEW-QUEUE-B.md',\n  },",
     expect: 'matches no scanned file',
   },
   {
     name: 'a fault raised with another lane is kept after that lane has fixed it',
     guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
-    find: "file: 'src/lib/marketplace/notify.ts',",
-    replace: "file: 'src/lib/marketplace/cities.ts',",
+    find: 'export const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "export const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/cities.ts',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n    raised: 'REVIEW-QUEUE-B.md',\n  },",
     expect: 'The debt is paid',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TRACKED-LINK, CONSENT AND
+   * CAMPAIGNER SPINE (lane B, 21 September 2026), ten drills.
+   *
+   * Four directories and two named files joined the scope, for nine reads that
+   * each had a correct, deliberate fallback for a row that is genuinely absent,
+   * and each of which quietly used that same fallback to answer a dropped
+   * socket.
+   *
+   * THE ONE THAT NAMES THE GROUP is drill 1. /s/[code] is what the QR code on an
+   * organiser's printed poster resolves to, and its own comment says a link
+   * whose event has been DELETED degrades to the browse page rather than a dead
+   * end. A blink took that same door, so the buyer standing in front of the
+   * poster was sent to a generic browse page and the organiser lost a sale
+   * nothing reported.
+   *
+   * DRILLS 8, 9 AND 10 AIM AT THE GUARD rather than at the product, and they are
+   * the ones worth having. Eight is the old rule, that a scope renamed away
+   * scans nothing and reports a pass. Nine and ten are new and they are a pair:
+   * a scope entry may now name ONE FILE, which is a real narrowing, so it must
+   * say what the directory around it holds that keeps it out, and a DIRECTORY
+   * entry carrying such a reason is that same rule read backwards, which is how
+   * a directory that has quietly become a file would otherwise pass unremarked.
+   */
+  {
+    name: "a scanned poster goes back to being answered as though the event were deleted",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/s/[code]/route.ts",
+    find: "  const event = await readOrThrow('short-link destination event', () =>\n    admin.from('events').select('slug').eq('id', link.event_id).maybeSingle(),\n  )",
+    replace: "  const { data: event } = await admin\n    .from('events')\n    .select('slug')\n    .eq('id', link.event_id)\n    .maybeSingle()",
+    expect: "a scanned poster sending the buyer to the browse page",
+  },
+  {
+    name: "the short-link resolver goes back to losing the artist who drove the sale",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/lib/broadcast/resolve-short-link.ts",
+    find: "    const artist = await readOrThrow('resolved short link tagged artist', () =>\n      admin.from('artists').select('slug').eq('id', link.artist_id).maybeSingle(),\n    )",
+    replace: "    const { data: artist } = await admin\n      .from('artists')\n      .select('slug')\n      .eq('id', link.artist_id)\n      .maybeSingle()",
+    expect: "an artist losing the credit for a sale they drove",
+  },
+  {
+    name: "the Launch Kit goes back to telling an organiser their own event does not exist",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/lib/broadcast/kit-artefacts.ts",
+    find: "  const data = await readOrThrow('the launch kit event', () =>\n    admin\n      .from('events')",
+    replace: "  const { data } = await admin\n    .from('events')",
+    expect: "a Launch Kit reporting that the organiser",
+  },
+  {
+    name: "the share-link API goes back to answering event_not_found about a live event",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/api/broadcast/share-link/route.ts",
+    find: "  const event = await readOrThrow('the share-link event', () =>\n    admin.from('events').select('id, status, slug').eq('slug', parsed.data.slug).maybeSingle(),\n  )",
+    replace: "  const { data: event } = await admin\n    .from('events')\n    .select('id, status, slug')\n    .eq('slug', parsed.data.slug)\n    .maybeSingle()",
+    expect: "a 404 saying event_not_found about a live event",
+  },
+  {
+    name: "the campaign console goes back to counting a send reach against an empty channel",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/admin/(authed)/campaigns/page.tsx",
+    find: "  const channelRows = await readOrThrow('the campaign channel table', () =>\n    admin.from('marketing_channel').select('code, display_name').order('code').limit(100),\n  )",
+    replace: "  const { data: channelRows } = await admin\n    .from('marketing_channel')\n    .select('code, display_name')\n    .order('code')\n    .limit(100)",
+    expect: "reach against an empty channel code",
+  },
+  {
+    name: "a digest consent goes back to being filed against no city when the person chose one",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/actions/consent.ts",
+    find: "      const city = await readOrThrow('the digest consent city', () =>\n        admin.from('cities').select('slug').eq('slug', input.citySlug as string).maybeSingle(),\n      )",
+    replace: "      const { data: city } = await admin\n        .from('cities')\n        .select('slug')\n        .eq('slug', input.citySlug as string)\n        .maybeSingle()",
+    expect: "a consent record filed against no city when the person chose one",
+  },
+  {
+    name: "a carried consent goes back to saying \"no such reservation\" about one that exists",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/actions/discovery-consent.ts",
+    find: "    const reservation = await readOrThrow('the reservation behind a carried consent', () =>\n      admin\n        .from('reservations')",
+    replace: "    const { data: reservation } = await admin\n      .from('reservations')",
+    expect: "said about a reservation that exists",
+  },
+  {
+    name: "the guard scans neither the poster route nor the link spine while still reporting a pass",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/s',",
+    replace: "    'src/app/s-gone',",
+    expect: "A scope that scans nothing reports a pass",
+  },
+  {
+    name: "a file scope entry stops saying what keeps it out of its own directory",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/actions holds 46 more reads of this shape in lane A and lane C files, and scoping ' +\n      'the directory would fail their builds on a fault this lane cannot fix',\n  ],",
+    replace: "  ],",
+    expect: "is a single FILE in a scope of directories and says nothing about why",
+  },
+  {
+    name: "a directory scope entry claims to be a single file",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "  [\n    'src/app/s',",
+    replace: "  [\n    'src/app/s',\n    'what a failed read becomes, planted by a drill',\n    'a reason planted by a drill',\n  ],\n  [\n    'src/app/s',",
+    expect: "is a DIRECTORY but carries a reason for being a single file",
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TOKEN DOORS (lane B,
+   * 21 September 2026), four drills.
+   *
+   * Three pages a person reaches by following a link out of their own inbox,
+   * each of which answered a blinked read with a sentence about that link.
+   * Drill 1 is the one that matters most: the Spam Act unsubscribe facility has
+   * to work, and a dropped socket told the reader it had already been spent.
+   *
+   * EACH DRILL ASSERTS ITS OWN SENTENCE rather than its file path, and that is
+   * deliberate. On the morning these were written, two drills in the block above
+   * asserted a path the guard prints on EVERY run, in the "narrowed to one file"
+   * line, so both would have gone green against a guard that never judged the
+   * file at all. Only judgeFile() can emit the sentences below.
+   */
+  {
+    name: "a live unsubscribe link goes back to being called spent when a socket drops",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/unsubscribe/[token]/page.tsx",
+    find: "  const data = await readOrThrow('the organiser unsubscribe token', () =>\n    admin\n      .from('organiser_marketing_consents')",
+    replace: "  const { data } = await admin\n      .from('organiser_marketing_consents')",
+    expect: "told their live unsubscribe link is not valid",
+  },
+  {
+    name: "a live city-waitlist unsubscribe link goes back to being called invalid",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/waitlist/unsubscribe/[token]/page.tsx",
+    find: "  const data = await readOrThrow('the city waitlist unsubscribe token', () =>\n    admin\n      .from('city_waitlist_signups')",
+    replace: "  const { data } = await admin\n      .from('city_waitlist_signups')",
+    expect: "a live city-waitlist unsubscribe link called invalid",
+  },
+  {
+    name: "a single-use performer invite goes back to being reported as already claimed",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/artists/claim/[token]/page.tsx",
+    find: "  const tag = await readOrThrow('the performer claim invite token', () =>\n    admin\n      .from('event_artists')",
+    replace: "  const { data: tag } = await admin\n      .from('event_artists')",
+    expect: "single-use invite has already been claimed",
+  },
+  {
+    name: "the guard scans none of the three token doors while still reporting a pass",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/unsubscribe',",
+    replace: "    'src/app/unsubscribe-gone',",
+    expect: "A scope that scans nothing reports a pass",
   },
 
   /*
