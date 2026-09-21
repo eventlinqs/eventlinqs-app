@@ -48,7 +48,21 @@ const codeOf = (rel: string): string =>
 
 const CHECKOUT = codeOf('src/app/actions/checkout.ts')
 const USAGE = codeOf('src/lib/payments/discount-usage.ts')
-const VALIDATE = codeOf('src/app/actions/discount-codes.ts')
+/*
+ * THE CAP TEST MOVED, 21 September 2026 (LB-CODEBLINK), AND THIS ASSERTION
+ * FOLLOWED IT RATHER THAN BEING DELETED.
+ *
+ * It used to read `src/app/actions/discount-codes.ts`, and it went red the
+ * moment the decision was lifted into a module that takes its client as an
+ * argument. That move was the fix for a separate defect: the action ran on the
+ * SESSION client, which can see neither discount table by policy, so every
+ * live code came back "Invalid discount code" to every buyer.
+ *
+ * The rule this test pins is unchanged, so the path is what changed here. A
+ * red test whose subject has moved is a test that must be re-aimed; deleting
+ * it would have retired a rule nobody decided to retire.
+ */
+const VALIDATE = codeOf('src/lib/pricing/discount-validation.ts')
 const CRON = codeOf('src/app/api/cron/reservation-expire/route.ts')
 
 describe('the discount claim', () => {
@@ -74,6 +88,15 @@ describe('the discount claim', () => {
   it('reads the cap as confirmed PLUS held uses, so a hold refuses the next buyer', () => {
     expect(VALIDATE).toContain('reserved_uses')
     expect(VALIDATE).not.toMatch(/dc\.current_uses\s*>=\s*dc\.max_uses/)
+  })
+
+  /*
+   * AND THE ACTION STILL REACHES IT. The assertion above now reads a module
+   * rather than the action, so on its own it would pass on a tree where the
+   * action had stopped calling that module altogether.
+   */
+  it('and the buyer-facing action still reaches the module that holds it', () => {
+    expect(codeOf('src/app/actions/discount-codes.ts')).toContain('validateDiscountCodeWith')
   })
 
   it('converts the hold on confirmation rather than incrementing a second time', () => {

@@ -9034,6 +9034,62 @@ const DRILLS = [
   },
   {
     /*
+     * CLAUSE 7, THE ORGANISER SIDE. All three of these functions opened with a
+     * read whose error was discarded, so a dropped socket told an organiser
+     * that their own event did not exist.
+     */
+    name: 'createDiscountCode discards the error on its event lookup again',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '  const { data: event, error: eventError } = await withBuildRetry(',
+    replace: '  const { data: event } = await withBuildRetry(',
+    expect: 'destructures a read without its `error`',
+  },
+  {
+    name: 'the update lookup answers a FAILED read with Discount code not found',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: "    return { error: COULD_NOT_READ }" + String.fromCharCode(10) + "  }" + String.fromCharCode(10) + "  if (!dc) return { error: 'Discount code not found' }" + String.fromCharCode(10) + "  /*",
+    replace: "    return { error: 'Discount code not found' }" + String.fromCharCode(10) + "  }" + String.fromCharCode(10) + "  if (!dc) return { error: 'Discount code not found' }" + String.fromCharCode(10) + "  /*",
+    expect: 'FAILURE with a not-found sentence',
+  },
+  {
+    /*
+     * THE LABEL, WHICH IS HOW CLAUSE 7 AIMS. Without it that read is invisible
+     * to the clause, which then judges nothing for it and reports PASS. This
+     * drill replaced a WEAKER version that renamed the constant and did not
+     * fire, because three usages kept the name in the file.
+     */
+    name: 'the delete read loses its label, so clause 7 would judge nothing for it',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: "    { label: 'discount-delete-code-lookup' },",
+    replace: "    { label: 'discount-delete-code-lookup-renamed' },",
+    expect: 'no longer labels a read `discount-delete-code-lookup`',
+  },
+  {
+    name: 'the create lookup stops answering a failure with the could-not-read sentence',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: "    console.error('[discount-codes] could not read the event, so no verdict is given about it:', eventError)" + String.fromCharCode(10) + "    return { error: COULD_NOT_READ }",
+    replace: "    console.error('[discount-codes] could not read the event, so no verdict is given about it:', eventError)" + String.fromCharCode(10) + "    return { error: 'Something went wrong' }",
+    expect: 'does not answer a failure with COULD_NOT_READ',
+  },
+  {
+    /*
+     * THE HELD USE. reserved_uses moves the moment a buyer applies the code and
+     * current_uses only when their order confirms, so a refusal that reads one
+     * of the two deletes a code out from under somebody mid-checkout.
+     */
+    name: 'the delete refusal goes back to counting confirmed uses only',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '  if ((dc.current_uses ?? 0) + (dc.reserved_uses ?? 0) > 0) {',
+    replace: '  if ((dc.current_uses ?? 0) > 0) {',
+    expect: 'no longer refuses to delete a code whose uses are merely HELD',
+  },
+  {
+    /*
      * CLAUSE 6, THE WHOLE-TREE ONE. A fifth copy of the picker read is exactly
      * how four bugs became four bugs in the first place.
      */
@@ -9137,6 +9193,129 @@ const DRILLS = [
     expect: 'the founding invite allowance disagrees with itself',
   },
 
+  /*
+   * a-discount-code-a-buyer-can-actually-use (lane B, 21 September 2026), nine
+   * drills, at least one per clause and THREE that restore the original defect.
+   *
+   * The three that matter most are drills 4, 5 and 6: they put back the session
+   * client, the browser-supplied user id, and the collapsed error branch, which
+   * are the three shapes that were actually live. A drill that only renames a
+   * symbol proves the guard runs; a drill that restores the defect proves the
+   * guard would have caught the thing it was written for.
+   */
+  {
+    name: 'the reader goes back to discarding the error on the per-user cap',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/lib/pricing/discount-validation.ts',
+    find: '    const spend = (await withBuildRetry(',
+    replace: [
+      "    const { count } = await supabase",
+      "      .from('discount_code_usages')",
+      "      .select('*', { count: 'exact', head: true })",
+      "      .eq('discount_code_id', dc.id)",
+      "      .eq('user_id', user_id)",
+      '    const spend = (await withBuildRetry(',
+    ].join('\n'),
+    expect: 'destructures `count` and not `error`',
+  },
+  {
+    name: 'the reader stops labelling its code lookup, so clause 3 would judge nothing',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/lib/pricing/discount-validation.ts',
+    find: "    { label: 'discount-code-lookup' },",
+    replace: "    { label: 'discount-code-lookup-renamed' },",
+    expect: 'no longer labels a read `discount-code-lookup`',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. `error || !dc` is the line that told a
+     * buyer holding a live code off an organiser's flyer that their code was
+     * invalid, because a dropped socket and an absent row were the same answer
+     * to it.
+     */
+    name: 'the lookup collapses a failed read back into Invalid discount code',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/lib/pricing/discount-validation.ts',
+    find: "    return { valid: false, discount_cents: 0, error: DISCOUNT_UNCHECKABLE }\n  }\n  if (!dc) return",
+    replace: "    return { valid: false, discount_cents: 0, error: 'Invalid discount code' }\n  }\n  if (!dc) return",
+    expect: 'answers a FAILED read with "Invalid discount code"',
+  },
+  {
+    /*
+     * AND THE OTHER DIRECTION, which a careless fix breaks: a code that
+     * genuinely does not exist must still be called invalid, or a buyer with a
+     * typo is invited to keep trying forever.
+     */
+    name: 'every empty answer becomes could-not-check, including a mistyped code',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/lib/pricing/discount-validation.ts',
+    find: "  if (!dc) return { valid: false, discount_cents: 0, error: 'Invalid discount code' }",
+    replace: '  if (!dc) return { valid: false, discount_cents: 0, error: DISCOUNT_UNCHECKABLE }',
+    expect: 'no longer answers "Invalid discount code" for a successful read that found no row',
+  },
+  {
+    /*
+     * THE DEFECT THAT KILLED EVERY CODE ON THE PLATFORM. The session client
+     * cannot see either discount table, so this one line turns every live code
+     * into "Invalid discount code" and the per-user cap into a no-op.
+     */
+    name: 'the buyer-facing action hands the reader the session client again',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '  return validateDiscountCodeWith(createAdminClient(), {',
+    replace: '  return validateDiscountCodeWith(session, {',
+    expect: 'does not hand validateDiscountCodeWith a service-role client',
+  },
+  {
+    /*
+     * THE OTHER LIVE DEFECT. `user_id` arrives from a CLIENT component, so it
+     * is a value the browser chose, and it decides the only cap on
+     * max_uses_per_user that exists anywhere.
+     */
+    name: 'the action believes the browser about who the buyer is',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '    user_id: user?.id ?? null,',
+    replace: '    user_id: user_id,',
+    expect: 'passes its own `user_id` parameter through to the reader',
+  },
+  {
+    name: 'the action stops reading the session user at all',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '  const { data: { user } } = await session.auth.getUser()',
+    replace: '  const user = { id: null }',
+    expect: 'no longer reads the signed-in user from the session',
+  },
+  {
+    /*
+     * CLAUSE 6, THE WHOLE-TREE ONE, and it is matched by the SHAPE of the read
+     * rather than by the table: the organiser's own listing reads the same
+     * table by event_id on the session client and is correct.
+     */
+    name: 'a second buyer-shaped lookup appears outside the one reader',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/lib/organisers/event-tier-config.ts',
+    find: "        .from('discount_codes')",
+    replace: [
+      "        .from('discount_codes')",
+      "        .eq('code', 'PLANTED')",
+    ].join('\n'),
+    expect: 'without reaching validateDiscountCodeWith',
+  },
+  {
+    /*
+     * THE SCANNER THAT LIES. Clauses 4 and 5 both judge ONE call, so a tree
+     * where that call no longer exists is a tree where both clauses judge
+     * nothing and report PASS. The guard must say so rather than going quiet.
+     */
+    name: 'the action stops calling the reader, so clauses 4 and 5 would judge nothing',
+    guard: `${GUARDS}/a-discount-code-a-buyer-can-actually-use.mjs`,
+    file: 'src/app/actions/discount-codes.ts',
+    find: '  return validateDiscountCodeWith(createAdminClient(), {',
+    replace: '  return validateDiscountCodeSomewhereElse(createAdminClient(), {',
+    expect: 'no longer calls validateDiscountCodeWith',
+  },
   /*
    * the-price-ladder-survives-a-blink (lane B, 20 September 2026), six drills,
    * one per clause. Two of them plant the defect in its ORIGINAL form, which is

@@ -3591,8 +3591,53 @@ const ROOT = join(HERE, '..', '..')
  * what this tree actually runs, and the canary would have been blind to any
  * one of those sixty-one being deleted. Measured, not derived.
  */
-const MIN_FILES = 547
-const MIN_TESTS = 7413
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-CODEBLINK): 547/7413 -> 548/7434.
+ * ---------------------------------------------------------------------------
+ *
+ * ONE FILE ADDED AND TWENTY-ONE CASES, counted by RUNNING them rather than by
+ * reading their headers:
+ *
+ *   tests/unit/pricing/a-discount-code-a-buyer-can-actually-use.test.ts   +25
+ *   tests/unit/checkout/discount-claim-ordering.test.ts                    +1
+ *
+ *   547 + 1 = 548 files
+ *   7413 + 25 + 1 = 7439 tests
+ *
+ * THE NEW FILE holds the buyer-facing discount check, where EVERY DISCOUNT
+ * CODE ON THE PLATFORM WAS DEAD. The check ran on the SESSION client, and
+ * neither `discount_codes` nor `discount_code_usages` admits a buyer by policy
+ * (asked of the live database, not read off the source), so a live code came
+ * back "Invalid discount code" to every buyer and the per-user cap counted
+ * zero for everybody. Two more defects came with it: the cap believed a
+ * `user_id` that arrived from a client component, and a dropped socket
+ * answered both reads, one failing OPEN and one failing CLOSED.
+ *
+ * THE ONE CASE ON THE EXISTING FILE is not a new rule. The cap assertion there
+ * read the action file, the decision moved into a module so a drive could make
+ * its reads fail on cue, and the assertion followed it. On its own it would
+ * then pass on a tree where the action had stopped calling that module at all,
+ * so a case was added that says it still does.
+ *
+ * FIVE OF THE TWENTY-FIVE ARE ORGANISER-FACING, and they are the same defect
+ * pointed at the other user: the create, update and delete functions in the
+ * same action file each opened with a read whose error was discarded and whose
+ * empty answer became "Event not found" or "Discount code not found". The
+ * delete refusal also counted CONFIRMED uses and not held ones, so a code a
+ * buyer was holding mid-checkout could be deleted out from under them.
+ *
+ * SEVEN OF THE TWENTY-FIVE WERE DRIVEN RED, by planting each live defect back
+ * and watching the named assertion catch it
+ * (scripts/verify/lb-codeblink-test-drills.mjs, 7 of 7,
+ * C:/dev/EVIDENCE/LB-CODEBLINK/test-drills.txt).
+ *
+ * MEASURED: 548 files, 7439 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 122s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 548
+const MIN_TESTS = 7439
 
 
 /**

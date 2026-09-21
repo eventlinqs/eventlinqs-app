@@ -748,6 +748,17 @@
  *                             five-invite allowance is the same number in the
  *                             TypeScript and in the database, and no read in
  *                             the loop answers a failure as an answer
+ *   a-discount-code-a-buyer-can-actually-use  the buyer-facing discount check,
+ *                             where every code on the platform was dead and
+ *                             nothing said so: the read ran on the SESSION
+ *                             client and neither discount table admits a buyer
+ *                             by policy, so a live code came back "Invalid
+ *                             discount code". The reader now gets a
+ *                             service-role client, the per-user identity comes
+ *                             from the session rather than from the browser
+ *                             that chose it, a failed read says it could not
+ *                             check instead of granting or accusing, and a
+ *                             genuinely absent code is still called invalid
  *   the-price-ladder-survives-a-blink  the organiser's pricing and discount
  *                             configuration, where a failed read was DATA LOSS
  *                             rather than a wrong number: the editor
@@ -2714,6 +2725,36 @@ const GUARDS = [
   //
   // Drilled red six ways and green (C:\dev\EVIDENCE\LB-INVITEWHOLE\drills.txt).
   'scripts/guards/the-founding-invite-is-spent-once.mjs',
+
+  // a-discount-code-a-buyer-can-actually-use: the buyer-facing discount check,
+  // 21 September 2026. EVERY DISCOUNT CODE ON THE PLATFORM WAS DEAD.
+  //
+  // validateDiscountCode read `discount_codes` on the SESSION client. Asked of
+  // the live database rather than read off the source, that table carries two
+  // policies, "Org members can manage discount codes" and "Service role manages
+  // discount codes", and `discount_code_usages` carries one, service role only.
+  // Neither admits a buyer, and neither should: a code is a secret and a policy
+  // wide enough for a buyer to check theirs is wide enough for anybody to list
+  // every comp and press code on an event.
+  //
+  // So the lookup matched zero rows, .maybeSingle() answered { data: null,
+  // error: null }, and the buyer was told "Invalid discount code". Driven on the
+  // real checkout screen, signed in, at 390, 768 and 1440, against two codes
+  // written moments earlier: both called invalid. The per-user cap underneath it
+  // counted zero for the same reason and had never refused anybody.
+  //
+  // Two more defects came with it. The cap believed a `user_id` that arrived
+  // from a CLIENT component, and max_uses_per_user is held nowhere else
+  // (claim_discount_use locks max_uses and is not passed a user). And both reads
+  // answered a dropped socket: the cap failed OPEN and granted a spent discount,
+  // the lookup failed CLOSED and called a live code fake.
+  //
+  // Clause 6 sweeps ALL of src/ by the SHAPE of the read rather than by the
+  // table, because the organiser's own listing reads the same table by event_id
+  // on the session client and is correct.
+  //
+  // Drilled red and green (C:\dev\EVIDENCE\LB-CODEBLINK\drills.txt).
+  'scripts/guards/a-discount-code-a-buyer-can-actually-use.mjs',
 
   // the-price-ladder-survives-a-blink: the organiser's pricing and discount
   // configuration, 20 September 2026. This one is DATA LOSS rather than a wrong
