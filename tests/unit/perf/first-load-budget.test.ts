@@ -251,11 +251,18 @@ describe('a mark records the conditions it was taken under', () => {
     }
   })
 
+  /*
+   * The recorded platform is CHOSEN to differ from this host's. A literal
+   * 'linux' was the first version, and on the Linux CI runner it equalled
+   * here.platform, so there was no mismatch to name and the test read null.
+   */
   it('names every field that differs, and says which side is which', () => {
     const here = measurementIdentity(ROOT)
-    const reason = identityMismatch({ ...here, platform: 'linux' }, ROOT)
+    const other = here.platform === 'linux' ? 'win32' : 'linux'
+    expect(other).not.toBe(here.platform)
+    const reason = identityMismatch({ ...here, platform: other }, ROOT)
     expect(reason).toContain('platform')
-    expect(reason).toContain('"linux"')
+    expect(reason).toContain(JSON.stringify(other))
     expect(reason).toContain(JSON.stringify(here.platform))
   })
 
