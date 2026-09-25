@@ -1,29 +1,38 @@
 /**
  * GUARD: THE FOUNDING OFFER AND THE FEE SENTENCE ARE READS, NOT CLAIMS.
  *
- * Close-out FO1. www.eventlinqs.com.au/organisers publishes four numbers in
- * public and every outreach message sent since 12 September 2026 repeats them
- * word for word: the first FIFTY organisers nationally, SIX months completely
- * fee free, THREE more months per organiser referred, and founding terms applied
- * before the first on-sale. /pricing publishes the fee. Not one of those numbers
- * failed anything when it disagreed with the engine that charges, because prose
- * is not executed.
+ * Close-out FO1. www.eventlinqs.com.au/organisers publishes the offer in
+ * public and every outreach message repeats it: SIX months completely fee free,
+ * THREE more months per organiser referred, and the terms applied before the
+ * first on-sale. /pricing publishes the fee. Not one of those numbers failed
+ * anything when it disagreed with the engine that charges, because prose is
+ * not executed.
  *
- * WHAT IT CHECKS, in four parts.
+ * LAW 24 (founder ruling, 20 September 2026): "Every new organiser gets six
+ * months free, counted from the date they register or set up on EventLinqs.
+ * Not a cap of 50. Every organiser. After six months the standard fee
+ * applies." Until 26 September 2026 this guard held the cap of FIFTY equal in
+ * the copy, the code and two SQL functions. It now holds the cap ABSENT in all
+ * of them, and holds the registration stamp to the same six months.
+ *
+ * WHAT IT CHECKS, in six parts.
  *
  *   1. THE OFFER NUMBERS IN THE COPY EQUAL THE CONSTANTS THE MACHINE USES.
- *      FOUNDING_WAIVER_CAP, FOUNDING_INITIAL_MONTHS and
- *      FOUNDING_REFERRAL_MONTHS live in src/lib/payments/founding-waiver.ts,
- *      beside the function that applies them to a charge. Every number the
- *      offer copy states is matched against them, and every one of the four
- *      claims must be PRESENT, so deleting a sentence cannot make this pass by
+ *      FOUNDING_INITIAL_MONTHS and FOUNDING_REFERRAL_MONTHS live in
+ *      src/lib/payments/founding-waiver.ts, beside the function that applies
+ *      them to a charge. Every number the offer copy states is matched against
+ *      them, and every claim must be PRESENT, including that the six months
+ *      run from registration, so deleting a sentence cannot make this pass by
  *      having nothing left to check.
  *
- *   2. THE FIFTY IN THE DATABASE EQUALS THE FIFTY IN THE CODE. The cap is
- *      enforced twice in SQL (claim_founding_spot and
- *      enforce_founding_waiver_cap) and those literals are invisible to
- *      TypeScript. A cap of 50 in code and 60 in a trigger is a silent
- *      over-grant of ten free organisations.
+ *   2. NO CAP, ANYWHERE A CAP LIVED. The waiver module exports no cap; the
+ *      offer copy and every other surface that used to state one (the legal
+ *      terms, the waitlist, its email, the invite landing, the invites page,
+ *      the founding invitation email) names no "first 50", no founding spots
+ *      remaining, no "limited to"; the effective claim_founding_spot carries no
+ *      v_cap; and trg_founding_waiver_cap is dropped after its last creation.
+ *      And the database stamps every new organisation's window from its own
+ *      created_at by FOUNDING_INITIAL_MONTHS, the number the copy states.
  *
  *   3. THE FEE IS NEVER TYPED ONTO /organisers OR /pricing. Both pages resolve
  *      it through getLivePublicFee, which reads the same pricing_rules rows the
@@ -62,7 +71,7 @@ const ORGANISERS_TEMPLATE = 'src/components/templates/OrganisersLandingPage.tsx'
 const PRICING_TEMPLATE = 'src/components/templates/PricingPage.tsx'
 
 const faults = []
-const checks = { 'offer claim': 0, 'sql cap literal': 0, 'fee literal pattern': 0, 'fallback figure': 0 }
+const checks = { 'offer claim': 0, 'cap check': 0, 'fee literal pattern': 0, 'fallback figure': 0 }
 
 /**
  * Source with block comments and whole-line comments removed, so a rule
@@ -97,7 +106,6 @@ function constantFrom(source, name) {
   }
   return Number(m[1])
 }
-const CAP = constantFrom(waiverSource, 'FOUNDING_WAIVER_CAP')
 const INITIAL_MONTHS = constantFrom(waiverSource, 'FOUNDING_INITIAL_MONTHS')
 const REFERRAL_MONTHS = constantFrom(waiverSource, 'FOUNDING_REFERRAL_MONTHS')
 
@@ -126,28 +134,21 @@ const OFFER_CLAIMS = [
     pattern: /(\d+)\s+more fee-free months/gi,
     expected: () => REFERRAL_MONTHS,
   },
-  {
-    what: 'the fifty-organiser cap in the title',
-    pattern: /The first (\d+) build it with us/gi,
-    expected: () => CAP,
-  },
-  {
-    what: 'the fifty-organiser cap in the body',
-    pattern: /first (\d+) organisers anywhere in the country/gi,
-    expected: () => CAP,
-  },
-  {
-    what: 'the fifty-organiser cap in the small print',
-    pattern: /limited to the first (\d+) organisers nationally/gi,
-    expected: () => CAP,
-  },
 ]
 
-/** The fourth claim is a promise rather than a number, so it is checked as one. */
+/** The promises rather than numbers, so they are checked as phrases. */
 const OFFER_PHRASES = [
   {
-    what: 'the promise that founding terms are applied before the first on-sale',
+    what: 'the promise that the terms are applied before the first on-sale',
     pattern: /before your first on-sale/i,
+  },
+  {
+    what: 'LAW 24: the six months are counted from registration',
+    pattern: /counted from the day they sign up/i,
+  },
+  {
+    what: 'LAW 24: there is no cap',
+    pattern: /\bNo cap\b/,
   },
 ]
 
@@ -180,44 +181,123 @@ if (offerSource) {
   }
 }
 
-/* ------------------------------------------- 2. the fifty the database knows */
+/* ------------------------------------ 2. no cap anywhere a cap used to live */
 
 /**
- * EVERY migration is swept, not two named ones. A future migration that
- * redefines either function with a different literal would otherwise sail past
- * a guard pinned to the file that first created it, which is precisely how the
- * cap comes to mean two numbers.
+ * LAW 24, 26 September 2026: the cap is gone from the engine, and a cap that
+ * comes back quietly (a constant, a sentence, a literal in a trigger) is the
+ * regression this clause exists to refuse.
  */
-const SQL_CAP_PATTERNS = [
-  { what: 'claim_founding_spot', pattern: /v_cap\s+constant\s+integer\s*:=\s*(\d+)/gi },
-  { what: 'enforce_founding_waiver_cap', pattern: /IF\s+holder_count\s*>=\s*(\d+)\s+THEN/gi },
-]
+if (waiverSource && /export const FOUNDING_WAIVER_CAP\b/.test(waiverSource)) {
+  faults.push(`${WAIVER} exports FOUNDING_WAIVER_CAP again. LAW 24: "Not a cap of 50. Every organiser." The engine carries no cap`)
+}
 
+/**
+ * Every surface that stated the cap before LAW 24, each read whole. A cap in
+ * any of them is a promise the engine no longer keeps, in either direction.
+ */
+const CAP_SURFACES = [
+  OFFER,
+  'src/app/legal/organiser-terms/page.tsx',
+  'src/app/waitlist/waitlist-client.tsx',
+  'src/lib/waitlist/confirmation-email.ts',
+  'src/app/join/[code]/page.tsx',
+  'src/app/(dashboard)/dashboard/invites/page.tsx',
+  'src/app/admin/(authed)/network/actions.ts',
+  'src/lib/forecast/present.ts',
+]
+const CAP_WORDING = [
+  /\bfirst\s+(?:\{String\()?\d+\)?\}?\s+(?:organisers|founding|build)/i,
+  /\blimited to the first\b/i,
+  /\bfounding (?:spots?|places?) (?:left|remaining|are taken)/i,
+  /\bspots? (?:left|remaining)\b/i,
+  /\bcapped and closes\b/i,
+  /\blimited number of (?:places|spots)\b/i,
+]
+for (const rel of CAP_SURFACES) {
+  const source = read(rel)
+  if (!source) continue
+  const code = withoutComments(source)
+  checks['cap check'] += 1
+  for (const pattern of CAP_WORDING) {
+    const m = code.match(pattern)
+    if (m) {
+      faults.push(`${rel} states a cap ("${m[0]}"). LAW 24: six months free for every organiser from their own registration, with no cap`)
+    }
+  }
+}
+
+/**
+ * The database. EVERY migration is read in version order, because the answer
+ * is whatever the LAST definition says: a future migration that puts v_cap
+ * back into claim_founding_spot, or re-creates the cap trigger, must fail here
+ * however many files later it lands.
+ */
 const MIGRATIONS_DIR = join(ROOT, 'supabase', 'migrations')
 const migrationFiles = existsSync(MIGRATIONS_DIR)
   ? readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
   : []
+const migrations = migrationFiles.map(name => ({ name, sql: readFileSync(join(MIGRATIONS_DIR, name), 'utf8') }))
 
-let sqlCapSightings = 0
-if (CAP !== null) {
-  for (const name of migrationFiles) {
-    const source = readFileSync(join(MIGRATIONS_DIR, name), 'utf8')
-    for (const sql of SQL_CAP_PATTERNS) {
-      for (const m of source.matchAll(sql.pattern)) {
-        sqlCapSightings += 1
-        checks['sql cap literal'] += 1
-        if (Number(m[1]) !== CAP) {
-          faults.push(
-            `supabase/migrations/${name} caps ${sql.what} at ${m[1]} while ${WAIVER} says ${CAP}. The database grants what it grants, so the smaller number is a promise broken and the larger one is free organisations`,
-          )
-        }
-      }
+/** The body of the last CREATE of a function, across every migration. */
+function lastDefinition(fn) {
+  const re = new RegExp(`create\\s+(?:or\\s+replace\\s+)?function\\s+(?:public\\.)?${fn}\\s*\\(`, 'gi')
+  let found = null
+  for (const m of migrations) {
+    for (const hit of m.sql.matchAll(re)) {
+      const rest = m.sql.slice(hit.index)
+      const tag = rest.match(/as\s+(\$[a-z_]*\$)/i)
+      const end = tag ? rest.indexOf(tag[1], rest.indexOf(tag[1]) + tag[1].length) : -1
+      found = { name: m.name, body: end === -1 ? rest : rest.slice(0, end) }
     }
   }
-  if (sqlCapSightings === 0) {
+  return found
+}
+
+const claim = lastDefinition('claim_founding_spot')
+checks['cap check'] += 1
+if (!claim) {
+  faults.push('no migration defines claim_founding_spot, so the founding programme cannot be judged')
+} else if (/v_cap|>=\s*\d+\s+then\s+return\s+null/i.test(claim.body)) {
+  faults.push(`supabase/migrations/${claim.name} defines claim_founding_spot with a cap. LAW 24 removed it (20260926000001)`)
+}
+
+/** The position of the last CREATE and the last DROP of the cap trigger, in (file, offset) order. */
+function lastEvent(pattern) {
+  let at = null
+  migrations.forEach((m, i) => {
+    for (const hit of m.sql.matchAll(pattern)) at = [i, hit.index]
+  })
+  return at
+}
+const capCreated = lastEvent(/create\s+trigger\s+trg_founding_waiver_cap\b/gi)
+const capDropped = lastEvent(/drop\s+trigger\s+if\s+exists\s+trg_founding_waiver_cap\b/gi)
+const after = (a, b) => b !== null && (a === null || b[0] > a[0] || (b[0] === a[0] && b[1] > a[1]))
+checks['cap check'] += 1
+if (capCreated !== null && !after(capCreated, capDropped)) {
+  faults.push(
+    `supabase/migrations/${migrations[capCreated[0]].name} creates trg_founding_waiver_cap and no later migration drops it. LAW 24: no cap of 50`,
+  )
+}
+
+const stamp = lastDefinition('stamp_registration_fee_free_window')
+checks['cap check'] += 1
+if (!stamp) {
+  faults.push('no migration defines stamp_registration_fee_free_window, so nothing gives a new organiser the six months LAW 24 promises')
+} else {
+  const months = stamp.body.match(/founding_add_months\(\s*coalesce\(\s*new\.created_at\s*,\s*now\(\)\s*\)\s*,\s*(\d+)\s*\)/i)
+  if (!months) {
+    faults.push(`supabase/migrations/${stamp.name} no longer stamps the window from the organisation's own created_at`)
+  } else if (INITIAL_MONTHS !== null && Number(months[1]) !== INITIAL_MONTHS) {
     faults.push(
-      `no migration expresses the founding cap in a shape this guard can read. The cap is enforced in SQL by claim_founding_spot and enforce_founding_waiver_cap, and if neither literal is findable the database and ${WAIVER} can drift apart with nothing watching`,
+      `supabase/migrations/${stamp.name} stamps ${months[1]} months at registration while ${WAIVER} and the published copy say ${INITIAL_MONTHS}`,
     )
+  }
+  const installed = migrations.some(m =>
+    /create\s+trigger\s+\w+\s+before\s+insert\s+on\s+public\.organisations\s+for\s+each\s+row\s+execute\s+function\s+public\.stamp_registration_fee_free_window\(\)/i.test(m.sql),
+  )
+  if (!installed) {
+    faults.push('stamp_registration_fee_free_window is defined and no migration installs it BEFORE INSERT ON public.organisations')
   }
 }
 
@@ -345,7 +425,7 @@ declareWork('founding-offer-matches-configuration', {
 })
 
 console.log(
-  `${TAG} configuration: cap ${CAP}, ${INITIAL_MONTHS} months, ${REFERRAL_MONTHS} months per referral` +
+  `${TAG} configuration: no cap (LAW 24), ${INITIAL_MONTHS} months from registration, ${REFERRAL_MONTHS} months per referral` +
     (locked ? `, fee ${locked.platform_fee_percentage}% + ${locked.currency} ${(Number(locked.platform_fee_fixed) / 100).toFixed(2)}` : ''),
 )
 

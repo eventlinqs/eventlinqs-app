@@ -151,7 +151,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-600">
                 {joined.foundingCandidate && joined.role === 'organiser'
-                  ? 'You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers in Australia: 6 months fee-free, and 3 more months for every organiser you refer. Invitations go out personally.'
+                  ? 'You are registered as an organiser. Every organiser on EventLinqs is fee-free for 6 months from the day they register, and earns 3 more months for every organiser they refer who runs an event. You can build and sell today.'
                   : joined.role === 'organiser'
                     ? `We will email you when there is something on near you in ${joined.cityName}. EventLinqs is open there today: you can build your event, get your launch kit and start selling right now.`
                     : `We will email you when there is something on near you in ${joined.cityName}. No noise, and one click unsubscribes you.`}
@@ -180,9 +180,8 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
               </h2>
               <p className="mt-2 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-xs leading-relaxed text-ink-900">
                 <span className="font-semibold">EventLinqs is open in {selected.name} today.</span>{' '}
-                Organisers who sign up here are candidates for the invite-only Founding Organiser
-                programme: first 50 in Australia, 6 months fee-free, plus 3 more months for every
-                organiser you refer.
+                Every organiser is fee-free for 6 months from the day they register, plus 3 more
+                months for every organiser they refer who runs an event.
               </p>
 
               <div className="mt-5 space-y-4">

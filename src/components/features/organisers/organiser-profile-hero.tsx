@@ -18,7 +18,7 @@ interface Props {
   /** Optional verified badge surface. */
   verified?: boolean
   /**
-   * One of the first fifty organisers nationally (close-out FO1). Resolved on
+   * A Founding Organiser (close-out FO1; uncapped since LAW 24). Resolved on
    * the server from organisations.is_founding and passed in as a boolean, so
    * no column crosses into the client bundle.
    */

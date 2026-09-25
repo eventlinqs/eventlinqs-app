@@ -26,9 +26,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { isFoundingCity, foundingCityName, FOUNDING_SPOT_CAP } from '@/lib/founding/invites'
+import { isFoundingCity, foundingCityName } from '@/lib/founding/invites'
 import {
-  FOUNDING_WAIVER_CAP,
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_REFERRAL_MONTHS,
 } from '@/lib/payments/founding-waiver'
@@ -75,20 +74,16 @@ describe('the founding invite mechanic is national', () => {
   })
 })
 
-describe('the scarcity the founder kept is untouched', () => {
-  it('the cap is still fifty', () => {
-    expect(FOUNDING_SPOT_CAP).toBe(50)
-    expect(FOUNDING_WAIVER_CAP).toBe(50)
-  })
+describe('the offer is national and uncapped (LAW 24, 20 September 2026)', () => {
 
   it('the offer is still six months, extended three per referral', () => {
     expect(FOUNDING_INITIAL_MONTHS).toBe(6)
     expect(FOUNDING_REFERRAL_MONTHS).toBe(3)
   })
 
-  it('the offer copy still states the cap and the referral mechanic', () => {
+  it('the offer copy states no cap, and still states the six months and the referral mechanic', () => {
     const prose = `${FOUNDING_OFFER.body} ${FOUNDING_OFFER.note} ${FOUNDING_OFFER.points.join(' ')}`
-    expect(prose).toMatch(/first 50/i)
+    expect(prose).not.toMatch(/first 50/i)
     expect(prose).toMatch(/6 months/i)
     expect(prose).toMatch(/3 more fee-free months|3 more months/i)
   })

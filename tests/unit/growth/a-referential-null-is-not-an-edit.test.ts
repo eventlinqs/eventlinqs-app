@@ -293,7 +293,9 @@ describe('the tree itself, which is what the guard actually judges', () => {
   const subjects: Subject[] = judge(schema)
 
   it('finds triggers of this shape at all, so a pass is not an empty sweep', () => {
-    expect(subjects.length).toBeGreaterThanOrEqual(6)
+    // Five since 26 September 2026: LAW 24 dropped organisations.trg_founding_waiver_cap
+    // (migration 20260926000001), and the replay sees the drop.
+    expect(subjects.length).toBeGreaterThanOrEqual(5)
   })
 
   it('holds every one of them', () => {
@@ -325,13 +327,15 @@ describe('the tree itself, which is what the guard actually judges', () => {
     expect([...nullable].sort()).toEqual(expected)
   })
 
-  it('leaves the two triggers that were already correct exactly as they were', () => {
-    // `organisations.trg_founding_waiver_cap` and `events.trg_refund_policy_one_way`
-    // predate this rule and satisfy it by two different constructs. The guard
-    // accepts both rather than imposing one house style on working code.
+  it('leaves the trigger that was already correct exactly as it was, and sees a dropped one gone', () => {
+    // `events.trg_refund_policy_one_way` predates this rule and satisfies it by
+    // an early return. `organisations.trg_founding_waiver_cap` satisfied it by
+    // `UPDATE OF founding_fee_free_until` until LAW 24 dropped it on
+    // 26 September 2026; the replay must see the drop rather than judge a
+    // trigger production no longer has.
     const founding = subjects.find(s => s.trigger === 'trg_founding_waiver_cap')
     const refund = subjects.find(s => s.trigger === 'trg_refund_policy_one_way')
-    expect(founding?.by).toBe('update of founding_fee_free_until')
+    expect(founding).toBeUndefined()
     expect(refund?.by).toBe('an early return in the function')
   })
 })

@@ -4650,18 +4650,54 @@ const DRILLS = [
   },
 
   /*
-   * founding-offer-matches-configuration (FO1), five drills. The offer is
+   * founding-offer-matches-configuration (FO1), the offer drills. The offer is
    * published, is repeated in every outreach message, and is charged by a
    * different module from the one that prints it, so each drill is a way the
    * page and the invoice come to disagree.
+   *
+   * LAW 24 (26 September 2026) replaced "the engine changes the founding cap
+   * and the published page does not" with the ways the cap comes back, and the
+   * way the registration stamp drifts from the copy.
    */
   {
-    name: 'the engine changes the founding cap and the published page does not',
+    name: 'the engine grows a founding cap again',
     guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
     file: 'src/lib/payments/founding-waiver.ts',
-    find: 'export const FOUNDING_WAIVER_CAP = 50',
-    replace: 'export const FOUNDING_WAIVER_CAP = 75',
-    expect: 'and the engine that charges uses',
+    find: 'export const FOUNDING_INITIAL_MONTHS = 6',
+    replace: 'export const FOUNDING_WAIVER_CAP = 50\nexport const FOUNDING_INITIAL_MONTHS = 6',
+    expect: 'exports FOUNDING_WAIVER_CAP again',
+  },
+  {
+    name: 'the organiser terms promise the offer to the first fifty again',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/app/legal/organiser-terms/page.tsx',
+    find: '        number of organisers and nothing to apply for:',
+    replace: '        number of organisers and nothing to apply for, for the first 50 organisers in Australia:',
+    expect: 'states a cap',
+  },
+  {
+    name: 'claim_founding_spot counts to fifty again',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: '  v_taken integer;\nBEGIN',
+    replace: '  v_taken integer;\n  v_cap constant integer := 50;\nBEGIN',
+    expect: 'defines claim_founding_spot with a cap',
+  },
+  {
+    name: 'the fifty-window cap trigger is left installed',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: 'DROP TRIGGER IF EXISTS trg_founding_waiver_cap ON public.organisations;',
+    replace: '-- the cap trigger stays',
+    expect: 'no later migration drops it',
+  },
+  {
+    name: 'the registration stamp gives fewer months than the page promises',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: 'founding_add_months(COALESCE(NEW.created_at, now()), 6)',
+    replace: 'founding_add_months(COALESCE(NEW.created_at, now()), 3)',
+    expect: 'stamps 3 months at registration',
   },
   {
     name: 'a published claim is deleted from the offer instead of corrected',

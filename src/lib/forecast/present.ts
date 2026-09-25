@@ -102,7 +102,7 @@ export function feeSentence(percent: number, fixedCents: number, currency: strin
  * show rather than restating a number.
  */
 export const FOUNDING_SENTENCE =
-  'The second figure is what a Founding Organiser pays. The founding offer waives the fee entirely for the length of the window, and there are a limited number of places.'
+  'The second figure is what you pay in your first six months. Every organiser is fee-free for six months from the day they register, with no cap on places, and the standard fee applies after that.'
 
 /** The consent wording an address is taken under, and stored beside it. */
 export const EMAIL_CONSENT_TEXT =

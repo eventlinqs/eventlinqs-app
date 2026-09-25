@@ -8,8 +8,8 @@ import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 /**
  * The founder's demand-signal aggregates. Read-only, TEST data, real counts
  * only, no PII beyond the operational identifiers the founder acts on. This is
- * the tipping-point view: per-city waitlist demand over time, founding spots
- * taken versus remaining, invites issued and converted, and Launch Kit usage.
+ * the tipping-point view: per-city waitlist demand over time, founding
+ * organisers joined, invites issued and converted, and Launch Kit usage.
  *
  * ---------------------------------------------------------------------------
  * "ALL FIGURES ARE LIVE COUNTS" IS A PROMISE THE PAGE MAKES IN ITS OWN HEADER,

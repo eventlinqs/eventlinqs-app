@@ -5,14 +5,11 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
 import { createFoundingInvite, isFoundingCity } from '@/lib/founding/invites'
 import {
   FOUNDING_REFERRAL_MONTHS,
-  FOUNDING_WAIVER_CAP,
-  foundingGrantVerdict,
   extendWaiver,
   initialWaiverUntil,
   isWaiverActive,
@@ -103,9 +100,9 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
       text: [
         `Hi ${firstName},`,
         '',
-        `${cityName} is opening on EventLinqs, and you are invited to join as one of the first 50 Founding Organisers.`,
+        `${cityName} is opening on EventLinqs, and you are invited to join as a Founding Organiser.`,
         '',
-        'Founding Organisers pay no platform fee for 6 months, get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer.',
+        'Every organiser pays no platform fee for 6 months from the day they register. Founding Organisers also get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer who runs an event.',
         '',
         `Claim your spot: ${inviteUrl}`,
         '',
@@ -113,7 +110,7 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
         '',
         'EventLinqs',
       ].join('\n'),
-      html: `<p>Hi ${firstName},</p><p><strong>${cityName} is opening on EventLinqs</strong>, and you are invited to join as one of the first 50 Founding Organisers.</p><p>Founding Organisers pay no platform fee for 6 months, get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer.</p><p><a href="${inviteUrl}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Claim your founding spot</a></p><p style="font-size:12px;color:#888;">You are receiving this because you joined the ${cityName} waitlist and asked to hear about Founding Organiser invitations. <a href="${unsubscribeUrl}">Leave the waitlist</a> any time.</p><p>EventLinqs</p>`,
+      html: `<p>Hi ${firstName},</p><p><strong>${cityName} is opening on EventLinqs</strong>, and you are invited to join as a Founding Organiser.</p><p>Every organiser pays no platform fee for 6 months from the day they register. Founding Organisers also get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer who runs an event.</p><p><a href="${inviteUrl}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Claim your founding spot</a></p><p style="font-size:12px;color:#888;">You are receiving this because you joined the ${cityName} waitlist and asked to hear about Founding Organiser invitations. <a href="${unsubscribeUrl}">Leave the waitlist</a> any time.</p><p>EventLinqs</p>`,
     })
   } catch (err) {
     console.error('[admin/network] invite email failed:', err)
@@ -141,11 +138,12 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
  * work it out. That keeps one definition of "six months from now" and one of
  * "three more months from where you are".
  *
- * THE FIFTY CAP IS REAL AND IS ENFORCED BY THE DATABASE. A grant that would be
- * the fifty-first is refused unless the owner deliberately overrides, and the
- * override is passed to the RPC, which opens the cap for that transaction only
- * and never beyond it. Every outcome is audit-logged either way, including the
- * refusal, because a cap that silently declines is a cap nobody can reason about.
+ * THERE IS NO CAP (LAW 24, founder ruling of 20 September 2026: "Not a cap of
+ * 50. Every organiser."). Every organisation already holds six months from its
+ * own registration, stamped by the database at insert; this is the owner's hand
+ * on top of that, and every outcome is audit-logged. The fifty-window count,
+ * its refusal and its override were removed with the database trigger that
+ * enforced them (migration 20260926000001).
  */
 export type FoundingWaiverAction = 'grant' | 'extend' | 'revoke'
 
@@ -153,7 +151,6 @@ export async function setFoundingWaiver(input: {
   organisationId: string
   action: FoundingWaiverAction
   months?: number
-  overrideCap?: boolean
 }): Promise<{ ok?: true; feeFreeUntil?: string | null; error?: string }> {
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) return { error: 'Not authorised.' }
@@ -186,52 +183,6 @@ export async function setFoundingWaiver(input: {
     next = extendWaiver(previous, months ?? FOUNDING_REFERRAL_MONTHS)
   }
 
-  // A grant OPENS a window where there was none, which is the only transition
-  // the cap governs. Extending and revoking are never capped.
-  const opensANewWindow = next !== null && !previous
-  let overrode = false
-  if (opensANewWindow) {
-    // A FAILED COUNT IS NOT ZERO HOLDERS. `holders ?? 0` made an unreachable
-    // database look like a programme nobody had joined, so the cap check passed
-    // for a reason that had nothing to do with the cap. The database trigger is
-    // still the backstop and would have refused the fifty-first, but the owner
-    // would have been told "the database refused that change" for a grant that
-    // was in fact perfectly lawful, which is the wrong explanation of the wrong
-    // fault. Refuse here, name the real reason, and change nothing.
-    const holdersRes = await admin
-      .from('organisations')
-      .select('id', { count: 'exact', head: true })
-      .not('founding_fee_free_until', 'is', null)
-    if (holdersRes.error) {
-      console.error('[admin/network] could not count open founding windows:', holdersRes.error)
-      return { error: 'Could not check how many founding windows are open. Nothing was changed.' }
-    }
-    const holders = countOrRaise('open founding windows', holdersRes)
-    const atTheCap = holders >= FOUNDING_WAIVER_CAP
-    const verdict = foundingGrantVerdict({
-      holders,
-      opensNewWindow: true,
-      override: input.overrideCap === true,
-    })
-    if (verdict === 'refused_cap') {
-      await recordAuditEvent({
-        action: 'admin.founding.waiver.cap_refused',
-        session,
-        targetType: 'organisation',
-        targetId: org.id,
-        metadata: { holders, cap: FOUNDING_WAIVER_CAP },
-      })
-      return {
-        error: `All ${FOUNDING_WAIVER_CAP} founding windows are taken. Tick "override the cap" to grant anyway.`,
-      }
-    }
-    // The database trigger is the backstop and does not know about the tick, so
-    // the override is only passed on when the cap is ACTUALLY reached. Passing
-    // it every time the box happens to be ticked would leave the escape hatch
-    // open on ordinary grants, which is how a backstop stops being one.
-    overrode = atTheCap && input.overrideCap === true
-  }
-
   // Membership moves with the terms. Granting by hand IS admitting an organiser
   // to the programme, and revoking is removing them from it, so is_founding and
   // founding_since travel in the same statement rather than in a second write
@@ -242,7 +193,7 @@ export async function setFoundingWaiver(input: {
   const { data: applied, error: rpcError } = await admin.rpc('admin_set_founding_waiver', {
     p_org_id: org.id,
     p_until: next,
-    p_override: overrode,
+    p_override: false,
     p_membership: membership,
   })
 
@@ -270,9 +221,7 @@ export async function setFoundingWaiver(input: {
       previous_fee_free_until: previous,
       new_fee_free_until: feeFreeUntil,
       months_added: input.action === 'extend' ? months ?? null : null,
-      cap_overridden: overrode,
       membership: membership,
-      cap: FOUNDING_WAIVER_CAP,
       active_now: isWaiverActive(feeFreeUntil),
     },
   })

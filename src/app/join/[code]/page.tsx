@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
 import { isFlagEnabled } from '@/lib/flags'
-import { getInviteByCode, getFoundingCounts } from '@/lib/founding/invites'
+import { getInviteByCode } from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
 import { SetInviteCookie } from './set-invite-cookie'
 
@@ -19,8 +19,9 @@ type Props = { params: Promise<{ code: string }> }
 
 /**
  * The warm founding-organiser landing. "[Organiser] invited you to
- * EventLinqs." Shows the real spots-remaining count, then drops the invite
- * code into a cookie and sends the visitor into signup. Only issuable for the
+ * EventLinqs." States the six fee-free months every organiser holds from
+ * registration (LAW 24; the spots-remaining count went with the cap), then
+ * drops the invite code into a cookie and sends the visitor into signup. Only issuable for the
  * open cities, so the page always names a real, opening city.
  */
 export default async function FoundingInvitePage({ params }: Props) {
@@ -28,7 +29,6 @@ export default async function FoundingInvitePage({ params }: Props) {
   const { code } = await params
 
   const invite = await getInviteByCode(code)
-  const counts = await getFoundingCounts()
   const cityName = invite ? (getCity(invite.citySlug)?.name ?? invite.citySlug) : ''
 
   const invalid = !invite || invite.status !== 'pending'
@@ -62,16 +62,12 @@ export default async function FoundingInvitePage({ params }: Props) {
             </div>
             <div className="px-8 py-7">
               <p className="text-base leading-relaxed text-ink-700">
-                You have been invited to join the first {String(50)} Founding Organisers in {cityName}. Founding
-                Organisers pay no platform fee for 6 months, get their first event set up with the founder, and
-                shape what we build next.
+                You have been invited to join the Founding Organisers in {cityName}. Every organiser pays no
+                platform fee for 6 months from the day they register; Founding Organisers also get their first
+                event set up with the founder, and shape what we build next.
               </p>
               <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-gold-400/50 bg-gold-100/50 px-4 py-2 text-sm font-semibold text-ink-900">
-                {counts.spotsRemaining > 0 ? (
-                  <>{counts.spotsRemaining} of {String(50)} founding spots left</>
-                ) : (
-                  <>All {String(50)} founding spots are taken right now</>
-                )}
+                6 months fee-free from the day you register
               </div>
               <ul className="mt-6 space-y-2.5 text-[15px] text-ink-700">
                 <li>6 months completely fee-free on every paid ticket</li>
