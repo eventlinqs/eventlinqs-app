@@ -193,9 +193,9 @@ charge, the display and the payout each make identically.
 
 | Term | Value | Where it lives |
 |---|---|---|
-| Initial grant | 6 months from onboarding | `FOUNDING_INITIAL_MONTHS` |
+| Initial grant | 6 months from the organisation's OWN registration, every organiser (LAW 24, 20 September 2026) | `FOUNDING_INITIAL_MONTHS`; stamped at insert by `trg_registration_fee_free_window` |
 | Per confirmed referral | plus 3 months | `FOUNDING_REFERRAL_MONTHS` |
-| Cap | the first 50 organisations, Geelong and Melbourne | `FOUNDING_WAIVER_CAP` |
+| Cap | none. "Not a cap of 50. Every organiser." The fifty cap (`FOUNDING_WAIVER_CAP`, `trg_founding_waiver_cap`) was removed on 26 September 2026 | migration `20260926000001` |
 | Stored as | `organisations.founding_fee_free_until` (TIMESTAMPTZ) | migration `20260727000002` |
 
 <!-- ONE-FEE-ALLOW-BEGIN: quotes the superseded wording it replaces. -->
