@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
@@ -1016,6 +1017,16 @@ export async function fetchPublicEventsCached(
     `tab:${filters.tab ?? ''}`,
   ]
   const cacheKey = keyParts.join('|')
+
+  // NO SERVICE-ROLE KEY, NO ADMIN READ. A build host that withholds the key
+  // (the CI build job carries only NEXT_PUBLIC values) prerenders an empty
+  // result and the page's own revalidate fills it in, the same fail-soft
+  // dynamic-pricing.ts uses. Checked before unstable_cache so the empty answer
+  // is never stored under a real key. Wherever the key exists, nothing changes.
+  if (!getSupabaseServiceRoleKey()) {
+    console.warn('[fetchPublicEventsCached] no service-role key on this host; failing soft to ISR')
+    return { events: [], total: 0, page, pageSize, totalPages: 0 }
+  }
 
   const cached = await unstable_cache(
     () => runFetchPublicEventsAdmin({ filters, page, pageSize, origin: input.origin, bbox: input.bbox }),

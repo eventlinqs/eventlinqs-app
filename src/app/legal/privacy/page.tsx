@@ -4,6 +4,7 @@ import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { entityLegalLine } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 import { getCurrentConsentWording } from '@/lib/consent/ledger'
 import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
 
@@ -48,8 +49,16 @@ export default async function PrivacyPolicyPage() {
    * describe a promise the checkout has stopped making. Revalidated hourly
    * rather than rendered per request, because a legal page is read far more
    * often than a wording version changes.
+   *
+   * consent_wordings is read with the service-role client because the table
+   * has RLS on and no anon policy. A build host that withholds that key (the CI
+   * build job carries only NEXT_PUBLIC values) prerenders without the quoted
+   * wording and the hourly revalidate fills it in, the same fail-soft
+   * dynamic-pricing.ts uses. Wherever the key exists, nothing changes.
    */
-  const wording = await getCurrentConsentWording(createAdminClient(), FACILITATED_MARKETING_PURPOSE)
+  const wording = getSupabaseServiceRoleKey()
+    ? await getCurrentConsentWording(createAdminClient(), FACILITATED_MARKETING_PURPOSE)
+    : null
   return (
     <LegalPageShell
       title="Privacy Policy"

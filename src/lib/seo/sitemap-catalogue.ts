@@ -70,6 +70,17 @@ export const CATALOGUE_ROW_CAP = 5000
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
+/*
+ * THE CLIENT IS BUILT INSIDE EACH READER'S TRY, never in a default parameter.
+ *
+ * createAdminClient() throws when the host carries no service-role key, and a
+ * default parameter is evaluated before the try it sits beside, so the throw
+ * escaped the `{ rows, error }` contract above and 500'd the sitemap on the CI
+ * build job, which withholds that key by design. Inside the try it becomes the
+ * reader's `error`: the sitemap logs it and publishes what it has, the guard
+ * fails on it. Wherever the key exists, nothing changes.
+ */
+
 /**
  * Every publicly visible event with a slug, as `/events/{slug}`.
  *
@@ -78,8 +89,9 @@ type AdminClient = ReturnType<typeof createAdminClient>
  * applying the listing window here would drop a past event's URL from the
  * sitemap while the page still answered 200.
  */
-export async function readEventCatalogue(admin: AdminClient = createAdminClient()): Promise<CatalogueRead> {
+export async function readEventCatalogue(given?: AdminClient): Promise<CatalogueRead> {
   try {
+    const admin = given ?? createAdminClient()
     const { data, error } = await admin
       .from('events')
       .select('slug, updated_at')
@@ -135,8 +147,8 @@ export async function readOrganiserCatalogue(options: {
   threshold: number
   admin?: AdminClient
 }): Promise<CatalogueRead> {
-  const admin = options.admin ?? createAdminClient()
   try {
+    const admin = options.admin ?? createAdminClient()
     const { data, error } = await admin
       .from('organisations')
       // `id` and `description` are read for the substance rule: the page decides
@@ -178,8 +190,9 @@ export async function readOrganiserCatalogue(options: {
  * page, and the market-ready bar is explicit that a route resolving 200 to a
  * designed empty state is still not something to advertise.
  */
-export async function readVenueCatalogue(admin: AdminClient = createAdminClient()): Promise<CatalogueRead> {
+export async function readVenueCatalogue(given?: AdminClient): Promise<CatalogueRead> {
   try {
+    const admin = given ?? createAdminClient()
     const { data, error } = await admin
       .from('events')
       .select('venue_name, updated_at')
@@ -258,8 +271,9 @@ export async function readVenueCatalogue(admin: AdminClient = createAdminClient(
  * dialect of the listing rule is a new way for the sitemap and the pages to
  * disagree, which is the whole failure this module exists to prevent.
  */
-export async function readArtistCatalogue(admin: AdminClient = createAdminClient()): Promise<CatalogueRead> {
+export async function readArtistCatalogue(given?: AdminClient): Promise<CatalogueRead> {
   try {
+    const admin = given ?? createAdminClient()
     /*
      * THREE PLAIN QUERIES, NO EMBEDS, AND THE SHAPE IS NOT A STYLE CHOICE.
      *
