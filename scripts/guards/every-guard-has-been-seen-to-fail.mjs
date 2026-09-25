@@ -123,7 +123,6 @@ const BASELINE = [
   'scripts/guards/ledger-append-only.mjs',
   'scripts/guards/ledger-speaks-no-industry.mjs',
   'scripts/guards/ledger-writes-through-the-adapter.mjs',
-  'scripts/guards/lighthouse-floor-ratchet.mjs',
   'scripts/guards/migration-needs-sale-gate-fix.mjs',
   'scripts/guards/mutation-revalidates.mjs',
   'scripts/guards/no-deprecated-runtime.mjs',

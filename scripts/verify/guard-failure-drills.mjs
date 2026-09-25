@@ -1467,6 +1467,43 @@ const DRILLS = [
     expect: 'step selection',
   },
   /*
+   * The Lighthouse jurisdiction (founder ruling, 25 September 2026). The local
+   * step stands down only when main's protection REQUIRES the Lighthouse CI
+   * check. The two ways that dies quietly: doubt read as a waiver, and a gate
+   * whose step no longer asks at all.
+   */
+  {
+    name: 'an unreadable branch protection waives the local Lighthouse step',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: 'scripts/ops/lighthouse-jurisdiction.mjs',
+    find: "return { judgedHere: true, reason: `main's protection could not be read",
+    replace: "return { judgedHere: false, reason: `main's protection could not be read",
+    expect: 'waives the local step when protection could not be read',
+  },
+  {
+    name: 'the gate stops asking branch protection before it waives Lighthouse',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: 'run: (env) => lighthouseStep(env),',
+    replace: 'run: () => 0,',
+    expect: 'no longer routes its lighthouse step through lighthouseStep',
+  },
+  /*
+   * lighthouse-floor-ratchet had no drill until 26 September 2026, when the
+   * local Lighthouse step became conditional on main's protection: where the
+   * CI check is required, the floors are asserted only by the CI job, so the
+   * guard that holds them is the last thing between a lowered number and a
+   * merge.
+   */
+  {
+    name: 'a Lighthouse floor is lowered',
+    guard: `${GUARDS}/lighthouse-floor-ratchet.mjs`,
+    file: 'lighthouserc.json',
+    find: '"canonical": ["error", { "minScore": 1, "aggregationMethod": "median" }],',
+    replace: '"canonical": ["error", { "minScore": 0.9, "aggregationMethod": "median" }],',
+    expect: 'LOWERED',
+  },
+  /*
    * card-raster-traced (close-out C3, 6 September 2026): the resvg binary is
    * pinned into each rasterising route's lambda trace by hand, and the only
    * environment that shows a lost entry is Vercel. The drill removes the binary

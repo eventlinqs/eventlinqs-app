@@ -43,7 +43,18 @@
  * the number is the product rather than the runner (the founder ruling of
  * 25 August 2026 on the CI gate rests on that distinction). The step BLOCKS:
  * that is what the close-out asked for, and the standing 95+ law is what the
- * product should achieve. The collection is driven by the gate rather than by
+ * product should achieve.
+ *
+ * UNLESS GITHUB JUDGES IT (founder ruling, 25 September 2026). Before it builds
+ * a server, the step asks main's branch protection whether the Lighthouse CI
+ * check (LIGHTHOUSE_CI_CHECK, `Lighthouse mobile gate`) is required. If it is,
+ * the step prints NOT JUDGED HERE, names that check, and does not block: the
+ * pull request cannot merge until the runner has measured the Vercel preview.
+ * If it is not required, or protection cannot be read, the step runs and blocks
+ * exactly as before. That is the reversal condition, and it is evaluated on
+ * every push. See scripts/ops/lighthouse-jurisdiction.mjs for the evidence.
+ *
+ * The collection is driven by the gate rather than by
  * `lhci collect` for one reason, stated at judgeLighthouseRun: on Windows the
  * launcher's profile cleanup races Chrome's exit and LHCI's runner counts a
  * finished audit as a failed run.
@@ -87,6 +98,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { calibrationReport } from '../ci/lighthouse-calibration.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
+import { LIGHTHOUSE_CI_CHECK, judgeLighthouseJurisdiction, readMainProtection } from './lighthouse-jurisdiction.mjs'
 import { PARITY_SINK_PORT, parityStandInAnswers } from '../verify/sentry-parity-sink.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -818,6 +830,24 @@ export function readCollectedReports(dir = LHCI_DIR) {
   return out
 }
 
+/**
+ * Asks, then either names the judge and stands down, or runs the local step
+ * exactly as it ran before the ruling. `ask` and `run` are parameters so the
+ * decision is unit-tested without GitHub or a build.
+ */
+export async function lighthouseStep(env, { ask = readMainProtection, run = runLighthouse } = {}) {
+  const verdict = judgeLighthouseJurisdiction(ask())
+  if (!verdict.judgedHere) {
+    console.log(`[gate] NOT JUDGED HERE: ${verdict.reason}.`)
+    console.log(`[gate]   Page speed is judged by the required check "${LIGHTHOUSE_CI_CHECK}" (Lighthouse CI on GitHub,`)
+    console.log('[gate]   against the Vercel preview). The pull request cannot merge until it passes. This step does not block.')
+    console.log("[gate]   Reversal: remove that check from main's required status checks and this step judges and blocks again.")
+    return { code: 0, label: 'NOT JUDGED' }
+  }
+  console.log(`[gate] judged here: ${verdict.reason}.`)
+  return run(env)
+}
+
 async function runLighthouse(env) {
   if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
@@ -1077,10 +1107,10 @@ export const STEPS = [
   {
     id: 'lighthouse',
     ci: 'Lighthouse CI > Lighthouse mobile gate',
-    title: 'the Lighthouse mobile gate on this build, served locally',
+    title: 'the Lighthouse mobile gate on this build, served locally, unless main requires the CI check',
     mirrors: ['Lighthouse mobile gate'],
     env: 'local',
-    run: runLighthouse,
+    run: (env) => lighthouseStep(env),
   },
 ]
 
@@ -1182,8 +1212,8 @@ function parseOnly(argv) {
 
 function summary(results, selected) {
   console.log('')
-  console.log('[gate] ' + 'step'.padEnd(24) + 'result'.padEnd(10) + 'seconds')
-  for (const r of results) console.log('[gate] ' + r.id.padEnd(24) + (r.ok ? 'PASS' : 'FAIL').padEnd(10) + r.secs)
+  console.log('[gate] ' + 'step'.padEnd(24) + 'result'.padEnd(12) + 'seconds')
+  for (const r of results) console.log('[gate] ' + r.id.padEnd(24) + (r.ok ? (r.label ?? 'PASS') : 'FAIL').padEnd(12) + r.secs)
   for (const s of selected.slice(results.length)) console.log('[gate] ' + s.id.padEnd(24) + 'not run')
 }
 
@@ -1252,14 +1282,19 @@ async function main() {
     console.log(`[gate]     stands in for ${step.ci}`)
     console.log('='.repeat(72))
     let code
+    let label
     try {
-      code = await step.run(envFor(step.env))
+      const out = await step.run(envFor(step.env))
+      // A step answers with an exit code, or with { code, label } when a pass
+      // means something other than PASS (the lighthouse step's NOT JUDGED).
+      if (out && typeof out === 'object') ({ code, label } = out)
+      else code = out
     } catch (error) {
       console.error(`[gate] ${step.id} threw: ${error.stack ?? error.message}`)
       code = 1
     }
     const secs = ((Date.now() - started) / 1000).toFixed(0)
-    results.push({ id: step.id, ok: code === 0, secs })
+    results.push({ id: step.id, ok: code === 0, secs, label })
     if (code !== 0) {
       summary(results, selected)
       console.error('')

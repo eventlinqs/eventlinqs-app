@@ -1164,7 +1164,10 @@ it, and they report how many do.
   copy gate, the critical-path guard, the exemption clock, every registered
   guard, the types-drift guard against production, the suite through the
   canary, the build, and the Lighthouse mobile gate on that build served
-  locally. `.githooks/pre-push` runs the whole of it on every push and nothing
+  locally, unless main's branch protection requires the Lighthouse CI check, in
+  which case that step prints NOT JUDGED HERE and GitHub judges (founder ruling,
+  25 September 2026; `scripts/ops/lighthouse-jurisdiction.mjs` asks on every
+  push, and doubt runs the local step). `.githooks/pre-push` runs the whole of it on every push and nothing
   else. Pull requests are opened as DRAFTS: every pull-request workflow skips a
   draft on every job and wakes on `ready_for_review`, so CI runs exactly once,
   after the local gate is green. `workflows-skip-drafts` and
@@ -1188,8 +1191,8 @@ named and routed, never hidden.
 | Gate | File | Enforces | State |
 |---|---|---|---|
 | CI: lint / typecheck / build / test | `.github/workflows/ci.yml` | code correctness, type safety, build integrity, unit tests (vitest) | Blocking on PRs to main; skipped on drafts, runs on `ready_for_review`. The `types-drift guard` job has run with the configured `SUPABASE_ACCESS_TOKEN` since 2026-06-07 and went red on real drift on 2026-09-05; it is not in the required-status list on main. |
-| Pre-push gate | `.githooks/pre-push` runs `scripts/ops/pre-push-gate.mjs` (`npm run gate:push`) | every CI check, locally, before a push: typecheck, lint, copy gate, critical-path guard, exemption clock, every registered guard, types-drift guard, the suite through the canary, the build, the Lighthouse mobile gate on the local production build | Blocking on every push since 2026-09-06 (close-out C2). Held by `workflows-skip-drafts` and `pre-push-gate-wired` (C2.3), both drilled red and green. |
-| Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | ADVISORY since 2026-08-25 (founder ruling). Runs on every PR, asserts every threshold, fails loudly, emails. It does NOT block a merge. `docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md` |
+| Pre-push gate | `.githooks/pre-push` runs `scripts/ops/pre-push-gate.mjs` (`npm run gate:push`) | every CI check, locally, before a push: typecheck, lint, copy gate, critical-path guard, exemption clock, every registered guard, types-drift guard, the suite through the canary, the build, the Lighthouse mobile gate on the local production build (NOT JUDGED HERE while main requires the Lighthouse CI check; it runs and blocks when that check is not required or protection cannot be read) | Blocking on every push since 2026-09-06 (close-out C2). Held by `workflows-skip-drafts` and `pre-push-gate-wired` (C2.3), both drilled red and green. |
+| Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | REQUIRED on main since 2026-09-25 (founder ruling): `Lighthouse mobile gate` is a required status check beside `lint · typecheck · build`, `test (vitest)` and `production parity`, so a PR cannot merge until it passes against the Vercel preview. It was advisory from 2026-08-25 (`docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md`). |
 | axe-core | `scripts/axe-*.mjs` (incl `axe-marketing-scan.mjs`) | accessibility 0 violations (WCAG 2 A/AA) | NOT a CI job yet - run by hand per surface. |
 | Link-integrity crawler | `scripts/link-integrity-crawl.mjs` | Law 5, zero dead links | NOT a CI job yet - run by hand vs preview/local. |
 | Post-deploy smoke | `.github/workflows/post-deploy-smoke.yml` | production homepage 200 + no error-boundary HTML after deploy | Blocking on main after CI. |
@@ -1197,7 +1200,10 @@ named and routed, never hidden.
 Known gate gaps (routed to the engine-hardening branch; founder ruling needed on
 the first):
 
-1. **Lighthouse is ADVISORY, by founder ruling of 25 August 2026.** It runs on
+1. **SUPERSEDED 25 September 2026: Lighthouse CI is REQUIRED on main again**, and
+   is the judge of page speed; the laptop measured a BenchmarkIndex of 1844 to
+   2102 that day against the 2700 the floors were confirmed at. The paragraph
+   below is the 25 August record. **Lighthouse was ADVISORY, by founder ruling of 25 August 2026.** It runs on
    every PR, asserts every threshold, fails loudly and emails; it does not block a
    merge. THE RULING IS NOT A RELAXATION OF THE 95+ LAW, which still stands for
    what the product should achieve. It is a statement about what the gate was
