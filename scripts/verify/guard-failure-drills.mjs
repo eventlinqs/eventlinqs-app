@@ -7433,6 +7433,28 @@ const DRILLS = [
     replace: "  { feature: 'React DOM', test: /GoTrueClient|PostgrestClient/,",
     expect: 'both claim the feature',
   },
+  /*
+   * PLATFORM-FIX-1, 26 September 2026: built mode read .next/static/chunks only
+   * and SKIPPED on a Vercel build, which writes static/immutable/chunks (the
+   * event-grid guard's fault 3, commit 583b764b). The calibration in contract
+   * mode is what a drill can reach: drop either directory and it fails.
+   */
+  {
+    name: 'the cost table reads only the local chunk directory again, and goes blind on Vercel',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
+    find: "export const CHUNK_DIRS = ['static/chunks', 'static/immutable/chunks']",
+    replace: "export const CHUNK_DIRS = ['static/chunks']",
+    expect: 'cannot read a build laid out under .next/static/immutable/chunks',
+  },
+  {
+    name: 'the cost table reads only the Vercel chunk directory, and goes blind on a local build',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
+    find: "export const CHUNK_DIRS = ['static/chunks', 'static/immutable/chunks']",
+    replace: "export const CHUNK_DIRS = ['static/immutable/chunks']",
+    expect: 'cannot read a build laid out under .next/static/chunks',
+  },
 
   /*
    * no-punctuation-standing-in-for-a-value (21 September 2026), three drills.
