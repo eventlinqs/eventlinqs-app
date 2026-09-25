@@ -3,7 +3,13 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { MEDIA_QUALITY } from './quality'
-import { MEDIA_SIZES } from './sizes'
+// THE FIVE AVATAR SLOTS, NOT THE WHOLE TABLE. `MEDIA_SIZES` is one object
+// literal, so importing any member of it ships all of it, and this component is
+// in the dashboard shell: on the build of 19 September 2026 that put a 21,005
+// byte chunk carrying every hint on the platform into the first load of thirty
+// dashboard routes, to render one 32px circle. `avatar-sizes.ts` is a leaf and
+// `sizes.ts` spreads the same five strings, so there is still one source.
+import { AVATAR_SIZES } from './avatar-sizes'
 import { resolveImageSrc } from './safe-image-src'
 
 /**
@@ -41,11 +47,11 @@ const PIXELS_BY_SIZE: Record<OrganiserAvatarSize, number> = {
 }
 
 const SIZES_HINT_BY_SIZE: Record<OrganiserAvatarSize, string> = {
-  xs: '24px',
-  sm: MEDIA_SIZES.avatarSm,
-  md: MEDIA_SIZES.avatarMd,
-  topbar: MEDIA_SIZES.avatarTopbar,
-  lg: MEDIA_SIZES.avatarLg,
+  xs: AVATAR_SIZES.xs,
+  sm: AVATAR_SIZES.sm,
+  md: AVATAR_SIZES.md,
+  topbar: AVATAR_SIZES.topbar,
+  lg: AVATAR_SIZES.lg,
 }
 
 function initialsOf(name: string): string {

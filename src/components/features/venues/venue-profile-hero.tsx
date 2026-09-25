@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { BrandedPlaceholder, HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { MapPin, Users } from 'lucide-react'
 
@@ -51,15 +53,31 @@ export function VenueProfileHero({
           // flat panel (close-out C17.6, the venue page on production, 7 September 2026).
           <BrandedPlaceholder chromeless />
         )}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.18) 12%, rgba(10,22,40,0.45) 45%, rgba(10,22,40,0.88) 100%)',
-          }}
-        />
-        <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
+        {/*
+         * THE SHARED WASH, 20 September 2026. This banner carried its own
+         * `0.55 0%, 0.18 12%, 0.45 45%, 0.88 100%`, which is the same decaying
+         * percentage shape four hero templates carried until 19 September and
+         * which `hero-photo-scrim.ts` records in full: a percentage of a BAND
+         * cannot make a promise about text that is bottom-anchored and hugs its
+         * own content, because the height the text starts at moves with the
+         * venue name's length and the viewport.
+         *
+         * NOTHING HAD EVER MEASURED IT, and the reason is worth keeping. Every
+         * contrast check on this platform found its subjects by the locked hero
+         * scale token, and the constitution itself says "The two profile heroes
+         * (venue, organiser) keep their own inline scale". The exception the law
+         * granted was the blind spot the checks inherited.
+         *
+         * NOT DRIVEN OVER A PHOTOGRAPH, said plainly: no venue row on TEST
+         * carries a cover image, so all 49 venue pages render
+         * <BrandedPlaceholder> and this branch has no URL that exercises it.
+         * What holds it is the wash's own arithmetic, re-computed by
+         * hero-text-over-a-photograph.mjs clause 2 on every build.
+         */}
+        <HeroCaption
+          className="z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14"
+          contentClassName="w-full"
+        >
           <div className="max-w-3xl">
             <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-white/85 sm:text-xs">
               Venue
@@ -110,7 +128,7 @@ export function VenueProfileHero({
               ) : null}
             </div>
           </div>
-        </div>
+        </HeroCaption>
       </div>
     </section>
   )

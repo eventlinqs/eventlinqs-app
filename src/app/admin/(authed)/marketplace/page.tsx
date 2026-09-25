@@ -5,6 +5,20 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { listMarketplaceReports } from '@/lib/admin/marketplace'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import { removeGigAction, setReportStatusAction } from './actions'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -69,9 +83,11 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
+      {/* Below lg this stops being a table and each report becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[760px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
               <th scope="col" className="px-4 py-3 font-medium">Target</th>
               <th scope="col" className="px-4 py-3 font-medium">Reason</th>
@@ -80,17 +96,17 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {reports.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-white/50">
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={5} className={ADMIN_EMPTY_CELL}>
                   No reports{filter ? ` with status ${filter}` : ''}. A quiet queue is a healthy board.
                 </td>
               </tr>
             ) : (
               reports.map((report) => (
-                <tr key={report.id} className="border-b border-white/[0.05] align-top">
-                  <td className="px-4 py-3">
+                <tr key={report.id} className={`${ADMIN_ROW} align-top`}>
+                  <td className={ADMIN_CELL_NAME}>
                     <div className="font-medium text-white">
                       {report.target_label ?? report.target_id.slice(0, 8)}
                     </div>
@@ -98,12 +114,17 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                       {report.target_type.replace('_', ' ')}
                     </div>
                   </td>
-                  <td className="max-w-xs px-4 py-3 text-white/60">
+                  <td className={`${ADMIN_CELL} max-w-xs text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Reason</span>
                     <span className="font-medium text-white/80">{report.reason}</span>
                     {report.note ? <span className="block text-xs">{report.note}</span> : null}
                   </td>
-                  <td className="px-4 py-3 text-white/60">{report.reporter_email ?? 'unknown'}</td>
-                  <td className="px-4 py-3">
+                  <td className={`${ADMIN_CELL} text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Reporter</span>
+                    {report.reporter_email ?? 'unknown'}
+                  </td>
+                  <td className={ADMIN_CELL}>
+                    <span className={ADMIN_CELL_LABEL}>Status</span>
                     <span
                       className={
                         report.status === 'open'
@@ -114,7 +135,7 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                       {report.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={ADMIN_CELL_ACTIONS}>
                     {report.status === 'open' ? (
                       <div className="flex flex-wrap gap-2">
                         {report.target_type === 'gig' && (
@@ -123,7 +144,7 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                             <input type="hidden" name="reason" value={`report ${report.id}: ${report.reason}`} />
                             <ConfirmSubmitButton
                               confirmMessage="Remove this gig from the board? The listing closes for everyone."
-                              className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 transition hover:border-red-300/50"
+                              className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 transition hover:border-red-300/50`}
                             >
                               Remove gig
                             </ConfirmSubmitButton>
@@ -132,14 +153,14 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                         <form action={setReportStatusAction}>
                           <input type="hidden" name="reportId" value={report.id} />
                           <input type="hidden" name="status" value="actioned" />
-                          <button className="rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white transition hover:border-amber-300/40">
+                          <button className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white transition hover:border-amber-300/40`}>
                             Mark actioned
                           </button>
                         </form>
                         <form action={setReportStatusAction}>
                           <input type="hidden" name="reportId" value={report.id} />
                           <input type="hidden" name="status" value="dismissed" />
-                          <button className="rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30">
+                          <button className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30`}>
                             Dismiss
                           </button>
                         </form>

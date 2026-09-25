@@ -49,8 +49,60 @@ describe('broadcast flag resolver', () => {
       // Performer marketplace stages ship built but OFF by default.
       gig_board: false,
       artist_showcase: false,
+      // The Founding Organiser offer's reversal condition (close-out FO1). ON,
+      // because the offer is live on /organisers and in every outreach message,
+      // so the safe posture when the table cannot be read is the one the public
+      // page is already promising. Closing it is a deliberate act.
+      founding_open: true,
+      // The audience asset's reversal condition (close-out GA1). ON, because
+      // the consent question is already on the checkout of a live platform and
+      // the asset it builds is the point of the item. Nothing about this
+      // default weakens consent: an audience row still cannot exist without a
+      // granted consent record, and the database is what refuses it.
+      audience_capture: true,
+      // The matcher's reversal condition (close-out GA2). ON, because the
+      // alternative to ranking a consented audience is messaging all of it, and
+      // nothing about this default sends anything: the matcher produces a list
+      // and no transport is reachable from it.
+      marketing_matcher_enabled: true,
+      // The attribution spine's reversal condition (close-out GA3). ON, because
+      // a click that was never written cannot be recovered later and the record
+      // is the basis of an invoice, so the safe posture when the table cannot
+      // be read is to keep recording. Every tracked link keeps redirecting
+      // either way: a poster on a wall is not a feature.
+      marketing_attribution_capture_enabled: true,
+      /*
+       * NOT A STAGE, AND ON BY DEFAULT, which is why it is called out here
+       * rather than folded into the list above.
+       *
+       * It is close-out SEO5's reversal condition: one row change hides every
+       * availability figure and the accessibility section across the event and
+       * venue pages, with no deploy. Both surfaces are shipped and correct, so
+       * the launch state is ON; the switch exists for the day one of them is
+       * found saying something no inventory or organiser supplied.
+       */
+      event_availability_and_access: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(6)
+    expect(BROADCAST_FLAGS).toHaveLength(11)
+  })
+
+  test('the reversal flag defaults ON in both failure paths', async () => {
+    /*
+     * A reversal switch that a database blink could throw is worse than no
+     * switch: it would blank a correct accessibility section, which is the very
+     * thing the item says must not happen ("a blank section is worse than
+     * none"). Both the missing row and the failed read must resolve ON.
+     */
+    const empty = clientReturning(null)
+    expect(await isFeatureEnabled('event_availability_and_access', { client: empty })).toBe(true)
+
+    const broken = clientReturning(null, 'connection reset')
+    expect(await isFeatureEnabled('event_availability_and_access', { client: broken })).toBe(true)
+  })
+
+  test('the reversal flag can be switched OFF by a row, which is the whole point', async () => {
+    const off = clientReturning({ flag: 'event_availability_and_access', enabled: false })
+    expect(await isFeatureEnabled('event_availability_and_access', { client: off })).toBe(false)
   })
 
   test('DB row wins over the default in both directions', async () => {

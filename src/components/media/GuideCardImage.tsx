@@ -31,7 +31,8 @@ export function GuideCardImage({ src, alt, className = '' }: Props) {
         src={safeSrc}
         alt={alt}
         fill
-        sizes={MEDIA_SIZES.card}
+        /* The guides hub renders these in `grid-cols-1 md:grid-cols-2`. */
+        sizes={MEDIA_SIZES.gridOneTwo}
         quality={MEDIA_QUALITY.card}
         loading="lazy"
         decoding="async"

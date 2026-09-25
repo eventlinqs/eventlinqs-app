@@ -11,6 +11,8 @@
  * actions).
  */
 
+import { MEASUREMENT_OFF } from './measurement-off'
+
 declare global {
   interface Window {
     plausible?: (
@@ -23,6 +25,11 @@ declare global {
 type EventProps = Record<string, string | number>
 
 export function trackEvent(name: string, props?: EventProps): void {
+  // AN1's reversal condition: one flag and nothing measures. Plausible is
+  // cookieless and needs no banner, so it is outside the consent gate, but it
+  // is not outside "all analytics" and a reversal that left it running would
+  // not be the sentence the item wrote.
+  if (MEASUREMENT_OFF) return
   if (typeof window === 'undefined') return
   if (!window.plausible) return
   window.plausible(name, props ? { props } : undefined)
@@ -101,6 +108,7 @@ export async function trackEventServer(
   url: string,
   props?: EventProps,
 ): Promise<void> {
+  if (MEASUREMENT_OFF) return
   try {
     await fetch(PLAUSIBLE_ENDPOINT, {
       method: 'POST',

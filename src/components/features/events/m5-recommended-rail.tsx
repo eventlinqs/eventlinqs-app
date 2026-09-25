@@ -8,6 +8,14 @@ type Props = {
   events: PublicEventRow[]
   headline: 'recommended' | 'popular' | null
   seeAllHref?: string
+  /**
+   * Whether the first card may take the page's one image preload. Defaults
+   * TRUE, which is right on /events, where the hero strip is text-only and this
+   * rail genuinely holds the LCP. A caller whose page paints a photograph above
+   * this rail passes FALSE. Close-out C8B.5; same name and shape as
+   * `EventsGrid`'s, so the two rail-or-grid decisions on one page read alike.
+   */
+  firstCardEager?: boolean
 }
 
 const MAX_RAIL_COUNT = 8
@@ -33,6 +41,7 @@ export async function RecommendedRail({
   events,
   headline,
   seeAllHref = '/events?sort=popular',
+  firstCardEager = true,
 }: Props) {
   if (headline === null) return null
   /*
@@ -92,16 +101,30 @@ export async function RecommendedRail({
               className="w-64 shrink-0 snap-start sm:w-72"
             >
               {/*
-                The first rail card consistently wins the LCP race on
-                /events and /events/browse/[city] because the recommended
-                rail renders above the main grid in DOM order and the
-                EventsHeroStrip is text-only. Marking the first rail card
-                priority gives it fetchpriority="high", loading="eager", and
-                an auto-injected <link rel="preload"> so the LCP candidate is
+                The first rail card wins the LCP race on /events, because the
+                recommended rail renders above the main grid in DOM order and
+                the EventsHeroStrip there is text-only. Marking it priority
+                gives it fetchpriority="high", loading="eager", and an
+                auto-injected <link rel="preload">, so the LCP candidate is
                 fetched during HTML parse instead of after IntersectionObserver
                 catches up.
+
+                IT IS NOT TRUE ON /events/browse/[city], and the comment that
+                used to name both routes was the defect (close-out C8B.5,
+                15 September 2026). That page paints a full-bleed
+                PhotographicCityHero above this rail, so the head carried TWO
+                <link rel="preload" as="image"> and the second was a 256 CSS px
+                rail tile that can never be the LCP. Measured on the served
+                build on 15 September: melbourne, sydney and geelong each
+                shipped two, filtered and unfiltered, while every other pinned
+                gate route shipped one.
+
+                That is precisely what scripts/guards/one-priority-image.mjs
+                exists to stop, and it could not see it: the grant is one line
+                in one file and the truth is per ROUTE, which no per-file read
+                can reach. So the caller decides, and the drive counts.
               */}
-              <EventCard event={c} variant="rail" priority={i === 0} />
+              <EventCard event={c} variant="rail-flat" priority={firstCardEager && i === 0} />
             </div>
           ))}
           {/* Launch-day sparse-rail discipline: top up a thin rail with

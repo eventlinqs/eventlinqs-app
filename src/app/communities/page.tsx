@@ -4,10 +4,12 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { CategoryTileImage } from '@/components/media/CategoryTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCommunityIndexEntries, type CommunityIndexEntry } from '@/lib/communities/index-page-data'
 import { getSiteUrl } from '@/lib/site-url'
 import { getAllFaiths } from '@/lib/faiths/data'
+import { JsonLd } from '@/components/seo/json-ld'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -113,14 +115,8 @@ export default async function CommunitiesIndexPage() {
       </main>
       <SiteFooter />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd payload={itemListSchema} />
+      <JsonLd payload={breadcrumbSchema} />
     </div>
   )
 }
@@ -195,11 +191,11 @@ async function CommunityTile({
   return (
     <Link
       href={`/community/${entry.slug}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ink-200 bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-ink-200">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-ink-200">
         {image ? (
-          <CategoryTileImage src={image} alt={`${entry.displayName} community`} priority={priority} />
+          <CategoryTileImage src={image} alt={`${entry.displayName} community`} layout="grid-two-four-five" priority={priority} />
         ) : (
           <div
             aria-hidden
@@ -210,37 +206,29 @@ async function CommunityTile({
             }}
           />
         )}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55) 70%, rgba(10,22,40,0.92) 100%)',
-          }}
-        />
-        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-          <p className="font-display text-xl font-extrabold leading-tight text-white sm:text-2xl">
+        {/* THE COMMUNITY NAME AND NOTHING ELSE. The tagline and the count are
+         *  below the image now, for the reason recorded in full on the city
+         *  tile: this caption measured 194px on a 216px tile at 390 and its
+         *  wash was a percentage of the tile, so the name was painted where the
+         *  ramp had not started. "Aboriginal & Torres Strait Islander" read
+         *  1.01:1 on #FFFFF5 with 31 per cent of its 1,343 core pixels below
+         *  floor. See src/components/media/tile-photo-scrim.ts. */}
+        <TileCaption className="px-4 pb-3 pt-2 sm:px-5 sm:pb-4 sm:pt-3">
+          {/* The step up waits for `lg`, not `sm`, because this grid goes to FOUR
+            *  columns at md: the tile is 166px wide at 768 and 171px at 390, so
+            *  `sm:text-2xl` made the type bigger exactly where the tile got
+            *  narrower. "Aboriginal & Torres Strait Islander" then wrapped to
+            *  four lines and took 82.9 per cent of its tile. */}
+          <p className="font-display text-lg font-extrabold leading-tight text-white lg:text-2xl">
             {entry.displayName}
           </p>
-          <p className="mt-1 text-xs font-medium text-white/85 sm:text-sm">{subtitle}</p>
-          {/* Solid navy pill background keeps the gold chip legible over
-           *  any photo (gold on solid navy #0A1628 clears AA with room to
-           *  spare; no glassmorphism, per the design system). */}
-          <p
-            className="mt-2 inline-flex items-center self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]"
-            style={{
-              background: 'rgb(10, 22, 40)',
-              border: '1px solid rgba(212, 160, 23, 0.35)',
-            }}
-          >
-            {countLabel}
-          </p>
-        </div>
-        <div
-          aria-hidden
-          className="absolute inset-0 ring-0 ring-[var(--brand-accent)]/0 transition-all duration-300 group-hover:ring-2 group-hover:ring-[var(--brand-accent)]/60 motion-reduce:transition-none"
-          style={{ borderRadius: '1rem' }}
-        />
+        </TileCaption>
+      </div>
+      <div className="flex flex-col gap-1 px-4 py-3 sm:px-5">
+        <p className="text-xs font-medium text-ink-600 sm:text-sm">{subtitle}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+          {countLabel}
+        </p>
       </div>
     </Link>
   )

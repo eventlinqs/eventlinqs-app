@@ -9,9 +9,10 @@ export default function CheckoutLoading() {
   return (
     <div
       className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12 lg:px-8 lg:py-12"
+      role="status"
       aria-busy="true"
-      aria-label="Loading checkout"
     >
+      <span className="sr-only">Loading checkout</span>
       {/* Form column */}
       <div className="min-w-0 space-y-6">
         {/* Order summary */}

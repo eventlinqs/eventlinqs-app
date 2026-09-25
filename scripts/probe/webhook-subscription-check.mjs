@@ -40,6 +40,17 @@ const stripe = new Stripe(key, { apiVersion: STRIPE_API_VERSION })
 // The events the refund path depends on, and what breaks without each.
 const REQUIRED = {
   'charge.refunded': 'reconcile_refund: voids tickets, returns inventory, reverses the ledger',
+  // Added 2026-09-14 (close-out R1). Stripe's own words: "At a minimum, Stripe
+  // recommends that you listen for the `refund.created` event", and on
+  // `charge.refunded` itself: "Listen to refund.created for information about the
+  // refund" (https://docs.stripe.com/refunds, "Refund events", fetched
+  // 14 September 2026). The route handles both since R1 and reconciles
+  // idempotently, but an endpoint that does not SUBSCRIBE to this one gets
+  // whichever event Stripe happens to send and drops the refund when that is
+  // refund.created - which is the silence R1 was raised for. The list here and
+  // the set in src/lib/payments/refund-events.ts are held together by
+  // scripts/guards/refund-success-door.mjs.
+  'refund.created': 'the second door to reconcile_refund, and the one Stripe names as the minimum',
   'payment_intent.succeeded': 'order confirmation and ticket issue',
   // Added 2026-08-19 (founder ruling). Stripe's own words: "In the rare instance
   // that a refund fails, we notify you using the refund.failed event"

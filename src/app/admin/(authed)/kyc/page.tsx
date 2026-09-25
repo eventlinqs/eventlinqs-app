@@ -5,6 +5,19 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -60,9 +73,11 @@ export default async function AdminKycPage() {
         </p>
       </header>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each organiser becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={ADMIN_TABLE_WRAP}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">Organiser</th>
               <th className="px-4 py-3 font-medium">Payout status</th>
@@ -71,29 +86,42 @@ export default async function AdminKycPage() {
               <th className="px-4 py-3 font-medium">Joined</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-white/50">
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={5} className={ADMIN_EMPTY_CELL}>
                   No organisers need review. Every organiser is verified and clear to be paid out.
                 </td>
               </tr>
             ) : (
               rows.map(o => (
-                <tr key={o.id} className="border-t border-white/[0.06] hover:bg-white/[0.03]">
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/organisers/${o.id}`} className="text-[var(--brand-accent)] hover:underline">
+                <tr key={o.id} className={ADMIN_ROW}>
+                  <td className={ADMIN_CELL_NAME}>
+                    <Link
+                      href={`/admin/organisers/${o.id}`}
+                      className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+                    >
                       {o.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={ADMIN_CELL}>
+                    <span className={ADMIN_CELL_LABEL}>Payout</span>
                     <span className="inline-block rounded bg-amber-400/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
                       {o.payout_status.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{o.stripe_charges_enabled ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3 text-white/60">{o.stripe_account_id ? 'Connected' : 'Not connected'}</td>
-                  <td className="px-4 py-3 text-white/50">{formatDate(o.created_at)}</td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Charges</span>
+                    {o.stripe_charges_enabled ? 'Yes' : 'No'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Stripe</span>
+                    {o.stripe_account_id ? 'Connected' : 'Not connected'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/50`}>
+                    <span className={ADMIN_CELL_LABEL}>Joined</span>
+                    {formatDate(o.created_at)}
+                  </td>
                 </tr>
               ))
             )}

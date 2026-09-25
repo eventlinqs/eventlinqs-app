@@ -60,7 +60,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
       )}
       {status === 'invalid' && (
         <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Those values were not valid. Check the percentage is 0 to 100 and the fixed fee is in cents.
+          Those values were not saved. The platform fee percent must be above 0 and no more than 100, and the fixed fee is in whole cents. To charge nothing, use the Founding Organiser waiver on the organisation rather than a zero rate.
         </div>
       )}
       {status === 'error' && (
@@ -75,16 +75,16 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
       )}
       {status === 'override_invalid' && (
         <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Override not saved. Check the target ID is a valid UUID, the percentage is 0 to 100, and the fixed fee is in cents.
+          Override not saved. Check the target ID is a valid UUID, the platform fee percent is above 0 and no more than 100, and the fixed fee is in whole cents. To charge nothing, use the Founding Organiser waiver on the organisation rather than a zero rate.
         </div>
       )}
       {status === 'override_error' && (
         <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          Could not save the {scope} override. Check the {scope} ID exists, then try again.
+          Could not save the {scope} override. Check the {scope} ID exists and that the fee values are in range, then try again.
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
+      <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
@@ -117,14 +117,26 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                       <input type="hidden" name="countryCode" value={row.scope.countryCode} />
                       <input type="hidden" name="currency" value={row.scope.currency} />
                       <label className="sr-only" htmlFor={`pct-${id}`}>Platform fee percent for {row.scope.label}</label>
+                      {/*
+                        min IS 0.01 AND THERE IS NO ZERO FALLBACK, because
+                        pricing_rules_value_split_check requires
+                        value_percentage > 0. A scope with no rule yet (IE/EUR
+                        on TEST holds none of the three) used to render 0 here,
+                        which is the one value the database refuses, so the
+                        Europe row could not be saved at all. Empty and required
+                        asks the founder for a rate instead of proposing one it
+                        would then reject. Zero fee is the Founding Organiser
+                        waiver, not a zero rule.
+                      */}
                       <input
                         id={`pct-${id}`}
                         name="platform_fee_percentage"
                         type="number"
                         step="0.01"
-                        min="0"
+                        min="0.01"
                         max="100"
-                        defaultValue={row.platformFeePercentage.value ?? 0}
+                        required
+                        defaultValue={row.platformFeePercentage.value ?? undefined}
                         className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
                       />
                     </form>
@@ -193,7 +205,27 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </header>
 
         {overrides.length > 0 ? (
-          <div className="mb-6 overflow-x-auto rounded-lg border border-white/[0.08]">
+          /*
+            KEYBOARD-REACHABLE, because it scrolls. The table is min-w-[680px]
+            inside an overflow-x-auto box, so at 390 it is a horizontally
+            scrolling region, and a scrolling region that cannot take focus
+            cannot be scrolled without a mouse. Found by driving /admin/pricing
+            at 390 with an override present: axe reported
+            `scrollable-region-focusable`, serious, one node. It appears ONLY at
+            mobile width and ONLY once there is a row to overflow, which is why
+            every earlier pass over this screen was clean.
+
+            The shape is the one src/app/admin/(authed)/health/page.tsx already
+            uses for the same problem: tabIndex, role="region" and a name, so
+            the region is announced as something rather than as an unlabelled
+            box a screen reader lands in.
+          */
+          <div
+            className="relative mb-6 overflow-x-auto rounded-lg border border-white/[0.08]"
+            tabIndex={0}
+            role="region"
+            aria-label="Per-organiser and per-event fee overrides"
+          >
             <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="border-b border-white/[0.08] text-left text-white/50">
@@ -243,9 +275,10 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               name="platform_fee_percentage"
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               max="100"
-              defaultValue={0}
+              required
+              placeholder="e.g. 2.5"
               className="w-full rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
             />
           </div>

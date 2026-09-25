@@ -108,9 +108,26 @@ export function MobileBottomNav() {
         'fixed inset-x-0 bottom-0 z-40 md:hidden',
         'border-t border-white/10 bg-[var(--color-navy-950)]',
         'transition-transform duration-300 ease-out',
-        hidden ? 'translate-y-full' : 'translate-y-0',
       ].join(' ')}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      /*
+       * IT SITS ON TOP OF THE CONSENT BANNER RATHER THAN UNDER IT (close-out
+       * AN1). Both are fixed to the foot of the window, so the body padding
+       * that lifts the document clear of the banner cannot move this one:
+       * measured at 390 on /organisers before this existed, all five of these
+       * controls were underneath the banner and none could be reached.
+       *
+       * THROUGH THE TRANSFORM RATHER THAN `bottom`, and that is a performance
+       * decision, not a style one. A `bottom` that changes when the banner
+       * mounts moves a visible element after first paint, which is a layout
+       * shift and the mobile budget is a law. A transform is not laid out, so
+       * it costs nothing in CLS, and the hide-on-scroll state was already a
+       * transform: both now live in the same declaration instead of one in a
+       * class and one in a style, where they would fight.
+       */
+      style={{
+        transform: hidden ? 'translateY(100%)' : 'translateY(calc(-1 * var(--el-consent-banner-height, 0px)))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
       <ul role="list" className="flex h-16 items-stretch">
         {ITEMS.map(({ href, label, Icon, matchExact }) => {
@@ -122,7 +139,7 @@ export function MobileBottomNav() {
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={[
-                  'flex h-full flex-col items-center justify-center gap-1 transition-colors',
+                  'chrome-bottom-item',
                   active
                     ? 'text-[var(--brand-accent)]'
                     : 'text-white/65 hover:text-white',

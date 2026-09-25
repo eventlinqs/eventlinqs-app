@@ -7,15 +7,17 @@
  */
 
 import type { VenueProfile } from '@/lib/venues/resolver'
+import { JsonLd } from '@/components/seo/json-ld'
+import { buildEventItemList } from '@/lib/seo/event-item-list'
 
+/**
+ * SLUG AND TITLE ONLY. See the comment on the ItemList below: the nested Event
+ * nodes these fields fed are gone, and the fields go with them so a later edit
+ * cannot rebuild them from data that is still lying about.
+ */
 interface UpcomingEventLite {
   slug: string
   title: string
-  startDate: string
-  endDate: string
-  organizerName: string
-  organizerSlug: string
-  coverImageUrl: string | null
 }
 
 interface Props {
@@ -27,46 +29,26 @@ interface Props {
 export function VenueSchemaJsonLd({ venue, upcomingEvents, baseUrl }: Props) {
   const venueUrl = `${baseUrl}/venues/${venue.handle}`
 
-  const events = upcomingEvents.slice(0, 12).map(e => ({
-    '@type': 'Event',
-    name: e.title,
-    startDate: e.startDate,
-    endDate: e.endDate,
-    url: `${baseUrl}/events/${e.slug}`,
-    image: e.coverImageUrl ? [e.coverImageUrl] : undefined,
-    location: {
-      '@type': 'Place',
-      name: venue.name,
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: venue.address ?? undefined,
-        addressLocality: venue.city ?? undefined,
-        addressRegion: venue.state ?? undefined,
-        postalCode: venue.postalCode ?? undefined,
-        addressCountry: venue.country ?? 'AU',
-      },
-    },
-    /*
-     * NO ORGANISER NODE RATHER THAN AN EMPTY ONE.
-     *
-     * The page reads `e.organisation?.name ?? ''`, so an event whose
-     * organisation join comes back null published
-     * `organizer: { "@type": "Organization", "name": "" }` and a url of
-     * /organisers/ with nothing after it. Found on 8 September 2026 by
-     * scripts/verify/structured-data-validate.mjs (close-out C19.4, "validate
-     * it, do not assume it"). A named node with no name is a claim about a
-     * publisher we cannot make, and it is worse than saying nothing.
-     */
-    ...(e.organizerName && e.organizerSlug
-      ? {
-          organizer: {
-            '@type': 'Organization',
-            name: e.organizerName,
-            url: `${baseUrl}/organisers/${e.organizerSlug}`,
-          },
-        }
-      : {}),
-  }))
+  /*
+   * THE UPCOMING EVENTS ARE A LIST, AND THEY USED TO BE TWELVE EVENT NODES.
+   *
+   * This component published `event: [ { "@type": "Event", ... } x12 ]` inside
+   * the Place payload. A venue profile is a page that LISTS events, and Google's
+   * event experience "only supports pages that focus on a single event"
+   * (SEO1 v2, FAULT THREE; the citation is in src/lib/seo/event-item-list.ts).
+   *
+   * The careful work that used to live here is not lost, it is obsolete: the
+   * empty-organiser-node fix of 8 September 2026 (close-out C19.4) existed
+   * because these nodes carried an `organizer`, and a list item carries none.
+   * The leaf event page emits the organiser, from the row, and is the one place
+   * that claim is now made.
+   */
+  const eventList = buildEventItemList({
+    events: upcomingEvents,
+    baseUrl,
+    name: `Upcoming events at ${venue.name}`,
+    url: venueUrl,
+  })
 
   const payload = {
     '@context': 'https://schema.org',
@@ -87,14 +69,12 @@ export function VenueSchemaJsonLd({ venue, upcomingEvents, baseUrl }: Props) {
       ? { '@type': 'GeoCoordinates', latitude: venue.latitude, longitude: venue.longitude }
       : undefined,
     maximumAttendeeCapacity: venue.capacity ?? undefined,
-    event: events.length > 0 ? events : undefined,
   }
 
   return (
-    <script
-      type="application/ld+json"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
-    />
+    <>
+      <JsonLd payload={payload} />
+      <JsonLd payload={eventList} />
+    </>
   )
 }

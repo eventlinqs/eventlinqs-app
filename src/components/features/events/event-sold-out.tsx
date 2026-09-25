@@ -1,5 +1,6 @@
 'use client'
 
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -24,6 +25,11 @@ export interface EventSoldOutRelated {
   slug: string
   title: string
   start_date: string
+  /**
+   * The EVENT own IANA zone. Required, so the compiler names every caller:
+   * an optional field would have let a surface go on printing the UTC day.
+   */
+  timezone: string | null
   venue_city: string | null
   venue_country: string | null
   cover_image_url: string | null
@@ -191,12 +197,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
 }
 
 function RelatedCard({ event }: { event: EventSoldOutRelated }) {
-  const dateLabel = new Date(event.start_date).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
+  const dateLabel = formatEventDateShort(event.start_date, event.timezone)
   const locationLabel = formatVenueAddress({ city: event.venue_city, country: event.venue_country })
   const priceLabel =
     event.from_price_cents != null && event.currency
@@ -215,7 +216,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
           <EventCardMedia
             src={event.cover_image_url}
             alt={event.title}
-            variant="card"
+            variant="grid-one-two-three-sm"
             className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (

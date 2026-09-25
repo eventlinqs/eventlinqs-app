@@ -73,6 +73,17 @@ const AUTH = [
   { re: /requireCronAuth\s*\(/, how: 'CRON_SECRET' },
   { re: /constructWebhookEvent|constructEvent/, how: 'Stripe signature' },
   { re: /resolveOrganiserScope\s*\(/, how: 'organiser scope' },
+  // Added 2026-09-18 with API1, and it was a real blind spot rather than a new
+  // need: `resolveOrganiserScope` is a thin wrapper that DELEGATES to
+  // `resolveOrganisationScope` (src/lib/payouts/auth.ts says so in its own
+  // header), and 13 files under src/app call the underlying one directly. The
+  // audit knew the wrapper's name and not the thing that does the work.
+  { re: /resolveOrganisationScope\s*\(/, how: 'organisation scope: getUser, then the id must be in the callers own owned list' },
+  // The public read API. Every v1 route file delegates to one of these two and
+  // holds no client of its own, which is not a convention here: it is enforced
+  // by scripts/guards/api-v1-organiser-scope.mjs, which fails the build if a
+  // route file contains `.from(` at all.
+  { re: /handleList\s*\(|handleItem\s*\(/, how: 'API v1 handlers: authenticateApiKey reads the key hash on every request, uncached' },
   { re: /getOrganiserEvent\s*\(/, how: 'organiser event gate' },
   { re: /requireAdmin|assertAdmin|requireCapability/, how: 'admin capability' },
   { re: /verifyHealthToken|HEALTH_CHECK_TOKEN/, how: 'health token' },
@@ -85,6 +96,8 @@ const AUTH = [
 const AUTHZ = [
   { re: /getOrganiserEvent\s*\(/, how: 'getOrganiserEvent (owner gate)' },
   { re: /resolveOrganiserScope\s*\(/, how: 'resolveOrganiserScope (owner gate)' },
+  { re: /resolveOrganisationScope\s*\(/, how: 'resolveOrganisationScope (owner gate): an id not in the callers own list is refused, never served' },
+  { re: /handleList\s*\(|handleItem\s*\(/, how: 'API v1 handlers: every read carries eq(organisation_id, scope.organisationId), held by a registered blocking guard' },
   { re: /owner_id\s*!==\s*\w+\.id|\w+\.owner_id\s*!==/, how: 'explicit owner_id comparison' },
   { re: /\.eq\(\s*['"]owner_id['"]\s*,\s*\w+(\.id)?\s*\)/, how: "eq('owner_id', user)" },
   { re: /\.eq\(\s*['"]user_id['"]\s*,\s*\w+(\.id)?\s*\)/, how: "eq('user_id', user)" },
@@ -157,10 +170,18 @@ const PUBLIC_BY_DESIGN = {
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
   'api/auth/resend-verification/POST': 'verification resend; generic response, rate limited',
   'api/newsletter/subscribe/POST': 'public newsletter opt-in',
+  'api/marketing/one-click-unsubscribe/[token]/POST':
+    'RFC 8058 one-click unsubscribe. It is public BY NECESSITY and a caller identity is impossible here by construction: the caller is a MAILBOX PROVIDER posting on a recipient behalf (Google or Yahoo infrastructure), which holds no account on this platform and never will. Requiring one would mean the platform advertises an unsubscribe facility in every marketing message that refuses every mailbox provider that uses it. The BEARER credential is the unsubscribe token in the path, an unguessable uuid minted per subscriber, and what it can do with that credential is bounded in the only direction that matters: it can STOP mail to one address and it can do nothing else. It reads nothing back to the caller, reveals nothing about whether a token exists (the answer is 200 either way), grants no access, bills no third party, sends no message, and is idempotent, so a flood of valid requests produces one ledger row. Rate limited by marketing-one-click, keyed by the TOKEN rather than the IP because every recipient of one campaign arrives from a handful of provider egress addresses.',
+  'api/marketing/one-click-unsubscribe/[token]/GET':
+    'the same address reached by a mail scanner, a link checker or a person who pasted the header URI into a browser. It changes NOTHING: it withdraws nothing, reads nothing and answers a 303 to the human preferences page, which is itself gated only by the same token. The mutation lives on POST precisely so a scanner following links in an inbox cannot unsubscribe the person who owns it, which is why RFC 8058 specifies a POST.',
+  'forecast/actions.ts::runForecast':
+    'close-out FT1, the free public forecast tool. It is public BY DESIGN and requiring a caller identity would defeat the point of it: FT1 says in terms that there is no account and no email wall, because the organiser it is written for has not signed up yet and is deciding whether to. What it does is bounded. It READS nothing about anybody: the taxonomy and the fee come from public configuration through the anon client, and it touches no person, no event and no order. It WRITES one row to forecast_runs, a table with RLS on and no policy, so nothing public can read it back, and the row holds only what the submitter typed about their own hypothetical night. The optional address is refused by a database check constraint unless the consent wording it was given under is stored with it. Abuse is bounded by the forecast-run rate limit, and the worst a flood achieves is rows in a table nobody can read: it sends no email, bills no third party and grants no access.',
   'api/location/set/POST': 'writes a non-sensitive location preference cookie',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
+  'm/[code]/GET':
+    'GA3 tracked link. It is an address printed in a message and on a poster, so requiring a caller identity would defeat the entire point of it. What it exposes is bounded by design: the code is opaque and random over 36^12, it is format-gated before any query, an unknown or inactive code answers 404, and a resolved one answers a 307 to a path that was stored at mint time and is a PUBLIC event page. It reads nothing about the caller and writes one click row plus one cookie holding a click id, which is a lookup key rather than a credential: a forged one resolves to no row and the resolver falls to the next rung. It cannot be used to learn that an unpublished event exists, because the target is whatever the link was minted for and a link is only minted for an event the organiser is selling.',
   'api/ledger/demand/POST':
     'anonymous demand beacon for the slot ledger. It accepts ONLY the two actions that carry no person (a page view and a sold-out view); every demand action that carries an address is written server side by the code that observed it. The slot is resolved from the database and a draft, private or cancelled event is refused exactly as its page would be, so it cannot be used to learn that an unpublished event exists. Deduped per visitor per slot per day and rate limited.',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',
@@ -169,6 +190,8 @@ const PUBLIC_BY_DESIGN = {
   'api/stream/[code]/messages/POST':
     'BEARER auth as the GET, then rate limited per ticket (stream-message) before the service role writes one bounded row',
   'api/og/event/[slug]/GET': 'public Open Graph image for a published event',
+  'api/location/cities/GET':
+    'the city list the location dialog picks from, which an anonymous visitor uses before they have an account, so a caller identity would defeat the surface. It exposes nothing that was not already public: the curated launch cities, the `cities` taxonomy table, and the distinct venue cities of PUBLISHED events, which is the same set the sitemap lists. It reads nothing about the caller and writes nothing. It exists because handing that catalogue to the client as a prop serialised it into the RSC payload of every page on the platform, 6,988 bytes twice, 7.29 percent of the login document, for a dialog almost nobody opens (close-out C8B.3)',
   'api/events/[id]/seats/GET':
     'the seat chart a buyer picks from, which must be readable without an account. It is NOT open: the event is resolved through PUBLIC_EVENT_MATCH, the one shared visibility rule, so a draft, private or cancelled event answers 404 exactly as its page does, and the read goes through the ANON client so RLS enforces the same rule a second time. It exists because passing the seats as a prop serialised 1,200 rows into the document of every seated event, 571KB of HTML with 85 percent of it inline script',
   'auth/callback/GET': 'OAuth/PKCE callback; the code is the credential',
@@ -189,6 +212,12 @@ const PUBLIC_BY_DESIGN = {
   'actions/consent.ts::unsubscribeFromDigestAction': 'per-row unsubscribe token IS the credential; returns void, so no enumeration',
   'actions/consent.ts::unsubscribeFromOrganiserAction': 'per-row unsubscribe token IS the credential; returns void',
   'actions/discount-codes.ts::validateDiscountCode': 'a guest applies a discount code at checkout',
+  'actions/marketing-rights.ts::stopFacilitationByTokenAction':
+    'APP 7.6, by the per-message token, which IS the credential; returns void, writes only a suppression, and a right behind a login is a right nobody exercises',
+  'actions/marketing-rights.ts::unsubscribeEverythingByTokenAction':
+    'the same token, the same rule as the other unsubscribe actions; returns void so nothing can be enumerated with it',
+  'actions/marketing-rights.ts::stopFacilitationByEmailAction':
+    'APP 7.6 from the privacy policy, keyed by a typed address and DELIBERATELY unverified: it can only ever stop mail, it answers identically whether or not the address is known, and it is rate limited by the marketing-rights policy',
   'actions/email-subscribe.ts::submitEmailSignup': 'public newsletter opt-in',
   'actions/queue.ts::getQueuePosition': 'reads a position by queue id; positions are not sensitive',
   'actions/queue.ts::validateQueueToken': 'verifies a signed admission token; the signature is the credential',

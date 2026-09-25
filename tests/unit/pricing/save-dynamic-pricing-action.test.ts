@@ -80,9 +80,35 @@ describe('saveDynamicPricing', () => {
     expect(revalidateEventSurfacesById).toHaveBeenCalledWith(expect.anything(), VALID.event_id)
   })
 
-  test('switching dynamic pricing off sends no steps', async () => {
+  /*
+   * THIS ASSERTION IS REVERSED FROM WHAT IT SAID BEFORE, AND THE REVERSAL IS
+   * THE FIX. LB-PRICEWHOLE, 20 September 2026.
+   *
+   * It used to read "switching dynamic pricing off sends no steps" and asserted
+   * `p_steps: []`. That was a faithful description of the code and a pin on a
+   * data-loss defect: `save_dynamic_pricing` deleted every rule for the tier
+   * BEFORE deciding whether to insert any, so an empty list meant the
+   * organiser's whole price ladder was destroyed the moment they turned the
+   * switch off and pressed Save. Nothing on the screen said so, the steps were
+   * hidden as soon as the switch moved, and turning it back on showed a single
+   * step at the base price, which reads as "this tier never had a ladder".
+   *
+   * Pausing a price ladder for a weekend is an ordinary thing to want. The
+   * steps are now sent whatever the switch says, so a paused ladder is stored
+   * and comes back; migration 20260920000040 also makes the database read an
+   * empty list as an absence of instruction rather than as an instruction to
+   * delete, so an older caller cannot reopen it either.
+   */
+  test('switching dynamic pricing off keeps the ladder and sends the steps', async () => {
     await saveDynamicPricing({ ...VALID, enabled: false })
-    expect(rpc).toHaveBeenCalledWith('save_dynamic_pricing', expect.objectContaining({ p_enabled: false, p_steps: [] }))
+    expect(rpc).toHaveBeenCalledWith('save_dynamic_pricing', {
+      p_tier_id: VALID.tier_id,
+      p_enabled: false,
+      p_steps: [
+        { step_order: 1, capacity_threshold_percent: 25, price_cents: 2800 },
+        { step_order: 2, capacity_threshold_percent: 100, price_cents: 4000 },
+      ],
+    })
   })
 
   test('a database refusal is reported and nothing is revalidated', async () => {

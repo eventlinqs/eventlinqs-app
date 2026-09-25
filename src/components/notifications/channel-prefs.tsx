@@ -35,6 +35,13 @@ function hourLabel(h: number): string {
  * engine landed; this surfaces them. Push enablement itself lives in
  * EnableAlerts (the browser-permission flow); this form governs the email
  * channel and the send-time window for both.
+ *
+ * THE WINDOW IS HONOURED AS OF 13 SEPTEMBER 2026, and the wording changed with
+ * it. Until then this paragraph said "nothing is sent inside your quiet hours"
+ * and nothing in the codebase consulted the window at all: it was collected
+ * here, validated by the API, stored, read by the dispatcher on every send, and
+ * never asked. It now says what the dispatcher does, which is to HOLD the alert
+ * and deliver it when the window ends (src/lib/notifications/dispatch.ts).
  */
 export function ChannelPrefs() {
   const [prefs, setPrefs] = useState<Prefs | null>(null)
@@ -90,8 +97,8 @@ export function ChannelPrefs() {
     <div className="rounded-xl border border-ink-200 bg-white p-6">
       <h2 className="text-base font-semibold text-ink-900">Email alerts and quiet hours</h2>
       <p className="mt-1 text-sm text-ink-600">
-        When push is unavailable we fall back to email, and nothing is sent inside your quiet
-        hours.
+        When push is unavailable we fall back to email. Nothing arrives inside your quiet hours:
+        an alert is held and sent once the window ends, so you do not miss it.
       </p>
 
       <label className="mt-4 flex min-h-[44px] cursor-pointer items-center justify-between gap-3">

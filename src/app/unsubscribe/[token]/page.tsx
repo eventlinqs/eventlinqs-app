@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unsubscribeFromOrganiserAction } from '@/app/actions/consent'
 import { contactAddress } from '@/lib/email/sender'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 
 export const metadata: Metadata = {
   title: 'Unsubscribe | EventLinqs',
@@ -22,11 +24,34 @@ type Props = { params: Promise<{ token: string }> }
 export default async function UnsubscribePage({ params }: Props) {
   const { token } = await params
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('organiser_marketing_consents')
-    .select('status, organisation:organisations(name)')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  /*
+   * THROUGH THE DOOR, because the only thing this page can say about a token it
+   * could not look up is FALSE. This read discarded its error until 21 September
+   * 2026, so a dropped socket left `data` null, `valid` false, and the page told
+   * somebody exercising a statutory right: "This link is not valid ... It may
+   * have already been used." They stop, they keep receiving the mail, and they
+   * have been told their remedy is spent. A throw reaches the error boundary and
+   * says try again, which is true, and the link in their inbox still works.
+   *
+   * A token that genuinely matches no row still resolves to null and still gets
+   * the sentence above, which is the case that sentence was written for.
+   *
+   * AND THE SHAPE IS TESTED FIRST, because the throw above turned a mangled
+   * link into a 500. `unsubscribe_token` is a uuid column, so a value that is
+   * not a uuid is not a query that finds nothing, it is `22P02 invalid input
+   * syntax for type uuid`, which readOrThrow raises. That is a fact about the
+   * token rather than a failed read, it is conclusive, and it costs no database
+   * round trip to establish. See src/lib/consent/token.ts.
+   */
+  const data = isUnsubscribeToken(token)
+    ? await readOrThrow('the organiser unsubscribe token', () =>
+        admin
+          .from('organiser_marketing_consents')
+          .select('status, organisation:organisations(name)')
+          .eq('unsubscribe_token', token)
+          .maybeSingle(),
+      )
+    : null
 
   const organisationName =
     (data as { organisation?: { name?: string } | null } | null)?.organisation?.name ?? 'this organiser'

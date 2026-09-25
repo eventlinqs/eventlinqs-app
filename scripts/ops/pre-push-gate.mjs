@@ -87,7 +87,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { calibrationReport } from '../ci/lighthouse-calibration.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
-import { PARITY_SINK_PORT } from '../verify/sentry-parity-sink.mjs'
+import { PARITY_SINK_PORT, parityStandInAnswers } from '../verify/sentry-parity-sink.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -521,15 +521,71 @@ function collectLikeLhci(urls, env) {
  * alert instead, and a transport that always succeeds can never show that. The
  * limiter is not part of this choice and is handed over either way.
  *
+ * `port` and `host` pin the server where a caller needs it pinned, and they
+ * default to the behaviour every existing caller already has: an ephemeral free
+ * port on 127.0.0.1. Two callers need the pin and neither can use a random port.
+ * A parallel build lane is given ONE port it may listen on, so that three
+ * sessions on one machine can never quietly take each other's server. And a
+ * drive that leaves the site for Stripe's hosted onboarding comes back through a
+ * redirect that was minted BEFORE the server started, so the return url and the
+ * server have to agree on a port that was known in advance. `host` exists
+ * alongside it because a cookie set on `127.0.0.1` is not sent to `localhost`:
+ * they are different origins to a browser, and a drive that leaves on one and
+ * returns on the other comes back signed out, which reads as an auth defect and
+ * is not one.
+ *
  * Returns `{ base, stop }` on success, or `{ error }` with the log already
  * tailed to stderr.
  */
-export async function startGateServer(env, logPath, { also = [], mail = 'console' } = {}) {
+/**
+ * A FRESH STEP LOG THAT A SECOND WRITER CANNOT DESTROY. Truncate, then open in
+ * APPEND mode, and hand THAT descriptor to every child.
+ *
+ * WHY THIS IS NOT `openSync(path, 'w')`, which is what it was until
+ * 14 September 2026. A descriptor opened 'w' carries its own file offset, and
+ * that offset only moves when its owner writes. The drives that read this file
+ * as an inbox do not only read it: `d2-recovery-proof.mjs` and
+ * `d2-waitlist-proof.mjs` run the recovery engine as a SUBPROCESS, capture its
+ * mail as a string, and `appendFileSync` it into this same file so the engine's
+ * messages land in the same inbox the server writes to. An append always writes
+ * at end of file. So every append moved the end of the file PAST the server's
+ * stale offset, and the server's next line was then written ON TOP of the
+ * message the harness had just added.
+ *
+ * WHAT IT COST, so this is not mistaken for tidiness. On 13 September the D2
+ * recovery proof at 768 reported "the sequence is three messages" as a FAILURE
+ * with only two in the inbox, and the message it could not find was message one
+ * to the person who stayed. The database had the send (`recovery_sends`
+ * `d2-stayed-...#1 -> entry 11587`), the engine's own sweep reported `sent: 3`,
+ * and the server log carried the wreckage: a line reading
+ * `ww.eventlinqs.com.au/events/...` with `[email:console] link    https://w`
+ * simply gone from the front of it. Two widths passed in the same run, because
+ * whether a line is destroyed depends on where the stale offset happens to
+ * point. A drive that reads a corrupted inbox reports the PRODUCT as broken.
+ *
+ * Append mode fixes it at the cause: on every platform a descriptor opened 'a'
+ * writes at the current end of the file, so two writers can never occupy the
+ * same bytes. Truncating first keeps the behaviour every caller already had,
+ * which is a fresh log per step.
+ *
+ * `tests/unit/ops/step-log-survives-a-second-writer.test.ts` drives both
+ * directions with a real child process and a real appender, and carries its own
+ * negative control so it cannot quietly stop proving anything.
+ *
+ * @param {string} logPath
+ * @returns {number} a file descriptor, owned by the caller, closed by the caller
+ */
+export function openStepLog(logPath) {
+  writeFileSync(logPath, '')
+  return openSync(logPath, 'a')
+}
+
+export async function startGateServer(env, logPath, { also = [], mail = 'console', port, host = '127.0.0.1' } = {}) {
   mkdirSync(TMP, { recursive: true })
   const stubPort = await freePort()
-  const appPort = await freePort()
-  const base = `http://127.0.0.1:${appPort}`
-  const fd = openSync(logPath, 'w')
+  const appPort = port ?? (await freePort())
+  const base = `http://${host}:${appPort}`
+  const fd = openStepLog(logPath)
   // EMAIL_TRANSPORT=console refuses a production project, and the Upstash stub
   // is in-memory and local only: never a shared instance.
   const stub = spawn(NODE, ['scripts/verify/upstash-local-stub.mjs'], {
@@ -784,14 +840,42 @@ async function runLighthouse(env) {
     // page logs a failed telemetry request and best practices drops to 0.93 on
     // all thirteen URLs, which reads like a product regression and is not one.
     const sinkUp = await waitForServer(`http://127.0.0.1:${PARITY_SINK_PORT}`, sentrySink, 20_000)
+    /*
+     * "I COULD NOT BIND" IS NOT "THERE IS NO SINK" (20 September 2026).
+     *
+     * Three lanes share this laptop and one fixed port, so the ordinary case
+     * when our own sink cannot start is that a SIBLING LANE'S IDENTICAL SINK is
+     * already listening. A push that had passed 15 of 16 steps was refused here
+     * in 11 seconds with "the server exited with 1 before answering", and a
+     * probe sent to that port a moment later answered 200 with the sink's own
+     * body: the condition this check exists to establish was satisfied the
+     * whole time, and the build was refused for owning a socket rather than for
+     * anything about the build.
+     *
+     * So when ours does not start, ASK THE PORT. The probe is strict (status,
+     * CORS header and a 32-character event id, all three), so a foreign server
+     * holding the port still refuses, which is the case the original message
+     * was written for and which is preserved word for word below.
+     */
+    let borrowedSink = false
     if (sinkUp) {
-      console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
-      console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
-      console.error('[gate] this step measures a console error the deployed build does not have.')
-      console.error(tailOf(SERVER_LOG))
-      return 1
+      const standIn = await parityStandInAnswers(PARITY_SINK_PORT)
+      if (!standIn.ok) {
+        console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
+        console.error(`[gate] and nothing else on that port answers like one either: ${standIn.detail}`)
+        console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
+        console.error('[gate] this step measures a console error the deployed build does not have.')
+        console.error(tailOf(SERVER_LOG))
+        return 1
+      }
+      borrowedSink = true
+      console.log(`[gate] our own Sentry parity sink could not start (${sinkUp}), but one is ALREADY`)
+      console.log(`[gate] answering on 127.0.0.1:${PARITY_SINK_PORT} (${standIn.detail}), so parity holds and this step continues.`)
+      console.log('[gate] It belongs to another lane on this machine. If that lane finishes mid-audit the')
+      console.log('[gate] console error comes back and best practices drops; the check after the audit says so by name.')
+    } else {
+      console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
     }
-    console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
 
     const resolved = spawnSync(NODE, ['scripts/ci/resolve-gate-urls.mjs'], {
       cwd: ROOT,
@@ -834,6 +918,26 @@ async function runLighthouse(env) {
     if (asserted !== 0) {
       console.error('')
       console.error(calibrationReport(readCollectedReports()))
+      /*
+       * A THIRD POSSIBLE CAUSE, WHEN THE SINK WAS BORROWED. If another lane's
+       * gate finished during this audit its sink went with it, every page after
+       * that logged a failed telemetry request, and best practices fell from
+       * 1.00 to 0.93 on the remaining URLs. That is not the product and it is
+       * not this machine being slow either, so it gets its own sentence rather
+       * than being left to look like one of the other two.
+       *
+       * It is a DIAGNOSIS and it changes nothing: `asserted` is returned
+       * untouched, exactly as the calibration report is.
+       */
+      if (borrowedSink) {
+        const stillThere = await parityStandInAnswers(PARITY_SINK_PORT)
+        console.error('')
+        console.error(
+          stillThere.ok
+            ? `[gate] The borrowed Sentry parity sink on 127.0.0.1:${PARITY_SINK_PORT} is STILL answering (${stillThere.detail}),\n[gate] so it is not the cause of the failure above.`
+            : `[gate] THE BORROWED SENTRY PARITY SINK IS GONE: ${stillThere.detail}.\n[gate] It belonged to another lane and that lane finished during this audit. Every page\n[gate] measured after it went logged a failed telemetry request, which costs best\n[gate] practices 1.00 -> 0.93. Re-run this step on a machine that owns the port before\n[gate] reading the failure above as a regression:  npm run gate:push -- --only lighthouse`,
+        )
+      }
     }
     return asserted
   } finally {

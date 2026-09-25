@@ -73,6 +73,76 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # THE FORTNIGHTLY PARITY CHECK (close-out PARITY1), run IN THIS JOB rather
+      # than in a workflow of its own.
+      #
+      # It could have been a second workflow. It is not, and the reason is the
+      # handoff: the check writes its result to a file and this report reads it,
+      # and two workflows are two ephemeral runners that share no disk. Running
+      # the check in the same job, immediately before the compose step, means
+      # there is no cross-run state to keep, nothing to parse out of a previous
+      # message, and no artifact to fetch. The stall check next door avoids
+      # cross-run state for exactly the same reason.
+      #
+      # THE 1st AND THE 15th is the nearest a cron expression gets to
+      # fortnightly without drifting through the week, and it is stated in one
+      # place (PARITY_CADENCE in scripts/lib/state-report.mjs) so the report and
+      # this file cannot describe it differently.
+      #
+      # IT NEVER FAILS THE JOB. Five of the fifteen lines are red today. A step
+      # that goes red on a finding, every run, for months, is a step somebody
+      # switches off, and then the digest loses the one line that was the point.
+      # The finding is delivered by being IN the email.
+      # The day is decided in the shell rather than in an `if:` expression,
+      # because `date -u` is the thing that actually knows what day it is on the
+      # runner, and a GitHub expression would be a second, different answer to
+      # the same question.
+      - name: The fortnightly parity check
+        continue-on-error: true
+        env:
+          PARITY_SITE: https://www.eventlinqs.com.au
+        run: |
+          set -u
+          DAY=$(date -u +%d)
+          if [ "$DAY" = "01" ] || [ "$DAY" = "15" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            npx playwright install --with-deps chromium
+            node scripts/ops/parity-check.mjs --json parity.json
+          else
+            echo "Not the 1st or the 15th (today is $DAY). The parity check is not due."
+          fi
+
+      # THE WEEKLY INDEXING CHECK (close-out SEO2 step 3), in this job and for the
+      # same reason as the parity check above: it writes a file and the compose
+      # step below reads it, and two workflows are two runners that share no disk.
+      #
+      # MONDAY, said in one place (INDEXING_CADENCE in
+      # scripts/lib/indexing-check.mjs) so this file and the digest cannot
+      # describe the cadence differently. A weekday rather than a date, because
+      # the thing it watches (the catalogue, and what Google has done with it)
+      # moves with the week rather than with the month.
+      #
+      # IT NEVER FAILS THE JOB, for the reason written above the parity step: a
+      # step that goes red on a finding every run is a step somebody switches
+      # off, and the finding is delivered by being IN the email.
+      #
+      # GOOGLE_SEARCH_CONSOLE_KEY is passed if the repository holds it and the
+      # check says plainly that Google was not asked when it does not. There is
+      # no version of this that quietly reports "0 excluded" for a property
+      # nobody has ever connected.
+      - name: The weekly indexing check
+        continue-on-error: true
+        env:
+          INDEXING_SITE: https://www.eventlinqs.com.au
+          GOOGLE_SEARCH_CONSOLE_KEY: ${{ secrets.GOOGLE_SEARCH_CONSOLE_KEY }}
+        run: |
+          set -u
+          DOW=$(date -u +%u)
+          if [ "$DOW" = "1" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/ops/indexing-check.mjs --json indexing.json
+          else
+            echo "Not a Monday (day $DOW of the week). The indexing check is not due."
+          fi
+
       - name: Compose and send
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -99,6 +169,8 @@ jobs:
           path: |
             state.json
             state.html
+            parity.json
+            indexing.json
           if-no-files-found: ignore
           retention-days: 14
 

@@ -158,7 +158,7 @@ export function OrganisationProfileForm({
         </p>
       )}
       {state?.ok && (
-        <p role="status" className="mt-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+        <p role="status" className="mt-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success-strong">
           {state.ok}{' '}
           <a href={publicHref} className="font-medium underline underline-offset-2">
             View your profile

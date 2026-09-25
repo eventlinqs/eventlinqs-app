@@ -69,7 +69,14 @@ export type Links = {
 export type Post = (message: { to: string; subject: string; html: string; text: string }) => Promise<unknown>
 
 const postByEmail: Post = message =>
-  sendEmail({ to: message.to, subject: message.subject, html: message.html, text: message.text })
+  sendEmail({
+    to: message.to,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    messageType: 'organiser_fillrate_nudge',
+    recipientRole: 'organiser',
+  })
 
 export type SweepResult = {
   slotsConsidered: number

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { assertRecipientDeclared } from '@/lib/notifications/recipient-matrix'
 import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
 import { printConsoleEmail } from '@/lib/email/send'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -39,6 +40,20 @@ export type PayoutEmailKind =
   | 'payout_failed'
   | 'reserve_released'
 
+/**
+ * The four payout notices, mapped to their declared message types.
+ *
+ * TOTAL, so a fifth kind cannot be added without deciding who receives it.
+ * `reserve_released` is spelled `payout_reserve_released` in the matrix because
+ * the matrix namespaces by subject and this file namespaces by sender.
+ */
+const PAYOUT_MESSAGE_TYPES: Record<PayoutEmailKind, string> = {
+  payout_initiated: 'payout_initiated',
+  payout_paid: 'payout_paid',
+  payout_failed: 'payout_failed',
+  reserve_released: 'payout_reserve_released',
+}
+
 export interface PayoutEmailPayload {
   amountCents: number
   currency: string
@@ -59,6 +74,11 @@ export async function sendPayoutEmail(
   if (!recipient) return
 
   const { subject, html } = buildEmail(kind, recipient.organisationName, payload)
+
+  // MONEY FIX B3, the fourth transport. The kind maps to a declared type via a
+  // TOTAL record, so a fifth payout kind will not compile until somebody has
+  // decided who receives it.
+  assertRecipientDeclared(PAYOUT_MESSAGE_TYPES[kind], 'organiser')
 
   // The console transport, so this path is drivable locally like every other.
   // The from-address stays getNoReplyFrom(): a payout notice is unattended and

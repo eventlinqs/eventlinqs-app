@@ -4,7 +4,7 @@ import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
-import { RHYTHM_GAP } from '@/lib/ui/rhythm'
+import { RHYTHM_GAP, COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { CURATED_HOMEPAGE_CATEGORY_SLUGS } from '@/lib/categories/homepage-curation'
 import { captureException } from '@/lib/observability/sentry'
@@ -84,7 +84,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
           alt: photo.alt ?? `${c.name} events`,
           objectPosition: undefined as string | undefined,
           metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
-          priority: false, // never preloaded: the doorway tile leading this rail is the one above-the-fold candidate (C8)
+          priority: false, // never preloaded: the hero above this rail is the document's one LCP candidate (C8, and the 14 September 2026 correction on the doorway tile below)
         }
       }),
     ),
@@ -106,14 +106,30 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
         >
           {/* Communities doorway - leads the rail, links to the resolving
               /communities hub (the moat entry from the very first rail). */}
-          {/* priority: the doorway tile is the first image under the hero and sits
-              inside the first viewport at 390, so it is the page's LCP candidate
-              whenever the hero has no photograph (an empty catalogue, as on
-              production today). It is the ONE tile preload the document carries;
-              the category tiles behind it load lazily. Ten image preloads were
-              competing with the render-blocking stylesheet on the mobile profile
-              and first paint waited four seconds for it (C8, 6 September 2026). */}
-          <div className="w-[220px] shrink-0 snap-start sm:w-[260px]">
+          {/* NOT PRIORITY, and the history is worth keeping because the comment
+              that used to sit here was right about everything except what the
+              code did. It read: this tile "is the page's LCP candidate whenever
+              the hero has no photograph (an empty catalogue, as on production
+              today)". That is a CONDITION, and the line under it was the literal
+              `priority: true`. On 6 September 2026, when it was written,
+              production held only events that had ended, so the condition
+              happened to hold and the literal was indistinguishable from it.
+              Close-out C17 then made the homepage hero wear a photograph in
+              BOTH branches: a featured slide through getFeaturedHeroBackground,
+              which guarantees a raster even for an event with no cover, or the
+              curated raster when there is no featured event at all. The
+              condition became permanently false and nobody noticed, because a
+              literal cannot go stale loudly.
+              Driven on production on 14 September 2026: the served homepage head
+              carried TWO `<link rel="preload" as="image">`, the hero and this
+              tile, against a rule of one (C8, 6 September 2026: nine preloads
+              competing with the render-blocking stylesheet put first paint at
+              four seconds on the mobile profile). The hero is the LCP here and
+              always will be, so this tile loads like the eight behind it.
+              scripts/verify/production-route-sweep.mjs now COUNTS the preloads
+              in every served head, because a static allowlist records a reason
+              and cannot check that the reason still holds. */}
+          <div className={COMPACT_TILE_CELL}>
             <CategoryTile
               category={{
                 href: '/communities',
@@ -121,15 +137,15 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
                 alt: 'Browse events by community',
                 name: 'Communities',
                 metaLabel: '21 heritages',
-                priority: true,
+                priority: false,
               }}
             />
           </div>
           {tiles.map(t => (
-            <div key={t.slug} className="w-[220px] shrink-0 snap-start sm:w-[260px]">
+            <div key={t.slug} className={COMPACT_TILE_CELL}>
               <CategoryTile
                 category={{
-                  href: `/events?category=${t.slug}`,
+                  href: `/categories/${t.slug}`,
                   imageSrc: t.imageSrc,
                   alt: t.alt,
                   name: t.name,

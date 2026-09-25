@@ -291,6 +291,46 @@ describe('telling the build host from a developer machine', () => {
     }
   })
 
+  /*
+   * THE SAME SKELETON, FROM A TREE WHOSE .git IS A FILE.
+   *
+   * The test above materialises THIS repository, so what it proves depends on
+   * where it runs: from the main checkout `.git` is a directory and the
+   * skeleton appears, and from a `git worktree` it is a one-line file and the
+   * skeleton did not. Since 13 September this build runs three lanes and two of
+   * them are worktrees, so the only tree that can push was the only tree that
+   * could not see the fault.
+   *
+   * This one builds the worktree shape itself, so it fails from anywhere the
+   * pointer is not followed rather than only from a worktree.
+   */
+  test('a tree whose .git is a worktree POINTER still gets the skeleton', () => {
+    const real = scratch()
+    const root = scratch()
+    const dest = scratch()
+    try {
+      mkdirSync(join(real, 'refs', 'heads'), { recursive: true })
+      writeFileSync(join(real, 'HEAD'), 'ref: refs/heads/main\n', 'utf8')
+      writeTree(root, {
+        '.git': `gitdir: ${real}\n`,
+        '.vercelignore': 'docs\n',
+        'package.json': '{}\n',
+      })
+      materialiseVercelUpload({ root, dest, linkNodeModules: false })
+      expect(existsSync(join(dest, '.git'))).toBe(true)
+      expect(existsSync(join(dest, '.git', 'refs', 'heads'))).toBe(true)
+      // Directories only, exactly as Vercel leaves them: a file here would make
+      // git work in the upload and the simulation would stop reproducing the
+      // build host.
+      expect(holdsNoFile(join(dest, '.git'))).toBe(true)
+      expect(isGitCheckout(dest)).toBe(false)
+    } finally {
+      for (const dir of [real, root, dest]) {
+        execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', dir])
+      }
+    }
+  })
+
   test('listTrackedFiles returns committed paths and nothing untracked', () => {
     const tracked = listTrackedFiles(ROOT)
     expect(tracked).toContain('.vercelignore')

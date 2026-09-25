@@ -1,4 +1,7 @@
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { SHAPE_COOKIE, decodeShape } from '@/lib/forecast/shape-cookie'
+import { one } from '@/lib/forecast/params'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
@@ -7,8 +10,8 @@ import { isFlagEnabled } from '@/lib/flags'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
-import type { EventCategory } from '@/types/database'
 import { ORG_SALE_FIELDS_SELECT, isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
+import { readEventCategories, readOrganisationVenues } from '@/lib/organisers/event-form-options'
 
 export default async function CreateEventPage({
   searchParams,
@@ -28,8 +31,47 @@ export default async function CreateEventPage({
   // already had. The switcher below is what makes "both organisations sell
   // independently" reachable: the event is written with the active organisation's
   // id, so the money follows that business's Stripe account.
-  const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
+  const params = await searchParams
+  const scope = await resolveOrganisationScope(organisationIdFromParams(params))
   const org = scope.ok ? scope.active : null
+
+  /*
+   * THE SHAPE SOMEBODY ALREADY TYPED INTO THE PUBLIC FORECAST TOOL (FT1).
+   *
+   * It arrives on the query string because the forecast's call to action put it
+   * on the signup `next`, so it survives the account being created. Read with
+   * `one()` because Next hands a repeated parameter back as an array and a form
+   * seeded with "80,80" is worse than one seeded with nothing.
+   *
+   * IT IS IMPORTED RATHER THAN DECLARED HERE, and the reason is worth the
+   * sentence: an arrow function assigned to a const inside this component reads
+   * as the start of a NEW function to `no-unowned-organisation-read`, which
+   * splits the component in two and loses sight of the ownership check above.
+   * The guard is right to be naive about what it can see, so the helper lives
+   * in a module.
+   *
+   * The price arrives in CENTS, the unit every money value on this platform
+   * travels in, and the form binds DOLLARS, so it is converted here rather than
+   * in the form, which must not learn a second unit.
+   */
+  const queryPriceCents = Number.parseInt(one(params?.price) ?? '', 10)
+  /*
+   * THE QUERY STRING FIRST, THEN THE COOKIE. A signed-in organiser reaching
+   * this form straight from the forecast carries the shape on the link, which
+   * is the direct case and the one to prefer. Somebody who had to sign up in
+   * between lost the query string at the emailed confirmation link, and the
+   * cookie is what survived that hop.
+   */
+  const carried = decodeShape((await cookies()).get(SHAPE_COOKIE)?.value ?? null)
+  const priceCents =
+    Number.isFinite(queryPriceCents) && queryPriceCents > 0 ? queryPriceCents : carried.priceCents ?? 0
+  const capacity = one(params?.capacity) ?? (carried.capacity ? String(carried.capacity) : null)
+  const shapePrefill = {
+    categoryId: one(params?.category) ?? carried.categoryId ?? null,
+    city: one(params?.city) ?? carried.city ?? null,
+    capacity,
+    priceDollars: priceCents > 0 ? (priceCents / 100).toFixed(2) : null,
+  }
 
   if (!org) {
     return (
@@ -94,24 +136,19 @@ export default async function CreateEventPage({
       ? isOrganiserSellable(saleVerdict.org)
       : false
 
-  const { data: categories } = await supabase
-    .from('event_categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order') as { data: EventCategory[] | null }
-
-  const { data: venuesWithMaps } = await supabase
-    .from('venues')
-    .select('id, name, seat_maps(id, name, total_seats)')
-    .eq('organisation_id', org.id)
-    .eq('is_active', true)
-    .order('name')
-
-  const venues = (venuesWithMaps ?? []).map(v => ({
-    id: v.id,
-    name: v.name,
-    seat_maps: (v.seat_maps ?? []).filter((m: { id: string; name: string; total_seats: number }) => m),
-  }))
+  /*
+   * THE FORM'S OPTION LISTS, READ IN FULL AND LOUDLY.
+   *
+   * These were the same two reads the EDIT form carried, byte for byte, and
+   * both discarded their error and stated no bound. A refused read drew a
+   * category select with no options on the one form the platform most needs an
+   * organiser to reach the end of. The shared readers page and throw; see
+   * src/lib/organisers/event-form-options.ts.
+   */
+  const [categories, venues] = await Promise.all([
+    readEventCategories(supabase),
+    readOrganisationVenues(supabase, org.id),
+  ])
 
   return (
     <div>
@@ -136,12 +173,13 @@ export default async function CreateEventPage({
       <EventForm
         userId={user.id}
         organisationId={org.id}
-        categories={categories ?? []}
+        categories={categories}
         venues={venues}
         launchKitEnabled={await isFlagEnabled('launch_kit')}
         lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         magicStartEnabled={await isFlagEnabled('magic_start')}
         canSellPaid={canSellPaid}
+        shapePrefill={shapePrefill}
       />
     </div>
   )

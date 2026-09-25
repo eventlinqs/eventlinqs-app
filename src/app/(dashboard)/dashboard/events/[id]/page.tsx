@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { canonicalHost } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -145,11 +146,37 @@ export default async function EventViewPage({ params }: Props) {
 
   if (!org) notFound()
 
-  // Revenue + ticket stats via admin (buyer rows aren't visible to organiser under RLS)
-  const { data: orders } = await admin
-    .from('orders')
-    .select('total_cents, platform_fee_cents, processing_fee_cents, currency, status, order_items(item_type, quantity)')
-    .eq('event_id', id)
+  /*
+   * REVENUE AND TICKET STATS via admin (buyer rows aren't visible to the
+   * organiser under RLS), AND THIS READ HAD NO BOUND AND NO ORDER AT ALL.
+   *
+   * Supabase stops at 1,000 rows in silence
+   * (https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19), and a capped read with NO `order by` returns an ARBITRARY
+   * thousand rows rather than the newest or the oldest. Both figures below are
+   * sums over whatever arrived, so past a thousand orders this event's gross
+   * revenue and tickets sold would have been wrong AND WOULD HAVE MOVED BETWEEN
+   * PAGE LOADS for no reason the organiser could see. A thousand orders on one
+   * event is a good night at a mid-sized venue, not an edge case.
+   *
+   * `error` was discarded as well, so a read that FAILED rendered a sold-out
+   * event as having sold nothing.
+   */
+  const orders = await readEveryRow<{
+    total_cents: number | null
+    platform_fee_cents: number | null
+    processing_fee_cents: number | null
+    currency: string | null
+    status: string
+    order_items: { item_type: string; quantity: number }[] | null
+  }>('this event’s orders', (from, to) =>
+    admin
+      .from('orders')
+      .select('total_cents, platform_fee_cents, processing_fee_cents, currency, status, order_items(item_type, quantity)')
+      .eq('event_id', id)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
   const confirmed = (orders ?? []).filter(o =>
     ['confirmed', 'partially_refunded', 'refunded'].includes(o.status)
@@ -440,7 +467,7 @@ export default async function EventViewPage({ params }: Props) {
                           />
                         </div>
                         <span className="shrink-0 text-xs font-medium tabular-nums text-ink-600">
-                          {tier.sold_count}/{tier.total_capacity || ':'}
+                          {tier.sold_count}/{tier.total_capacity || '-'}
                         </span>
                       </div>
                     </li>

@@ -1,5 +1,4 @@
 import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
-import { getPickerCities } from '@/lib/locations/picker-cities'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeaderClient } from './site-header-client'
 import { deriveAccountUser, type AccountUser } from './site-header-account-button'
@@ -9,10 +8,18 @@ import { captureException } from '@/lib/observability/sentry'
 /**
  * SiteHeader - public site top navigation.
  *
- * Server wrapper. Resolves:
- *   - the picker city list (cached)
- *   - the current Supabase auth user (cookie-bound, no DB hit beyond
- *     the standard `auth.getUser()` call which Supabase caches per-request)
+ * Server wrapper. Resolves the current Supabase auth user (cookie-bound, no
+ * DB hit beyond the standard `auth.getUser()` call which Supabase caches
+ * per-request).
+ *
+ * IT NO LONGER RESOLVES THE PICKER CITY LIST, and that is the point rather
+ * than a tidy-up. Until 19 September 2026 this component awaited
+ * `getPickerCities()` and handed the whole catalogue to the client header, so
+ * every page on the platform both waited on that read and serialised its result
+ * into the document: 6,988 bytes, twice, on a login page where nobody is
+ * choosing a city. The dialog fetches it for itself from
+ * `/api/location/cities` on the same intent that fetches its code. See
+ * `src/components/ui/location-picker.tsx`.
  *
  * Hands a minimal `AccountUser` shape (initials + display name) to the
  * client inner so the avatar shell can render without leaking the full
@@ -40,8 +47,6 @@ import { captureException } from '@/lib/observability/sentry'
  * anonymous-cacheable surfaces.
  */
 export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean } = {}) {
-  const cities = await getPickerCities()
-
   let user: AccountUser | null = null
   let userEmail: string | null = null
   let isAdmin = false
@@ -71,7 +76,6 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
   return (
     <SiteHeaderClient
       location={MELBOURNE_FALLBACK}
-      cities={cities}
       user={user}
       userEmail={userEmail}
       isAdmin={isAdmin}

@@ -47,6 +47,42 @@ export const FOUNDING_INITIAL_MONTHS = 6
 /** Months added to the window for each confirmed referral. */
 export const FOUNDING_REFERRAL_MONTHS = 3
 
+/**
+ * MAY THIS GRANT OPEN A NEW FOUNDING WINDOW?
+ *
+ * The fifty cap is decided in three places and must be decided the same way in
+ * all three: the invite conversion, the owner's hand in the admin console, and
+ * the database trigger that is the backstop against a path nobody has written
+ * yet. The first two now call this; the third is SQL and is held to the same
+ * number by the registered guard
+ * scripts/guards/founding-offer-matches-configuration.mjs.
+ *
+ * PURE, so the rule can be tested exhaustively without a database, which is the
+ * whole reason it is not an `if` inside an async function. The cases that
+ * matter are the boundary (the fiftieth is granted, the fifty-first is not) and
+ * the owner's deliberate override, and none of those is reachable from a test
+ * that has to stand up fifty organisations first.
+ *
+ * EXTENDING IS NEVER CAPPED. The cap governs how many organisations hold a
+ * window, not how long a window somebody already holds may run for. A referral
+ * earned by an organisation already inside the programme costs no new spot.
+ */
+export type FoundingGrantVerdict = 'granted' | 'refused_cap'
+
+export function foundingGrantVerdict(input: {
+  /** How many organisations already hold a window, excluding this one. */
+  holders: number
+  /** True only when this change takes an organisation from no window to one. */
+  opensNewWindow: boolean
+  /** The owner's deliberate, audit-logged override. */
+  override?: boolean
+  cap?: number
+}): FoundingGrantVerdict {
+  if (!input.opensNewWindow) return 'granted'
+  if (input.override === true) return 'granted'
+  return input.holders >= (input.cap ?? FOUNDING_WAIVER_CAP) ? 'refused_cap' : 'granted'
+}
+
 export interface FoundingWaiver {
   /** The expiry timestamp, or null when the organisation has no waiver. */
   feeFreeUntil: string | null

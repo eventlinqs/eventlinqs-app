@@ -100,7 +100,9 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                   <tr key={order.id} className="hover:bg-ink-100 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs font-medium text-ink-900">{order.order_number}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink-900">{order.buyer_name || ':'}</p>
+                      {/* The same guest order, the same repair as the order
+                          detail page: a colon is not a name. */}
+                      <p className="font-medium text-ink-900">{order.buyer_name || 'Not given'}</p>
                       <p className="text-xs text-ink-400">{order.buyer_email}</p>
                     </td>
                     <td className="px-4 py-3 text-ink-600">{order.ticket_count}</td>
@@ -118,7 +120,17 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                     <td className="px-4 py-3">
                       <Link
                         href={`/dashboard/events/${eventId}/orders/${order.id}`}
-                        className="text-xs text-gold-500 hover:underline whitespace-nowrap"
+                        /*
+                         * gold-800, NOT gold-500. Gold as text on a light
+                         * surface fails AA at gold-500: globals.css records it
+                         * as 2.27:1 on canvas, and `--brand-accent-strong`
+                         * exists for exactly this. axe reported it as a SERIOUS
+                         * colour-contrast violation on every row, so on an
+                         * event with 1,150 orders it was 1,150 failing nodes on
+                         * one screen. Found on 20 September 2026 by running axe
+                         * against the real, populated, signed-in surface.
+                         */
+                        className="text-xs text-gold-800 hover:text-gold-700 hover:underline whitespace-nowrap"
                       >
                         View →
                       </Link>

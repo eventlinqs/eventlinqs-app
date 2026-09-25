@@ -221,6 +221,15 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
               <dt className="text-sm font-semibold text-[var(--text-primary)]">EventLinqs fee</dt>
               <dd className="mt-1 flex items-baseline justify-between text-sm text-[var(--text-secondary)]">
                 <span>{rates.platformFeePercent}% + {formatMoney(rates.platformFeeFixedCents, currency)} per ticket</span>
+                {/*
+                  A REAL SPACE CHARACTER between the description and the amount.
+                  Close-out SEO4 step 6: `justify-between` separates these two
+                  spans visually and not in the text, so `textContent` read
+                  "per ticket$2.04" and a screen reader announced it that way.
+                  A flex container ignores the whitespace text node for layout,
+                  so the gap is unchanged and the sentence is readable.
+                */}
+                {' '}
                 <span className="font-semibold text-[var(--text-primary)]">
                   {formatMoney(fees.platform_fee_cents, currency)}
                 </span>

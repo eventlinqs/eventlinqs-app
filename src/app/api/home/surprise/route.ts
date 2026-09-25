@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/public-client'
-import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { listingWindowOrPredicate, localDayOfWeek, localHourOfDay } from '@/lib/events/listing-window'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 /**
@@ -38,9 +39,32 @@ interface Suggestion {
   reason: string
 }
 
+/**
+ * THE LABEL IS DECIDED IN THE PLATFORM'S ZONE, NEVER THE SERVER'S.
+ *
+ * `now.getDay()` and `now.getHours()` read the zone of the process, which on
+ * Vercel is UTC, and every reader of this label is in Australia. The two are
+ * eight to eleven hours apart, which is more than enough to invert both of the
+ * questions this function asks:
+ *
+ *   Saturday 20:00 in Melbourne is Saturday 10:00 UTC, so `isEvening` was FALSE
+ *   and a Saturday night pick was labelled "Saturday daytime pick".
+ *   Monday 09:00 in Melbourne is Sunday 22:00 UTC, so `day` was 0, `hour` was
+ *   22, and a Monday morning pick was labelled "Weekend energy".
+ *
+ * The file was already careful about this in one direction and not the other:
+ * the `timezone` field above carries the EVENT's zone "so the modal shows the
+ * event's day not the reader's", and then the label read the server's.
+ *
+ * PLATFORM_TIME_ZONE is the right reference rather than the event's own, because
+ * this sentence describes WHEN THE READER IS, not when the event is, and it is
+ * the same choice `presetWindow` makes for "today" and "tonight". FRIDAY STAYS
+ * IN THE WEEKEND: that is a deliberate product decision about nightlife and it
+ * is untouched here. This fixes the zone and nothing else.
+ */
 function pickReason(now: Date, city: string | null): string {
-  const day = now.getDay()
-  const hour = now.getHours()
+  const day = localDayOfWeek(now, PLATFORM_TIME_ZONE)
+  const hour = localHourOfDay(now, PLATFORM_TIME_ZONE)
   const isWeekend = day === 5 || day === 6 || day === 0
   const isEvening = hour >= 17
 

@@ -41,20 +41,29 @@ export default function CookiesPage() {
       <p>
         EventLinqs (operated by Lawal Adams trading as EventLinqs,
         ABN {PLATFORM_ENTITY.abnFormatted}, {PLATFORM_ENTITY.postalAddress}) sets
-        cookies only where they are essential: keeping your session
-        secure, completing checkout, remembering a few interface
-        preferences, and preventing abuse. Our analytics are cookieless
-        (see below), so no cookie is set to measure usage. We do not use
-        cookies for advertising, we do not track you across other
-        websites, and we never sell cookie data. Because we set no
-        tracking or advertising cookies, no cookie consent banner is
-        required.
+        cookies where they are essential: keeping your session secure,
+        completing checkout, remembering a few interface preferences, and
+        preventing abuse. Our own traffic measurement is cookieless (see
+        below), so no cookie is set to count a page view. We never sell
+        cookie data.
+      </p>
+      <p>
+        We also ask, once, whether you are willing to let us load two
+        further kinds of measurement: product analytics, which show us
+        where people give up on a form so we can fix it, and advertising
+        measurement, which tells us which of our own adverts brought an
+        organiser here. <strong>Neither loads until you say yes.</strong>
+        If you say no, nothing is requested, nothing is stored, and the
+        platform works identically: buying a ticket and running an event
+        are unaffected either way. Your answer is remembered in a
+        first-party cookie (<code>el_consent</code>) that records the
+        choice and nothing else, so we do not have to keep asking.
       </p>
 
       <h2 id="categories">Cookie Categories</h2>
       <p>
-        EventLinqs sets only the following first-party cookies. There is
-        no advertising, cross-site tracking, or analytics cookie category.
+        EventLinqs sets the following first-party cookies. The last two
+        categories are set only if you agree to them.
       </p>
       <ul>
         <li>
@@ -71,12 +80,33 @@ export default function CookiesPage() {
           view. Clearing them only resets those choices; everything still
           works.
         </li>
+        <li>
+          <strong>Product analytics, only if you agree.</strong> PostHog,
+          which records which steps of a form people reach so we can see
+          where the platform is failing them. It is not loaded at all
+          until you accept, and saying no leaves nothing behind.
+        </li>
+        <li>
+          <strong>Advertising measurement, only if you agree.</strong>
+          Google Analytics 4, Google Ads and the Meta pixel, which tell us
+          which of our own adverts brought an organiser to the platform.
+          These are the ones that can recognise you on other sites, which
+          is why they are in their own category and why they are off until
+          you say otherwise. None is loaded until you accept.
+        </li>
       </ul>
       <p>
-        Analytics is handled cookielessly by Plausible (see below), so no
-        analytics cookie is set on your device. Payment fraud screening on
-        the checkout page is performed by Stripe under its own cookies,
+        Our own traffic measurement is handled cookielessly by Plausible
+        (see below), so no cookie is set for it and it is outside the
+        question above: it stores nothing on your device and cannot
+        recognise you anywhere else. Payment fraud screening on the
+        checkout page is performed by Stripe under its own cookies,
         described under Third-Party Cookies.
+      </p>
+      <p>
+        You can change your mind at any time by clearing the
+        <code>el_consent</code> cookie in your browser, which brings the
+        question back on your next visit.
       </p>
 
       <h2 id="third-parties">Third-Party Cookies</h2>

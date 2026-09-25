@@ -15,7 +15,7 @@
  */
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { escapeHtml } from '@/lib/email/escape'
-import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 
 export const PLATFORM_NOTIFICATION_KINDS = [
   'organiser_created',
@@ -121,26 +121,85 @@ export function routeFor(kind: PlatformNotificationKind, individualSentToday: nu
 }
 
 /**
+ * What is written to a row the moment the ceiling sends it to the digest.
+ *
+ * THE DEFECT THIS EXISTS TO CLOSE, 13 September 2026. The hold used to write
+ * `{ delivery_state: 'held_for_digest' }` and nothing else, so the row carried
+ * its `attempts` counter across with it. That counter is not the digest's: it
+ * counts how many times the row was tried AS AN INDIVIDUAL EMAIL, and a row
+ * reaches the hold with it already spent whenever a send failed while the day
+ * was still under the ceiling and the ceiling was crossed before the next tick
+ * came back to it. The digest then reads the batch's highest attempts - the
+ * right rule for attempts the digest itself made - and at
+ * PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS - 1 it gave up on its FIRST refusal,
+ * escalating or, with no armed push device, writing every row `failed`. That is
+ * the same loss fixed earlier the same day in sendHeldDigest, reached through a
+ * different door, and the message it throws away can carry two hundred orders.
+ *
+ * So the counter is RESET, because the digest is a different message that has
+ * never been attempted, and the history is moved into `last_error` rather than
+ * dropped: a feed showing "attempt 2 failed" beside a counter reading 0 would
+ * be the kind of half-truth that makes an operator distrust the whole screen.
+ *
+ * Pure, and exported, so scripts/guards/digest-attempts-are-the-digests-own.mjs
+ * can exercise the real decision instead of matching a regular expression
+ * against the sentence that describes it.
+ */
+export function holdForDigestPatch(
+  row: Pick<PlatformNotificationRow, 'attempts' | 'last_error'>,
+): { delivery_state: 'held_for_digest'; attempts: 0; last_error: string | null } {
+  const spent = Number.isFinite(row.attempts) ? Math.max(0, Math.trunc(row.attempts)) : 0
+  return {
+    delivery_state: 'held_for_digest',
+    attempts: 0,
+    last_error:
+      spent > 0
+        ? `held for the digest after ${spent} individual attempt(s), whose count does not carry over; ` +
+          `last individual error: ${row.last_error ?? 'not recorded'}`
+        : row.last_error,
+  }
+}
+
+/**
  * The start of the current platform day, as an ISO instant.
  *
  * Australia/Sydney, PLATFORM_TIME_ZONE, so the ceiling resets at a boundary the
  * owner experiences rather than at UTC midnight, which in Sydney is the middle
  * of the morning or the middle of the day depending on daylight saving.
+ *
+ * WHY THIS SOLVES FOR THE INSTANT RATHER THAN SUBTRACTING THE WALL CLOCK.
+ * The first version read the Sydney hour, minute and second off `now` and
+ * subtracted that many seconds from the instant. That is only correct when the
+ * day is 24 hours long, and twice a year in Sydney it is not, so on both
+ * transition days the boundary landed an hour out - and on the October one it
+ * landed on the WRONG DATE. Driven, not argued:
+ *
+ *   4 Oct 2026 (AEDT begins, 2am becomes 3am), now = 10:00 am AEDT
+ *     old: 3 Oct 2026, 11:00:00 pm AEST   <- the previous evening
+ *     new: 4 Oct 2026, 12:00:00 am AEST
+ *   5 Apr 2026 (AEST returns, 3am becomes 2am), now = 10:00 am AEST
+ *     old: 5 Apr 2026, 1:00:00 am AEDT    <- an hour of the day missing
+ *     new: 5 Apr 2026, 12:00:00 am AEDT
+ *
+ * The consequence was real rather than cosmetic: `individualSentToday` counts
+ * `sent_at >= platformDayStart(now)`, so in October the window reached back into
+ * the previous evening and the owner was cut off from individual order alerts
+ * early, and in April the first hour of the day did not count and the ceiling
+ * could be overrun by a whole day's allowance.
+ *
+ * The correct answer is not a subtraction at all: it is midnight on the Sydney
+ * CALENDAR DATE, resolved to an instant by `fromZonedInputValue`, whose two-pass
+ * offset solve already exists in this repository precisely because "a time
+ * entered in the hours around a DST change is stored one hour out".
  */
 export function platformDayStart(now: Date): Date {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const date = new Intl.DateTimeFormat('en-CA', {
     timeZone: PLATFORM_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(now)
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0')
-  const secondsIntoDay = get('hour') * 3600 + get('minute') * 60 + get('second')
-  return new Date(now.getTime() - secondsIntoDay * 1000 - now.getMilliseconds())
+  }).format(now)
+  return new Date(fromZonedInputValue(`${date}T00:00`, PLATFORM_TIME_ZONE))
 }
 
 /**

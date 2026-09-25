@@ -5,6 +5,18 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { readBroadcastFlags } from '@/lib/admin/flags'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import { switchFlagAction } from './actions'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -68,9 +80,11 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
-        <table className="w-full min-w-[680px] text-sm">
-          <thead>
+      {/* Below lg this stops being a table and each flag becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[680px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
               <th scope="col" className="px-4 py-3 font-medium">Stage</th>
               <th scope="col" className="px-4 py-3 font-medium">What it switches</th>
@@ -79,16 +93,23 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Switch</span></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {flags.map((row) => (
-              <tr key={row.flag} className="border-b border-white/[0.05] align-middle">
-                <td className="px-4 py-3">
+              <tr key={row.flag} className={`${ADMIN_ROW} align-middle`}>
+                <td className={ADMIN_CELL_NAME}>
                   <div className="font-medium text-white">{STAGE_LABELS[row.flag] ?? row.flag}</div>
                   <div className="text-[11px] uppercase tracking-wider text-white/40">{row.flag}</div>
                 </td>
-                <td className="max-w-md px-4 py-3 text-white/60">{row.description}</td>
-                <td className="px-4 py-3 text-white/60">{row.launchDefault ? 'On' : 'Off'}</td>
-                <td className="px-4 py-3">
+                <td className={`${ADMIN_CELL} max-w-md text-white/60`}>
+                  <span className={ADMIN_CELL_LABEL}>Switches</span>
+                  {row.description}
+                </td>
+                <td className={`${ADMIN_CELL} text-white/60`}>
+                  <span className={ADMIN_CELL_LABEL}>Launch default</span>
+                  {row.launchDefault ? 'On' : 'Off'}
+                </td>
+                <td className={ADMIN_CELL}>
+                  <span className={ADMIN_CELL_LABEL}>State</span>
                   <span
                     className={
                       row.enabled
@@ -99,13 +120,13 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
                     {row.enabled ? 'On' : 'Off'}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className={ADMIN_CELL_ACTIONS}>
                   <form action={switchFlagAction}>
                     <input type="hidden" name="flag" value={row.flag} />
                     <input type="hidden" name="enabled" value={row.enabled ? 'false' : 'true'} />
                     <ConfirmSubmitButton
                       confirmMessage={`Switch ${row.flag} ${row.enabled ? 'OFF' : 'ON'}? The change is live within 30 seconds.`}
-                      className="rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white transition hover:border-amber-300/40 hover:text-amber-200"
+                      className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white transition hover:border-amber-300/40 hover:text-amber-200`}
                     >
                       Switch {row.enabled ? 'off' : 'on'}
                     </ConfirmSubmitButton>

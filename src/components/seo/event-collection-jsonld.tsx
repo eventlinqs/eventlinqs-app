@@ -29,6 +29,7 @@
  * onto a listing page is the documented way to get the markup discounted, not
  * a shortcut to more rich results.
  */
+import { JsonLd } from '@/components/seo/json-ld'
 
 interface CollectionEvent {
   slug: string
@@ -97,11 +98,5 @@ export function EventCollectionJsonLd({
     },
   }
 
-  return (
-    <script
-      type="application/ld+json"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
-    />
-  )
+  return <JsonLd payload={payload} />
 }

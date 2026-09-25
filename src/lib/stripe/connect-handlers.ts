@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyOrganiserOfPaymentSetupProblem } from '@/lib/notifications/organiser-money-notify'
 
 /**
  * Handles Stripe `account.updated` events for Connect Express accounts.
@@ -27,7 +28,7 @@ export async function handleConnectAccountUpdated(
 
   const { data: prevOrg, error: selectError } = await adminClient
     .from('organisations')
-    .select('id, stripe_onboarding_complete, payout_tier, payout_destination, payout_status')
+    .select('id, stripe_onboarding_complete, payout_tier, payout_destination, payout_status, stripe_charges_enabled, stripe_payouts_enabled')
     .eq('stripe_account_id', account.id)
     .maybeSingle()
   if (selectError) {
@@ -72,6 +73,18 @@ export async function handleConnectAccountUpdated(
     >,
     stripe_onboarding_complete: fullyOnboarded,
     payout_status: adminHold ? 'on_hold' : account.payouts_enabled ? 'active' : 'restricted',
+    /*
+     * MONEY FIX A3 LAYER TWO. This handler is a VERIFICATION: Stripe has just
+     * told us what the account is, and these columns are being written from it.
+     * Stamping it here is what keeps the publish gate's freshness rule cheap in
+     * normal operation, because an account whose webhooks are arriving never
+     * goes stale and never costs a publish an extra Stripe round trip.
+     *
+     * It follows that an account whose stamp HAS gone stale is precisely one
+     * whose webhooks have stopped, which is the case the freshness rule exists
+     * for.
+     */
+    stripe_status_verified_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
   if (payoutDestination) {
@@ -90,6 +103,48 @@ export async function handleConnectAccountUpdated(
       error: updateError,
     })
     return
+  }
+
+  /*
+   * MONEY FIX B4: "any payment setup problem".
+   *
+   * THE DEFECT THIS CLOSES. Everything above writes Stripe's new verdict into
+   * the organisations row and tells nobody. An organiser whose account stopped
+   * being able to take money found out when a publish was refused, or when a
+   * buyer met "This organiser is still finishing their payment setup" on an
+   * event they had already promoted and sold from.
+   *
+   * THE TRANSITION, NOT THE STATE. `account.updated` fires for changes that
+   * have nothing to do with payability, and an account that has never been
+   * finished is not news every time Stripe touches it. `prevOrg` is the posture
+   * BEFORE this delivery, so the comparison can only fire on something that was
+   * working and has stopped. That test is a pure function
+   * (`hasStoppedWorking`) so it is judged on its own rather than through a
+   * mailbox.
+   *
+   * NON-FATAL AND AFTER THE WRITE. The row is already correct at this point; a
+   * mail failure must not make Stripe redeliver and must never leave the
+   * posture unwritten.
+   */
+  if (prevOrg?.id) {
+    const told = await notifyOrganiserOfPaymentSetupProblem(adminClient, {
+      organisationId: String(prevOrg.id),
+      before: {
+        chargesEnabled: prevOrg.stripe_charges_enabled === true,
+        payoutsEnabled: prevOrg.stripe_payouts_enabled === true,
+      },
+      after: {
+        chargesEnabled: account.charges_enabled ?? false,
+        payoutsEnabled: account.payouts_enabled ?? false,
+      },
+    })
+    if (told.status === 'skipped' && told.reason !== 'no_change') {
+      console.warn('[m6] the organiser was NOT told their payment setup had stopped working', {
+        eventId,
+        orgId: prevOrg.id,
+        reason: told.reason,
+      })
+    }
   }
 
   const wasIncomplete = !prevOrg?.stripe_onboarding_complete

@@ -188,6 +188,17 @@ export const STORED_AGGREGATES = [
       'NOT A SUMMARY OF ROWS. ticket_scans logs EVERY attempt including failures and not-founds; scan_count counts successful admits only. They answer different questions and neither is a copy of the other.',
   },
   {
+    column: 'api_v1_attendees.scan_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy:
+      'Nothing maintains it, because it is not a stored column. api_v1_attendees is a VIEW (migration 20260918000020) and this is tickets.scan_count read straight through, so the verdict above for tickets.scan_count is the verdict here.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'API1 added the view and the enumeration correctly noticed a new object with a column called scan_count. A view column cannot drift from the column it selects, so there is nothing separate to maintain or reconcile; what would be a real defect is the view growing a column that is a stored count of its own, and that would arrive here as a new entry rather than under this one.',
+  },
+  {
     column: 'tier_access_codes.current_uses',
     summarises: null,
     maintenance: 'application',
@@ -220,6 +231,28 @@ export const STORED_AGGREGATES = [
       "NOT A SUMMARY OF ROWS. It is the hold row's OWN balance, not a total over other rows. organisations.hold_amount_cents is the figure that totals these, and that one IS reconciled above and does drift.",
   },
   {
+    column: 'audience_members.order_count',
+    summarises: 'public.orders where status = confirmed, for this buyer',
+    maintenance: 'trigger',
+    maintainedBy:
+      'public.refresh_audience_member, called by trg_audience_on_order_confirmed on public.orders, by trg_audience_on_consent_event on public.consent_events and by trg_audience_on_suppression_event on public.suppression_events (close-out GA1 v3: the ledger drives it, and the older trigger on public.marketing_consents now fires from the projection rather than from application code).',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'RECOMPUTED FROM SCRATCH ON EVERY REFRESH, never incremented. Close-out GA1 chose a full recount over a delta precisely to stay out of this class: there is no += anywhere, so there is no way for it to drift, and a missed trigger costs one stale row rather than a permanently wrong number. The same call recomputes lifetime_spend_cents, first_order_at and last_order_at from the same read, so the four can never disagree with each other either.',
+  },
+  {
+    column: 'marketing_match_run.returned_count',
+    summarises: 'public.marketing_match_score rows belonging to this run',
+    maintenance: 'application',
+    maintainedBy:
+      'src/lib/matching/run.ts, in one UPDATE at the end of the run that writes the length of the list it just inserted.',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'A RUN IS IMMUTABLE ONCE FINISHED, which is what takes this out of the drift class. The score rows for a run are inserted once, in one statement, and nothing on the platform adds to or removes from a finished run: there is no += anywhere and no second writer. The count is written from the array that was inserted rather than incremented per row, so the only way it can disagree with the rows is if the insert failed, and that path returns an error and leaves returned_count at its zero default rather than claiming a number. audience_considered and suppressed_by_reason on the same row are the same shape for the same reason.',
+  },
+  {
     column: 'digest_sends.event_count',
     summarises: null,
     maintenance: 'not-in-class',
@@ -232,11 +265,45 @@ export const STORED_AGGREGATES = [
   {
     column: 'digest_sends.recipient_count',
     summarises: null,
+    maintenance: 'application',
+    maintainedBy:
+      'src/app/api/cron/weekly-digest/route.ts, written as a SUM of what previous invocations wrote plus what this one wrote.',
+    reconciled: false,
+    caveat:
+      'It stopped being a write-once log row on 20 September 2026 and this entry said otherwise until then. It is now the RESUME POINT: the next invocation of an unfinished period starts at this number, so a value that is too high steps over real people and one that is too low writes to them twice. It counts sends that SUCCEEDED, never the window that was planned, because one address failing must not close the period over the top of everybody after it.',
+    decision:
+      'APPLICATION MAINTAINED AND DELIBERATELY NOT RECONCILED AGAINST A ROW COUNT, because there is no per-recipient row to reconcile against: the platform does not store who received a marketing email, only how many did. The thing that can be checked is the invariant beside it, and the database checks it: `digest_sends_sent_within_audience` refuses any row whose recipient_count exceeds audience_count, so the resume point can never point past the end of the audience it is an offset into.',
+  },
+  {
+    column: 'digest_sends.audience_count',
+    summarises: null,
+    maintenance: 'application',
+    maintainedBy:
+      'src/app/api/cron/weekly-digest/route.ts, written from the length of the lawful audience each invocation resolves.',
+    reconciled: false,
+    caveat:
+      'It is re-resolved on every invocation rather than frozen at the first, so a city whose audience changes mid-week records the LAST resolution. That is the honest number for judging whether the period finished, which is the only thing it is read for.',
+    decision:
+      'NOT A LIVE AGGREGATE OF A TABLE, and not reconcilable against one: the audience is whoever survives the consent merge, the suppression list and the ledger resolver at the moment of asking, and no table holds that set. It exists because `recipient_count` alone could not tell "we wrote to everybody" from "we stopped at the cap", which is exactly what let a city of nine hundred be recorded as sent after five hundred emails (close-out LB-DIGESTWHOLE). The pair is judged by `completed_at`, not by arithmetic anybody re-runs.',
+  },
+  {
+    column: 'organiser_sales_digest_sends.sale_count',
+    summarises: null,
     maintenance: 'not-in-class',
-    maintainedBy: 'written once, by the send that created the row.',
+    maintainedBy: 'written once, by the digest send that created the row.',
     reconciled: false,
     caveat: null,
-    decision: 'Same as digest_sends.event_count: a log row.',
+    decision:
+      'A HISTORICAL RECORD of what one daily digest told an organiser, not a live aggregate. It is supposed to keep saying what the message claimed even after the orders it counted are refunded, because the point of keeping it is to reconcile the message against the orders later. Same class as digest_sends.event_count (close-out MONEY FIX B4).',
+  },
+  {
+    column: 'organiser_sales_digest_sends.gross_cents',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'written once, by the digest send that created the row.',
+    reconciled: false,
+    caveat: null,
+    decision: 'Same as organiser_sales_digest_sends.sale_count: what one message said, on the day it said it.',
   },
   {
     column: 'discount_codes.max_uses',

@@ -9,8 +9,8 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
-import { MEDIA_TRANSITIONS } from '@/components/media'
-
+import { MEDIA_TRANSITIONS } from '@/components/media/transitions'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 function subscribeReducedMotion(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -82,7 +82,7 @@ export function HeroCarouselClient({
 
   useEffect(() => {
     if (count <= 1) return
-    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
+    if (isAuditRun()) return
     if (reducedMotion) return
     const id = window.setTimeout(() => setOtherBgsMounted(true), 1600)
     return () => window.clearTimeout(id)
@@ -90,7 +90,7 @@ export function HeroCarouselClient({
 
   useEffect(() => {
     if (count <= 1 || paused || reducedMotion) return
-    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
+    if (isAuditRun()) return
     const id = setInterval(() => {
       setIndex(i => (i + 1) % count)
     }, AUTO_ADVANCE_MS)

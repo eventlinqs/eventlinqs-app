@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createReservation } from '@/app/actions/reservations'
+import { carryDiscoveryConsent } from '@/app/actions/discovery-consent'
+import { DISCOVERY_CONSENT_ATTRIBUTE } from './discovery-consent-attribute'
 import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
 import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
@@ -18,6 +20,8 @@ import {
   type FeeRates,
   type FeePassType,
 } from '@/lib/payments/fee-math'
+import { allInPriceForOneTicket } from '@/lib/payments/all-in-price'
+import { AcceptedPaymentMethods } from '@/components/features/checkout/AcceptedPaymentMethods'
 import { formatEventDateTimeCompact } from '@/lib/dates/event-time'
 
 type TierWithDisplayPrice = TicketTier & {
@@ -30,6 +34,16 @@ type TierWithDisplayPrice = TicketTier & {
 
 interface TicketSelectorProps {
   eventId: string
+  /**
+   * AQ1. The discovery consent question, server rendered, when the placement
+   * says it is asked here rather than at the payment step.
+   *
+   * A SLOT rather than a flag and some copy, so the event page pays nothing in
+   * client bytes for a question that is not being asked on it: the panel is a
+   * server component and this file only ever reads one checkbox out of it.
+   * Absent, which is the ordinary case, means the payment step asks.
+   */
+  discoveryConsentSlot?: ReactNode
   tiers: TierWithDisplayPrice[]
   addons: EventAddon[]
   isTicketingSuspended: boolean
@@ -68,6 +82,15 @@ interface TicketSelectorProps {
    * browser, unlike the runtime zone.
    */
   eventTimezone: string | null
+  /**
+   * Whether the remaining-tickets line may render (close-out SEO5 reversal).
+   *
+   * Defaults to true so every existing caller is unchanged. The event page
+   * resolves the `event_availability_and_access` flag once and threads it, so
+   * the owner can take every availability figure off the platform with one
+   * admin row change and no deploy.
+   */
+  showAvailability?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -75,8 +98,16 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, showAvailability = true, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer', discoveryConsentSlot = null }: TicketSelectorProps) {
   const router = useRouter()
+  /*
+   * AQ1. The buyer's answer is read out of the DOM once, when they
+   * proceed, and the search is scoped to this selector's own subtree
+   * rather than to a document-wide id. Two ticket panels can render on one
+   * event page (general admission beside a seat chart), and an id lookup
+   * would read whichever box the document happened to hold first.
+   */
+  const discoveryConsentRef = useRef<HTMLDivElement | null>(null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -162,6 +193,54 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       : subtotalCents
   const showAllIn = !allFree && subtotalCents > 0
 
+  /**
+   * A WAIVED FEE IS NOT A FEE OF ZERO, AND TWO SENTENCES IN THIS PANEL HAVE TO
+   * KNOW THE DIFFERENCE (close-out FO1, 18 September 2026).
+   *
+   * A Founding Organiser's resolved rates are both zero, which is the offer
+   * working exactly as it should. Every NUMBER on this panel was already right
+   * for them: subtotal 2500, no service fee row, total 2500. Both WORDS were
+   * wrong, and both were found on a screenshot in the driven purchase proof
+   * rather than by an assertion, because the assertions were about the numbers.
+   *
+   *   the tier line   said "Fee included in the ticket price", because the fee
+   *                   is not added on top. Nothing is included: there is no fee.
+   *   the panel line  said "It includes the EventLinqs fee of 0% plus Free per
+   *                   ticket, which covers card processing", which is not
+   *                   English, claims a fee is included, and claims a charge of
+   *                   nothing covers something.
+   *
+   * IT IS READ FROM THE CONFIGURATION, NEVER FROM A FOUNDING FLAG. Any pricing
+   * rule that resolves to no percentage and no flat amount says the same thing,
+   * whoever it was granted to, so the buyer is never shown anything about the
+   * organiser's commercial terms. ABSORB is deliberately a different case and
+   * keeps its own sentence: there the fee is real and is inside the price.
+   */
+  const feeIsWaived =
+    !!feeRates && feeRates.platformFeePercent === 0 && feeRates.platformFeeFixedCents === 0
+
+  /**
+   * What ONE ticket at this tier costs the buyer (close-out SEO4 step 2).
+   *
+   * Composed through `allInPriceForOneTicket`, which composes `fee-math.ts`,
+   * which is what the server charges through. There is no second formula here
+   * and deliberately so: a per-ticket markup written out at this call site would
+   * be right today and silently wrong the day the flat fee stops being charged
+   * per ticket.
+   *
+   * With no rates resolved it returns the face value rather than guessing, which
+   * is the same rule `priceLabel` follows: a surface that has not resolved this
+   * event's fee scope must not state a total, because a per-event override would
+   * make that total confidently wrong.
+   */
+  function tierAllIn(tier: TierWithDisplayPrice) {
+    const face = tier.display_price_cents ?? tier.price
+    if (!feeRates) {
+      return { faceCents: face, feeCents: 0, totalCents: face, feeIsAddedOnTop: false }
+    }
+    return allInPriceForOneTicket(face, feeRates, feePassType)
+  }
+
   function handleCheckout() {
     setError(null)
 
@@ -188,6 +267,38 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       })
     }
 
+    /*
+     * AQ1. THE ANSWER GOES WITH THE RESERVATION, AND NEVER BLOCKS THE PURCHASE.
+     *
+     * The buyer has no address yet, so the consent cannot be written here. It
+     * is carried against the reservation and written into the ledger at the
+     * payment step by the one recorder every purchase path already calls.
+     *
+     * A failure is reported and swallowed on purpose. The worst case is that
+     * the question is put again at the payment step, which is a duplicate
+     * question rather than a lost sale, and a marketing record is never worth
+     * somebody's ticket.
+     */
+    const carryTheAnswer = async (reservationId: string) => {
+      if (!discoveryConsentSlot) return
+      try {
+        const box = discoveryConsentRef.current?.querySelector(`input[${DISCOVERY_CONSENT_ATTRIBUTE}]`)
+        const outcome = await carryDiscoveryConsent({
+          reservation_id: reservationId,
+          ticked: box instanceof HTMLInputElement ? box.checked : false,
+        })
+        if (!outcome.carried) {
+          // Reported rather than discarded. Nothing is put on screen because
+          // the buyer's own action is the checkout, which proceeds either way,
+          // and the only consequence of this refusal is that the payment step
+          // asks the question they have already answered.
+          console.error('[checkout] the discovery answer was not carried:', outcome.reason)
+        }
+      } catch (err) {
+        console.error('[checkout] carrying the discovery answer failed:', err)
+      }
+    }
+
     startTransition(async () => {
      try {
       // Free-only cart: skip checkout page entirely for logged-in users
@@ -207,6 +318,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
 
         if (result.reservation_id) {
           // Guest user: go to checkout for email capture (no payment step)
+          await carryTheAnswer(result.reservation_id)
           router.push(`/checkout/${result.reservation_id}`)
           return
         }
@@ -228,6 +340,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         return
       }
 
+      if (result.reservation_id) await carryTheAnswer(result.reservation_id)
       router.push(`/checkout/${result.reservation_id}`)
      } catch (err) {
         // A thrown server action used to reject the transition silently:
@@ -341,13 +454,43 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         Sale opens {formatEventDateTimeCompact(tier.sale_start, eventTimezone)}
                       </p>
                     )}
-                    {!soldOut && !salePending && available <= 20 && (
+                    {showAvailability && !soldOut && !salePending && available <= 20 && (
                       <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>
                     )}
                     {!soldOut && !salePending && tier.max_per_order < 10 && (
                       <p className="mt-0.5 text-[11px] text-ink-400">Max {tier.max_per_order} per order</p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-ink-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
+                    {/*
+                      THE PRICE THE BUYER WILL ACTUALLY PAY, per tier
+                      (close-out SEO4 step 2). This line used to be the FACE
+                      VALUE alone, so the panel showed AUD 18.00 beside a tier a
+                      buyer could not leave for less than AUD 19.62, and the true
+                      number only appeared once a quantity had been chosen.
+
+                      The prominent number is the TOTAL. The breakdown is on the
+                      line beneath it rather than behind a disclosure, which is
+                      stronger than the "available in one interaction" the
+                      close-out asks for: all three figures, ticket, fee and
+                      total, are visible without touching anything.
+
+                      When the organiser ABSORBS the fee there is nothing to add
+                      and nothing to break down, so the total is the face value
+                      and the second line says the fee is already inside it.
+
+                      When the fee is WAIVED there is no breakdown line at all,
+                      because there is nothing to break down and nothing inside
+                      the price either. See `feeIsWaived` above.
+                    */}
+                    <p className="mt-1 text-sm font-bold text-ink-900">
+                      {formatPrice(tierAllIn(tier).totalCents, currency)}
+                    </p>
+                    {tierAllIn(tier).totalCents > 0 && !feeIsWaived && (
+                      <p className="mt-0.5 text-[11px] text-ink-500" data-testid="tier-all-in-breakdown">
+                        {tierAllIn(tier).feeIsAddedOnTop
+                          ? `${formatPrice(tierAllIn(tier).faceCents, currency)} ticket plus ${formatPrice(tierAllIn(tier).feeCents, currency)} fee`
+                          : 'Fee included in the ticket price'}
+                      </p>
+                    )}
                     {/* The price's last move, in words, beside the number it moved to
                       * (Scope v5 3.3). The full timeline sits in the price history
                       * block under this panel. */}
@@ -519,6 +662,18 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         />
       )}
 
+      {/*
+        AQ1. The discovery question, when the placement says it is asked here.
+        Directly above the control that leaves this page, because a question
+        asked below the button that answers it is a question nobody reads. It is
+        outside the button's own condition on purpose: a buyer who has nothing
+        to check out is not asked, and the wrapper below is what scopes the
+        read to this selector rather than to the whole document.
+      */}
+      {discoveryConsentSlot && !isTicketingSuspended && totalTickets > 0 && (
+        <div ref={discoveryConsentRef}>{discoveryConsentSlot}</div>
+      )}
+
       {!isTicketingSuspended && activeTiers.some(t => getAvailable(t) > 0 && !(t.sale_start && new Date(t.sale_start) > now)) && (
         <button
           type="button"
@@ -538,6 +693,45 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             ? `Register ${totalTickets} ticket${totalTickets > 1 ? 's' : ''}`
             : `Checkout · ${formatPrice(allInTotalCents, currency)}`}
         </button>
+      )}
+
+      {/*
+        WHAT THE FEE IS, AND WHAT A BUYER CAN PAY WITH (close-out SEO4 steps 4
+        and 5).
+
+        Step 4 asks for the fee "in plain words on the event page, once, read
+        from configuration, so the buyer understands what the fee is before they
+        are told it is non refundable". The audit of 13 September 2026 found the
+        event page telling a buyer the booking fee would not be returned without
+        ever saying what the booking fee was. The only place it appeared was
+        /pricing, which is an organiser-facing page.
+
+        ONCE, literally: this panel renders once per event page. The seated
+        branch and the standing branch of src/app/events/[slug]/page.tsx are two
+        arms of one ternary, so a page carries one of them and never both.
+
+        NOTHING HERE IS TYPED. The percentage and the flat amount come from
+        `feeRates`, resolved server-side through getPricingRule, the same rows
+        the charge resolves. A free event reaches neither line: it has no fee to
+        describe, and describing one would be the platform inventing a charge.
+
+        A WAIVED FEE GETS ITS OWN SENTENCE and it is answered FIRST, before
+        either branch that states a rate. Before close-out FO1 this line read,
+        in front of a real buyer: "It includes the EventLinqs fee of 0% plus
+        Free per ticket, which covers card processing". See `feeIsWaived` above
+        for what was wrong with it and how it was found.
+      */}
+      {!allFree && feeRates && (
+        <div className="space-y-3 border-t border-ink-200 pt-4">
+          <p className="text-[11px] leading-relaxed text-ink-500">
+            {feeIsWaived
+              ? 'Every price here is the price you pay. There is no EventLinqs fee on this event, and nothing is added at the payment step.'
+              : feePassType === 'absorb'
+              ? 'Every price here is the price you pay. The EventLinqs fee is already inside the ticket price, and there is nothing added at the payment step.'
+              : `Every price here is the price you pay. It includes the EventLinqs fee of ${feeRates.platformFeePercent}% plus ${formatPrice(feeRates.platformFeeFixedCents, currency)} per ticket, which covers card processing, and nothing further is added at the payment step.`}
+          </p>
+          <AcceptedPaymentMethods heading="We accept" />
+        </div>
       )}
     </div>
   )

@@ -36,6 +36,11 @@ const SEED_PATHS = [
   '/press',
   '/cities',
   '/communities',
+  // A REAL CATEGORY LANDING (close-out SEO3 step 4, 14 September 2026). It is
+  // seeded because it is the page that cross-links the other twenty-one, so one
+  // load here harvests every category URL on the platform. Before that pass the
+  // family did not exist as pages at all and there was nothing here to crawl.
+  '/categories/music',
   '/city/sydney',                   // city landing (renders suburb tiles + community tiles)
   '/city/melbourne',
   '/community/african',               // community landing (renders community-city tiles)
@@ -52,8 +57,47 @@ const SEED_PATHS = [
 const SKIP_PREFIXES = ['/api/', '/cdn/', '/_next/', '/monitoring']
 const SKIP_EXACT = new Set(['/sitemap.xml', '/robots.txt'])
 
-const CONCURRENCY = 12
-const TIMEOUT_MS = 30000
+/*
+ * CONCURRENCY IS TUNABLE, AND THE REASON IS ABOUT THE HARNESS RATHER THAN THE
+ * PRODUCT (14 September 2026).
+ *
+ * Twelve is right against a deployed preview, which is a production build behind
+ * a CDN. Against a local `next dev` it is not: the server compiles each route on
+ * first request and then server-renders twelve heavy event pages at once, and
+ * requests start aborting at the 30 second timeout. Measured that day, the same
+ * pages that aborted in the sweep answered 200 in 1.5 to 2.0 seconds each when
+ * asked one at a time, so the timeouts were the crawler saturating the server
+ * and reporting the result as a dead link.
+ *
+ * A dead link and a link nobody could load in thirty seconds are not the same
+ * finding, and conflating them makes the crawler untrustworthy in the one
+ * environment where it is cheapest to run. The default is unchanged; a local run
+ * lowers it.
+ *
+ * IT IS WORSE THAN TIMEOUTS, AND THIS IS THE PART THAT COSTS AN HOUR
+ * (20 September 2026, lane B). Run at the default twelve against `next dev`, the
+ * server does not merely refuse the requests it cannot serve: it can poison
+ * itself. Four heavy pages compiled at once, and from the next request onwards
+ * EVERY route on the platform answered 500 with
+ *
+ *     SyntaxError: Unexpected non-whitespace character after JSON at position 724
+ *
+ * including `/manifest.webmanifest` and the generated `/icon?...` assets, which
+ * no product change can break. The report that came out of that run listed
+ * /organisers, /pricing, /legal/terms, /login and thirty more as dead, and it
+ * reads exactly like a platform that has just been broken by the commit you are
+ * holding.
+ *
+ * THE TELL is a static asset in the dead list. A product defect does not take
+ * out the web manifest. THE TEST is to request one of them with curl, one at a
+ * time: they answer 200. THE RECOVERY is to restart the dev server, after which
+ * the same 322 links all resolve, which is what happened here at concurrency 3.
+ *
+ *     LINK_CRAWL_CONCURRENCY=3 LINK_CRAWL_TIMEOUT_MS=90000 \
+ *       node scripts/link-integrity-crawl.mjs http://localhost:3100
+ */
+const CONCURRENCY = Number(process.env.LINK_CRAWL_CONCURRENCY) || 12
+const TIMEOUT_MS = Number(process.env.LINK_CRAWL_TIMEOUT_MS) || 30000
 
 function isInternal(href) {
   if (!href) return false

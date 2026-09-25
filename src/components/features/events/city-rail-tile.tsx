@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { CityTileImage } from '@/components/media'
+import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
+import { COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
 
 /**
  * CityRailTile: 220-280px snap-start city tile for the By City rail.
@@ -27,27 +29,24 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
   return (
     <Link
       href={`/events/browse/${encodeURIComponent(slug)}`}
-      className="group flex w-[220px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:w-[260px]"
+      className={`group flex ${COMPACT_TILE_CELL} flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2`}
     >
       <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
         <CityTileImage
+          layout="rail-compact-tile"
           src={imageSrc}
           alt=""
           className="transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div
-          className="absolute inset-x-0 bottom-0 h-2/5"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.85) 100%)',
-          }}
-          aria-hidden
-        />
-        <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+        {/* The wash here was `h-2/5` of the tile ramping 0 to 0.85, which is a
+         *  percentage of the TILE and therefore promises nothing about where
+         *  the name actually lands. <TileCaption> anchors it to the label; see
+         *  src/components/media/tile-photo-scrim.ts. */}
+        <TileCaption className="px-4 pb-3 pt-2">
           <h3 className="font-display text-xl font-extrabold leading-tight text-white">
             {city}
           </h3>
-        </div>
+        </TileCaption>
       </div>
 
       {/* A city with no events read "Coming soon", which Law 1 names as a

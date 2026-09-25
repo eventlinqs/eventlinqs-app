@@ -32,6 +32,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
+import { stripComments } from '../lib/js-source.mjs'
+
 const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
 
@@ -97,9 +99,42 @@ export function offendingTerms(value) {
 
 export function findViolations(source, file) {
   const out = []
-  const lines = (file.endsWith('.css') ? stripCssComments(source) : source).split('\n')
+  /*
+   * COMMENTS ARE STRIPPED FROM BOTH KINDS OF FILE, AND THE SECOND HALF OF THAT
+   * WAS MISSING UNTIL 21 SEPTEMBER 2026.
+   *
+   * CSS comments were already removed here. JavaScript and TSX comments were
+   * not, so `STYLE_KEY` read prose as a declaration. The line that found it was
+   * a post-mortem in an organiser page recording a measurement:
+   *
+   *   * the left: "Email" measured at x -187 to -47, entirely off the phone.
+   *
+   * which this guard reported as `left: Email`, a spacing value off the scale,
+   * and blocked the build over a sentence. It is the failure mode the
+   * constitution names in its own words - a guard that greps its own
+   * documentation - and it bites in both directions: the same blindness would
+   * let a violating tree pass while the guard read a comment that looked right.
+   *
+   * `stripComments` preserves string and template literals and preserves
+   * LENGTH, so every line number reported below is still the line the reader
+   * will open. A real `style={{ paddingLeft: '13px' }}` is code and survives it.
+   */
+  const stripped = file.endsWith('.css') ? stripCssComments(source) : stripComments(source)
+  const lines = stripped.split('\n')
+  /*
+   * THE ESCAPE HATCH IS A COMMENT, SO IT HAS TO BE READ BEFORE THE STRIPPING.
+   *
+   * `{/* spacing-guard: ignore *\/}` is written as a comment, which is the only
+   * place it could sensibly live. Judging the stripped line and looking for the
+   * marker on the stripped line too would delete the marker and then fail the
+   * line it was protecting: the suite caught exactly that, one test, the first
+   * time the stripping went in. The marker is read from the RAW line and the
+   * spacing values from the stripped one, which is the only combination that
+   * is true of both.
+   */
+  const raw = source.split('\n')
   lines.forEach((line, i) => {
-    if (/\bspacing-guard:\s*ignore\b/.test(line)) return
+    if (/\bspacing-guard:\s*ignore\b/.test(raw[i] ?? '')) return
     for (const m of line.matchAll(ARBITRARY)) {
       const bad = offendingTerms(m[1])
       if (bad.length) out.push({ file, line: i + 1, kind: 'utility', text: m[0], bad })

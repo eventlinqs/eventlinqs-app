@@ -40,6 +40,8 @@ interface IntegrationState {
   ledgerRows: AnyRecord[]
   holdRows: AnyRecord[]
   orgUpdates: AnyRecord[]
+  /** What the charge wrote onto the order about where its money is owed (A4). */
+  orderDestinationUpdates: AnyRecord[]
 }
 
 function buildState(): IntegrationState {
@@ -75,6 +77,7 @@ function buildState(): IntegrationState {
     ledgerRows: [],
     holdRows: [],
     orgUpdates: [],
+    orderDestinationUpdates: [],
   }
 }
 
@@ -129,6 +132,16 @@ function buildAdminClient(state: IntegrationState) {
           }
           return { eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(state.orderRow) }) }
         }),
+        /*
+         * MONEY FIX A4. The charge now records where its money is owed BEFORE
+         * it asks Stripe for an intent, and it insists the update touched
+         * exactly one row, so the double returns one id. Captured rather than
+         * swallowed: the assertion below reads it.
+         */
+        update: vi.fn((row: AnyRecord) => {
+          state.orderDestinationUpdates.push(row)
+          return { eq: () => ({ select: vi.fn().mockResolvedValue({ data: [{ id: 'order_1' }], error: null }) }) }
+        }),
       }
     }
     if (table === 'events') {
@@ -163,6 +176,8 @@ function makeFees(): FeeBreakdown {
     total_cents: 10_800,
     currency: 'AUD',
     fee_pass_type: 'pass_to_buyer',
+    founding_fee_waived_cents: 0,
+    fee_waived: false,
     breakdown_display: {
       tickets: [{ name: 'GA', qty: 2, unit_price_cents: 5_000, line_total_cents: 10_000 }],
       addons: [],
@@ -293,6 +308,19 @@ describe('Funds-holding platform charge end-to-end flow', () => {
     })
 
     expect(calls[0]).toMatchObject({ amount_cents: 10_000, transfer_group: 'order_2' })
+
+    /*
+     * MONEY FIX A4, on the end-to-end path rather than in isolation. The
+     * destination this charge is owed onward to is written on the ORDER at
+     * charge time, and the three amounts reconcile: what the buyer paid is what
+     * the organiser is owed plus what the platform kept.
+     */
+    expect(state.orderDestinationUpdates).toHaveLength(1)
+    const recorded = state.orderDestinationUpdates[0]
+    expect(recorded.destination_account_id).toBe('acct_test_1')
+    expect(
+      (recorded.organiser_amount_due_cents as number) + (recorded.platform_fee_retained_cents as number),
+    ).toBe(10_000)
     expect(calls[0].application_fee_cents).toBeUndefined()
     expect(charge.organiserTransferCents).toBe(9_200)
   })

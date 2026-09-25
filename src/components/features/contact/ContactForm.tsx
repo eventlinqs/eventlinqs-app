@@ -27,6 +27,7 @@ import Link from 'next/link'
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { SOCIAL_HREF } from '@/lib/brand/social-profiles'
 
 function TwitterIcon() {
   return (
@@ -204,7 +205,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
             <dt className="font-semibold text-[var(--text-primary)]">Follow us</dt>
             <dd className="mt-3 flex items-center gap-4">
               <a
-                href="https://twitter.com/eventlinqs"
+                href={SOCIAL_HREF.X}
                 aria-label="EventLinqs on X (Twitter)"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -213,7 +214,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 <TwitterIcon />
               </a>
               <a
-                href="https://instagram.com/eventlinqs"
+                href={SOCIAL_HREF.Instagram}
                 aria-label="EventLinqs on Instagram"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -222,7 +223,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 <InstagramIcon />
               </a>
               <a
-                href="https://tiktok.com/@eventlinqs"
+                href={SOCIAL_HREF.TikTok}
                 aria-label="EventLinqs on TikTok"
                 target="_blank"
                 rel="noopener noreferrer"

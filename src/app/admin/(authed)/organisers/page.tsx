@@ -12,6 +12,20 @@ import {
   type OrganiserAction,
 } from '@/lib/admin/organisers'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 import { organiserActionForm } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -118,9 +132,11 @@ export default async function AdminOrganisersPage({ searchParams }: { searchPara
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each organiser becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[760px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">Organiser</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -130,10 +146,10 @@ export default async function AdminOrganisersPage({ searchParams }: { searchPara
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {result.rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-white/50">No organisers match.</td>
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={6} className={ADMIN_EMPTY_CELL}>No organisers match.</td>
               </tr>
             ) : (
               result.rows.map((row) => (
@@ -152,24 +168,37 @@ export default async function AdminOrganisersPage({ searchParams }: { searchPara
 function OrganiserRow({ row, returnTo }: { row: AdminOrganiserRow; returnTo: string }) {
   const actions = actionsForStatus(row.status)
   return (
-    <tr className="border-t border-white/[0.06] align-top">
-      <td className="px-4 py-3">
-        <Link href={`/admin/organisers/${row.id}`} className="font-medium text-[var(--brand-accent)] hover:underline">{row.name}</Link>
+    <tr className={`${ADMIN_ROW} align-top`}>
+      <td className={ADMIN_CELL_NAME}>
+        <Link
+          href={`/admin/organisers/${row.id}`}
+          className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+        >
+          {row.name}
+        </Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
         {row.email ? <div className="text-[11px] text-white/40">{row.email}</div> : null}
       </td>
-      <td className="px-4 py-3">
+      <td className={ADMIN_CELL}>
+        <span className={ADMIN_CELL_LABEL}>Status</span>
         <span className={`inline-block rounded border px-2 py-0.5 text-[11px] uppercase tracking-wider ${STATUS_BADGE[row.status] ?? STATUS_BADGE.deactivated}`}>
           {row.status}
         </span>
       </td>
-      <td className="px-4 py-3 text-white/70">
+      <td className={`${ADMIN_CELL} text-white/70`}>
+        <span className={ADMIN_CELL_LABEL}>Payouts</span>
         {row.stripeChargesEnabled ? 'Charges on' : 'Charges off'}
         <div className="text-[11px] text-white/40">{row.payoutStatus}</div>
       </td>
-      <td className="px-4 py-3 text-white/70">{row.totalEventCount}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-white/60">{row.createdAt.slice(0, 10)}</td>
-      <td className="px-4 py-3">
+      <td className={`${ADMIN_CELL} text-white/70`}>
+        <span className={ADMIN_CELL_LABEL}>Events</span>
+        {row.totalEventCount}
+      </td>
+      <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
+        <span className={ADMIN_CELL_LABEL}>Created</span>
+        {row.createdAt.slice(0, 10)}
+      </td>
+      <td className={ADMIN_CELL_ACTIONS}>
         {actions.length === 0 ? (
           <span className="text-[11px] text-white/40">No actions</span>
         ) : (
@@ -187,9 +216,9 @@ function OrganiserRow({ row, returnTo }: { row: AdminOrganiserRow; returnTo: str
 function ActionForm({ row, action, returnTo }: { row: AdminOrganiserRow; action: OrganiserAction; returnTo: string }) {
   const destructive = DESTRUCTIVE.has(action)
   const label = ORGANISER_ACTION_LABELS[action]
-  const btnClass = destructive
+  const btnClass = `${ADMIN_ROW_CONTROL} justify-center ${destructive
     ? 'rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/20'
-    : 'rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white'
+    : 'rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white'}`
   return (
     <form action={organiserActionForm} className="flex items-center gap-2">
       <input type="hidden" name="organisationId" value={row.id} />
@@ -204,7 +233,7 @@ function ActionForm({ row, action, returnTo }: { row: AdminOrganiserRow; action:
             type="text"
             placeholder="Reason (optional)"
             maxLength={500}
-            className="w-40 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/40"
+            className="min-h-11 w-40 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/40"
           />
           <ConfirmSubmitButton
             confirmMessage={`${label} "${row.name}"? This is recorded in the audit log.`}

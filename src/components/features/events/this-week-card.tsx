@@ -1,8 +1,10 @@
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 import { priceLabel } from '@/lib/events/price-label'
+import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
  * ThisWeekCard - the shared rail card used across the homepage rails.
@@ -19,14 +21,7 @@ import { priceLabel } from '@/lib/events/price-label'
  * The card itself never paints text on the image - details sit below it.
  */
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
   return priceLabel(tiers ?? [])
@@ -66,7 +61,7 @@ export async function ThisWeekCard({
     title: event.title ?? 'Event',
     venue: event.venue_name ?? '',
     city: event.venue_city ?? '',
-    dateLabel: formatDate(event.start_date),
+    dateLabel: formatEventDateShort(event.start_date, event.timezone),
     priceLabel: formatPrice(event.ticket_tiers ?? null),
     // Feature cards default to priority=true (built for above-fold hero use).
     // Every homepage feature RAIL is below the fold, so force priority off
@@ -74,12 +69,15 @@ export async function ThisWeekCard({
     priority: variant === 'feature' ? false : undefined,
   }
 
+  // The cell widths live in src/lib/ui/rhythm.ts beside the pixel pairs the
+  // `sizes` hints are built from, so a cell cannot be widened without the hint
+  // following it (scripts/guards/image-hints-match-the-cell.mjs).
   const cell =
     variant === 'feature'
-      ? 'w-[300px] shrink-0 snap-start sm:w-[420px]'
+      ? FEATURE_CARD_CELL
       : variant === 'square'
-        ? 'w-[180px] shrink-0 snap-start sm:w-[200px]'
-        : 'w-[240px] shrink-0 snap-start sm:w-[280px]'
+        ? SQUARE_CARD_CELL
+        : EVENT_CARD_CELL
 
   return (
     <div className={cell}>

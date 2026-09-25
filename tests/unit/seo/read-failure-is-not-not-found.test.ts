@@ -111,9 +111,25 @@ describe('the squad payment page makes the same distinction', () => {
  * merely logged again.
  */
 const DOOR = "from '@/lib/supabase/read-or-throw'"
+/**
+ * `times` IS A FLOOR, NOT AN EQUALITY, and it was an equality until
+ * 21 September 2026.
+ *
+ * The count is over the WHOLE FILE, so an exact match fails the moment a
+ * DIFFERENT read in the same module is routed through the door correctly. That
+ * is what happened: LB-GIGWHOLE sent `isPairBlocked` and `fetchRequestById` in
+ * `src/lib/marketplace/gigs.ts` through `readOrThrow`, the file went from one
+ * call to three, and this test failed because MORE reads had been made safe.
+ *
+ * A test that goes red when the code improves teaches people to edit the test,
+ * which is how an assertion stops meaning anything. Each number below is the
+ * count of decisive reads the module is KNOWN to need, and more is never a
+ * regression.
+ */
 const usesTheDoor = (source: string, times: number) => {
   expect(source).toContain(DOOR)
-  expect(source.match(/readOrThrow\(/g) ?? [], `expected ${times} readOrThrow call(s)`).toHaveLength(times)
+  const calls = (source.match(/readOrThrow\(/g) ?? []).length
+  expect(calls, `expected at least ${times} readOrThrow call(s), found ${calls}`).toBeGreaterThanOrEqual(times)
 }
 
 describe('the one door: readOrThrow', () => {
@@ -133,25 +149,49 @@ describe('the one door: readOrThrow', () => {
 })
 
 describe('the event route separates "not there" from "could not ask"', () => {
+  const resolver = read('src/lib/events/event-detail-read.ts')
   const layout = read('src/app/events/[slug]/layout.tsx')
   const page = read('src/app/events/[slug]/page.tsx')
 
-  it('the layout, which decides existence above the loading boundary, reads through the door', () => {
-    usesTheDoor(layout, 1)
+  /*
+   * THE READ MOVED OUT OF src/app ON 21 SEPTEMBER 2026, AND THE GUARD CANNOT
+   * FOLLOW IT. Close-out C8 collapsed this route's three reads of one row into
+   * one shared resolver in src/lib, memoised per request. Both call sites still
+   * 404 on null exactly as before, but the read that DECIDES now lives outside
+   * `scripts/guards/read-failure-is-not-not-found.mjs`, which judges src/app
+   * alone and says so in its own header: "A helper in src/lib that folds a read
+   * into null for a caller in src/app to 404 on is invisible here ... the ones
+   * found on 12 September were fixed by hand and are pinned by
+   * tests/unit/seo/read-failure-is-not-not-found.test.ts".
+   *
+   * This is that pin, and it is stated here rather than left implied, because a
+   * change that quietly moves code out of a guard's field of view is how
+   * coverage is lost without anything going red.
+   */
+  it('the resolver, which is where existence is now decided, reads through the door', () => {
+    usesTheDoor(resolver, 1)
+    expect(resolver).not.toMatch(/const \{ data \} = await supabase/)
+    // The four branches, in the order docs/EVENT-LIFECYCLE.md gives them.
+    expect(resolver).toContain('fetchFixtureEvent(slug)')
+    expect(resolver).toContain('fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)')
+    expect(resolver).toContain('fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)')
+  })
+
+  it('the resolver says in the log when a slug genuinely has no public row', () => {
+    expect(resolver).toContain('[event-detail] no public row for')
+  })
+
+  it('the layout, which decides existence before the page renders, 404s only on a real absence', () => {
+    // The property, not the spelling: a row that exists renders the page, and a
+    // read that FAILED throws inside the resolver rather than returning null.
+    expect(layout).toContain('await readEventForRoute(slug)')
+    expect(layout).toMatch(/if \(!event\) notFound\(\)/)
     expect(layout).not.toMatch(/const \{ data \} = await supabase/)
-    expect(layout).toContain('if (row) return children')
   })
 
-  it('the layout says in the log when a slug genuinely has no public row, then still 404s', () => {
-    expect(layout).toContain('[event-route] no public row for')
-    // The guard's last word is still notFound(), whatever the line endings.
-    expect(layout).toMatch(/notFound\(\)\r?\n\}\s*$/)
-  })
-
-  it('the page reads through the door and no longer folds a read error into null', () => {
-    usesTheDoor(page, 1)
+  it('the page reads the same memoised answer and no longer folds a read error into null', () => {
+    expect(page).toContain('await readEventForRoute(slug)')
     expect(page).not.toContain("console.error('[event-detail] fetchEvent failed:', error)")
-    expect(page).toContain('[event-detail] no public row for')
     expect(page).toContain('if (!event) notFound()')
   })
 })
@@ -199,8 +239,21 @@ describe('the helpers one layer down, which the guard cannot follow, read throug
     usesTheDoor(source, 3)
   })
 
-  it('getOrganiserEvent: the event and the organisation', () => {
-    usesTheDoor(read('src/lib/reporting/attendees.ts'), 2)
+  /**
+   * Three, not two, since 20 September 2026. The first two are
+   * getOrganiserEvent's: the event, then the organisation, both of which decide
+   * a notFound().
+   *
+   * The third is the attendee list's own resolution of the event's
+   * organisation, which decides the MARKETING CONSENT lookup rather than a 404,
+   * and it belongs here for the same reason as the others. It discarded its
+   * error, and a failure there does not produce an error page: the consent
+   * index comes back empty, `isEmailConsented` defaults everybody to false, and
+   * the organiser's export tells them that not one of their attendees may
+   * lawfully be emailed. A wrong consent answer is worse than no page.
+   */
+  it('attendees.ts: the event, the organisation, and the consent lookup', () => {
+    usesTheDoor(read('src/lib/reporting/attendees.ts'), 3)
   })
 
   it('fetchGigById', () => {

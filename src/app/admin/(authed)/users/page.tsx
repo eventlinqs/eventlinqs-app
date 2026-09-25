@@ -11,6 +11,20 @@ import {
   type AdminUserListRow,
 } from '@/lib/admin/users'
 import { changeUserRoleForm } from './actions'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -113,9 +127,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each user becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={`relative ${ADMIN_TABLE_WRAP}`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">User</th>
               <th className="px-4 py-3 font-medium">Role</th>
@@ -124,10 +140,10 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
               <th className="px-4 py-3 font-medium">Set role</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {result.rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-white/50">No users match.</td>
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={5} className={ADMIN_EMPTY_CELL}>No users match.</td>
               </tr>
             ) : (
               result.rows.map((row) => <UserRow key={row.id} row={row} returnTo={returnTo} />)
@@ -144,21 +160,31 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
 function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string }) {
   const defaultRole = isAssignableRole(row.role) ? row.role : ASSIGNABLE_ROLES[0]
   return (
-    <tr className="border-t border-white/[0.06] align-middle">
-      <td className="px-4 py-3">
-        <Link href={`/admin/users/${row.id}`} className="font-medium text-[var(--brand-accent)] hover:underline">
+    <tr className={`${ADMIN_ROW} align-middle`}>
+      <td className={ADMIN_CELL_NAME}>
+        <Link
+          href={`/admin/users/${row.id}`}
+          className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+        >
           {row.name ?? '(no name)'}
         </Link>
         <div className="text-[11px] text-white/40">{row.email}</div>
       </td>
-      <td className="px-4 py-3">
+      <td className={ADMIN_CELL}>
+        <span className={ADMIN_CELL_LABEL}>Role</span>
         <span className={`inline-block rounded border px-2 py-0.5 text-[11px] uppercase tracking-wider ${ROLE_BADGE[row.role] ?? ROLE_BADGE.attendee}`}>
           {row.role}
         </span>
       </td>
-      <td className="px-4 py-3 text-white/70">{row.isVerified ? 'Yes' : 'No'}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-white/60">{row.createdAt.slice(0, 10)}</td>
-      <td className="px-4 py-3">
+      <td className={`${ADMIN_CELL} text-white/70`}>
+        <span className={ADMIN_CELL_LABEL}>Verified</span>
+        {row.isVerified ? 'Yes' : 'No'}
+      </td>
+      <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
+        <span className={ADMIN_CELL_LABEL}>Joined</span>
+        {row.createdAt.slice(0, 10)}
+      </td>
+      <td className={ADMIN_CELL_ACTIONS}>
         <form action={changeUserRoleForm} className="flex items-center gap-2">
           <input type="hidden" name="userId" value={row.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
@@ -167,7 +193,7 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
             id={`role-${row.id}`}
             name="newRole"
             defaultValue={defaultRole}
-            className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-sm text-white outline-none focus:border-white/40"
+            className="min-h-11 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-sm text-white outline-none focus:border-white/40"
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>{r}</option>
@@ -175,7 +201,7 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
           </select>
           <button
             type="submit"
-            className="rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white"
+            className={`${ADMIN_ROW_CONTROL} justify-center rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white`}
           >
             Save
           </button>

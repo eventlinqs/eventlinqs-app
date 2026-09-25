@@ -223,6 +223,21 @@ export function formatPlatformDate(iso: string): string {
   return format(iso, PLATFORM_TIME_ZONE, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/**
+ * The same date with the month SPELLED OUT, for prose rather than for a table.
+ *
+ * The consent ledger reads its history back as sentences, because a record is
+ * only evidence if a person can read it, and "On 13 Sep 2026 you agreed" is a
+ * table cell wearing a sentence. It exists here rather than in the consent
+ * module for the reason stated at the top of this file: one place formats a
+ * date, and it is never allowed to guess the zone. The consent module had its
+ * own hand-rolled month array and UTC getters, which is exactly what this
+ * module exists to stop.
+ */
+export function formatPlatformDateLong(iso: string): string {
+  return format(iso, PLATFORM_TIME_ZONE, { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 /** A timestamp with no event behind it, to the minute. */
 export function formatPlatformDateTime(iso: string): string {
   return format(iso, PLATFORM_TIME_ZONE, { dateStyle: 'medium', timeStyle: 'short' })
@@ -234,4 +249,49 @@ export function formatPlatformDateTime(iso: string): string {
  */
 export function formatCount(n: number): string {
   return n.toLocaleString('en-AU')
+}
+
+/**
+ * The stored instant as ISO 8601 carrying the EVENT'S OWN offset, for machines.
+ *
+ * "2026-10-10T01:00:00+00:00" becomes "2026-10-10T12:00:00+11:00": the same
+ * instant, written the way the page writes it for a human.
+ *
+ * WHY IT EXISTS. Every JSON-LD block on this platform handed Google the raw
+ * database value, which Supabase returns in UTC, on a page whose visible text
+ * said "12:00 pm AEDT". Google publishes the rule and an example of it:
+ *
+ *   "Specify the timezone by including the UTC or GMT time offset. If the event
+ *    starts at 7pm on September 5 in New York, the startDate value would be
+ *    GMT/UTC-5 during standard time ... "2019-09-05T19:00:00-05:00""
+ *   developers.google.com/search/docs/appearance/structured-data/event
+ *   (fetched 2026-09-14)
+ *
+ * A live Eventbrite AU event page, fetched the same day, emits
+ * "startDate": "2026-10-18T15:00:00+11:00", so this is what the market does too.
+ *
+ * The UTC form was never INVALID, which is why nothing caught it for a year: it
+ * names the same moment. It was simply the one form that makes the markup and
+ * the page disagree on their face, and it forced every reader of the markup to
+ * do the conversion the page had already done.
+ *
+ * The offset is asked of the zone AT THE INSTANT, never held as a constant, so
+ * an event either side of a daylight-saving transition gets its own answer.
+ *
+ * An unparseable input returns UNCHANGED rather than empty: `startDate` is a
+ * required property, so failing to the previous behaviour keeps a page eligible
+ * where failing to nothing would take it out of the index.
+ */
+export function toZonedIso8601(iso: string, timezone: EventTimeZone): string {
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return iso
+
+  const offsetMs = zoneOffsetMs(instant, resolveZone(timezone))
+  const wallClock = new Date(instant.getTime() + offsetMs).toISOString().slice(0, 19)
+
+  const sign = offsetMs < 0 ? '-' : '+'
+  const totalMinutes = Math.round(Math.abs(offsetMs) / 60000)
+  const hh = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+  const mm = String(totalMinutes % 60).padStart(2, '0')
+  return `${wallClock}${sign}${hh}:${mm}`
 }

@@ -124,6 +124,58 @@ while (queue.length && visited.size < MAX_PAGES) {
   )
 }
 
+/*
+ * THE SITEMAP'S OWN EVENT PAGES ARE READ, AND THEIR LINKS ARE HARVESTED TOO.
+ *
+ * WHY THE HARVEST WAS ADDED (19 September 2026, and it is an accuracy fix rather
+ * than a relaxation). The bounded crawl above visits at most MAX_PAGES pages
+ * from nine seeds. A route family whose only inbound link sits on ONE event page
+ * deep in the catalogue is therefore reported as an orphan whenever that page
+ * falls outside the budget, which says nothing about the site and everything
+ * about the budget. It happened: /artists/[slug] was called an orphan on a tree
+ * where a published event's lineup links straight to it, because the crawl
+ * visited 124 pages and that event was not one of them.
+ *
+ * This loop already fetches EVERY published event page, for the live-date count
+ * below. Harvesting the hrefs it has already downloaded costs one more regex per
+ * page and closes the gap, and it models the real crawler rather than a weaker
+ * one: an event page is indexable and in the sitemap, so a link from it is a
+ * link Google follows.
+ *
+ * IT DOES NOT WEAKEN THE CHECK. The threshold is unchanged and is still zero: a
+ * family that nothing links to still reports zero and still fails. What changes
+ * is that "nothing links to it" is now read from every published event page
+ * rather than from whichever ones fitted in the budget.
+ */
+const eventPaths = [...sitemapPaths].filter((p) => /^\/events\/[^/]+$/.test(p) && !p.startsWith('/events/browse'))
+let liveEventCount = 0
+let harvestedFromEventPages = 0
+for (const path of eventPaths) {
+  try {
+    const html = await (await fetch(BASE + path, { headers: { 'user-agent': 'EventLinqs-reachability' } })).text()
+    const when = /"endDate":"([^"]+)"/.exec(html)?.[1] ?? /"startDate":"([^"]+)"/.exec(html)?.[1]
+    if (when && Date.parse(when) >= Date.now()) liveEventCount++
+    for (const m of html.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
+      const linked = normalise(m[1])
+      if (!linked) continue
+      if (!harvested.has(linked)) harvestedFromEventPages++
+      harvested.add(linked)
+    }
+  } catch (error) {
+    // Counted as not live, which is the conservative direction: it can only make
+    // this script fail louder, never quieter.
+    console.warn(`${TAG} ${path} could not be read for its date: ${error}`)
+  }
+}
+console.log(
+  `${TAG} read ${eventPaths.length} published event page(s) from the sitemap and harvested ` +
+    `${harvestedFromEventPages} internal path(s) the bounded crawl had not already seen`,
+)
+const catalogueIsAllPast = eventPaths.length > 0 && liveEventCount === 0
+if (catalogueIsAllPast) {
+  console.log(`${TAG} every one of the ${eventPaths.length} published event page(s) is for an event that has already ended`)
+}
+
 /* ------------------------------------------------- the answer, per family */
 
 const rows = []
@@ -166,23 +218,6 @@ for (const r of [...rows].sort((a, b) => a.route.localeCompare(b.route))) {
  * exists and nothing links to it, because this is read from the pages themselves
  * rather than written into an allowlist.
  */
-const eventPaths = [...sitemapPaths].filter((p) => /^\/events\/[^/]+$/.test(p) && !p.startsWith('/events/browse'))
-let liveEventCount = 0
-for (const path of eventPaths) {
-  try {
-    const html = await (await fetch(BASE + path, { headers: { 'user-agent': 'EventLinqs-reachability' } })).text()
-    const when = /"endDate":"([^"]+)"/.exec(html)?.[1] ?? /"startDate":"([^"]+)"/.exec(html)?.[1]
-    if (when && Date.parse(when) >= Date.now()) liveEventCount++
-  } catch (error) {
-    // Counted as not live, which is the conservative direction: it can only make
-    // this script fail louder, never quieter.
-    console.warn(`${TAG} ${path} could not be read for its date: ${error}`)
-  }
-}
-const catalogueIsAllPast = eventPaths.length > 0 && liveEventCount === 0
-if (catalogueIsAllPast) {
-  console.log(`${TAG} every one of the ${eventPaths.length} published event page(s) is for an event that has already ended`)
-}
 const PAST_CATALOGUE_EXPLAINS = new Set(['/events/[slug]', '/venues/[handle]'])
 
 const explained = []

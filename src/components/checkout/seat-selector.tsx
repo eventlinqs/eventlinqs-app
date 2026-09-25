@@ -1162,7 +1162,7 @@ export function SeatSelector({
               </div>
             )}
             {viewingSection && viewUrl && (
-              <figure className="mt-2.5 overflow-hidden rounded-lg border border-ink-200">
+              <figure className="relative mt-2.5 overflow-hidden rounded-lg border border-ink-200">
                 <div className="relative aspect-[3/2]">
                   <SectionViewImage
                     src={viewUrl}

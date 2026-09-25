@@ -64,6 +64,25 @@ const THE_LOOKUP = 'words.ts'
  */
 const ALLOWED_IMPORTS = new Set([
   '@/lib/supabase/admin',
+  /*
+   * ADDED 20 SEPTEMBER 2026, ON PURPOSE, and this is the decision the clause
+   * asks to be made rather than typed.
+   *
+   * `read-every-row` is a pager: it takes a function that builds a query for a
+   * window and calls it until a page comes back empty. It names no table, no
+   * column and no domain, and point the engine at a gym tomorrow and it is
+   * still exactly what that engine needs, which is the test the paragraph above
+   * sets. It is infrastructure in the same sense as the database client
+   * directly above it.
+   *
+   * WHY IT HAD TO BE ADMITTED. `suppressedAddresses()` and `sendingRates()`
+   * both read `recovery_suppressions` with no bound, and Supabase silently caps
+   * one response at 1,000 rows. On a suppression list that fails OPEN: the
+   * 1,001st person who asked not to be written to gets written to. The
+   * alternative to admitting the shared pager was a second copy of it inside
+   * the engine, which is not a purer boundary, only a less maintained one.
+   */
+  '@/lib/supabase/read-every-row',
   '@/lib/ledger/types',
   '@/lib/ledger/identity',
   '@/lib/email/send',

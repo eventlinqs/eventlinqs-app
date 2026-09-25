@@ -1,18 +1,24 @@
 import type { MetadataRoute } from 'next'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
 import { getAllCommunities } from '@/lib/communities/data'
 import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
+import { loadWeekendSurface, WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
 import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
+import { getPublishableCategories } from '@/lib/categories/taxonomy'
 import { helpTopics } from '@/lib/help-content'
-import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isRedirected } from '@/lib/seo/permanent-redirects'
-import { venueSlugify } from '@/lib/venues/resolver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
+import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
+import {
+  readArtistCatalogue,
+  readEventCatalogue,
+  readOrganiserCatalogue,
+  readVenueCatalogue,
+} from '@/lib/seo/sitemap-catalogue'
 import {
   loadDiscoveryRows,
   countCommunity,
@@ -21,6 +27,7 @@ import {
   countSuburb,
   countCategory,
   countFaith,
+  countOrganiser,
 } from '@/lib/seo/discovery-counts'
 
 /**
@@ -117,6 +124,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    */
   const discoveryRows = await loadDiscoveryRows()
 
+  /*
+   * ONE THRESHOLD, RESOLVED ONCE, FOR ALL 490 DECISIONS BELOW.
+   *
+   * SEO3 step 2 made this number owner-editable without a deploy, so it is no
+   * longer a compiled constant and has to be read. It is read HERE, once, and
+   * passed down, rather than read inside `isDiscoveryIndexable`: the sitemap
+   * makes about 490 of these judgements in one request, and a resolver called
+   * 490 times could in principle answer differently partway through and publish
+   * a sitemap that disagreed with itself.
+   *
+   * The same resolver backs every page's `discoveryIndexingFor`, so a page's
+   * robots directive and that page's presence here still come from one number.
+   */
+  const threshold = await resolveDiscoveryThreshold()
+
   const entries: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/`,
@@ -141,6 +163,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${baseUrl}/organisers`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    // The free forecast tool (close-out FT1). It is the strongest reason a
+    // stranger who has never heard of this platform has to arrive at it, so it
+    // is published rather than left to be found from one internal link.
+    {
+      url: `${baseUrl}/forecast`,
       changeFrequency: 'monthly',
       priority: 0.7,
     },
@@ -232,6 +262,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ]
 
+  /*
+   * THE WEEKEND SURFACE, /this-weekend (close-out AQ3).
+   *
+   * PUBLISHED ONLY WHILE IT HOLDS EVENTS, on the SAME count the page's own
+   * metadata decides its robots directive from, because both come out of
+   * `loadWeekendSurface`. There is one function and one cache entry behind the
+   * page, this line and the filter at `/events?preset=weekend`, so a sitemap
+   * that advertises a noindex URL is not something this can express.
+   *
+   * IT IS THE ONE PAGE ON THE PLATFORM GUARANTEED TO EMPTY ITSELF, every Sunday
+   * night, which is why AQ3's reversal condition ("if a surface cannot be filled
+   * with real events it is not published") matters here more than anywhere else.
+   * `changeFrequency: 'daily'` rather than weekly for the same reason: its
+   * contents genuinely turn over inside a week.
+   */
+  const weekendSurface = await loadWeekendSurface()
+  if (isDiscoveryIndexable(weekendSurface.total, threshold)) {
+    entries.push({
+      url: `${baseUrl}${WEEKEND_SURFACE_PATH}`,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    })
+  }
+
   // CATEGORY LANDING PAGES. These were missing from the sitemap entirely, which
   // is the largest single omission found in the 23 August 2026 audit: they are
   // the surface that answers "comedy tickets", "festivals near me" and every
@@ -260,9 +314,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (isRedirected(path)) continue
     // Published only while indexable (close-out C19.3), on the same count and
     // the same slug pair the page's own metadata uses.
-    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug, category.displayName.toLowerCase()]))) continue
+    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug, category.displayName.toLowerCase()]), threshold)) continue
     entries.push({
       url: `${baseUrl}${path}`,
+      changeFrequency: 'daily',
+      priority: 0.8,
+    })
+  }
+
+  /*
+   * THE REAL CATEGORY LANDINGS (close-out SEO3 step 4).
+   *
+   * The block above publishes the seven LEGACY hero slugs. These are the 22 real
+   * categories in `public.event_categories`, which until today permanently
+   * redirected to `/events?category=<slug>` and were therefore in no sitemap at
+   * all: that URL canonicalises to `/events`, so the platform published one page
+   * where it had twenty-two.
+   *
+   * The list is READ FROM THE DATABASE, never typed, and it is the same reader
+   * the route uses, so a row added to the taxonomy enters this file and becomes
+   * a page in the same breath. A row with no written editorial is not a page and
+   * is not published here; the guard fails the build before that state can ship.
+   */
+  for (const category of await getPublishableCategories()) {
+    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug]), threshold)) continue
+    entries.push({
+      url: `${baseUrl}/categories/${category.slug}`,
       changeFrequency: 'daily',
       priority: 0.8,
     })
@@ -275,7 +352,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   for (const c of allCities) {
-    if (!isDiscoveryIndexable(countCity(discoveryRows, c.city))) continue
+    if (!isDiscoveryIndexable(countCity(discoveryRows, c.city), threshold)) continue
     entries.push({
       url: `${baseUrl}/events/browse/${c.slug}`,
       changeFrequency: 'daily',
@@ -285,7 +362,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 5 - community landing pages.
   for (const community of getAllCommunities()) {
-    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue
+    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue
     entries.push({
       url: `${baseUrl}/community/${community.slug}`,
       changeFrequency: 'daily',
@@ -295,7 +372,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Community Taxonomy v2 - faith landing pages.
   for (const faith of getAllFaiths()) {
-    if (!isDiscoveryIndexable(countFaith(discoveryRows, faith.slug))) continue
+    if (!isDiscoveryIndexable(countFaith(discoveryRows, faith.slug), threshold)) continue
     entries.push({
       url: `${baseUrl}/faith/${faith.slug}`,
       changeFrequency: 'daily',
@@ -305,7 +382,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 6 - city + suburb landing pages.
   for (const city of getAllCities()) {
-    if (isDiscoveryIndexable(countCity(discoveryRows, city.name))) {
+    if (isDiscoveryIndexable(countCity(discoveryRows, city.name), threshold)) {
       entries.push({
         url: `${baseUrl}/city/${city.slug}`,
         changeFrequency: 'daily',
@@ -313,7 +390,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     }
     for (const s of getSuburbsForCity(city.slug)) {
-      if (!isDiscoveryIndexable(countSuburb(discoveryRows, city.name, city.slug, s.slug))) continue
+      if (!isDiscoveryIndexable(countSuburb(discoveryRows, city.name, city.slug, s.slug), threshold)) continue
       const facing = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
       entries.push({
         url: `${baseUrl}/city/${city.slug}/${facing}`,
@@ -331,7 +408,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // combination so search engines have the full surface.
   for (const community of getAllCommunities()) {
     for (const city of getAllCities()) {
-      if (!isDiscoveryIndexable(countCommunityCity(discoveryRows, community.slug, city.name))) continue
+      if (!isDiscoveryIndexable(countCommunityCity(discoveryRows, community.slug, city.name), threshold)) continue
       entries.push({
         url: `${baseUrl}/community/${community.slug}/${city.slug}`,
         changeFrequency: 'weekly',
@@ -340,74 +417,56 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  try {
-    const admin = createAdminClient()
-    const { data: events, error: eventError } = await admin
-      .from('events')
-      .select('slug, updated_at')
-      .match(PUBLIC_EVENT_MATCH)
-      .not('slug', 'is', null)
-      // DETERMINISTIC ORDER. Without an explicit ORDER BY, PostgREST returns
-      // rows in Postgres' physical order, which changes as rows are updated.
-      // That is not merely untidy: scripts/ci/resolve-gate-urls.mjs picks event
-      // pages out of this sitemap, so an unordered query made the Lighthouse
-      // gate audit a different page on different runs of the same branch and
-      // blocked two merges on 2026-08-23. A sitemap is a published artefact and
-      // its order should be a property of the data, not of the storage engine.
-      .order('slug', { ascending: true })
-      .limit(5000)
-
-    if (eventError) {
-      console.error('[sitemap] events could not be read:', eventError)
-    }
-    for (const e of events ?? []) {
-      if (!e.slug) continue
-      entries.push({
-        url: `${baseUrl}/events/${e.slug}`,
-        ...(e.updated_at ? { lastModified: new Date(e.updated_at) } : {}),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      })
-    }
-  } catch (err) {
-    // Sitemap must never 500. Fall through to the static entries already built,
-    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue
-    // block for the whole life of that block.
-    console.error('[sitemap] event block failed:', err)
+  /*
+   * THE THREE ROW-DERIVED FAMILIES NOW COME FROM ONE MODULE (close-out SEO2).
+   *
+   * `src/lib/seo/sitemap-catalogue.ts` holds the event, organiser and venue
+   * queries. They used to be written out here, which meant nothing outside a
+   * running Next server could ever ask what this file would publish, and the
+   * three worst sitemap defects on record were all in exactly these three
+   * blocks and all silent. This file cannot be executed by a build-time guard
+   * (it reaches next/cache through the discovery counts); that module can, so
+   * scripts/guards/sitemap-covers-the-catalogue.mjs calls the same functions
+   * this file calls and compares them against the database.
+   *
+   * The reader returns its error rather than throwing it. Here it is logged and
+   * the sitemap publishes what it has, because a sitemap must never 500; in the
+   * guard the same error fails the build.
+   */
+  const eventCatalogue = await readEventCatalogue()
+  if (eventCatalogue.error) {
+    console.error('[sitemap] events could not be read:', eventCatalogue.error)
+  }
+  for (const row of eventCatalogue.rows) {
+    entries.push({
+      url: `${baseUrl}${row.path}`,
+      ...(row.lastModified ? { lastModified: new Date(row.lastModified) } : {}),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    })
   }
 
-  // Batch 8.2 organiser profile pages.
-  try {
-    const admin = createAdminClient()
-    // The profile page resolves an organisation with `.eq('status','active')`
-    // and calls notFound() otherwise, so a sitemap without the same predicate
-    // advertises pages that 404. Measured on TEST: 8 of 42 organiser URLs
-    // (every 'pending' organisation) were listed for Google and returned 404.
-    // The two queries must agree; this is the one that was wrong.
-    const { data: organisers, error: organiserError } = await admin
-      .from('organisations')
-      .select('slug, updated_at')
-      .not('slug', 'is', null)
-      .eq('status', 'active')
-      // Same reason as the events query above: a published artefact should not
-      // change order because the storage engine did.
-      .order('slug', { ascending: true })
-      .limit(5000)
-    if (organiserError) {
-      console.error('[sitemap] organisers could not be read:', organiserError)
-    }
-    for (const o of organisers ?? []) {
-      if (!o.slug) continue
-      entries.push({
-        url: `${baseUrl}/organisers/${o.slug}`,
-        ...(o.updated_at ? { lastModified: new Date(o.updated_at) } : {}),
-        changeFrequency: 'weekly',
-        priority: 0.6,
-      })
-    }
-  } catch (err) {
-    // Sitemap must never 500.
-    console.error('[sitemap] organiser block failed:', err)
+  /*
+   * Batch 8.2 organiser profile pages, PUBLISHED ONLY WHILE THE PROFILE IS A
+   * PAGE (close-out SEO3 step 7): events at the owner's live threshold, or a
+   * written biography. The audit of 13 September 2026 named /organisers/oanh,
+   * which had neither and was published here anyway. The predicate and the
+   * substance rule both live in the catalogue module now.
+   */
+  const organiserCatalogue = await readOrganiserCatalogue({
+    eventCountFor: id => countOrganiser(discoveryRows, id),
+    threshold,
+  })
+  if (organiserCatalogue.error) {
+    console.error('[sitemap] organisers could not be read:', organiserCatalogue.error)
+  }
+  for (const row of organiserCatalogue.rows) {
+    entries.push({
+      url: `${baseUrl}${row.path}`,
+      ...(row.lastModified ? { lastModified: new Date(row.lastModified) } : {}),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    })
   }
 
   /*
@@ -442,45 +501,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    *      CLAUDE.md is explicit that a route resolving 200 to a designed empty
    *      state is correct engineering and is still not something to advertise.
    */
-  try {
-    const admin = createAdminClient()
-    const { data: venueEvents, error: venueError } = await admin
-      .from('events')
-      .select('venue_name, updated_at')
-      .match(PUBLIC_EVENT_MATCH)
-      .not('venue_name', 'is', null)
-      .order('venue_name', { ascending: true })
-      .limit(5000)
-    if (venueError) {
-      // NOT SWALLOWED. A silent catch is what hid the 42703 above for the whole
-      // life of this block. The sitemap still must not 500, so this logs and
-      // carries on with the entries already built.
-      console.error('[sitemap] venue handles could not be read:', venueError)
-    }
-    /** handle -> most recent updated_at among the events at that venue. */
-    const venueHandles = new Map<string, string | null>()
-    for (const e of venueEvents ?? []) {
-      const name = typeof e.venue_name === 'string' ? e.venue_name.trim() : ''
-      if (!name) continue
-      const handle = venueSlugify(name)
-      if (!handle) continue
-      const seen = venueHandles.get(handle) ?? null
-      const next = typeof e.updated_at === 'string' ? e.updated_at : null
-      if (!venueHandles.has(handle) || (next && (!seen || next > seen))) {
-        venueHandles.set(handle, next)
-      }
-    }
-    for (const handle of [...venueHandles.keys()].sort()) {
-      const updated = venueHandles.get(handle) ?? null
-      entries.push({
-        url: `${baseUrl}/venues/${handle}`,
-        ...(updated ? { lastModified: new Date(updated) } : {}),
-        changeFrequency: 'weekly',
-        priority: 0.55,
-      })
-    }
-  } catch (err) {
-    console.error('[sitemap] venue block failed:', err)
+  const venueCatalogue = await readVenueCatalogue()
+  if (venueCatalogue.error) {
+    // NOT SWALLOWED. A silent catch is what hid the 42703 above for the whole
+    // life of this block. The sitemap still must not 500, so this logs and
+    // carries on with the entries already built; the guard fails the build.
+    console.error('[sitemap] venue handles could not be read:', venueCatalogue.error)
+  }
+  for (const row of venueCatalogue.rows) {
+    entries.push({
+      url: `${baseUrl}${row.path}`,
+      ...(row.lastModified ? { lastModified: new Date(row.lastModified) } : {}),
+      changeFrequency: 'weekly',
+      priority: 0.55,
+    })
   }
 
   /*
@@ -497,23 +531,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * a 404 for every artist the moment production has any. Asking the same
    * question the page asks is the only way the two can agree.
    */
+  /*
+   * READ THROUGH THE CATALOGUE MODULE, LIKE THE OTHER ROW-DERIVED FAMILIES, AND
+   * NO LONGER `artists.select('slug')` WITH NO PREDICATE AT ALL.
+   *
+   * That query advertised EVERY artist row to Google whether or not any page on
+   * the site reached it, and on 19 September 2026 the reachability crawl caught
+   * exactly that: "/artists/aurora-skies-wrejiu answers 200, and NOTHING on the
+   * crawled site links to it". The only internal link to an artist anywhere is
+   * the confirmed lineup on an event page, and all four of the events carrying
+   * one had ended. `readArtistCatalogue` asks the question the links answer.
+   * See its header for what was measured and for the two explanations it killed.
+   */
   try {
     if (await isFeatureEnabled('broadcast_artists')) {
-      const admin = createAdminClient()
-      const { data: artists, error: artistError } = await admin
-        .from('artists')
-        .select('slug, updated_at')
-        .not('slug', 'is', null)
-        .order('slug', { ascending: true })
-        .limit(5000)
-      if (artistError) {
-        console.error('[sitemap] artists could not be read:', artistError)
+      const artistCatalogue = await readArtistCatalogue()
+      if (artistCatalogue.error) {
+        // NOT SWALLOWED, for the reason the venue block above gives: a bare
+        // catch is what hid a 42703 for the whole life of that block.
+        console.error('[sitemap] artists could not be read:', artistCatalogue.error)
       }
-      for (const a of artists ?? []) {
-        if (!a.slug) continue
+      for (const row of artistCatalogue.rows) {
         entries.push({
-          url: `${baseUrl}/artists/${a.slug}`,
-          ...(a.updated_at ? { lastModified: new Date(a.updated_at) } : {}),
+          url: `${baseUrl}${row.path}`,
+          ...(row.lastModified ? { lastModified: new Date(row.lastModified) } : {}),
           changeFrequency: 'weekly',
           priority: 0.5,
         })

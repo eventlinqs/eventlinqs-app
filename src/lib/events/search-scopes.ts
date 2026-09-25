@@ -1,6 +1,7 @@
 import { getAllCities } from '@/lib/cities/data'
 import { getAllCommunities } from '@/lib/communities/data'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import type { SearchTab } from './url-filters'
 
 /**
@@ -71,13 +72,10 @@ export async function searchOrganisers(query: string): Promise<ScopeResult[]> {
   const term = query.trim()
   if (!term) return []
   const supabase = createPublicClient()
-  // Escaped for the PostgREST or() grammar, where , . ( ) are syntax. See
-  // escapeOrValue in fetchers.ts for the full reasoning.
-  const safe = `"%${term.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}%"`
   const { data } = await supabase
     .from('organisations')
     .select('slug, name, description')
-    .or(`name.ilike.${safe},slug.ilike.${safe}`)
+    .or(ilikeAnyOf(['name', 'slug'], term))
     .not('slug', 'is', null)
     .limit(24)
   return ((data ?? []) as { slug: string; name: string; description: string | null }[])

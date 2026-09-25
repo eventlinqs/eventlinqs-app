@@ -24,10 +24,10 @@ import {
   type VisitAttribution,
 } from '@/lib/growth/visit-attribution'
 import { cookies, headers } from 'next/headers'
-import {
-  recordOrganiserMarketingConsent,
-  recordPlatformDigestConsent,
-} from '@/lib/consent/record'
+import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
+import { readCarriedAnswer } from '@/lib/consent/capture-carrier'
+import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
+import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -75,8 +75,20 @@ function generateOrderNumber(): string {
 /**
  * Persist marketing consent for a completed checkout. Best-effort and fully
  * isolated from the payment path: a consent write failure must never fail an
- * order. Records nothing when no box was ticked, so a no-consent purchase
- * leaves no consent (the lawful default).
+ * order. Ticking nothing still grants nothing: the lawful default is untouched.
+ *
+ * WHAT CHANGED IN GA1. The platform answer goes to the append-only consent
+ * ledger, under the versioned wording the buyer actually read, and it is
+ * recorded EITHER WAY: a tick is a grant, and leaving it alone is a decline,
+ * which until now was thrown away. "Asked and said no" and "never asked" are
+ * different facts, and only the first is evidence the question was ever put.
+ * The whole rule, including the one case where an untouched box records
+ * nothing, lives in src/lib/consent/checkout-answer.ts because there are three
+ * purchase paths and a rule that lives in one of them is a rule the other two
+ * do not have.
+ *
+ * The organiser box is a different consent to a different sender and is
+ * untouched by any of it.
  */
 async function recordCheckoutConsents(params: {
   adminClient: ReturnType<typeof createAdminClient>
@@ -88,6 +100,7 @@ async function recordCheckoutConsents(params: {
   eventId: string
   organiserConsent: boolean
   platformConsent: boolean
+  reservationId: string
 }): Promise<void> {
   const at = new Date().toISOString()
   if (params.organiserConsent) {
@@ -102,48 +115,26 @@ async function recordCheckoutConsents(params: {
       at,
     })
   }
-  if (params.platformConsent) {
-    // The digest consent is city scoped (SPEC 3.1): the buyer's chosen city
-    // cookie wins, falling back to the event's city. Both are validated
-    // against the cities taxonomy so the FK can never fail the write.
-    const citySlug = await resolveDigestCity(params.adminClient, params.eventId)
-    await recordPlatformDigestConsent(params.adminClient, {
-      email: params.email,
-      userId: params.userId,
-      citySlug,
-      source: 'checkout',
-      at,
-    })
-  }
-}
-
-/** Resolve the digest locality: el_city cookie if it is a real city, else the
- * event's primary city, else null (national digest scope decided later). */
-async function resolveDigestCity(
-  adminClient: ReturnType<typeof createAdminClient>,
-  eventId: string,
-): Promise<string | null> {
-  try {
-    const jar = await cookies()
-    const cookieCity = jar.get('el_city')?.value ?? null
-    if (cookieCity) {
-      const { data } = await adminClient
-        .from('cities')
-        .select('slug')
-        .eq('slug', cookieCity)
-        .maybeSingle()
-      if (data?.slug) return data.slug
-    }
-    const { data: event } = await adminClient
-      .from('events')
-      .select('city_primary')
-      .eq('id', eventId)
-      .maybeSingle()
-    return event?.city_primary ?? null
-  } catch (error) {
-    captureException(error, { where: 'app/actions/checkout:134' })
-    return null
-  }
+  /*
+   * AQ1. THE ANSWER MAY HAVE BEEN GIVEN A SCREEN EARLIER.
+   *
+   * Under the reversal condition the question is asked on the ticket page,
+   * where the buyer has no address yet, so their answer waits against the
+   * reservation. When one is waiting it is THE answer: the form value is
+   * whatever an unrendered checkbox defaults to and means nothing, and the
+   * surface recorded is the surface the question was actually put on. The
+   * wording travels with it so a version published between the two screens
+   * cannot rewrite what was agreed to.
+   */
+  const carried = await readCarriedAnswer(params.adminClient, params.reservationId)
+  await recordCheckoutMarketingAnswer(params.adminClient, {
+    email: params.email,
+    ticked: carried ? carried.ticked : params.platformConsent,
+    captureSurface: carried ? 'ticket-page' : 'checkout',
+    eventId: params.eventId,
+    at,
+    wording: carried?.wording ?? null,
+  })
 }
 
 /**
@@ -495,6 +486,9 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       addon_total_cents: fees.addon_total_cents,
       platform_fee_cents: fees.platform_fee_cents,
       processing_fee_cents: fees.payment_processing_fee_cents,
+      // Close-out FO1: what the Founding Organiser offer cost on this order.
+      // Zero on every order whose organiser is not inside a fee-free window.
+      founding_fee_waived_cents: fees.founding_fee_waived_cents,
       tax_cents: fees.tax_cents,
       discount_cents: fees.discount_cents,
       total_cents: fees.total_cents,
@@ -572,7 +566,19 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     eventId: event.id,
     organiserConsent: organiser_marketing_consent,
     platformConsent: platform_updates_consent,
+    reservationId: reservation_id,
   })
+
+  /*
+   * WHICH TRACKED LINK, IF ANY, THIS BUYER CAME THROUGH (close-out GA3).
+   *
+   * Beside the consent record rather than anywhere near the payment, and for
+   * the same reason: this is the first moment an order id exists, and it is a
+   * point lane B already owns. It never throws and never blocks; an order with
+   * no signal still gets its one attribution record, resolved on identity or
+   * recorded as none with a reason.
+   */
+  await recordClickSignalForOrder(order_id)
 
   // 8. For free orders - confirm immediately, no payment and no webhook.
   if (isFreeOrder) {
@@ -711,6 +717,11 @@ function chargePreconditionMessage(reason: ChargePreconditionError['reason']): s
       return 'Payments for this organiser are temporarily paused. Please try again later.'
     case 'org_country_unsupported':
       return 'Payments for this region are not yet supported.'
+    case 'destination_not_recorded':
+      // MONEY FIX A4. The buyer is told the truth, which is that this is ours:
+      // nothing about their card or their details is wrong, and retrying will
+      // not help until the platform can record where the money is owed.
+      return 'We could not set this order up correctly, so no payment was taken. This is a fault on our side. Please try again in a moment.'
     case 'fee_breakdown_invalid':
       return 'There was a pricing issue with this checkout. Please refresh and try again.'
     case 'event_externally_ticketed':
@@ -897,6 +908,9 @@ async function processSeatCheckout({
       addon_total_cents: 0,
       platform_fee_cents: fees.platform_fee_cents,
       processing_fee_cents: fees.payment_processing_fee_cents,
+      // Close-out FO1: what the Founding Organiser offer cost on this order.
+      // Zero on every order whose organiser is not inside a fee-free window.
+      founding_fee_waived_cents: fees.founding_fee_waived_cents,
       tax_cents: fees.tax_cents,
       discount_cents: 0,
       total_cents: fees.total_cents,
@@ -961,7 +975,12 @@ async function processSeatCheckout({
     eventId: event.id,
     organiserConsent,
     platformConsent,
+    reservationId: reservation_id,
   })
+
+  // The same tracked-link capture as the seated path above, for the same
+  // reason and at the same point: the first moment an order id exists.
+  await recordClickSignalForOrder(order_id)
 
   if (isFreeOrder) {
     // confirm_order UPDATEs the order pending->confirmed (firing the issuance

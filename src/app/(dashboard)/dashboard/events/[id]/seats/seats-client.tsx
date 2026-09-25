@@ -51,7 +51,14 @@ interface Props {
 const STATUS_LABEL: Record<string, { label: string; bg: string; text: string }> = {
   available: { label: 'Available', bg: 'bg-green-100', text: 'text-green-700' },
   held: { label: 'Held', bg: 'bg-amber-100', text: 'text-amber-700' },
-  reserved: { label: 'Reserved', bg: 'bg-gold-100', text: 'text-gold-600' },
+  /*
+   * GOLD AS TEXT ON A LIGHT SURFACE TAKES THE STRONG TIER. This badge read
+   * `text-gold-600` on `bg-gold-100`, which measures 2.98:1 and is a WCAG AA
+   * failure on the screen an organiser seats a room from. globals.css records
+   * the rule in its own comment and `--brand-accent-strong` (gold-800) exists
+   * for exactly this: 6.5:1 on the gold tint.
+   */
+  reserved: { label: 'Reserved', bg: 'bg-gold-100', text: 'text-gold-800' },
   sold: { label: 'Sold', bg: 'bg-ink-100', text: 'text-ink-600' },
   blocked: { label: 'Blocked', bg: 'bg-red-100', text: 'text-red-700' },
   accessible: { label: 'Accessible', bg: 'bg-teal-100', text: 'text-teal-700' },
@@ -63,6 +70,23 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
   const [seatList, setSeatList] = useState<Seat[]>(seats)
   const [pendingTickets, setPendingTickets] = useState<UnassignedTicket[]>(unassignedTickets)
   const [assignTargets, setAssignTargets] = useState<Record<string, string>>({})
+  /*
+   * WHICH ROW'S SEAT LIST IS OPEN, AND WHY THAT HAS TO BE STATE.
+   *
+   * Every waiting attendee gets a select of every available seat, so the option
+   * count is rows TIMES seats. That was survivable only because the read behind
+   * this list was capped at a thousand holders, and capping it was the defect
+   * LB-SEATWHOLE removed: on a 2,000-seat room with 1,150 people waiting and
+   * 400 seats free it is 460,000 option elements, and the screen an organiser
+   * seats a room from stops responding.
+   *
+   * A select needs its options present to SHOW a value, and it needs them
+   * present to OPEN. It does not need them present while it sits idle. Focus
+   * fires before the list opens for a mouse, a finger and a keyboard alike, so
+   * filling the list on focus is invisible to every one of them, and the idle
+   * row still renders the seat already chosen.
+   */
+  const [seatListOpenFor, setSeatListOpenFor] = useState<string | null>(null)
   const [assignNotice, setAssignNotice] = useState<string | null>(null)
   const [holdingId, setHoldingId] = useState<string | null>(null)
   const [holdReason, setHoldReason] = useState('comp')
@@ -219,11 +243,16 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
                 <select
                   value={assignTargets[t.id] ?? ''}
                   onChange={e => setAssignTargets(prev => ({ ...prev, [t.id]: e.target.value }))}
+                  onFocus={() => setSeatListOpenFor(t.id)}
+                  onPointerDown={() => setSeatListOpenFor(t.id)}
                   className="rounded-lg border border-ink-200 px-2 py-1.5 text-xs focus:border-gold-500 focus:outline-none"
                   aria-label={`Seat for ${t.holder_name || t.ticket_code}`}
                 >
                   <option value="">Choose a seat…</option>
-                  {availableTargets.map(target => (
+                  {(seatListOpenFor === t.id
+                    ? availableTargets
+                    : availableTargets.filter(target => target.id === assignTargets[t.id])
+                  ).map(target => (
                     <option key={target.id} value={target.id}>{target.label}</option>
                   ))}
                 </select>
@@ -421,7 +450,15 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
                                   setMovingId(movingId === seat.id ? null : seat.id)
                                   setMoveTargetId('')
                                 }}
-                                className="rounded-lg border border-gold-400 px-2.5 py-1 text-xs font-medium text-gold-600 hover:bg-gold-100 transition-colors"
+                                /*
+                                 * text-gold-800, not gold-600. This button
+                                 * appears once per SOLD seat, so axe found it
+                                 * 800 times on one chart and would find it
+                                 * fifteen thousand times in a real arena. Same
+                                 * law, same tier, same reason as the Reserved
+                                 * badge above.
+                                 */
+                                className="rounded-lg border border-gold-400 px-2.5 py-1 text-xs font-medium text-gold-800 hover:bg-gold-100 hover:text-gold-700 transition-colors"
                               >
                                 Move attendee
                               </button>

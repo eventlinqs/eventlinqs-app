@@ -1,0 +1,641 @@
+import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveSend } from '@/lib/consent/resolver'
+import { FACILITATED_MARKETING_PURPOSE, type ConsentChannel } from '@/lib/consent/purposes'
+import { formatEventDate } from '@/lib/dates/event-time'
+import { getSiteUrl } from '@/lib/site-url'
+import { mintTrackedLink } from '@/lib/attribution/record'
+import { trackedLinkPath } from '@/lib/attribution/route-config'
+import { captureException } from '@/lib/observability/sentry'
+import { readCampaignerConfig, type CampaignerMode } from './config'
+import { segmentFingerprint } from './fingerprint'
+import {
+  SKIP_REASON,
+  daysRemainingToEvent,
+  planNextSend,
+  type PacingStep,
+  type SkipReason,
+} from './pacing'
+import { CampaignRenderError, RENDER_FAILURE, renderCampaignMessage, unsubscribeUrl } from './render'
+import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
+import { SinkRefusal, transportForMode } from './sink'
+
+/**
+ * THE PACING RUNNER. One campaign, one pass.
+ *
+ * WHAT IT DOES, IN ORDER, AND WHY THE ORDER IS THE DESIGN:
+ *
+ *   1. Reads the mode ONCE and asks for a transport ONCE. In test mode the only
+ *      transport this process holds refuses every address outside the test
+ *      domain; in hold mode it holds none at all.
+ *   2. Asks GA1's DOOR about every person, again, at send time. Admission to
+ *      the allowlist was a decision taken at a moment; somebody can withdraw
+ *      between then and now, and a withdrawal that only took effect on the next
+ *      campaign would be the exact failure that cost the Commonwealth Bank 7.5
+ *      million dollars. A refusal is RECORDED with its reason.
+ *   3. Plans the step by days remaining, per person, with the gap and the SMS
+ *      scope applied. The arithmetic is pure and lives in pacing.ts.
+ *   4. Mints a tracked link per person, so every send is attributable, which is
+ *      the whole reason GA3 came first.
+ *   5. Renders, and REFUSES to render a message without a verified sender
+ *      identity or a working unsubscribe.
+ *   6. Writes the send row in DRAFT. A machine-drafted body never enters a
+ *      queued state on its own; a person moves it, once, per segment.
+ *   7. Moves it out of draft only when an approval exists for this exact
+ *      segment fingerprint, and the database refuses the move if one does not.
+ *
+ * THE CAP IS NOT CHECKED HERE, deliberately. It is a trigger on the insert, and
+ * a run that hits it sees the database refuse. Checking it in here as well
+ * would make the application the thing being tested instead of the constraint.
+ */
+
+export interface CampaignRunResult {
+  campaignReference: string
+  mode: CampaignerMode
+  channelCode: string
+  daysRemaining: number
+  segmentFingerprint: string | null
+  approved: boolean
+  considered: number
+  drafted: number
+  dispatched: number
+  refusedByCap: number
+  skipped: { reason: string; count: number }[]
+  errors: string[]
+}
+
+interface AllowlistRow {
+  id: string
+  audience_member_id: string
+  channel_code: string
+  consent_channel_scope: 'email' | 'sms' | 'both'
+  match_run_id: string | null
+}
+
+function countReasons(reasons: string[]): { reason: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const r of reasons) counts.set(r, (counts.get(r) ?? 0) + 1)
+  return [...counts.entries()].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count)
+}
+
+export async function runCampaign(params: {
+  campaignId: string
+  channelCode: ConsentChannel
+  now?: Date
+}): Promise<CampaignRunResult> {
+  const admin = createAdminClient()
+  const now = params.now ?? new Date()
+  const config = await readCampaignerConfig()
+  const transport = transportForMode(config.mode, config.testDomain)
+
+  const { data: campaign, error: campaignError } = await admin
+    .from('marketing_campaign')
+    .select('id, reference, name, event_id, organisation_id, sequence_id, opening_line, signature, volume_cap')
+    .eq('id', params.campaignId)
+    .maybeSingle()
+  if (campaignError) throw new Error(`marketing_campaign read failed: ${campaignError.message}`)
+  if (!campaign) throw new Error(`no campaign ${params.campaignId}`)
+
+  const result: CampaignRunResult = {
+    campaignReference: campaign.reference,
+    mode: config.mode,
+    channelCode: params.channelCode,
+    daysRemaining: Number.NaN,
+    segmentFingerprint: null,
+    approved: false,
+    considered: 0,
+    drafted: 0,
+    dispatched: 0,
+    refusedByCap: 0,
+    skipped: [],
+    errors: [],
+  }
+
+  /*
+   * EVERY READ BELOW GOES THROUGH THE DOOR, AND THE REASON IS THE SENTENCE IT
+   * USED TO PRODUCE.
+   *
+   * This function's job is to decide, per person, whether a message goes, and
+   * to WRITE DOWN why when it does not. Those sentences are read back as
+   * evidence: they are stored in public.marketing_send_skip, which is
+   * append-only, and counted onto /admin/campaigns. A read that discarded its
+   * error could not tell a failure from an absence, so each one had a false
+   * sentence waiting for it - "the audience row no longer exists", "this
+   * address has no consent record", "the step names a template that does not
+   * exist" - about a named person, permanently.
+   *
+   * `readOrThrow` (src/lib/supabase/read-or-throw.ts) retries a transient
+   * blink, answers null only when the database itself said "no row", and throws
+   * otherwise. `runCampaignAction` turns that throw into a sentence on the
+   * screen, so the run reports the truth and records nothing about anybody.
+   * Held by scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs.
+   */
+  const [event, organisation] = await Promise.all([
+    readOrThrow('campaigner event', () =>
+      admin
+        .from('events')
+        .select('id, title, slug, start_date, timezone, venue_name, venue_city')
+        .eq('id', campaign.event_id)
+        .maybeSingle(),
+    ),
+    readOrThrow('campaigner organisation', () =>
+      admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+    ),
+  ])
+  if (!event || !organisation) throw new Error(`campaign ${campaign.reference} has no event or no organisation`)
+
+  result.daysRemaining = daysRemainingToEvent(event.start_date, now)
+
+  /*
+   * A FAILED STEP READ IS NOT AN EMPTY SEQUENCE. An empty sequence sends the
+   * whole allowlist into `planNextSend` with nothing to plan, and every one of
+   * them is recorded with a pacing reason that describes a SCHEDULE. Nobody
+   * reading "no step covers this many days out" would look for a database
+   * fault.
+   */
+  const stepRows = await readOrThrow('campaigner sequence steps', () =>
+    admin
+      .from('marketing_sequence_step')
+      .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
+      .eq('sequence_id', campaign.sequence_id ?? '')
+      .order('step_order', { ascending: true })
+      // A sequence is a handful of steps. The bound is stated, not assumed.
+      .limit(200),
+  )
+  const steps: PacingStep[] = (stepRows ?? []).map(s => ({
+    id: s.id,
+    stepOrder: s.step_order,
+    channelCode: s.channel_code,
+    daysRemainingMin: s.days_remaining_min,
+    daysRemainingMax: s.days_remaining_max,
+    templateKey: s.template_key,
+    minHoursSincePreviousSend: s.min_hours_since_previous_send,
+  }))
+
+  /*
+   * A FAILED IDENTITY READ IS NOT A MISSING IDENTITY. The block below records
+   * SENDER_IDENTITY_MISSING against every recipient on the campaign, which
+   * tells the organiser to go and verify a sender they have already verified.
+   */
+  const identity = await readOrThrow('campaigner sender identity', () =>
+    admin
+      .from('marketing_sender_identity')
+      .select('id, from_name, reply_to, identity_line, is_verified')
+      .eq('organisation_id', campaign.organisation_id)
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  )
+
+  /*
+   * EVERY ADMITTED RECIPIENT. This list is who the run sends to, and its
+   * LENGTH is folded into the segment fingerprint the approval is keyed by. A
+   * truncated read would both silently drop everybody past the thousandth and
+   * fingerprint a segment that never existed, so an approval granted on the
+   * screen would not match the one the run computed.
+   */
+  const allowlist = (await readEveryRow('marketing_recipient_allowlist', (from, to) =>
+    admin
+      .from('marketing_recipient_allowlist')
+      .select('id, audience_member_id, channel_code, consent_channel_scope, match_run_id')
+      .eq('campaign_id', campaign.id)
+      .eq('channel_code', params.channelCode)
+      .order('admitted_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  )) as AllowlistRow[]
+  result.considered = allowlist.length
+
+  if (allowlist.length === 0) return result
+
+  // The fingerprint the approval is keyed by. The newest match run among the
+  // admitted rows identifies the segment; a list admitted from two runs is a
+  // different segment from either, and the size is what notices.
+  const runIds = allowlist.map(r => r.match_run_id).filter((v): v is string => Boolean(v))
+  const matchRunId = runIds.length > 0 ? runIds[runIds.length - 1] : campaign.id
+  result.segmentFingerprint = segmentFingerprint({
+    matchRunId,
+    channelCode: params.channelCode,
+    allowlistSize: allowlist.length,
+  })
+
+  /*
+   * A FAILED APPROVAL READ IS NOT A MISSING APPROVAL. It leaves every message
+   * in draft and reports "nothing left draft, because this segment is not
+   * approved" to a person who approved it, which sends them looking for an
+   * approval button they have already pressed.
+   */
+  const approval = await readOrThrow('campaigner segment approval', () =>
+    admin
+      .from('marketing_send_approval')
+      .select('id')
+      .eq('campaign_id', campaign.id)
+      .eq('segment_fingerprint', result.segmentFingerprint)
+      .maybeSingle(),
+  )
+  result.approved = Boolean(approval)
+
+  /*
+   * A CHUNK THAT FAILED IS NOT A HUNDRED PEOPLE WHO ARE NOT THERE. A member
+   * missing from this map is recorded as "the audience row this admission
+   * points at no longer exists", permanently, about somebody whose row is fine.
+   */
+  const members = new Map<string, { email: string }>()
+  const memberIds = allowlist.map(r => r.audience_member_id)
+  for (const chunk of chunkInFilterValues(memberIds)) {
+    const rows = await readOrThrow('campaigner audience members', () =>
+      admin.from('audience_members').select('id, email').in('id', chunk).limit(chunk.length),
+    )
+    for (const m of rows ?? []) members.set(m.id, { email: m.email })
+  }
+
+  /*
+   * The unsubscribe token GA1 already minted for each address. No second token.
+   *
+   * CHUNKED BY BYTES, NOT BY COUNT, AND THAT IS THIS READ'S OWN DEFECT RATHER
+   * THAN A GENERAL TIDINESS. It is the only read on this path keyed by an
+   * EMAIL, and an address may legally be 254 characters, so a hundred of them
+   * is about 25 KB of URL against a documented 16 KB limit
+   * (src/lib/supabase/in-chunks.ts carries the citation and the measurement).
+   * The request failed, the error was discarded, and every one of those people
+   * was recorded as having "no consent record carrying an unsubscribe token"
+   * while their consent sat in the ledger, granted.
+   */
+  const tokens = new Map<string, string>()
+  const emails = [...members.values()].map(m => m.email)
+  for (const chunk of chunkInFilterValues(emails)) {
+    const rows = await readOrThrow('campaigner unsubscribe tokens', () =>
+      admin
+        .from('marketing_consents')
+        .select('email, unsubscribe_token')
+        .in('email', chunk)
+        // One row per address: marketing_consents is unique (email).
+        .limit(chunk.length),
+    )
+    for (const row of rows ?? []) tokens.set(row.email.toLowerCase(), row.unsubscribe_token)
+  }
+
+  /*
+   * WHAT HAS ALREADY BEEN SENT, ALL OF IT. This is the only thing stopping a
+   * person receiving the same step twice: a recipient missing from this map
+   * reads as never sent to. A thousand-row ceiling on a campaign that has sent
+   * more than a thousand messages is therefore a DUPLICATE SEND, to the
+   * earliest recipients, every run.
+   */
+  const priorSends = await readEveryRow('marketing_send', (from, to) =>
+    admin
+      .from('marketing_send')
+      .select('allowlist_id, sequence_step_id, created_at, state')
+      .eq('campaign_id', campaign.id)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
+  const sentByAllowlist = new Map<string, { stepIds: string[]; last: string | null }>()
+  for (const s of priorSends) {
+    const entry = sentByAllowlist.get(s.allowlist_id) ?? { stepIds: [], last: null }
+    if (s.sequence_step_id) entry.stepIds.push(s.sequence_step_id)
+    if (!entry.last || s.created_at > entry.last) entry.last = s.created_at
+    sentByAllowlist.set(s.allowlist_id, entry)
+  }
+
+  const templates = new Map<string, { key: string; channelCode: string; subjectTemplate: string; bodyTemplate: string }>()
+  {
+    /*
+     * The template library, a small authored table. Bounded so a ceiling can
+     * never quietly remove the template a step names.
+     *
+     * AND THROUGH THE DOOR, because this is the single worst of the six. One
+     * failed read of one small table left the map empty, and the loop below
+     * then recorded "the step names a template that does not exist" against
+     * EVERY recipient on the campaign. An organiser reading that would go and
+     * rebuild a template that was never missing.
+     */
+    const data = await readOrThrow('campaigner template library', () =>
+      admin
+        .from('marketing_template')
+        .select('key, channel_code, subject_template, body_template')
+        .limit(500),
+    )
+    for (const t of data ?? []) {
+      templates.set(t.key, {
+        key: t.key,
+        channelCode: t.channel_code,
+        subjectTemplate: t.subject_template,
+        bodyTemplate: t.body_template,
+      })
+    }
+  }
+
+  const origin = getSiteUrl()
+  const skipReasons: string[] = []
+
+  /*
+   * APPROVED DRAFTS GO FIRST, and this is not an optimisation.
+   *
+   * A run before approval writes drafts, which is the design: a machine-drafted
+   * body never enters a queued state on its own. The moment somebody approves,
+   * those drafts are the messages they approved, and the per-step uniqueness
+   * constraint means a later run will not draft them again. Without this block
+   * an approval would authorise a segment whose messages had already been
+   * written and could never leave, which is a gate that silently swallows a
+   * campaign rather than holding it.
+   */
+  if (result.approved && transport) {
+    const drafts = await readEveryRow('the approved drafts', (from, to) =>
+      admin
+        .from('marketing_send')
+        .select(
+          'id, channel_code, destination, rendered_subject, rendered_body, rendered_html, unsubscribe_token',
+        )
+        .eq('campaign_id', campaign.id)
+        .eq('channel_code', params.channelCode)
+        .eq('segment_fingerprint', result.segmentFingerprint)
+        .eq('state', 'draft')
+        .order('id', { ascending: true })
+        .range(from, to),
+    )
+    for (const draft of drafts) {
+      try {
+        const delivery = await transport.deliver({
+          channelCode: draft.channel_code,
+          destination: draft.destination,
+          subject: draft.rendered_subject,
+          // The STORED message is what was approved. A draft is re-rendered by
+          // nobody: re-rendering at dispatch would send something that differs
+          // from what is on the approval row, which is the one thing an
+          // approval is supposed to pin down.
+          body: draft.rendered_body,
+          html: draft.rendered_html,
+          /*
+           * COMPOSED FROM THE ROW'S OWN TOKEN, not re-minted. The draft was
+           * written with `unsubscribe_token` beside the rendered body, so the
+           * header a mailbox provider posts to and the link inside the message
+           * withdraw the same person's consent.
+           */
+          headers: oneClickUnsubscribeHeaders(origin, draft.unsubscribe_token),
+        })
+        const { error: moveError } = await admin
+          .from('marketing_send')
+          .update({
+            state: 'sent',
+            queued_at: now.toISOString(),
+            sent_at: new Date().toISOString(),
+            provider_message_id: delivery.providerMessageId,
+          })
+          .eq('id', draft.id)
+        if (moveError) {
+          result.errors.push(moveError.message)
+          continue
+        }
+        result.dispatched += 1
+      } catch (error) {
+        if (error instanceof SinkRefusal) {
+          result.errors.push(error.message)
+          continue
+        }
+        result.errors.push(error instanceof Error ? error.message : String(error))
+      }
+    }
+  }
+
+  const recordSkip = async (row: AllowlistRow, stepId: string | null, reason: string, detail?: string) => {
+    skipReasons.push(reason)
+    const { error } = await admin.from('marketing_send_skip').insert({
+      campaign_id: campaign.id,
+      allowlist_id: row.id,
+      sequence_step_id: stepId,
+      channel_code: row.channel_code,
+      reason,
+      detail: detail ?? null,
+    })
+    if (error) captureException(new Error(`skip write failed for ${row.id}: ${error.message}`))
+  }
+
+  /*
+   * NO VERIFIED SENDER IDENTITY, NOTHING RENDERS, AND THE RUN SAYS SO ONCE.
+   *
+   * The renderer refuses each message individually, correctly, but a campaign
+   * whose organiser has not verified an identity would then produce one refusal
+   * per recipient and read as forty failures instead of one missing setup step.
+   * It is checked once, before the loop, and every recipient is recorded with
+   * the same true reason.
+   */
+  if (!identity) {
+    for (const row of allowlist) {
+      await recordSkip(row, null, RENDER_FAILURE.SENDER_IDENTITY_MISSING, campaign.reference)
+    }
+    result.skipped = countReasons(skipReasons)
+    return result
+  }
+
+  for (const row of allowlist) {
+    const member = members.get(row.audience_member_id)
+    if (!member) {
+      await recordSkip(row, null, 'the audience row this admission points at no longer exists')
+      continue
+    }
+
+    /*
+     * THE DOOR, ASKED AGAIN, AT SEND TIME. This is what makes an unsubscribe
+     * taken five minutes ago take effect on this run rather than the next
+     * campaign.
+     */
+    const verdict = await resolveSend(admin, {
+      email: member.email,
+      purpose: FACILITATED_MARKETING_PURPOSE,
+      channel: params.channelCode,
+    })
+    if (!verdict.permitted) {
+      await recordSkip(row, null, 'the consent door refused this message', verdict.reason)
+      continue
+    }
+
+    const plan = planNextSend({
+      daysRemaining: result.daysRemaining,
+      steps,
+      recipient: {
+        allowlistId: row.id,
+        consentChannelScope: row.consent_channel_scope,
+        lastSentAt: sentByAllowlist.get(row.id)?.last ?? null,
+        stepIdsAlreadySent: sentByAllowlist.get(row.id)?.stepIds ?? [],
+      },
+      now,
+    })
+    if (!plan.queued) {
+      await recordSkip(row, null, plan.reason)
+      continue
+    }
+
+    const template = templates.get(plan.step.templateKey)
+    if (!template) {
+      await recordSkip(row, plan.step.id, 'the step names a template that does not exist')
+      continue
+    }
+
+    try {
+      /*
+       * A GA3 recipient row, so the tracked link is minted FOR this person and
+       * the sale it produces can be credited to them.
+       *
+       * THE ERROR IS BOUND BECAUSE A NULL HERE IS NOT A REFUSAL, IT IS AN
+       * UNATTRIBUTABLE SEND. `recipient?.id ?? null` silently mints a link
+       * belonging to nobody, the message still goes, and the sale it produces
+       * can never be credited back to the person it was sent to. That is the
+       * whole reason GA3 was built before GA4. The throw is caught by this
+       * loop's own catch and reported as an error on the run, so one bad row
+       * does not stop the campaign and no message is sent that cannot be
+       * attributed.
+       */
+      const { data: recipient, error: recipientError } = await admin
+        .from('marketing_recipient')
+        .upsert(
+          {
+            campaign_id: campaign.id,
+            audience_member_id: row.audience_member_id,
+            channel_code: row.channel_code,
+          },
+          { onConflict: 'campaign_id,audience_member_id,channel_code' },
+        )
+        .select('id')
+        .single()
+      if (recipientError || !recipient) {
+        throw new Error(
+          `the recipient row could not be written, so this send would not be attributable: ${
+            recipientError?.message ?? 'no row came back'
+          }`,
+        )
+      }
+
+      const link = await mintTrackedLink({
+        campaignId: campaign.id,
+        channelCode: row.channel_code,
+        eventSlug: event.slug,
+        recipientId: recipient.id,
+      })
+
+      /*
+       * NO TOKEN, NO SEND, ON EITHER CHANNEL. The renderer refuses an EMAIL
+       * without an unsubscribe link, which is the legal requirement. The send
+       * ROW also carries the token as a not-null column, so an SMS with no
+       * token would reach the database as a null and be refused there with a
+       * message about a constraint rather than about a person. Refused here, by
+       * name, so the reason recorded is the true one.
+       */
+      const token = tokens.get(member.email.toLowerCase()) ?? null
+      if (!token) {
+        await recordSkip(
+          row,
+          plan.step.id,
+          RENDER_FAILURE.UNSUBSCRIBE_MISSING,
+          'this address has no consent record carrying an unsubscribe token',
+        )
+        continue
+      }
+
+      const rendered = renderCampaignMessage({
+        template,
+        values: {
+          organiser_name: organisation.name,
+          event_title: event.title,
+          event_date: formatEventDate(event.start_date, event.timezone),
+          venue_name: event.venue_name ?? organisation.name,
+          venue_city: event.venue_city ?? '',
+          days_remaining: String(result.daysRemaining),
+          tracked_link: `${origin.replace(/\/+$/, '')}${trackedLinkPath(link.code)}`,
+          opening_line: campaign.opening_line ?? '',
+          signature: campaign.signature ?? '',
+        },
+        senderIdentity: {
+          fromName: identity.from_name,
+          replyTo: identity.reply_to,
+          identityLine: identity.identity_line,
+          isVerified: identity.is_verified,
+        },
+        unsubscribeUrl: unsubscribeUrl(origin, config.unsubscribePath, token),
+        destination: member.email,
+      })
+
+      const { data: send, error: sendError } = await admin
+        .from('marketing_send')
+        .insert({
+          campaign_id: campaign.id,
+          allowlist_id: row.id,
+          channel_code: row.channel_code,
+          sequence_step_id: plan.step.id,
+          template_key: template.key,
+          link_code: link.code,
+          sender_identity_id: identity.id,
+          segment_fingerprint: result.segmentFingerprint,
+          rendered_subject: rendered.subject,
+          rendered_body: rendered.body,
+          rendered_html: rendered.html,
+          unsubscribe_token: token,
+          destination: rendered.destination,
+          state: 'draft',
+        })
+        .select('id')
+        .single()
+
+      if (sendError) {
+        if (/volume cap/i.test(sendError.message)) {
+          result.refusedByCap += 1
+          skipReasons.push('the campaign volume cap was reached')
+          continue
+        }
+        if (sendError.code === '23505') {
+          skipReasons.push(SKIP_REASON.ALREADY_SENT_THIS_STEP)
+          continue
+        }
+        result.errors.push(sendError.message)
+        continue
+      }
+      result.drafted += 1
+
+      if (!result.approved || !transport) continue
+
+      const delivery = await transport.deliver({
+        channelCode: row.channel_code,
+        destination: rendered.destination,
+        subject: rendered.subject,
+        body: rendered.body,
+        html: rendered.html,
+        headers: oneClickUnsubscribeHeaders(origin, token),
+      })
+      const { error: moveError } = await admin
+        .from('marketing_send')
+        .update({
+          state: 'sent',
+          queued_at: now.toISOString(),
+          sent_at: new Date().toISOString(),
+          provider_message_id: delivery.providerMessageId,
+        })
+        .eq('id', send.id)
+      if (moveError) {
+        result.errors.push(moveError.message)
+        continue
+      }
+      result.dispatched += 1
+    } catch (error) {
+      if (error instanceof SinkRefusal) {
+        // The refusal IS the protection working. It is reported by name so a
+        // drive can assert it rather than infer it from a count.
+        result.errors.push(error.message)
+        continue
+      }
+      if (error instanceof CampaignRenderError) {
+        await recordSkip(row, plan.step.id, error.reason, error.detail)
+        continue
+      }
+      result.errors.push(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  result.skipped = countReasons(skipReasons)
+  return result
+}
+
+export type { SkipReason }

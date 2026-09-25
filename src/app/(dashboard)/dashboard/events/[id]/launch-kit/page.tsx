@@ -25,7 +25,9 @@ import {
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
 import { getRequestOrigin } from '@/lib/site-origin'
-import { HeroMedia, MarketingMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
@@ -39,6 +41,7 @@ import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 
 export const metadata: Metadata = {
   title: 'Launch Kit | EventLinqs',
@@ -253,25 +256,49 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   let sections: SectionData[] = []
   let areas: SeatAreaData[] = []
   if (event.has_reserved_seating && event.seat_map_id) {
-    const [seatsRes, sectionsRes, mapRes] = await Promise.all([
-      admin
-        .from('seats')
-        .select(
-          'id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id',
-        )
-        .eq('event_id', id)
-        .order('row_label')
-        .order('seat_number')
-        .range(0, 1999),
-      admin
-        .from('seat_map_sections')
-        .select('id, name, color')
-        .eq('seat_map_id', event.seat_map_id)
-        .order('sort_order'),
+    /*
+     * THE LAUNCH KIT PRINTS "{seats.length} seats . {openSeats} open right
+     * now" AND BOTH NUMBERS WERE CAPPED AT TWO THOUSAND.
+     *
+     * The seats read carried `.range(0, 1999)`. That is a bound, so no census
+     * or scanner that judges boundedness alone would ever flag it, and it is
+     * the lowest ceiling on the platform: a five thousand seat chart rendered
+     * a preview of the first two thousand seats and told the organiser, on the
+     * artefact they promote the event with, that the venue holds two thousand
+     * people. `openSeats` is filtered out of the same array, so availability
+     * was understated by every seat past the bound, which is the direction
+     * that loses sales.
+     *
+     * `readEveryRow` pages to the end and RAISES rather than truncating, and
+     * the ordering gains `id` so the paging is a total order. Sections are
+     * bounded the same way.
+     */
+    const [seatRows, sectionRows, mapRes] = await Promise.all([
+      readEveryRow<SeatData>('launch kit seats', (from, to) =>
+        admin
+          .from('seats')
+          .select(
+            'id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id',
+          )
+          .eq('event_id', id)
+          .order('row_label')
+          .order('seat_number')
+          .order('id')
+          .range(from, to),
+      ),
+      readEveryRow<SectionData>('launch kit seat map sections', (from, to) =>
+        admin
+          .from('seat_map_sections')
+          .select('id, name, color')
+          .eq('seat_map_id', event.seat_map_id!)
+          .order('sort_order')
+          .order('id')
+          .range(from, to),
+      ),
       admin.from('seat_maps').select('layout').eq('id', event.seat_map_id).maybeSingle(),
     ])
-    seats = (seatsRes.data ?? []) as SeatData[]
-    sections = (sectionsRes.data ?? []) as SectionData[]
+    seats = seatRows
+    sections = sectionRows
     areas = ((mapRes.data?.layout as { areas?: SeatAreaData[] } | null)?.areas ?? []).filter(
       a => typeof a?.x === 'number' && typeof a?.y === 'number',
     )
@@ -323,16 +350,25 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             priority
             objectPosition="50% 30%"
           />
-          {/* The platform hero scrim: darkness only ever comes from the photo. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(10,22,40,0.92) 0%, rgba(10,22,40,0.68) 45%, rgba(10,22,40,0.18) 80%, rgba(10,22,40,0.02) 100%)',
-            }}
-          />
-          <div className="relative z-10 flex min-h-[300px] flex-col justify-end p-6 sm:min-h-[320px] sm:p-8">
+          {/*
+           * THE SHARED WASH, 20 September 2026. This masthead carried its own
+           * `to top, 0.92 0%, 0.68 45%, 0.18 80%, 0.02 100%`: the same
+           * percentage-of-a-band shape `hero-photo-scrim.ts` records four hero
+           * templates carrying until 19 September, and it decides its darkness
+           * by where a pixel sits in the BAND rather than by where the text is.
+           * The organiser's event title is the one thing here whose length is
+           * not known in advance, so it is exactly the caption a percentage
+           * cannot locate.
+           *
+           * NOT DRIVEN, said plainly: this route is behind organiser auth and
+           * needs a published event, and the sweep that measures this class runs
+           * against public URLs. What holds it is the wash's own arithmetic,
+           * re-computed by hero-text-over-a-photograph.mjs clause 2 every build.
+           */}
+          <HeroCaption
+            className="z-10 flex min-h-[300px] flex-col justify-end p-6 sm:min-h-[320px] sm:p-8"
+            contentClassName="flex flex-col justify-end"
+          >
             <div className="hero-enter max-w-3xl">
               <p className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
                 <span
@@ -378,7 +414,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 {eventUrl.replace(/^https?:\/\//, '')}
               </p>
             </div>
-          </div>
+          </HeroCaption>
         </div>
       </section>
 
@@ -511,7 +547,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 visual anchor (details stay below the image, never on it). */}
             <div className="overflow-hidden rounded-xl border border-ink-100 shadow-sm">
               <div className="relative aspect-[1200/630]">
-                <MarketingMedia src={event.cover_image_url ?? ''} alt="" variant="tile" />
+                <MarketingMedia src={event.cover_image_url ?? ''} alt="" variant="tile-dashboard-half-column" />
               </div>
               <div className="flex items-center justify-between bg-[#0A1628] px-3 py-1.5">
                 <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white">

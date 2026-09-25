@@ -27,7 +27,11 @@ export type PolicyName =
   | 'share-track'
   | 'ledger-demand'
   | 'waitlist-join'
+  | 'forecast-run'
   | 'newsletter-subscribe'
+  | 'discovery-consent-carry'
+  | 'marketing-rights'
+  | 'marketing-one-click'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -40,6 +44,8 @@ export type PolicyName =
   | 'launch-email'
   | 'launch-upload'
   | 'stream-message'
+  | 'api-v1-auth'
+  | 'api-v1-read'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -178,6 +184,34 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'The slot ledger demand beacon per IP. The two anonymous actions only (a page view and a sold-out view); every action that carries an address is written server side by the code that observed it, so this endpoint cannot be used to invent a contactable person. Rows are deduped per visitor per slot per day by their occurrence key, so this cap only bounds junk traffic. FAIL-OPEN, the same posture as share-track: losing a view beacon to a Redis blip is a gap in a history table, and refusing one would be a failed request on an event page.',
   },
+  'discovery-consent-carry': {
+    keyPrefix: 'disc-consent',
+    limit: 20,
+    windowSec: 60,
+    rationale:
+      "AQ1. Carrying the discovery consent answer from the ticket page to the reservation it belongs to, per IP per minute. The bucket is deliberately the same size as checkout-reserve and for the same reason: this action can only ever write ONE row per reservation, the primary key is the reservation id so a flood of calls produces one row rather than many, and the only way to create another reservation is to spend a checkout-reserve token. The write amplification a public form usually offers is therefore already bounded by the limiter in front of it. FAIL-OPEN, and the direction of the failure is what decides it: a refusal here does not lose the consent, it loses the CARRY, so the question is put again at the payment step and the buyer answers once. A Redis blip that blocked it would trade a working purchase for a duplicate question, which is the wrong way round.",
+  },
+  'marketing-rights': {
+    keyPrefix: 'mkt-rights',
+    limit: 10,
+    windowSec: 600,
+    rationale:
+      'The no-token privacy rights form (APP 7.6 stop-facilitation) per IP per 10 min. It is public and unauthenticated and writes one suppression row per submission, so it is a write-amplification target like newsletter-subscribe. Ten covers a household clearing several addresses in one sitting and bounces a scripted flood. Deliberately fail-OPEN, and the reason is the direction the surface points: it can only ever STOP mail. A Redis blip that blocked somebody exercising a privacy right would be the platform refusing to honour a legal right to protect itself from writes, which is the wrong trade in a way that launch-email is not.',
+  },
+  'marketing-one-click': {
+    keyPrefix: 'mkt-1click',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'The RFC 8058 one-click unsubscribe endpoint, POST /api/marketing/one-click-unsubscribe/[token]. KEYED BY THE TOKEN, passed explicitly, NEVER by the IP, and that is the whole point of this entry rather than a detail of it. The caller is a mailbox provider: Google or Yahoo infrastructure posting on a recipient behalf, so every recipient of one campaign arrives from a handful of egress addresses. An IP-keyed bucket of any size would start refusing real unsubscribes the moment a campaign went out at volume, which is the carrier-NAT bucket this platform has already met twice (launch-artefact, launch-compose-daily) and which payouts-read and stream-message were both re-keyed to escape. One token is one subscriber, which is the unit of abuse worth bounding, and the token is an unguessable uuid rather than something a stranger enumerates. Twenty per token per ten minutes covers a provider retrying a delivery and a person pressing the button in every copy of every message they hold, and is useless for anything else, because the only thing the endpoint can do with a valid token is stop mail to that one address. FAIL-OPEN, the same posture and the same reason as marketing-rights: this surface can only ever STOP mail, the write is idempotent so a flood of valid requests produces one ledger row, and a Redis blip that refused a one-click unsubscribe would be the platform failing the exact facility the headers promise a mailbox provider works. That is a deliverability failure, which is the cost launch-email prices in domains rather than in requests, and it is incurred by refusing rather than by allowing.',
+  },
+  'forecast-run': {
+    keyPrefix: 'fc-run',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'Public forecast tool runs per IP per 10 min (close-out FT1). The surface is public, unauthenticated and WRITES a row, so it is a table-flooding target, and twenty in ten minutes is generous for the thing it is: an organiser trying three prices and two room sizes against their own night is six runs, and a curious one doing it twice over is still inside it. FAIL-OPEN, deliberately, and the unit is what abuse actually costs. This endpoint sends nothing: no email leaves our domain, no third party is billed, and the worst a flood achieves is rows in a table nothing public can read (forecast_runs has RLS on with no policy). Losing a real organiser their first result to a Redis blip is the more expensive failure, and it is the first thing that person ever sees of this platform. The email field on the same submit does NOT change that posture, because nothing is sent from it: it is stored for the owner to answer by hand, under wording stored beside it.',
+  },
   'newsletter-subscribe': {
     keyPrefix: 'nl-sub',
     limit: 5,
@@ -290,5 +324,19 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Livestream room posts (chat, questions, reactions) on /api/stream/[code]/messages, 20 per minute PER TICKET. KEYED BY the ticket id, passed explicitly, never the IP: a household watching one stream on one connection holds several tickets and must not share a bucket, and this platform has met the carrier-NAT bucket twice before (launch-artefact, launch-compose-daily). The bucket cannot be named until the bearer gate has resolved the ticket, so the limiter sits AFTER resolveStreamAccess, and a stranger with the wrong secret is refused as not found before ever reaching it. Twenty a minute is a fast typist in a busy room and is useless for flooding it: the organiser can hide any message, and every row is bounded to 500 characters by the schema. FAIL-OPEN: the write is a 500 character row in our own database, the same posture as share-track and newsletter-subscribe. The audit (scripts/verify/rate-limit-audit.mjs) will note a Sentry capture behind this route; it fires only on a database error, never per request, so volume cannot reach it.',
+  },
+  'api-v1-auth': {
+    keyPrefix: 'apiv1-a',
+    limit: 120,
+    windowSec: 60,
+    rationale:
+      'The PRE-AUTHENTICATION bucket on the public read API (/api/v1/*), 120 a minute PER IP. It exists because api-v1-read is keyed by the ORGANISATION and therefore cannot run until a key has been recognised, which is the same ordering ruling payouts-read settled on 19 August 2026 and it leaves the same gap: a caller presenting a wrong key is never named, so it can never be throttled by the organiser bucket. This is that gap, and nothing more. It is NOT sized as a defence against guessing the token, because the token is 40 base36 characters over 32 random bytes and guessing it is not a threat a limiter is the right answer to; it is sized to stop a broken client or a scanner spending our database on failed lookups. 120 is two a second, comfortably above a legitimate integration that has simply not been given a key yet and is retrying. FAIL-OPEN: the work behind it is one indexed equality on a unique index with no metered spend anywhere, so a Redis outage must not take every organiser integration offline with it.',
+  },
+  'api-v1-read': {
+    keyPrefix: 'apiv1-r',
+    limit: 1000,
+    windowSec: 60,
+    rationale:
+      'The organiser tier on the public read API (/api/v1/*), 1000 a minute PER ORGANISATION. The number is not chosen here: it is the "1000 requests/minute for organiser APIs" tier published in docs/EventLinqs_Scope_v5.md section 4.1, alongside 100 for anonymous and 300 for authenticated. KEYED BY organisationId, passed explicitly, which is why this limiter sits AFTER authenticateApiKey rather than at the top of the handler: the bucket cannot be named until the key names it, and keying it by IP instead would put every integration behind one office or one carrier NAT into a single window, which is the bucket this platform has already met three times (launch-artefact, launch-compose-daily, payouts-read). An organiser holding several keys shares one window, deliberately: the tier belongs to the tenant, not to the credential, so minting a second key must not double the allowance. FAIL-OPEN: three read-only views, no write, no metered third party spend, and the scope predicate rather than this limit is what bounds what a caller can reach.',
   },
 }

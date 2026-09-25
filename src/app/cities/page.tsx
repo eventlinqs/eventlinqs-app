@@ -7,9 +7,11 @@ import { SiteFooter } from '@/components/layout/site-footer'
 // match the cities-index headline. Reuse the flexible component.
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getCityIndexEntries, type CityIndexEntry } from '@/lib/cities/index-page-data'
 import { getSiteUrl } from '@/lib/site-url'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -92,14 +94,8 @@ export default async function CitiesIndexPage() {
       </main>
       <SiteFooter />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd payload={itemListSchema} />
+      <JsonLd payload={breadcrumbSchema} />
     </div>
   )
 }
@@ -175,11 +171,11 @@ async function CityTile({
   return (
     <Link
       href={`/city/${entry.slug}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ink-200 bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-ink-200">
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-ink-200">
         {image ? (
-          <CityTileImage src={image} alt={`${entry.name}, ${entry.state}`} priority={priority} />
+          <CityTileImage src={image} alt={`${entry.name}, ${entry.state}`} layout="grid-two-three-four" priority={priority} />
         ) : (
           <div
             aria-hidden
@@ -190,39 +186,42 @@ async function CityTile({
             }}
           />
         )}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55) 70%, rgba(10,22,40,0.92) 100%)',
-          }}
-        />
-        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-          <p className="font-display text-xl font-extrabold leading-tight text-white sm:text-2xl">
+        {/* THE PLACE NAME AND NOTHING ELSE, which is both laws at once.
+         *
+         *  This tile used to paint the name, the state AND the event-count pill
+         *  on the photograph, under `rgba(10,22,40,0) 35%, 0.55 70%, 0.92 100%`
+         *  - a percentage of the TILE. At 390 the tile is 173x108 and that
+         *  caption measured 112px, taller than the tile it was anchored to, so
+         *  the city name was painted at the very top of the picture where the
+         *  ramp had not started: Brisbane 1.00:1 on a white sky, 100 per cent
+         *  of its 464 core pixels below the WCAG 2.2 SC 1.4.3 floor.
+         *
+         *  Anchoring the wash to the label fixes the contrast and was driven
+         *  doing so, but on a 108px tile a 112px caption then washes the WHOLE
+         *  picture: C:/dev/EVIDENCE/TILE-CAPTION/cities-390-anchored-only.png is
+         *  what that looks like, and it trades a contrast defect for an
+         *  image-poor one. The design system had already answered it: "Image
+         *  alone, all details below the image ... the single allowed on-photo
+         *  overlay is a place name on a darkened-gradient band on city/venue
+         *  tiles, one line of identity only." The state and the count are now
+         *  below the image, where they are read on canvas rather than on a sky. */}
+        <TileCaption className="px-3 pb-3 pt-2 sm:px-5 sm:pb-4 sm:pt-3">
+          {/* 18px at base is the design system's card-title size, and it is what
+            *  MAKES the name one line: "Sunshine Coast", the longest of the 20,
+            *  measures 156px at 20px against 147px of tile, so it wrapped, and a
+            *  two-line caption took 88 per cent of a 107px tile. At 18px it is
+            *  140px. Measured, not estimated:
+            *  C:/dev/EVIDENCE/TILE-CAPTION/fit3.txt. */}
+          <p className="font-display text-lg font-extrabold leading-tight text-white sm:text-xl lg:text-2xl">
             {entry.name}
           </p>
-          <p className="mt-1 text-xs font-medium text-white/85 sm:text-sm">
-            {entry.state}
-          </p>
-          {/* Solid navy pill background keeps the gold chip legible over
-           *  any photo (gold on solid navy #0A1628 clears AA with room to
-           *  spare; no glassmorphism, per the design system). */}
-          <p
-            className="mt-2 inline-flex items-center self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]"
-            style={{
-              background: 'rgb(10, 22, 40)',
-              border: '1px solid rgba(212, 160, 23, 0.35)',
-            }}
-          >
-            {countLabel}
-          </p>
-        </div>
-        <div
-          aria-hidden
-          className="absolute inset-0 ring-0 ring-[var(--brand-accent)]/0 transition-all duration-300 group-hover:ring-2 group-hover:ring-[var(--brand-accent)]/60 motion-reduce:transition-none"
-          style={{ borderRadius: '1rem' }}
-        />
+        </TileCaption>
+      </div>
+      <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
+        <p className="text-xs font-medium text-ink-600 sm:text-sm">{entry.state}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+          {countLabel}
+        </p>
       </div>
     </Link>
   )

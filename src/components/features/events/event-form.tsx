@@ -246,7 +246,28 @@ function newTier(sort_order: number): TicketTierInput {
   }
 }
 
-function getDefaultFormData(): FormData {
+/**
+ * THE SHAPE SOMEBODY ALREADY TOLD US, carried in from the public forecast tool.
+ *
+ * Close-out FT1 point 6: the call to action under the forecast result goes to
+ * the signup path "carrying the entered event shape so the organiser does not
+ * type it twice". This is the other end of that sentence. Without it the link
+ * would carry parameters nothing reads, which is a placeholder wearing a query
+ * string.
+ *
+ * FOUR FIELDS AND NO MORE, and every one of them is something the forecast
+ * actually asked for: the event type, the city, the room size and the price.
+ * It deliberately does NOT touch the title, the date or the description, which
+ * the tool never asked about and which an organiser must write themselves.
+ */
+export interface EventShapePrefill {
+  categoryId?: string | null
+  city?: string | null
+  capacity?: string | null
+  priceDollars?: string | null
+}
+
+function getDefaultFormData(prefill?: EventShapePrefill): FormData {
   const now = new Date()
   const start = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
@@ -258,7 +279,7 @@ function getDefaultFormData(): FormData {
     title: '',
     summary: '',
     description: '',
-    category_id: '',
+    category_id: prefill?.categoryId ?? '',
     tags: '',
     community_slugs: [],
     start_date: fmt(start),
@@ -270,7 +291,7 @@ function getDefaultFormData(): FormData {
     event_type: 'in_person',
     venue_name: '',
     venue_address: '',
-    venue_city: '',
+    venue_city: prefill?.city ?? '',
     venue_state: '',
     venue_country: 'Australia',
     venue_postal_code: '',
@@ -282,11 +303,19 @@ function getDefaultFormData(): FormData {
     stream_geo_allow: [],
     media: [],
     video_url: '',
-    ticket_tiers: [newTier(0)],
+    ticket_tiers: [
+      {
+        ...newTier(0),
+        // Only what the forecast asked for. An empty prefill leaves the tier
+        // exactly as it was.
+        price: prefill?.priceDollars ?? '0',
+        total_capacity: prefill?.capacity ?? '',
+      },
+    ],
     visibility: 'public',
     is_age_restricted: false,
     age_restriction_min: '18',
-    max_capacity: '',
+    max_capacity: prefill?.capacity ?? '',
     has_reserved_seating: false,
     allow_seat_self_service: false,
     organiser_assigns_seats: false,
@@ -492,6 +521,8 @@ type Props = {
    * checkPublishGate; this never decides anything on its own.
    */
   canSellPaid?: boolean
+  /** FT1: the event shape carried in from the public forecast tool. */
+  shapePrefill?: EventShapePrefill
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -511,6 +542,7 @@ export function EventForm({
   lineupEnabled = false,
   magicStartEnabled = false,
   canSellPaid = true,
+  shapePrefill,
 }: Props) {
   const router = useRouter()
   // A stable event id, generated once. useState (not useRef) so it can be read
@@ -521,7 +553,7 @@ export function EventForm({
   const [formData, setFormData] = useState<FormData>(() =>
     editMode && existingEvent
       ? fromExistingEvent(existingEvent, existingTiers, existingStreamUrl)
-      : getDefaultFormData()
+      : getDefaultFormData(shapePrefill)
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -2086,8 +2118,8 @@ export function EventForm({
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
             <p className="text-sm text-ink-600">
-              {formData.start_date ? formatPlatformDateTime(formData.start_date) : ':'} →{' '}
-              {formData.end_date ? formatPlatformDateTime(formData.end_date) : ':'}
+              {formData.start_date ? formatPlatformDateTime(formData.start_date) : '-'} →{' '}
+              {formData.end_date ? formatPlatformDateTime(formData.end_date) : '-'}
             </p>
             <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>

@@ -10,6 +10,16 @@ import {
 } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getAdminStaffDetail, ASSIGNABLE_ADMIN_ROLES } from '@/lib/admin/admin-staff'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_ROW,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import type { AdminRole } from '@/lib/admin/types'
 import { setRoleAction, setDisabledAction, setCapabilitiesAction } from '../actions'
@@ -141,16 +151,19 @@ export default async function AdminStaffDetailPage({
         {canEditCaps ? (
           <form action={setCapabilitiesAction} className="space-y-2">
             <input type="hidden" name="id" value={staff.id} />
-            <div className="overflow-x-auto rounded-md border border-white/[0.08]">
-              <table className="w-full min-w-[620px] text-sm">
-                <thead>
+            {/* Below lg this stops being a table and each capability becomes a
+                card carrying its own headings:
+                src/components/admin/table-card.ts. */}
+            <div className={ADMIN_TABLE_WRAP}>
+              <table className={`${ADMIN_TABLE} lg:min-w-[620px]`}>
+                <thead className={ADMIN_THEAD}>
                   <tr className="border-b border-white/[0.08] text-left text-white/50">
                     <th scope="col" className="px-4 py-2.5 font-medium">Capability</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Role baseline</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Override</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className={ADMIN_TBODY}>
                   {ALL_CAPABILITIES.map((cap) => {
                     const baseline = roleCapabilities(staff.role as AdminRole).has(cap)
                     const mode = staff.capabilitiesGranted.includes(cap)
@@ -159,15 +172,19 @@ export default async function AdminStaffDetailPage({
                         ? 'revoke'
                         : 'inherit'
                     return (
-                      <tr key={cap} className="border-b border-white/[0.05]">
-                        <td className="px-4 py-2.5">
+                      <tr key={cap} className={ADMIN_ROW}>
+                        <td className={ADMIN_CELL_NAME}>
                           <div className="text-white">{CAPABILITY_LABELS[cap]}</div>
                           <div className="font-mono text-[11px] text-white/40">{cap}</div>
                         </td>
-                        <td className="px-4 py-2.5 text-white/60">{baseline ? 'Allowed' : 'Not allowed'}</td>
-                        <td className="px-4 py-2.5">
+                        <td className={`${ADMIN_CELL} text-white/60`}>
+                          <span className={ADMIN_CELL_LABEL}>Role baseline</span>
+                          {baseline ? 'Allowed' : 'Not allowed'}
+                        </td>
+                        <td className={ADMIN_CELL}>
+                          <span className={ADMIN_CELL_LABEL}>Override</span>
                           <select name={`cap.${cap}`} defaultValue={mode} aria-label={`${CAPABILITY_LABELS[cap]} permission`}
-                            className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white focus:border-white/40 focus:outline-none">
+                            className="min-h-11 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white focus:border-white/40 focus:outline-none">
                             <option value="inherit">Inherit</option>
                             <option value="grant">Grant</option>
                             <option value="revoke">Revoke</option>

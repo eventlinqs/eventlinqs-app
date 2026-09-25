@@ -7,12 +7,36 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const hour = z.number().int().min(0).max(23).nullable()
+
+/**
+ * A timezone this runtime can actually resolve, not merely a short string.
+ *
+ * It used to be `z.string().max(64)`, which accepted "Somewhere/Nowhere" and
+ * stored it. That value is then read by the alert dispatcher on every send, and
+ * `Intl.DateTimeFormat` throws a RangeError on a zone it cannot resolve, so one
+ * such row could have aborted a whole cron pass and taken every other
+ * follower's alert down with it. The dispatcher is defensive about it as well
+ * (localHourFor falls back rather than throwing), but the honest place to refuse
+ * a value nobody can use is where it is offered.
+ */
+const timezone = z.string().max(64).refine(
+  (value) => {
+    try {
+      new Intl.DateTimeFormat('en-GB', { timeZone: value })
+      return true
+    } catch {
+      return false
+    }
+  },
+  { message: 'Unknown timezone' },
+)
+
 const BodySchema = z.object({
   push_enabled: z.boolean().optional(),
   email_enabled: z.boolean().optional(),
   quiet_hours_start: hour.optional(),
   quiet_hours_end: hour.optional(),
-  timezone: z.string().max(64).optional(),
+  timezone: timezone.optional(),
 })
 
 export async function GET() {

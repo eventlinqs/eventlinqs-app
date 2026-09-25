@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import type { Event, TicketTier } from '@/types/database'
 import { QueueRoom } from './queue-room'
 
@@ -9,7 +10,18 @@ type Props = { params: Promise<{ slug: string }> }
 
 type QueueEvent = Event & { ticket_tiers: TicketTier[] }
 
-async function fetchEvent(slug: string): Promise<QueueEvent | null> {
+/**
+ * READ ONCE PER REQUEST. `generateMetadata` renders the head and the default
+ * export renders the body, from the same request, and both need this row.
+ * Next's own reference expects the second to be free ("React `cache` can be
+ * used if `fetch` is unavailable", node_modules/next/dist/docs/01-app/
+ * 03-api-reference/04-functions/generate-metadata.md, Next 16.3.0) and on this
+ * platform it is not: every Supabase request carries its own AbortSignal so a
+ * retry inside a render is a real second request, which is the framework
+ * deduplicator's documented opt-OUT (src/lib/supabase/undeduped-fetch.ts).
+ * Close-out C8, 21 September 2026.
+ */
+const fetchEvent = cache(async function fetchEvent(slug: string): Promise<QueueEvent | null> {
   // A failed read is not an absent event: readOrThrow retries a blink and throws
   // a real fault, so the caller's notFound() stands only on "no row" (PGRST116).
   const supabase = await createClient()
@@ -17,7 +29,7 @@ async function fetchEvent(slug: string): Promise<QueueEvent | null> {
     'queue event',
     () => supabase.from('events').select('*, ticket_tiers(*)').eq('slug', slug).single() as unknown as Read<QueueEvent>,
   )
-}
+})
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params

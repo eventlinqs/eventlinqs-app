@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getCity } from '@/lib/cities/data'
 import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    ...discoveryIndexing(eventCount, `/events/browse/${city.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/events/browse/${city.slug}`)),
     openGraph: {
       title,
       description,
@@ -236,6 +236,14 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
             events={popularEvents}
             headline="popular"
             seeAllHref={`${basePath}?sort=popular`}
+            /*
+             * THE HERO ABOVE OWNS THIS PAGE'S ONE IMAGE PRELOAD. Close-out
+             * C8B.5. PhotographicCityHero renders a full-bleed raster at the
+             * top of this route, so it is the LCP on every viewport; a 256 CSS
+             * px rail tile preloading beside it only competes with the
+             * render-blocking stylesheet on the throttled mobile profile.
+             */
+            firstCardEager={false}
           />
         ) : null}
 
@@ -260,7 +268,17 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
                   params={raw}
                   page={result.page}
                   totalPages={result.totalPages}
-                  firstCardEager={filterActive}
+                  /*
+                   * FALSE IN BOTH STATES, for the same reason as the rail
+                   * above (close-out C8B.5). This read `filterActive`, which is
+                   * the correct rule on /events: hide the rail, promote the
+                   * grid, one preload either way. On THIS route the hero is
+                   * always painted, so `filterActive` simply chose WHICH second
+                   * preload to ship. Measured 15 September: two on
+                   * /events/browse/melbourne and two on
+                   * /events/browse/melbourne?category=music.
+                   */
+                  firstCardEager={false}
                 />
                 <EventsPagination
                   params={raw}

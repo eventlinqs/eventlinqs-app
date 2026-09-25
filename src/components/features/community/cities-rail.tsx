@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
+import { WIDE_TILE_CELL } from '@/lib/ui/rhythm'
 
 export function citySlugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -49,11 +51,12 @@ export function CommunitiesByCityRail({ communitySlug, communityName, cities, im
             <Link
               key={city}
               href={`/community/${communitySlug}/${slug}`}
-              className="group relative block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+              className={`group relative block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                 {img ? (
                   <CityTileImage
+                    layout="rail-wide-tile"
                     src={img}
                     alt={`${communityName} events in ${city}`}
                     className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
@@ -68,22 +71,14 @@ export function CommunitiesByCityRail({ communitySlug, communityName, cities, im
                     aria-hidden
                   />
                 )}
-                <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                  style={{
-                    background:
-                      'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                  }}
-                  aria-hidden
-                />
-                <div className="absolute inset-x-0 bottom-0 p-4">
+                <TileCaption className="p-4">
                   <p className="font-display text-base font-semibold text-white drop-shadow-sm sm:text-lg">
                     {city}
                   </p>
                   <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.14em] text-white/85">
                     {communityName} events
                   </p>
-                </div>
+                </TileCaption>
               </div>
             </Link>
           )

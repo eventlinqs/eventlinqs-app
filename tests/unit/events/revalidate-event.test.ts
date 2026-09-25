@@ -23,20 +23,26 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 const revalidatePath = vi.fn()
 const updateTag = vi.fn()
+const revalidateTag = vi.fn()
 
 vi.mock('next/cache', () => ({
   revalidatePath: (p: string) => revalidatePath(p),
   updateTag: (t: string) => updateTag(t),
+  revalidateTag: (t: string, profile: unknown) => revalidateTag(t, profile),
 }))
 vi.mock('server-only', () => ({}))
 
-const { revalidateEventSurfaces, revalidateEventSurfacesById } = await import(
-  '@/lib/events/revalidate-event'
-)
+const {
+  revalidateEventSurfaces,
+  revalidateEventSurfacesById,
+  revalidateEventSurfacesFromRouteHandler,
+  revalidateEventSurfacesFromRouteHandlerById,
+} = await import('@/lib/events/revalidate-event')
 
 beforeEach(() => {
   revalidatePath.mockClear()
   updateTag.mockClear()
+  revalidateTag.mockClear()
 })
 
 describe('every surface an event appears on', () => {
@@ -52,16 +58,30 @@ describe('every surface an event appears on', () => {
     expect(paths).toContain('/city/melbourne')
   })
 
-  it('does NOT invalidate /categories/<real slug>, because that path does not exist', () => {
-    // `/categories/[slug]` serves the seven hero-category editorial slugs. A
-    // real category slug (one of the twenty-two in event_categories) has never
-    // resolved there: driven against production on 25 August 2026, all
-    // twenty-two answered 404, and this function was invalidating them anyway.
-    // Since that pass a real slug 308s to /events?category=<slug>, and /events
-    // is the route that renders it and is already invalidated below.
+  it('invalidates /categories/<real slug>, which is a real page again', () => {
+    // THIS ASSERTION IS THE REVERSE OF WHAT IT WAS, AND THE REASON IS RECORDED
+    // RATHER THAN THE ASSERTION SIMPLY BEING FLIPPED.
+    //
+    // It used to read "does NOT invalidate, because that path does not exist",
+    // and on 25 August 2026 that was measured and true: `/categories/[slug]`
+    // served seven hero-category editorial slugs, all twenty-two real category
+    // slugs answered 404 when driven against production, and the mark was
+    // removed from the source for that reason.
+    //
+    // Close-out SEO3 step 4 (14 September 2026) made every one of the twenty-two
+    // a real page with its own canonical, title, h1 and editorial, and deleted
+    // the redirect. A test still asserting the absence would now be holding the
+    // category page stale for its whole ISR window on every publish.
     const paths = revalidateEventSurfaces({ slug: 'e', category_slug: 'music' })
-    expect(paths).not.toContain('/categories/music')
+    expect(paths).toContain('/categories/music')
     expect(paths).toContain('/events')
+  })
+
+  it('marks no category path when the event has no category', () => {
+    // The guard against a `/categories/undefined` or `/categories/null` mark,
+    // which is what an unconditional template literal would produce.
+    const paths = revalidateEventSurfaces({ slug: 'e', category_slug: null })
+    expect(paths.filter(p => p.startsWith('/categories/'))).toEqual([])
   })
 
   it('invalidates the organiser profile', () => {
@@ -107,7 +127,9 @@ describe('it does not depend on the caller assembling fields', () => {
       'evt-1',
     )
     expect(paths).toContain('/events/read-from-db')
-    expect(paths).not.toContain('/categories/comedy')
+    // The category read off the row reaches the real category landing, as of
+    // close-out SEO3 step 4. See the sibling test above for why this flipped.
+    expect(paths).toContain('/categories/comedy')
     expect(paths).toContain('/organisers/a-promoter')
     expect(paths).toContain('/city/geelong')
   })
@@ -127,5 +149,97 @@ describe('the shape of the original defect', () => {
     // general-admission event is the common case and was never invalidated.
     const plain = revalidateEventSurfaces({ slug: 'general-admission-only' })
     expect(plain).toContain('/events/general-admission-only')
+  })
+})
+
+/**
+ * THE ROUTE-HANDLER FORM. Close-out R1, 14 September 2026.
+ *
+ * A refund returned a place to inventory and /events/<slug> went on saying SOLD
+ * OUT, because the refund path was the one inventory movement that invalidated
+ * nothing. It could not call the function above: that one uses `updateTag`,
+ * which "can only be called from within a Server Action", so a webhook calling
+ * it would have traded a stale page for a thrown handler and a Stripe retry
+ * loop. These tests pin that the second form reaches the SAME paths and the SAME
+ * tags, through the mechanism a route handler is allowed to use.
+ */
+describe('the route-handler form, for the Stripe webhook', () => {
+  it('invalidates exactly the same paths as the server-action form', () => {
+    const fromAction = revalidateEventSurfaces({
+      slug: 'my-event',
+      venue_city: 'Melbourne',
+      organiser_handle: 'someone',
+      tags: [],
+    })
+    revalidatePath.mockClear()
+    const fromRoute = revalidateEventSurfacesFromRouteHandler({
+      slug: 'my-event',
+      venue_city: 'Melbourne',
+      organiser_handle: 'someone',
+      tags: [],
+    })
+    expect(fromRoute).toEqual(fromAction)
+    // And the returned list is evidence, not decoration: every entry was a call.
+    expect(revalidatePath.mock.calls.map(c => c[0])).toEqual(fromRoute)
+  })
+
+  it('never calls updateTag, which throws outside a Server Action', () => {
+    revalidateEventSurfacesFromRouteHandler({ slug: 'e' })
+    expect(updateTag).not.toHaveBeenCalled()
+    expect(revalidateTag).toHaveBeenCalled()
+  })
+
+  it('expires every data tag IMMEDIATELY with { expire: 0 }, the documented webhook pattern', () => {
+    /*
+     * `revalidateTag(tag)` alone is stale-while-revalidate AND its single-argument
+     * form is deprecated in this version. The shipped reference names this exact
+     * caller: "For webhooks or third-party services that need immediate
+     * expiration, you can pass { expire: 0 } as the second argument".
+     */
+    revalidateEventSurfacesFromRouteHandler({ slug: 'e' })
+    expect(revalidateTag.mock.calls.length).toBeGreaterThan(0)
+    for (const [, profile] of revalidateTag.mock.calls) {
+      expect(profile).toEqual({ expire: 0 })
+    }
+  })
+
+  it('expires the same set of tags as the server-action form', () => {
+    revalidateEventSurfaces({ slug: 'e' })
+    const actionTags = updateTag.mock.calls.map(c => c[0]).sort()
+    revalidateEventSurfacesFromRouteHandler({ slug: 'e' })
+    const routeTags = revalidateTag.mock.calls.map(c => c[0]).sort()
+    expect(routeTags).toEqual(actionTags)
+  })
+
+  it('reads the event by id and still never reaches updateTag', async () => {
+    const db = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: { slug: 'read-back', venue_city: 'Geelong', tags: [], category: null, organisation: null },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    }
+    const paths = await revalidateEventSurfacesFromRouteHandlerById(db, 'an-event-id')
+    expect(paths).toContain('/events/read-back')
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it('a read that fails still invalidates the shared surfaces rather than nothing', async () => {
+    const db = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'gone' } }) }),
+        }),
+      }),
+    }
+    const paths = await revalidateEventSurfacesFromRouteHandlerById(db, 'an-event-id')
+    expect(paths).toContain('/events')
+    expect(paths).toContain('/')
+    expect(updateTag).not.toHaveBeenCalled()
   })
 })

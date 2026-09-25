@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { MapPin } from 'lucide-react'
-import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
@@ -41,6 +43,14 @@ export type EventCardData = {
   cover_image_url: string | null
   thumbnail_url: string | null
   start_date: string
+  /**
+   * The EVENT own IANA zone, so the date on this card is the day the event
+   * happens rather than the day it happens in UTC. REQUIRED rather than
+   * optional: an optional field would have let every existing caller keep
+   * printing the wrong day in silence, and the compiler naming each one is
+   * the only way to be sure they were all found.
+   */
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_country: string | null
@@ -58,22 +68,28 @@ type Props = {
   initiallySaved?: boolean
   priority?: boolean
   /**
-   * Layout context. Drives the underlying EventCardMedia variant so the
-   * srcset hint matches the actual rendered width. Pass `"rail"` when the
-   * card sits in a horizontal rail (fixed ~256-288px tile) so the browser
-   * does not download a 750w image for a 254 CSS px slot.
+   * Layout context. Drives the underlying EventCardMedia variant so the srcset
+   * hint matches the width this card actually renders at.
+   *
+   * The default is the ladder eight templates render
+   * (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`), so those callers say nothing.
+   * Every other caller names its own ladder or cell, because until 18 September
+   * 2026 they all shared one hint and it was wrong for all of them: two-up was
+   * claimed to begin at 640 where it begins at 768, so every card between those
+   * two widths was fetched at half the size it rendered at.
    */
-  variant?: Extract<EventCardMediaVariant, 'card' | 'rail'>
+  variant?: Extract<
+    EventCardMediaVariant,
+    | 'grid-one-two-three'
+    | 'grid-one-two-three-sm'
+    | 'grid-one-three'
+    | 'grid-one-two-three-four'
+    | 'grid-one-two-four'
+    | 'rail-flat'
+  >
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatPrice(
   tiers: EventCardTier[],
@@ -98,9 +114,9 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'card' }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three' }: Props) {
   const {
-    id, slug, title, cover_image_url, start_date,
+    id, slug, title, cover_image_url, start_date, timezone,
     venue_city, venue_country, created_at, category, ticket_tiers,
     organisation, badge,
   } = event
@@ -123,18 +139,23 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       href={`/events/${slug}`}
       // M5 card hover per docs/M5-DESIGN-SPEC.md / Card design:
       //   200ms ease-out (--motion-quick), 0 -> 4px navy/8% shadow on hover.
-      //   `transition-all` is explicitly forbidden by the spec; we declare
-      //   transform + box-shadow explicitly on transition via globals.css
-      //   .card-hover-transition utility. Aspect ratio (1:1 per spec) is
+      //   `transition-all` is explicitly forbidden by the spec; transform and
+      //   box-shadow are named explicitly inside `event-card-surface`, at the
+      //   same 200ms and the same ease-out. Aspect ratio (1:1 per spec) is
       //   deferred to a follow-up because event-card.tsx ships site-wide;
       //   see SUMMARY.md.
       // Close-out C14.12 (6 September 2026): the card radius (16px, the same
       // as every homepage card; this one was the 8px control radius), the two
       // elevation tokens, and a 4px lift, so the browse card and the rail card
       // are one object at two widths.
-      className="group card-hover-transition flex flex-col rounded-2xl overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] shadow-[var(--shadow-card)] hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      // Close-out C8B.3 (19 September 2026): the 428-character list that used
+      // to be written here is `event-card-surface` in globals.css. It was said
+      // 40 times on /events - in the markup and again in the RSC payload - and
+      // this component renders on eighteen surfaces. `group` stays: it is a
+      // variant marker with no declarations of its own.
+      className="group event-card-surface"
     >
-      <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-[var(--surface-1)]">
+      <div className="event-card-media">
         {cover_image_url ? (
           <EventCardMedia
             src={cover_image_url}
@@ -144,7 +165,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             // Image scale-up per spec card hover: subtle 1.02 (2%).
             // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
             // utility (transform: scale 1.02 under --motion-quick).
-            className="card-hover-img group-hover:scale-[1.025] motion-reduce:group-hover:scale-100"
+            className="card-hover-img event-card-zoom"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
@@ -158,13 +179,13 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           ? badge && (
               <span
                 data-m5-badge={badge}
-                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest shadow-[var(--shadow-card)] ${BADGE_STYLES[badge]}`}
+                className={`event-card-badge ${BADGE_STYLES[badge]}`}
               >
                 {BADGE_LABELS[badge]}
               </span>
             )
           : category && (
-              <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-xs font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-[var(--shadow-card)]">
+              <span className="event-card-pill">
                 {category.name}
               </span>
             )}
@@ -173,7 +194,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           eventId={id}
           initiallySaved={initiallySaved}
           variant="light"
-          className="absolute right-3 top-3 shadow-[var(--shadow-card)]"
+          className="event-card-save"
         />
       </div>
 
@@ -181,24 +202,24 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
        *   20px top padding, left-aligned (never centred), title at
        *   --type-h4, date/venue at --type-small, price at --type-body
        *   (17/600). Price kept prominent at the bottom-right of the
-       *   metadata row. */}
-      <div
-        className="flex flex-1 flex-col"
-        style={{
-          paddingTop: 'var(--space-card-padding-y)',
-          paddingBottom: 'var(--space-card-padding-y)',
-          paddingLeft: 'var(--space-card-padding-x)',
-          paddingRight: 'var(--space-card-padding-x)',
-        }}
-      >
+       *   metadata row.
+       *   The four padding declarations were an inline style object, paid per
+       *   card in the markup and serialised again into the RSC payload; they
+       *   are `event-card-body` in globals.css now, set from the same two
+       *   tokens (close-out C8B.3, 19 September 2026). */}
+      <div className="event-card-body">
         {m5Mode && organisation ? (
           <p className="type-small text-[var(--text-secondary)]">{organisation.name}</p>
         ) : (
           <p
-            className="type-micro font-display uppercase tracking-widest text-[var(--brand-accent-strong)]"
+            /* The 600 stays an inline style on purpose: `.type-micro` is an
+             * UNLAYERED rule setting font-weight 500, and unlayered CSS beats
+             * `@layer utilities`, so a weight folded into the composite would
+             * lose to it silently. */
+            className="type-micro event-card-date"
             style={{ fontWeight: 600 }}
           >
-            {formatDate(start_date)}
+            {formatEventDateShort(start_date, timezone)}
           </p>
         )}
 
@@ -207,20 +228,16 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
          *  same). It ran at --type-h4, 22px on desktop, which outranked the
          *  24px section heading above the grid in weight and nearly in size.
          *  Hover: navy stays, gold underline added (spec). */}
-        <h3
-          className="font-headline text-lg font-bold leading-snug tracking-[-0.01em] mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
-          style={{ transition: 'text-decoration-color var(--motion-quick)' }}
-        >
+        <h3 className="event-card-title">
           {title}
         </h3>
 
         {m5Mode ? (
-          <p
-            className="type-small mt-1.5 flex items-center gap-1.5 text-[var(--text-secondary)]"
-            style={{ gap: 'var(--space-tight-gap)' }}
-          >
+          /* `gap-1.5` and `gap-1` used to sit on these two rows and neither
+           * ever applied: the inline `gap` token beat both. One row now. */
+          <p className="type-small event-card-meta">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span>{formatDate(start_date)}</span>
+            <span>{formatEventDateShort(start_date, timezone)}</span>
             {location && (
               <>
                 <span aria-hidden="true">·</span>
@@ -230,10 +247,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           </p>
         ) : (
           location && (
-            <p
-              className="type-small mt-1.5 flex items-center gap-1 text-[var(--text-secondary)]"
-              style={{ gap: 'var(--space-tight-gap)' }}
-            >
+            <p className="type-small event-card-meta">
               <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
               {location}
             </p>
@@ -242,14 +256,8 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
 
         {/* Price row - --type-body 17/600 per spec. mt-auto pushes to
          *  bottom of the card. */}
-        <div
-          className="mt-auto flex items-center justify-between"
-          style={{ gap: 'var(--space-tight-gap)', paddingTop: 'var(--space-tight-gap)' }}
-        >
-          <p
-            className="font-display text-[var(--text-primary)]"
-            style={{ fontSize: 'var(--type-body)', fontWeight: 600 }}
-          >
+        <div className="event-card-footer">
+          <p className="event-card-price">
             {priceLabel}
           </p>
           {!m5Mode && inventory && (

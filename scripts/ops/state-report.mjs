@@ -57,10 +57,24 @@ import {
   BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
 } from '../lib/state-report.mjs'
+import { INDEXING_STALE_AFTER_HOURS } from '../lib/indexing-check.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
 const TAG = '[state-report]'
+
+/**
+ * Where the parity check leaves its result. Imported rather than re-typed, so
+ * the writer and the reader cannot disagree about the path.
+ */
+const PARITY_STATE_FILE = join(ROOT, '.parity', 'last-run.json')
+
+/**
+ * Where the weekly indexing check leaves its result (close-out SEO2 step 3).
+ * Same handoff as the parity file above and for the same reason: that job runs
+ * weekly, this report runs daily, and the two never share a process.
+ */
+const INDEXING_STATE_FILE = join(ROOT, '.indexing', 'last-run.json')
 
 const DEFAULT_REPO = 'eventlinqs/eventlinqs-app'
 const DEFAULT_SITE = 'https://www.eventlinqs.com.au'
@@ -173,7 +187,11 @@ function repoName(env = process.env) {
 async function collectMain(token, repo) {
   const head = await gh(token, `/repos/${repo}/commits/main`)
   if (head.status !== 200 || !head.body?.sha) {
-    return { conclusion: 'unknown', reason: `the head of main could not be read (HTTP ${head.status})` }
+    // THROWN, NOT RETURNED. A read that failed and a read that found nothing are
+    // different facts, and the caller catches this one into the report's list of
+    // blind spots. Returning a tidy "unknown" here is how a broken read used to
+    // arrive looking like a quiet day.
+    throw new Error(`the head of main could not be read (HTTP ${head.status})`)
   }
   const sha = head.body.sha
   const runs = await gh(token, `/repos/${repo}/actions/runs?branch=main&per_page=40`)
@@ -194,7 +212,11 @@ async function collectMain(token, repo) {
 
 async function collectLanded(token, repo, sinceIso) {
   const res = await gh(token, `/repos/${repo}/commits?sha=main&since=${encodeURIComponent(sinceIso)}&per_page=50`)
-  if (res.status !== 200 || !Array.isArray(res.body)) return []
+  if (res.status !== 200 || !Array.isArray(res.body)) {
+    // An empty list is "nothing landed today", which is a real and common
+    // answer. It must never be what a failed read looks like.
+    throw new Error(`the commits on main could not be read (HTTP ${res.status})`)
+  }
   return res.body.map((c) => ({
     sha: c.sha,
     shortSha: c.sha.slice(0, 8),
@@ -205,7 +227,11 @@ async function collectLanded(token, repo, sinceIso) {
 
 async function collectPullRequests(token, repo, nowIso) {
   const res = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`)
-  if (res.status !== 200 || !Array.isArray(res.body)) return []
+  if (res.status !== 200 || !Array.isArray(res.body)) {
+    // Zero open pull requests is the goal state under the one-at-a-time rule, so
+    // it is exactly the answer a failed read must never be able to imitate.
+    throw new Error(`the open pull requests could not be read (HTTP ${res.status})`)
+  }
   return res.body
     .map((p) => ({
       number: p.number,
@@ -239,7 +265,11 @@ async function collectLastPush(token, repo) {
   for (let page = 1; page <= LAST_PUSH_PAGES && path; page += 1) {
     const res = await gh(token, path)
     if (res.status !== 200 || !Array.isArray(res.body)) {
-      return { when: null, reason: `the repository activity could not be read (HTTP ${res.status})` }
+      // The stall check reads this. "No push found" and "could not look" are
+      // opposites there: the first is a quiet repository, the second is the one
+      // alert whose whole subject is silence having no idea. Thrown, so the
+      // caller records it as a blind spot and the stall judge is told.
+      throw new Error(`the repository activity could not be read (HTTP ${res.status})`)
     }
     records += res.body.length
     const pick = pickLastPush(res.body)
@@ -266,7 +296,9 @@ async function collectLastPush(token, repo) {
  */
 async function collectFailingBranches(token, repo, sinceIso) {
   const res = await gh(token, `/repos/${repo}/actions/runs?status=failure&per_page=50`)
-  if (res.status !== 200 || !Array.isArray(res.body?.workflow_runs)) return []
+  if (res.status !== 200 || !Array.isArray(res.body?.workflow_runs)) {
+    throw new Error(`the failing workflow runs could not be read (HTTP ${res.status})`)
+  }
   const since = Date.parse(sinceIso)
   // ONE LINE PER BRANCH AND WORKFLOW, newest first. The same branch failing the
   // same gate four times in a day is one fact, and repeating it four times in a
@@ -323,7 +355,7 @@ async function collectProduction() {
     `https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT}&teamId=${VERCEL_TEAM}` +
     '&target=production&limit=1'
   const res = await fetch(url, { headers: { Authorization: `Bearer ${resolved.token}` }, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) return { readyState: null, reason: `the Vercel deployment list answered ${res.status}` }
+  if (!res.ok) throw new Error(`the Vercel deployment list answered ${res.status}`)
   const body = await res.json()
   const deployment = Array.isArray(body.deployments) ? body.deployments[0] : null
   if (!deployment) return { readyState: null, reason: 'the Vercel project has no production deployment' }
@@ -338,22 +370,30 @@ async function collectProduction() {
   }
 }
 
+/**
+ * The platform's own counts: events live, tickets sold, new organisers.
+ *
+ * IT THROWS RATHER THAN RETURNING ITS OWN ERROR SHAPE (13 September 2026). It
+ * used to hand back `{ error }`, which the renderer prints as "Not known", and
+ * that was the whole of it: the failure never reached the report's list of blind
+ * spots and never touched the headline, so a day when the platform could not be
+ * read still led with ALL GREEN. The caller now records it beside every other
+ * failed read and rebuilds the same `{ error }` shape for the renderer, so the
+ * message says it twice: once at the top where it cannot be missed, and once in
+ * its own section.
+ */
 async function collectBusiness(env = process.env) {
   const secret = env.CRON_SECRET
   const site = env.STATE_REPORT_SITE_URL?.trim() || DEFAULT_SITE
-  if (!secret) return { error: 'CRON_SECRET is not set on this runner, so the platform counts could not be read' }
-  try {
-    const res = await fetch(`${site}/api/ops/state`, {
-      headers: { Authorization: `Bearer ${secret}` },
-      signal: AbortSignal.timeout(30_000),
-    })
-    if (!res.ok) return { error: `${site}/api/ops/state answered ${res.status}` }
-    const body = await res.json()
-    if (!body?.ok) return { error: `${site}/api/ops/state reported ${body?.error ?? 'a fault it did not name'}` }
-    return body.counts
-  } catch (err) {
-    return { error: `${site}/api/ops/state could not be reached: ${err instanceof Error ? err.message : String(err)}` }
-  }
+  if (!secret) throw new Error('CRON_SECRET is not set on this runner, so the platform counts could not be read')
+  const res = await fetch(`${site}/api/ops/state`, {
+    headers: { Authorization: `Bearer ${secret}` },
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!res.ok) throw new Error(`${site}/api/ops/state answered ${res.status}`)
+  const body = await res.json()
+  if (!body?.ok) throw new Error(`${site}/api/ops/state reported ${body?.error ?? 'a fault it did not name'}`)
+  return body.counts
 }
 
 /**
@@ -371,33 +411,224 @@ function watchdogEvidence(fromWatchdog) {
   return { confirmed: false, evidence: 'this check ran on a schedule with no view of the build machine' }
 }
 
-async function collect({ nowIso, fromWatchdog, alertedBand, checkPeriodHours }) {
-  const repo = repoName()
-  const resolved = resolveGithubToken()
-  if (!resolved.token) {
-    console.error(`${TAG} FAIL: ${resolved.reason}. Nothing can be reported without it.`)
-    process.exitCode = 2
-    return null
+/**
+ * The readers, named and injectable.
+ *
+ * They are a parameter rather than a set of direct calls so that the thing this
+ * module must never do again - go silent when a read fails - can be PROVEN
+ * without a network: a caller hands in readers that fail and asserts a report
+ * still comes out. scripts/guards/the-daily-state-cannot-go-silent.mjs does
+ * exactly that, and so do the unit tests.
+ */
+/**
+ * @typedef {{ token: string|null, repo: string, since: string, nowIso: string }} ReaderContext
+ */
+
+/*
+ * THE CONTRACT IS DECLARED, NOT INFERRED, and that is deliberate.
+ *
+ * These readers exist so a caller can hand in ones that FAIL, which is the only
+ * way to see the behaviour this module was fixed for without waiting for GitHub
+ * to have a bad morning. If their type were inferred from the seven real
+ * collectors, every test and guard fixture would have to reproduce each
+ * collector's exact success shape field for field, and a fixture would be
+ * rejected for omitting a field the assertion does not care about. The report's
+ * renderer already tolerates a missing field - that is what "Not known" is for -
+ * so the contract here is "an async read that answers something", stated once.
+ */
+/**
+ * @type {Record<'main'|'landed'|'pullRequests'|'lastPush'|'failingBranches'|'production'|'business',
+ *   (ctx: ReaderContext) => Promise<any>>}
+ */
+/**
+ * THE PARITY RESULT, READ OFF DISK (close-out PARITY1 step 4).
+ *
+ * `scripts/ops/parity-check.mjs` runs fortnightly and writes `.parity/last-run.json`;
+ * this digest runs daily. The two cannot pass a value in memory, so the file is
+ * the handoff.
+ *
+ * IT NEVER INVENTS GOOD NEWS. A missing file means the check has never run, an
+ * unreadable one means it could not be read, and both say so. A result older
+ * than the fortnightly cadence is marked OVERDUE rather than quietly printed as
+ * though it were today's, because the whole point of this digest is that a thing
+ * which has stopped running must look different from a thing that is fine.
+ */
+export const PARITY_STALE_AFTER_HOURS = 15 * 24
+
+export function readParityState(file, nowIso) {
+  if (!existsSync(file)) return null
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    return { error: `the parity result could not be parsed: ${error.message}` }
   }
-  console.log(`${TAG} reading ${repo} with ${resolved.source}`)
+  if (!parsed?.at || !parsed?.headline) {
+    return { error: 'the parity result is missing its timestamp or its headline' }
+  }
+  const ageHours = hoursBetween(parsed.at, nowIso)
+  return {
+    headline: parsed.headline,
+    site: parsed.site ?? null,
+    ageHours,
+    stale: ageHours > PARITY_STALE_AFTER_HOURS,
+    // Every failing line, not only the worst. The close-out asks for the worst;
+    // a reader deciding what to do next needs the list, and it is never long.
+    failures: (parsed.results ?? [])
+      .filter((r) => r.state === 'fail')
+      .map((r) => ({ line: r.line, observation: r.observation, page: r.page ?? null })),
+  }
+}
+
+/**
+ * THE INDEXING RESULT, READ OFF DISK (close-out SEO2 step 3).
+ *
+ * `scripts/ops/indexing-check.mjs` runs weekly and writes `.indexing/last-run.json`;
+ * this digest runs daily. Same handoff as the parity result above, same rule
+ * about absence: a missing file means the check has not run on this machine, an
+ * unreadable one says so, and a result older than the weekly cadence is marked
+ * OVERDUE rather than printed as though it were today's. A check that has
+ * stopped running must look different from a check that found nothing.
+ */
+export function readIndexingState(file, nowIso) {
+  if (!existsSync(file)) return null
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    return { error: `the indexing result could not be parsed: ${error.message}` }
+  }
+  if (!parsed?.at || !parsed?.headline) {
+    return { error: 'the indexing result is missing its timestamp or its headline' }
+  }
+  const ageHours = hoursBetween(parsed.at, nowIso)
+  return {
+    headline: parsed.headline,
+    site: parsed.site ?? null,
+    ageHours,
+    stale: ageHours > INDEXING_STALE_AFTER_HOURS,
+    faults: parsed.faults ?? [],
+    searchConsole: parsed.searchConsole ?? null,
+  }
+}
+
+const DEFAULT_READERS = {
+  main: ({ token, repo }) => collectMain(token, repo),
+  landed: ({ token, repo, since }) => collectLanded(token, repo, since),
+  pullRequests: ({ token, repo, nowIso }) => collectPullRequests(token, repo, nowIso),
+  lastPush: ({ token, repo }) => collectLastPush(token, repo),
+  failingBranches: ({ token, repo, since }) => collectFailingBranches(token, repo, since),
+  production: () => collectProduction(),
+  business: () => collectBusiness(),
+}
+
+/**
+ * Everything the report is made of, and NEVER a null.
+ *
+ * THE DEFECT THIS SHAPE EXISTS TO CLOSE, 13 September 2026. This function used
+ * to give up in two ways, and both produced the one outcome UX4.1 forbids: no
+ * message at all. With no GitHub token it printed a line and returned null, and
+ * `main` returned without sending. With any collector throwing - a timeout, a
+ * 5xx, a parse - the top-level catch exited 2, again with nothing sent. So a
+ * reporter that was itself broken produced exactly the signal the owner has been
+ * told means the build machine is dead: silence.
+ *
+ * Now every read is wrapped. A failure becomes a NAMED BLIND SPOT on the report
+ * rather than the end of it, the report is always composed, and the caller
+ * always sends it. What could not be read leads the message and the headline can
+ * no longer say ALL GREEN about a day nobody could see.
+ */
+/**
+ * The injectable reads, declared rather than inferred.
+ *
+ * WHY IT IS WRITTEN DOWN. Without this, `readers`'s type was whatever
+ * TypeScript happened to infer from DEFAULT_READERS, which made the EXACT
+ * return shape of every real collector part of the contract a test stub had to
+ * satisfy. `tests/unit/ops/state-report-collect.test.ts` injects stubs that
+ * return the subset each assertion needs, which is the correct thing for a stub
+ * to do, and adding thirty unrelated lines to this file was enough to change
+ * the inference and turn all of them red.
+ *
+ * A stub's job is to answer the question under test. The shape it answers with
+ * belongs to the assertions, not to the parameter, so the parameter says so.
+ *
+ * @typedef {Record<string, (ctx?: any) => Promise<any>>} StateReaders
+ */
+
+/** @param {{ nowIso: string, fromWatchdog?: boolean, alertedBand?: number|null, checkPeriodHours?: number, readers?: StateReaders, env?: Record<string, string|undefined>, resolveToken?: Function }} options */
+async function collect({
+  nowIso,
+  fromWatchdog,
+  alertedBand,
+  checkPeriodHours,
+  readers = DEFAULT_READERS,
+  env = process.env,
+  // Injectable for the same reason the readers are: the no-token path is one
+  // of the two ways this function used to end the report, and proving it now
+  // produces a message must not depend on whether the machine running the
+  // proof happens to have a gh CLI login.
+  resolveToken = resolveGithubToken,
+}) {
+  const repo = repoName(env)
+  const resolved = resolveToken(env)
   const since = new Date(Date.parse(nowIso) - 24 * 3_600_000).toISOString()
+  const unreadable = []
+
+  /** Run one read. A failure is recorded and answered with a stated fallback. */
+  const safely = async (what, read, fallback) => {
+    if (!resolved.token && what !== 'production' && what !== 'the platform counts') {
+      unreadable.push({ what, why: resolved.reason })
+      return fallback(resolved.reason)
+    }
+    try {
+      return await read({ token: resolved.token, repo, since, nowIso })
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err)
+      unreadable.push({ what, why })
+      return fallback(why)
+    }
+  }
+
+  console.log(
+    resolved.token
+      ? `${TAG} reading ${repo} with ${resolved.source}`
+      : `${TAG} ${resolved.reason}: the GitHub half of this report cannot be read, and the report will say so`,
+  )
 
   const [main, landed, openPullRequests, lastPush, failingBranches, production, business] = await Promise.all([
-    collectMain(resolved.token, repo),
-    collectLanded(resolved.token, repo, since),
-    collectPullRequests(resolved.token, repo, nowIso),
-    collectLastPush(resolved.token, repo),
-    collectFailingBranches(resolved.token, repo, since),
-    collectProduction(),
-    collectBusiness(),
+    safely('main', readers.main, (why) => ({ conclusion: 'unknown', reason: why })),
+    safely('what landed in 24 hours', readers.landed, () => []),
+    safely('the open pull requests', readers.pullRequests, () => []),
+    safely('the last push', readers.lastPush, (why) => ({ when: null, unreadable: why, reason: why })),
+    safely('the branches that went red', readers.failingBranches, () => []),
+    safely('production', readers.production, (why) => ({ readyState: null, reason: why })),
+    safely('the platform counts', readers.business, (why) => ({ error: why })),
   ])
 
-  const stall = judgeStall({ lastPushIso: lastPush.when, nowIso, alreadyAlertedBand: alertedBand, checkPeriodHours })
+  const stall = judgeStall({
+    lastPushIso: lastPush?.when ?? null,
+    nowIso,
+    alreadyAlertedBand: alertedBand,
+    checkPeriodHours,
+    unreadable: lastPush?.unreadable ?? null,
+  })
+
+  /*
+   * The parity read is NOT in the `safely` group above: it touches no network
+   * and cannot hang, and `readParityState` already answers with a stated reason
+   * rather than throwing. Wrapping it would add a blind-spot line for a file
+   * read that has no way to be slow.
+   */
+  const parity = readParityState(PARITY_STATE_FILE, nowIso)
+  /* Same shape, same reasoning, same absence rule. See readIndexingState. */
+  const indexing = readIndexingState(INDEXING_STATE_FILE, nowIso)
 
   return {
     generatedAt: nowIso,
     repo,
     main,
+    parity,
+    indexing,
     production,
     landed,
     openPullRequests,
@@ -405,6 +636,7 @@ async function collect({ nowIso, fromWatchdog, alertedBand, checkPeriodHours }) 
     failingBranches,
     business,
     stall,
+    unreadable,
     watchdog: watchdogEvidence(fromWatchdog),
   }
 }
@@ -472,7 +704,6 @@ async function main() {
     alertedBand,
     checkPeriodHours: args.checkPeriodHours,
   })
-  if (!state) return
 
   const rendered = renderStateReport(state)
   if (args.json) writeFileSync(args.json, JSON.stringify(state, null, 2), 'utf8')
@@ -486,6 +717,12 @@ async function main() {
     // nothing has spoken for, so a stall that lasts a day produces four messages
     // rather than twenty four.
     console.log(`${TAG} stall: ${state.stall.reason}; ${state.stall.dedupe}`)
+    if (state.stall.blind) {
+      // UX4.2 again, from the other side. A stall produces silence, so a stall
+      // check that goes quiet when it cannot see is indistinguishable from one
+      // that looked and found everything healthy. It speaks.
+      console.log(`${TAG} the stall check is BLIND and will say so rather than say nothing`)
+    }
     if (!state.stall.shouldAlert) {
       console.log(`${TAG} no stall alert is due on this run.`)
       process.exitCode = 0
@@ -517,7 +754,21 @@ async function main() {
     exitOnZero: false,
   })
 
-  process.exitCode = dispatch({ cls: 'daily', subject: rendered.subject, body: rendered.text, dryRun: args.dryRun, drill: args.drill })
+  /*
+   * THE MESSAGE GOES FIRST, AND THE RUN GOES RED AFTERWARDS.
+   *
+   * A partial report is a real fault in the reporter and the run list should
+   * show it. What it must never do is replace the message: silence is the one
+   * thing UX4.1 forbids, because the owner has been told that an absent daily
+   * state means the thing that sends it has stopped. So the email is dispatched,
+   * and only then does the exit code carry the fault.
+   */
+  const sent = dispatch({ cls: 'daily', subject: rendered.subject, body: rendered.text, dryRun: args.dryRun, drill: args.drill })
+  if (state.unreadable.length > 0) {
+    console.error(`${TAG} the report was sent, and ${state.unreadable.length} part(s) of it could not be read:`)
+    for (const u of state.unreadable) console.error(`${TAG}   ${u.what}: ${u.why}`)
+  }
+  process.exitCode = sent !== 0 ? sent : state.unreadable.length > 0 ? 3 : 0
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('state-report.mjs')) {
@@ -528,4 +779,4 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('state-repor
   })
 }
 
-export { collect, resolveGithubToken, repoName, parseArgs, STALL_THRESHOLD_HOURS }
+export { collect, resolveGithubToken, repoName, parseArgs, DEFAULT_READERS, STALL_THRESHOLD_HOURS }

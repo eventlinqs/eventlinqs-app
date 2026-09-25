@@ -240,21 +240,31 @@ export async function saveSeatMap(
      * filters, so the upsert below cannot address anything outside this venue
      * even if some later edit drops a guard.
      */
+    /*
+     * `.maybeSingle()` RATHER THAN AN ARRAY, and it is not cosmetic. `id` is
+     * the primary key, so this update matches at most one row, and saying so
+     * in the call is what lets a reader and a scanner both see that the
+     * returned representation has no row ceiling to hit. It also keeps the
+     * zero-row case explicit, which is the security property the paragraph
+     * above turns on: null means the chart is not this venue's and the write
+     * is refused.
+     */
     const { data: updated, error: updateError } = await admin
       .from('seat_maps')
       .update({ name, layout, total_seats: layout.totalSeats })
       .eq('id', mapId)
       .eq('venue_id', venueId)
       .select('id')
+      .maybeSingle()
     if (updateError) {
       console.error('[seat-maps] update failed:', updateError)
       return { success: false, error: 'Failed to save the seating chart.' }
     }
-    if (!updated || updated.length === 0) {
+    if (!updated) {
       // Not this venue's chart. Refused without saying whether it exists.
       return { success: false, error: 'Seating chart not found for this venue.' }
     }
-    mapId = updated[0]!.id
+    mapId = updated.id
   } else {
     const { data: created, error: insertError } = await admin
       .from('seat_maps')
@@ -361,6 +371,29 @@ export async function importSeatMapCsv(
     return { success: false, error: `Failed to create seat map sections: ${sectionsError.message}` }
   }
 
+  /*
+   * THE REPRESENTATION AN INSERT RETURNS IS CAPPED LIKE ANY OTHER RESPONSE.
+   *
+   * A successful insert of more rows than the project's row ceiling returns
+   * FEWER rows than it wrote, with no error, and the caller hands that short
+   * array to the builder as the chart's sections. The remedy for a write is
+   * not paging, because the rows are already in; it is noticing. A chart with
+   * that many sections is not a case anybody has built, which is precisely why
+   * an assertion is the right shape here: it costs nothing until the day it is
+   * wrong, and then it says so instead of drawing a legend with holes in it.
+   */
+  const returnedSections = insertedSections ?? []
+  if (returnedSections.length !== sectionInserts.length) {
+    console.error(
+      `[seat-maps] wrote ${sectionInserts.length} sections and got ${returnedSections.length} back`,
+    )
+    await admin.from('seat_maps').delete().eq('id', seatMap.id)
+    return {
+      success: false,
+      error: 'The seating chart has too many sections to save in one go. Split it and try again.',
+    }
+  }
+
   revalidatePath(`/dashboard/venues/${venueId}/seat-maps`)
   revalidatePath('/dashboard/venues')
 
@@ -368,7 +401,7 @@ export async function importSeatMapCsv(
     success: true,
     seat_map_id: seatMap.id,
     seat_count: parsedSeats.length,
-    sections: insertedSections ?? [],
+    sections: returnedSections,
     layout,
   }
 }

@@ -37,6 +37,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+import { retryTransport, couldNotLook } from './lib/db-read.mjs'
 
 const CURATION_FILE = 'src/lib/categories/homepage-curation.ts'
 const TABLE = 'event_categories'
@@ -119,11 +120,63 @@ if (!url || !key) {
 }
 
 const supabase = createClient(url, key)
-const { data, error } = await supabase.from(TABLE).select('slug, name')
+
+/*
+ * ONE DROPPED PACKET IS NOT A MISSING DATABASE.
+ *
+ * The stance above is right and is kept: with a real project URL, a database
+ * this guard cannot read is "could not look", and "could not look" is not a
+ * pass. But that stance was implemented as a SINGLE fetch, and a single fetch
+ * cannot tell a down database from a momentary blip.
+ *
+ * On 13 September 2026 it blocked the push gate with
+ * `could not read event_categories: TypeError: fetch failed`, on a laptop
+ * shared by three build lanes. The same guard, run by hand thirty seconds
+ * later against the same TEST project, read all 22 rows and passed. Nothing
+ * about the taxonomy had changed; a socket had.
+ *
+ * That failure mode is worse than it looks. A gate that goes red at random
+ * teaches the person in front of it to re-run until green, and the day it is
+ * RIGHT they will re-run then too.
+ *
+ * So the read is attempted three times across a few seconds before the guard
+ * concludes anything, and the refusal says how many attempts it made over how
+ * long, so a real outage still reads as a real outage. A transport failure and
+ * a database that answers with an error are reported separately, because they
+ * are different facts.
+ */
+const probe = await retryTransport(
+  async () => {
+    const res = await supabase
+      .from(TABLE)
+      .select('slug, name')
+      .then((r) => r, (thrown) => ({ data: null, error: thrown }))
+    if (!res.error) return { ok: true, value: res.data }
+    /*
+     * supabase-js reports a transport failure as a thrown TypeError with no
+     * status, and a refusal as an error object carrying one. Anything with a
+     * status is an ANSWER and is not retried.
+     */
+    const answered = res.error && (res.error.status || res.error.code)
+    return { ok: false, kind: answered ? 'answered' : 'transport', detail: res.error.message ?? String(res.error) }
+  },
+  { onRetry: (n, detail) => console.log(`  attempt ${n} could not read ${TABLE}: ${detail}. Retrying.`) },
+)
+
+const data = probe.ok ? probe.value : null
+const error = probe.ok ? null : probe
 
 if (error) {
   console.error('')
-  console.error(`FAIL: could not read ${TABLE}: ${error.message}`)
+  console.error(
+    error.kind === 'transport'
+      ? `FAIL: ${couldNotLook(TABLE, error)}`
+      : `FAIL: ${TABLE} answered, and the answer was not usable: ${error.detail}`,
+  )
+  console.error('')
+  console.error('It still FAILS, because a build that cannot see the taxonomy cannot know')
+  console.error('whether the homepage is about to drop a tile, and "could not look"')
+  console.error('reported as a pass is the shape this repository has spent a week removing.')
   process.exit(1)
 }
 

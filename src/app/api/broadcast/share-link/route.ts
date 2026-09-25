@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import {
   SHARE_CHANNELS,
   buildShortUrl,
@@ -58,11 +59,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select('id, status, slug')
-    .eq('slug', parsed.data.slug)
-    .maybeSingle()
+  const event = await readOrThrow('the share-link event', () =>
+    admin.from('events').select('id, status, slug').eq('slug', parsed.data.slug).maybeSingle(),
+  )
   if (!event) {
     return NextResponse.json({ ok: false, error: 'event_not_found' }, { status: 404 })
   }

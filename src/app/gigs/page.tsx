@@ -1,3 +1,4 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -41,11 +42,10 @@ export default async function GigBoardPage({ searchParams }: { searchParams: Sea
   }
 
   const admin = createAdminClient()
-  const [gigs, citiesResult] = await Promise.all([
+  const [gigs, cities] = await Promise.all([
     fetchOpenGigs(admin, filters),
-    admin.from('cities').select('slug, name').order('tier').order('name'),
+    fetchPickerCities(admin),
   ])
-  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]
   const cityName = (slug: string) => cities.find((c) => c.slug === slug)?.name ?? slug
 
   return (

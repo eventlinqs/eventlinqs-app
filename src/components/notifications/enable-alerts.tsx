@@ -28,8 +28,8 @@ export function EnableAlerts() {
     <div className="rounded-xl border border-ink-200 bg-white p-5">
       <p className="font-display text-lg font-semibold text-ink-900">Event alerts</p>
       <p className="mt-1 text-sm text-ink-600">
-        Get a push the moment an organiser you follow announces a new event, when tickets go on sale,
-        and when an event is going fast. Push is instant; email is the backbone.
+        Get a push the moment an organiser you follow announces a new event. Push is instant;
+        email is the backbone.
       </p>
 
       {note && (

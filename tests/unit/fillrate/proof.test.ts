@@ -60,6 +60,21 @@ function fakeDb(answers: Record<string, { data?: unknown[]; count?: number }>) {
         gte: () => chain,
         order: () => chain,
         maybeSingle: () => chain,
+        /*
+         * AND IT SLICES, because two of these reads are now PAGED.
+         *
+         * `recovery_sends` and `recovery_holds` go through `readEveryRow`,
+         * which asks for one window at a time and stops on an empty page. A
+         * `range()` that ignored its arguments and returned the whole set every
+         * time would never produce that empty page, and the pager would loop
+         * for ever rather than fail. The fake has to model the server it stands
+         * in for: a window, and nothing past the end.
+         */
+        range(from: number, to: number) {
+          const answer = answers[key] ?? {}
+          const all = (answer.data ?? []) as unknown[]
+          return Promise.resolve({ data: all.slice(from, to + 1), count: answer.count ?? null, error: null })
+        },
         then(resolve: (value: { data: unknown[]; count: number | null; error: null }) => unknown) {
           const answer = answers[key] ?? {}
           return Promise.resolve(

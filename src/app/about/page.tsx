@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
@@ -98,10 +99,15 @@ export default function AboutPage() {
           alt={ABOUT_PHOTOS.hero.alt}
           objectPosition={ABOUT_PHOTOS.hero.objectPosition}
         />
-        <div className="hero-scrim" aria-hidden />
+        {/* The top-anchored header wash stays: it answers a different question
+            (the transparent header is pinned to the top of the band, which is
+            the one thing a percentage CAN locate). The bottom-up `.hero-scrim`
+            that used to sit here was a percentage of the band, and the text is
+            not: measured 20 September 2026 this eyebrow read 1.01:1 at 390 with
+            97 per cent of its pixels below WCAG 2.2 SC 1.4.3's 4.5:1. */}
         <div className="hero-scrim-top" aria-hidden />
         <div className="relative mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-          <div className="hero-enter max-w-2xl">
+          <HeroCaption className="max-w-2xl" contentClassName="hero-enter">
             <p className="type-eyebrow font-display text-[var(--brand-accent)]">About</p>
             <h1 id="about-hero-heading" className="mt-3 font-headline text-3xl font-extrabold tracking-[-0.015em] text-white sm:text-4xl lg:text-5xl">
               Built for every community
@@ -110,7 +116,7 @@ export default function AboutPage() {
               The place events get made, for every community. Find your suppliers,
               sell your tickets, run your door and get paid.
             </p>
-          </div>
+          </HeroCaption>
         </div>
       </section>
 
@@ -167,14 +173,28 @@ export default function AboutPage() {
         <MarketingMedia
           src={ABOUT_PHOTOS.storyBand.src}
           alt={ABOUT_PHOTOS.storyBand.alt}
-          variant="band"
+          variant="band-full-bleed"
           objectPosition={ABOUT_PHOTOS.storyBand.objectPosition}
         />
-        <div className="hero-scrim" aria-hidden />
+        {/*
+         * THE SECOND CLASS OF TEXT-ON-PHOTOGRAPH SURFACE, 20 September 2026.
+         * This band carried `.hero-scrim`, the bottom-up percentage wash, and
+         * a gold eyebrow on top of it. Every contrast check on the platform
+         * found its subjects by the locked hero scale token, and a story band
+         * is deliberately not a hero and carries none, so nothing had ever
+         * measured this. Driven at three widths it read 3.80:1 at 1440, with
+         * 35.8 per cent of its 316 core pixels below WCAG 2.2 SC 1.4.3's 4.5:1
+         * (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+         * and 3.96:1 at 768. Same defect as the five heroes, same fix: the
+         * wash is anchored to the text rather than to the band, so the eyebrow
+         * is guaranteed and the picture ABOVE it is clearer than it was.
+         */}
         <div className="relative mx-auto flex h-full max-w-7xl items-end px-4 pb-8 sm:px-6 lg:px-8">
-          <p className="type-eyebrow font-display text-[var(--brand-accent)]">
-            Every community. Every event. One platform.
-          </p>
+          <HeroCaption>
+            <p className="type-eyebrow font-display text-[var(--brand-accent)]">
+              Every community. Every event. One platform.
+            </p>
+          </HeroCaption>
         </div>
       </section>
 

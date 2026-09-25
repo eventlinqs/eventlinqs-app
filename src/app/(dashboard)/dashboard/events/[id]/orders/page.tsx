@@ -3,9 +3,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { byOrderReadingOrder } from '@/lib/reporting/ordering'
 import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
-import { aggregateGmv } from '@/lib/admin/analytics'
+import { PAID_ORDER_STATUSES, summariseEventRevenue } from '@/lib/organisers/event-revenue'
 import type { Order } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
 
@@ -88,11 +92,29 @@ export default async function EventOrdersPage({ params }: Props) {
   //
   // user_id IS still needed: the buyer name/email join below resolves it against
   // profiles. It is used and then dropped, never rendered.
-  const { data: orders } = await adminClient
-    .from('orders')
-    .select(ORDER_SUMMARY_SELECT)
-    .eq('event_id', eventId)
-    .order('created_at', { ascending: false })
+  //
+  // PAGED, AND THE CEILING REACHED THE REVENUE CARD. This read was unbounded
+  // and newest-first, so Supabase kept the newest thousand orders and dropped
+  // the oldest in silence (HTTP 200, `error` null, a full-looking array:
+  // https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19).
+  // Every figure on this screen is summed from what arrived, so past a thousand
+  // orders gross revenue, platform fees and tickets sold were all short, and
+  // `remaining = totalCapacity - ticketsSold` was correspondingly too HIGH: the
+  // screen told an organiser they had inventory left that they had already sold.
+  //
+  // Ranged paging needs a UNIQUE order or a row can land in two windows and be
+  // counted twice, so it pages on the primary key and is put back into
+  // newest-first below. `error` is no longer discarded: readEveryRow throws, so
+  // a database outage fails this page rather than rendering an event that has
+  // sold nothing.
+  const orders = (await readEveryRow<OrderSummaryRow>('the event orders', (from, to) =>
+    adminClient
+      .from('orders')
+      .select(ORDER_SUMMARY_SELECT)
+      .eq('event_id', eventId)
+      .order('id', { ascending: true })
+      .range(from, to) as unknown as PromiseLike<{ data: OrderSummaryRow[] | null; error: { message: string } | null }>,
+  )).sort(byOrderReadingOrder)
 
   /*
    * TYPED TO WHAT WAS SELECTED, NOT TO THE WHOLE ROW.
@@ -109,19 +131,31 @@ export default async function EventOrdersPage({ params }: Props) {
    * consuming a field this query does not fetch is now a COMPILE ERROR rather than
    * a number that silently becomes NaN three components later.
    */
-  const ordersData = (orders ?? []) as unknown as OrderSummaryRow[]
+  const ordersData = orders
 
   // Build display orders (join buyer name/email from profile or guest fields)
   const userIds = ordersData.filter(o => o.user_id).map(o => o.user_id!)
   const profileMap = new Map<string, { full_name: string | null; email: string }>()
 
-  if (userIds.length > 0) {
-    // Admin client needed - organiser reading other users' profiles
-    const { data: profiles } = await adminClient
-      .from('profiles')
-      .select('id, full_name, email')
-      .in('id', userIds)
-    for (const p of profiles ?? []) {
+  // Admin client needed - organiser reading other users' profiles.
+  //
+  // CHUNKED AND PAGED. An `in` list is bounded by BYTES, not by how many things
+  // are in it, and a single `.in()` of more than a thousand ids was also capped
+  // by the row ceiling, so every buyer past it resolved to no profile and their
+  // name and email fell through to the guest columns, which are null for a
+  // signed-in buyer. Real named buyers rendered as blank rows.
+  for (const chunk of chunkInFilterValues(userIds)) {
+    const profiles = await readEveryRow<{ id: string; full_name: string | null; email: string }>(
+      'the orders screen buyer profiles',
+      (from, to) =>
+        adminClient
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    for (const p of profiles) {
       profileMap.set(p.id, { full_name: p.full_name, email: p.email })
     }
   }
@@ -158,10 +192,12 @@ export default async function EventOrdersPage({ params }: Props) {
     }
   })
 
-  // Stats. Paid orders are the ones where a sale occurred (confirmed,
-  // partially_refunded, refunded); pending/cancelled/expired never count.
+  // Stats. Paid orders are the ones where a sale occurred; pending, cancelled
+  // and expired never count. The set is NAMED rather than written out again:
+  // the edit screen wrote its own version of this list and got it wrong, which
+  // is the whole reason the constant exists.
   const confirmedOrders = ordersData.filter(o =>
-    ['confirmed', 'partially_refunded', 'refunded'].includes(o.status)
+    (PAID_ORDER_STATUSES as readonly string[]).includes(o.status)
   )
 
   // PAY-02: value revenue NET of completed refunds, via the same audited
@@ -170,27 +206,43 @@ export default async function EventOrdersPage({ params }: Props) {
   // refunds so a full refund nets to zero and a partial nets to the retained
   // amount.
   const paidOrderIds = confirmedOrders.map(o => o.id)
-  let eventRefunds: { amount_cents: number; status: string }[] = []
-  if (paidOrderIds.length > 0) {
-    const { data: refundRows } = await adminClient
-      .from('refunds')
-      .select('amount_cents, status')
-      .in('order_id', paidOrderIds)
-    eventRefunds = (refundRows ?? []) as { amount_cents: number; status: string }[]
+  //
+  // CHUNKED AND PAGED FOR THE SAME REASON, and this one moved the number the
+  // WRONG way. Refunds are SUBTRACTED from revenue, so a truncated refund list
+  // understated what had been given back and left net revenue too HIGH. The
+  // read is bounded here; nothing about refund logic or `aggregateGmv` changes.
+  const eventRefunds: { amount_cents: number; status: string }[] = []
+  for (const chunk of chunkInFilterValues(paidOrderIds)) {
+    const refundRows = await readEveryRow<{ amount_cents: number; status: string }>(
+      'the event refunds',
+      (from, to) =>
+        adminClient
+          .from('refunds')
+          .select('amount_cents, status')
+          .in('order_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    eventRefunds.push(...refundRows)
   }
-  const gmv = aggregateGmv(
-    confirmedOrders.map(o => ({
-      total_cents: o.total_cents,
-      platform_fee_cents: o.platform_fee_cents,
-      status: o.status,
-    })),
-    eventRefunds,
-  )
-  const grossRevenue = gmv.grossGmvCents
-  const refundedRevenue = gmv.refundedCents
-  const totalRevenue = gmv.netGmvCents // net of refunds - shown on the Revenue card
-  const totalPlatformFees = confirmedOrders.reduce((s, o) => s + o.platform_fee_cents, 0)
-  const totalProcessingFees = confirmedOrders.reduce((s, o) => s + o.processing_fee_cents, 0)
+  /*
+   * SUMMARISED BY THE FUNCTION THE EDIT SCREEN ALSO CALLS.
+   *
+   * This screen and /dashboard/events/[id]/edit render the same
+   * `RevenueSummary` for the same event, and the edit screen used to compute
+   * its numbers itself over a different status set with no refunds netted, so
+   * the two disagreed. The arithmetic now has ONE home
+   * (src/lib/organisers/event-revenue.ts) and both screens pass it their own
+   * rows, which is what makes agreement structural rather than a coincidence
+   * somebody has to keep re-checking. `aggregateGmv` is still what does the
+   * counting; it is simply reached through the shared summariser.
+   */
+  const revenue = summariseEventRevenue(confirmedOrders, eventRefunds, ordersData[0]?.currency ?? 'AUD')
+  const grossRevenue = revenue.grossCents
+  const refundedRevenue = revenue.refundedCents
+  const totalRevenue = revenue.netCents // net of refunds - shown on the Revenue card
+  const totalPlatformFees = revenue.platformFeeCents
+  const totalProcessingFees = revenue.processingFeeCents
   const ticketsSold = confirmedOrders.reduce((s, o) => {
     return s + o.order_items.filter(i => i.item_type === 'ticket').reduce((ss, i) => ss + i.quantity, 0)
   }, 0)
@@ -206,12 +258,18 @@ export default async function EventOrdersPage({ params }: Props) {
     const tiers = (event.ticket_tiers ?? []) as { id: string; name: string; total_capacity: number; sold_count: number }[]
     const waitlistCounts = await Promise.all(
       tiers.map(async (t) => {
-        const { count } = await adminClient
-          .from('waitlist')
-          .select('id', { count: 'exact', head: true })
-          .eq('ticket_tier_id', t.id)
-          .eq('status', 'waiting')
-        return { tier_id: t.id, tier_name: t.name, waiting: count ?? 0 }
+        // countOrRaise, not `count ?? 0`. A failed count rendered as "nobody is
+        // waiting" on a tier that has a queue, which is the answer that stops an
+        // organiser releasing more tickets.
+        const waiting = countOrRaise(
+          `the waiting list for ${t.name}`,
+          await adminClient
+            .from('waitlist')
+            .select('id', { count: 'exact', head: true })
+            .eq('ticket_tier_id', t.id)
+            .eq('status', 'waiting'),
+        )
+        return { tier_id: t.id, tier_name: t.name, waiting }
       })
     )
     waitlistCountByTier = waitlistCounts.filter(w => w.waiting > 0)
@@ -220,12 +278,19 @@ export default async function EventOrdersPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link href={`/dashboard/events/${eventId}/edit`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Back to Event
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Orders</h1>
-        <span className="text-ink-400 text-sm">·</span>
+        {/*
+          HIDDEN UNTIL THE TITLE FITS BESIDE IT. This row is `flex-wrap`, so at
+          390 the event title wraps to a second line and the separator stayed
+          behind on the first, leaving a heading that ends in a floating middot
+          with nothing after it. A separator only separates while both things
+          are on one line.
+        */}
+        <span className="hidden text-ink-400 text-sm sm:inline">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
@@ -254,9 +319,9 @@ export default async function EventOrdersPage({ params }: Props) {
 
       {/* Stat cards */}
       <div className={`grid grid-cols-2 gap-4 mb-6 ${event.waitlist_enabled ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="total-orders" data-stat-value={confirmedOrders.length}>
           <p className="text-xs text-ink-400 uppercase tracking-wider">Total Orders</p>
-          <p className="text-2xl font-bold text-ink-900 mt-1">{confirmedOrders.length}</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{confirmedOrders.length.toLocaleString('en-AU')}</p>
         </div>
         <div className="rounded-xl border border-ink-200 bg-white p-5">
           <p className="text-xs text-ink-400 uppercase tracking-wider">Revenue</p>
@@ -268,18 +333,18 @@ export default async function EventOrdersPage({ params }: Props) {
             }).format(totalRevenue / 100)}
           </p>
         </div>
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="tickets-sold" data-stat-value={ticketsSold}>
           <p className="text-xs text-ink-400 uppercase tracking-wider">Tickets Sold</p>
-          <p className="text-2xl font-bold text-ink-900 mt-1">{ticketsSold}</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{ticketsSold.toLocaleString('en-AU')}</p>
         </div>
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-5" data-stat="remaining" data-stat-value={remaining}>
           <p className="text-xs text-ink-400 uppercase tracking-wider">Remaining</p>
-          <p className="text-2xl font-bold text-ink-900 mt-1">{remaining}</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{remaining.toLocaleString('en-AU')}</p>
         </div>
         {event.waitlist_enabled && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
             <p className="text-xs text-amber-700 uppercase tracking-wider">Waitlist</p>
-            <p className="text-2xl font-bold text-amber-900 mt-1">{totalWaiting}</p>
+            <p className="text-2xl font-bold text-amber-900 mt-1">{totalWaiting.toLocaleString('en-AU')}</p>
             {waitlistCountByTier.length > 0 && (
               <div className="mt-1 space-y-0.5">
                 {waitlistCountByTier.map(w => (

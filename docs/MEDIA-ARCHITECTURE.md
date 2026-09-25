@@ -37,10 +37,10 @@ Located at `src/components/media/`. Each enforces a slice of this standard.
 | Component | Use when | Auto-applied defaults |
 |---|---|---|
 | `<HeroMedia>` | Above-fold full-bleed hero on any route (`/`, `/events/[slug]`, future landing pages) | `priority`, `fetchPriority="high"`, raster only, no opacity transition on first paint, video overlay deferred to `requestIdleCallback` |
-| `<EventCardMedia>` | Card / tile / bento / rail / list-row event imagery | lazy, sized via prop variant (`bento-hero`, `bento-supporting`, `card`, `rail`, `marquee`, `list-row`), AVIF, blur placeholder |
-| `<CityTileImage>` | City rail tiles, city landing page heroes, region selectors | dual-mode (local SVG → raw `<img unoptimized>`; remote raster → `<Image>` with rail sizes) |
+| `<EventCardMedia>` | Card / tile / bento / rail / list-row event imagery | lazy, sized via a prop variant that names ONE cell or ONE column ladder (`rail-event-card`, `grid-one-two-three`, `list-thumb`, ...), AVIF, blur placeholder |
+| `<CityTileImage>` | City rail tiles, city landing page heroes, region selectors | dual-mode (local SVG → raw `<img unoptimized>`; remote raster → `<Image>`), with the `sizes` hint chosen by the caller's required `layout` prop |
 | `<OrganiserAvatar>` | Every avatar - topbar, organiser cards, ticket holder badges, list rows | rounded-full, sized via `size` prop (`xs`, `sm`, `md`, `topbar`, `lg`), initials fallback, lazy unless `priority` |
-| `<CategoryTileImage>` | Category landing tiles, category pickers, category browse cards | lazy, sized for category card layout, AVIF, alt text required |
+| `<CategoryTileImage>` | Category landing tiles, category pickers, category browse cards | lazy, AVIF, alt text required, `sizes` chosen by the caller's required `layout` prop |
 
 These are the **only** surfaces feature code is allowed to use for media. ESLint enforces.
 
@@ -89,25 +89,68 @@ Components import these constants. **Never** hardcode a `quality={N}` literal in
 
 ### 4.3 Sizes hints
 
-Centralised in `src/components/media/sizes.ts`:
+**The table lives in `src/components/media/sizes.ts` and is NOT copied here.**
 
-```ts
-export const MEDIA_SIZES = {
-  fullBleed: '(max-width: 768px) 100vw, 1920px',
-  bentoHero: '(max-width: 1024px) 100vw, 720px',
-  bentoSupporting: '(max-width: 1024px) 50vw, 360px',
-  card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-  rail: '(min-width: 1024px) 280px, 220px',
-  marquee: '280px',
-  category: '(max-width: 768px) 50vw, 320px',
-  avatarTopbar: '32px',
-  avatarSm: '32px',
-  avatarMd: '48px',
-  avatarLg: '96px',
-} as const
-```
+It used to be copied here, and the copy went stale without anybody noticing:
+this section still showed `fullBleed: '(max-width: 768px) 100vw, 1920px'` and
+`rail: '(min-width: 1024px) 280px, 220px'` long after the code had moved to
+75vw and to a 640px breakpoint. A second copy of a value is a second thing that
+can be wrong, and prose cannot be run. Read the file.
 
-Variants on each component pull their hint from this map. **Never** inline a `sizes` string in feature code.
+**The rule the file holds, and the two gates that hold it.**
+
+A `sizes` hint is a promise about layout that the markup makes to the browser
+before any layout exists, and the browser believes it absolutely: it picks a
+srcset candidate from the hint alone, at parse time. So a hint is written from
+the LAYOUT, never from taste and never from a measurement taken at one viewport.
+
+- A **rail cell** is a fixed pixel width that steps once at Tailwind's `sm`
+  (640px). Its two numbers live in `src/lib/ui/rhythm.ts` beside the Tailwind
+  class string that renders them, and its hint is derived from that pair.
+- A **grid** is viewport-relative UNTIL the container stops growing. Every
+  content column is capped at `max-w-7xl`, which is 1400px INCLUDING its 32px of
+  large-screen padding, so 1336px of content. Above that a `vw` term keeps
+  growing while the column does not, so every grid hint ends in a fixed pixel
+  term. Grid hints are named for their COLUMN LADDER
+  (`gridOneTwoThree`, `gridTwoThreeSix`), not for the page that first needed one,
+  so the next page with that ladder reuses it.
+- **A hint may be larger than its slot and never smaller.** Over-fetching costs
+  bytes and is measured. Under-fetching costs sharpness, which the premium bar
+  forbids, and it is invisible to every static check because the markup is
+  perfectly well formed. The one deliberate exception is `fullBleed` on mobile,
+  documented in the file and exempted BY NAME in the drive.
+
+**The hint decides which candidate is CHOSEN. The width ladder decides how many
+are OFFERED, and that is a document cost rather than an image one.**
+
+`images.deviceSizes` and `images.imageSizes` in `next.config.ts` are emitted into
+the `srcset` of every fixed-width image, so the two lists are a CLAIM about the
+slots this platform renders and they are paid once per image, in the HTML. On the
+homepage that is 1,404 candidate URLs across 124 images, 30.5% of a 1,039,112
+byte document, and 83% of each URL is the percent-encoded storage src repeated
+identically twelve times.
+
+A hint expressed only in CSS pixels emits EVERY rung, because that is the branch
+`getWidths` takes when it finds no `vw` term; a hint carrying one can never emit
+a rung below `deviceSizes[0]` times the smallest ratio. Both facts come from
+`node_modules/next/dist/shared/lib/get-img-props.js`, and together they make
+"can anything select this rung" decidable from source.
+
+The claim goes stale in silence, because the slots live in three other files. It
+already had: the comment above those two lists named "16, 32, 192, 256, 288, 320
+and 512" as the fixed sizes in use, and the `sizes` rework of 18 September 2026
+moved the smallest slot to 24 CSS pixels without touching it.
+
+| Gate | What it proves |
+|---|---|
+| `scripts/guards/image-hints-match-the-cell.mjs` (registered, blocking) | every rail cell says its two numbers twice and both agree; every rail hint is derived from a cell; no cell width or raw `sizes` string is written anywhere else; no hint is dead and every variant is mapped |
+| `scripts/guards/candidate-ladder-has-no-dead-rung.mjs` (registered, blocking) | every configured width is one some declared slot can select at 1x or 2x, or sits above the floor where a `vw` hint can still emit it; and no declared slot has outgrown the top of the ladder, which is an under-fetch no hint can fix |
+| `scripts/verify/image-hint-fidelity-drive.mjs` | no image is fetched smaller than its slot, in a real browser, at nine viewports on four routes; and nothing is OFFERED that the configured ladder no longer carries, read from the served DOM rather than from the config |
+| `scripts/perf/srcset-weight.mjs` | what the candidate lists cost in the document: bytes, candidates and share per route, with one candidate quoted verbatim and split into its parts |
+| `scripts/perf/image-hint-fidelity.mjs` | the measurement the two above were written from: chosen candidate against rendered slot, per hint, per viewport |
+
+Variants on each component pull their hint from the map. **Never** inline a
+`sizes` string in feature code; the guard fails the build on one.
 
 ---
 
@@ -192,6 +235,52 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 
 ---
 
+## 10b. Text on a photograph - the two captions
+
+Nothing in this document used to say how words are made readable on top of a
+picture, and the platform paid for that twice inside two days.
+
+**The rule.** Any text painted over a photograph sits inside one of exactly two
+components, and neither a page nor a card may write a wash of its own:
+
+| Component | Use when | What it guarantees |
+|---|---|---|
+| `<HeroCaption>` | Words over a FULL-BLEED photograph: every hero band, the auth brand panel, a marketing story band | The wash begins `HERO_CAPTION_FADE` above the caption's own top edge and runs to the foot of the band, in ABSOLUTE LENGTHS, so every pixel from the first line downward carries at least `HERO_CAPTION_MIN_ALPHA` whatever the headline's length or the viewport |
+| `<TileCaption>` | A label over a TILE photograph: city tiles, community tiles, event bentos | The same guarantee at tile scale, with its own `TILE_CAPTION_FADE`, and it owns its own bottom anchoring so a caller cannot move the label off the wash computed for it |
+
+Both read one floor, declared once in `src/components/media/hero-photo-scrim.ts`
+and imported by `tile-photo-scrim.ts`. It is arithmetic rather than taste: at
+that alpha, gold-400 and translucent white both clear WCAG 2.2 SC 1.4.3 over the
+worst photograph a surface can carry, which is a white one.
+
+**Why a percentage can never work, which is the part worth keeping.** Every wash
+these replaced declared its stops as a percentage of the BAND or of the TILE,
+while the text is bottom-anchored and hugs its own content. The height the text
+starts at therefore moves with the copy and the viewport, and a gradient that
+cannot locate the words cannot make a promise about them. On
+/categories/technology the gold eyebrow measured 1.38:1 at 390 and 10.67:1 at
+1440 on the same photograph; on /cities the city name measured 1.00:1 on a white
+sky at 390 and passed at 1440. Same markup, same picture, three widths.
+
+**And a caption must FIT its tile.** Anchoring alone fixes the contrast and
+introduces the opposite defect: on /cities at 390 the tile is 173x108 and its
+caption measured 112px, so the wash covered the whole picture.
+`TILE_CAPTION_MAX_SHARE` caps the darkened band and
+`scripts/verify/tile-caption-fit-drive.mjs` measures it at 390, 768 and 1440. A
+caption over the cap means its secondary lines belong below the image, which is
+what the design system asks for first ("Image alone, all details below the
+image ... the single allowed on-photo overlay is a place name on a
+darkened-gradient band on city/venue tiles, one line of identity only").
+
+**Enforced by** `scripts/guards/hero-text-over-a-photograph.mjs` and
+`scripts/guards/tile-label-over-a-photograph.mjs`, both registered and blocking,
+each deriving its own subject set from the tree. The ratio against real
+photographs is measured by
+`scripts/verify/hero-text-over-photograph-drive.mjs`, which is what found both
+defects: the guards are the ratchet, the drive is the detector.
+
+---
+
 ## 11. Forbidden patterns (mirror of MEDIA-INCONSISTENCIES.md §Forbidden)
 
 1. ❌ `background-image: url(...)` for content imagery
@@ -204,7 +293,8 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 8. ❌ Client-only `useEffect`-mounted `<Image>` for above-fold media
 9. ❌ `loading="lazy"` combined with `priority`
 10. ❌ Hardcoded `quality={N}` outside `MEDIA_QUALITY.*`
-11. ❌ Hardcoded `sizes="..."` outside `MEDIA_SIZES.*`
+11. ❌ Hardcoded `sizes="..."` outside `MEDIA_SIZES.*` (blocking guard: `image-hints-match-the-cell`)
+11b. ❌ A rail cell width (`w-[Npx] shrink-0 snap-start`) written anywhere but `src/lib/ui/rhythm.ts` (same guard)
 12. ❌ `unoptimized={true}` on remote raster images
 13. ❌ Constructing `<Image>` directly in feature code outside `src/components/media/`
 

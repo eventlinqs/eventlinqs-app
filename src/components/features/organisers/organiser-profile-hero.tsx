@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { CalendarDays, MapPin } from 'lucide-react'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
+import { FoundingOrganiserBadge } from './founding-organiser-badge'
 
 interface Props {
   /** Organiser display name. */
@@ -16,6 +17,12 @@ interface Props {
   stats: { label: string; value: string | number; icon?: 'cal' | 'pin' }[]
   /** Optional verified badge surface. */
   verified?: boolean
+  /**
+   * One of the first fifty organisers nationally (close-out FO1). Resolved on
+   * the server from organisations.is_founding and passed in as a boolean, so
+   * no column crosses into the client bundle.
+   */
+  founding?: boolean
   /**
    * Optional action slot rendered below the stats (e.g. the Follow button).
    * Kept as a slot so the hero stays a server component and the interactive
@@ -33,7 +40,7 @@ interface Props {
  * the content stack and slightly overlaps the banner so the page reads
  * as profile-first.
  */
-export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified, actionSlot }: Props) {
+export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified, founding, actionSlot }: Props) {
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
@@ -83,9 +90,11 @@ export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stat
             ) : null}
           </div>
 
+          {founding ? <FoundingOrganiserBadge className="mt-5" /> : null}
+
           <h1
             id="organiser-hero-heading"
-            className="mt-5 font-display text-3xl font-extrabold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl"
+            className={`${founding ? 'mt-3' : 'mt-5'} font-display text-3xl font-extrabold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl`}
           >
             {name}
           </h1>

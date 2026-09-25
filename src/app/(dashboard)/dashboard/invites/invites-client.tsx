@@ -13,6 +13,8 @@ export function InvitesClient({
   initialInvites,
   allowance,
   acceptedCount,
+  referralsConfirmed,
+  referralsPending,
   feeFreeUntil,
   waiverActive,
   cities,
@@ -20,6 +22,13 @@ export function InvitesClient({
   initialInvites: InviteRow[]
   allowance: number
   acceptedCount: number
+  /**
+   * Referrals that have EARNED months: organisers who joined through this
+   * organisation's link and whose first paid ticket has sold (close-out FO1).
+   */
+  referralsConfirmed: number
+  /** Joined through the link, no paid ticket sold yet, so nothing credited. */
+  referralsPending: number
   /**
    * Every Australian city, passed in rather than imported here. The picker
    * used to be two hardcoded <option> elements, Geelong and Melbourne, which
@@ -93,9 +102,31 @@ export function InvitesClient({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-3">
+      {/*
+        ONE COLUMN, THEN TWO, THEN THREE. It was `grid-cols-3` with no
+        breakpoint at all, and the driven captures showed why that is not a
+        judgement call: at 390 each track is about 110px, so "Not active" broke
+        across two lines in display type and the hint under Referrals counted
+        became a column one or two words wide.
+        THE BREAKPOINT IS lg RATHER THAN sm, and that is measured rather than
+        copied. This page sits inside the dashboard shell, so the width that
+        matters is the CONTENT width, not the viewport: at a 768 viewport the
+        sidebar takes about 240px and three tracks are still only about 150px
+        each, which squeezed exactly the same way. Two tracks at 768 are about
+        245px, which is what three tracks get at 1440 inside this page's
+        max-w-3xl, and that width renders every card on one line.
+      */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Stat label="Invites left" value={`${remaining} of ${allowance}`} />
-        <Stat label="Organisers joined" value={String(acceptedCount)} />
+        <Stat
+          label="Referrals counted"
+          value={String(referralsConfirmed)}
+          hint={
+            referralsPending > 0
+              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet, so they have not earned you months`
+              : `${acceptedCount} joined through your links. Each one earns you months when their first paid ticket sells`
+          }
+        />
         <Stat
           label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
           value={waiverLabel}

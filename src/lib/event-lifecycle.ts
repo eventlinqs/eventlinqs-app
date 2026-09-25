@@ -31,6 +31,68 @@ export const EVENT_STATUSES = Constants.public.Enums.event_status
 
 export const ARCHIVED_STATUS = 'archived' satisfies EventStatus
 
+/**
+ * THE STATUSES WHOSE PUBLIC URL IS A FULL PAGE WITH A BANNER, NOT A 404.
+ *
+ * `docs/EVENT-LIFECYCLE.md`, the state table, says this in five rows and is the
+ * AUTHORITY:
+ *
+ *   published  full page
+ *   paused     full page, ticketing suspended banner
+ *   postponed  full page, postponed banner
+ *   cancelled  full page, cancelled banner
+ *   completed  full page, past banner
+ *
+ * ============================================================================
+ * FOUR OF THOSE FIVE WERE ANSWERING 404, AND HAD BEEN ALL ALONG
+ * ============================================================================
+ *
+ * Found on 14 September 2026 while driving close-out SEO5 step 5, which asks
+ * for "a deliberate past event state on the event page, since neither has ever
+ * been observed". It had never been observed because it could not be: the
+ * row-level security policies on `public.events` admit
+ * `status = 'published'` and nothing else, so a `completed`, `cancelled`,
+ * `postponed` or `paused` event was invisible to the anonymous read the page
+ * makes and the route's existence guard answered a real 404.
+ *
+ * The page has carried the code for all four for months. `eventBannerState`
+ * resolves cancelled, postponed, past and archived, `EventStateBanner` renders
+ * each one, and close-out SEO1 v2 taught the structured data to emit
+ * `EventCancelled` for the cancelled case. None of it could run for a stranger.
+ *
+ * WHAT IT COST, stated plainly: a buyer who heard an event was cancelled and
+ * went to its page to find out about their money got "We can't find that page",
+ * and every one of those URLs, which people had shared, was a dead link.
+ *
+ * ============================================================================
+ * WHY THIS IS A CODE PATH AND NOT A WIDER RLS POLICY
+ * ============================================================================
+ *
+ * Widening the policy would have been one line, and it would have changed what
+ * a hundred other queries see. Twenty-two of them filter status explicitly
+ * through `PUBLIC_EVENT_MATCH`; the rest were written against a policy that
+ * only ever returned published rows, and a cancelled event appearing on the
+ * homepage because a policy got more generous is a far worse defect than the
+ * one being fixed. It would also have needed a migration, which is the
+ * founder's reserved step, so it could not have been proven here today.
+ *
+ * So the event page takes a SECOND, NARROW LOOK when the anonymous read finds
+ * nothing, in exactly the shape `src/lib/events/archived-view.ts` already uses
+ * for a ticket holder. Nothing else in the codebase changes, no list query can
+ * widen, and `src/lib/events/after-the-fact-view.ts` is the only door.
+ */
+export const PUBLIC_AFTER_THE_FACT_STATUSES = [
+  'paused',
+  'postponed',
+  'cancelled',
+  'completed',
+] as const satisfies readonly EventStatus[]
+
+/** Does this status answer a full public page with a banner rather than a 404? */
+export function rendersAfterTheFact(status: EventStatus): boolean {
+  return (PUBLIC_AFTER_THE_FACT_STATUSES as readonly EventStatus[]).includes(status)
+}
+
 const ALLOWED_TRANSITIONS: Record<EventStatus, readonly EventStatus[]> = {
   draft: ['scheduled', 'published', 'archived'],
   scheduled: ['published', 'draft', 'archived'],

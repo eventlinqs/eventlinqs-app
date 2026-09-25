@@ -189,6 +189,45 @@ require_(
   'no path turns a degraded machine into a pass',
   'the whole value of this diagnosis is that it costs nothing in strictness; the moment it buys a green push it is a bypass',
 )
+require_(
+  !/state === 'mixed'[\s\S]{0,200}?(return 0|exitCode = 0|asserted = 0)/.test(source.gate),
+  FILES.gate,
+  'no path turns a NOT UNIFORM collection into a pass',
+  'the middle state exists to stop a false claim about the product, never to excuse a floor',
+)
+
+/*
+ * 6. IT MUST JUDGE THE SPREAD, NOT ONLY THE MEDIAN (13 September 2026).
+ *
+ * On the day the build went to three lanes on one laptop, the median of 65
+ * readings cleared the floor at 2379 while the slowest run came in at 1071,
+ * below the 1113 that bottoms the refusing evening this guard's header cites.
+ * The step printed "This machine was fit to judge, so a failure above is a
+ * statement about the product" over three URLs, and not one product byte had
+ * changed from a tip whose own gate had passed the same step four hours earlier.
+ *
+ * A floor is asserted on the median of ONE URL's runs, so the machine reading
+ * that qualifies it has to be computed over those same runs. These three hold
+ * the capability that makes that possible and the call site that prints it.
+ */
+require_(
+  /belowFloor/.test(source.calibration) && /'mixed'/.test(source.calibration),
+  FILES.calibration,
+  'the calibration judges how many runs fell below the floor, not only the median',
+  'a median over every URL can clear the floor while one URL was measured entirely on the starved runs, and that is the collection that gets misreported as a regression',
+)
+require_(
+  /export function perUrlBands\s*\(/.test(source.calibration) && /export function perUrlLines\s*\(/.test(source.calibration),
+  FILES.calibration,
+  'the calibration can report the machine per URL, which is the unit a floor is asserted on',
+  'without it the only reading available is one number for thirteen URLs, which is the reading that was wrong',
+)
+require_(
+  /perUrlLines\s*\(/.test(source.calibration.replace(/export function perUrlLines\s*\(/, '')),
+  FILES.calibration,
+  'calibrationReport() actually includes the per-URL block',
+  'an exported function nobody calls prints nothing, exactly as with machineLine() above',
+)
 
 declareWork('gate-names-the-instrument', {
   did: { 'source file read': Object.keys(FILES).length, 'reporting property checked': checks.length },

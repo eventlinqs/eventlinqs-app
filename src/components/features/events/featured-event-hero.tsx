@@ -1,5 +1,6 @@
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
@@ -25,6 +26,11 @@ export interface FeaturedHeroEvent extends EventMediaInput {
   id: string
   slug: string
   start_date: string
+  /**
+   * The EVENT own IANA zone. Required, so the compiler names every caller:
+   * an optional field would have let a surface go on printing the UTC day.
+   */
+  timezone: string | null
   venue_name?: string | null
   venue_city?: string | null
   organisation?: { name?: string | null } | null
@@ -51,14 +57,7 @@ function heroEyebrow(event: FeaturedHeroEvent): string {
   return 'Made for every community'
 }
 
-function formatLongDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | null {
   if (!tiers || tiers.length === 0) return null
@@ -114,7 +113,7 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
         {event.title}
       </h2>
       <div className="mt-3 space-y-1 text-sm text-ink-700">
-        <p>{formatLongDate(event.start_date)}</p>
+        <p>{formatEventDateShort(event.start_date, event.timezone)}</p>
         {event.venue_name && (
           <p className="line-clamp-1">
             {event.venue_name}

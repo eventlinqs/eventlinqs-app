@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Reveal } from '@/components/ui/reveal'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 

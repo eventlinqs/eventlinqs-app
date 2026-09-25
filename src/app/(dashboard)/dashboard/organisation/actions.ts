@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
@@ -47,12 +48,17 @@ export async function createOrganisation(formData: FormData) {
 
   const { name, slug, description, website, email, phone } = parsed.data
 
-  // Check slug uniqueness
-  const { data: existing } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('slug', slug)
-    .single()
+  // Check slug uniqueness.
+  //
+  // A FAILED READ IS NOT A FREE SLUG. The error was discarded, so a blink left
+  // `existing` null, the check was skipped, and the insert below ran into the
+  // unique constraint instead. The organiser then gets the insert's generic
+  // refusal rather than the one sentence that tells them what to change.
+  // readOrThrow answers null only for PostgREST's PGRST116, which is the one
+  // error that genuinely means "no such row", and throws for the rest.
+  const existing = await readOrThrow('organisation-slug-uniqueness', () =>
+    supabase.from('organisations').select('id').eq('slug', slug).single(),
+  )
 
   if (existing) {
     return { error: 'This slug is already taken. Please choose another.' }
@@ -115,18 +121,37 @@ export async function createOrganisation(formData: FormData) {
     .eq('id', user.id)
 
   // Founding invite conversion: if this signup arrived via a founding invite,
-  // attribute it now. Best-effort - a founding-grant failure never blocks
-  // organisation creation. The cookie is dropped by the /join/[code] landing.
+  // attribute it now. A founding-grant failure never blocks organisation
+  // creation, which is right: the organiser asked for a business and has one.
+  //
+  // THE COOKIE IS ONLY DROPPED WHEN THE CODE WAS ACTUALLY SPENT, and it used to
+  // be dropped either way, on the line after a call whose result nobody read.
+  // Since migration 20260920000050 the conversion is one transaction, so a
+  // throw here means NOTHING was written and the invite is still pending;
+  // deleting the cookie on that path threw away the only copy of a code the
+  // organiser had been given, for a fault that lasted a second. Keeping it
+  // costs nothing (it is scoped to this browser and expires by itself) and the
+  // failure is on the audit log under founding.invite.conversion_failed, where
+  // the founder can see a founding spot that was invited and not given.
   try {
     const inviteCode = (await cookies()).get(FOUNDING_INVITE_COOKIE)?.value
     if (inviteCode) {
-      await acceptFoundingInvite({
+      const outcome = await acceptFoundingInvite({
         code: inviteCode,
         userId: user.id,
         orgId: org.id,
         cityFromOrg: null,
       })
-      ;(await cookies()).delete(FOUNDING_INVITE_COOKIE)
+      if (outcome.consumed) {
+        ;(await cookies()).delete(FOUNDING_INVITE_COOKIE)
+      }
+      console.info(
+        '[createOrganisation] founding invite %s: consumed=%s spot=%s referral=%s',
+        inviteCode,
+        outcome.consumed,
+        outcome.spotNumber,
+        outcome.referralRecorded,
+      )
     }
   } catch (err) {
     console.warn('[createOrganisation] founding invite attribution failed:', err)

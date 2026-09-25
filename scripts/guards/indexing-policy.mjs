@@ -30,14 +30,22 @@
  *      so: a 3xx has no document and therefore no head to put a tag in.
  *   3. INDEXABLE PAGES DECLARE THEIR OWN CANONICAL. Every ALWAYS and CONDITIONAL
  *      page declares `alternates` in its own file (directly, or through
- *      discoveryIndexing(), which carries one). This is the check that would
+ *      discoveryIndexingFor(), which carries one). This is the check that would
  *      have caught /help/[slug].
  *   4. THE ROOT LAYOUT DECLARES NO CANONICAL. The defect above, specifically.
  *   5. CONDITIONAL ROUTES APPLY THE THRESHOLD, and the sitemap applies it too:
- *      every conditional page calls discoveryIndexing(), and src/app/sitemap.ts
+ *      every conditional page calls discoveryIndexingFor(), and src/app/sitemap.ts
  *      gates with isDiscoveryIndexable() for each conditional family it
  *      publishes. A page that goes noindex while the sitemap still advertises it
  *      is the contradiction Search Console reports back.
+ *
+ *      SINCE close-out SEO3 (14 September 2026) the threshold is the OWNER'S,
+ *      read from public.seo_settings without a deploy, so clause 5 names the
+ *      RESOLVER rather than the pure function. A page calling the pure
+ *      discoveryIndexing() would have to pass a threshold from somewhere, and
+ *      the only somewhere in a page file is the compiled constant: it would then
+ *      judge itself against the build's number while the sitemap used the
+ *      owner's, which is the same contradiction reached by a new door.
  *   6. THE SITEMAP NEVER NAMES A NEVER ROUTE. Checked against the literal paths
  *      the sitemap source writes.
  *
@@ -142,7 +150,10 @@ function metadataChain(file) {
 }
 
 const NOINDEX = /index:\s*false|noIndexMetadata\s*\(/
-const CANONICAL = /alternates:\s*\{|discoveryIndexing\s*\(|aliasMetadata\s*\(/
+// `discoveryIndexingFor` carries the self-referencing canonical for every
+// conditional page, exactly as `discoveryIndexing` did before SEO3 split the
+// live-threshold resolution out of it.
+const CANONICAL = /alternates:\s*\{|discoveryIndexingFor\s*\(|organiserIndexingFor\s*\(|aliasMetadata\s*\(/
 /**
  * A page whose default export ONLY redirects. It never renders a document, so
  * there is no head to carry a robots tag or a canonical, and requiring one would
@@ -200,10 +211,33 @@ for (const [route, klass] of classified) {
     }
   }
 
-  if (klass === 'conditional' && !/discoveryIndexing\s*\(/.test(own)) {
+  /*
+   * THE LIVE RESOLVER, NOT THE PURE FUNCTION (close-out SEO3 step 2).
+   *
+   * `discoveryIndexing(count, path, threshold)` is pure and takes the threshold
+   * as an argument. `discoveryIndexingFor(count, path)` resolves the OWNER'S
+   * number first and then calls it. A page calling the pure one directly would
+   * have to supply a threshold from somewhere, and the only somewhere is the
+   * compiled constant, which is exactly the drift this guard exists to stop: the
+   * page would judge itself against the build's number while the sitemap judged
+   * it against the owner's, and the two would publish a contradiction. So a
+   * conditional family must name the RESOLVER.
+   */
+  /*
+   * TWO RESOLVERS, NOT ONE (close-out SEO3 step 7). `/organisers/[handle]`
+   * became conditional when the organiser profile started deciding its own
+   * robots directive, and its rule has a second limb the discovery pages do not
+   * have: a written biography makes a profile substantive with no events at all.
+   * That rule is `organiserIndexingFor`, which resolves the SAME live threshold
+   * through the same module, so the thing this clause is protecting, one number
+   * for the page and the sitemap, is unchanged.
+   */
+  if (klass === 'conditional' && !/(discoveryIndexingFor|organiserIndexingFor)\s*\(/.test(own)) {
     fail(
-      `${route} is a templated discovery page and does not call discoveryIndexing().\n` +
-        '        Without it the page stays indexable while empty, which is what Google collapsed.',
+      `${route} is a templated discovery page and does not call discoveryIndexingFor().\n` +
+        '        Without it the page stays indexable while empty, which is what Google collapsed,\n' +
+        '        or it judges itself against the compiled constant while the sitemap uses the\n' +
+        "        owner's live threshold, and the two disagree in public.",
     )
   }
 
@@ -248,6 +282,28 @@ const SITEMAP_PATH_OF = {
   '/categories/[slug]': '/categories/${category.slug}',
   '/events/browse/[city]': '/events/browse/${c.slug}',
   '/faith/[faith]': '/faith/${faith.slug}',
+  // Close-out SEO3 step 7. The organiser profile stopped being classified
+  // ALWAYS on 14 September 2026: it is indexable while it holds events at the
+  // owner's live threshold OR carries a biography, and the audit of
+  // 13 September named /organisers/oanh, which had neither and was published
+  // here anyway. Its gate is `isOrganiserProfileIndexable`, which the predicate
+  // below accepts alongside `isDiscoveryIndexable`.
+  '/organisers/[handle]': '/organisers/${o.slug}',
+  /*
+   * THE ONE CONDITIONAL FAMILY THAT IS A SINGLE URL, NOT A LOOP (close-out AQ3).
+   *
+   * `/this-weekend` is one page, so the sitemap writes it as one `if` rather
+   * than inside a `for`. The window arithmetic below runs from the previous
+   * `for (` to the next one, which on a single entry is a wide window and could
+   * in principle find a neighbouring family's gate. What makes that safe is not
+   * this guard: `scripts/guards/weekend-surface-one-decision.mjs` clause 3
+   * requires the `isDiscoveryIndexable(weekendSurface.total, threshold)` gate to
+   * sit immediately around this URL, within 400 characters, on the same count
+   * the page decides its own robots directive from. This entry is here so the
+   * family is not simply UNKNOWN to the policy guard, which is a worse state
+   * than a wide window.
+   */
+  '/this-weekend': '${WEEKEND_SURFACE_PATH}',
 }
 let gatedFamilies = 0
 for (const [route, klass] of classified) {
@@ -285,7 +341,10 @@ for (const [route, klass] of classified) {
   const start = sitemapSrc.lastIndexOf('for (', idx)
   const nextFor = sitemapSrc.indexOf('for (', idx)
   const window = sitemapSrc.slice(start === -1 ? 0 : start, nextFor === -1 ? sitemapSrc.length : nextFor)
-  if (!/isDiscoveryIndexable\s*\(/.test(window)) {
+  // `isOrganiserProfileIndexable` is the organiser profile's own predicate
+  // (close-out SEO3 step 7): the same live threshold, plus a second limb for a
+  // written biography. Same module, same number, different question.
+  if (!/(isDiscoveryIndexable|isOrganiserProfileIndexable)\s*\(/.test(window)) {
     fail(
       `src/app/sitemap.ts publishes ${route} without an isDiscoveryIndexable() gate above it.\n` +
         '        An empty templated page in the sitemap is the duplicate Google reported.',

@@ -4,6 +4,19 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { listOrdersForAdmin } from '@/lib/admin/orders'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -77,9 +90,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each order becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={ADMIN_TABLE_WRAP}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">Order</th>
               <th className="px-4 py-3 font-medium">Event</th>
@@ -88,25 +103,40 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-white/50">
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={5} className={ADMIN_EMPTY_CELL}>
                   No orders match this search.
                 </td>
               </tr>
             ) : (
               rows.map(o => (
-                <tr key={o.id} className="border-t border-white/[0.06] hover:bg-white/[0.03]">
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/orders/${o.id}`} className="text-[var(--brand-accent)] hover:underline">
+                <tr key={o.id} className={ADMIN_ROW}>
+                  <td className={ADMIN_CELL_NAME}>
+                    <Link
+                      href={`/admin/orders/${o.id}`}
+                      className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+                    >
                       {o.order_number}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{o.event_title ?? '-'}</td>
-                  <td className="px-4 py-3 text-white/70">{o.buyer_email ?? '-'}</td>
-                  <td className="px-4 py-3 text-white/70">{money(o.total_cents, o.currency)}</td>
-                  <td className="px-4 py-3 text-white/60">{o.status.replace(/_/g, ' ')}</td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Event</span>
+                    {o.event_title ?? '-'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Buyer</span>
+                    {o.buyer_email ?? '-'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Total</span>
+                    {money(o.total_cents, o.currency)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Status</span>
+                    {o.status.replace(/_/g, ' ')}
+                  </td>
                 </tr>
               ))
             )}

@@ -83,6 +83,8 @@ export async function sendCriticalAlert(toAlert: HealthResult[], recovered: stri
     await sendEmail({
       to: alertRecipient(),
       subject: `EventLinqs RECOVERED: ${recovered.join(', ')}`,
+      messageType: 'platform_health_alert',
+      recipientRole: 'platform_owner',
       text: `Good news. The following systems have recovered:\n\n${recovered.map(r => `- ${r}`).join('\n')}\n\nEnvironment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\nEventLinqs health sentinel`,
       html: `<p><strong>Good news - systems recovered.</strong></p><ul>${recovered.map(r => `<li>${r}</li>`).join('')}</ul><p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p><p>EventLinqs health sentinel</p>`,
     })
@@ -93,6 +95,8 @@ export async function sendCriticalAlert(toAlert: HealthResult[], recovered: stri
   await sendEmail({
     to: alertRecipient(),
     subject: `EventLinqs CRITICAL: ${headline}`,
+    messageType: 'platform_health_alert',
+    recipientRole: 'platform_owner',
     text:
       `A CRITICAL platform fault was detected. You are seeing this first.\n\n` +
       `Environment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\n` +
@@ -164,5 +168,10 @@ export function heartbeatEmail(
 export async function sendHeartbeat(results: HealthResult[]): Promise<void> {
   const { deployment, environment } = deployIdentity()
   const email = heartbeatEmail(results, { deployment, environment, when: new Date().toISOString() })
-  await sendEmail({ to: alertRecipient(), ...email })
+  await sendEmail({
+    to: alertRecipient(),
+    ...email,
+    messageType: 'platform_health_alert',
+    recipientRole: 'platform_owner',
+  })
 }

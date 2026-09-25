@@ -5,6 +5,12 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { DiscountCodesClient } from './discounts-client'
 import type { DiscountCode, TicketTier } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import {
+  discountFormCurrency,
+  readEventDiscountCodes,
+  readEventTicketTiers,
+  type DiscountTierRow,
+} from '@/lib/organisers/event-tier-config'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -47,35 +53,55 @@ export default async function DiscountsPage({ params }: Props) {
   const access = await resolveEventAccess(eventId)
   if (!access.allowed) notFound()
 
-  const { data: discountCodes } = await supabase
-    .from('discount_codes')
-    .select('*')
-    .eq('event_id', eventId)
-    .order('created_at', { ascending: false })
-
-  const { data: tiers } = await supabase
-    .from('ticket_tiers')
-    .select('id, name, currency')
-    .eq('event_id', eventId)
-    .eq('is_active', true)
+  /*
+   * BOTH READS FAIL LOUDLY, AND THE TIER READ IS ORDERED.
+   *
+   * Both used to be `const { data: x } = await ...`, so a refused read became
+   * an empty list two lines later. The consequences were different and both
+   * were bad: an empty CODE list tells an organiser their running promotion
+   * does not exist, and the obvious response is to create it again, which the
+   * unique constraint then refuses with a message about a code they cannot
+   * see. An empty TIER list draws a form whose "applies to" list is blank on a
+   * screen where that choice is the whole point.
+   *
+   * The tier read also carried no `.order()` at all, and `tiers[0].currency`
+   * labels every money field on the form, so which currency the organiser was
+   * typing into was decided by whichever row Postgres returned first and was
+   * free to change between two loads.
+   */
+  const discountCodes = await readEventDiscountCodes<DiscountCode>(supabase, eventId)
+  const tiers = await readEventTicketTiers<DiscountTierRow>(
+    supabase,
+    eventId,
+    'id, name, currency',
+    { activeOnly: true },
+  )
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link href={`/dashboard/events/${eventId}/orders`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Orders
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Discount Codes</h1>
-        <span className="text-ink-400 text-sm">·</span>
+        {/*
+          HIDDEN UNTIL THE TITLE FITS BESIDE IT, inherited verbatim from the
+          orders list header, which met this first: the row wraps, so at 390
+          the event title goes to a second line and a separator left behind on
+          the first is a heading that ends in a floating middot with nothing
+          after it. A separator only separates while both things are on one
+          line. This page had neither half of that fix.
+        */}
+        <span className="hidden text-ink-400 text-sm sm:inline">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
       <DiscountCodesClient
         eventId={eventId}
         eventTimezone={event.timezone ?? null}
-        currency={tiers?.[0]?.currency ?? 'AUD'}
-        initialCodes={(discountCodes ?? []) as DiscountCode[]}
-        tiers={(tiers ?? []) as Pick<TicketTier, 'id' | 'name'>[]}
+        currency={discountFormCurrency(tiers)}
+        initialCodes={discountCodes}
+        tiers={tiers as Pick<TicketTier, 'id' | 'name'>[]}
       />
     </div>
   )

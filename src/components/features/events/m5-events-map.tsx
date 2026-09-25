@@ -1,5 +1,6 @@
 'use client'
 
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapPinOff } from 'lucide-react'
 import { loadEventsInBbox } from '@/app/events/actions'
@@ -18,14 +19,7 @@ const REFETCH_DEBOUNCE_MS = 400
 // Literal hexes: JS map configs cannot read CSS vars.
 const BRAND_GOLD_TEXT = '#8B6A0E' // --color-gold-700 (gold text, AA on white)
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatPrice(p: MapEventPoint): string {
   if (p.is_free) return 'Free'
@@ -48,7 +42,7 @@ function buildInfoWindowHTML(p: MapEventPoint): string {
   const city = p.venue_city ? ` · ${escapeHtml(p.venue_city)}` : ''
   return `
     <div style="font-family: ui-sans-serif, system-ui, sans-serif; min-width: 200px; max-width: 240px;">
-      <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:${BRAND_GOLD_TEXT};">${escapeHtml(formatDate(p.start_date))}${city}</p>
+      <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:${BRAND_GOLD_TEXT};">${escapeHtml(formatEventDateShort(p.start_date, p.timezone))}${city}</p>
       <h3 style="margin:4px 0 0; font-size:14px; font-weight:700; line-height:1.3; color:#0F172A;">${escapeHtml(p.title)}</h3>
       <p style="margin:4px 0 0; font-size:12px; font-weight:600; color:#0F172A;">${escapeHtml(formatPrice(p))}</p>
       <a href="/events/${encodeURIComponent(p.slug)}" style="display:inline-block; margin-top:8px; font-size:12px; font-weight:600; color:${BRAND_GOLD_TEXT}; text-decoration:none;">View event →</a>

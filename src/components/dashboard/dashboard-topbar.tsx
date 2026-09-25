@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation'
 import { Bell, LogOut, Search, Settings, HelpCircle, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { OrganiserAvatar } from '@/components/media'
+// From the module, not the barrel: see the note in auth-shell.tsx. This one
+// line carried the media library into every organiser dashboard route.
+import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import type { User } from '@supabase/supabase-js'
 
 type Props = {

@@ -61,6 +61,34 @@ const TAG = '[ux6]'
 const BASE = (process.argv[2] || process.env.UX6_BASE || 'http://127.0.0.1:3311').replace(/\/$/, '')
 const OUT = process.env.UX6_OUT || join(process.cwd(), '.tmp', 'ux6')
 const WIDTHS = (process.env.UX6_WIDTHS || '390,768,1440').split(',').map((w) => Number(w.trim()))
+
+/**
+ * HOW MANY TICKETS ONE WALK TAKES, and the reason this is a constant rather
+ * than a literal in two places.
+ *
+ * 21 September 2026: this proof failed the push gate at 1440 with
+ *
+ *     FAIL: free @ 1440: no quantity control on the event page
+ *     FAIL: free @ 1440: ticket selection offers no way to continue to checkout
+ *
+ * and both were TRUE STATEMENTS ABOUT A CORRECT PRODUCT. The screenshot shows
+ * the free event reading "Sold Out", "100 people going", "This event is sold
+ * out" and offering "Join the waitlist", which is exactly what a sold-out event
+ * should do and exactly why there was no stepper to click.
+ *
+ * THE PROOF SOLD THE EVENT OUT ITSELF. The stepper loop below takes TWO tickets
+ * so the attendee block repeats, and the free walk COMPLETES the purchase, at
+ * every width. Three widths therefore consume six places. The pick required
+ * four. So the run could start legitimately, buy at 390 and at 768, and find
+ * nothing left at 1440, and the report would blame the product.
+ *
+ * Deriving the requirement from this constant means the pick can never again
+ * promise less room than the run consumes, whatever UX6_WIDTHS is set to.
+ */
+const TICKETS_PER_WALK = 2
+/** What one run of this proof consumes from ONE tier, across every width. */
+const PLACES_A_RUN_CONSUMES = WIDTHS.length * TICKETS_PER_WALK
+
 /*
  * The widths BETWEEN the three the law names, where the header defect of
  * 10 September 2026 lived unseen. 1024 and 1280 are the two Tailwind
@@ -215,20 +243,56 @@ async function pickEvent({ free }) {
     o.stripe_account_country.trim() !== ''
   const windowOpen = (t) =>
     !(t.sale_start && now < new Date(t.sale_start).getTime()) && !(t.sale_end && now > new Date(t.sale_end).getTime())
+  /*
+   * THE REFUSAL MUST NAME THE CLAUSE, NOT THE DATABASE.
+   *
+   * When this returned null the run said "no published, unseated, sellable
+   * PAID event with room for two on this database", which reads as a fact
+   * about TEST and is not one: TEST holds thousands of such rows. It is a
+   * verdict from a nine-clause filter, and every clause can empty the set on
+   * its own. On 13 September 2026 that sentence stopped a push and sent the
+   * next reader looking for missing seed data when the real answer was almost
+   * certainly inventory held by an interrupted earlier run.
+   *
+   * So each clause is counted. A refusal now prints the funnel and the last
+   * clause standing, which is the difference between "go and seed the
+   * database" and "go and release your own reservations".
+   */
+  const rejected = new Map()
+  const drop = (why) => {
+    rejected.set(why, (rejected.get(why) ?? 0) + 1)
+    return false
+  }
   const usable = (tiers ?? []).filter((t) => {
     const e = t.event
-    if (!e || e.status !== 'published') return false
-    if (e.seat_map_id) return false
-    if (typeof e.external_ticket_url === 'string' && e.external_ticket_url.trim() !== '') return false
-    if (new Date(e.start_date).getTime() <= now) return false
-    if (!t.name || t.name.trim() === '') return false
-    if (free ? t.price !== 0 : t.price <= 0) return false
-    if (!free && !organiserCanSell(e.organisation)) return false
-    if (!windowOpen(t)) return false
-    if ((t.max_per_order ?? 1) < 2) return false
+    if (!e || e.status !== 'published') return drop('the event is not published')
+    if (e.seat_map_id) return drop('the event is seated')
+    if (typeof e.external_ticket_url === 'string' && e.external_ticket_url.trim() !== '')
+      return drop('the event ticket sales are external')
+    if (new Date(e.start_date).getTime() <= now) return drop('the event has already started')
+    if (!t.name || t.name.trim() === '') return drop('the tier has no name')
+    if (free ? t.price !== 0 : t.price <= 0) return drop(free ? 'the tier is not free' : 'the tier is not priced')
+    if (!free && !organiserCanSell(e.organisation)) return drop('the organiser cannot take money yet')
+    if (!windowOpen(t)) return drop('the tier sale window is not open')
+    if ((t.max_per_order ?? 1) < 2) return drop('the tier allows fewer than two per order')
     const left = (t.total_capacity ?? 0) - (t.sold_count ?? 0) - (t.reserved_count ?? 0)
-    return (t.total_capacity ?? 0) > 0 && left >= 4
+    if ((t.total_capacity ?? 0) <= 0) return drop('the tier has no capacity')
+    // Room for the WHOLE run, not for one width. See TICKETS_PER_WALK above.
+    if (left < PLACES_A_RUN_CONSUMES)
+      return drop(
+        `the tier has fewer than ${PLACES_A_RUN_CONSUMES} places left (${WIDTHS.length} width(s) x ${TICKETS_PER_WALK} tickets), sold or held by a reservation`,
+      )
+    return true
   })
+  if (usable.length === 0) {
+    const funnel = [...rejected.entries()].sort((a, b) => a[1] - b[1])
+    console.log(`${TAG} the ${free ? 'FREE' : 'PAID'} pick matched nothing. ${tiers?.length ?? 0} active, visible tier(s) were read; why each was passed over:`)
+    for (const [why, n] of funnel) console.log(`${TAG}     ${String(n).padStart(5)}  ${why}`)
+    console.log(
+      `${TAG}   The clause that rejected the FEWEST rows is the one to look at first: ` +
+        `"${funnel[0]?.[0] ?? 'none'}". This is a verdict from a filter, never a statement that the database is empty.`,
+    )
+  }
   usable.sort((a, b) => new Date(a.event.start_date) - new Date(b.event.start_date))
   return usable[0] ?? null
 }
@@ -237,7 +301,71 @@ async function pickEvent({ free }) {
 
 function makePage(page, width, label) {
   return {
+    /*
+     * SETTLE BEFORE MEASURING, AND BEFORE TOUCHING ANYTHING.
+     *
+     * WHY THIS REPLACED A FIXED WAIT. On 13 September 2026 this step BLOCKED
+     * THE PUSH GATE with ten faults across three widths, and eight of them
+     * were this one race. The walk navigated to /checkout/, waited a flat four
+     * seconds and measured. On a laptop shared by three build lanes, four
+     * seconds is not always enough for the route segment to load, so the
+     * measurement was taken of `loading.tsx` - the SKELETON - and reported
+     * "no [data-order-total] on a surface that must show the buyer their
+     * total" about a surface that shows it perfectly well a second later.
+     *
+     * Worse than the false fault was what came next. The form fill runs
+     * straight after that measurement, and a skeleton has no inputs, so
+     * `fillByLabel` matched nothing and returned false into a `.catch(() => {})`.
+     * The walk then submitted an EMPTY form, got a validation refusal, and
+     * reported "after submitting, the buyer is on /checkout/... rather than a
+     * confirmation" - which reads exactly like a broken checkout and was not.
+     * One race produced a false failure, then a second false failure that
+     * blamed a different part of the product.
+     *
+     * A fixed timeout is a guess about someone else's machine. The settle
+     * condition is observable, so it is observed: every route skeleton in this
+     * platform declares itself with role="status" + aria-busy (which is now
+     * held by scripts/guards/busy-region-names-itself.mjs), so "the route has
+     * finished loading" is "nothing on the page is still busy".
+     *
+     * It still FAILS, loudly, if the page never settles: a checkout that is
+     * still a skeleton after 30 seconds is a real defect, and this is the only
+     * thing that would see it. The elapsed time is printed on every surface, so
+     * a slow settle is visible evidence rather than a silent pass.
+     */
+    async settle(surface, { totalRequired = false, timeout = 30_000 } = {}) {
+      const started = Date.now()
+      const busyGone = await page
+        .waitForFunction(
+          () => ![...document.querySelectorAll('[aria-busy="true"]')].some((el) => el.getBoundingClientRect().width > 0),
+          undefined,
+          { timeout },
+        )
+        .then(() => true)
+        .catch(() => false)
+      if (!busyGone) {
+        fail(
+          `${label}/${surface} @ ${width}: the page was still showing a loading skeleton ${timeout}ms after arriving. ` +
+            `A buyer would be looking at placeholder boxes.`,
+        )
+      }
+      /*
+       * The total is the one thing this proof exists to see, so where it is
+       * required it is WAITED for rather than sampled. If it never arrives the
+       * existing judgement below still reports it, with the same words, and
+       * this wait has cost the run a bounded thirty seconds rather than
+       * inventing a fault.
+       */
+      if (totalRequired) {
+        await page.waitForSelector('[data-order-total]', { timeout, state: 'attached' }).catch(() => {})
+      }
+      const took = Date.now() - started
+      if (took > 1500) note(`${label}/${surface} @ ${width}: settled ${took}ms after arriving`)
+      return took
+    },
+
     async measure(surface, { totalRequired = false } = {}) {
+      await this.settle(surface, { totalRequired })
       // The reversal condition UX6 names, answered the way it asks: webfonts that
       // land late move boxes, so the measurement WAITS for them rather than
       // carrying a tolerance. `.then(() => true)` because a FontFaceSet is not a
@@ -378,13 +506,41 @@ async function walk({ browser, width, slug, label, complete }) {
   const buyer = `ux6.${label}.${width}.${stamp}@example.com`
   let ticket = null
   try {
-    const res = await page.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-    if (res?.status() !== 200) fail(`${label} @ ${width}: the event page answered HTTP ${res?.status()}`)
+    /*
+     * A NON-200 IS ASKED TWICE, SO A ONE-OFF IS NAMED AS ONE.
+     *
+     * On 13 September 2026 this run reported "paid @ 768: the event page
+     * answered HTTP 404" for a slug that had just served 200 at 390 and served
+     * 200 again at 1440 in the same run, on a published event read out of the
+     * database moments earlier. One reading cannot tell a broken route from a
+     * loaded laptop's hiccup, and the two need opposite responses: one is a
+     * product defect, the other is noise that must never be filed as one.
+     *
+     * So a non-200 is re-requested once, and the verdict says which it was. A
+     * route that answers 404 twice is reported as exactly that; a route that
+     * recovers is reported as a TRANSIENT with both codes, and still fails,
+     * because a buyer who saw the first one saw a 404.
+     */
+    let res = await page.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+    if (res?.status() !== 200) {
+      const first = res?.status()
+      await page.waitForTimeout(2000)
+      res = await page.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      const second = res?.status()
+      fail(
+        second === 200
+          ? `${label} @ ${width}: the event page /events/${slug} answered HTTP ${first}, then 200 on an immediate retry. ` +
+            `TRANSIENT, and still a 404 served to a buyer.`
+          : `${label} @ ${width}: the event page /events/${slug} answered HTTP ${first}, and HTTP ${second} on retry. ` +
+            `PERSISTENT: this route is broken for a published event.`,
+      )
+    }
     await page.waitForTimeout(2500)
     await m.measure('1-event-page')
 
     // Two tickets, through the real stepper, so the attendee block repeats.
-    for (let i = 0; i < 2; i++) {
+    // The count is TICKETS_PER_WALK so the pick above reserves room for it.
+    for (let i = 0; i < TICKETS_PER_WALK; i++) {
       const plus = await clickText(page, /^\+$/)
       if (!plus) {
         fail(`${label} @ ${width}: no quantity control on the event page`)
@@ -418,8 +574,25 @@ async function walk({ browser, width, slug, label, complete }) {
     }
     await m.measure('3-checkout-details', { totalRequired: true })
 
-    await fillByLabel(page, /full name/i, 'Robin Ashe')
-    await fillByLabel(page, /^email/i, buyer)
+    /*
+     * A FILL THAT FOUND NOTHING IS REPORTED, NOT SWALLOWED.
+     *
+     * `fillByLabel` returns false when no visible input matches, and both call
+     * sites used to discard that. On 13 September 2026 the skeleton race above
+     * meant both of these matched nothing, the walk submitted an empty form,
+     * and the fault it eventually reported blamed the confirmation redirect.
+     * The harness knew the truth two steps earlier and said nothing.
+     */
+    const filledName = await fillByLabel(page, /full name/i, 'Robin Ashe')
+    const filledEmail = await fillByLabel(page, /^email/i, buyer)
+    if (!filledName || !filledEmail) {
+      fail(
+        `${label} @ ${width}: the checkout form could not be filled` +
+          `${filledName ? '' : ', no visible "Full name" input'}` +
+          `${filledEmail ? '' : ', no visible "Email" input'}` +
+          `. Nothing past this point is a measurement of a filled checkout.`,
+      )
+    }
     await page.waitForTimeout(600)
     const reused = await clickText(page, /use my details for all tickets/i)
     if (!reused) {
@@ -531,8 +704,37 @@ async function walk({ browser, width, slug, label, complete }) {
 
     await page.waitForURL(/\/orders\//, { timeout: 60_000 }).catch(() => {})
     if (!/\/orders\//.test(page.url())) {
+      /*
+       * THIS FAULT HAS NOW FIRED TWICE AND BOTH TIMES IT WAS UNDIAGNOSABLE.
+       *
+       * 13 September 2026 and 19 September 2026, both on the FREE journey and
+       * both at 1440 only, with 390 and 768 green in the same run. The first was
+       * traced to a harness race: a flat 4000ms wait measured the skeleton, the
+       * form fill matched nothing, and an empty submit was refused by validation
+       * while this line blamed the confirmation redirect. That cause is CLOSED:
+       * `settle()` replaced the flat wait, and a fill that matches nothing now
+       * fails two steps earlier with its own message.
+       *
+       * So the 19 September occurrence is a DIFFERENT cause, and nothing was
+       * kept that could say what it was. The step is re-run by the next gate,
+       * `.tmp/gate-checkout-server.log` is overwritten by it, and no screenshot
+       * is taken on this path, so the page the buyer was left on is gone before
+       * anybody looks.
+       *
+       * A fault on the buyer's own money path that cannot be diagnosed after the
+       * fact is the worst kind to leave alone, so the evidence is captured HERE,
+       * at the moment it fires, rather than hoped for later.
+       */
+      const stranded = await page
+        .evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 400))
+        .catch(() => '(the page could not be read)')
+      mkdirSync(join(OUT, `${width}`), { recursive: true })
+      const shot = join(OUT, `${width}`, `${label}-FAULT-no-confirmation.png`)
+      await page.screenshot({ path: shot, fullPage: true }).catch(() => {})
       fail(
-        `${label} @ ${width}: after submitting, the buyer is on ${page.url().replace(BASE, '')} rather than a confirmation`,
+        `${label} @ ${width}: after submitting, the buyer is on ${page.url().replace(BASE, '')} rather than a confirmation. ` +
+          `On screen: "${stranded}". Capture: ${shot}. The server log for this run is ` +
+          `.tmp/gate-checkout-server.log and the NEXT gate run overwrites it, so copy it now.`,
       )
       return
     }
@@ -612,8 +814,8 @@ mkdirSync(OUT, { recursive: true })
 sweepCounts.before = await sweep('before the pick')
 const paid = await pickEvent({ free: false })
 const free = await pickEvent({ free: true })
-if (!paid) fail('no published, unseated, sellable PAID event with room for two on this database')
-if (!free) fail('no published, unseated, sellable FREE event with room for two on this database')
+if (!paid) fail(`no published, unseated, sellable PAID event with room for ${PLACES_A_RUN_CONSUMES} on this database`)
+if (!free) fail(`no published, unseated, sellable FREE event with room for ${PLACES_A_RUN_CONSUMES} on this database`)
 if (!paid || !free) {
   console.error(`${TAG} cannot drive without both events`)
   process.exit(1)

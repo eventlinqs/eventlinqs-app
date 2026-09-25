@@ -11,11 +11,14 @@ import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
+import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 interface RelatedIntersection {
   communitySlug: string
@@ -31,6 +34,13 @@ interface RelatedCommunity {
   tagline: string
   image: string | null
 }
+
+/**
+ * How many of the intersection's events the grid shows. It was the literal
+ * 24 inside `.slice(0, 24)`; it is named because the reserved height is now
+ * derived from the same number (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   community: CommunityContent
@@ -99,6 +109,8 @@ export function CommunityCityLandingPage({
   relatedCommunities,
   mapPins,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards. */
+  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
 
@@ -150,8 +162,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {thisWeekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -173,8 +185,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {thisWeekEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -198,11 +210,11 @@ export function CommunityCityLandingPage({
                 <Link
                   key={sc.slug}
                   href={`/events?community=${community.slug}&sub_community=${sc.slug}&city=${citySlug}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${sc.label} in ${cityName}`} />
+                      <CityTileImage src={img} alt={`${sc.label} in ${cityName}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -243,8 +255,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {popularEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -273,7 +285,21 @@ export function CommunityCityLandingPage({
 
       {/* S10 All events in city (paginated grid). S8/S9 organisers/venues
           render conditionally - hidden until populated. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
+      {/* The events grid, the same markup as the city page's and therefore the
+          same height arithmetic: it declares what it will be rather than
+          inheriting a rail's 480px. src/lib/ui/event-grid-intrinsic.ts.
+          NOTE, honestly: no intersection on TEST held a published event on
+          19 September 2026, so this one is covered by the drive on the city
+          page it is a copy of, and by the guard that holds the two markups
+          identical - never by a measurement of itself. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        reveal
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -290,9 +316,9 @@ export function CommunityCityLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {allEvents.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allEvents.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
@@ -333,11 +359,11 @@ export function CommunityCityLandingPage({
               <Link
                 key={item.citySlug}
                 href={`/community/${item.communitySlug}/${item.citySlug}`}
-                className="group block w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[260px]"
+                className={`group block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
               >
                 <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} />
+                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} layout="rail-standard-tile" />
                   ) : (
                     <div
                       aria-hidden
@@ -348,22 +374,14 @@ export function CommunityCityLandingPage({
                       }}
                     />
                   )}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-3">
+                  <TileCaption className="p-3">
                     <p className="font-display text-sm font-semibold text-white">
                       {item.communityLabel}
                     </p>
                     <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">
                       in {item.cityLabel}
                     </p>
-                  </div>
+                  </TileCaption>
                 </div>
               </Link>
             ))}
@@ -385,11 +403,11 @@ export function CommunityCityLandingPage({
               <Link
                 key={item.slug}
                 href={`/community/${item.slug}/${citySlug}`}
-                className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                className={`group flex h-full flex-col ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg motion-reduce:transition-none`}
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} />
+                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} layout="rail-wide-tile" />
                   ) : (
                     <div
                       aria-hidden
@@ -400,22 +418,19 @@ export function CommunityCityLandingPage({
                       }}
                     />
                   )}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-4">
+                  {/* The tagline moved below the image: on this 16:10 tile the
+                    *  two together measured 93px against 161px, 72.6 per cent of
+                    *  a picture the rail exists to show. */}
+                  <TileCaption className="p-4">
                     <p className="font-display text-base font-semibold text-white drop-shadow-sm">
                       {item.label}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-xs leading-snug text-white/85">
-                      {item.tagline}
-                    </p>
-                  </div>
+                  </TileCaption>
+                </div>
+                <div className="px-4 pb-4 pt-3">
+                  <p className="line-clamp-2 text-xs leading-snug text-[var(--text-secondary)]">
+                    {item.tagline}
+                  </p>
                 </div>
               </Link>
             ))}

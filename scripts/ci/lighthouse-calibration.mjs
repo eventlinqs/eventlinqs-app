@@ -56,6 +56,41 @@
  * to throttle, and its own scale is quoted in scripts/ci/lighthouse-truth-table.mjs.
  * So it is measured by the same instrument, in the same process, at the same
  * moment as the score it qualifies.
+ *
+ * ============================================================================
+ * WHY ONE MEDIAN ACROSS THE WHOLE COLLECTION WAS NOT ENOUGH (13 September 2026)
+ * ============================================================================
+ *
+ * The first version of this module judged the MEDIAN of all 65 readings against
+ * the floor and nothing else. On 13 September, the day the build went to three
+ * parallel lanes on one laptop, that produced a sentence that was flatly false:
+ *
+ *     Machine calibration: OK. BenchmarkIndex median 2379 (1071 to 2707), 88%
+ *     of the 2700 the floors were confirmed at on 2026-09-09.
+ *     This machine was fit to judge, so a failure above is a statement about the
+ *     product and not about the laptop.
+ *
+ * It was not a statement about the product. Three URLs were under their floors,
+ * and NOT ONE PRODUCT BYTE had changed since the tip whose own local gate had
+ * passed the same step four hours earlier: the only diff between the two trees
+ * was four drive scripts, two libraries and one unit test, none of them in the
+ * build. What had changed was the machine, from one claude session to three plus
+ * their dev servers, and the spread says it plainly. 1071 is BELOW 1113, the
+ * bottom of the very band this module cites as the evening that refused main's
+ * own tree.
+ *
+ * THE ARITHMETIC THAT HID IT. A category floor is asserted on the median of ONE
+ * URL'S FIVE RUNS. A median across all 65 runs can sit comfortably above the
+ * floor while one URL's own five were every one of the starved ones, which is
+ * exactly what happened: /events/arena-sessions-large-room-performance-test came
+ * back 0.68, 0.69, 0.71, 0.76, 0.65, a tight band 16 points under its floor,
+ * which is not noise, it is a slower machine for those five runs.
+ *
+ * So the judgement is now made where the assertion is made: PER URL, on that
+ * URL's own runs. A URL whose own median reading is under the floor was not
+ * measured on a comparable instrument and its failure is not evidence about the
+ * product. A URL measured above the floor still fails as a statement about the
+ * product, which is the half that must never soften.
  */
 
 /**
@@ -104,6 +139,92 @@ function median(values) {
   return clean[Math.floor((clean.length - 1) / 2)]
 }
 
+/** The URL a report was taken against, however that report happens to name it. */
+function urlOf(lhr) {
+  const named = lhr?.finalDisplayedUrl ?? lhr?.finalUrl ?? lhr?.requestedUrl
+  return typeof named === 'string' && named.length > 0 ? named : null
+}
+
+/**
+ * Every URL in a collection with the machine ITS OWN runs were taken on.
+ *
+ * This is the unit the floors are actually asserted on: lighthouserc.json
+ * aggregates a category score as the median of one URL's runs, so the machine
+ * reading that qualifies that score is the median of those same runs and not of
+ * the collection. See the 13 September note in this file's header for the
+ * collection where the two disagreed and the disagreement was the whole answer.
+ *
+ * @param {Array<{ finalDisplayedUrl?: string, finalUrl?: string, requestedUrl?: string,
+ *                 environment?: { benchmarkIndex?: number } }> | undefined} lhrs
+ *   Tolerates undefined on purpose: it runs on the FAILURE path, where a reader
+ *   came for the failure and not for a crash in the diagnosis.
+ * @returns {Array<{ url: string, runs: number, median: number, low: number, high: number, fit: boolean }>}
+ *   Sorted slowest median first, so the URLs whose failures are least trustworthy
+ *   as product statements are read first.
+ */
+export function perUrlBands(lhrs) {
+  /** @type {Map<string, number[]>} */
+  const byUrl = new Map()
+  for (const lhr of lhrs ?? []) {
+    const url = urlOf(lhr)
+    const reading = lhr?.environment?.benchmarkIndex
+    if (url == null || typeof reading !== 'number' || !Number.isFinite(reading)) continue
+    if (!byUrl.has(url)) byUrl.set(url, [])
+    byUrl.get(url).push(reading)
+  }
+  const rows = []
+  for (const [url, readings] of byUrl) {
+    const mid = median(readings)
+    if (mid == null) continue
+    rows.push({
+      url,
+      runs: readings.length,
+      median: Math.round(mid),
+      low: Math.round(Math.min(...readings)),
+      high: Math.round(Math.max(...readings)),
+      fit: mid >= CALIBRATION.floor,
+    })
+  }
+  return rows.sort((a, b) => a.median - b.median)
+}
+
+/**
+ * The per-URL block, printed under the whole-collection verdict.
+ *
+ * It names the instrument for each URL and says which of them were not fit to
+ * judge. It CANNOT change a verdict and deliberately holds no field a caller
+ * could read as permission: it returns lines.
+ *
+ * @param {Parameters<typeof perUrlBands>[0]} lhrs
+ * @returns {string[]}
+ */
+export function perUrlLines(lhrs) {
+  const rows = perUrlBands(lhrs)
+  if (rows.length === 0) return []
+  const unfit = rows.filter((r) => !r.fit)
+  const lines = [
+    '',
+    `The machine each URL's own runs were taken on, because that is the unit the`,
+    `floors are asserted on (median of that URL's runs, floor ${CALIBRATION.floor}):`,
+  ]
+  for (const row of rows) {
+    lines.push(
+      `  ${row.fit ? 'fit    ' : 'NOT FIT'}  median ${String(row.median).padStart(5)}  ` +
+        `(${row.low} to ${row.high}, ${row.runs} run${row.runs === 1 ? '' : 's'})  ${row.url}`,
+    )
+  }
+  if (unfit.length > 0) {
+    lines.push(
+      '',
+      `${unfit.length} of ${rows.length} URL(s) were measured BELOW the floor. A failure on one of`,
+      'those is not evidence about the product: re-take it on a quiet machine before',
+      'reading it as a regression. A failure on a URL marked fit IS about the product.',
+      'Either way nothing was excused and nothing was pushed.',
+    )
+  }
+  return lines
+}
+
 /**
  * Read every BenchmarkIndex out of a set of Lighthouse reports.
  *
@@ -121,11 +242,14 @@ export function benchmarkIndexes(lhrs) {
  * the floors were derived on.
  *
  * @param {number[]} indexes every run's BenchmarkIndex, in any order.
- * @returns {{ state: 'calibrated' | 'degraded' | 'unknown', median: number | null,
+ * @returns {{ state: 'calibrated' | 'mixed' | 'degraded' | 'unknown', median: number | null,
  *             low: number | null, high: number | null, ratio: number | null,
- *             lines: string[] }}
- *   `state` is the finding. `lines` is what a reader needs to see and is written
- *   to be pasted into a report unchanged.
+ *             belowFloor: number, runs: number, lines: string[] }}
+ *   `state` is the finding: `calibrated` when every run cleared the floor,
+ *   `mixed` when the median did and at least one run did not, `degraded` when
+ *   the median did not. `lines` is what a reader needs to see and is written
+ *   to be pasted into a report unchanged. There is deliberately no field a
+ *   caller could read as permission to pass.
  */
 export function judgeCalibration(indexes) {
   const mid = median(indexes)
@@ -136,6 +260,8 @@ export function judgeCalibration(indexes) {
       low: null,
       high: null,
       ratio: null,
+      belowFloor: 0,
+      runs: 0,
       lines: [
         'Machine calibration: NOT KNOWN. No report in this collection carries',
         'environment.benchmarkIndex, so whether this laptop was fit to judge the',
@@ -148,19 +274,70 @@ export function judgeCalibration(indexes) {
   const ratio = mid / CALIBRATION.derivedAt
   const pct = Math.round(ratio * 100)
   const band = `${Math.round(low)} to ${Math.round(high)}`
-  if (mid >= CALIBRATION.floor) {
+  const belowFloor = indexes.filter((v) => v < CALIBRATION.floor).length
+  const runs = indexes.length
+  if (mid >= CALIBRATION.floor && belowFloor === 0) {
     return {
       state: 'calibrated',
       median: mid,
       low,
       high,
       ratio,
+      belowFloor,
+      runs,
       lines: [
         `Machine calibration: OK. BenchmarkIndex median ${Math.round(mid)} (${band}), ` +
           `${pct}% of the ${CALIBRATION.derivedAt} the floors were confirmed at ` +
-          `on ${CALIBRATION.measuredOn}.`,
+          `on ${CALIBRATION.measuredOn}. Every one of the ${runs} run(s) cleared the ` +
+          `${CALIBRATION.floor} floor.`,
         'This machine was fit to judge, so a failure above is a statement about the',
         'product and not about the laptop.',
+      ],
+    }
+  }
+  /*
+   * THE MIDDLE STATE, AND THE ONE SENTENCE IT EXISTS TO STOP BEING PRINTED.
+   *
+   * A median over the whole collection cannot speak for a URL whose own five runs
+   * were the starved ones, and on 13 September 2026 it spoke for three of them and
+   * was wrong about all three (this file's header carries the collection). So when
+   * the spread straddles the floor the product claim is NOT made, the count is
+   * stated, and the reader is sent to the per-URL bands, which are judged on
+   * exactly the runs the assertion used.
+   *
+   * It is not a waiver and it cannot become one: same exit code, same floors, and
+   * a URL measured above the floor is still called a statement about the product.
+   */
+  if (mid >= CALIBRATION.floor) {
+    return {
+      state: 'mixed',
+      median: mid,
+      low,
+      high,
+      ratio,
+      belowFloor,
+      runs,
+      lines: [
+        `Machine calibration: NOT UNIFORM. BenchmarkIndex median ${Math.round(mid)} (${band}), ` +
+          `${pct}% of the ${CALIBRATION.derivedAt} the floors were confirmed at ` +
+          `on ${CALIBRATION.measuredOn}, but ${belowFloor} of ${runs} run(s) were taken ` +
+          `BELOW the ${CALIBRATION.floor} floor.`,
+        '',
+        'The median of the whole collection is not what any floor is asserted on. A',
+        "category floor is asserted on the median of ONE URL's runs, so a collection",
+        'can sit above the floor overall while one URL was measured entirely on the',
+        'slow runs. That is what happened on 13 September 2026, the day this machine',
+        'started carrying three builds at once: three URLs came back under their',
+        'floors with NOT ONE PRODUCT BYTE changed from a tip whose own gate had',
+        'passed the same step four hours earlier.',
+        '',
+        'SO THIS IS NOT A STATEMENT ABOUT THE PRODUCT AND IT IS NOT A WAIVER EITHER.',
+        'Read the per-URL bands below: a failure on a URL marked fit is the product,',
+        'a failure on one marked NOT FIT has to be re-taken on a quiet machine.',
+        '  node scripts/perf/machine-speed.mjs        what the machine is capable of now',
+        '  npm run gate:push -- --only lighthouse     the step on its own',
+        '',
+        'The floors are unchanged, the exit code is unchanged, and nothing was pushed.',
       ],
     }
   }
@@ -170,6 +347,8 @@ export function judgeCalibration(indexes) {
     low,
     high,
     ratio,
+    belowFloor,
+    runs,
     lines: [
       `Machine calibration: DEGRADED. BenchmarkIndex median ${Math.round(mid)} (${band}), ` +
         `${pct}% of the ${CALIBRATION.derivedAt} the floors were confirmed at ` +
@@ -201,5 +380,5 @@ export function judgeCalibration(indexes) {
  */
 export function calibrationReport(lhrs) {
   const verdict = judgeCalibration(benchmarkIndexes(lhrs))
-  return verdict.lines.join(String.fromCharCode(10))
+  return [...verdict.lines, ...perUrlLines(lhrs)].join(String.fromCharCode(10))
 }

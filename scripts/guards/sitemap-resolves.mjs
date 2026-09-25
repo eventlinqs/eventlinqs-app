@@ -33,17 +33,37 @@
  * WHAT THIS GUARD CHECKS, AND WHAT IT CANNOT
  * ============================================================================
  *
+ * THE SUBJECT IS TWO FILES, since close-out SEO2 (14 September 2026). The
+ * event, organiser and venue queries moved into
+ * `src/lib/seo/sitemap-catalogue.ts` so that a build-time guard could EXECUTE
+ * them against the database (`sitemap.ts` reaches `next/cache` and cannot be
+ * run outside Next). Both files are read here, and the catalogue is required to
+ * still emit all four families: a guard whose subject moves out from under it
+ * goes quiet rather than red, which is precisely the failure mode that let the
+ * venue block publish nothing for its whole life.
+ *
  * CHECKED, all statically, all from the repository:
  *   A. every `${baseUrl}` template in src/app/sitemap.ts maps to a real App
  *      Router route (literal segments match directories, `${...}` matches a
- *      [param] segment).
+ *      [param] segment). A `${baseUrl}${row.path}` emission is resolved through
+ *      the path templates the catalogue builds.
  *   B. no emitted path is a source in src/lib/seo/permanent-redirects.ts, and
  *      any template whose namespace contains redirect sources must consult
  *      `isRedirected` before pushing.
  *   C. every column named in a `.select(...)` or `.not(...)`/`.eq(...)` filter
- *      inside sitemap.ts exists on that table in the generated types
+ *      in EITHER file exists on that table in the generated types
  *      (src/types/database.ts). This is the 42703 check.
- *   D. no `catch { }` in sitemap.ts swallows its error without reporting it.
+ *   D. no `catch { }` in either file swallows its error without reporting it.
+ *   E. the catalogue still emits an events, an organisers, a venues and an
+ *      artists path.
+ *   F. every `readArtistCatalogue(` call in src/app/sitemap.ts sits inside an
+ *      `isFeatureEnabled('broadcast_artists')` block. The route 404s whenever
+ *      that flag is off and it is OFF ON PRODUCTION, and
+ *      scripts/guards/lib/sitemap-catalogue-probe.mjs MODELS that gate rather
+ *      than executing sitemap.ts, so the model can drift from the file in
+ *      silence. The decision is pure and lives in
+ *      scripts/guards/lib/artist-sitemap-gate.mjs, which carries the whole
+ *      account of what drifting would cost.
  *
  * NOT CHECKED HERE, and named so the silence is not mistaken for coverage:
  *   - whether a given ROW resolves. `/events/<slug>` for a deleted event is a
@@ -53,6 +73,7 @@
  *     `export const revalidate` in the file, and the sweep is what proves it.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { artistBlockIsFlagGated } from './lib/artist-sitemap-gate.mjs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -62,6 +83,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
 
 const SITEMAP = 'src/app/sitemap.ts'
+const CATALOGUE = 'src/lib/seo/sitemap-catalogue.ts'
 const REDIRECTS = 'src/lib/seo/permanent-redirects.ts'
 const TYPES = 'src/types/database.ts'
 const APP_DIR = join(ROOT, 'src', 'app')
@@ -139,11 +161,13 @@ function stripComments(src) {
 }
 
 const sitemapRaw = read(SITEMAP)
+const catalogueRaw = read(CATALOGUE)
 const redirectRaw = read(REDIRECTS)
 const typesSrc = read(TYPES)
 const sitemapSrc = stripComments(sitemapRaw)
+const catalogueSrc = stripComments(catalogueRaw)
 const redirectSrc = stripComments(redirectRaw)
-if (!sitemapRaw || !redirectRaw || !typesSrc) {
+if (!sitemapRaw || !catalogueRaw || !redirectRaw || !typesSrc) {
   console.error('[sitemap-resolves] FAIL - a required file is missing.')
   for (const f of failures) console.error(`  ${f}`)
   process.exit(1)
@@ -240,7 +264,40 @@ function localPathShapes(src) {
   return out
 }
 
-const localShapes = localPathShapes(sitemapSrc)
+/**
+ * The path templates the catalogue builds, as shapes.
+ *
+ * `sitemap.ts` now pushes `${baseUrl}${row.path}` for the three row-derived
+ * families, which reduces to a bare PARAM above. Without this the guard resolved
+ * every one of them through the ONE local `const path` in sitemap.ts, which is
+ * the category loop's, and therefore stopped looking at `/events/`,
+ * `/organisers/` and `/venues/` altogether while still reporting a pass.
+ */
+function cataloguePathShapes(src) {
+  return [...src.matchAll(/path:\s*`([^`]*)`/g)].map(m => m[1].replace(/\$\{[^}]*\}/g, 'PARAM'))
+}
+
+const catalogueShapes = cataloguePathShapes(catalogueSrc)
+for (const family of ['/events/PARAM', '/organisers/PARAM', '/venues/PARAM', '/artists/PARAM']) {
+  if (!catalogueShapes.includes(family)) {
+    fail(
+      `${CATALOGUE} no longer builds ${family}. Every sitemap defect on record is a family that stopped ` +
+        `publishing in silence, so this is a failure rather than a smaller catalogue.`,
+    )
+  }
+}
+
+/*
+ * CLAUSE F. The artist family is the only row-derived family behind a feature
+ * flag, and the probe that compares it against the database MODELS that flag
+ * rather than executing sitemap.ts. Delete the gate from the file and the model
+ * keeps agreeing with itself while production publishes a 404 for every artist.
+ * The reasoning in full is in scripts/guards/lib/artist-sitemap-gate.mjs.
+ */
+const artistGate = artistBlockIsFlagGated(sitemapSrc)
+if (!artistGate.gated) fail(artistGate.reason)
+
+const localShapes = [...localPathShapes(sitemapSrc), ...catalogueShapes]
 const shapes = []
 for (const s of emittedShapes(sitemapSrc)) {
   if (s.path === 'PARAM') {
@@ -347,12 +404,15 @@ function tableQueries(src) {
   return out
 }
 
-const queries = tableQueries(sitemapSrc)
+const queries = [
+  ...tableQueries(sitemapSrc).map(q => ({ ...q, file: SITEMAP })),
+  ...tableQueries(catalogueSrc).map(q => ({ ...q, file: CATALOGUE })),
+]
 let columnsChecked = 0
 for (const q of queries) {
   const cols = TABLES.get(q.table)
   if (!cols) {
-    fail(`${SITEMAP} queries table '${q.table}', which does not appear in ${TYPES}`)
+    fail(`${q.file} queries table '${q.table}', which does not appear in ${TYPES}`)
     continue
   }
   const named = new Set()
@@ -372,7 +432,7 @@ for (const q of queries) {
     columnsChecked++
     if (!cols.has(col)) {
       fail(
-        `${SITEMAP} names ${q.table}.${col}, which does not exist in ${TYPES}. ` +
+        `${q.file} names ${q.table}.${col}, which does not exist in ${TYPES}. ` +
           `Postgres answers 42703 and a catch turns that into an empty sitemap section.`,
       )
     }
@@ -383,11 +443,22 @@ for (const q of queries) {
  * D. no silent catch
  * ------------------------------------------------------------------ */
 
-for (const c of sitemapSrc.matchAll(/catch\s*(?:\(([^)]*)\))?\s*\{([\s\S]{0,400}?)\n {2}\}/g)) {
-  const body = c[2]
-  if (!/console\.(error|warn)/.test(body)) {
+for (const [file, src] of [
+  [SITEMAP, sitemapSrc],
+  [CATALOGUE, catalogueSrc],
+]) {
+  /*
+   * The catalogue's catches RETURN the error rather than logging it, which is
+   * the right shape there and is not silence: the sitemap logs it and serves
+   * what it has, and the guard fails the build on it. So a catch that hands the
+   * error back counts as having a voice.
+   */
+  for (const c of src.matchAll(/catch\s*(?:\(([^)]*)\))?\s*\{([\s\S]{0,400}?)\n {2}\}/g)) {
+    const body = c[2]
+    if (/console\.(error|warn)/.test(body)) continue
+    if (/return\s*\{[^}]*error:/.test(body)) continue
     fail(
-      `${SITEMAP} has a catch block that reports nothing. A silent catch on this exact shape ` +
+      `${file} has a catch block that reports nothing. A silent catch on this exact shape ` +
         `hid a 42703 for the whole life of the venue block.`,
     )
   }
@@ -398,10 +469,13 @@ for (const c of sitemapSrc.matchAll(/catch\s*(?:\(([^)]*)\))?\s*\{([\s\S]{0,400}
  * ------------------------------------------------------------------ */
 
 console.log('[sitemap-resolves] what this guard scanned:')
-console.log(`[sitemap-resolves]   ${SITEMAP} with comments stripped, ${ROUTES.length} App Router page route(s) on disk`)
+console.log(
+  `[sitemap-resolves]   ${SITEMAP} and ${CATALOGUE} with comments stripped, ${ROUTES.length} App Router page route(s) on disk`,
+)
 console.log(`[sitemap-resolves]   ${uniqueShapes.length} URL shape(s) published:`)
 for (const s of uniqueShapes) console.log(`[sitemap-resolves]     ${s}`)
 console.log(`[sitemap-resolves]   ${redirectSources.length} permanent redirect source(s) read from ${REDIRECTS}`)
+console.log(`[sitemap-resolves]   artist flag gate: ${artistGate.reason}`)
 console.log(`[sitemap-resolves]   ${queries.length} table quer(ies), ${columnsChecked} column reference(s) checked against ${TYPES}`)
 console.log('[sitemap-resolves] NOT checked here (by design): whether a given ROW resolves, and whether the')
 console.log('[sitemap-resolves]   deployed sitemap is stale. Both are deployment properties and are measured by')

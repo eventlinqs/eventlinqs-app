@@ -1,5 +1,9 @@
 import { Resend } from 'resend'
 import { getEmailFrom, getNoReplyFrom } from './sender'
+import {
+  assertRecipientDeclared,
+  type RecipientRole,
+} from '@/lib/notifications/recipient-matrix'
 
 /**
  * THE TRANSPORT. Three modules, three separate concerns, one definition each.
@@ -123,6 +127,42 @@ export type SendEmailInput = {
   /** Optional plain-text part. Resend will derive one if omitted, but
    * supplying a hand-tuned text alternative improves deliverability. */
   text?: string
+  /**
+   * WHAT THIS MESSAGE IS, declared in src/lib/notifications/recipient-matrix.ts.
+   * Required, per close-out MONEY FIX B3: a type absent from the matrix cannot
+   * be sent. Making it optional would mean every existing send site kept its
+   * old behaviour and only new ones were governed, which is the opposite of
+   * what the item asks for.
+   */
+  messageType: string
+  /**
+   * WHO THIS PARTICULAR SEND IS FOR. Checked against the roles the matrix
+   * declares for `messageType`, so a send site aiming the buyer's ticket at the
+   * platform owner is refused rather than delivered.
+   */
+  recipientRole: RecipientRole
+  /**
+   * EXTRA RFC 5322 HEADERS FOR THIS MESSAGE. Optional, and every existing send
+   * site is unchanged by its absence.
+   *
+   * It exists for one reason: the one-click unsubscribe pair a mailbox provider
+   * requires of bulk marketing mail, `List-Unsubscribe` and
+   * `List-Unsubscribe-Post` (RFC 8058; Google's sender guidelines, both cited
+   * in src/lib/consent/one-click.ts). Those are HEADERS, not body content, so
+   * there was no way to send a conforming marketing message until this field
+   * existed: the transport passed Resend five fields and none of them was this.
+   *
+   * Resend's send endpoint takes them as `headers`, an object
+   * (https://resend.com/docs/api-reference/emails/send-email, fetched
+   * 2026-09-19).
+   *
+   * NOT A GENERAL ESCAPE HATCH. `scripts/guards/marketing-mail-carries-one-click.mjs`
+   * requires every module classified `marketing` in src/lib/consent/send-paths.ts
+   * to set the one-click pair here, so this field cannot quietly become the
+   * place arbitrary headers go while the marketing path still ships without the
+   * two that matter.
+   */
+  headers?: Record<string, string>
 }
 
 /**
@@ -181,7 +221,12 @@ function consoleTransportRefusalReason(): string | null {
  * RESEND_API_KEY, above this transport, which is why the buyer's ticket email
  * had never once been observed.
  */
-export function printConsoleEmail(input: { to: string; subject: string; html?: string }): void {
+export function printConsoleEmail(input: {
+  to: string
+  subject: string
+  html?: string
+  headers?: Record<string, string>
+}): void {
   const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
     // `&` inside an href is written `&amp;`, correctly, so a link lifted straight
     // out of the HTML carries entities a browser would never see. Printing it raw
@@ -210,11 +255,29 @@ export function printConsoleEmail(input: { to: string; subject: string; html?: s
   console.log('[email:console] ---------------------------------------------')
   console.log(`[email:console] to      ${input.to}`)
   console.log(`[email:console] subject ${input.subject}`)
+  /*
+   * THE HEADERS, PRINTED, because the one-click unsubscribe pair is the only
+   * part of a marketing message that lives nowhere in the body. A drive that
+   * reads this inbox to prove a conforming message was composed has to be able
+   * to SEE them; without this line the console transport shows a message that
+   * looks identical whether the headers were set or forgotten.
+   */
+  for (const [name, value] of Object.entries(input.headers ?? {})) {
+    console.log(`[email:console] header  ${name}: ${value}`)
+  }
   for (const l of links.slice(0, 5)) console.log(`[email:console] link    ${l}`)
   console.log('[email:console] ---------------------------------------------')
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
+  // MONEY FIX B3, read at SEND time rather than in a test. This throws
+  // UndeclaredMessageTypeError for a type the matrix does not declare, and
+  // UndeclaredRecipientRoleError when the role is not one that type reaches.
+  // It sits above the console transport so a local drive is governed by the
+  // same rule as production: the console transport exists to prove these paths,
+  // and a proof that skips the check proves the wrong thing.
+  assertRecipientDeclared(input.messageType, input.recipientRole)
+
   // Single source: resolveFrom() delegates to sender.ts, so the health check
   // and the sender can never disagree about who this platform sends as.
   const from = resolveFrom()
@@ -228,7 +291,7 @@ export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> 
           'anywhere near production would swallow real mail.',
       )
     }
-    printConsoleEmail({ to: input.to, subject: input.subject, html: input.html })
+    printConsoleEmail({ to: input.to, subject: input.subject, html: input.html, headers: input.headers })
     return { id: `console-${Date.now()}` }
   }
 
@@ -239,6 +302,7 @@ export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> 
     subject: stampSubject(input.subject),
     html: input.html,
     text: input.text,
+    ...(input.headers && Object.keys(input.headers).length > 0 ? { headers: input.headers } : {}),
   })
   if (error) {
     throw new Error(error.message ?? 'Resend send failed')

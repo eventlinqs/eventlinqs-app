@@ -1,4 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { ShareChannel } from '@/lib/broadcast/share-codes'
 
 /**
@@ -163,11 +167,19 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
    * So it returns early with empty buckets and the flag set. `reconciles` is
    * true, honestly: zero ties out to zero.
    */
-  const { data: eventRow } = await admin
-    .from('events')
-    .select('external_ticket_url')
-    .eq('id', eventId)
-    .maybeSingle()
+  /*
+   * AND IT THROWS RATHER THAN GUESSING, because of which way the guess falls.
+   *
+   * This was `const { data: eventRow } = await ...`, error discarded. A read
+   * that FAILED left `eventRow` undefined, which is spelled identically to "no
+   * external ticket url", so the module carried on and reported an attribution
+   * split for an event whose sales are on somebody else's ledger. That is the
+   * exact claim non-negotiable 2 exists to forbid, arrived at through an
+   * outage rather than through a decision. The safe direction here is to refuse.
+   */
+  const eventRow = await readOrThrow('sales-attribution:event', () =>
+    admin.from('events').select('external_ticket_url').eq('id', eventId).maybeSingle(),
+  )
 
   const externalUrl = eventRow?.external_ticket_url
   if (typeof externalUrl === 'string' && externalUrl.trim().length > 0) {
@@ -186,13 +198,27 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
     }
   }
 
-  // 1. THE LEDGER. Every sold order for this event. This is the denominator.
-  const { data: orderRows } = await admin
-    .from('orders')
-    .select('id, status, total_cents')
-    .eq('event_id', eventId)
-
-  const allOrders = (orderRows ?? []) as { id: string; status: string; total_cents: number | string }[]
+  /*
+   * 1. THE LEDGER. Every sold order for this event. This is the denominator.
+   *
+   * EVERY, NOT THE FIRST THOUSAND. This was `.select().eq('event_id', ...)` with
+   * no bound and no `error` check, and it is the denominator of every percentage
+   * on the panel. Supabase stops at 1,000 rows in silence
+   * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19),
+   * so a thousand-order event reported a share-of-sales computed against the
+   * wrong total, and a read that FAILED reported an event that had sold nothing.
+   * A sold-out show and an outage rendered the same screen.
+   */
+  const allOrders = await readEveryRow<{ id: string; status: string; total_cents: number | string }>(
+    'the order ledger for this event',
+    (from, to) =>
+      admin
+        .from('orders')
+        .select('id, status, total_cents')
+        .eq('event_id', eventId)
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   const sold = allOrders.filter(o => (SOLD_STATUSES as readonly string[]).includes(o.status))
   const refundedOrders = allOrders.filter(o => o.status === 'refunded').length
 
@@ -215,27 +241,77 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
 
   const soldIds = sold.map(o => o.id)
 
-  // 2. Tickets per order, counted from the ticket rows themselves.
-  const { data: ticketRows } = await admin.from('tickets').select('order_id').in('order_id', soldIds)
+  /*
+   * 2. Tickets per order, counted from the ticket rows themselves.
+   *
+   * CHUNKED AS WELL AS PAGED. `soldIds` is spelled into the URL, and Supabase
+   * bounds the URL and headers together at 16 KB, naming lengthy `in` clauses as
+   * the usual cause
+   * (https://supabase.com/docs/guides/troubleshooting/fixing-520-errors-in-the-database-rest-api-Ur5-B2,
+   * fetched 2026-09-19). About 400 order ids is the break, which a single busy
+   * event passes, and the failure arrives as a discarded error and a ticket
+   * count of zero for every order at once.
+   */
+  const ticketRows: { order_id: string }[] = []
+  for (const chunk of chunkInFilterValues(soldIds)) {
+    ticketRows.push(
+      ...(await readEveryRow<{ order_id: string }>('the tickets on this event’s sold orders', (from, to) =>
+        admin
+          .from('tickets')
+          .select('id, order_id')
+          .in('order_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, to),
+      )),
+    )
+  }
   const ticketsByOrder = new Map<string, number>()
-  for (const t of (ticketRows ?? []) as { order_id: string }[]) {
+  for (const t of ticketRows) {
     ticketsByOrder.set(t.order_id, (ticketsByOrder.get(t.order_id) ?? 0) + 1)
   }
 
   // 3. Attribution: which sold order came through which tracked link.
-  const { data: linkRows } = await admin.from('share_links').select('id, channel').eq('event_id', eventId)
-  const links = (linkRows ?? []) as { id: string; channel: ShareChannel }[]
+  const links = await readEveryRow<{ id: string; channel: ShareChannel }>(
+    'the tracked links for this event',
+    (from, to) =>
+      admin
+        .from('share_links')
+        .select('id, channel')
+        .eq('event_id', eventId)
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   const channelByLink = new Map(links.map(l => [l.id, l.channel]))
 
   const channelByOrder = new Map<string, ShareChannel>()
   let multiplyAttributedOrders = 0
 
   if (links.length > 0) {
-    const { data: convRows } = await admin
-      .from('share_link_events')
-      .select('link_id, order_id, occurred_at')
-      .eq('kind', 'conversion')
-      .in('link_id', links.map(l => l.id))
+    /*
+     * THE CONVERSION ROWS, ALL OF THEM. This read fed the first-touch reducer
+     * below, which keeps the EARLIEST row per order, and the 1,000-row ceiling
+     * applied to it does not under-count: it DELETES attributions. An order
+     * whose conversion row fell past the ceiling stops being
+     * `organiserShared` and silently becomes `untracked`, so the organiser is
+     * told their own sharing sold fewer tickets than it did. That is the one
+     * error on this panel that argues for leaving the platform.
+     */
+    const convRows: { link_id: string; order_id: string | null; occurred_at: string }[] = []
+    for (const chunk of chunkInFilterValues(links.map(l => l.id))) {
+      convRows.push(
+        ...(await readEveryRow<{ link_id: string; order_id: string | null; occurred_at: string }>(
+          'the conversion events on this event’s tracked links',
+          (from, to) =>
+            admin
+              .from('share_link_events')
+              .select('link_id, order_id, occurred_at')
+              .eq('kind', 'conversion')
+              .in('link_id', chunk)
+              .order('id', { ascending: true })
+              .range(from, to),
+        )),
+      )
+    }
 
     /*
      * ONE ATTRIBUTION PER ORDER, chosen DETERMINISTICALLY. Measured on TEST this
@@ -246,7 +322,7 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
      * so it can never be silent.
      */
     const seenAt = new Map<string, string>()
-    for (const row of (convRows ?? []) as { link_id: string; order_id: string | null; occurred_at: string }[]) {
+    for (const row of convRows) {
       if (!row.order_id) continue
       if (!ticketsByOrder.has(row.order_id) && !soldIds.includes(row.order_id)) continue
       const channel = channelByLink.get(row.link_id)
@@ -292,14 +368,74 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
     perChannel.set(channel, c)
   }
 
-  // 5. THE RECONCILIATION. The three buckets must equal the ledger exactly.
+  /*
+   * 5. THE RECONCILIATION, AGAINST A TOTAL THIS FUNCTION DID NOT COUNT ITSELF.
+   *
+   * WHAT THIS CHECK USED TO BE, and it is the reason this item exists. It read:
+   *
+   *     const bucketOrders = organiserShared.orders + platformChannel.orders
+   *                        + untracked.orders
+   *     discrepancy = { orders: totals.orders - bucketOrders, ... }
+   *
+   * `totals.orders` is incremented once per iteration of the loop above, and
+   * every iteration also calls `add()` exactly once, which increments exactly
+   * one bucket's `orders`. The two sides were therefore the SAME NUMBER counted
+   * twice, by construction, for every possible input. `discrepancy` was always
+   * {0, 0} and `reconciles` was always `true`. The same held for tickets: both
+   * sides add the same local `tickets` value in the same iteration.
+   *
+   * It could not fail, and the page renders a percentage only when it passes,
+   * with a comment promising "REFUSE RATHER THAN GUESS ... Showing one anyway is
+   * how a wrong number ends up in a pitch deck". The test file's own header
+   * claimed "`reconciles` goes FALSE the moment it does not" and carried seven
+   * assertions that it is true and none that it is ever false, because none
+   * could be written.
+   *
+   * SO IT NOW COMPARES AGAINST THE SERVER'S OWN COUNT. `count: 'exact',
+   * head: true` is computed by Postgres over the whole table and is not subject
+   * to the row ceiling that truncates the paged reads, so it is a genuinely
+   * INDEPENDENT measurement of the same quantity. If a read came back short, or
+   * an order arrived between the two queries, the two disagree and the panel
+   * refuses the percentage, which is exactly what it already promises to do.
+   *
+   * IT IS COUNTED WITH THE SAME FILTER, spelled from the same `SOLD_STATUSES`
+   * constant, so the only thing that can differ between the two is completeness.
+   */
+  const ledgerSoldOrders = countOrRaise(
+    'the sold orders on this event, counted by the server',
+    await admin
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .in('status', SOLD_STATUSES as unknown as string[]),
+  )
+
+  /*
+   * THE TICKETS SIDE MATTERS MORE THAN THE ORDERS SIDE, because the headline
+   * percentage is computed from tickets and not from orders. Counted the same
+   * way and chunked for the same 16 KB reason as the row read above; each
+   * chunk's count is computed by Postgres over the table rather than by
+   * counting rows that arrived, which is what makes it an independent answer to
+   * the same question rather than a restatement of the first one.
+   */
+  let ledgerSoldTickets = 0
+  for (const chunk of chunkInFilterValues(soldIds)) {
+    ledgerSoldTickets += countOrRaise(
+      'the tickets on this event’s sold orders, counted by the server',
+      await admin
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .in('order_id', chunk),
+    )
+  }
+
   const bucketOrders =
     buckets.organiserShared.orders + buckets.platformChannel.orders + buckets.untracked.orders
   const bucketTickets =
     buckets.organiserShared.tickets + buckets.platformChannel.tickets + buckets.untracked.tickets
   const discrepancy = {
-    orders: totals.orders - bucketOrders,
-    tickets: totals.tickets - bucketTickets,
+    orders: ledgerSoldOrders - bucketOrders,
+    tickets: ledgerSoldTickets - bucketTickets,
   }
   const reconciles = discrepancy.orders === 0 && discrepancy.tickets === 0
 

@@ -41,9 +41,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { backfillOrder, judgeBackfillTarget } from '../ops/backfill-slot-ledger.mjs'
+import { PRODUCTION_REF, lit, productionSelect } from '../lib/production-select.mjs'
 
 const TAG = '[d1-production-dry-run]'
-const PRODUCTION = 'gndnldyfudbytbboxesk'
+const PRODUCTION = PRODUCTION_REF
 
 const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/D1'
@@ -63,19 +64,15 @@ const say = (s) => {
   console.log(s)
 }
 
-/** SELECT-only against production, through the Management API. */
-async function query(sql) {
-  if (!/^\s*select/i.test(sql)) throw new Error('this script is SELECT-only')
-  const res = await fetch(`https://api.supabase.com/v1/projects/${PRODUCTION}/database/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: sql }),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`)
-  return res.json()
-}
+/*
+ * SELECT-only against production, and `lit`, both come from
+ * scripts/lib/production-select.mjs rather than living here. They were written
+ * twice on 13 September, once in this file and once in
+ * scripts/ops/prove-d1-production-curve.mjs, and a second copy of the assertion
+ * that refuses anything but a select is a second chance to get it wrong.
+ */
+const query = productionSelect(token, PRODUCTION)
 
-const lit = (v) => `'${String(v).replace(/'/g, "''")}'`
 
 /**
  * A READ-ONLY `db` with exactly the two shapes `backfillOrder` uses in dry-run

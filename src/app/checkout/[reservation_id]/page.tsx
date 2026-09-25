@@ -7,6 +7,11 @@ import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { CheckoutForm } from './checkout-form'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { getCurrentConsentWording } from '@/lib/consent/ledger'
+import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
+import { resolveCapturePlacement } from '@/lib/consent/capture-placement'
+import { readCarriedAnswer } from '@/lib/consent/capture-carrier'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
 import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
@@ -91,6 +96,39 @@ export default async function CheckoutPage({ params }: Props) {
     .eq('id', event.organisation_id)
     .maybeSingle()
   const organiserName = organisation?.name ?? ''
+
+  /*
+   * THE QUESTION, AND THE WORDS IT IS ASKED IN, BOTH RESOLVED ON THE SERVER.
+   *
+   * GA1's reversal condition is read here rather than in the client, because
+   * the browser would otherwise need the flags table, and it is read on the
+   * same page load that renders the question so the two can never disagree.
+   * The wording is read from the immutable versioned record, so this page
+   * carries no consent sentence of its own and the string the buyer reads is
+   * the string stored as evidence. Either half missing means the question is
+   * not asked at all: a consent nobody can produce the wording for is not
+   * evidence of anything. The server action re-reads both before recording
+   * anything, so this is the presentation half and never the enforcement.
+   */
+  /*
+   * AQ1. AND WHERE THE QUESTION IS ASKED, WHICH IS A THIRD CONDITION.
+   *
+   * The reversal condition moves the capture to the ticket page rather than
+   * removing it, so this page asks only while the placement says checkout. The
+   * carried answer is checked as well, and it is the stronger of the two: a
+   * buyer who already answered on the ticket page must never be asked a second
+   * time, not even if the placement moved back under them mid purchase. Asking
+   * twice is how a person says no once and yes once about the same thing.
+   */
+  const [capturePlacement, carriedAnswer] = await Promise.all([
+    resolveCapturePlacement(admin),
+    readCarriedAnswer(admin, reservation_id),
+  ])
+  const askHere = capturePlacement === 'checkout' && carriedAnswer === null
+  const platformWording =
+    askHere && (await isFeatureEnabled('audience_capture'))
+      ? await getCurrentConsentWording(admin, FACILITATED_MARKETING_PURPOSE)
+      : null
 
   // Determine if this is a seat reservation or GA
   const rawItems = reservation.items as
@@ -349,6 +387,7 @@ export default async function CheckoutPage({ params }: Props) {
           userEmail={userEmail}
           currency={currency}
           organiserName={organiserName}
+          platformWording={platformWording}
           trustSlot={<CheckoutTrustSignals />}
         />
   )

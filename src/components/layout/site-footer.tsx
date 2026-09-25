@@ -5,6 +5,8 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { SOCIAL_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
+import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -35,7 +37,10 @@ export const DISCOVER = [
   // Preset values come from PRESETS in search-params.ts:
   //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
   { label: 'This week',         href: '/events?preset=7d' },
-  { label: 'This weekend',      href: '/events?preset=weekend' },
+  // The weekend is the one preset with a real page of its own (close-out AQ3).
+  // A footer link is a crawlable link, and pointing it at a query string that
+  // self-canonicalises to /events spent it on a page that already has one.
+  { label: 'This weekend',      href: '/this-weekend' },
   { label: 'Free events',       href: '/events?preset=free' },
 ]
 
@@ -49,10 +54,30 @@ export const COMMUNITIES = [
   { label: 'All communities',   href: '/communities' },
 ]
 
+/**
+ * THE FOOTER'S OWN SOURCE, close-out OL1 and AN1.
+ *
+ * Found by driving /organisers: three buttons on the page carried
+ * src=organisers and the footer's "Sell tickets" carried nothing, on every page
+ * of the platform. A signup through it is a signup nobody can attribute, and it
+ * is invisible, because the link works perfectly. The footer's source is
+ * `footer` rather than `organisers` because this link appears everywhere, and
+ * saying "the organiser page sent them" when the homepage did would be worse
+ * than saying nothing.
+ */
 export const FOR_ORGANISERS = [
-  { label: 'Sell tickets',        href: '/organisers/signup' },
+  { label: 'Sell tickets',        href: withSignupSource(ORGANISER_SIGNUP_PATH, 'footer') },
   { label: 'Pricing',             href: '/pricing' },
-  { label: 'Organiser guide',     href: '/organisers' },
+  // Close-out FT1. The free forecast tool, in the footer because FT1 asks for
+  // it to be reachable from here and because a page nothing links to is a page
+  // Google cannot reach either (the lesson C19's reachability crawl taught).
+  { label: 'Event forecast',      href: '/forecast' },
+  // Close-out OL1: named "Organisers", because that is the page every outreach
+  // message sends a stranger to and "Organiser guide" reads as help content
+  // rather than as the page itself. The header already links to it, as
+  // "Event Organisers", which is the founder's own wording from the launch
+  // blocker list and is not touched here.
+  { label: 'Organisers',          href: '/organisers' },
   { label: 'Step-by-step guides', href: '/guides' },
   { label: 'Help centre',         href: '/help/selling-tickets' },
 ]
@@ -121,11 +146,11 @@ interface FooterColumnProps {
 function DesktopColumn({ title, links }: FooterColumnProps) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-white/70">{title}</p>
+      <p className="chrome-footer-title">{title}</p>
       <ul className="mt-3 space-y-2">
         {links.map(link => (
           <li key={link.href}>
-            <a href={link.href} className="text-sm text-white/70 transition-colors hover:text-white">
+            <a href={link.href} className="chrome-footer-link">
               {link.label}
             </a>
           </li>
@@ -136,13 +161,17 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
 }
 
 function SocialRow() {
-  const items = [
-    { label: 'Instagram',  href: 'https://instagram.com/eventlinqs', icon: <InstagramIcon /> },
-    { label: 'TikTok',     href: 'https://tiktok.com/@eventlinqs',   icon: <TikTokIcon /> },
-    { label: 'X',          href: 'https://twitter.com/eventlinqs',   icon: <XIcon /> },
-    { label: 'LinkedIn',   href: 'https://linkedin.com/company/eventlinqs', icon: <LinkedInIcon /> },
-    { label: 'Facebook',   href: 'https://facebook.com/eventlinqs',  icon: <FacebookIcon /> },
-  ]
+  // The URLs come from src/lib/brand/social-profiles.ts, the one list, which the
+  // contact page and the Organization structured-data block also read. They were
+  // typed here and typed again on the contact page, and the two disagreed.
+  const icons: Record<SocialLabel, React.ReactNode> = {
+    Instagram: <InstagramIcon />,
+    TikTok: <TikTokIcon />,
+    X: <XIcon />,
+    LinkedIn: <LinkedInIcon />,
+    Facebook: <FacebookIcon />,
+  }
+  const items = SOCIAL_PROFILES.map(p => ({ label: p.label, href: p.href, icon: icons[p.label] }))
   return (
     <div className="flex items-center gap-4">
       {items.map(it => (
@@ -150,7 +179,7 @@ function SocialRow() {
           key={it.label}
           href={it.href}
           aria-label={`EventLinqs on ${it.label}`}
-          className="flex h-11 w-11 items-center justify-center text-white/70 transition-colors hover:text-white"
+          className="chrome-footer-social"
         >
           {it.icon}
         </a>
@@ -319,7 +348,7 @@ export function SiteFooter() {
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-white/70 transition-colors hover:text-white">
+                  <a href={link.href} className="chrome-footer-legal">
                     {link.label}
                   </a>
                 </li>

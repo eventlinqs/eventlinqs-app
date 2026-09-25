@@ -8,8 +8,13 @@ import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
-import { ReferralCapture } from '@/components/growth/referral-capture'
+import { MeasurementBoot } from '@/components/analytics/measurement-boot'
+import { ConsentBannerShell } from '@/components/analytics/consent-banner-shell'
+import { CONSENT_ASK_FLAG_SCRIPT, CONSENT_SHELL_BOOTSTRAP_SCRIPT } from '@/lib/analytics/consent-first-paint'
+import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
+import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
+import { siteVerificationMetadata } from '@/lib/seo/site-verification'
 import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
 
 /*
@@ -100,6 +105,20 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  /*
+   * SEARCH CONSOLE OWNERSHIP (close-out AN1 step 4, and close-out SEO2 step 2,
+   * which are the same requirement reached from two lanes). Indexing (C19) is a
+   * claim until Search Console is reading it back, and the property cannot be
+   * verified until Google can see the token on the live site.
+   *
+   * Emits <meta name="google-site-verification" content="..."> when, and only
+   * when, GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. An
+   * empty meta tag is not a neutral absence, it is a verification that fails
+   * with a tag that looks correct. The token is minted by a signed-in Google
+   * account, which is the one irreducible act, and everything either side of it
+   * is `npm run seo2:verify-property`. See src/lib/seo/site-verification.ts.
+   */
+  ...siteVerificationMetadata(),
   openGraph: {
     type: 'website',
     title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
@@ -160,7 +179,10 @@ const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs
 // Load Plausible only on the production deployment. On localhost and Vercel
 // preview deployments VERCEL_ENV is undefined or 'preview', so the script does
 // not load and dev/preview traffic never counts against the production domain.
-const PLAUSIBLE_ENABLED = process.env.VERCEL_ENV === 'production'
+// AN1's reversal condition rides on top of that: one flag and this script goes
+// too, so "all analytics and ad scripts" is literally all of them rather than
+// all of the ones behind the consent banner.
+const PLAUSIBLE_ENABLED = process.env.VERCEL_ENV === 'production' && !MEASUREMENT_OFF
 
 export default function RootLayout({
   children,
@@ -212,10 +234,58 @@ export default function RootLayout({
            *  paint the strip (close-out UX5). */}
           <MainContentFrame>{children}</MainContentFrame>
           <MobileBottomNav />
-          {/* First-touch attribution capture (acquisition loop). Renders null
-           *  and runs only in a post-paint effect, so it never costs LCP. */}
-          <ReferralCapture />
+          {/* MEASUREMENT AND ATTRIBUTION, AS ONE DEFERRED CHUNK.
+           *  The six components that used to be written out here in full
+           *  (close-out AN1 and GA3) are unchanged and still mount in the same
+           *  order with the same nesting; they now live in
+           *  components/analytics/measurement-stack.tsx and are fetched after
+           *  hydration instead of ahead of first paint. All six render nothing
+           *  into the server HTML and all six work in post-paint effects, so
+           *  no markup and no first paint moved: only 3938 bytes gzip, off the
+           *  first load of 133 routes. measurement-boot.tsx records the
+           *  measurement and why the dynamic() call cannot sit in this file. */}
+          <MeasurementBoot />
+          {/* The root service worker, so a navigation with no signal answers
+           *  with an EventLinqs page instead of the browser's error page
+           *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only
+           *  after `load`, so it is outside every window Lighthouse measures. */}
+          <RegisterAppWorker />
         </HeroPresenceProvider>
+        {/* THE CONSENT STRIP'S REVEAL, DECIDED BEFORE THE STRIP IS PAINTED.
+         *
+         *  IT IS A PLAIN INLINE SCRIPT AND IT MUST STAY ONE. The obvious way to
+         *  write this is <Script strategy="beforeInteractive">, which is what it
+         *  was for half a day, and in the App Router that DOES NOT RUN AT PARSE
+         *  TIME. Next emits it as
+         *      <script>(self.__next_s=self.__next_s||[]).push([0,{"children":"..."}])</script>
+         *  a queue its own runtime replays once the framework chunk has loaded.
+         *  Measured on this build: the strip was still hidden when the parser
+         *  reached it, the bootstrap below found no flag and returned without
+         *  reserving the height or arming either button, and the reveal waited
+         *  on JavaScript all over again. That is the whole defect this change
+         *  exists to remove, so the mechanism is part of the contract and the
+         *  registered guard refuses next/script here by name.
+         *
+         *  It marks the document for a visitor who has not answered, and the
+         *  markup below is identical for everybody, so no page varies by a
+         *  cookie and no cache key moves.
+         *  src/lib/analytics/consent-first-paint.ts carries the measurement. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_ASK_FLAG_SCRIPT }} />
+        {/* THE CONSENT STRIP (close-out AN1, moved into the first paint on
+         *  21 September 2026). Server rendered, so it is in the HTML of every
+         *  route and paints with the page; hidden by default and revealed only
+         *  by the flag above. It used to be a client component inside the
+         *  deferred measurement tree, which made it the LCP element on five of
+         *  the thirteen gated URLs and took /events below its performance
+         *  floor. A direct child of the body, so its fixed position can never
+         *  be captured by a transformed ancestor. */}
+        <ConsentBannerShell />
+        {/* Reserves the strip's height from the first paint and holds an answer
+         *  pressed before the deferred chunk lands, so neither button is ever a
+         *  control that does nothing. It runs where it stands, immediately
+         *  after the strip is parsed, which is the only place it can measure
+         *  an element that exists. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_SHELL_BOOTSTRAP_SCRIPT }} />
       </body>
     </html>
   )

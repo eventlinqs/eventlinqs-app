@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchArtistAttribution } from '@/lib/broadcast/artists'
 import {
@@ -23,11 +25,30 @@ export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ id: string }> }
 
+/**
+ * READ ONCE PER REQUEST. `generateMetadata` renders the head and the default
+ * export renders the body, from the same request, and both loaded this gig.
+ * Next's own reference expects the second to be free ("React `cache` can be
+ * used if `fetch` is unavailable", node_modules/next/dist/docs/01-app/
+ * 03-api-reference/04-functions/generate-metadata.md, Next 16.3.0) and on this
+ * platform it is not: every Supabase request carries its own AbortSignal so a
+ * retry inside a render is a real second request, which is the framework
+ * deduplicator's documented opt-OUT (src/lib/supabase/undeduped-fetch.ts).
+ * Close-out C8, 21 September 2026.
+ *
+ * The wrapper takes the id alone and makes its own client: React's `cache` keys
+ * on argument IDENTITY, so a client object passed in would defeat the memo the
+ * moment two call sites built one each - which is exactly what these two did.
+ */
+const gigForRoute = cache(async function gigForRoute(id: string) {
+  return fetchGigById(createAdminClient(), id)
+})
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   if (!(await isFeatureEnabled('gig_board'))) return { title: 'Not found | EventLinqs' }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { title: 'Not found | EventLinqs' }
-  const gig = await fetchGigById(createAdminClient(), id)
+  const gig = await gigForRoute(id)
   if (!gig || gig.status === 'removed') return { title: 'Not found | EventLinqs' }
   return {
     title: `${gig.title} | Gigs | EventLinqs`,
@@ -56,7 +77,7 @@ export default async function GigDetailPage({ params }: Props) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
 
   const admin = createAdminClient()
-  const gig = await fetchGigById(admin, id)
+  const gig = await gigForRoute(id)
   if (!gig || gig.status === 'removed') notFound()
 
   const supabase = await createClient()
@@ -79,7 +100,12 @@ export default async function GigDetailPage({ params }: Props) {
       ])
     : [null, [], null]
 
-  const { data: city } = await admin.from('cities').select('name').eq('slug', gig.city_slug).maybeSingle()
+  // A failed read here printed the raw slug where the city name belongs, on a
+  // public listing. readOrThrow answers null only when there genuinely is no
+  // such city, which is the one case the fallback below is for.
+  const city = await readOrThrow('marketplace-gig-city-name', () =>
+    admin.from('cities').select('name').eq('slug', gig.city_slug).maybeSingle(),
+  )
   const cityName = (city?.name as string | undefined) ?? gig.city_slug
   const deadlinePassed = new Date(gig.application_deadline) < new Date()
   const open = gig.status === 'open' && !deadlinePassed
@@ -192,7 +218,7 @@ export default async function GigDetailPage({ params }: Props) {
                   </Link>
                 </>
               ) : existingApplication && existingApplication.status !== 'withdrawn' ? (
-                <p role="status" className="mt-3 rounded-lg bg-success/15 px-3 py-2 text-sm text-success">
+                <p role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success-strong">
                   You applied to this gig. The organiser has your profile and numbers.
                 </p>
               ) : (

@@ -37,7 +37,7 @@ import type { DiscoveryEventRow } from './discovery-matchers'
  * disagreement. tests/unit/seo/discovery-counts.test.ts holds the shapes.
  */
 
-const SELECT = 'tags, venue_city, suburb_primary, venue_latitude, venue_longitude, category:event_categories(slug)'
+const SELECT = 'tags, venue_city, suburb_primary, venue_latitude, venue_longitude, organisation_id, category:event_categories(slug)'
 
 async function loadRaw(): Promise<DiscoveryEventRow[]> {
   const supabase = createPublicClient()
@@ -63,6 +63,7 @@ async function loadRaw(): Promise<DiscoveryEventRow[]> {
       suburb_primary: string | null
       venue_latitude: number | null
       venue_longitude: number | null
+      organisation_id: string | null
       category: { slug: string | null } | { slug: string | null }[] | null
     }
     const category = Array.isArray(r.category) ? r.category[0] : r.category
@@ -72,6 +73,7 @@ async function loadRaw(): Promise<DiscoveryEventRow[]> {
       suburb_primary: r.suburb_primary,
       venue_latitude: r.venue_latitude,
       venue_longitude: r.venue_longitude,
+      organisation_id: r.organisation_id,
       category_slug: category?.slug ?? null,
     }
   })

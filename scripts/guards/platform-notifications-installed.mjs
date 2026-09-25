@@ -33,6 +33,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { declareWork } from '../lib/work-report.mjs'
+import { callRpc, couldNotLook } from './lib/db-read.mjs'
 
 const TAG = '[platform-notifications-installed]'
 export const RPC = 'platform_notification_guards'
@@ -107,10 +108,13 @@ export function decide({ url, serviceKey, answer }) {
       reason: 'no SUPABASE_SERVICE_ROLE_KEY in this build, and the probe is not granted to anon',
     }
   }
+  if (answer.unreachable) {
+    return { verdict: 'FAIL', reason: couldNotLook(`${RPC}()`, answer.outcome) }
+  }
   if (answer.error) {
     return {
       verdict: 'FAIL',
-      reason: `${RPC}() could not be asked (${answer.error}); apply ${MIGRATIONS.join(' and ')} to this project`,
+      reason: `${RPC}() answered, and the answer was not usable (${answer.error}); apply ${MIGRATIONS.join(' and ')} to this project`,
     }
   }
   const value = answer.value
@@ -140,20 +144,12 @@ export function decide({ url, serviceKey, answer }) {
  * credential, so it must hold no write verb at all.
  */
 export async function ask({ url, serviceKey, fetchImpl = fetch }) {
-  try {
-    const res = await fetchImpl(`${url.replace(/\/$/, '')}/rest/v1/rpc/${RPC}`, {
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, Accept: 'application/json' },
-    })
-    const text = await res.text()
-    if (!res.ok) return { error: `HTTP ${res.status} ${text.slice(0, 160)}` }
-    try {
-      return { value: JSON.parse(text) }
-    } catch {
-      return { error: `unparseable answer ${text.slice(0, 80)}` }
-    }
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) }
-  }
+  const outcome = await callRpc({ url, key: serviceKey, rpc: RPC, fetchImpl })
+  if (outcome.ok) return { value: outcome.value }
+  // `unreachable` is carried separately from `error` because the two need
+  // opposite sentences: a dropped packet must never be reported as a missing
+  // migration. See scripts/guards/lib/db-read.mjs.
+  return { error: outcome.detail, unreachable: outcome.kind === 'transport', outcome }
 }
 
 const invokedDirectly = process.argv[1] && /platform-notifications-installed\.mjs$/.test(process.argv[1])

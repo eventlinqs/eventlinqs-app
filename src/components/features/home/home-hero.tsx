@@ -1,6 +1,7 @@
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import type { FeaturedHeroEvent } from '@/components/features/events/featured-event-hero'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
@@ -23,14 +24,7 @@ interface Props {
   featuredEvent: FeaturedHeroEvent | null
 }
 
-function formatLongDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | null {
   if (!tiers || tiers.length === 0) return null
@@ -186,7 +180,7 @@ export async function HomeHero({ featuredEvent }: Props) {
 
                 <div className="flex flex-1 flex-col p-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
-                    {formatLongDate(featuredEvent.start_date)}
+                    {formatEventDateShort(featuredEvent.start_date, featuredEvent.timezone)}
                   </p>
                   <h2 className="mt-2 line-clamp-2 font-display text-xl font-bold leading-snug text-[var(--text-primary)]">
                     {(featuredEvent.title ?? 'Event')}

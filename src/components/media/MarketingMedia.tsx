@@ -15,15 +15,32 @@ import { BrandedPlaceholder } from './decorative/branded-placeholder'
  * components fit their sizes role. This keeps the <Image> escape hatch inside
  * the media library where ESLint allows it.
  *
- * Variants map to the layout role and pull the correct sizes hint:
- *   - 'band' : a ~half-width alternating image+text feature band image.
- *   - 'tile' : a community / solutions grid tile (2-up mobile, 3-4-up desktop).
+ * A VARIANT NAMES A LAYOUT, NOT A FEELING. Until 19 September 2026 there was
+ * one variant called `band`, and THREE layouts wore it: a half-column feature
+ * band, a full-content-column offer band, and a full-bleed story band. One
+ * `sizes` string cannot be right for three widths, and two of the three were
+ * under-fetched, so the bands on /organisers and /about rendered blurry at
+ * every desktop width. The numbers are in `sizes.ts` beside the hints.
+ *
+ * Variants map to the layout and pull the correct sizes hint:
+ *   - 'band-half-column' : the alternating image-and-text band, half the
+ *     content column above `lg` and one column below it.
+ *   - 'band-full-column' : a band filling the whole capped content column.
+ *   - 'band-full-bleed'  : a band the full viewport wide, outside any container.
+ *   - 'tile-dashboard-half-column' : a tile in a two-up grid inside the
+ *                          DASHBOARD container, beside the sidebar. Its ladder
+ *                          is not any public page's, which is why it wore a
+ *                          public grid's hint and under-fetched for months.
  *
  * Always lazy (below the fold by definition - the hero is HeroMedia, the only
  * priority image per route). Renders into a `fill` parent that sets the aspect.
  */
 
-export type MarketingMediaVariant = 'band' | 'tile'
+export type MarketingMediaVariant =
+  | 'band-half-column'
+  | 'band-full-column'
+  | 'band-full-bleed'
+  | 'tile-dashboard-half-column'
 
 interface Props {
   /** Raster URL from the platform photo library. SVG falls back gracefully. */
@@ -39,8 +56,10 @@ interface Props {
 }
 
 const SIZES_BY_VARIANT: Record<MarketingMediaVariant, string> = {
-  band: MEDIA_SIZES.featureBand,
-  tile: MEDIA_SIZES.featureTile,
+  'band-half-column': MEDIA_SIZES.bandHalfColumn,
+  'band-full-column': MEDIA_SIZES.bandFullColumn,
+  'band-full-bleed': MEDIA_SIZES.bandFullBleed,
+  'tile-dashboard-half-column': MEDIA_SIZES.tileDashboardHalfColumn,
 }
 
 export function MarketingMedia({

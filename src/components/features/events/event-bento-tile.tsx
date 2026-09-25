@@ -1,5 +1,9 @@
 import Link from 'next/link'
-import { EventCardMedia, type EventCardMediaVariant, BrandedPlaceholder } from '@/components/media'
+import { formatEventDateShort } from '@/lib/dates/event-time'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { TileCaption } from '@/components/media/tile-caption'
+import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { SaveEventButton } from './save-event-button'
@@ -26,7 +30,11 @@ export interface BentoEvent extends EventMediaInput {
    * then falls back to the platform zone, which is at least the same on the
    * server and in every browser.
    */
-  timezone?: string | null
+  /**
+   * The EVENT own IANA zone. REQUIRED: an optional field let a card print the
+   * UTC day in silence, which is what it did on every morning event.
+   */
+  timezone: string | null
   venue_name?: string | null
   venue_city?: string | null
   ticket_tiers?: { price: number; currency: string }[] | null
@@ -45,14 +53,7 @@ interface Props {
   initiallySaved?: boolean
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatCheapestPrice(tiers: BentoEvent['ticket_tiers']): string | null {
   return priceLabel(tiers ?? [])
@@ -161,14 +162,6 @@ export async function EventBentoTile({
           )}
         </div>
         <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.15) 45%, rgba(10,22,40,0.85) 100%)',
-          }}
-          aria-hidden
-        />
-        <div
           className="pointer-events-none absolute inset-0 rounded-xl border-2 border-transparent transition-colors duration-300 group-hover:border-gold-400/70"
           aria-hidden
         />
@@ -210,9 +203,15 @@ export async function EventBentoTile({
 
       <div className="flex-1" />
 
-      <div className="relative z-10 p-4 md:p-5 text-white transition-transform duration-300 group-hover:-translate-y-1">
+      {/* The wash under this block was `0 at 0%, 0.15 at 45%, 0.85 at 100%` of
+        *  the TILE. A bento cell is sized by its role, so the date line - which
+        *  is gold-400, the foreground that needs the most navy under it - met
+        *  that ramp at a different alpha in every cell on the page.
+        *  <TileCaption> anchors the wash to the label; see
+        *  src/components/media/tile-photo-scrim.ts. */}
+      <TileCaption className="z-10 p-4 text-white transition-transform duration-300 group-hover:-translate-y-1 motion-reduce:transition-none md:p-5">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
-          {formatDate(event.start_date)}
+          {formatEventDateShort(event.start_date, event.timezone)}
         </p>
         <h3 className={`mt-1 font-display font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>
           {event.title}
@@ -224,7 +223,7 @@ export async function EventBentoTile({
         {price && (
           <p className="mt-3 text-sm font-semibold text-gold-400">{price}</p>
         )}
-      </div>
+      </TileCaption>
     </Link>
   )
 }

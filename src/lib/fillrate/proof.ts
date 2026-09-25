@@ -32,6 +32,7 @@
  * calls it one.
  */
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { identityHash } from '@/lib/ledger/identity'
 import { SOURCE_SYSTEM } from '@/lib/ledger/types'
 import { HOLDOUT_THRESHOLD_ABANDONMENTS, holdoutIsDue } from './due'
@@ -79,7 +80,30 @@ export async function proofForSlot(
   db: Db = createAdminClient(),
   now: Date = new Date(),
 ): Promise<RecoveryProof> {
-  const [abandonRows, sendRows, saleRows, holdRows] = await Promise.all([
+  /*
+   * A PROOF THAT CANNOT READ ITS OWN EVIDENCE MUST SAY SO.
+   *
+   * Every one of these four reads discarded its `error` and fell back to `?? []`,
+   * on the function whose entire output is the claim "the recovery engine
+   * brought back this much money". A database that could not be reached produced
+   * four zeroes and a proof reporting that the engine had recovered nothing,
+   * which is indistinguishable from an engine that is running and not working.
+   * That is the single number somebody would switch the engine off over.
+   *
+   * THE TWO THE ENGINE OWNS ARE ALSO PAGED. `recovery_sends` and
+   * `recovery_holds` belong to this engine, and an unbounded read of either
+   * stops at the server's thousand rows in silence
+   * (https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19). The busiest slot on TEST already carries 452 sends. Short, the
+   * proof under-reports a recovery that really happened.
+   *
+   * THE TWO LEDGER READS ARE NOT PAGED HERE, DELIBERATELY. `ledger_entries` is
+   * the slot ledger and belongs to another lane by the three-lane brief; their
+   * bounds are theirs to add and are enumerated in REVIEW-QUEUE-B.md. Refusing
+   * to SWALLOW their failure is not a change to the ledger, it is a change to
+   * whether this page is allowed to lie about it.
+   */
+  const [abandonRows, sends, saleRows, holds] = await Promise.all([
     db
       .from('ledger_entries')
       .select('contact_email')
@@ -87,24 +111,41 @@ export async function proofForSlot(
       .eq('kind', 'demand')
       .eq('demand_action', 'checkout_abandoned')
       .not('contact_email', 'is', null),
-    db.from('recovery_sends').select('contact_email, sent_at').eq('slot_id', slotId),
+    readEveryRow<{ contact_email: string; sent_at: string }>(`the recovery sends on ${slotId}`, (from, to) =>
+      db
+        .from('recovery_sends')
+        .select('contact_email, sent_at')
+        .eq('slot_id', slotId)
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
     db
       .from('ledger_entries')
       .select('buyer_hash, amount_cents, occurred_at')
       .eq('slot_id', slotId)
       .eq('kind', 'sale')
       .not('buyer_hash', 'is', null),
-    db.from('recovery_holds').select('claimed_at, released_at, expires_at').eq('slot_id', slotId),
+    readEveryRow<{ claimed_at: string | null; released_at: string | null; expires_at: string }>(
+      `the recovery holds on ${slotId}`,
+      (from, to) =>
+        db
+          .from('recovery_holds')
+          .select('claimed_at, released_at, expires_at')
+          .eq('slot_id', slotId)
+          .order('id', { ascending: true })
+          .range(from, to),
+    ),
   ])
 
+  if (abandonRows.error) {
+    throw new Error(`the recovery proof could not read the abandonments on ${slotId}: ${abandonRows.error.message}`)
+  }
+  if (saleRows.error) {
+    throw new Error(`the recovery proof could not read the sales on ${slotId}: ${saleRows.error.message}`)
+  }
+
   const abandoned = (abandonRows.data ?? []).length
-  const sends = (sendRows.data ?? []) as Array<{ contact_email: string; sent_at: string }>
   const sales = (saleRows.data ?? []) as Array<{ buyer_hash: string; amount_cents: number | null; occurred_at: string }>
-  const holds = (holdRows.data ?? []) as Array<{
-    claimed_at: string | null
-    released_at: string | null
-    expires_at: string
-  }>
 
   /*
    * THE EARLIEST MESSAGE PER PERSON, because a recovery is a sale after the

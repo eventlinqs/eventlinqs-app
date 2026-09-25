@@ -5,6 +5,7 @@ import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
 import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
+import { fetchReferralCoefficient } from '@/lib/growth/referral-coefficient'
 import {
   buildShortUrl,
   getOrCreateShareLink,
@@ -89,6 +90,16 @@ export default async function ReachPage({ params }: Props) {
    */
   const attribution = await fetchSalesAttribution(id)
 
+  /*
+   * AQ2. "the referral coefficient computed and reported per event".
+   *
+   * Beside the attribution rather than instead of it, because they answer
+   * different questions. The split above says where the sales came FROM; this
+   * says whether the people who bought are BRINGING anybody, which is the only
+   * acquisition number on this platform whose cash cost is zero.
+   */
+  const referral = await fetchReferralCoefficient(id)
+
   // Request origin: handed-out links must point at the deployment that
   // minted them (identical on production, self-referential on staging).
   const origin = await getRequestOrigin()
@@ -110,10 +121,10 @@ export default async function ReachPage({ params }: Props) {
   // is soft. This panel used to run views-first, which put the softest number
   // in the lead position on the one screen that has to be trusted.
   const stats = [
-    { label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
-    { label: 'Orders from links', value: summary.totals.conversions, hard: true },
-    { label: 'Link clicks', value: summary.totals.clicks, hard: false },
-    { label: 'Link views', value: summary.totals.views, hard: false },
+    { key: 'tickets', label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
+    { key: 'conversions', label: 'Orders from links', value: summary.totals.conversions, hard: true },
+    { key: 'clicks', label: 'Link clicks', value: summary.totals.clicks, hard: false },
+    { key: 'views', label: 'Link views', value: summary.totals.views, hard: false },
   ]
   const nothingHasTravelled = stats.every(stat => stat.value === 0)
 
@@ -209,6 +220,45 @@ export default async function ReachPage({ params }: Props) {
         </div>
       )}
 
+      {/*
+        AQ2's coefficient. It is shown even at zero, and especially at zero: an
+        organiser whose buyers bring nobody needs to know that more than one
+        whose buyers do. What it never does is print a 0.00 with no explanation
+        beside it, because a bare zero reads as a broken number rather than as
+        an answer.
+      */}
+      {!attribution.externallyTicketed && (
+        <div
+          className="rounded-xl border border-ink-200 bg-white px-5 py-6"
+          data-referral-coefficient={referral.coefficient === null ? 'unknown' : referral.coefficient.toFixed(2)}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
+            What your buyers bring
+          </p>
+          <p className="mt-3 text-3xl font-bold text-ink-900">
+            {referral.coefficient === null ? 'No sales yet' : referral.coefficient.toFixed(2)}
+            {referral.coefficient !== null && (
+              <span className="ml-2 text-base font-normal text-ink-600">
+                new buyers per buyer
+              </span>
+            )}
+          </p>
+          <p className="mt-1 text-sm text-ink-600">{referral.sentence}</p>
+          {referral.fromAnUnknownSharer > 0 && (
+            <p className="mt-3 text-xs text-ink-500">
+              A further {referral.fromAnUnknownSharer} sale
+              {referral.fromAnUnknownSharer === 1 ? '' : 's'} came through a share link whose sharer
+              was not signed in, so we cannot show they hold a ticket and they are not counted
+              above. Counting them all would put it at{' '}
+              {referral.coefficientUpperBound === null
+                ? 'no higher figure we can state'
+                : referral.coefficientUpperBound.toFixed(2)}
+              , which is a ceiling rather than a better guess.
+            </p>
+          )}
+        </div>
+      )}
+
       {!shareOn ? (
         <div className="rounded-xl border border-ink-200 bg-white px-5 py-6">
           <p className="text-sm text-ink-600">
@@ -228,7 +278,20 @@ export default async function ReachPage({ params }: Props) {
           ) : (
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-xl border border-ink-200 bg-white px-4 py-4">
+                <div
+                  key={s.label}
+                  className="rounded-xl border border-ink-200 bg-white px-4 py-4"
+                  /*
+                   * READABLE BY A DRIVE, because the claim these four numbers
+                   * make is "every tracked row, not the first thousand", and the
+                   * only way to prove that is to put more than a thousand rows
+                   * on a real event and read what this panel says. Matching on
+                   * the label text instead would pin the copy, and the copy is
+                   * the one thing here that is allowed to change.
+                   */
+                  data-reach-stat={s.key}
+                  data-reach-value={s.value}
+                >
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
                     {s.label}
                   </p>
@@ -250,9 +313,26 @@ export default async function ReachPage({ params }: Props) {
               this table's own empty row was saying, and saying it twice on one
               screen reads as two failures rather than one beginning. */}
           {summary.byChannel.length > 0 && (
-            <div className="mb-6 overflow-x-auto rounded-xl border border-ink-200 bg-white">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead>
+            /*
+              * A SWIPEABLE TABLE IS NOT THE SAME THING AS A READABLE ONE.
+              *
+              * MEASURED, 21 September 2026: `min-w-[560px]` inside an
+              * `overflow-x-auto` box 356px wide at 390. Nothing was clipped
+              * and nothing was unreachable, so every width check the platform
+              * already runs passed it. Swipe to the right edge, which is the
+              * only way to read Clicks and Views, and the CHANNEL scrolls off
+              * the left: "Email" measured at x -187 to -47, entirely off the
+              * phone. Four numbers, no row label, no column headings still on
+              * screen. At 768 it was half off, at -81 of a box starting at 264.
+              *
+              * Below `lg` each channel is therefore its own card with its four
+              * numbers labelled, and the table stays a table from `lg` up
+              * where the columns fit. One DOM, CSS only, same as the events
+              * list and the discount codes.
+              */
+            <div className="mb-6 rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto">
+              <table className="w-full text-sm max-lg:block lg:min-w-[560px]">
+                <thead className="max-lg:hidden">
                   <tr className="border-b border-ink-200 text-left text-ink-600">
                     <th scope="col" className="px-5 py-3 font-medium">Channel</th>
                     <th scope="col" className="px-5 py-3 font-medium">Tickets</th>
@@ -261,20 +341,31 @@ export default async function ReachPage({ params }: Props) {
                     <th scope="col" className="px-5 py-3 font-medium">Views</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="max-lg:block">
                   {summary.byChannel.map((row) => (
-                    <tr key={row.channel} className="border-b border-ink-200/60 last:border-b-0">
-                      <td className="px-5 py-3 font-semibold text-ink-900">
+                    <tr
+                      key={row.channel}
+                      className="border-b border-ink-200/60 last:border-b-0 max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:border max-lg:border-ink-200 max-lg:bg-white max-lg:px-4 max-lg:py-3"
+                    >
+                      <td className="px-5 py-3 font-semibold text-ink-900 max-lg:block max-lg:px-0 max-lg:py-0">
                         {CHANNEL_LABELS[row.channel] ?? row.channel}
                       </td>
-                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)]">
+                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)] max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
                         {row.tickets}
+                        <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">tickets</span>
                       </td>
-                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)]">
+                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)] max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
                         {row.conversions}
+                        <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">orders</span>
                       </td>
-                      <td className="px-5 py-3 text-ink-900">{row.clicks}</td>
-                      <td className="px-5 py-3 text-ink-900">{row.views}</td>
+                      <td className="px-5 py-3 text-ink-900 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
+                        {row.clicks}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">clicks</span>
+                      </td>
+                      <td className="px-5 py-3 text-ink-900 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pt-2">
+                        {row.views}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">views</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

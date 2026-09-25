@@ -48,8 +48,7 @@ const EXCLUDED_PREFIXES = ['src/lib/broadcast/', 'src/app/dev/', 'src/app/design
 export const ALLOWED_GRANTS = [
   { file: 'src/components/features/home/FeaturedHeroClient.tsx', match: 'priority={idx === 0}', why: 'homepage: slide 0 of the hero is the LCP; later slides never preload' },
   { file: 'src/components/features/home/FeaturedHero.tsx', match: 'alt={curated.alt} priority />', why: 'homepage with no featured event (close-out C17): the curated hero raster is the LCP' },
-  { file: 'src/components/features/home/category-nav-rail.tsx', match: 'priority: true,', why: 'homepage: the Communities doorway tile leads the first rail under the hero and sits in the first viewport at 390; it is the LCP when the hero has no photograph' },
-  { file: 'src/components/features/events/m5-recommended-rail.tsx', match: 'priority={i === 0}', why: 'browse: no hero image; the first rail card is the LCP' },
+  { file: 'src/components/features/events/m5-recommended-rail.tsx', match: 'priority={firstCardEager && i === 0}', why: '/events only, where the hero strip is text-only: the first rail card is the LCP. The grant was an unconditional priority={i === 0} until close-out C8B.5 (15 September 2026), and /events/browse/[city] paints a PhotographicCityHero above this rail, so every city page shipped TWO image preloads. This guard passed the whole time and could not have done otherwise: the grant is one line in one file and the truth is per ROUTE. The caller now decides; scripts/verify/scope-10-3-audit.mjs counts the eager images per served page, which is the reading this static one cannot reach.' },
   { file: 'src/components/features/events/m5-events-grid-client.tsx', match: 'priority={firstCardEager && i === 0}', why: 'browse grid without a rail above it: the first card is the LCP' },
   { file: 'src/app/cities/page.tsx', match: '<CitiesGrid entries={tier1} priority />', why: '/cities has no hero image; the grid decides which single tile carries it' },
   { file: 'src/app/cities/page.tsx', match: 'priority={priority && idx === 0}', why: '/cities: the first capital-city tile is the LCP' },
@@ -59,7 +58,9 @@ export const ALLOWED_GRANTS = [
   { file: 'src/components/templates/PhotographicCityHero.tsx', match: 'priority />', why: 'the photographic city hero template: the hero is the LCP' },
   { file: 'src/components/templates/PhotographicCategoryHero.tsx', match: 'priority />', why: 'the category landing hero: the hero is the LCP' },
   { file: 'src/components/templates/PhotographicCommunityHero.tsx', match: 'priority />', why: 'the community landing hero: the hero is the LCP' },
+  { file: 'src/components/marketplace/marketplace-hero.tsx', match: '<HeroMedia image={photo} alt="" priority />', why: '/artists and /gigs: this band is the whole above-fold image and is the LCP of both. It arrived here on 20 September 2026 when the cover stopped being a CSS background-image, which docs/MEDIA-ARCHITECTURE.md forbids for content: painted that way it was outside next/image entirely, so it negotiated no AVIF, carried no sizes hint and could never have been preloaded at all. Both routes are behind the artist_showcase and gig_board flags today, so this grant costs nothing until they open.' },
   { file: 'src/components/templates/OrganisersLandingPage.tsx', match: 'priority />', why: '/organisers: the marketing hero is the LCP' },
+  { file: 'src/app/forecast/page.tsx', match: 'priority', why: '/forecast (close-out FT1): the full-room hero is the one above-fold raster and owns the LCP' },
   { file: 'src/components/features/venues/venue-profile-hero.tsx', match: 'priority />', why: 'venue profile: the hero is the LCP' },
   { file: 'src/components/features/organisers/organiser-profile-hero.tsx', match: 'size="lg" priority />', why: 'organiser profile: the avatar in the hero is the LCP' },
   { file: 'src/components/auth/auth-shell.tsx', match: 'priority />', why: 'login and signup: the brand panel is the LCP on desktop' },
@@ -71,6 +72,7 @@ export const ALLOWED_GRANTS = [
   { file: 'src/app/launch/page.tsx', match: 'priority', why: 'launch composer: the hero is the LCP' },
   { file: 'src/app/(dashboard)/dashboard/events/[id]/page.tsx', match: 'priority', why: 'organiser event overview: the cover preview is the LCP' },
   { file: 'src/app/(dashboard)/dashboard/events/[id]/launch-kit/page.tsx', match: 'priority', why: 'launch kit: the cover preview is the LCP' },
+  { file: 'src/lib/images/hero-preload.tsx', match: "fill: true, priority: true", why: '/events/[slug]: the event hero raster, named as the LCP candidate it preloads. This is not a second grant for that document, it is the SAME one: getImageProps resolves the srcset the hero <img> will carry so the layout can register it from above the route loading boundary, and priority:true is what makes next/image build the preload-shaped props. THIS ENTRY IS ALSO THE RECORD OF A BLIND SPOT. The identical line lived in src/components/media/hero-preload-link.tsx from the moment the preload shipped and this guard never saw it, because src/components/media/ is in EXCLUDED_PREFIXES above. The exclusion is right on its own terms (every other priority line in that directory is a pass-through: a priority=false default or a priority={priority} forward, and the decision is the callers), and it still meant a genuine grant sat unreviewed for a day. It surfaced only because the arithmetic moved to src/lib/ to stop shipping next/image to the client, so the file became scannable. A grant is reviewed where the guard can see it.' },
 ]
 
 /** `priority: <expr>,` / `priority={<expr>}` followed by anything / a bare `priority` prop before another attribute or the tag's end. */
@@ -103,11 +105,39 @@ export function classifyLine(raw) {
   return { expr: expr || 'true', reach }
 }
 
+/*
+ * A BLOCK COMMENT IS COMMENTARY ON EVERY ONE OF ITS LINES, not just the first.
+ *
+ * classifyLine is handed one line and can only judge that line, so it skips a
+ * line that STARTS like a comment. That misses the continuation lines of a
+ * multi-line JSX comment whose body is not bulleted, which is the style this
+ * codebase writes them in. On 14 September 2026 a comment explaining why a
+ * tile is NOT priority quoted the code it replaced, and this guard failed the
+ * tree on the quotation: "grants priority and is not on the reviewed list".
+ * A guard that fires on prose is a guard somebody rewrites their prose around,
+ * and then the explanation is what gets lost rather than the defect.
+ *
+ * So the block state is tracked here, where the lines arrive in order and it
+ * can be known, and classifyLine goes on judging one line at a time.
+ */
 export function findGrants(source, file) {
   const out = []
+  let inBlock = false
   source.split(/\r?\n/).forEach((line, i) => {
-    const g = classifyLine(line)
-    if (g) out.push({ file, line: i + 1, text: line.trim(), ...g })
+    // Complete /* ... */ pairs on one line are removed first, so a line that
+    // both opens and closes a comment is judged on what is left outside it.
+    const bare = line.replace(/\/\*[\s\S]*?\*\//g, ' ')
+    const opens = bare.includes('/*')
+    const closes = bare.includes('*/')
+    const wasInBlock = inBlock
+    if (!inBlock && opens) inBlock = true
+    else if (inBlock && closes) inBlock = false
+    // A line inside a block, or the tail that closes one, is commentary. The
+    // line that OPENS a block is still judged on the code before the opener.
+    if (wasInBlock) return
+    const judged = opens ? bare.slice(0, bare.indexOf('/*')) : bare
+    const g = classifyLine(judged)
+    if (g) out.push({ file, line: i + 1, text: judged.trim(), ...g })
   })
   return out
 }

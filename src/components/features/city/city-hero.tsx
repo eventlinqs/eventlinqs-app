@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { HERO_HEADER_SCRIM, HERO_NO_PHOTO_FIELD } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
@@ -59,25 +61,22 @@ export function CityHero({
           <div
             aria-hidden
             className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
-            }}
+            style={{ background: HERO_NO_PHOTO_FIELD }}
           />
         )}
-        {/* Top scrim plus bottom-up navy ramp. Top scrim covers the
-         *  header zone so the white sticky nav reads on bright sky
-         *  photos. Fix from Batch 11.0 founder review. */}
+        {/* The header wash, which covers the header zone so the white sticky
+         *  nav reads on bright sky photos (Fix from Batch 11.0 founder review).
+         *  The bottom-up ramp that used to follow it is gone: its stops were
+         *  percentages of this band, and the text is bottom-anchored and hugs
+         *  its own content, so they could never say where the text had landed.
+         *  <HeroCaption> carries that job now, anchored to the text itself. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.36) 0%, rgba(10,22,40,0.12) 20%, rgba(10,22,40,0.42) 52%, rgba(10,22,40,0.88) 100%)',
-          }}
+          style={{ background: HERO_HEADER_SCRIM }}
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
-          <div className="max-w-3xl">
+          <HeroCaption className="max-w-3xl">
             <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)] sm:text-xs">
               {eyebrow}
             </p>
@@ -111,7 +110,7 @@ export function CityHero({
                 {secondaryCtaLabel}
               </Link>
             </div>
-          </div>
+          </HeroCaption>
         </div>
       </div>
     </section>

@@ -3,9 +3,16 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { isFlagEnabled } from '@/lib/flags'
 import { getRequestOrigin } from '@/lib/site-origin'
-import { INVITES_PER_FOUNDING_ORGANISER, REFERRAL_BONUS_MONTHS } from '@/lib/founding/invites'
+import {
+  INVITES_PER_FOUNDING_ORGANISER,
+  REFERRAL_BONUS_MONTHS,
+  FOUNDING_SPOT_CAP,
+  getFoundingReferralSummary,
+} from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
@@ -47,14 +54,23 @@ export default async function InvitesPage({
   // columns are revoked from `authenticated` by column privilege (20260808000010);
   // see the note in ./actions.ts for why the split is in the application rather
   // than the grant.
+  //
+  // A FAILED READ IS NOT A MISSING ORGANISATION. The error was discarded here,
+  // so a dropped socket left `org` null and this screen told a founding
+  // organiser to "create your organisation first", under a button that starts
+  // making a second one. readOrThrow answers null only when PostgREST said
+  // there is no row, and throws otherwise, so a blink becomes "try again"
+  // rather than "you have no business here".
   const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
-  const { data: org } = scope.ok
-    ? await createAdminClient()
-        .from('organisations')
-        .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
-        .eq('id', scope.active.id)
-        .maybeSingle()
-    : { data: null }
+  const org = scope.ok
+    ? await readOrThrow('founding-invites-organisation', () =>
+        createAdminClient()
+          .from('organisations')
+          .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
+          .eq('id', scope.active.id)
+          .maybeSingle(),
+      )
+    : null
 
   if (!org) {
     return (
@@ -70,13 +86,35 @@ export default async function InvitesPage({
 
   const origin = await getRequestOrigin()
   const admin = createAdminClient()
-  const { data: invites } = org.is_founding
-    ? await admin
-        .from('founding_invites')
-        .select('code, city_slug, status, invitee_email, accepted_at, created_at')
-        .eq('inviter_org_id', org.id)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  // EVERY INVITE, AND A FAILURE IS A FAILURE. This read discarded its error and
+  // carried no bound, and the two faults compound: a blink drew "no invites
+  // yet" while the action below refuses to mint another because its own count
+  // says five have been issued, which is a screen an organiser cannot answer.
+  // The list is small by construction (five per organiser) so the ceiling has
+  // never been reached, and it is paged anyway because a bound stated in the
+  // source is the only kind a reader can see.
+  //
+  // ORDERED ON created_at AND THEN id, because created_at is not unique and
+  // paging over a partial order can hand back one row in two windows and no
+  // window at all for another.
+  const invites = org.is_founding
+    ? await readEveryRow<{
+        code: string
+        city_slug: string
+        status: string
+        invitee_email: string | null
+        accepted_at: string | null
+        created_at: string
+      }>('this organiser\'s founding invites', (from, to) =>
+        admin
+          .from('founding_invites')
+          .select('code, city_slug, status, invitee_email, accepted_at, created_at')
+          .eq('inviter_org_id', org.id)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to),
+      )
+    : []
 
   const rows = (invites ?? []).map(i => ({
     code: i.code,
@@ -86,6 +124,16 @@ export default async function InvitesPage({
     acceptedAt: i.accepted_at,
   }))
   const acceptedCount = rows.filter(r => r.status === 'accepted').length
+
+  // WHAT HAS ACTUALLY BEEN EARNED, close-out FO1. "Organisers joined" counted
+  // accepted invites, which under the old rule was the same thing as months
+  // credited because the credit landed at signup. It is not the same thing any
+  // more: the three months arrive when the referred organiser's first paid
+  // ticket sells, so the screen has to separate the two or it promises time the
+  // charge has not granted.
+  const referrals = org.is_founding
+    ? await getFoundingReferralSummary(org.id)
+    : { confirmed: 0, pending: 0 }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -103,8 +151,8 @@ export default async function InvitesPage({
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
-          Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months, and gives them
-          their own founding spot while any of the 50 remain.
+          Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months once they sell
+          their first paid ticket, and gives them their own founding spot while any of the {FOUNDING_SPOT_CAP} remain.
         </p>
       </div>
 
@@ -115,6 +163,8 @@ export default async function InvitesPage({
           feeFreeUntil={org.founding_fee_free_until ?? null}
           waiverActive={isWaiverActive(org.founding_fee_free_until)}
           acceptedCount={acceptedCount}
+          referralsConfirmed={referrals.confirmed}
+          referralsPending={referrals.pending}
           cities={getAllCities().map(c => ({ slug: c.slug, name: c.name, state: c.state }))}
         />
       ) : (

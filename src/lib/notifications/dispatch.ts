@@ -6,14 +6,64 @@ import { getSiteUrl } from '@/lib/site-url'
 import {
   chooseChannel,
   buildAlertPayload,
+  isQuietNow,
   DEFAULT_PREFS,
   type NotificationType,
   type NotificationPrefs,
 } from './policy'
 import { isPushConfigured, sendWebPush, type StoredSubscription } from './web-push'
 import { contactAddress } from '@/lib/email/sender'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 type Admin = SupabaseClient<Database>
+
+/**
+ * A READ THAT CANNOT BE READ DEFERS THE MESSAGE. IT NEVER DECIDES IT.
+ *
+ * Every read in this function used to discard its error, and each one of the
+ * three decisions below was therefore available to a dropped socket. Driven on
+ * TEST on 21 September 2026, on one person, with one table failing on cue
+ * (scripts/verify/a-blink-is-not-a-preference-drive.mjs):
+ *
+ *   THE CHANNELS. `loadPrefs` fell through to DEFAULT_PREFS, which is
+ *   `push_enabled: true, email_enabled: true`. A person who had switched every
+ *   channel OFF was indistinguishable from a person who had never opened the
+ *   page, and the drive watched the email being composed for them.
+ *
+ *   THE QUIET HOURS, the same read and a separate promise. DEFAULT_PREFS
+ *   carries `quiet_hours_start: null`, and a null window is never quiet, so one
+ *   blinked read took the window away and sent inside it. The comment below
+ *   quotes the promise /account/notifications makes in its own words.
+ *
+ *   THE DEDUPE. A blinked read of `notifications` answers "no row", which reads
+ *   as "not sent yet", so the alert went out a SECOND time. The unique index on
+ *   (user_id, event_id, type) does not save it: the row is written AFTER the
+ *   send, so the constraint stops the second ROW and not the second MESSAGE,
+ *   and this cron runs every quarter of an hour.
+ *
+ * WHY DEFERRING IS THE RIGHT ANSWER RATHER THAN THE CAUTIOUS ONE. Throwing here
+ * leaves the `notifications` row UNWRITTEN, and that row is the dedupe key, so
+ * the next run of the cron considers this recipient again and delivers within
+ * the quarter hour. The cost of a blink is a delay. The cost of deciding is a
+ * message to somebody who switched it off, at an hour they asked to be left
+ * alone, or twice, and none of those can be taken back.
+ *
+ * THE CALLER'S HALF IS LOAD-BEARING AND IS GUARDED. `src/app/api/cron/
+ * notify-just-announced/route.ts` catches `ReadFailed` per RECIPIENT and
+ * continues, so one flaky read defers one person instead of abandoning every
+ * event left in the run. `scripts/guards/a-blink-defers-the-message.mjs`
+ * fails the build if that catch is lost.
+ */
+
+/**
+ * How many live push registrations one person's alert is fanned out to.
+ *
+ * A generous ceiling on a real number: a person has phones, tablets and
+ * browsers, not a fleet. It exists so the read is bounded in the source rather
+ * than by the project's invisible row ceiling, which stops at a thousand and
+ * says nothing about it.
+ */
+const MAX_PUSH_ENDPOINTS_PER_USER = 20
 
 export type DispatchInput = {
   admin: Admin
@@ -27,18 +77,38 @@ export type DispatchInput = {
     url: string
     recipientEmail?: string | null
   }
+  /**
+   * The instant the run is judged against, so one cron pass uses ONE clock for
+   * every recipient rather than drifting across an hour boundary mid-batch, and
+   * so the quiet-hours decision can be driven in a test.
+   */
+  now?: Date
 }
 
 export type DispatchResult =
   | { status: 'sent'; channel: 'push' | 'email' }
-  | { status: 'skipped'; reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' }
+  | {
+      status: 'skipped'
+      reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' | 'quiet_hours'
+    }
 
+/**
+ * A person's own channel switches and quiet hours, or DEFAULT_PREFS when they
+ * have genuinely never set any.
+ *
+ * `readOrThrow` keeps those two apart, which is the whole point: it answers null
+ * only when the database itself said there is no row, and raises for every
+ * other error, so "they have not chosen" and "we could not ask" stop being the
+ * same answer. DEFAULT_PREFS is permissive, so they had been.
+ */
 async function loadPrefs(admin: Admin, userId: string): Promise<NotificationPrefs> {
-  const { data } = await admin
-    .from('notification_prefs')
-    .select('push_enabled, email_enabled, quiet_hours_start, quiet_hours_end, timezone')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const data = await readOrThrow('notification-prefs', () =>
+    admin
+      .from('notification_prefs')
+      .select('push_enabled, email_enabled, quiet_hours_start, quiet_hours_end, timezone')
+      .eq('user_id', userId)
+      .maybeSingle(),
+  )
   return data ?? DEFAULT_PREFS
 }
 
@@ -51,24 +121,59 @@ async function loadPrefs(admin: Admin, userId: string): Promise<NotificationPref
  * prune any dead push endpoints, and record the outcome for instrumentation.
  */
 export async function dispatchAlert(input: DispatchInput): Promise<DispatchResult> {
-  const { admin, userId, eventId, type, ctx } = input
+  const { admin, userId, eventId, type, ctx, now = new Date() } = input
 
-  // Dedupe: one alert per user per event per type, ever.
-  const { data: existing } = await admin
-    .from('notifications')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('event_id', eventId)
-    .eq('type', type)
-    .maybeSingle()
+  // Dedupe: one alert per user per event per type, ever. A read that cannot be
+  // read raises rather than answering "not sent yet", because the send happens
+  // before the row is written and a second send cannot be withdrawn.
+  const existing = await readOrThrow('notification-dedupe', () =>
+    admin
+      .from('notifications')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('event_id', eventId)
+      .eq('type', type)
+      .maybeSingle(),
+  )
   if (existing) return { status: 'skipped', reason: 'duplicate' }
 
   const prefs = await loadPrefs(admin, userId)
 
-  const { data: subs } = await admin
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', userId)
+  /*
+   * QUIET HOURS, HELD RATHER THAN DROPPED. /account/notifications promises the
+   * user "nothing is sent inside your quiet hours", and until 13 September 2026
+   * nothing honoured it: the window was collected, validated, stored and read,
+   * and no code ever consulted it.
+   *
+   * Returning here WITHOUT writing the notifications row is the whole mechanism.
+   * That row is the dedupe key, so leaving it unwritten means the next run of
+   * this cron - a quarter of an hour later - considers the same alert again and
+   * delivers it the moment the window ends. Suppression would need a row and
+   * would silently destroy the alert; this defers it. Nothing else in this
+   * module may be allowed to write that row on a quiet-hours skip.
+   */
+  if (isQuietNow(prefs, now)) return { status: 'skipped', reason: 'quiet_hours' }
+
+  /*
+   * ONE PERSON'S DEVICES, WITH THE BOUND WRITTEN DOWN RATHER THAN ASSUMED.
+   *
+   * A stated `.limit()` rather than a page, and the difference is deliberate:
+   * this runs once per recipient on the hottest path in the alert cron, so a
+   * pager's extra round trip would be paid for every follower of every event to
+   * discover, every time, that somebody owns three phones. The bound is the one
+   * the guard asks for, visible in the source and arguable by a reviewer.
+   *
+   * Every endpoint is attempted and one success is enough (`anyOk` below), so
+   * the cost of the cap being hit is that a person with more than this many live
+   * registrations gets the alert on that many devices instead of all of them.
+   */
+  const subs = await readOrThrow('notification-push-subscriptions', () =>
+    admin
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', userId)
+      .limit(MAX_PUSH_ENDPOINTS_PER_USER),
+  )
 
   const hasPush = isPushConfigured() && !!subs && subs.length > 0
   const channel = chooseChannel(prefs, hasPush)
@@ -102,6 +207,8 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
       await sendEmail({
         to,
         subject: `${payload.title}: ${ctx.eventTitle}`,
+        messageType: 'attendee_event_alert',
+        recipientRole: 'prospect',
         html: alertEmailHtml(payload, manageUrl),
         text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })
@@ -124,8 +231,17 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
   return { status: 'sent', channel: delivered }
 }
 
+/**
+ * The address to fall back to, or null when this person genuinely has none.
+ *
+ * A blinked read used to answer null here too, and the caller turns null into
+ * `reason: 'no_email'`, which is a false fact about a person written into the
+ * figure an operator reads. It raises now, and the alert is deferred instead.
+ */
 async function resolveEmail(admin: Admin, userId: string): Promise<string | null> {
-  const { data } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle()
+  const data = await readOrThrow('notification-recipient-email', () =>
+    admin.from('profiles').select('email').eq('id', userId).maybeSingle(),
+  )
   return data?.email ?? null
 }
 

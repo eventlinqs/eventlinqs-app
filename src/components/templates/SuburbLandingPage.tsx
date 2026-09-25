@@ -14,6 +14,15 @@ import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getSuburb } from '@/lib/cities/data'
+import { WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+
+/**
+ * How many of the suburb's events the grid shows. It was the literal 24
+ * inside `.slice(0, 24)`; it is named because the reserved height is now
+ * derived from the same number (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   city: CityContent
@@ -46,6 +55,10 @@ export function SuburbLandingPage({
   weekendEvents,
   relatedSuburbImages,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards, so the section
+   * declares the height of what it renders rather than of what it was
+   * handed. */
+  const shownEvents = events.slice(0, ALL_EVENTS_SHOWN)
   const relatedItems = suburb.relatedSuburbs
     .map(s => getSuburb(s))
     .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -93,15 +106,24 @@ export function SuburbLandingPage({
             }}
           >
             {weekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
         </ContentSection>
       ) : null}
 
-      <ContentSection id="all-events" surface="base" width="wide" topBorder>
+      {/* 3,535px at 390, against the 480px `cv-section` reserves for a rail.
+          The section declares its own height instead: see
+          src/lib/ui/event-grid-intrinsic.ts. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -120,9 +142,9 @@ export function SuburbLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {events.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
@@ -162,11 +184,11 @@ export function SuburbLandingPage({
                 <Link
                   key={s.slug}
                   href={`/city/${city.slug}/${sub}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
+                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden

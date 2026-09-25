@@ -402,13 +402,40 @@ const nextConfig: NextConfig = {
       // scraping Open Graph tags) is served from Vercel's CDN instead of
       // re-rendering against the database on every hit. CDN-Cache-Control only
       // affects Vercel's edge cache, NOT the browser Cache-Control, so it does
-      // not fight Next's per-page no-store. Both routes are anonymous (no
-      // cookies in the render path), so a shared cached response is safe.
+      // not fight Next's per-page no-store.
+      //
+      // THIS COMMENT USED TO END "Both routes are anonymous (no cookies in the
+      // render path), so a shared cached response is safe", AND THAT WAS FALSE
+      // FOR /events (close-out C8, 18 September 2026). It rendered the ordinary
+      // `<SiteHeader />`, which reads the session cookie and renders the signed-in
+      // visitor's initials and display name, and `deriveAccountUser` falls back to
+      // the LOCAL PART OF THEIR EMAIL when the profile carries no name. That
+      // response carried `CDN-Cache-Control: public, s-maxage=60` with no
+      // exclusion, so one signed-in visitor's identity was storable at the edge
+      // and servable to every other visitor for up to 60 seconds, 300 more while
+      // stale. Driven against this build before the fix: /events returned the
+      // public header for a request carrying `el-signed-in=1`, while
+      // /events/:slug, which has the exclusion, withheld it.
+      //
+      // BOTH HALVES ARE NEEDED AND NEITHER IS SUFFICIENT.
+      //   `missing` stops a signed-in render from ever being STORED.
+      //   `staticSafe` stops a per-viewer render from EXISTING on a route whose
+      //   responses are shared, which matters because the edge looks a URL up
+      //   before any function runs and cookies are not part of its key
+      //   (src/lib/auth/signed-in-marker.ts, measured on the C13 preview), so a
+      //   signed-in visitor can still be SERVED an anonymous cached copy. With
+      //   staticSafe that copy is byte-identical to their own render.
+      // scripts/guards/edge-cache-is-viewer-independent.mjs holds both.
       {
         // /events is dynamic (reads searchParams), so without this it is
         // never edge-cached. s-maxage 60s with 5-minute stale-while-revalidate
-        // matches the page's `revalidate = 60`.
+        // matches the page's `revalidate = 60`. Query strings are part of the
+        // Vercel cache key for a function response, so /events?category=music
+        // and /events are separate entries
+        // (https://vercel.com/docs/caching/cdn-cache/purge, "The request URL
+        // (query strings are ignored for static files)", fetched 2026-09-18).
         source: '/events',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
         ],
@@ -433,6 +460,53 @@ const nextConfig: NextConfig = {
         missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        // THE 22 CITY BROWSE PAGES WERE REBUILT FROM THE DATABASE ON EVERY
+        // SINGLE VISIT (close-out C8B.3, 18 September 2026). Measured against
+        // production before this rule existed, 8 warm samples per route:
+        //
+        //   /events                   HIT  x8   warm 185 ms   origin 301 ms
+        //   /events/browse/melbourne  MISS x8   warm 276 ms   origin 309 ms
+        //   /events/browse/sydney     MISS x8   warm 276 ms   origin 269 ms
+        //   /events/browse/brisbane   MISS x8   warm 272 ms   origin 286 ms
+        //
+        // Not a cold cache: MISS on every warm sample, and the warm and
+        // cache-busted medians on the three browse pages are the same number to
+        // within the noise (+33, -7, +14 ms) because with nothing stored a warm
+        // request IS an origin render. The sibling that does have this rule
+        // saves 116 ms of first byte per request, and C8B.1's cost table found
+        // first byte to be the largest phase of the paint.
+        // scripts/perf/edge-cache-saving.mjs re-runs that table.
+        //
+        // WHY THIS ROUTE AND NOT THE OTHER 28. It is the only indexable family
+        // that already renders `<SiteHeader staticSafe />`, so sharing it
+        // changes what NOBODY sees. The homepage, the city, community and
+        // category pages render the per-viewer header through PageShell, and
+        // caching those would take a signed-in visitor's avatar off 464 pages.
+        // That is a product decision and it is in REVIEW-QUEUE-C.md with three
+        // costed options, not something this rule quietly presumes.
+        //
+        // s-maxage EQUALS the page's own `export const revalidate = 120`, and
+        // scripts/guards/edge-cache-is-viewer-independent.mjs clause 7 now
+        // fails the build if any rule here drifts from its page's number. The
+        // two values answer the same question - how stale may this page be -
+        // and until that clause existed the answer was written twice with
+        // nothing comparing them.
+        //
+        // stale-while-revalidate is 300 rather than the 86400 used by
+        // /events/:slug, DELIBERATELY. This route is `conditional` in the
+        // indexing policy: its robots meta flips between noindex and index with
+        // the city's own event count. A day-long stale window could hand a
+        // crawler a noindex copy for a day after the city crossed the
+        // threshold, which is the exact defect SEO3 was opened to fix. 300
+        // bounds the staleness at seven minutes and costs nothing measurable,
+        // because the 120-second fresh window already serves the traffic.
+        source: '/events/browse/:city',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=120, stale-while-revalidate=300' },
         ],
       },
     ]
@@ -547,9 +621,46 @@ const nextConfig: NextConfig = {
      *                  the opposite of the intent. Verified: the hero is served
      *                  at w=750 as a 33 KB AVIF.
      *   3840           the full-bleed hero on a 2x desktop still needs it.
+     *
+     * ------------------------------------------------------------------------
+     * 16 REMOVED, 19 September 2026 (close-out C8 EXECUTION METHOD, C8B.3).
+     * ------------------------------------------------------------------------
+     *
+     * The list above says the fixed sizes in use are "16, 32, 192, 256, 288,
+     * 320 and 512". That sentence stopped being true on 18 September, when the
+     * `sizes` rework replaced three shared hints with twenty-two derived ones,
+     * and nothing could notice: a width list is a CLAIM about the slots the
+     * platform renders, and the slots live in three other files.
+     *
+     * THE SMALLEST SLOT ON THIS PLATFORM IS 24 CSS PIXELS (the `xs` avatar,
+     * MEDIA_SIZES.avatarXs). A browser picks the smallest candidate that is at
+     * least the slot times the device pixel ratio, so the smallest width any
+     * image here can ever select is the first rung at or above 24, which is 32.
+     * Nothing can select 16 at any device pixel ratio, and a viewport-relative
+     * hint cannot even EMIT it: next/image filters those to widths at or above
+     * deviceSizes[0] times the smallest vw ratio, and the smallest ratio
+     * declared in MEDIA_SIZES is 21vw, which is 134 pixels.
+     *
+     * MEASURED, not reasoned: it was being emitted 142 times across the fifteen
+     * pinned gate routes, once in every candidate list of every fixed-width
+     * image, at about 230 bytes each.
+     *   C:\dev\EVIDENCE\C8B3-CANDIDATES\before.json
+     *
+     * Next.js removed 16 from its OWN default for this exact reason: "very few
+     * projects ever serve 16 pixels width images ... Removing this setting
+     * reduces the size of the srcset attribute shipped to the browser"
+     * (node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md,
+     * "`imageSizes` Default (Breaking change)", Next 16.3.0). Carrying it was a
+     * default this repository had opted back into without a reason that still
+     * held.
+     *
+     * HELD BY A GATE so the claim cannot go stale again:
+     * scripts/guards/candidate-ladder-has-no-dead-rung.mjs derives the slots
+     * from rhythm.ts and sizes.ts on every build and fails when a rung is
+     * unreachable, or when a slot has outgrown the top of the ladder.
      */
     deviceSizes: [640, 750, 828, 1080, 1920, 3840],
-    imageSizes: [16, 32, 64, 128, 256, 384],
+    imageSizes: [32, 64, 128, 256, 384],
     // Constrain quality to brand tiers. Mirrors MEDIA_QUALITY in
     // src/components/media/quality.ts. A forgotten quality={100} on a
     // feature component will now be rejected at build time rather than

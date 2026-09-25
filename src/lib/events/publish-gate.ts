@@ -5,6 +5,7 @@ import {
   verifyOrgSaleFields,
   isOrganiserSellable,
 } from '@/lib/payments/sale-status'
+import { connectVerificationIsFresh } from './connect-verification-freshness'
 
 /**
  * Result of the publish-gate check.
@@ -228,7 +229,10 @@ export async function checkPublishGate(
     // The canonical five, from ONE source (ORG_SALE_FIELDS_SELECT). This used to
     // select three, which is how the fast path below came to disagree with the sale
     // gate: it could not test what it had not read.
-    .select(ORG_SALE_FIELDS_SELECT)
+    // The canonical five plus the DATE they were last written from a live read
+    // of the account (MONEY FIX A3 layer two). The five stay in one list so a
+    // narrowed select is still a loud programming error rather than a verdict.
+    .select(`${ORG_SALE_FIELDS_SELECT}, stripe_status_verified_at`)
     .eq('id', input.organisationId)
     .maybeSingle()
 
@@ -266,7 +270,34 @@ export async function checkPublishGate(
    */
   const saleFields = verifyOrgSaleFields(org)
   if (saleFields.complete && isOrganiserSellable(saleFields.org)) {
-    return { ok: true }
+    /*
+     * MONEY FIX A3 LAYER TWO. A CACHED YES IS ONLY GOOD WHILE IT IS FRESH.
+     *
+     * The five columns just read are a CACHE of what Stripe last said, kept
+     * current by the account.updated webhook. Until this rule nothing asked WHEN
+     * it said it, so a row that said "enabled" six weeks ago and has heard
+     * nothing since was accepted exactly like one confirmed a minute ago. A
+     * webhook that stops arriving changes nothing on screen and raises nothing
+     * anywhere: the event publishes, tickets sell, the charge precondition reads
+     * the same stale row and lets them, and the first person to find out is the
+     * organiser whose transfer fails after the night.
+     *
+     * A STALE CACHE DOES NOT REFUSE. It falls through to the slow path below,
+     * which asks Stripe and decides on the answer. So this can only ever cost a
+     * network round trip; it cannot turn a working organiser away on its own.
+     *
+     * `reconcile === null` KEEPS ITS EXEMPTION, and that is not a hole. The
+     * scheduled-publish cron passes null deliberately (see publish-scheduled.ts
+     * for the measurement behind it): it reads the row seconds before deciding
+     * and must not put a live Stripe call inside a fail-closed job. Applying a
+     * freshness rule with no way to satisfy it would refuse every scheduled
+     * publish on a platform whose webhooks are perfectly healthy, which is a new
+     * defect rather than a fix.
+     */
+    const verifiedAt = (org as { stripe_status_verified_at?: string | null }).stripe_status_verified_at
+    if (reconcile === null || connectVerificationIsFresh(verifiedAt)) {
+      return { ok: true }
+    }
   }
 
   // NO RECONCILER. A caller may pass `null` to decide on the row it has just
@@ -352,9 +383,21 @@ export async function checkPublishGate(
     }
   }
 
-  // Stripe says it can sell. The refusal that was about to happen was false, and
-  // reconcile has already written the correct row.
-  if (fresh.canSell) return { ok: true }
+  /*
+   * Stripe says it can sell. The refusal that was about to happen was false, and
+   * reconcile has already written the correct row.
+   *
+   * `fresh.sellable`, NEVER `fresh.canSell`, and the difference is a real
+   * defect rather than a nicety. canSell asks two things: charges_enabled, and a
+   * payout status that is not withheld. The SALE GATE asks five, adding
+   * stripe_account_id, payouts_enabled and a settlement currency in the Connect
+   * map. So an organiser with a null country, or with payouts not yet enabled,
+   * satisfied canSell and was refused at the payment step: the event goes live,
+   * the organiser promotes it, and the buyer meets a holding message that reads
+   * as a platform fault. The reconciler now computes the sale gate's own
+   * predicate on the state it just wrote, so publish and sale cannot diverge.
+   */
+  if (fresh.sellable) return { ok: true }
 
   // A genuine block, now described from Stripe's own payload.
   if (!fresh.payoutStatus || fresh.payoutStatus === 'unset') {
@@ -378,6 +421,34 @@ export async function checkPublishGate(
       outstanding: fresh.outstanding,
       disabledReason: fresh.disabledReason,
       nextAction: { label: 'Contact support', href: '/contact' },
+    }
+  }
+
+  /*
+   * STRIPE IS HAPPY AND THE SALE GATE IS NOT, WHICH IS A REFUSAL NOTHING USED
+   * TO BE ABLE TO DESCRIBE.
+   *
+   * `canSell` and `sellable` disagree in exactly three ways: payouts are not
+   * enabled, the payout status is not active, or the account's country is one
+   * EventLinqs cannot settle in. Stripe reports NOTHING OUTSTANDING for any of
+   * them, because none of them is Stripe's complaint, so describeOutstanding
+   * below would say "Stripe has not enabled payouts on this account yet and has
+   * not said what is outstanding" and send the organiser to Stripe about a
+   * condition Stripe has no opinion on.
+   *
+   * The reconciler now returns the sale gate's own reasons, so the refusal says
+   * which one it is. This branch exists because MONEY FIX A3 layer two made the
+   * grant stricter; a stricter gate that cannot explain itself just moves the
+   * confusion.
+   */
+  if (fresh.canSell && fresh.sellableBlockers.length > 0) {
+    return {
+      ok: false,
+      reason: 'organisation_payouts_restricted',
+      message: `Stripe is happy with this account, but EventLinqs cannot pay it out yet: ${fresh.sellableBlockers.join('; ')}. Open payouts to finish it.`,
+      outstanding: fresh.outstanding,
+      disabledReason: fresh.disabledReason,
+      nextAction: { label: 'Open payouts', href: '/dashboard/payouts' },
     }
   }
 

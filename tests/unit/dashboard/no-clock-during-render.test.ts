@@ -138,7 +138,17 @@ function clockReads(src: string): string[] {
           break
         }
       }
-      if (!fromLocalComponents && !/timeZone\s*:/.test(window)) {
+      /*
+       * THE ES6 SHORTHAND COUNTS AS PINNING THE ZONE. This read only
+       * `timeZone:` and therefore called `{ timeZone }` an unpinned format,
+       * which is a FALSE POSITIVE: the shorthand pins the zone exactly as
+       * the colon form does. Found 18 September 2026 when a correctly
+       * zoned formatter in the organiser sales digest failed this suite.
+       * The comma and brace keep it to an object PROPERTY rather than any
+       * mention of the word, so this does not clear a real offender that
+       * merely has the word nearby.
+       */
+      if (!fromLocalComponents && !/timeZone\s*[:,}]/.test(window)) {
         out.push(`${i + 1}: ${l.slice(0, 90)}  (date, no timeZone)`)
       }
       return

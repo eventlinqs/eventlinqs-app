@@ -7,6 +7,8 @@ import { isPushConfigured, sendWebPush, type StoredSubscription } from '@/lib/no
 import type { GigRow } from './gigs'
 import { PERFORMANCE_TYPE_LABELS } from './gigs'
 import { contactAddress } from '@/lib/email/sender'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
  * Marketplace notifications ride the EXISTING alert rails (push-first, email
@@ -47,20 +49,96 @@ export type MarketplaceDispatchInput = {
 
 export type MarketplaceDispatchResult =
   | { status: 'sent'; channel: 'push' | 'email' }
-  | { status: 'skipped'; reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' }
+  | {
+      status: 'skipped'
+      /**
+       * `read_failed` is the reason this module did not have until 21
+       * September 2026, and its absence is what made the other four lie. Every
+       * other reason here is a FACT about a person: they already had this
+       * alert, they turned these alerts off, they have no address. When a read
+       * blinked, one of those facts was recorded about somebody it was not
+       * true of. This one says what actually happened.
+       */
+      reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' | 'read_failed'
+    }
 
-async function loadPrefs(admin: Admin, userId: string): Promise<NotificationPrefs> {
-  const { data } = await admin
+/**
+ * AN ANSWER, OR THE ADMISSION THAT THERE WASN'T ONE.
+ *
+ * Every helper below returns this rather than a bare value, because the whole
+ * defect in this file was that `null` meant two different things: "the table
+ * says no" and "the table did not answer". They lead to opposite decisions and
+ * they were indistinguishable one line later.
+ */
+type Answered<T> = { failed: true } | { failed: false; value: T }
+
+/**
+ * THE PREFERENCES, WITH THE ONE DISTINCTION THAT MATTERS.
+ *
+ * NO ROW is a real and common answer: a person who has never opened the
+ * preference centre has no row, and DEFAULT_PREFS is exactly right for them.
+ * An ERROR is not that. Treating it as "no row" hands DEFAULT_PREFS to
+ * somebody who may have switched these alerts OFF, and this module's own
+ * header commits to the opposite ("the preference centre and the availability
+ * toggle both stop future sends"). A blink is not consent.
+ */
+async function loadPrefs(admin: Admin, userId: string): Promise<Answered<NotificationPrefs>> {
+  const { data, error } = await admin
     .from('notification_prefs')
     .select('push_enabled, email_enabled, quiet_hours_start, quiet_hours_end, timezone')
     .eq('user_id', userId)
     .maybeSingle()
-  return data ?? DEFAULT_PREFS
+  if (error) {
+    console.error('[marketplace-notify] could not read notification preferences; not sending:', error)
+    return { failed: true }
+  }
+  return { failed: false, value: data ?? DEFAULT_PREFS }
 }
 
-async function resolveEmail(admin: Admin, userId: string): Promise<string | null> {
-  const { data } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle()
-  return data?.email ?? null
+/**
+ * The address. A failed read here used to be reported as `no_email`, which is
+ * a statement about a person's account that the code had no evidence for.
+ */
+async function resolveEmail(admin: Admin, userId: string): Promise<Answered<string | null>> {
+  const { data, error } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle()
+  if (error) {
+    console.error('[marketplace-notify] could not read the recipient address:', error)
+    return { failed: true }
+  }
+  return { failed: false, value: data?.email ?? null }
+}
+
+/**
+ * EVERY DEVICE THIS PERSON REGISTERED, PAGED, AND A FAILURE THAT SAYS SO.
+ *
+ * Two faults in one line, both raised by lane B on 21 September and both here.
+ * The read was UNBOUNDED, so past the PostgREST ceiling a device silently
+ * stops being told; and it discarded its error, so a blink read as "this
+ * person has no devices" and the alert fell to whatever channel was left.
+ *
+ * `readEveryRow` is the one pager and it THROWS on a real fault, which is
+ * right for a caller that can fail and wrong for this one: a notification must
+ * never fail the action that triggered it. So the throw is caught here, at the
+ * one place that knows that, and turned into an admission the caller can act
+ * on.
+ */
+async function loadSubscriptions(admin: Admin, userId: string): Promise<Answered<StoredSubscription[]>> {
+  try {
+    const rows = await readEveryRow<StoredSubscription>(
+      'the push subscriptions for one recipient',
+      (from, to) =>
+        admin
+          .from('push_subscriptions')
+          .select('endpoint, p256dh, auth')
+          .eq('user_id', userId)
+          .order('endpoint', { ascending: true })
+          .range(from, to),
+    )
+    return { failed: false, value: rows }
+  } catch (error) {
+    console.error('[marketplace-notify] could not read the push subscriptions:', error)
+    return { failed: true }
+  }
 }
 
 export async function dispatchMarketplaceAlert(
@@ -68,25 +146,64 @@ export async function dispatchMarketplaceAlert(
 ): Promise<MarketplaceDispatchResult> {
   const { admin, userId, type, subjectId } = input
 
-  const { data: existing } = await admin
+  /*
+   * THE DEDUPE READ FAILS CLOSED, and that is a decision rather than a default.
+   *
+   * This module promises "one notification per (user, type, subject), ever",
+   * and `notifications_subject_dedupe_uq` (migration 20260711000002) is the
+   * database saying the same thing about the ROW. It cannot say it about the
+   * SEND: the row is written after delivery, so this read is the only thing
+   * standing between a person and a second copy of the same alert.
+   *
+   * Discarding its error made `existing` null, which reads as "never sent",
+   * which sends again. The two outcomes are not symmetrical: a duplicate alert
+   * is a message somebody did not agree to receive twice, on a platform whose
+   * Spam Act posture is written at the top of this file, while a missed one is
+   * an alert that did not go. So an unanswered read refuses.
+   *
+   * CLAIM-FIRST WAS CONSIDERED AND IS NOT AVAILABLE, recorded so nobody
+   * re-derives it: inserting the row BEFORE sending would make the unique
+   * index do this atomically and would close the read-then-send race as well,
+   * but `notifications.channel` is `not null check (channel in ('push',
+   * 'email'))` (migration 20260624000001), so a claim has no value to carry.
+   * That is a migration, and a migration is the founder's to apply.
+   */
+  const { data: existing, error: existingError } = await admin
     .from('notifications')
     .select('id')
     .eq('user_id', userId)
     .eq('type', type)
     .eq('subject_id', subjectId)
     .maybeSingle()
+  if (existingError) {
+    console.error('[marketplace-notify] could not check whether this alert was already sent; not sending:', existingError)
+    return { status: 'skipped', reason: 'read_failed' }
+  }
   if (existing) return { status: 'skipped', reason: 'duplicate' }
 
-  const prefs = await loadPrefs(admin, userId)
+  const prefsRead = await loadPrefs(admin, userId)
+  if (prefsRead.failed) return { status: 'skipped', reason: 'read_failed' }
+  const prefs = prefsRead.value
 
-  const { data: subs } = await admin
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', userId)
+  const subsRead = await loadSubscriptions(admin, userId)
+  const subs = subsRead.failed ? [] : subsRead.value
 
-  const hasPush = isPushConfigured() && !!subs && subs.length > 0
+  /*
+   * A FAILED DEVICE READ DEGRADES TO EMAIL, AND ONLY EMAIL, AND SAYS SO.
+   *
+   * Unlike the dedupe read there is no second chance here: a gig is posted
+   * once and this dispatcher runs once, so refusing outright is permanent
+   * silence with nothing gained. Email is this platform's declared backbone
+   * behind push, so a person whose device list could not be read still hears
+   * about it on a channel they have switched on.
+   *
+   * What must NOT happen is the old ending: with no push and no email the
+   * channel came back null and the result said `opted_out`, which is a
+   * sentence about a person's choices written from a failed query.
+   */
+  const hasPush = isPushConfigured() && !subsRead.failed && subs.length > 0
   const channel = chooseChannel(prefs, hasPush)
-  if (!channel) return { status: 'skipped', reason: 'opted_out' }
+  if (!channel) return { status: 'skipped', reason: subsRead.failed ? 'read_failed' : 'opted_out' }
 
   const site = getSiteUrl().replace(/\/$/, '')
   const absoluteUrl = input.url.startsWith('http') ? input.url : `${site}${input.url}`
@@ -103,28 +220,38 @@ export async function dispatchMarketplaceAlert(
 
   let delivered: 'push' | 'email' | null = null
 
-  if (channel === 'push' && subs) {
+  if (channel === 'push') {
     let anyOk = false
     const gone: string[] = []
-    for (const sub of subs as StoredSubscription[]) {
+    for (const sub of subs) {
       const res = await sendWebPush(sub, payload)
       if (res.ok) anyOk = true
       if (res.gone) gone.push(sub.endpoint)
     }
     if (gone.length > 0) {
-      await admin.from('push_subscriptions').delete().in('endpoint', gone)
+      // A dead endpoint that cannot be removed is tried again on every future
+      // alert, so a failure here is logged rather than dropped. It is not a
+      // reason to fail the send: the alert already went.
+      const { error: pruneError } = await admin.from('push_subscriptions').delete().in('endpoint', gone)
+      if (pruneError) {
+        console.error('[marketplace-notify] could not remove expired push endpoints:', pruneError)
+      }
     }
     if (anyOk) delivered = 'push'
   }
 
   if (!delivered && prefs.email_enabled) {
-    const to = await resolveEmail(admin, userId)
+    const emailRead = await resolveEmail(admin, userId)
+    if (emailRead.failed) return { status: 'skipped', reason: 'read_failed' }
+    const to = emailRead.value
     if (!to) return { status: 'skipped', reason: 'no_email' }
     try {
       const manageUrl = `${site}/account/notifications`
       await sendEmail({
         to,
         subject: input.title,
+        messageType: 'marketplace_supplier_notice',
+        recipientRole: 'organiser',
         html: marketplaceEmailHtml(payload, input.ctaLabel, manageUrl),
         text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })
@@ -136,7 +263,13 @@ export async function dispatchMarketplaceAlert(
 
   if (!delivered) return { status: 'skipped', reason: 'send_failed' }
 
-  await admin.from('notifications').insert({
+  /*
+   * THE RECORD OF THE SEND IS WHAT STOPS THE SECOND ONE, so a failure to write
+   * it is logged loudly. The alert has already gone, so the result is still
+   * `sent`: it went. What is now uncertain is whether the next dispatch will
+   * know that, and a silent failure here is how a person gets told twice.
+   */
+  const { error: recordError } = await admin.from('notifications').insert({
     user_id: userId,
     event_id: null,
     subject_id: subjectId,
@@ -144,6 +277,12 @@ export async function dispatchMarketplaceAlert(
     channel: delivered,
     sent_at: new Date().toISOString(),
   })
+  if (recordError) {
+    console.error(
+      `[marketplace-notify] delivered by ${delivered} but could not record it (user ${userId}, ${type}, subject ${subjectId}); a repeat is now possible:`,
+      recordError,
+    )
+  }
 
   return { status: 'sent', channel: delivered }
 }
@@ -155,14 +294,25 @@ export async function dispatchMarketplaceAlert(
  * fails the posting.
  */
 export async function notifyMatchingPerformers(admin: Admin, gig: GigRow): Promise<number> {
-  const { data: artists } = await admin
-    .from('artists')
-    .select('id, owner_user_id')
-    .eq('available_for_booking', true)
-    .eq('city_slug', gig.city_slug)
-    .contains('performance_types', [gig.performance_type])
-    .not('owner_user_id', 'is', null)
-    .limit(200)
+  /*
+   * THROUGH THE DOOR, because here a failure genuinely should stop the work
+   * rather than be absorbed into a number. This used to discard its error and
+   * fall to `artists ?? []`, so a blink returned 0 and the caller recorded
+   * that nobody in the city matched the gig. `readOrThrow` retries a transient
+   * fault and throws a real one, and the only caller
+   * (src/app/actions/gigs.ts, inside `after`) already catches so a notify
+   * fault never fails the posting.
+   */
+  const artists = await readOrThrow('marketplace matching performers', () =>
+    admin
+      .from('artists')
+      .select('id, owner_user_id')
+      .eq('available_for_booking', true)
+      .eq('city_slug', gig.city_slug)
+      .contains('performance_types', [gig.performance_type])
+      .not('owner_user_id', 'is', null)
+      .limit(200),
+  )
 
   const typeLabel = PERFORMANCE_TYPE_LABELS[gig.performance_type] ?? gig.performance_type
   let sent = 0

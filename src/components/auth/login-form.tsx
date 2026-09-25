@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { readRedirectParam } from '@/lib/auth/safe-redirect'
+import { loadSupabaseClient, warmSupabaseClient } from '@/lib/supabase/client-lazy'
 import { assertLoginRateLimit } from '@/app/actions/auth-rate-limit'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
@@ -30,7 +31,6 @@ type Props = {
 export function LoginForm({ googleEnabled }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   const resetFlag = searchParams.get('reset') === 'success'
   const callbackError = searchParams.get('error')
@@ -70,6 +70,10 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
+    // Fetched here rather than at module scope: 51.4 KB gzip of auth client that a
+    // visitor who never signs in should not pay for (src/lib/supabase/client-lazy.ts).
+    // Warmed on the first keystroke below, so by now this resolves from memory.
+    const supabase = await loadSupabaseClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
@@ -88,18 +92,15 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
-    // Honour the ?redirect= deep-link set by middleware/guards when an
-    // unauthenticated user was bounced. Only allow safe internal paths
-    // (no protocol-relative // or absolute URLs) to prevent open redirect.
-    const redirectParam = searchParams.get('redirect')
-    const safeRedirect =
-      redirectParam &&
-      redirectParam.startsWith('/') &&
-      !redirectParam.startsWith('//') &&
-      !redirectParam.includes('://')
-        ? redirectParam
-        : '/dashboard'
-    router.push(safeRedirect)
+    /*
+     * Honour the deep link set by whichever guard bounced this person, under
+     * the ONE safety check. Both `?redirect=` and `?next=` are read: nine pages
+     * in this tree emit `next` and, until 21 September 2026, nothing read it, so
+     * every one of those deep links landed the person on the dashboard instead
+     * of where they were going. The inline check this replaces also accepted a
+     * BACKSLASH, and `/\evil.com` resolves to `https://evil.com/`.
+     */
+    router.push(readRedirectParam(searchParams))
     router.refresh()
   }
 
@@ -122,13 +123,15 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
-    const redirectParam = searchParams.get('redirect')
+    // The same destination, resolved the same way, so a magic link cannot send
+    // somebody somewhere a password sign-in would have refused.
+    const nextPath = readRedirectParam(searchParams)
 
     try {
       const res = await fetch('/api/auth/magic-link', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, next: redirectParam ?? undefined }),
+        body: JSON.stringify({ email, next: nextPath }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
         ok?: boolean
@@ -153,7 +156,7 @@ export function LoginForm({ googleEnabled }: Props) {
   return (
     <div className="space-y-5">
       {resetFlag && (
-        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-strong">
           Password updated. Sign in with your new password.
         </div>
       )}
@@ -190,7 +193,18 @@ export function LoginForm({ googleEnabled }: Props) {
         </>
       )}
 
-      <form method="post" onSubmit={handleEmailLogin} className="space-y-4">
+      {/* The auth client chunk is warmed on the first sign that somebody is
+          about to sign in, so the 51.4 KB it weighs is already in memory by the
+          time Sign in is pressed and the deferral costs nobody a wait. focusin
+          rather than onFocus on the input alone: a password manager fills both
+          fields without ever focusing the first one. */}
+      <form
+        method="post"
+        onSubmit={handleEmailLogin}
+        onFocusCapture={warmSupabaseClient}
+        onPointerDownCapture={warmSupabaseClient}
+        className="space-y-4"
+      >
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-ink-900">
             Email

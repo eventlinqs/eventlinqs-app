@@ -12,6 +12,7 @@
  *   sender-single-source       one definition of the sending identity
  *   no-unguarded-credential-form  no password field submittable before hydration
  *   no-control-characters      no heredoc-corrupted byte in any source file
+ *   no-drill-residue           no killed guard-failure drill leaves a mutated file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -31,15 +32,61 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
+ *   one-db-read-door          every build guard that reads the database goes through
+ *                              one door that retries a dropped packet
+ *   shared-log-is-opened-for-append  a descriptor handed to a child process is
+ *                              opened for append, so a second writer on the same
+ *                              file cannot be overwritten by a stale offset
+ *   lane-tagged-privilege-writes  a script that grants a Founding Organiser
+ *                              window on shared TEST restricts its subject to its
+ *                              own lane's rows, because a window makes the platform
+ *                              fee zero and a zero keep is refused at the payment
+ *                              step, so one left on another lane's charge fixture
+ *                              fails that lane's proof for a reason not in its tree
+ *   drive-usage-names-what-it-needs  a drive's header names every loader flag and
+ *                              environment variable that drive needs, so the
+ *                              evidence behind a closure can be reproduced
+ *   fixtures-are-not-published  a drive's fixture is never given the two values the
+ *                              sitemap selects on, because three lanes share one TEST
+ *                              database and a published URL deleted minutes later
+ *                              answers 404 to whoever reads the snapshot next
+ *   proof-reads-never-discard-their-error  on the campaign proof page a read that
+ *                              failed becomes a 500, never a printed zero and never
+ *                              a 404, because that page defends a fee with numbers
+ *   no-published-lane-b-fixture-on-test  and the same rule asked of the DATABASE:
+ *                              no lane B fixture is left published on shared TEST,
+ *                              whoever left it and whenever, because a leftover is a
+ *                              state and only a question finds one
+ *   every-order-carries-its-attribution  an order is never created by a path that
+ *                              skips the write-time attribution capture, and the
+ *                              repair for the ones it still misses is on a
+ *                              schedule, because the guard that reads the rows
+ *                              skips in CI and never runs on production at all
+ *   busy-region-names-itself   a loading skeleton that names itself carries a role
+ *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
+ *   one-weekend-definition     nothing but listing-window.ts decides when the weekend is
+ *   event-dates-in-the-event-zone  no rendering surface pins a date to UTC
+ *   weekend-surface-one-decision  /this-weekend leaves the sitemap when it empties
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   interaction-only-chrome-is-split  the search overlay and the city dialog are reached
+ *                              only by a dynamic import, so they are not first-load
+ *                              JavaScript on every one of the 133 routes
+ *   edge-cache-is-viewer-independent  a route that is edge-cached publicly renders the
+ *                              anonymous header and never stores a signed-in render
+ *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
+ *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
+ *   no-loadable-in-platform-chrome  nor does anything behind the site header or footer,
+ *                              which the root-shell closure does not reach
+ *   the-consent-banner-is-in-the-first-paint  the consent strip is server rendered and
+ *                              revealed by a pre-paint script, never painted after hydration
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -50,6 +97,160 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   no-analytics-before-consent  no measurement or advertising host is reachable
+ *                              without consent, and the default is refusal
+ *   organiser-page-is-a-read   the live proof block on /organisers is a read from the
+ *                              catalogue, the surface is named inside the copy gate, and
+ *                              every signup button carries the source AN1 counts
+ *   audience-consent-is-the-title-deed  an audience row cannot exist without a
+ *                              consent state of true and a non-empty consent wording,
+ *                              no unsubscribe surface asks anybody to log in, and the
+ *                              community taxonomy and the price bands say the same
+ *                              thing in SQL and in TypeScript
+ *   matcher-consented-and-capped  no stored match run holds somebody the consent
+ *                              resolver refuses, and none holds more people than its
+ *                              own cap
+ *   attribution-one-record-per-order-never-billable-when-reversed  every order
+ *                              carries exactly one stored attribution decision, an
+ *                              unattributed one says so with a reason, and nothing
+ *                              reports billable while a reversal exists for it
+ *   campaigner-allowlist-and-cap-in-database  no send row can exist whose
+ *                              recipient is not allowlisted with consent true for that
+ *                              campaign and channel, no SMS rests on a consent scoped
+ *                              to email, no campaign exceeds its own volume cap, and
+ *                              nothing leaves draft without an approval for its segment
+ *   forecast-reads-every-number  no fee, price or taxonomy value is typed into
+ *                              the public forecast tool, the fee comes from the
+ *                              one resolver, the taxonomy from the database, the
+ *                              method sentence is chosen by the method used, the
+ *                              measured claim stays out of reach, and the call to
+ *                              action sits below the result
+ *   api-v1-organiser-scope     no row leaves the public read API without the
+ *                              organisation predicate in its query: no route file
+ *                              can query for itself, the reader is the only reader,
+ *                              the three views carry the scope column and cannot be
+ *                              written through, an out of scope id answers 404 and
+ *                              never 403, every payload names its organisation, the
+ *                              key lookup is uncached, and the key screen reads the
+ *                              caps it documents rather than typing them
+ *   every-guard-has-been-seen-to-fail
+ *                              every guard registered in this file has a drill in
+ *                              scripts/verify/guard-failure-drills.mjs that has
+ *                              actually made it fail, against a dated baseline of
+ *                              the 63 that predate the rule; a guard that has never
+ *                              been watched to fail is a green light nobody earned
+ *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
+ *                              run-your-event line and both parameters; the
+ *                              confirmation page, the share bar and the
+ *                              organiser dashboard build their links through the
+ *                              one builder; and nothing types an attributed
+ *                              organiser link by hand
+ *   proof-page-every-number-sourced  every figure on the campaign proof page is
+ *                              produced through a source or a stated absence, no
+ *                              number, currency or percentage is typed into the
+ *                              rendering path, and the database refuses a stored
+ *                              snapshot holding a figure nothing sources
+ *   the-group-rate-and-the-sharer-are-honest
+ *                              AQ2. The group-rate floor is derived from pricing_rules
+ *                              and never typed, the currency to country map agrees in
+ *                              all three places, both ticket surfaces carry a tracked
+ *                              share bar, the referral coefficient counts only what it
+ *                              can prove, and no surface shows a rate nothing charges
+ *   discovery-consent-is-asked-once-and-never-preticked
+ *                              AQ1. No consent checkbox anywhere is pre ticked, the
+ *                              discovery question is asked on exactly one surface,
+ *                              every reader of the audience asks the consent door or
+ *                              is registered as counts-only, the placement decision
+ *                              log refuses UPDATE, and the two percent rule is decided
+ *                              in whole numbers rather than in floating point
+ *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
+ *                              DELETE at the database, an event cannot carry empty
+ *                              wording or a null tenant, no audience row can exist for
+ *                              somebody the resolver refuses, every module that can
+ *                              reach a mail transport is classified and every marketing
+ *                              one calls the resolver, and no rights or unsubscribe
+ *                              surface reads a session
+ *   marketing-mail-carries-one-click  every send path classified marketing composes the
+ *                              RFC 8058 one-click unsubscribe pair, the transport carries
+ *                              headers to the provider, the List-Unsubscribe-Post value is
+ *                              the exact specified bytes, the address those headers name is
+ *                              a route that answers POST, and GET on it withdraws nothing
+ *   consent-dates-are-zoned  no date a person reads on a consent, audience or
+ *                              marketing surface is assembled from UTC getters,
+ *                              formatted without naming a time zone, or cut out of
+ *                              an ISO string, and the consent ledger renders
+ *                              through the one platform formatter
+ *   matcher-offers-an-event-not-yet-over  the matcher's event picker is one
+ *                              bounded read: the door composes the platform's own
+ *                              visibility rule at a given instant, and no matcher
+ *                              surface reads a list of events around it
+ *   or-filter-values-are-escaped  a free-text search term dropped into a
+ *                              PostgREST or(...) is escaped through the one door
+ *                              or sanitised at its source, because a comma in an
+ *                              unescaped term is parsed as another filter clause
+ *   a-failed-read-is-not-a-fact-about-a-person  on the marketing send path a read
+ *                              goes through a door that throws, or binds its own
+ *                              error, because a failure there is written into an
+ *                              append-only ledger as a sentence about a named
+ *                              person and counted onto /admin/campaigns
+ *   an-unsubscribe-link-never-500s  every read of an unsubscribe token tests the
+ *                              token's SHAPE first, at every occurrence, because
+ *                              unsubscribe_token is a uuid column: a mangled link
+ *                              is 22P02 rather than no row, readOrThrow raises it,
+ *                              and the page answers 500 to somebody exercising a
+ *                              statutory right. Fourth occurrence of one mistake
+ *   an-outage-is-not-a-withdrawal  a send verdict says whether the LEDGER WAS
+ *                              READ, and both consent writers consult it, because
+ *                              the resolver fails closed and "could not read" is
+ *                              not an answer to "does this person hold a consent";
+ *                              a blink wrote a decline over a live grant, in an
+ *                              append-only ledger that is never corrected
+ *   a-blink-defers-the-message  the alert cron catches a read it could not make
+ *                              PER RECIPIENT and counts it, the three organiser
+ *                              notifiers that cannot throw can say `read_failed`
+ *                              rather than `not_found` about an order that
+ *                              exists, no count in the router coalesces with
+ *                              `?? 0`, and DEFAULT_PREFS is still permissive:
+ *                              a blinked preference read used to mail somebody
+ *                              who had switched every channel off, and send
+ *                              inside the quiet hours the account page promises
+ *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
+ *                              drives a browser waits for the server's observable
+ *                              view, because a drive process cannot invalidate the
+ *                              server's flag cache and one render can be made from
+ *                              a value up to the cache TTL out of date
+ *   organic-is-not-direct     the traffic-channel table is Google's published answer and
+ *                              is sealed with a digest, no client component ships its 819
+ *                              rows, and no surface reports the organic search figure
+ *                              without reading the direct one beside it (AQ3)
+ *   one-way-to-delete-an-account  a drive deletes an account in ONE place, which can
+ *                              tell an account that was already gone from a deletion that
+ *                              was REFUSED, and fails the run on the second; the files not
+ *                              yet converted are listed with the lane that owns them and
+ *                              the list can only shrink
+ *   evidence-outlives-the-account  no table whose UPDATE or DELETE is refused outright
+ *                              carries a foreign key that cascades into it, because the
+ *                              referential action runs its statement whether or not a row
+ *                              matches and the parent then cannot be deleted by anybody
+ *   a-referential-null-is-not-an-edit  the row-level half: a BEFORE UPDATE FOR EACH ROW
+ *                              trigger that can raise, on a table carrying an
+ *                              `on delete set null` key, must decline to judge the UPDATE
+ *                              the database issues when the parent goes, by an event list,
+ *                              a when clause or an early return, so an account closure is
+ *                              never refused on the grounds of a price or a consent age
+ *   one-lawful-writer-of-the-fee  every write to pricing_rules goes through the one
+ *                              database function that stamps the open row and inserts the
+ *                              next version in ONE transaction, the Zod bound on the fee
+ *                              percentage is DERIVED from the live CHECK rather than typed
+ *                              in, no control offers a value the constraint refuses, and
+ *                              execute on the writer is granted to service_role alone
+ *   founding-offer-matches-configuration  the published Founding Organiser numbers,
+ *                              the fifty in the SQL, and the fee sentence on /organisers
+ *                              and /pricing all agree with the configuration
+ *   drive-quantity-control-selector  the money drives press the button they name: the
+ *                              selector is anchored, it matches the label the product
+ *                              puts on the tier increase control, and nothing else in
+ *                              src/ answers to it
  *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
@@ -63,6 +264,21 @@
  *                              whole query at runtime while compiling and testing clean
  *   one-refund-path            every refund trigger funnels through one path, so there is one
  *                              answer to how much money goes back
+ *   refund-success-door        a refund that SUCCEEDS is heard whichever event Stripe announces it
+ *                              with: every event in the declared set has a case that reaches
+ *                              reconcile_refund, no deprecated event does, the reconcile failure
+ *                              is retryable, and the endpoint subscription probe requires the
+ *                              same set (close-out R1)
+ *   funds-reach-the-organiser  a ticket charge names a destination connected account, refuses an
+ *                              organiser who cannot be paid with a named reason, and is never
+ *                              refused by the FEE AMOUNT: a deliberately waived fee is a
+ *                              legitimate zero and an unexplained zero still is not
+ *                              (close-out MONEY FIX A1.7)
+ *   every-message-has-a-declared-recipient
+ *                              every outbound message names a type the recipient matrix
+ *                              declares, no transport escapes the matrix, and no message about
+ *                              an organiser's event reaches the platform owner while the
+ *                              organiser is told nothing (close-out MONEY FIX B3)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -139,6 +355,67 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   lcp-preload-in-the-first-flush
+ *                             the image that decides the paint is rendered by the page
+ *                              itself, ahead of every streaming boundary, so its preload
+ *                              leaves in the first chunk. Streaming the shell first was
+ *                              measured and cost 597 ms of LCP (close-out C8B.3)
+ *   image-hints-match-the-cell
+ *                             the `sizes` hint a component declares is the width its cell
+ *                              actually is: every rail cell says its two numbers twice and
+ *                              both agree, every rail hint is derived from a cell, no cell
+ *                              width or raw sizes string is written anywhere else, no hint
+ *                              is dead and every variant is mapped (close-out C8B.3)
+ *   candidate-ladder-has-no-dead-rung
+ *                             every width `next.config.ts` offers is one some declared slot
+ *                              can select, and every declared slot is reachable at the 2x
+ *                              contract. A width nobody selects is still written into the
+ *                              srcset of every fixed-width image, 1,404 times on the
+ *                              homepage at about 230 bytes each (close-out C8B.3)
+ *   event-grid-reserves-its-own-height
+ *                             every event grid declares the height it will be, from the
+ *                              count it renders, and every number that height is built
+ *                              from still describes the markup it names (close-out C8B.3)
+ *   marketing-bands-are-supplyable
+ *                             every route that renders a marketing band is measured by the
+ *                              fidelity drive, every band variant is on its own hint whose
+ *                              fixed term matches its declared slot, and a band the
+ *                              licensed raster cannot supply is named with a date and a
+ *                              reason instead of passing quietly (lane B, 19 Sep 2026)
+ *   no-silent-row-ceiling     no read in the consent, marketing, matching, attribution or
+ *                              proof path can be truncated in silence. Supabase stops a
+ *                              response at 1,000 rows with no error, which had the admin
+ *                              audience screen reporting 997 people out of 9,364 and 0
+ *                              declines out of 102. Every read pages through readEveryRow
+ *                              or states its own bound, and a paged read carries a stable
+ *                              order (lane B, 19 Sep 2026)
+ *   the-directory-ranks-the-platform
+ *                             "Strongest draw first" on /artists ranks the platform rather
+ *                              than the alphabetically first page of it. The page read 48
+ *                              performers ORDER BY name and then sorted those 48 by draw in
+ *                              JavaScript, so the bound came before the rank and a performer
+ *                              with four thousand attributed tickets whose name begins with
+ *                              Z was not on the page at all. The same line placed performers
+ *                              who had NOT consented to publishing their draw by that hidden
+ *                              number, which is disclosure by position. The rank is now a
+ *                              database function that filters, orders on the PUBLISHED draw
+ *                              and bounds in that order, and both sides resolve a
+ *                              doubly-claimed order by the first claim so the rank and the
+ *                              badge cannot drift (lane B, 21 Sep 2026)
+ *   organiser-money-has-one-source
+ *                             every screen that shows an organiser their takings reaches the
+ *                              one module that computes them, no read on those screens can
+ *                              be truncated in silence, and the arithmetic is not written
+ *                              out a second time. The edit screen summed
+ *                              `.eq('status','confirmed')` over an unbounded read whose
+ *                              error it discarded, so one event read AUD 26.87 on the
+ *                              orders screen and AUD 0.00 on the edit screen
+ *                              (lane B, 20 Sep 2026)
+ *   weak-network-contract     the checkout survives a submit that never reached the server,
+ *                              the root service worker keeps only content-hashed assets so
+ *                              no cache can serve a stale price, it registers after the
+ *                              paint, and /offline is a real route classified never
+ *                              (close-out C8B.5, Scope v5 10.3)
  *   homepage-hero-never-empty a homepage with no featured event still wears a curated,
  *                              licensed hero raster from the attribution file beside the
  *                              assets, and the media component owns the failure path
@@ -163,6 +440,59 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   initial-bundle-budget     every route's first-load JavaScript weighed against Scope v5
+ *                              10.3's 200KB and against its own recorded mark, which may only
+ *                              ever go down. Two modes: this half judges the contract and
+ *                              weighs nothing, npm's postbuild runs it with --built and
+ *                              weighs the build (C8B.3/C8B.4)
+ *   no-catalogue-in-every-document
+ *                             a reference list read only after an action is not serialised
+ *                              into the document of every page. Two modes, as above: this
+ *                              half judges the contract, postbuild's --built weighs the
+ *                              built documents. It passes by finding NOTHING, so it
+ *                              calibrates its own matcher against a known positive first
+ *                              (C8B.3)
+ *   class-lists-are-not-repeated-per-card
+ *                             a class list a component repeats per item is a composite
+ *                              utility, not a string literal: the homepage shipped one
+ *                              464-character class value 104 times, in the markup AND
+ *                              again in the RSC payload. Three clauses: the composites
+ *                              exist and the card files have not re-inlined them; no new
+ *                              class literal over 400 chars outside the reviewed baseline;
+ *                              and --built weighs repeats in the built documents. It
+ *                              cannot see a DYNAMIC route and says so (C8B.3)
+ *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
+ *                              ONE source, every buyer-facing price surface resolves it live,
+ *                              and no cart total is a per-ticket figure multiplied (SEO4)
+ *   parity-spec-complete      every table-stakes line in scripts/lib/parity-spec.mjs carries a
+ *                              check that answers on no evidence rather than passing on it,
+ *                              and every line is named by a test that breaks it (PARITY1)
+ *   no-false-urgency          every scarcity, availability or urgency message is computed
+ *                              from real inventory and is a reviewed site naming the
+ *                              expression that decides it, no scarcity count is a literal,
+ *                              and the accessibility section refuses to render empty or to
+ *                              render a negative (SEO5)
+ *   one-name-for-where-you-were-going
+ *                             every /login deep link that carries a destination uses a
+ *                              spelling the sign-in form actually reads, and one function
+ *                              decides whether any of them may be followed. Twelve pages
+ *                              emitted ?redirect= and nine emitted ?next= against a form
+ *                              that read only the first, so nine deep links silently went
+ *                              to the dashboard; and the two copies of the safety check had
+ *                              drifted, so the sign-in page accepted a backslash
+ *   discovery-indexability    the page and the sitemap count the same dimension for every
+ *                              templated family, nothing overrides or re-spells the owner's
+ *                              threshold, and every category in event_categories is a real
+ *                              page with written editorial rather than a /events?category=
+ *                              query string that canonicalises to /events (SEO3)
+ *   sitemap-covers-the-catalogue
+ *                             the sitemap and the database agree in both directions for the
+ *                              three families that come from rows: no published event,
+ *                              organiser profile or venue profile is absent from the sitemap,
+ *                              and no URL the sitemap publishes has no row behind it. Reads
+ *                              the shipped readers and asks the same questions again over raw
+ *                              PostgREST, so a swallowed query error fails a build instead of
+ *                              publishing an empty family in silence (SEO2)
  *   machine-callers-reachable every route that authenticates a machine with a shared secret is
  *                              on a reviewed record or a reviewed exclusion, no signed webhook
  *                              can be refused by our own rate limiter, no cron limiter fails
@@ -237,6 +567,107 @@
  *                              globals.css rather than held as a list of banned colours
  *                              in named files, which is how 28 pairs under AA survived
  *                              a test written for exactly that shape (close-out UX1)
+ *   surface-flag-colours-branch  a component that renders on BOTH a dark and a light
+ *                              surface branches every gold foreground with it, and the
+ *                              right way round. The shared empty state branched five
+ *                              colours and left two: gold-400 at 1.59:1 on the light
+ *                              card, gold-800 at 2.70:1 on the photo hero. The colour
+ *                              is on the icon and the surface is on the root, which is
+ *                              the gap tinted-text-meets-contrast names and cannot see
+ *   hero-scale-one-source    the founder's ONE hero scale is declared once, as
+ *                              --hero-scale, and no page overrides it on the hero
+ *                              element. Holds the growing variant too: giving it a
+ *                              height or a max-height restores the 390 clipping it
+ *                              exists to end (637px of content in a 439px box)
+ *   a-hero-is-never-a-placeholder  a hero is a photograph or it is nothing. The
+ *                              category photo resolver answers "no photograph" with a
+ *                              branded SVG, a non-empty string wins the `??` chain, and
+ *                              HeroMedia refuses an SVG: /categories/technology answered
+ *                              500 and the link crawler found it. In production the
+ *                              assertion is compiled out, so the same page would serve a
+ *                              hero that cannot be the LCP
+ *   hero-text-over-a-photograph  one navy wash for every hero, anchored to the TEXT and
+ *                              not to the band. Four templates each wrote their own and
+ *                              the four disagreed, and every stop in all four was a
+ *                              percentage of a band the bottom-anchored text does not
+ *                              sit at a fixed height in: the gold eyebrow on
+ *                              /categories/technology measured 1.38:1 at 390, 3.33:1 at
+ *                              768 and 10.67:1 at 1440 against a floor of 4.5, and 250
+ *                              of 1251 measured runs failed across 111 routes. Clause 2
+ *                              recomputes what gold-400 needs rather than pinning it
+ *   tile-label-over-a-photograph  the same law, one component family along, and the
+ *                              reason it is a second guard rather than a clause of the
+ *                              first: a derivation keyed on the painters of a FULL-BLEED
+ *                              photograph cannot see a TILE. Thirteen tile captions each
+ *                              wrote their own wash, every stop a percentage of the
+ *                              TILE, and 149 measured runs sat below floor while the
+ *                              hero guard was green: Brisbane 1.00:1 on a white sky on
+ *                              /cities with 100 per cent of its 464 core pixels failing.
+ *                              Clause 4 recomputes the requirement from the colours the
+ *                              CAPTIONS actually paint, and found a `text-gold-300` on
+ *                              its first run naming a token globals.css does not declare
+ *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
+ *                              sr-only label is a containing block. sr-only is
+ *                              position:absolute, and an absolute element is only
+ *                              clipped by an ancestor that is its containing block, so
+ *                              the label was laid out at its position in the FULL scroll
+ *                              width: /admin/users measured 569 against a 390 viewport
+ *                              and the phone rendered the screen at 69 per cent
+ *   no-loading-boundary-in-front-of-a-hero  a hero-bearing page does not sit
+ *                              behind a route-level loading.tsx at all. React streams a
+ *                              suspended tree shell-first, then the RSC FLIGHT PAYLOAD,
+ *                              then the resumed markup, so the hero <img> landed at byte
+ *                              102,160 of a 205,226 byte document against 18,599 on a
+ *                              route with no boundary. Lighthouse charged it as Element
+ *                              render delay, 603ms against 153ms without it. It replaces
+ *                              hero-preload-above-the-loading-boundary, which rescued
+ *                              the preload from behind the boundary but could not move
+ *                              the ELEMENT, and is the stronger rule that subsumes it
+ *   audit-flag-is-read-where-it-is-written  the measurement flag is read from the
+ *                              element the layout writes it to. It is set on
+ *                              documentElement and SIX components read document.body:
+ *                              the city map, the venue map, the event video, the hero
+ *                              carousel's rotation, its enhancer and the hero's
+ *                              ken-burns layer all mounted inside every Lighthouse run,
+ *                              each one a suppression written to keep decoration out of
+ *                              a measurement
+ *   the-head-and-the-body-ask-once  no route buys the same rows twice, once for
+ *                              generateMetadata and once for the page. Next's own
+ *                              reference expects that to be memoised and on this
+ *                              platform it is not, because every Supabase request
+ *                              carries its own AbortSignal, which is the framework
+ *                              deduplicator's documented opt-OUT. Counted at the global
+ *                              fetch: ten duplicate database calls across four public
+ *                              SEO route families in one warmed page view each
+ *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   a-refusal-keeps-its-door  a caller of an action that can refuse with a
+ *                              nextAction must read it and must render role="alert". The gate
+ *                              works out where to send an organiser and three callers threw it
+ *                              away, so "Connect Stripe" was advice with no door. The type, the
+ *                              door's field name, the actions that can carry one and their
+ *                              callers are all derived (21 September 2026)
+ *   the-cost-table-can-name-what-it-measures  the instrument close-out P0.5 says
+ *                              "decides the work order" reads the ONE reviewed marker
+ *                              list and the build's own client-reference manifests.
+ *                              Measured: its second row on all thirteen gated routes
+ *                              read `unattributed` for a 29.9 KB chunk the shared list
+ *                              had named correctly since 15 September, because the
+ *                              table was reading a private copy made before that
+ *                              module existed (21 September 2026, close-out C8B.1)
+ *   a-table-a-phone-can-read  every organiser and admin data table has a presentation
+ *                              below its breakpoint
+ *                              that is not a five-column table. Measured: the discount
+ *                              codes table clipped Deactivate and Delete outside an
+ *                              `overflow-hidden` box at 390 and 768, and thirteen admin
+ *                              tables lost the row's own name when swiped to the right
+ *                              edge. The breakpoint is derived from each table and the
+ *                              shared class constants are resolved before judging;
+ *                              subjects walked, comments stripped
+ *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   no-punctuation-standing-in-for-a-value  a lone separator mark may not be the
+ *                              fallback a person reads where a value should be. The
+ *                              dash scrub left nine of them, including "Name: :" on
+ *                              every guest order (21 September 2026)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -247,11 +678,49 @@
  *                              migration committed without regenerating the types is
  *                              refused on that commit and not on the push two days later
  *                              when production catches up (11 September 2026)
+ *   generated-types-are-generated  the generated section of src/types/database.ts is in
+ *                              the generator's own ascending order, no function argument
+ *                              carries a hand-written "| null", and every exposed
+ *                              function takes exactly the parameters its migration
+ *                              declares. Three hand-edits were found in one file on
+ *                              20 September 2026, one of which refused a 234 commit push
+ *                              at types-drift and two of which no semantic comparison
+ *                              could ever have seen
  *   platform-notifications-installed  the build's own database carries the six triggers
  *                              that record a new organiser, a Stripe onboarding, a
  *                              published event and a paid order, so none of the five can
  *                              complete in silence the way a real organiser's launch did
  *                              on 8 September 2026 (close-out UX3)
+ *   platform-day-boundary-is-zone-correct  the owner's daily order-alert ceiling resets
+ *                              at a real Sydney midnight on every hour of four years,
+ *                              including the two days a year that are not 24 hours long,
+ *                              where the boundary used to land an hour out and in October
+ *                              on the previous date (close-out UX3.3, 13 September 2026)
+ *   notification-paths-retry-before-they-give-up  every delivery path that can write a
+ *                              terminal state counts its attempts first, so no path
+ *                              escalates or gives up on ONE refusal the way the digest
+ *                              did, throwing away up to two hundred orders in a single
+ *                              unrecoverable row (close-out UX3.2, 13 September 2026)
+ *   digest-attempts-are-the-digests-own  a row held for the digest hands it a FRESH
+ *                              attempt count, because the attempts it spent as an
+ *                              individual email belong to a different message. Inheriting
+ *                              them let a batch arrive at the bound and give up on its
+ *                              first refusal, which is the line above defeated through
+ *                              another door (close-out UX3.2 and UX3.3, 13 September 2026)
+ *   the-daily-state-cannot-go-silent  the once-a-day report is composed and SENT even
+ *                              when every read behind it fails, and it names what it
+ *                              could not see. It used to return null with no token and
+ *                              exit 2 on any throw, sending nothing, which is the one
+ *                              signal the owner is told means the build is dead. The
+ *                              blind stall check speaks too (close-out UX4.1 and UX4.2,
+ *                              13 September 2026)
+ *   quiet-hours-are-honoured  the quiet hours the account screen collects are read on
+ *                              the USER'S clock before a send, and every path that reads
+ *                              the window either acts on it or says in the guard why it
+ *                              cannot. The window was collected, validated, stored and
+ *                              read on every send, and nothing ever consulted it: a user
+ *                              who asked for silence from 10pm was pushed at 3am
+ *                              (13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -277,6 +746,89 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
+ *   the-founder-screens-read-every-row  the admin GMV dashboard, the fee-override
+ *                             screen and the demand signal read every row, in a
+ *                             stable order, and fail loudly rather than
+ *                             rendering a silent zero, hiding a live fee
+ *                             override, or putting an already-invited founding
+ *                             organiser back on the list to be emailed again
+ *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
+ *                             abandoned-checkout sender, and its suppression list
+ *                             is read whole rather than to the first 1,000 names
+ *   the-attribution-panels-count-every-row  the ORGANISER'S reach and attribution
+ *                             panel reads every tracked row, spells every `in`
+ *                             list in byte-bounded chunks, and reconciles
+ *                             against a count the SERVER performed rather than
+ *                             one it accumulated itself in the loop it is
+ *                             checking, which made `reconciles` a constant true
+ *   the-organiser-dashboard-reads-every-row  the organiser's HOME and their
+ *                             per-event overview read every order, paged on a
+ *                             UNIQUE column so a row cannot land in two windows
+ *                             and double-count revenue, and fail loudly rather
+ *                             than rendering a business that has sold nothing
+ *   a-marketplace-block-holds  the gig board and the performer directory: a
+ *                             block is a safety decision and the read that
+ *                             checks it throws rather than answering "not
+ *                             blocked", the database refuses the contact
+ *                             underneath it, no applicant list is unbounded or
+ *                             silent, and the city picker has one reader
+ *   the-founding-invite-is-spent-once  the acquisition loop the growth plan
+ *                             calls lever two: the consume and the spot claim
+ *                             are ONE transaction so a fault can never leave a
+ *                             single-use code spent with no spot granted, the
+ *                             five-invite allowance is the same number in the
+ *                             TypeScript and in the database, and no read in
+ *                             the loop answers a failure as an answer
+ *   a-discount-code-a-buyer-can-actually-use  the buyer-facing discount check,
+ *                             where every code on the platform was dead and
+ *                             nothing said so: the read ran on the SESSION
+ *                             client and neither discount table admits a buyer
+ *                             by policy, so a live code came back "Invalid
+ *                             discount code". The reader now gets a
+ *                             service-role client, the per-user identity comes
+ *                             from the session rather than from the browser
+ *                             that chose it, a failed read says it could not
+ *                             check instead of granting or accusing, and a
+ *                             genuinely absent code is still called invalid
+ *   the-price-ladder-survives-a-blink  the organiser's pricing and discount
+ *                             configuration, where a failed read was DATA LOSS
+ *                             rather than a wrong number: the editor
+ *                             substitutes one synthetic step at the base price
+ *                             for an empty ladder and Save writes it back, so
+ *                             every read feeding it throws, every screen
+ *                             rendering it reaches the one reader, the action
+ *                             sends the steps whatever the switch says, and the
+ *                             migration's DELETE stays guarded so a PAUSE never
+ *                             deletes
+ *   the-seating-surfaces-count-every-seat  the five organiser screens that
+ *                             decide who has a seat read every seat, page on a
+ *                             TOTAL order, fail loudly, and carry no ceiling
+ *                             that is a number somebody typed: not the
+ *                             `.range(0, 1999)` the launch kit printed its seat
+ *                             count out of, and not the 10,000 loop bound in
+ *                             the pager written to defeat the 1,000-row cap
+ *   the-attendee-list-is-every-attendee  the data-ownership promise itself: the
+ *                             attendee list, the door list, the orders report
+ *                             and all four exports hand back every attendee,
+ *                             every marketing consent and every order, chunk
+ *                             every `in` list, page on a UNIQUE column, and
+ *                             throw rather than exporting nobody when a read
+ *                             fails
+ *   the-weekly-digest-owes-nobody-an-email  the weekly city email, the only
+ *                             send path that writes to strangers: every
+ *                             audience read paged on a UNIQUE column, every
+ *                             `in` list chunked by bytes so the suppression
+ *                             read cannot come back EMPTY, every failed read
+ *                             raised rather than read as an answer, and the
+ *                             send window taken from the pure planner so a city
+ *                             can never be recorded as finished while it still
+ *                             owes four hundred people an email
+ *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
+ *                             error a PostgREST client REPORTS rather than
+ *                             throws, report every failure in every environment
+ *                             including production, and still never throw, so an
+ *                             entry nobody can find cannot be mistaken for an
+ *                             action nobody took
  *   recovery-only-writes-to-people-who-asked  every recovery message names the
  *                             recorded engagement that authorised it, the six
  *                             refusals still exist, and no message goes without a
@@ -499,6 +1051,15 @@ const GUARDS = [
   'scripts/guards/sender-single-source.mjs',
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
+  // The guard-failure drill harness mutates a real source file and restored it
+  // in a `finally`, which does not run when the process is killed. It was killed
+  // twice in two days: a power loss put `process.exit(1)` into the guard above
+  // and into commit 1aa059f6, where it exited 1 with no output at all and read
+  // as a real finding for a day; a usage-limit kill left an auth provider
+  // hardcoded on in the login page. This one fails while any drill journal entry
+  // is open, so a crash can only ever ADD evidence, and it offers the one-command
+  // undo rather than a description of one.
+  'scripts/guards/no-drill-residue.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it
@@ -596,6 +1157,103 @@ const GUARDS = [
   // filling the field the label named produced a zero-priced ticket on a paid
   // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/labels-name-the-right-control.mjs',
+  // The third sibling, and the one the other two cannot see: a name that is
+  // PROHIBITED, so assistive technology drops it silently. A plain div maps to
+  // role=generic and a generic role may not carry an accessible name, so
+  // `<div aria-busy aria-label="Loading">` is invalid ARIA that announces
+  // nothing while looking correct in review. Fixed once in the seating plan in
+  // September, with a comment, and shipped again three times anyway: checkout,
+  // the event page and the shared LoadingState. The checkout one BLOCKED THE
+  // PUSH GATE on 13 September 2026 at the checkout-viewport step. Scoped to
+  // aria-busy because that is where axe raises a violation rather than a review
+  // note, which is measured in the guard header, not assumed.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/busy-region-names-itself.mjs',
+  // A build guard that reads the database over the network does it through one
+  // door that retries a dropped packet. On 13 September 2026 two pushes were
+  // blocked, four hours apart, by guards reporting `fetch failed` as a finding;
+  // one of them told the reader to apply two migrations that had been applied
+  // for a week. Five of the probes were copy-pastes of each other, so the first
+  // fix, made to the single guard that used the supabase client, missed all of
+  // them. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/one-db-read-door.mjs',
+  // A descriptor handed to a child process is opened for APPEND, never
+  // truncating. startGateServer hands one fd to the server, the Upstash stub
+  // and any extra a step needs, and the drives read that file as an inbox AND
+  // append the recovery engine subprocess mail into it. A truncating fd keeps
+  // its own offset, so every append moved end of file past it and the server
+  // wrote over the message the harness had just added. On 13 September 2026
+  // the D2 recovery proof at 768 called that a product defect: two messages
+  // where three were sent, while the database and the engine both said three.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/shared-log-is-opened-for-append.mjs',
+  // A drive's documented command names everything that drive actually needs.
+  // Three incidents in one day, 14 September 2026, all in lane B's own drives
+  // and all found by running exactly what the header said: an1-consent-drive
+  // named neither loader flag nor SERVER_LOG and reported 'no confirmation link
+  // was printed' and 'the role is attendee after confirming' before throwing
+  // part way through; pl1-loops-drive named the loaders and not SERVER_LOG and
+  // reported 'the weekly query counted 0 referred signups'. Every one of those
+  // messages accuses the product and not one was about the product, which is
+  // the property that makes it worth a guard: the damage lands in the harness's
+  // own evidence. A drive is what a closure block cites, so a drive nobody can
+  // reproduce is a closure resting on somebody's shell history. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  // Three lanes share TEST vkapkibzokmfaxqogypq. On 14 September 2026 lane B's
+  // FO1 offer drive was found granting and revoking Founding Organiser windows on
+  // whichever organisation happened to be first, which on that day meant lane A's
+  // refund fixtures and lane C's events. A window sets the platform fee to zero and
+  // a zero keep is refused at the payment step, so it makes another lane's proof
+  // fail at Stripe with the cause nowhere in that lane's tree. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/lane-tagged-privilege-writes.mjs',
+  'scripts/guards/drive-usage-names-what-it-needs.mjs',
+  // On 14 September 2026 lane B's PL1 fixture refused lane A's push at step 13 of
+  // 16: an organisation created `active` and an event created `public` are exactly
+  // what src/app/sitemap.ts selects on, so for the minutes that fixture lived the
+  // platform advertised an organiser profile and a venue page that were about to be
+  // deleted, and another lane's server had already cached that snapshot for its 300
+  // second revalidate window. Deleting the rows does not undo the advertising. The
+  // same shape cost production 48 URLs answering 404 to Googlebot on 25 August 2026.
+  // This guard also checks its own premise, because a rule about what the sitemap
+  // publishes is worthless the day the sitemap publishes something else. Drilled red
+  // in scripts/verify/guard-failure-drills.mjs, four ways.
+  'scripts/guards/fixtures-are-not-published.mjs',
+  // 15 September 2026, found by driving rather than by reading. GA5's drive said
+  // the proof page did not read as the with-sales state and the leading number
+  // rendered at 0 pixels. The server log carried the cause: a ConnectTimeoutError
+  // to Supabase, for about a minute. Every read in src/lib/proof/read.ts dropped
+  // its error, so the campaign read returned null and the page answered 404 for a
+  // campaign that exists, and the orders read would have returned an empty list,
+  // which downstream is not an error at all. It is zero revenue, printed as a
+  // figure, on the one page whose stated law is that a figure which cannot name
+  // its source renders as words and never as a zero. Drilled red two ways in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/proof-reads-never-discard-their-error.mjs',
+  // The third lock on the same law, and the only one that asks the world. The
+  // static guard reads the drives; each drive asks about its own run; this asks
+  // what is on TEST right now. On 13 September 2026 a GA5 run left a published
+  // fixture event with four confirmed orders behind it, GA5 reported 'left as
+  // found' on every run afterwards because it counted campaign rows, and it sat in
+  // the sitemap for two days. Neither of the other two locks can see that: the
+  // source was already being changed and the run had long since ended. SKIPS by
+  // name where there is no database, as schema-ahead-of-code does. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs by removing the FO1 exemption, and its
+  // decision is driven both ways over synthetic rows in
+  // tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, because proving
+  // the interesting half against the real database means committing the incident.
+  'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+  // 15 September 2026. GA3's invariant guard reads the database, and its own
+  // header says what it cannot do: in CI it points at a PLACEHOLDER project and
+  // skips, and on production nothing runs it at all. So the rule that every
+  // order carries exactly one stored attribution decision was defended by four
+  // call sites remembering one function, plus an ops script a person runs by
+  // hand after a build reds on a different machine. This checks the two halves
+  // that ARE source facts: every order insert under src/ is paired with the
+  // write-time capture, and the healer is on a schedule. Both derived by reading
+  // src/ rather than listed, so the fifth insert site is judged the day it is
+  // written. Drilled red both ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/every-order-carries-its-attribution.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the
@@ -622,6 +1280,26 @@ const GUARDS = [
   // /categories/* URLs this repository 308s away; and no tie at all between the
   // shapes published and the routes that exist. A sweep of the 586 URLs the
   // production sitemap published returned 48 hard 404s.
+  // SIX COPIES OF ONE DEFINITION, four removed by a consolidation that could not
+  // see the other two. The homepage built its own weekend from getUTCDay and ran
+  // it Saturday 10:00 to Monday 10:00 Melbourne time, dropping a quarter of the
+  // weekend off the rail whose only job is to show it; /api/home/surprise read
+  // the server's clock and labelled a Monday morning pick 'Weekend energy'.
+  'scripts/guards/one-weekend-definition.mjs',
+  // EIGHT COMPONENTS AT ONCE. Every reader is between UTC+8 and UTC+11, so
+  // an event starting before 10:00 AEST showed the PREVIOUS DAY on its card:
+  // every morning market, workshop and Saturday sport on the platform. The bug
+  // was already known and already fixed on ONE rail, and the other eight were
+  // left standing because nothing looked for them.
+  'scripts/guards/event-dates-in-the-event-zone.mjs',
+  // THE ONE PAGE THAT EMPTIES ITSELF ON A SCHEDULE. /this-weekend has nothing on
+  // it from Sunday night onwards, and AQ3 rules that a surface that cannot be
+  // filled is not published. The page's robots directive and the sitemap's
+  // decision to publish the URL are two readings of one number, and an
+  // unconditional entries.push in sitemap.ts is a one-line edit away at all
+  // times. This also holds the fix that made a date preset NARROW the listing
+  // window instead of replacing it.
+  'scripts/guards/weekend-surface-one-decision.mjs',
   'scripts/guards/sitemap-resolves.mjs',
   // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
   // one class landed in a week, in four different mechanisms: a cached rail with
@@ -645,6 +1323,83 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // THE SAME DEFECT ONE LAYER OUT: chrome that only an action can reveal, sitting
+  // in the platform-wide client shell because the header is in the root layout.
+  // The global search overlay and the city dialog were both there, on /offline
+  // and /unsubscribe/[token] as much as on the homepage. Moving them behind
+  // next/dynamic took 509,320 bytes off the platform across 133 routes with 0
+  // routes worse, and took three public routes back under the Scope v5 10.3
+  // budget. initial-bundle-budget would catch a straight reintroduction, but its
+  // marks are rewritten by hand whenever a growth is justified, and after any
+  // such rewrite a static import that crept back is the new normal. This names
+  // that edit.
+  'scripts/guards/interaction-only-chrome-is-split.mjs',
+  // THE HALF OF THAT SPLIT NOTHING WAS WATCHING: the code moved and the DATA did
+  // not. The header handed the whole picker city catalogue to the client
+  // component as a prop, and a prop crossing the server/client boundary is
+  // serialised into the RSC payload whether the component reading it ever mounts
+  // or not. 6,988 bytes, twice, on every page of the platform, 7.29 percent of
+  // the login document, for a dialog almost nobody opens. initial-bundle-budget
+  // recorded the JavaScript win while the same feature's bytes sat in the HTML
+  // where no gate was looking. THIS HALF WEIGHS NOTHING and says so; the proof is
+  // the same file run with --built from npm's postbuild (close-out C8B.3).
+  'scripts/guards/no-catalogue-in-every-document.mjs',
+  // A CLASS LIST A COMPONENT REPEATS PER ITEM IS A COMPOSITE UTILITY, NOT A
+  // STRING LITERAL. The homepage shipped one 464-character class value 104
+  // times, once in the markup and again in the RSC payload, which is 34.9% of a
+  // 1,007,295 B document spent on class attributes. Collapsing the home card
+  // family took the document to 850,054 B. This half judges the CONTRACT (the
+  // composites exist, the card files have not re-inlined them, and no new class
+  // literal over 400 chars arrives outside the reviewed baseline); postbuild's
+  // --built weighs the built documents. It CANNOT see the homepage, which is a
+  // dynamic route, and says so: card-class-collapse-drive.mjs covers that
+  // (close-out C8B.3).
+  'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
+  // A ROUTE WHOSE RESPONSES ARE SHARED AT THE EDGE MAY NOT RENDER ONE VISITOR'S
+  // NAME. /events carried `CDN-Cache-Control: public, s-maxage=60` with no
+  // signed-in exclusion while rendering the ordinary `<SiteHeader />`, which
+  // puts the signed-in visitor's initials and display name in the markup, and
+  // that display name falls back to the local part of their email. Production
+  // answered `X-Vercel-Cache: HIT, Age: 80` on that URL, so the cache was real.
+  // Its two siblings had both halves of the protection; this one had neither.
+  // Found by building this guard rather than by a visitor, on 18 September 2026.
+  'scripts/guards/edge-cache-is-viewer-independent.mjs',
+  // THE SAME RULE, A DIFFERENT SERVER-ONLY DEPENDENCY, AND IT WAS ALREADY LIVE.
+  // src/lib/redis/client.ts imports @upstash/redis and a 16.0 KB Buffer
+  // polyfill. One import from the ticket selector into sale-status.ts, which
+  // took a single currency helper from application-fee.ts, put 17.5 KB gzip of
+  // that on the event page and the checkout: the two surfaces that sell
+  // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
+  // its own cause, which is why a comment was never going to hold it.
+  'scripts/guards/no-client-redis-import.mjs',
+  // next/dynamic costs 1306 bytes gzip and a whole extra chunk in the SHARED
+  // shell, which is the first load of all 141 routes, and the shell uses none
+  // of the preloading, loading slot or SSR control it buys. One dynamic() call
+  // added to defer six components out of the root layout gave back 1099 of the
+  // 3938 bytes it saved, and surfaced as 116 identical faults on routes like
+  // /press and /offline, none of which names the cause. A bare import() defers
+  // the same tree for nothing. Route-level lazy wrappers are untouched.
+  'scripts/guards/no-loadable-in-the-root-shell.mjs',
+  // THE SAME RULE, THE CHUNK THE GUARD ABOVE CANNOT REACH. SiteHeader is not
+  // in the root layout: 22 route files import it directly and the rest reach
+  // it through the page templates, so the root-shell closure never touches it.
+  // Two pieces of header chrome deferred their panels with dynamic() on
+  // 17 September and the root-shell guard reported PASS on both, while each
+  // file's own comment asserted it WAS in the root layout. The blind spot and
+  // the false justification were the same belief, so neither corrected the
+  // other. This one is rooted at the header and the footer, the two client
+  // subtrees that are on every page by construction.
+  'scripts/guards/no-loadable-in-platform-chrome.mjs',
+  // THE OTHER HALF OF THE SAME BILL. Deferring the measurement tree was right
+  // about the bytes and wrong about one component in it: the consent banner is
+  // the only member that RENDERS anything, so deferring it meant a full width
+  // block of text arriving after hydration, which is the largest contentful
+  // element on a phone. It became the LCP element on five of the thirteen gated
+  // URLs and took /events to 0.87 against its floor of 0.88, refusing every
+  // lane's push, eight days after it landed. Four of the five pages it damaged
+  // never failed anything at all. The strip is server rendered and revealed by
+  // a pre-paint script now, and this refuses the way back.
+  'scripts/guards/the-consent-banner-is-in-the-first-paint.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported
@@ -759,6 +1514,231 @@ const GUARDS = [
   // GENERATOR: run it with --write to regenerate, and with no arguments, which
   // is how the runner invokes it, it checks.
   'scripts/pricing-derive.mjs',
+  // Close-out FO1 (13 September 2026). The Founding Organiser offer is
+  // published on /organisers and repeated word for word in every outreach
+  // message: fifty organisers, six fee-free months, three more per referral,
+  // terms applied before the first on-sale. Every one of those numbers was a
+  // string in a copy file that no gate compared with the constants the charge
+  // actually uses, and the cap was ALSO a literal in two SQL functions that
+  // TypeScript cannot see. This holds the copy, the code and the database to one
+  // set of numbers, and holds /organisers and /pricing to rendering the fee as a
+  // read rather than a sentence. Drilled red by changing one number in the copy.
+  'scripts/guards/founding-offer-matches-configuration.mjs',
+  // Close-out FO1 (18 September 2026). Every driven proof that a ticket can be
+  // bought goes through one helper, and that helper asked Playwright for a
+  // button whose name merely STARTED with "add". On 14 September an "Add to
+  // calendar" button shipped above the ticket panel, so from that day every
+  // money drive opened a calendar menu, left the quantity at 0, and reported
+  // that the ticket panel had never rendered. It had. A loose selector does not
+  // fail; it indicts the product for the harness's mistake, in detail, and is
+  // believed. This holds the drive's selector to the label the product actually
+  // puts on the control the drive presses, requires it to be anchored at both
+  // ends, and fails if any other button in src/ answers to it. Drilled red both
+  // ways: the old prefix selector back in the helper (it names "Add to
+  // calendar" and eleven more), and the product renaming its own tier label.
+  'scripts/guards/drive-quantity-control-selector.mjs',
+  // Close-out OL1 (13 September 2026). /organisers is now the page every
+  // outreach message sends a stranger to, and it gained a block that shows the
+  // newest published event as a real card. The cheapest way to make that block
+  // look good on a thin day is to paste an event into it, and nothing would
+  // fail: the page would read better and would be lying to the people it is
+  // recruiting. This holds the block to a read, names the surface so a
+  // narrowing of the copy gate's walk cannot quietly drop it, and requires
+  // every signup button to carry the source AN1 counts. Drilled red by pasting
+  // an event slug into the template.
+  'scripts/guards/organiser-page-is-a-read.mjs',
+  // Close-out AN1 (13 September 2026). The platform now loads four third-party
+  // measurement scripts, three of which can recognise a person on other sites,
+  // and the rule is that none is requested until somebody says yes. The failure
+  // is silent in the worst direction: the page still works, the data still
+  // flows, and the tracker loads for exactly the person who took the trouble to
+  // refuse. This holds every provider host to the one gate, requires that gate
+  // to ask BOTH questions (the category and the identifier), and requires the
+  // default to be refusal on every path the decoder can take. The network half,
+  // loading three pages with no consent and watching every request, is the
+  // driven proof; a guard that needs a running server cannot run on the build
+  // host and would be dropped from the chain. Drilled red.
+  'scripts/guards/no-analytics-before-consent.mjs',
+  // Close-out GA1 (13 September 2026). The platform now keeps an audience of
+  // proven buyers, and consent is the title deed to it: an audience without
+  // provable consent cannot be used and cannot be sold. ACMA's enforcement
+  // record covers both halves, and the dates are stated correctly here because
+  // an earlier version of this comment had two of them wrong: TAB was penalised
+  // 4,003,270 dollars in June 2025 and 2.7 million dollars again in July 2026,
+  // mostly for messages with no unsubscribe; the Commonwealth Bank was
+  // penalised 7.5 million dollars announced in October 2024, for 34.8 million
+  // messages to people who had not consented or had withdrawn. So the entry and
+  // the exit are held equally hard. Three GA1 clauses: the CHECK that refuses
+  // an unconsented row, the CHECK that refuses empty wording, and no session on
+  // any unsubscribe surface. Two more, because a trigger cannot call
+  // TypeScript and the two languages must not drift: the community token map
+  // and the price bands. Drilled red on the constraint and on the drift.
+  'scripts/guards/audience-consent-is-the-title-deed.mjs',
+  // Close-out GA1 v3. The consent LEDGER, which is a different claim from the
+  // audience above it: a consent record is evidence of what one person was
+  // shown and agreed to, so it is append only, it carries the tenant and the
+  // scope from its first line, and the resolver that reads it is the only door
+  // a message can leave by. Five clauses, each drilled red: the database
+  // refuses UPDATE and DELETE on both ledgers, an event cannot be empty
+  // evidence, an audience row cannot exist for somebody the resolver refuses,
+  // no module can reach a mail transport without being classified in the send
+  // path registry (and a marketing one without calling the resolver), and no
+  // unsubscribe or privacy rights surface reads a session.
+  'scripts/guards/consent-ledger-is-evidence.mjs',
+  // AQ1. The discovery question is asked in exactly one place, is never pre
+  // ticked on any surface, and a buyer who declines it is excluded from every
+  // query that chooses who hears about somebody else's event. Also holds the
+  // placement decision log append only, because the conversion measurement
+  // reads that log to decide what before and after mean, and holds the two
+  // percent rule in integer arithmetic, because 580/1000 is 57.99999999999999
+  // in binary floating point and an exact two point fall was moving the capture
+  // off the surface that sells tickets on a rounding error.
+  'scripts/guards/discovery-consent-is-asked-once-and-never-preticked.mjs',
+  // AQ2. The group rate's floor is derived from pricing_rules rather than typed,
+  // the currency to country map agrees in all three places that hold it, both
+  // ticket surfaces carry a tracked share bar, the referral coefficient counts
+  // only referrals it can prove, and no surface presents a group rate while no
+  // payment path charges one. That last clause releases itself the day the
+  // squad payment step reads the rate, which is a border this lane cannot cross.
+  'scripts/guards/the-group-rate-and-the-sharer-are-honest.mjs',
+  // The 1,000-row ceiling. Supabase truncates a response at a project setting
+  // this repository cannot read, with HTTP 200 and no error, so a read that
+  // states no bound is a read that may already be wrong. Measured the day this
+  // was written: consent_events held 9,490 rows and an unbounded select
+  // returned 1,000, which had the audience screen reporting no declines at all
+  // when 102 people had declined. Every read in the marketing path now pages or
+  // states its bound, and this fails the build when a new one does neither.
+  'scripts/guards/no-silent-row-ceiling.mjs',
+  // The performer directory's "Strongest draw first" control. It read 48
+  // performers ORDERED BY NAME and then sorted those 48 by draw in JavaScript,
+  // so the bound was applied before the ranking and the control ranked an
+  // alphabetical prefix of the platform rather than the platform. A performer
+  // with four thousand attributed tickets whose name begins with Z was not
+  // ranked low, she was not on the page. The same line also placed performers
+  // who had NOT consented to publishing their draw by that hidden number, which
+  // is disclosure by position. The rank is now a database function that filters,
+  // orders on the PUBLISHED draw and bounds in that order. This fails the build
+  // when the page sorts in JavaScript again, when the control stops reaching the
+  // ranked read, when the code calls a function no migration installs, when the
+  // bound moves back in front of the order, when consent stops gating the
+  // position, or when the SQL and the TypeScript stop resolving a doubly-claimed
+  // order the same way, which is what keeps the rank and the badge agreeing.
+  'scripts/guards/the-directory-ranks-the-platform.mjs',
+  // The organiser's own takings, on the screens that show them. RevenueSummary
+  // is rendered for one event on both /dashboard/events/[id]/orders and
+  // /dashboard/events/[id]/edit, and the edit screen computed its own numbers
+  // from `.eq('status','confirmed')` over an unbounded, unordered read whose
+  // error it discarded. Measured on TEST: an event holding one
+  // partially_refunded order of 2,687 cents read AUD 26.87 on one screen and
+  // AUD 0.00 on the other. This fails the build when a read on those screens
+  // states no bound or pages without an order, when an event's revenue
+  // arithmetic is written out a second time anywhere in that scope, or when a
+  // screen renders the revenue card without reaching the one module that owns
+  // the sum.
+  'scripts/guards/organiser-money-has-one-source.mjs',
+  // The one-click unsubscribe pair. Google requires senders of more than 5,000
+  // messages a day to Gmail to support RFC 8058 one-click, from 1 February 2024
+  // (https://support.google.com/a/answer/81126, fetched 2026-09-19). The
+  // transport passed Resend five fields and no headers, and a grep for
+  // List-Unsubscribe over the whole tree matched nothing, so both marketing
+  // send paths shipped without it and no endpoint could have answered the POST.
+  // Nothing about that failure is visible from inside: the message renders, the
+  // body link works and the provider returns an id. This fails the build when a
+  // marketing path stops composing the pair, when the transport stops carrying
+  // it, when the RFC value is edited, when the address the header names is not
+  // a real POST route, or when GET on that route starts withdrawing.
+  'scripts/guards/marketing-mail-carries-one-click.mjs',
+  // The time zone on a date a person reads. src/lib/consent/sentences.ts built
+  // every consent date from getUTCDate/getUTCMonth/getUTCFullYear, and
+  // Australian eastern time is UTC+10 or UTC+11, so every record made after
+  // 10:00 local rendered A DAY EARLY. Driven on 19 September 2026: a one-click
+  // unsubscribe pressed at 07:20 on the 19th was reported to that person as
+  // having happened on the 18th, on the page whose closing line is "Records are
+  // kept as evidence of what you were shown and when". This fails the build when
+  // anything in the consent, audience, campaigner, matching, attribution, proof
+  // or marketing path assembles a date from UTC getters or formats one without
+  // naming a zone. UTC ARITHMETIC is untouched and out of scope on purpose.
+  'scripts/guards/consent-dates-are-zoned.mjs',
+  // Close-out GA2. The matcher produces the list a campaign will one day send
+  // against, so two things about a stored run must hold: nobody in it is
+  // somebody the consent resolver refuses, and no run holds more score rows
+  // than the cap recorded on it. The trigger stops a bad row arriving; this
+  // asks whether one is there, which a dropped or disabled trigger makes a
+  // different question. Drilled red on both clauses with the database's own
+  // protection removed, which is how a row like that would ever exist.
+  'scripts/guards/matcher-consented-and-capped.mjs',
+  // Close-out GA2, second defect, found 19 September 2026 by trying to drive the
+  // screen. The picker on /admin/matches read published public events ordered by
+  // start_date ascending with NO bound on time, under a comment claiming it
+  // listed the soonest. That is the forty OLDEST events the platform has ever
+  // had: on TEST, 101 of 276 were already over and the list began in June, so
+  // the screen that decides who hears about an event could not be pointed at one
+  // anybody could still go to. This holds the bound on end_date in one door and
+  // fails the build when any matcher surface reads a LIST of events around it.
+  'scripts/guards/matcher-offers-an-event-not-yet-over.mjs',
+  // Found 19 September 2026 by probing the fee-override picker against TEST.
+  // Inside a PostgREST or(...) a comma is GRAMMAR, so an unescaped search term
+  // carrying one answers PGRST100 and the screen shows nothing: four of the
+  // first 320 event titles on TEST are of the shape "Something Night, Geelong".
+  // The escape existed privately in fetchers.ts and the same decision had since
+  // been made three more times in three different ways and missed in six reads.
+  // This holds the one door and prints a dated register of the six that are not
+  // lane B's files to change.
+  'scripts/guards/or-filter-values-are-escaped.mjs',
+  // Close-out GA3. The attribution table is the basis of an invoice, so every
+  // order carries exactly one stored decision, never zero and never two, an
+  // order no campaign produced says so with a reason rather than being absent,
+  // and nothing reports billable while a reversal exists for it. Drilled red on
+  // both clauses: an attribution row deleted for one lane-B order, and a
+  // reversal inserted against a billable one with the database's own recompute
+  // removed, which is how a row like that would ever exist.
+  'scripts/guards/attribution-one-record-per-order-never-billable-when-reversed.mjs',
+  // Close-out GA4. The Spam Act is enforced hard here and the two failure modes
+  // an autonomous sender produces, messaging people who did not consent and
+  // volume nobody authorised, are each capable of ending this business. So the
+  // allowlist and the cap are database constraints rather than application
+  // checks, and this asserts both that the constraints are still there and that
+  // no row has slipped past them. Drilled red three times with every application
+  // level check removed: a send to somebody absent from the allowlist, an SMS to
+  // somebody whose consent covers email, and the insert that exceeds the cap.
+  'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
+  // Close-out GA5. A client will not keep paying a commission they cannot check,
+  // and the moment a number appears on the proof page that nobody can trace, the
+  // page stops being proof and becomes a claim. This reads the rendering path
+  // out of the repository, so it needs no database and runs everywhere. Drilled
+  // red by replacing one figure with a typed literal, which it names by figure
+  // and by file, and by removing the snapshot constraint from the migration.
+  'scripts/guards/proof-page-every-number-sourced.mjs',
+  // Close-out PL1. The two product loops, and the failure that is quiet in the
+  // direction that costs most: the loop still works, people still arrive, and
+  // the parameter that says where they came from is gone, so the item is judged
+  // on a number nobody collected. It RENDERS the ticket email in a child
+  // process rather than reading its source, because a line inside a branch that
+  // never runs is in the source and not in the email.
+  'scripts/guards/product-loops-carry-their-parameters.mjs',
+  // Close-out FT1. The free forecast tool is the strongest reason a stranger
+  // has to trust this platform, and there are two ways it stops being that: a
+  // fee, price or taxonomy value gets typed into it and it quietly stops
+  // agreeing with what the platform charges, or the method sentence goes
+  // missing and arithmetic starts reading as a prediction.
+  'scripts/guards/forecast-reads-every-number.mjs',
+  // Close-out API1. The public read API's one promise is that a key for
+  // organiser A cannot see organiser B, and the whole of it rests on a single
+  // predicate being present on every query the surface makes. A predicate that
+  // is present by convention fails silently: the route works, the tests pass,
+  // and it returns everybody's rows. This proves the predicate, proves that no
+  // route file can query around it, proves the views it names carry the column
+  // and cannot be written through, and proves an out of scope id answers 404
+  // rather than the 403 that would confirm the row exists.
+  'scripts/guards/api-v1-organiser-scope.mjs',
+  // A guard nobody has ever seen fail is not a guard, and on 18 September 2026
+  // 63 of the 148 entry points in this very list had never been made to fail by
+  // anything. Eleven of those were drilled properly that day and the drilling
+  // found three real defects in guards that had been passing confidently for a
+  // week. This fails the build when a guard is registered here with no drill in
+  // scripts/verify/guard-failure-drills.mjs, against a dated baseline of the 63
+  // that predate it, so the debt is visible and cannot grow.
+  'scripts/guards/every-guard-has-been-seen-to-fail.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and
@@ -823,6 +1803,33 @@ const GUARDS = [
   // exactly one sanctioned void.
   'scripts/guards/refund-restores-inventory.mjs',
   'scripts/guards/one-refund-path.mjs',
+  // Close-out R1, 14 September 2026. The guard above pins what happens ONCE a
+  // refund is heard; this one pins whether it is heard at all. The route reached
+  // its successful-refund handler from one event, `charge.refunded`, and a refund
+  // issued from the Stripe Dashboard arrived as `refund.created` and was dropped:
+  // the ticket kept admitting, the place stayed unsellable, the queue was never
+  // offered it, and nothing reported a fault. Stripe's own page names
+  // `refund.created` as the minimum an integration must listen to. This pins the
+  // set, that each event in it reaches reconcile_refund, that no deprecated event
+  // does, that the reconcile failure is actually retryable, and that the endpoint
+  // subscription probe cannot drift from the code.
+  'scripts/guards/refund-success-door.mjs',
+  // Close-out MONEY FIX part A. A ticket charge exists to pay an organiser, so
+  // it must name a destination, refuse an organiser who cannot be paid, and
+  // never be refused by the FEE AMOUNT. The last clause is the A1.7 defect: the
+  // precondition refused any zero platform fee as calculator drift, and a
+  // founding organiser inside their fee-free window resolves to exactly zero, so
+  // every paid ticket for the organisers the growth plan exists to recruit was
+  // refused at checkout with a pricing error that refreshing could never clear.
+  'scripts/guards/funds-reach-the-organiser.mjs',
+  // MONEY FIX B3. The companion to funds-reach-the-organiser: that one makes the
+  // MONEY reach the organiser, this one makes the NEWS reach them. MKLStudios
+  // sold two tickets on 10 September 2026 and the only human told was the
+  // platform owner, because `order_paid` is a PLATFORM notification and no
+  // organiser counterpart existed anywhere in the tree. A message that was never
+  // written cannot be caught by testing the messages that were, so the check has
+  // to be a declaration every send is judged against.
+  'scripts/guards/every-message-has-a-declared-recipient.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE
@@ -872,6 +1879,173 @@ const GUARDS = [
   // combinations. This computes the ratio from globals.css instead of holding a
   // list. Drilled red on a real pair and green again.
   'scripts/guards/tinted-text-meets-contrast.mjs',
+  // 19 September 2026. The guard above names the gap this one closes, in its own
+  // header: "a text colour with no background in the same class string - it
+  // inherits from an ancestor this cannot see". CategoryHeroEmpty, the shared
+  // designed empty state on every eventless city, suburb, community, category,
+  // weekend, feed, artist, organiser and venue page, branched seven colours on
+  // its photo/canvas flag and left two unbranched. Both were wrong and in
+  // opposite directions: the trust-pillar icon painted gold-400 at 1.59:1 on the
+  // light card, the eyebrow painted gold-800 at 2.70:1 on the photo hero. The
+  // colour is on the icon and the surface is on the component root, so no
+  // per-string contrast arithmetic can reach it. Clause 1 requires the branch,
+  // clause 2 requires it to point the right way, because a swapped branch
+  // satisfies clause 1 and is just as broken. Drilled red on both clauses and
+  // green again.
+  'scripts/guards/surface-flag-colours-branch.mjs',
+  // 19 September 2026, found while proving the guard above. The founder ruled
+  // ONE hero scale on 7 July 2026, "never a per-page literal", and nothing
+  // executable held it: the scale was three height declarations and a law in a
+  // markdown file. It also holds the fix for what that fixed height did to the
+  // shared empty state, which put 637px of content in a 439px box with
+  // overflow-hidden at 390 and cut the trust pillars off 38 live routes, while
+  // fitting by TWO PIXELS at 768 and 1440. .hero-marketing-grow takes the scale
+  // as a floor instead; clause 3 refuses to let it have a ceiling again, which
+  // is the one edit that would silently restore the clipping. Two earlier and
+  // broader versions of clause 1 were withdrawn for false positives (a modal's
+  // max-h-[85vh], then the 44px touch target); the scope is now a height on the
+  // SAME ELEMENT as the hero class. Drilled red four ways and green again.
+  // 19 September 2026. sr-only is position:absolute, and an absolutely positioned
+  // element is clipped by an ancestor's overflow ONLY when that ancestor is its
+  // containing block. Seven admin screens and one organiser report laid a
+  // screen-reader label out at its position in the FULL table width, so the
+  // document grew past the phone and the layout viewport zoomed the whole screen
+  // out: /admin/users 569 and /admin/events 594 against 390. /admin/orders, with
+  // identical table markup and no sr-only inside it, measured 390 and is the
+  // control. Drilled red on five of the eight and green again.
+  // 19 September 2026. Found by scripts/link-integrity-crawl.mjs:
+  // "500 /categories/technology (linked from: /categories/music)", and in the
+  // log "[HeroMedia] image must be a raster URL (got SVG)". The page passed the
+  // photo resolver's branded placeholder straight into the hero, and a non-empty
+  // string wins `??`, so the hero's own bundled last resort never ran. Four
+  // clauses: the premise, one door for the placeholder literal, a chain that
+  // ends on a raster, and a hero caller that asks. Drilled red five ways.
+  'scripts/guards/a-hero-is-never-a-placeholder.mjs',
+  // 19 September 2026. Four hero templates each carried their own navy gradient
+  // and the four disagreed, and every stop in all four was a percentage of the
+  // BAND while the text is bottom-anchored and hugs its own content. So the
+  // wash made a promise about text whose position it could not know: driven
+  // with scripts/verify/hero-text-over-photograph-drive.mjs, the gold eyebrow on
+  // /categories/technology measured 1.38:1 at 390, 3.33:1 at 768 and 10.67:1 at
+  // 1440 against a floor of 4.5, on one page and one photograph. 121 of 225
+  // measured runs failed across the platform. The wash is now anchored to the
+  // text with absolute lengths. Clause 2 RECOMPUTES what gold-400 needs from
+  // the token rather than pinning a number. Drilled red six ways.
+  'scripts/guards/hero-text-over-a-photograph.mjs',
+  // 20 September 2026, and it is the SAME defect a second time. The guard above
+  // was written, the four heroes were converted, it went green and it stayed
+  // green - while thirteen TILE captions on the same platform each carried a
+  // hand-written wash whose every stop was a percentage of the TILE. Driven with
+  // the same instrument: 149 runs below their WCAG 2.2 SC 1.4.3 floor across
+  // /cities (86), /communities (49), /waitlist (12) and /city/sydney (2), with
+  // Brisbane at 1.00:1 on a white sky and 100 per cent of its 464 core pixels
+  // failing. A derivation keyed on the painters of a FULL-BLEED photograph
+  // cannot see a tile, and a blind spot does not look different from coverage,
+  // so this derives its painter set from src/components/media instead. Clause 4
+  // recomputes the requirement from the colours the captions actually paint and
+  // caught a `text-gold-300` on its first run: globals.css declares no gold-300,
+  // so Tailwind emitted nothing and the label silently inherited. Drilled red
+  // seven ways.
+  'scripts/guards/tile-label-over-a-photograph.mjs',
+  'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
+  // 20 September 2026, close-out C8. REPLACES hero-preload-above-the-loading-
+  // boundary, and the replacement is a STRONGER rule rather than a rename.
+  //
+  // That guard asked whether a hero standing behind a loading boundary at least
+  // had its preload requested from above it. The answer moved the HINT into the
+  // head (byte 85,041 to byte 241, resource load delay from a 331ms median to
+  // 12ms) and it was real. It could not move the ELEMENT. React streams a
+  // suspended tree shell-first, then the whole RSC FLIGHT PAYLOAD, then the
+  // resumed markup, so the hero <img> still sat at byte 102,160 of a 205,226
+  // byte document while a route with no boundary carried its first <img> at
+  // 18,599, and nothing can paint an element the parser has not reached.
+  // Lighthouse charged the remainder as Element render delay: 603ms with the
+  // boundary against 153ms without, and the route's median went 0.80 to 0.84 on
+  // that change alone.
+  //
+  // So the rule is now that a hero does not stand behind a boundary at all,
+  // which subsumes the old one: nothing needs rescuing from behind a boundary
+  // that is not there. The subject is derived from the tree (loading
+  // boundaries, the value-import graph and deriveHeroFiles), never listed, and
+  // clause 3 fails loudly if any part of that derivation returns zero, because
+  // here a zero is the PASSING state and therefore indistinguishable from
+  // blindness. Drilled red on each clause and green after each
+  // (C:\dev\EVIDENCE\C8\guard-drills.txt).
+  'scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs',
+  // 20 September 2026, found by the drive for the guard above. src/app/layout.tsx
+  // sets the measurement flag on documentElement and says so in its own comment;
+  // SIX client components read it off document.body, which never carries it. The
+  // Google map on a city page, the venue map, the event video, the hero
+  // carousel's rotation, its enhancer and the hero's ken-burns layer therefore
+  // all ran inside every Lighthouse run this platform has taken, each one a
+  // suppression written to keep decoration OUT of a measurement. Nothing looked
+  // broken because the two readers that used documentElement worked. Caught by
+  // counting optimiser requests in a real browser with the audit cookie set: two
+  // per event page, the second being the ken-burns copy of the hero. Clause 3
+  // compares the writer against the reader so the next move of the flag fails
+  // here rather than in a score three weeks later. Drilled red four ways.
+  'scripts/guards/audit-flag-is-read-where-it-is-written.mjs',
+  // 21 September 2026, close-out C8 clause C8B.3. A Next route renders its head
+  // and its body from ONE request and each half loads what it needs. Next's own
+  // reference says the second load is free ("React `cache` can be used if
+  // `fetch` is unavailable", generate-metadata.md, Next 16.3.0) and on this
+  // platform it is not, because every Supabase request carries its own
+  // AbortSignal - the framework deduplicator's documented opt-OUT - so that a
+  // retry inside a render is a real second request. Nothing had counted the
+  // cost: ten duplicate database calls across four public SEO route families in
+  // one warmed page view each, on routes whose observed LCP is dominated by
+  // time to first byte. The subject list is DERIVED (every page.tsx exporting
+  // both generateMetadata and a default component) and the guard knows Next's
+  // data cache counts too, which it learned from a counted measurement rather
+  // than from reading: /categories/music awaits the same reader twice and makes
+  // one call, because that reader is behind unstable_cache. Drilled red and
+  // green.
+  'scripts/guards/the-head-and-the-body-ask-once.mjs',
+  // 21 September 2026. A refusal that names an action must offer it, and must
+  // be announced. checkPublishGate returns the door beside its sentence
+  // (nextAction: Connect Stripe -> /dashboard/payouts); the event form was
+  // found dropping it on 28 August and fixed, and TWO more callers had never
+  // inherited either half. Driven against the served build, the events list
+  // rendered that 172-character sentence as a <span> with no role inside the
+  // ACTIONS column of a table: 69px of a 356px list at 390, 19 per cent of the
+  // width and 256px tall, beside an event whose own title sat at x -58. The
+  // third caller was found by this guard rather than by reading: restoreEvent
+  // runs the publish gate when the restore target is `published`, so the same
+  // sentence reaches a person from Restore as well as from Publish. Everything
+  // is derived: the type, the door's field name, the actions that can carry
+  // one, and their callers. Drilled red and green.
+  'scripts/guards/a-refusal-keeps-its-door.mjs',
+  // The organiser dashboard has five data tables and one of them had been
+  // rebuilt for the phone. Driven on 21 September 2026 at 390, 768 and 1440
+  // against a served build with real rows: the discount codes table rendered
+  // 668px wide inside an `overflow-hidden` box showing 356, so Deactivate and
+  // Delete sat at x 561 to 669 with no scrollbar and no gesture that reaches
+  // them - six dead controls, and a live discount code an organiser on a phone
+  // could not switch off. Reach and the GST report were swipeable and lost the
+  // row's own name at the right edge ("Email" at x -187, a BAS quarter reduced
+  // to 23px of "Jul-Sep 2026"). The document-width drive passes on all three,
+  // correctly, because an `overflow-x-auto` box is its documented exemption.
+  // Subjects derived by walking the dashboard for `<table`; comments stripped
+  // before reading. Five clauses, five drills, each proven red and green.
+  'scripts/guards/a-table-a-phone-can-read.mjs',
+  // The em-dash scrub of commit 2b59d58c replaced every dash in the tree with
+  // a colon, which is right in a sentence and wrong in a fallback: nine value
+  // slots were left rendering a bare ':' to a real person. "Name: :" on every
+  // guest order, "0/:" on a tier with no capacity, and the queue position at
+  // text-7xl. Found in a driven screenshot on 21 September 2026, weeks after
+  // the sweep. The cause was mechanical, so the check has to be too.
+  'scripts/guards/no-punctuation-standing-in-for-a-value.mjs',
+  // The C8 work order comes from scripts/perf/chunk-cost-table.mjs and from
+  // nothing else ("measure first, and never optimise blind"), and on
+  // 21 September 2026 that table reported its SECOND BIGGEST ROW on all
+  // thirteen gated routes as `unattributed`: 126 of 154 chunks unnamed, 413 KB
+  // of blind. Attribution is derived from Next's own client-reference
+  // manifests now. This holds the mechanism rather than any one chunk: the
+  // failure worth a gate is the derivation silently collapsing while the table
+  // keeps printing confident rows. Contract mode here; postbuild runs it again
+  // with --built against the real .next.
+  'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
+  'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.
@@ -1071,6 +2245,57 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C8B.3 (18 September 2026): on a route whose LCP element is an image
+  // the DATABASE chooses, that image is rendered by the page component itself and
+  // ahead of every streaming boundary, so its preload leaves in the first chunk.
+  // Written after the opposite was tried and measured: flushing the shell first
+  // won 324 ms of time to first byte and lost 507 ms of hero discovery, for 597 ms
+  // more LCP and six points of performance score at matched machine speed. The
+  // boundaries BELOW the hero are correct and are not counted. Drilled red and
+  // green, including the exact shape that was reverted.
+  'scripts/guards/lcp-preload-in-the-first-flush.mjs',
+  // Close-out C8B.5 (15 September 2026), Scope v5 10.3: the platform's contract
+  // with a weak network. The checkout survives a submit that never reaches the
+  // server (it used to throw the buyer to the error boundary and lose every
+  // value they typed), the root service worker keeps only content-hashed
+  // assets so no cache can ever serve a stale price, it registers after the
+  // paint, and /offline is a real route classified never. Four clauses, each
+  // drilled red and green.
+  // Close-out C8B.3 (18 September 2026): a `sizes` hint is a promise about layout
+  // that the browser believes at parse time, and nothing else in the toolchain can
+  // notice when it stops being true. Driven at nine viewports, three hints were
+  // serving thirteen layouts: the homepage fetched a 1080px image for a 278px slot
+  // at 1440 and a 1920px one at 1920, the city tiles fetched 640px for a slot
+  // needing 644 and were BLURRY, and a 56px dashboard thumbnail fetched 640px.
+  // Five clauses, each drilled red and green.
+  'scripts/guards/image-hints-match-the-cell.mjs',
+  // Close-out C8B.3 (19 September 2026): the two width lists in next.config.ts are
+  // a CLAIM about the slots this platform renders, and the claim had already gone
+  // stale. Their own comment named "16, 32, 192, 256, 288, 320 and 512" as the
+  // fixed sizes in use; the sizes rework of 18 September moved the smallest slot to
+  // 24, and 16 went on being emitted 142 times across the fifteen pinned routes for
+  // a slot that no longer existed. Next 16 removed 16 from its own default for the
+  // same reason. Three clauses, each drilled red and green.
+  'scripts/guards/candidate-ladder-has-no-dead-rung.mjs',
+  // Close-out C8B.3 (19 September 2026): the four "all events" grids had NO
+  // below-fold treatment, because 480px on a 9,067px section is wrong by 1,789%
+  // and applying it anyway grew /city/melbourne 60% under the reader. Their height
+  // is arithmetic - n cards in 1, 2 or 3 columns - so they declare it, to within a
+  // pixel of the measured page. Its FIRST run found five more event grids nobody
+  // had counted (the feed, the organiser and venue archives, the community grid
+  // and the category-events landing page), every one of them reserving a rail's
+  // 480px for a section thousands of pixels tall. Five clauses, each drilled red
+  // and green.
+  'scripts/guards/event-grid-reserves-its-own-height.mjs',
+  // Lane B (19 September 2026): the marketing bands on /organisers and /about were
+  // under-fetched at every desktop width and every gate was green, because the one
+  // gate that could see a band did not have those routes in its list. Three clauses:
+  // every route rendering a band is measured by the fidelity drive, every band
+  // variant is on its own hint whose fixed term matches its declared slot, and a
+  // band the licensed raster cannot supply is named with a date and a reason rather
+  // than left silent. Drilled red and green.
+  'scripts/guards/marketing-bands-are-supplyable.mjs',
+  'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;
   // the empty branch now wears a curated, licensed raster and the media component
@@ -1096,6 +2321,58 @@ const GUARDS = [
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.
   'scripts/guards/indexing-policy.mjs',
+  // Close-out SEO3 (14 September 2026): indexing-policy.mjs asks whether a gate
+  // EXISTS. This one asks whether the gate on the page and the gate in the
+  // sitemap are asking the same question of the same numbers, and whether a
+  // category is a page rather than a query string that canonicalises to /events.
+  'scripts/guards/discovery-indexability.mjs',
+  // Close-out SEO2 (14 September 2026): the two guards above judge the POLICY
+  // and the THRESHOLD, both of which are readable from source. This one judges
+  // the CATALOGUE, which is not: an event page exists because a row exists. It
+  // runs the shipped sitemap readers against the build's own database and asks
+  // the same three questions again over raw PostgREST, and fails when a page the
+  // database holds is absent from the sitemap or a URL the sitemap publishes has
+  // no row behind it. Every sitemap defect on record is in that shape and every
+  // one of them was silent: a 42703 a bare catch threw away, so the venue block
+  // published nothing for its whole life; a missing status predicate that
+  // advertised eight 404s. SKIPs by name on CI's placeholder URL. Drilled red
+  // four ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/sitemap-covers-the-catalogue.mjs',
+  // Close-out SEO4 (14 September 2026): one-fee-copy.mjs judges whether a
+  // SENTENCE names a second fee. This one judges the wiring and the arithmetic:
+  // whether a surface that renders a price has the live fee values in its hands,
+  // whether any file carries the fee as a literal, and whether anybody
+  // multiplies a per-ticket total into a cart total. The event page showed
+  // "From AUD $18.00" for an event nobody could leave for eighteen dollars, and
+  // no gate could fail, because the number was correct and simply was not the
+  // price.
+  'scripts/guards/all-in-pricing.mjs',
+  // Close-out SEO5 (14 September 2026): nothing may hurry a buyer with a number
+  // it made up, and no accessibility section may render empty. It found four
+  // live false-urgency claims on its first run: a "Selling fast" eyebrow over a
+  // homepage rail that reads no stock at all, the same eyebrow on the bento
+  // variant, a static content slide asserting "The events booking out right
+  // now", and an alerts panel promising a push "when an event is going fast"
+  // that nothing on this platform has ever sent. Each was true-looking and none
+  // was true. The badge engine, which DOES count tickets, was correct all along.
+  'scripts/guards/no-false-urgency.mjs',
+  // A parameter written by one half of the platform and read by the other half
+  // is held together by nothing but a shared memory of its name, and this one had
+  // already come apart: twelve pages emitted /login?redirect= and NINE emitted
+  // /login?next=, against a sign-in form that read only 'redirect'. All nine deep
+  // links dropped the person on the dashboard instead of where they were going,
+  // including the door scanner and a group-booking payment. The guard also found a
+  // tenth, ?returnUrl= on the waitlist modal, that the hand count had missed. Its
+  // second clause is a security one: the two copies of the is-this-path-safe check
+  // had drifted, and the copy on the sign-in page accepted a backslash.
+  'scripts/guards/one-name-for-where-you-were-going.mjs',
+  // Close-out PARITY1 (14 September 2026): the structured data gap, the noindex
+  // discovery layer and the undisclosed buyer total were all found because the
+  // owner asked a question, not because the build noticed. The table stakes are
+  // now a specification the machine checks against production, and this guard
+  // holds the one thing a specification can quietly lose: a line with no check,
+  // or a check that reports PASS when it was shown nothing at all.
+  'scripts/guards/parity-spec-complete.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that
@@ -1156,6 +2433,61 @@ const GUARDS = [
   // new.city back.
   'scripts/guards/trigger-columns-exist.mjs',
 
+  // Close-out UX3.3, the third guard, added 13 September 2026 after driving the
+  // function rather than reading it. The owner's daily order-alert ceiling is
+  // counted from platformDayStart(), which subtracted the Sydney wall clock from
+  // the instant. A day is 24 hours long except twice a year, so on both
+  // transition days the boundary was an hour out, and on the October one it
+  // landed on the PREVIOUS DATE: 172 of 35,064 hourly instants across four years
+  // were wrong. Neither the unit test nor any sweep could see it, because both
+  // used dates in the middle of a season. This calls the real function on every
+  // hour of four years and refuses to run on a window with no transition in it.
+  'scripts/guards/platform-day-boundary-is-zone-correct.mjs',
+
+  // Close-out UX3.2, 13 September 2026. "Every notification is recorded as sent
+  // or failed, A FAILURE IS RETRIED, and a PERSISTENT failure raises through the
+  // second channel." The individual dispatcher did that; the digest did not. One
+  // refusal from the mail vendor escalated it straight to push, and with no
+  // armed device it went to `failed` on a single attempt, where nothing reads it
+  // again. The one email that can carry two hundred orders was the one with no
+  // second chance. This asks every delivery path that writes a terminal state
+  // whether it counts its attempts first. Drilled red by taking the comparison
+  // back out of the digest.
+  'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+
+  // Close-out UX3.2 and UX3.3, 13 September 2026, found the same day as the line
+  // above and against the one rule it left standing. The digest counts a batch by
+  // its HIGHEST attempts, which is right only while every attempt on a held row
+  // was a DIGEST attempt. The dispatcher held rows with their individual-email
+  // attempts intact, so a batch could arrive already at the bound and give up on
+  // its first refusal: the same unrecoverable loss, through another door. This
+  // runs the real hold across a sweep of attempt counts and also proves the
+  // dispatcher calls it, because a perfect pure function nobody calls is worth
+  // nothing. Drilled red both ways.
+  'scripts/guards/digest-attempts-are-the-digests-own.mjs',
+
+  // 13 September 2026. /account/notifications promises "nothing arrives inside
+  // your quiet hours". The window was collected by that screen, validated by the
+  // API, stored on notification_prefs and READ by the dispatcher on every send,
+  // and no code anywhere consulted it: isWithinQuietHours was exhaustively unit
+  // tested and called only by its own test file. A control that does nothing is a
+  // defect by name, and this one made the screen say something untrue. The guard
+  // runs the real decision across every hour of three days including both
+  // daylight-saving transitions, and proves every reader of the window either
+  // honours it or carries a written reason it cannot. Drilled red both ways.
+  'scripts/guards/quiet-hours-are-honoured.mjs',
+
+  // Close-out UX4.1 and UX4.2, 13 September 2026. The daily state says inside
+  // its own body "if it does not arrive, that is itself the alert". The reporter
+  // then gave up in the two cases that matter: no GitHub token returned null and
+  // sent nothing, and any read that threw exited 2 and sent nothing. A broken
+  // reporter therefore produced exactly the signal that means the build machine
+  // is dead. Three collectors also answered a failed read with an empty list, so
+  // a morning when the commits API was down reported a quiet day. This runs the
+  // REAL composer with readers that fail and asserts a message still comes out
+  // naming every blind spot, and that a blind stall check speaks. Drilled red.
+  'scripts/guards/the-daily-state-cannot-go-silent.mjs',
+
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed
   // green, because the types-drift guard compares the committed file with
@@ -1170,6 +2502,18 @@ const GUARDS = [
   // newest migration; proven red against the committed types of 4d0fda21 and
   // green against the regenerated file (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11).
   'scripts/guards/types-cover-migrations.mjs',
+
+  // The other half of the same lesson, 20 September 2026. types-cover-migrations
+  // asks whether the committed types carry every object; this asks whether the
+  // generated section was GENERATED at all. A push of 234 commits was refused at
+  // types-drift because six arguments of write_pricing_rule had been typed in by
+  // hand as `| null`, a form the generator has no way of emitting, and
+  // regenerating found two more entries sitting in the place a person would put
+  // them rather than in the generator's ascending order. types-drift could not
+  // see any of it while production was behind, and could never see the ordering
+  // at all, because a correctly-shaped entry in the wrong position is
+  // semantically identical. Drilled red once per clause.
+  'scripts/guards/generated-types-are-generated.mjs',
 
   // Found while auditing the notification routing for close-out UX4:
   // /api/cron/queue-admit documented itself as running every minute and had no
@@ -1246,6 +2590,352 @@ const GUARDS = [
   'scripts/guards/fillrate-reads-only-the-ledger.mjs',
   'scripts/guards/recovery-only-writes-to-people-who-asked.mjs',
 
+  // Lane B, 20 September 2026. A THIRD guard on the same engine, and it exists
+  // because the two above were both satisfied while the sender was mailing
+  // people who had unsubscribed.
+  //
+  // the-recovery-stop-list-is-whole: a marketing withdrawal reaches the
+  // abandoned-checkout sender, and its suppression list is read whole. Measured
+  // on TEST before the fix: 147 people carried a suppression event and
+  // recovery_suppressions held 19 rows, because the engine reads only its own
+  // table (correctly, by D2) and nothing carried the ledger across. The same
+  // read was also unbounded, and Supabase stops at 1,000 rows in silence
+  // (Content-Range: 0-999/14364, measured the same day), which on a suppression
+  // list fails OPEN. no-silent-row-ceiling could not see it: its scope is nine
+  // directories and src/lib/fillrate is not one of them.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
+  'scripts/guards/the-recovery-stop-list-is-whole.mjs',
+
+  // Lane B, 20 September 2026, found while adding two audit actions to the
+  // organiser suspend cascade and reading what happens when one fails.
+  //
+  // the-audit-log-says-when-it-could-not-write: BOTH writers in
+  // src/lib/admin/audit.ts inserted with no destructure at all, and a PostgREST
+  // client REPORTS a refused write in `error` rather than throwing, so the
+  // try/catch around them could not see the failure it was written for: it only
+  // ever guarded headers(). And the catch logged only when NODE_ENV is not
+  // production, so the one environment where an audit trail is evidence is the
+  // one where its absence left no trace.
+  //
+  // This platform suspends organisers, moves fee-free windows and holds payouts
+  // through those two functions. An entry nobody can find afterwards cannot be
+  // told apart from an action nobody took.
+  //
+  // Clause 4 holds the half of the original contract that was RIGHT: neither
+  // writer may throw, because failing the caller would leave the platform in a
+  // state its own error says did not happen.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-AUDITLOUD\drills.txt).
+  'scripts/guards/the-audit-log-says-when-it-could-not-write.mjs',
+
+  // Lane B, 20 September 2026, found by the same scan that produced the guard
+  // above and in the same failure family.
+  //
+  // the-founder-screens-read-every-row: FIVE screens, renamed from
+  // the-money-screens-read-every-row on 20 September 2026 when the demand
+  // signal joined it and the name stopped describing the rule.
+  //
+  // getAnalyticsDashboard summed two UNBOUNDED
+  // selects over orders and refunds, with no .order() and with `error`
+  // discarded. Supabase stops at 1,000 rows in silence, so past the ceiling the
+  // founder's GMV would have been the total of an ARBITRARY thousand rows, and
+  // a read that FAILED rendered a GMV of zero, which is indistinguishable on
+  // that screen from a payments outage. TEST held 801 AUD orders, 199 short.
+  //
+  // Scoped to the one file on purpose: no-silent-row-ceiling does not cover
+  // src/lib/admin, and widening it would go red on about twenty reads today.
+  // Those are raised in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // readActiveOverrides on /admin/pricing had the same shape over `pricing_rules`,
+  // which is append-only and versioned and so grows for ever. Truncation there is
+  // an ABSENCE rather than an undercount: the loop keeps the first row per target,
+  // so a live per-event fee override that IS being charged vanishes from the only
+  // screen that lists what overrides the default.
+  //
+  // The demand signal joined it on 20 September 2026: /admin/network and the
+  // two modules behind it. The per-city waitlist read was unbounded AND
+  // unordered, so past the ceiling each city's demand would have been an
+  // arbitrary subset that moved between page loads, on the screen whose whole
+  // purpose is to say which city has tipped. Five figures were `count ?? 0`, so
+  // an unreachable database rendered as "0 events published, 45 of 50 founding
+  // spots free". And the bridge's `founding_invites` read is a SUPPRESSION
+  // list: failed or truncated, it puts organisers who were already invited back
+  // on the list, and a founding invitation is a fee-free window and a personal
+  // email. That read is the reason clause 5 exists.
+  //
+  // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt),
+  // and six more for the demand signal (C:\dev\EVIDENCE\LB-DEMANDSIGNAL\drills.txt).
+  'scripts/guards/the-founder-screens-read-every-row.mjs',
+
+  // the-attribution-panels-count-every-row: the ORGANISER'S side of the same family,
+  // 20 September 2026. /dashboard/events/[id]/reach, fed by reach.ts and
+  // sales-attribution.ts, is where the platform proves its own wedge to an
+  // organiser, and all eight of its reads were unbounded with `error`
+  // discarded. share_link_events takes one row per VIEW and one per CLICK and
+  // share_links one per ATTENDEE SHARE, so the ceiling is reachable in a night,
+  // and the rows it drops include `conversion` rows, which are attributed
+  // SALES. Every number on the panel therefore read SMALLER than the truth,
+  // which is the one direction that argues for leaving the platform.
+  //
+  // The third clause is the reason this is a guard rather than only tests. The
+  // reconciliation that decides whether a percentage is shown AT ALL compared
+  // `totals.orders` against the bucket sum, and both were incremented once per
+  // iteration of the same loop, so it was one number compared against itself
+  // and `reconciles` was a constant `true`. Its own test file's header claimed
+  // the opposite above seven assertions that it is true and none that it is
+  // ever false. It now compares against a server-side count, which no row
+  // ceiling applies to, and clause 5 fails the build if that is ever rewired to
+  // a number the module counted itself.
+  //
+  // NOT folded into the guard above, whose own header records being renamed
+  // because a name narrower than its scope is one somebody adds the wrong file
+  // to: these are the organiser's screens, not the founder's. NOT added to
+  // no-silent-row-ceiling's SCOPE either, which would go red today on
+  // artists.ts and on the digest, another lane's territory. Both are enumerated
+  // in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-REACHWHOLE\drills.txt).
+  'scripts/guards/the-attribution-panels-count-every-row.mjs',
+
+  // the-organiser-dashboard-reads-every-row: the organiser's HOME and their
+  // per-event overview, 20 September 2026. Both read `orders` unbounded with
+  // the error discarded.
+  //
+  // The home screen is the one that pointed the flattering way. Its read is
+  // newest-first over a 60-day window, so the 1,000-row ceiling keeps the
+  // newest and drops the oldest, and the oldest rows in that window are the
+  // PRIOR 30 days, which is the denominator of both percentage changes on the
+  // KPI row. Past a thousand orders an organiser was shown growth that was too
+  // HIGH, because last month had been trimmed while this month survived. That
+  // is the number they repeat to a promoter.
+  //
+  // The event overview had no `order by` at all, so a capped read returns an
+  // arbitrary thousand rows and its gross revenue moved between page loads.
+  //
+  // CLAUSE 4 IS THE ONE THE OTHER TWO ROW-CEILING GUARDS DO NOT HAVE, and it
+  // exists because the obvious fix here is the wrong one: the home screen wants
+  // newest-first, so `.order('created_at', {ascending:false}).range(...)` looks
+  // exactly right and is not. `created_at` is not unique, so the window
+  // boundaries are undefined and a row can land in two pages, which
+  // double-counts revenue. The read pages on the primary key and sorts after.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
+  'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // a-marketplace-block-holds: the performer marketplace, 20 September 2026.
+  //
+  // THE RULE WAS WRITTEN DOWN ON 11 JULY AND WAS A COMMENT. The migration that
+  // created marketplace_blocks says "a block between an organisation and a
+  // performer stops applications and requests BOTH ways for the pair", and
+  // nothing in the database did. The whole enforcement was isPairBlocked,
+  // which returned Boolean(data) over a read whose error was never bound, so a
+  // dropped socket answered FALSE, which is the answer that means NOT BLOCKED.
+  // Both call sites read it as permission. Migration 20260920000060 refuses the
+  // insert underneath, and clause 4 holds the reader and its callers.
+  //
+  // fetchGigApplications was unbounded with its error discarded, so a failed
+  // read drew "no applications yet" on a gig that had them: the organiser books
+  // nobody and every performer who applied waits for an answer that was never
+  // coming. The counts on the organiser's board were worse: the Supabase
+  // ceiling is on the RESPONSE and that read asked for every gig at once, so
+  // one cap was shared across the whole board.
+  //
+  // Clause 6 sweeps ALL of src/ rather than the scope list, because a FIFTH
+  // surface is exactly how the platform would acquire a fifth copy of the city
+  // picker read somewhere the list does not name. There were four, and all four
+  // wrote `(result.data ?? [])`.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-GIGWHOLE\drills.txt).
+  'scripts/guards/a-marketplace-block-holds.mjs',
+
+  // the-founding-invite-is-spent-once: the founding invite and referral loop,
+  // 20 September 2026. The growth plan's lever two, invite an organiser, and
+  // two of its five discarded reads cost the invited organiser the thing they
+  // were invited to.
+  //
+  // acceptFoundingInvite marked the invite accepted in one round trip and
+  // claimed the founding spot in another, discarding the claim's error. A
+  // dropped socket there is indistinguishable from the programme being full, so
+  // the invited organiser was told "All 50 founding spots are taken right now"
+  // while their single-use code had been spent milliseconds earlier: no spot,
+  // no six-month window, no way to try again, nothing recorded. Migration
+  // 20260920000050 puts both writes inside accept_founding_invite.
+  //
+  // The five-invite allowance was `(count ?? 0) >= INVITES_PER_FOUNDING_ORGANISER`
+  // over a count whose error was never bound, so a failed count read as nought
+  // issued and minted a sixth. Every founding invite is a founding spot and six
+  // fee-free months. Clause 6 holds the TypeScript literal and the SQL constant
+  // to the same number, for the reason founding-offer-matches-configuration
+  // already holds the fifty.
+  //
+  // Neither no-silent-row-ceiling (scoped to the consent and marketing path)
+  // nor read-failure-is-not-not-found (judges notFound() inside src/app, and
+  // says in its own header that a helper in src/lib folding a read into null
+  // for a RENDERED refusal is invisible to it) could see any of this.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-INVITEWHOLE\drills.txt).
+  'scripts/guards/the-founding-invite-is-spent-once.mjs',
+
+  // a-discount-code-a-buyer-can-actually-use: the buyer-facing discount check,
+  // 21 September 2026. EVERY DISCOUNT CODE ON THE PLATFORM WAS DEAD.
+  //
+  // validateDiscountCode read `discount_codes` on the SESSION client. Asked of
+  // the live database rather than read off the source, that table carries two
+  // policies, "Org members can manage discount codes" and "Service role manages
+  // discount codes", and `discount_code_usages` carries one, service role only.
+  // Neither admits a buyer, and neither should: a code is a secret and a policy
+  // wide enough for a buyer to check theirs is wide enough for anybody to list
+  // every comp and press code on an event.
+  //
+  // So the lookup matched zero rows, .maybeSingle() answered { data: null,
+  // error: null }, and the buyer was told "Invalid discount code". Driven on the
+  // real checkout screen, signed in, at 390, 768 and 1440, against two codes
+  // written moments earlier: both called invalid. The per-user cap underneath it
+  // counted zero for the same reason and had never refused anybody.
+  //
+  // Two more defects came with it. The cap believed a `user_id` that arrived
+  // from a CLIENT component, and max_uses_per_user is held nowhere else
+  // (claim_discount_use locks max_uses and is not passed a user). And both reads
+  // answered a dropped socket: the cap failed OPEN and granted a spent discount,
+  // the lookup failed CLOSED and called a live code fake.
+  //
+  // Clause 6 sweeps ALL of src/ by the SHAPE of the read rather than by the
+  // table, because the organiser's own listing reads the same table by event_id
+  // on the session client and is correct.
+  //
+  // Drilled red and green (C:\dev\EVIDENCE\LB-CODEBLINK\drills.txt).
+  'scripts/guards/a-discount-code-a-buyer-can-actually-use.mjs',
+
+  // the-price-ladder-survives-a-blink: the organiser's pricing and discount
+  // configuration, 20 September 2026. This one is DATA LOSS rather than a wrong
+  // number, which is why it is a guard of its own.
+  //
+  // /dashboard/events/[id]/pricing read the dynamic pricing ladder with the
+  // error discarded and handed `rules ?? []` to an editor that substitutes ONE
+  // synthetic step at the base price when the list is empty. Save replaces the
+  // stored ladder with what the editor is holding. So a dropped socket plus one
+  // press of Save deleted an organiser's whole pricing decision, with HTTP 200
+  // everywhere and nothing on the screen or in the log.
+  //
+  // The same screen destroyed the ladder a second way, through the action
+  // rather than the read: the steps were sent as `enabled ? normalise(steps) :
+  // []` and the database function deleted every rule before deciding whether to
+  // insert any, so PAUSING dynamic pricing deleted it. Migration
+  // 20260920000040 makes an empty step list an absence of instruction rather
+  // than an instruction to delete, and clause 6 refuses a migration that goes
+  // back.
+  //
+  // Clause 4 sweeps ALL of src/ rather than the directory list, because a THIRD
+  // screen is exactly how the platform would acquire a fourth copy of these
+  // reads somewhere the list does not name.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-PRICEWHOLE\drills.txt).
+  'scripts/guards/the-price-ladder-survives-a-blink.mjs',
+
+  // the-seating-surfaces-count-every-seat: the five organiser screens that
+  // decide who has a seat, 20 September 2026. THREE DIFFERENT CEILINGS, and
+  // only one of them was the PostgREST default.
+  //
+  // 1,000 on the My Events sold tally, which read one row per sold seat and
+  // counted the rows here. The cap is on the RESPONSE, so that thousand was
+  // shared across every reserved-seating event in the list at once: two
+  // sold-out 800-seat shows reported 1,000 sold between them, with no order by
+  // to say which thousand and the error discarded so a failed read rendered as
+  // nought sold. 1,000 again on the list of paid holders waiting to be given a
+  // seat, which is the list the seating tool IS: past a thousand of them the
+  // organiser could not seat the rest, because the only screen that can do it
+  // did not show them.
+  //
+  // 2,000 in the launch kit, as `.range(0, 1999)`, printed to the organiser as
+  // "{n} seats . {m} open right now" on the artefact they promote with.
+  //
+  // 10,000 as a loop bound in the seat manager's own hand-rolled pager, in a
+  // helper written specifically to defeat the 1,000-row cap, which also stopped
+  // on a SHORT page rather than an empty one and so would report half a chart
+  // as a whole chart the day the project ceiling is lowered.
+  //
+  // CLAUSE 5 IS THE ONE NO OTHER GUARD IN THIS FAMILY HAS, and it is the whole
+  // reason this is a fourth file rather than a widened third. The other three
+  // ask "is this read bounded". Two of the three ceilings here WERE bounds, so
+  // that question answers PASS about both. A numeric literal may not be a seat
+  // ceiling: a venue is as big as it is.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-SEATWHOLE\drills.txt).
+  'scripts/guards/the-seating-surfaces-count-every-seat.mjs',
+
+  // the-attendee-list-is-every-attendee: the organiser's ATTENDEE list, their
+  // door list, their orders report and all four exports, 20 September 2026.
+  //
+  // THIS ONE IS THE WEDGE RATHER THAN A SCREEN. The growth plan's second blade
+  // is data ownership: "you own every attendee relationship: no walled gardens,
+  // no withheld emails". DICE withholds attendee emails and Eventbrite limits
+  // them, and the entire switching argument is that EventLinqs does not. Every
+  // read behind those surfaces was unbounded, so past a thousand attendees the
+  // platform handed an organiser part of their own audience and presented it as
+  // all of it. That is the same withholding with nobody to blame.
+  //
+  // The directions differed and each one mattered on its own. `tickets` was
+  // read OLDEST-first, so the door list lost the LATEST buyers: people holding
+  // a valid ticket, turned away at a door. `organiser_marketing_consents` holds
+  // one row per attendee per organiser, so truncation DROPPED people and a
+  // dropped person reads as not consented, shrinking the organiser's own lawful
+  // audience. `orders` was NEWEST-first, so the financial report lost its
+  // earliest sales; on the orders screen that also left
+  // `remaining = capacity - ticketsSold` too HIGH, offering inventory that was
+  // already sold. `refunds` are SUBTRACTED, so truncating them left net revenue
+  // too high. And `ticket_scans` had no `order by` at all while the code kept
+  // the first row it met, so which admission "won" a double-scan was undefined.
+  //
+  // IT SCANS DIRECTORIES, NOT A FILE LIST, unlike the two guards above it: the
+  // export routes are the surfaces most likely to gain a sibling, and a new
+  // file should be judged the day it lands rather than the day somebody
+  // remembers to add it here. It found two further discarded errors the moment
+  // it was first run, both on reads nobody had looked at.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-ATTENDEEWHOLE\drills.txt).
+  'scripts/guards/the-attendee-list-is-every-attendee.mjs',
+
+  // the-weekly-digest-owes-nobody-an-email: the weekly city digest, the only
+  // send path on this platform that writes to STRANGERS, 20 September 2026.
+  //
+  // THE ONE THAT FAILED OPEN. `fetchDigestRecipients` asked which of a city's
+  // waitlist addresses had withdrawn with a single un-chunked `.in()` over the
+  // whole list, and discarded the error. An `in` list is bounded by bytes, not
+  // by count, and the break was measured on this project's own TEST instance on
+  // this very table between 15,038 and 16,083 joined bytes. A few hundred
+  // addresses in one city therefore produced a request that FAILED, `data` came
+  // back null, the suppression list was empty, and rule 1 of
+  // `mergeDigestAudience`, "SUPPRESSION WINS", was not weakened but switched
+  // off: everybody who had unsubscribed was put back into the send by their
+  // waitlist row. The consent ledger resolver behind it is a second door, not a
+  // reason to leave the first one open.
+  //
+  // Three more, in the same path. The per-city audience reads were unbounded,
+  // so past a thousand people in a city the rest were not written to.
+  // `fetchDigestCities` read every consent row ON THE WHOLE PLATFORM with no
+  // bound and no order, only to reduce them to a set of city slugs, so past the
+  // ceiling whole cities were never considered for a send and which ones
+  // vanished was not stable between weeks. And the send loop did
+  // `recipients.slice(0, 500)` and then wrote the period's audit row, whose
+  // unique key the next invocation read as "already sent": the cron fires once
+  // a week, so a city with nine hundred lawful recipients wrote to five hundred
+  // and the other four hundred never received that week's email.
+  //
+  // CLAUSE 6 JUDGES THE SEND LOOP, NOT A READ, and it is why this is a file of
+  // its own. Every read-shaped scanner in this repository judged that slice
+  // BOUNDED, correctly. A bound is not safety, which is the lesson the seating
+  // screens taught the same day.
+  //
+  // It names FOUR FILES rather than `src/lib/broadcast`, because that directory
+  // is thirty modules and most of them render pictures; the poster and
+  // social-card renderers are red today on the error-destructure clause and a
+  // guard that cannot go green is a guard somebody switches off. They are
+  // enumerated in REVIEW-QUEUE-B.md instead of hidden here.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-DIGESTWHOLE\drills.txt).
+  'scripts/guards/the-weekly-digest-owes-nobody-an-email.mjs',
+
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context
   // of any ancestor carrying a transform: it PAINTS correctly and cannot be
@@ -1268,6 +2958,210 @@ const GUARDS = [
   // the build on every read that decides a 404 and discards, folds or merely
   // logs its error. Drilled RED on the 17 files as they stood, then green.
   'scripts/guards/read-failure-is-not-not-found.mjs',
+
+  // Close-out C8 EXECUTION METHOD, C8B.3 and C8B.4, 15 September 2026. Scope v5
+  // section 10.3 asks for "minimal JavaScript payloads (<200KB initial bundle)"
+  // and until now NOTHING measured it on any commit. The Lighthouse gate holds
+  // a SCORE, and the founder's ruling of 25 August made that gate advisory
+  // because the same bytes scored 0.76 on the runner and 0.88 from a warmed
+  // client. Bytes do not have that problem, so the scope's own number can be a
+  // hard gate where the score cannot.
+  //
+  // Measured on the first run: the four heaviest PUBLIC routes on the platform
+  // were /signup (228.9 KB), /login (228.2), /auth/reset-password (226.8) and
+  // /scan/[eventId] (225.2), all of them heavier than the event page nobody had
+  // stopped optimising, and all four explained by one 51.4 KB chunk of auth
+  // client statically imported into four components. Nothing could see it.
+  //
+  // THIS HALF WEIGHS NOTHING and says so on every run: it judges the contract
+  // (perf-budget.json is well formed, carries the scope number, and the
+  // postbuild half is still wired). The proof is the same file run with
+  // --built from npm's postbuild, against the build that just finished.
+  'scripts/guards/initial-bundle-budget.mjs',
+
+  // Found 19 September 2026 by reading the send path against the doctrine two
+  // other guards already carry. In src/lib/campaigner/run.ts SIX reads discarded
+  // their error, and each failure had a false sentence already written for it:
+  // "the audience row this admission points at no longer exists", "this address
+  // has no consent record carrying an unsubscribe token", and, from ONE failed
+  // read of a small authored table, "the step names a template that does not
+  // exist" against EVERY recipient on the campaign. Those sentences are written
+  // into public.marketing_send_skip, which is append-only, and counted onto
+  // /admin/campaigns, so a blink became a permanent statement about a named
+  // person. The same file checks its error on line 92 and then does not repeat
+  // it six times below. Elsewhere in scope the same shape told a person their
+  // unsubscribe link "is not valid". 48 sites across 11 files, all closed
+  // through the doors, and the matcher sees ARRAY destructuring, which the
+  // sibling guard cannot and which is the spelling two of those sites used.
+  'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+
+  // an-outage-is-not-a-withdrawal: the layer ABOVE the guard directly under
+  // this one, 21 September 2026, and the reason it is separate is that every
+  // read involved was already careful.
+  //
+  // `resolveSend` fails CLOSED, which is the right answer to "may this message
+  // go out" and is NOT an answer to "does this address already hold a live
+  // consent". Two callers were asking the second question, so that a returning
+  // buyer who leaves the marketing checkbox alone is not recorded as declining
+  // (under the Spam Act a withdrawal is a deliberate act and an untouched box is
+  // not one). Both refusals were the same `permitted: false`. Driven on TEST on
+  // a person who touched nothing, with the consent read failing on cue: before,
+  // "granted on 14 Sept 2026 under wording v1"; after, "the latest consent event
+  // is declined". The ledger is APPEND ONLY and a consent row is never rewritten,
+  // so a dropped socket withdrew a live consent and nobody could undo it.
+  //
+  // The same shape scoped a consent to no city: two reads with no retry, so one
+  // dropped packet filed somebody who chose Geelong as having chosen nowhere,
+  // and the digest is city scoped, so they are on no send list at all, for ever,
+  // on a row still reading "granted". That file had been a NAMED EXCEPTION in
+  // the guard above since 19 September, on the argument that its null was "an
+  // honest answer"; the platform disproved that two days later by fixing the
+  // identical read in src/app/actions/consent.ts. The exception is gone and the
+  // register is empty.
+  //
+  // It also guards a DELETION, which is the part most likely to be quietly
+  // undone: the third read re-validated `events.city_primary` against `cities`,
+  // which the foreign key already guarantees, so it could only return what it
+  // was handed or fail. Clause 6 asserts that foreign key is still declared and
+  // clause 7 asserts the code taxonomy it falls back to is a subset of what the
+  // migration seeds, so the fallback can never break the consent write.
+  //
+  // Drilled red eight ways and green (C:\dev\EVIDENCE\LB-OUTAGEWITHDRAW\drills.txt).
+  'scripts/guards/an-outage-is-not-a-withdrawal.mjs',
+
+  // a-blink-defers-the-message: the same family in the notification router,
+  // 21 September 2026, and it is separate from both guards above because the
+  // three properties it holds live where no read-guard can look.
+  //
+  // `dispatchAlert` is the one function every lifecycle alert goes through and
+  // all four of its reads discarded their error, so all three of its decisions
+  // were available to a dropped socket. Driven on TEST on one person with one
+  // table failing on cue, red 10 of 16 and green 16 of 16: a blinked preference
+  // read fell through to DEFAULT_PREFS, which is push and email BOTH ON, so the
+  // platform composed an email to somebody who had switched every channel off
+  // and sent another inside the quiet hours /account/notifications promises to
+  // keep. A blinked dedupe read answered "not sent yet", and since the row is
+  // written AFTER the send, the unique index stops the second ROW and not the
+  // second MESSAGE, on a cron that runs every quarter of an hour.
+  //
+  // CLAUSE 1 is the caller's half, which a read-guard cannot see because it is
+  // in a different file: making the dispatcher raise is only half a fix, and
+  // without a per-recipient catch the first flaky read answers 500 and abandons
+  // every recipient and every event left in the pass.
+  //
+  // CLAUSE 3 is a THIRD SPELLING of the discarded read error that neither shared
+  // matcher can see: `const { count } = await ...` reads neither `data` nor
+  // `error`. It was live in organiser-sale-notify.ts, where `ticketCount ?? 0`
+  // would tell an organiser nought tickets sold and `(confirmedCount ?? 0) <= 1`
+  // would head every message on a sold-out event "Your first sale". Raised for
+  // the tree as a whole in C:\dev\REVIEW-QUEUE-C.md rather than widening a
+  // matcher two other lanes build on.
+  //
+  // CLAUSE 4 asserts the PREMISE: DEFAULT_PREFS is permissive. If that inverts,
+  // a blinked read silences somebody who agreed instead of mailing somebody who
+  // refused, which is a different defect needing a different answer.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LC-BLINK\drills.txt).
+  'scripts/guards/a-blink-defers-the-message.mjs',
+  // The push gate's own route sweep refused 348 commits on 21 September 2026
+  // with `/unsubscribe/zzzzzzzzzzzz: server error 500`. unsubscribe_token is a
+  // uuid column, so a mangled link is `22P02 invalid input syntax for type
+  // uuid` rather than a row that is not there, and readOrThrow, landed hours
+  // earlier so that a dropped socket could never tell somebody their link was
+  // spent, raises it. The outage fix turned a mangled link into a 500.
+  //
+  // It is a guard rather than two fixed files because it was the FOURTH
+  // occurrence: /artists/claim survived only because it happened to test the
+  // shape, /unsubscribe/recovery answered 500 on PRODUCTION on 12 September for
+  // the same reason, and each earlier fix was written in one file and stayed
+  // there. Its first run found a FIFTH, in src/app/waitlist/actions.ts, where a
+  // /^[0-9a-f-]{36}$/ length test admits three values TEST answers 22P02 to.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\UNSUB500\drills.txt).
+  'scripts/guards/an-unsubscribe-link-never-500s.mjs',
+
+  // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
+  // row on "locator.click: Timeout" at a disabled button, while the flag row
+  // read true and the cache key read null. A drive process has an EMPTY
+  // UPSTASH_REDIS_REST_URL and the server has the local shim, so
+  // invalidateFeatureFlag opens "if (!redis) return" and does nothing, silently,
+  // while the server holds the old value for the cache TTL. The drive had been
+  // given that invalidation on 14 September to fix this exact failure and its
+  // header said so; it could never have worked, and it looked fixed because
+  // whether a run straddles a TTL depends on when it runs. Three more drives are
+  // exposed the same way, including one that had already thought about it and
+  // wrote a third spelling of the same silent no-op. The guard prints them.
+  'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+
+  // Close-out AQ3 (lane B, 19 September 2026). AQ3's acceptance line is "organic
+  // attributed orders reported separately from direct", and the three ways of
+  // losing it are all source-level. FIRST, which sites are search engines is a
+  // third-party specification: Google's own published table carries the bare
+  // token `google` and NO entry for google.com.au, so the obvious
+  // host-against-the-list implementation would have reported every visit Google
+  // sends us as a referral and answered "is the search work paying off" with a
+  // confident permanent no. The table is fetched, not typed, and sealed with a
+  // digest this guard recomputes, so the hand edit somebody will want to make
+  // (adding `brave`, which really is absent) fails the build instead. SECOND, it
+  // is 819 rows and about 26 KB, and one import from a client component ships
+  // all of it, which is the exact shape lane A measured on 19 September when 28
+  // dashboard routes each carried 21,005 bytes of image hints to draw one 32px
+  // circle. THIRD, the acceptance line itself: a surface naming the organic
+  // figure must name direct beside it.
+  'scripts/guards/organic-is-not-direct.mjs',
+
+  // Found 19 September 2026 while tearing down the AQ3 drive: NO ACCOUNT ON THE
+  // PLATFORM COULD BE DELETED. `marketing_capture_placement.decided_by` carried
+  // `on delete set null` and the table carried a FOR EACH STATEMENT refusal of
+  // every UPDATE, both written the same morning and each correct alone. The
+  // referential action runs its UPDATE whether or not one row matches, and a
+  // statement-level trigger fires on an update of nothing, so a thirteen-row
+  // table made every auth.users delete fail, everywhere, including account
+  // closure in the product. It was invisible because every drive teardown ends
+  // `.catch(() => {})`, so eighteen accounts piled up on TEST while every run
+  // reported a clean tear-down. The guard replays the migrations in order,
+  // honours later drops, and refuses the pair.
+  'scripts/guards/evidence-outlives-the-account.mjs',
+
+  // The ROW-LEVEL half of the same fault, found on 19 September 2026 by reading
+  // the note `evidence-outlives-the-account` left about what it deliberately did
+  // NOT cover. `on delete set null` issues `UPDATE child SET fk = NULL`, which
+  // is how an account, an order or an event is deleted; a BEFORE UPDATE FOR EACH
+  // ROW trigger with no column list re-judges the whole row on it, against
+  // TODAY'S configuration. Driven on TEST: moving the fee in /admin/pricing made
+  // the person who set a group rate undeletable with a complaint about a price,
+  // and tightening the consent age policy made an audience member, the order
+  // they last bought and the event they last attended all undeletable. The
+  // second arms itself with the calendar, because consent ages out at 24 months
+  // and nothing sweeps. The guard accepts all three protective constructs this
+  // tree already uses (an event list, a when clause, an early return) rather
+  // than imposing one on two triggers that were correct before it existed.
+  'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+
+  // LB-OVERRIDE0, 20 September 2026. The founder's only control over the
+  // platform fee could not save anything, and the database had already written
+  // down why: uq_pricing_rules_one_open_per_scope (migration 20260727000002)
+  // says in its own COMMENT that "writers must stamp the previous row before
+  // inserting the next version", and no writer was changed that day. So from
+  // 27 July every save on /admin/pricing was refused by the index it had just
+  // been handed, region defaults included, and nothing in the tree could
+  // notice, because the obligation lived in a database comment and the breach
+  // lived in TypeScript. Driven on TEST: 23505 on the AU region default at
+  // version 3. A second refusal sat on top, 23514, because the override form
+  // shipped defaultValue={0} on a column constrained to > 0. This guard holds
+  // the seam between the migration and the code: one writer, a Zod bound
+  // DERIVED from the CHECK rather than typed in, no control that offers a
+  // value the database refuses, and execute granted to service_role alone.
+  'scripts/guards/one-lawful-writer-of-the-fee.mjs',
+
+  // The same incident from the other side. `evidence-outlives-the-account`
+  // guards the CAUSE (a cascading key into a table that refuses UPDATE); this
+  // guards the BLINDFOLD that let the cause survive five days, which is the
+  // more general fault: every teardown discarded the deletion error and then
+  // asserted "left as found" from a read of `profiles`, which the line above it
+  // had already deleted. One place deletes an account now, and it fails the run
+  // on a refusal instead of printing a clean tear-down and exiting 0.
+  'scripts/guards/one-way-to-delete-an-account.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

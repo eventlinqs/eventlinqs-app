@@ -1,36 +1,36 @@
 {
-  "base": "http://localhost:3000",
-  "startedAt": "2026-08-08T02:07:56.722Z",
-  "guestEmail": "share-conversion-1786154876722@mailinator.com",
-  "conversionsBefore": 10,
-  "orderId": "0d6a9c5e-c9d2-4dd0-92e6-7edb7d0c929a",
+  "base": "http://localhost:3100",
+  "startedAt": "2026-09-18T06:18:05.180Z",
+  "guestEmail": "share-conversion-1789712285180@mailinator.com",
+  "conversionsBefore": 13,
+  "orderId": "dc96c983-e53b-4130-b6a6-1896e1c7d7a7",
   "slug": "cat-a-midsummer-night-dream-on-stage-melbourne",
   "code": "VxAFQNHFeK",
   "linkId": "581fe87a-1072-4d29-85f1-5a6dd145574b",
   "secondsToConversion": 0,
   "order": {
-    "order_number": "EL-86C9MXW3",
+    "order_number": "EL-F7S8P67S",
     "status": "confirmed",
-    "total_cents": 6354,
+    "total_cents": 6206,
     "currency": "AUD"
   },
   "conversion": {
-    "id": "99bf4306-1a24-4ff0-bfa1-42707fad9e1d",
+    "id": "335657e7-04d0-4469-a2b0-c33d1ab62dd7",
     "link_id": "581fe87a-1072-4d29-85f1-5a6dd145574b",
-    "occurred_at": "2026-08-08T02:08:31.774548+00:00"
+    "occurred_at": "2026-09-18T06:18:23.872481+00:00"
   },
-  "conversionsAfter": 11,
-  "finishedAt": "2026-08-08T02:08:32.908Z",
+  "conversionsAfter": 14,
+  "finishedAt": "2026-09-18T06:18:26.095Z",
   "steps": [
     {
       "name": "mint",
       "ok": true,
-      "detail": "http://localhost:3000/s/VxAFQNHFeK (link 581fe87a-1072-4d29-85f1-5a6dd145574b, channel whatsapp)"
+      "detail": "http://localhost:3100/e/VxAFQNHFeK (link 581fe87a-1072-4d29-85f1-5a6dd145574b, channel whatsapp)"
     },
     {
-      "name": "redirect",
+      "name": "landed-on-the-event",
       "ok": true,
-      "detail": "landed on http://localhost:3000/events/cat-a-midsummer-night-dream-on-stage-melbourne"
+      "detail": "http://localhost:3100/e/VxAFQNHFeK titled \"A Midsummer Night Dream on Stage - Tue, 9 June - The Comedy Theatre, Melbourne - EventLinqs\""
     },
     {
       "name": "cookie-set",
@@ -40,7 +40,7 @@
     {
       "name": "click-recorded",
       "ok": true,
-      "detail": "0 -> 1 click rows"
+      "detail": "1 -> 2 click rows"
     },
     {
       "name": "cookie-survives-to-checkout",
@@ -55,7 +55,7 @@
     {
       "name": "conversion-recorded",
       "ok": true,
-      "detail": "share_link_events 99bf4306-1a24-4ff0-bfa1-42707fad9e1d kind=conversion order=0d6a9c5e-c9d2-4dd0-92e6-7edb7d0c929a link=581fe87a-1072-4d29-85f1-5a6dd145574b at 2026-08-08T02:08:31.774548+00:00"
+      "detail": "share_link_events 335657e7-04d0-4469-a2b0-c33d1ab62dd7 kind=conversion order=dc96c983-e53b-4130-b6a6-1896e1c7d7a7 link=581fe87a-1072-4d29-85f1-5a6dd145574b at 2026-09-18T06:18:23.872481+00:00"
     },
     {
       "name": "conversion-credits-the-right-link",
@@ -65,7 +65,7 @@
     {
       "name": "order-is-a-real-paid-order",
       "ok": true,
-      "detail": "EL-86C9MXW3 confirmed 6354c AUD"
+      "detail": "EL-F7S8P67S confirmed 6206c AUD"
     }
   ],
   "verdict": "PASS"

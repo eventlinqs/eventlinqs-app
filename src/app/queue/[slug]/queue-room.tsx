@@ -288,7 +288,7 @@ export function QueueRoom({
           image). Sits behind everything; content stays legible on the overlay. */}
       {coverImageUrl && (
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <HeroMedia image={coverImageUrl} alt="" sizes="100vw" priority />
+          <HeroMedia image={coverImageUrl} alt="" priority />
           <div className="absolute inset-0 bg-ink-900/85" />
           <div className="absolute inset-0 bg-gradient-to-b from-ink-900/70 via-ink-900/85 to-ink-900" />
         </div>
@@ -339,9 +339,17 @@ export function QueueRoom({
               <p
                 className={`text-7xl sm:text-8xl font-bold tabular-nums ${t.heading}`}
                 aria-live="polite"
-                aria-label={`Position ${position ?? ':'} in queue`}
+                /*
+                 * A SCREEN READER GETS A SENTENCE, NOT A PUNCTUATION MARK.
+                 * This read "Position : in queue" while the position was
+                 * still unknown, and before the dash scrub it read "Position
+                 * em-dash in queue", which most screen readers say as
+                 * "Position in queue": a number that was never spoken and
+                 * whose absence was never announced either.
+                 */
+                aria-label={position !== null ? `Position ${position} in queue` : 'Your position in the queue is not known yet'}
               >
-                {position !== null ? `#${position.toLocaleString('en-AU')}` : ':'}
+                {position !== null ? `#${position.toLocaleString('en-AU')}` : '-'}
               </p>
               {position !== null && (
                 <p className={`text-sm ${t.faint}`}>
@@ -387,7 +395,7 @@ export function QueueRoom({
         {phase === 'admitted' && (
           <div className="text-center space-y-4">
             <div className="text-6xl" role="img" aria-label="Checkmark">✓</div>
-            <p className="text-xl font-semibold text-success">You&apos;re in</p>
+            <p className="text-xl font-semibold text-success-strong">You&apos;re in</p>
             <p className={`${t.body} text-sm`}>
               Taking you to checkout&hellip; You have {admissionWindowMinutes} minutes.
             </p>

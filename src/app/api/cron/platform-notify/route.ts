@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       `[cron/platform-notify] considered ${dispatched.considered}, sent ${dispatched.sent}, ` +
         `held ${dispatched.held}, retried ${dispatched.retried}, escalated ${dispatched.escalated}, ` +
         `failed ${dispatched.failed}; digest held ${digest.held}, sent ${digest.sent}, ` +
-        `escalated ${digest.escalated}, failed ${digest.failed}`,
+        `retried ${digest.retried}, escalated ${digest.escalated}, failed ${digest.failed}`,
     )
     return NextResponse.json({ ok: true, dispatched, digest })
   } catch (err) {

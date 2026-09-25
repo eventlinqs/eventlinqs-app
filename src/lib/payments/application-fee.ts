@@ -1,52 +1,34 @@
 import type { Organisation } from '@/types/database'
 import type { FeeBreakdown } from './payment-calculator'
+import { getCurrencyForCountry } from './connect-currency'
 import {
   getApplicationFeeCompositionMode,
   getReservePercentage,
   type ApplicationFeeCompositionMode,
 } from './pricing-rules'
 
-/**
- * Currency that EventLinqs charges in for a given Stripe Connect country.
+/*
+ * THE CONNECT CURRENCY MAP MOVED OUT, AND IT MOVED OUT FOR A REASON.
  *
- * The country-to-currency map is structural (Stripe Connect supports a fixed
- * list of country/currency pairs), not pricing policy. It stays in code; per-
- * country pricing values live in pricing_rules.
+ * `getCurrencyForCountry` and its `CONNECT_CURRENCY_MAP` now live in
+ * `./connect-currency`, a module that imports nothing. They are re-exported
+ * here unchanged so that every caller of `application-fee.ts` keeps working
+ * exactly as it did, and none of them was touched.
+ *
+ * The move is not tidying. `sale-status.ts` took this one function from this
+ * file, `ticket-selector.tsx` is a client component that imports
+ * `sale-status.ts`, and that single edge dragged pricing-rules, the Redis
+ * client, `@upstash/redis` and a 16.0 KB Node Buffer polyfill into the browser
+ * on the event page and the checkout: 17.5 KB gzip of server-only code on the
+ * two surfaces that sell tickets. `connect-currency.ts` records the whole
+ * story and says why it must stay a leaf.
+ *
+ * NOTHING ABOUT WHAT ANY FEE RESOLVES TO CHANGED. The map is byte-for-byte the
+ * one that stood here, the function body is the one that stood here, and the
+ * fee composition below still reads every pricing value through
+ * `pricing-rules`. This is a move.
  */
-const CONNECT_CURRENCY_MAP: Record<string, string> = {
-  AU: 'AUD',
-  GB: 'GBP',
-  US: 'USD',
-  CA: 'CAD',
-  NZ: 'NZD',
-  IE: 'EUR',
-  AT: 'EUR',
-  BE: 'EUR',
-  BG: 'EUR',
-  HR: 'EUR',
-  CY: 'EUR',
-  CZ: 'EUR',
-  DK: 'EUR',
-  EE: 'EUR',
-  FI: 'EUR',
-  FR: 'EUR',
-  DE: 'EUR',
-  GR: 'EUR',
-  HU: 'EUR',
-  IT: 'EUR',
-  LV: 'EUR',
-  LT: 'EUR',
-  LU: 'EUR',
-  MT: 'EUR',
-  NL: 'EUR',
-  PL: 'EUR',
-  PT: 'EUR',
-  RO: 'EUR',
-  SK: 'EUR',
-  SI: 'EUR',
-  ES: 'EUR',
-  SE: 'EUR',
-}
+export { CONNECT_CURRENCY_MAP, getCurrencyForCountry } from './connect-currency'
 
 export type ChargePreconditionFailure =
   | 'org_not_connected'
@@ -56,6 +38,17 @@ export type ChargePreconditionFailure =
   | 'fee_breakdown_invalid'
   /** The event sells its tickets on another platform. We never take money for it. */
   | 'event_externally_ticketed'
+  /**
+   * MONEY FIX A4. The order could not be made to record where its money is
+   * owed, so no charge may be created against it.
+   *
+   * It is a REFUSAL rather than a warning because of what happened without it:
+   * two charges settled to the platform account on 10 September 2026 with
+   * nothing anywhere saying who they belonged to, and reconstructing that took
+   * reading Stripe by hand against the catalogue. A charge nobody can attribute
+   * is the defect; refusing to create one is the fix.
+   */
+  | 'destination_not_recorded'
 
 export class ChargePreconditionError extends Error {
   readonly reason: ChargePreconditionFailure
@@ -64,11 +57,6 @@ export class ChargePreconditionError extends Error {
     this.name = 'ChargePreconditionError'
     this.reason = reason
   }
-}
-
-export function getCurrencyForCountry(country: string | null | undefined): string | null {
-  if (!country) return null
-  return CONNECT_CURRENCY_MAP[country.toUpperCase()] ?? null
 }
 
 /**
@@ -319,13 +307,35 @@ export function assertOrganiserCanReceiveFunds(
       'FeeBreakdown.total_cents must be positive for a paid-event charge.'
     )
   }
-  // The platform's keep (inclusive composition) must be positive and strictly
-  // less than the total, else the organiser transfer would be zero or negative.
+  /*
+   * The platform's keep (inclusive composition) must never be negative, and
+   * must stay strictly less than the total, else the organiser transfer would
+   * be zero or negative.
+   *
+   * ZERO IS THE INTERESTING CASE AND IT HAS TWO MEANINGS (close-out MONEY FIX,
+   * A1.7). A zero keep is a FAULT when `pricing_rules` returned nothing, which
+   * would sell every ticket at a silent zero take-rate. It is CORRECT when a
+   * founding organiser is inside their fee-free window and genuinely owes
+   * nothing. The numbers are identical in both cases, so this used to refuse
+   * both, and the cost was that the fee-waived organisers the growth plan exists
+   * to recruit were the only ones on the platform who could not sell a ticket:
+   * every checkout threw here and the buyer was told there was a pricing issue.
+   *
+   * The breakdown now carries WHY the fee is zero (`fee_waived`, set from the
+   * same waiver that zeroed the rates), so this can refuse the fault and allow
+   * the waiver without guessing from the amounts.
+   */
   const inclusiveKeep = composeApplicationFee(fees, 1)
-  if (inclusiveKeep <= 0) {
+  if (inclusiveKeep < 0) {
     throw new ChargePreconditionError(
       'fee_breakdown_invalid',
-      'Computed platform fee is zero or negative; pricing_rules likely returned no platform fee.'
+      `Computed platform fee (${inclusiveKeep}) is negative; the platform would be paying the buyer.`
+    )
+  }
+  if (inclusiveKeep === 0 && !fees.fee_waived) {
+    throw new ChargePreconditionError(
+      'fee_breakdown_invalid',
+      'Computed platform fee is zero and no fee waiver is recorded on the breakdown; pricing_rules likely returned no platform fee.'
     )
   }
   if (inclusiveKeep >= fees.total_cents) {

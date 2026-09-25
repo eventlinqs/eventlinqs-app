@@ -18,14 +18,17 @@
  * deleting an event first fails with 23503 and leaves half a fixture behind, which
  * is worse than leaving all of it. Children first, parents last, every time.
  *
- * It is scoped by the `refund-proof-presents-%` slug, so it can only ever reach
- * fixtures this harness created. It cannot touch a seeded or real organisation.
+ * It is scoped by a slug PREFIX, so it can only ever reach fixtures a harness
+ * created under that tag. It cannot touch a seeded or real organisation, and the
+ * prefix is never widened to a bare `%`. `slugPrefix` defaults to the refund
+ * proofs' own so every existing caller is unchanged, and is passed by any proof
+ * building under its own lane tag.
  */
-export async function purgeFixtures(db, log = () => {}) {
+export async function purgeFixtures(db, log = () => {}, slugPrefix = 'refund-proof-presents') {
   const { data: orgs } = await db
     .from('organisations')
     .select('id, owner_id, slug')
-    .like('slug', 'refund-proof-presents-%')
+    .like('slug', `${slugPrefix}-%`)
 
   /**
    * EVERY DELETE IS CHECKED. The first version of this function ignored the error
@@ -127,12 +130,16 @@ export async function purgeFixtures(db, log = () => {}) {
  * Clear fixtures left by an earlier run that failed before buying anything. A
  * fixture carrying orders is KEPT: it is the evidence. Without this, TEST
  * accumulates an organisation and an auth user on every iteration.
+ *
+ * `slugPrefix` defaults to the refund proofs' own, so existing callers are
+ * unchanged, and is passed by any proof building under its own lane tag. It is
+ * the ONLY thing scoping the delete, so it is never widened to a bare `%`.
  */
-export async function clearEmptyFixtures(db, log = () => {}) {
+export async function clearEmptyFixtures(db, log = () => {}, slugPrefix = 'refund-proof-presents') {
   const { data: priorOrgs } = await db
     .from('organisations')
     .select('id, owner_id, slug')
-    .like('slug', 'refund-proof-presents-%')
+    .like('slug', `${slugPrefix}-%`)
   for (const p of priorOrgs ?? []) {
     const { data: evs } = await db.from('events').select('id').eq('organisation_id', p.id)
     const ids = (evs ?? []).map(e => e.id)
@@ -169,7 +176,30 @@ export async function clearEmptyFixtures(db, log = () => {}) {
  * events_published_real_cover (20260504000001) refuses a published-public event
  * with no cover, an empty cover, or a picsum placeholder.
  */
-export async function buildFixture(db, { stamp, ownerEmail, password, capacity = 10, priceCents = 2500, log = () => {} }) {
+export async function buildFixture(db, {
+  stamp,
+  ownerEmail,
+  password,
+  capacity = 10,
+  priceCents = 2500,
+  log = () => {},
+  /*
+   * WHAT THE ROWS ARE CALLED. Defaulted to the refund proofs' own names so every
+   * existing caller is unchanged, and overridable so a second proof can build the
+   * SAME charge-ready fixture under its own tag instead of copying this function.
+   * Three lanes share this TEST project and the protocol is that a row says on
+   * sight whose it is, which a hard-coded name cannot do.
+   */
+  brand = {},
+}) {
+  const naming = {
+    org: 'Refund Proof Presents',
+    orgSlug: 'refund-proof-presents',
+    event: 'Refund Proof Night',
+    eventSlug: 'refund-proof-night',
+    owner: 'Refund Proof Owner',
+    ...brand,
+  }
   const { data: donor } = await db
     .from('organisations')
     .select('stripe_account_id, stripe_account_country')
@@ -196,16 +226,16 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
   if (created.error) throw new Error(`create owner: ${created.error.message}`)
   const ownerId = created.data.user.id
   await db.from('profiles').upsert({
-    id: ownerId, email: ownerEmail, full_name: 'Refund Proof Owner',
-    display_name: 'Refund Proof Owner', is_verified: true,
+    id: ownerId, email: ownerEmail, full_name: naming.owner,
+    display_name: naming.owner, is_verified: true,
   })
   log(`owner ${ownerEmail} (${ownerId})`)
 
   const { data: cat } = await db.from('event_categories').select('id').limit(1).maybeSingle()
 
   const { data: org, error: orgErr } = await db.from('organisations').insert({
-    name: `Refund Proof Presents ${stamp}`,
-    slug: `refund-proof-presents-${stamp}`,
+    name: `${naming.org} ${stamp}`,
+    slug: `${naming.orgSlug}-${stamp}`,
     owner_id: ownerId,
     email: ownerEmail,
     status: 'active',
@@ -220,10 +250,10 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
 
   const startDate = new Date(Date.now() + 21 * 864e5)
   const { data: event, error: evErr } = await db.from('events').insert({
-    title: `Refund Proof Night ${stamp}`,
-    slug: `refund-proof-night-${stamp}`,
-    description: 'Fixture event for the refund proofs.',
-    summary: 'Refund proof fixture',
+    title: `${naming.event} ${stamp}`,
+    slug: `${naming.eventSlug}-${stamp}`,
+    description: `Fixture event for ${naming.event}.`,
+    summary: `${naming.event} fixture`,
     organisation_id: org.id,
     created_by: ownerId,
     category_id: cat?.id ?? null,
@@ -243,7 +273,7 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
   const { data: tier, error: tErr } = await db.from('ticket_tiers').insert({
     event_id: event.id,
     name: 'General Admission',
-    description: 'Refund proof tier',
+    description: `${naming.event} tier`,
     tier_type: 'general_admission',
     price: priceCents, currency: 'AUD',
     total_capacity: capacity, sold_count: 0, reserved_count: 0,
@@ -271,14 +301,122 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   const sleep = ms => new Promise(r => setTimeout(r, ms))
 
   await page.goto(`${base}/events/${slug}`, { waitUntil: 'load', timeout: 120000 })
-  await shot(page, '01-event-page')
 
-  const plus = page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
-  if (!(await plus.count())) throw new Error('no quantity control on the event page')
+  /*
+   * THE SELECTOR IS NOT ALWAYS ON THE PAGE, AND WHEN IT IS ABSENT THE HARNESS
+   * SAYS WHICH OF THE TWO REASONS IT IS. Both halves of this were learned the
+   * hard way in two trees on 14 September 2026 and the merge keeps both,
+   * because they diagnose different faults and either one alone accuses the
+   * product of the other's.
+   *
+   * REASON ONE, THE ENVIRONMENT (lane A). A drive reported "no quantity control
+   * on the event page" and a reserve button that never appeared, on two of
+   * three viewports, and both read as product failures. The screenshot settled
+   * it: 14,672 bytes of UNSTYLED html saying "Loading event", against 115,219
+   * for the same page minutes earlier. That is the route's loading shell served
+   * with no stylesheet, which is what a running `next start` serves once
+   * something has rebuilt `.next` underneath it: the HTML references chunk URLs
+   * the new build no longer has.
+   *
+   * REASON TWO, THE VIEWPORT (lane B). At narrow widths the ticket picker sits
+   * behind a "Get tickets" control rather than in the layout, so the quantity
+   * button genuinely does not exist until that is pressed. The first version
+   * threw the same sentence at 390 and read as an event with no tickets, which
+   * is the harness's vocabulary indicting a screen that was correct.
+   *
+   * SO THE ORDER IS FIXED: wait for the control; on timeout ask the page
+   * whether it is even a rendered page, because if it is not, opening a picker
+   * that does not exist would only produce a second wrong message; only then
+   * try the opener; and only then say it is about the product.
+   *
+   * IT IS WAITED FOR, NOT SAMPLED ONCE, and that distinction cost a run. A
+   * `count()` taken the instant `load` fires is a question asked before the
+   * answer exists: against `next dev` the first request for a route compiles
+   * it, so the control appears seconds after the event is on screen.
+   */
+  /*
+   * REASON THREE, THE SELECTOR ITSELF (lane B, 18 September 2026), and it is
+   * the worst of the three because it accuses the product of both the others.
+   *
+   * This read `/^(\+|increase|add)/i` and took `.first()`. On 14 September lane
+   * C shipped an "Add to calendar" button onto the event page (SEO5, commit
+   * ee8d09da) which sits ABOVE the ticket panel in the DOM and whose accessible
+   * name begins with "Add". Every drive through this helper then opened a
+   * calendar menu, left the quantity on 0, and reported the reserve button
+   * ABSENT, because at zero tickets the product correctly labels its CTA
+   * "Select tickets to continue" rather than "Checkout · $x". Three viewports
+   * of "the panel never rendered" against a panel that had rendered perfectly.
+   *
+   * So the name is now the product's OWN accessible name and nothing looser:
+   * `aria-label={`Increase ${tier.name} quantity`}` in
+   * src/components/checkout/ticket-selector.tsx. A prefix match is an invitation
+   * for the next button anyone adds above this one to answer to it.
+   * scripts/guards/drive-quantity-control-selector.mjs holds the two together
+   * and fails the build if either side moves alone.
+   */
+  const quantityControl = () =>
+    page.getByRole('button', { name: /^increase .+ quantity$/i }).first()
+  let plus = quantityControl()
+  try {
+    await plus.waitFor({ state: 'visible', timeout: 45000 })
+  } catch {
+    await shot(page, '01-event-page')
+    const stylesheets = await page.locator('link[rel="stylesheet"]').count()
+    const shell = await page.getByText(/^Loading event/i).count()
+    const title = (await page.title()) || '(no title)'
+    if (shell > 0 || stylesheets === 0) {
+      throw new Error(
+        `the server served its LOADING SHELL, not the event page ` +
+          `(${stylesheets} stylesheet link(s), title "${title}"). This is the ` +
+          `environment, not the product: a running next start whose .next was ` +
+          `rebuilt underneath it serves html pointing at chunks that no longer ` +
+          `exist. Re-run the drive with nothing else building.`,
+      )
+    }
+    const opener = page.getByRole('button', { name: /^(get|buy|select) tickets/i }).first()
+    if (await opener.count()) {
+      await opener.click().catch(() => {})
+      await sleep(2500)
+      plus = quantityControl()
+      await plus.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {})
+    }
+    if (!(await plus.count())) {
+      throw new Error(
+        `no quantity control on the event page after 45s, with or without ` +
+          `opening the picker, and the page is a real rendered page ` +
+          `(${stylesheets} stylesheet link(s), title "${title}"), so this IS ` +
+          `about the product.`,
+      )
+    }
+  }
+  await shot(page, '01-event-page')
   for (let i = 0; i < qty; i += 1) { await plus.click(); await sleep(450) }
   await shot(page, '02-selected')
 
-  await page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first().click()
+  /*
+   * THE SAME RULE FOR THE RESERVE BUTTON. At tablet-768 on 14 September 2026
+   * this click timed out after the quantity control had already worked, so the
+   * page WAS real and the button was the question. A bare click that times out
+   * says only "not clickable", which is true of a button that is missing, one
+   * that is disabled, and one that is off screen, and those are three different
+   * findings.
+   */
+  const reserve = page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first()
+  try {
+    await reserve.click({ timeout: 45000 })
+  } catch {
+    await shot(page, '02-reserve-would-not-take')
+    const present = await reserve.count()
+    const label = present ? ((await reserve.textContent()) || '').trim() : '(absent)'
+    const enabled = present ? await reserve.isEnabled() : false
+    const visible = present ? await reserve.isVisible() : false
+    throw new Error(
+      `the reserve button would not take a click: present=${present > 0} ` +
+        `visible=${visible} enabled=${enabled} label="${label}". A DISABLED ` +
+        `button here means the ticket panel refused the selection; an ABSENT one ` +
+        `means the panel never rendered.`,
+    )
+  }
   await page.waitForURL(/\/checkout\//, { timeout: 60000 })
   await sleep(2500)
 
@@ -310,8 +448,113 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   if (await postal.count()) await postal.fill('3220')
   await sleep(900)
   await shot(page, '04-card-entered')
-  await page.getByRole('button', { name: /pay/i }).first().click()
-  await page.waitForURL(/confirmation/, { timeout: 150000 })
+  /*
+   * DISMISS ANY NATIVE POPUP BEFORE PRESSING PAY, AND THE REASON IS EVIDENCE
+   * RATHER THAN SUPERSTITION.
+   *
+   * At tablet-768 this drive failed three times running while mobile-390 and
+   * desktop-1440 passed the identical step in the same run. The instrumentation
+   * settled what it was: the button still read "Pay AUD 26.87" three seconds
+   * after the click rather than "Processing...", the console was silent, the
+   * page showed no error and Stripe's element showed none either. The submit
+   * handler NEVER RAN. The screenshot shows why: Stripe's payment element at
+   * this width renders a Country <select>, focus lands on it once the security
+   * code is complete, and its native option list was open over the page. In
+   * Chromium a click made while a native select popup is open is consumed
+   * CLOSING THE POPUP and never reaches the element underneath.
+   *
+   * SO THIS IS THE HARNESS, NOT THE PRODUCT, and the distinction is the whole
+   * point: the page cannot respond to an event the browser never delivered to
+   * it, and a real buyer moving a finger from the card fields to the Pay button
+   * does not leave a country list hanging open. Escape is what closes it, and it
+   * is a no-op on the two viewports that never had one open, which is why it is
+   * unconditional rather than a width special case.
+   *
+   * ESCAPE ALONE WAS NOT ENOUGH, 14 September 2026, lane A. The money drive hit
+   * this again at tablet-768 with the Escape already in place, and the
+   * screenshot (EVIDENCE/MONEY/2026-09-14-a17/tablet-768) shows the country list
+   * still open across the top of the page with Australia highlighted. A native
+   * select popup is browser chrome rather than page content, so an Escape
+   * synthesised through CDP and delivered to the focused element inside a
+   * cross-origin iframe does not reliably close it.
+   *
+   * What DOES work is to stop making the Pay click the sacrifice. One harmless
+   * click on a neutral part of the page is offered up first: if a popup is open
+   * that click is consumed closing it, and if none is open it lands on dead
+   * space and does nothing. Either way the NEXT click is the first one the page
+   * can actually receive. Cheap, unconditional, and it cannot mask a real
+   * failure, because a Pay button that does not respond after this is genuinely
+   * not responding.
+   */
+  await page.keyboard.press('Escape')
+  await sleep(200)
+  await page.mouse.click(4, 4)
+  await sleep(300)
+
+  const payButton = page.getByRole('button', { name: /pay/i }).first()
+  const payLabel = ((await payButton.textContent()) || '').trim()
+  const console_ = []
+  page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console_.push(`${m.type()}: ${m.text()}`.slice(0, 300)) })
+  page.on('pageerror', err => console_.push(`pageerror: ${err.message}`.slice(0, 300)))
+  await payButton.click()
+  /*
+   * DID THE HANDLER EVEN RUN. The button reads "Processing..." for as long as
+   * confirmPayment is in flight (checkout-form.tsx), so its label is the one
+   * observable that separates "the click never reached the submit handler" from
+   * "the payment was attempted and did not come back". At tablet-768 on
+   * 14 September 2026 it still read "Pay AUD 26.87" after 150 seconds, which is
+   * the first of those two and a completely different investigation.
+   */
+  let labelAfter = '(not read)'
+  try {
+    await payButton.waitFor({ state: 'visible', timeout: 3000 })
+    labelAfter = ((await payButton.textContent()) || '').trim()
+  } catch { labelAfter = '(the button went away, which is what a submit looks like)' }
+  try {
+    await page.waitForURL(/confirmation/, { timeout: 150000 })
+  } catch {
+    /*
+     * THE PAY WENT IN AND NOTHING CAME BACK, AND THAT IS THREE DIFFERENT
+     * FINDINGS. 14 September 2026: the tablet-768 leg of the R1 drive timed out
+     * here while mobile-390 and desktop-1440 passed the identical step in the
+     * same run. The server's own log showed a payment_intent.created for that
+     * leg and NO charge after it, so the click landed and the confirmation did
+     * not complete. `waitForURL timed out` says none of that.
+     *
+     * A card declined inside Stripe's element, a validation error Stripe is
+     * showing, and a confirmation that is simply still in flight are three
+     * separate things, and the page is holding the answer to which at the
+     * moment it gives up. So it is read and reported rather than thrown away.
+     */
+    await shot(page, '05-pay-did-not-complete')
+    const errors = await page
+      .locator('[role="alert"], .text-red-600, [data-testid*="error"], p.text-danger')
+      .allTextContents()
+    let stripeError = ''
+    try {
+      stripeError = (
+        await page
+          .frameLocator('iframe[name^="__privateStripeFrame"]')
+          .first()
+          .locator('[role="alert"], .p-FieldError, .Error')
+          .allTextContents()
+      ).join(' | ')
+    } catch {
+      stripeError = '(the Stripe frame could not be read)'
+    }
+    throw new Error(
+      `the payment did not reach the confirmation in 150s. Pressed "${payLabel}", ` +
+        `button read "${labelAfter}" three seconds later (it reads "Processing..." ` +
+        `while confirmPayment is in flight, so an unchanged label means the SUBMIT ` +
+        `HANDLER NEVER RAN and the click was swallowed). ` +
+        `Console: ${console_.slice(0, 5).join(' || ') || '(silent)'}. ` +
+        `still at ${page.url()}. Page said: ${errors.filter(Boolean).join(' | ') || '(nothing)'}. ` +
+        `Stripe's own element said: ${stripeError || '(nothing)'}. Cross-check the ` +
+        `server log for a payment_intent.succeeded on this attempt: a created ` +
+        `intent with no charge after it means the confirmation never completed, ` +
+        `not that the platform refused it.`,
+    )
+  }
   await shot(page, '05-confirmation')
 
   return page.url().match(/orders\/([0-9a-f-]+)\//)?.[1] ?? null

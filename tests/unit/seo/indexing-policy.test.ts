@@ -84,17 +84,29 @@ describe('the classification is complete, in both directions', () => {
 })
 
 describe('the threshold', () => {
-  test('is three, the close-out C19.3 default, and is a single named constant', () => {
-    expect(DISCOVERY_INDEXING_THRESHOLD).toBe(3)
+  test('is one, the owner’s SEO3 seed, and is still a single named constant', () => {
+    // It was three (close-out C19.3) until 14 September 2026. SEO3 step 2:
+    // "Seed the minimum at one." The constant is now the FALLBACK, used when the
+    // owner has set nothing and when the settings row cannot be read.
+    expect(DISCOVERY_INDEXING_THRESHOLD).toBe(1)
     const src = readFileSync(join(__dirname, '..', '..', '..', 'src', 'lib', 'seo', 'indexing-policy.ts'), 'utf8')
     expect(src.match(/DISCOVERY_INDEXING_THRESHOLD = \d+/g)).toHaveLength(1)
   })
 
-  test('decides indexability at the boundary, not near it', () => {
-    expect(isDiscoveryIndexable(0)).toBe(false)
-    expect(isDiscoveryIndexable(DISCOVERY_INDEXING_THRESHOLD - 1)).toBe(false)
-    expect(isDiscoveryIndexable(DISCOVERY_INDEXING_THRESHOLD)).toBe(true)
-    expect(isDiscoveryIndexable(DISCOVERY_INDEXING_THRESHOLD + 40)).toBe(true)
+  test('decides indexability at the boundary, not near it, at whatever threshold it is given', () => {
+    const t = DISCOVERY_INDEXING_THRESHOLD
+    expect(isDiscoveryIndexable(0, t)).toBe(false)
+    expect(isDiscoveryIndexable(t - 1, t)).toBe(false)
+    expect(isDiscoveryIndexable(t, t)).toBe(true)
+    expect(isDiscoveryIndexable(t + 40, t)).toBe(true)
+
+    // The threshold is an ARGUMENT now, not a constant this function reads, so
+    // the owner moving it moves the boundary. This is the whole of SEO3 step 2
+    // in one assertion.
+    expect(isDiscoveryIndexable(2, 5)).toBe(false)
+    expect(isDiscoveryIndexable(5, 5)).toBe(true)
+    // The reversal condition: a very high number switches every page off.
+    expect(isDiscoveryIndexable(400, 1000)).toBe(false)
   })
 })
 
@@ -115,8 +127,8 @@ describe('the metadata blocks each page spreads', () => {
   })
 
   test('discoveryIndexing self-canonicalises in BOTH states and only moves the robots directive', () => {
-    const empty = discoveryIndexing(0, '/community/african')
-    const full = discoveryIndexing(DISCOVERY_INDEXING_THRESHOLD, '/community/african')
+    const empty = discoveryIndexing(0, '/community/african', DISCOVERY_INDEXING_THRESHOLD)
+    const full = discoveryIndexing(DISCOVERY_INDEXING_THRESHOLD, '/community/african', DISCOVERY_INDEXING_THRESHOLD)
     expect(empty.robots.index).toBe(false)
     expect(full.robots.index).toBe(true)
     // The canonical is the same in both states. Pointing an empty page's

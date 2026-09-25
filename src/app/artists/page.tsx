@@ -1,3 +1,4 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -7,6 +8,7 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isPerformanceType, PERFORMANCE_TYPE_LABELS } from '@/lib/marketplace/gigs'
 import {
   fetchDirectoryArtists,
+  fetchDirectoryArtistsRankedByDraw,
   fetchDrawTotalsForArtists,
   type DirectoryFilters as Filters,
 } from '@/lib/marketplace/showcase'
@@ -53,19 +55,33 @@ export default async function PerformerDirectoryPage({
     mentorOnly: raw.mentor === '1',
   }
 
+  /*
+   * THE RANK IS A QUERY, NOT A SORT, AND THAT IS THE WHOLE POINT.
+   *
+   * This used to read 48 performers ORDERED BY NAME and then sort those 48 by
+   * draw in JavaScript, which does not rank the platform's strongest draw: it
+   * ranks the alphabetically first 48 and presents the result under a control
+   * that reads "Strongest draw first". The bound has to come AFTER the ranking,
+   * so when draw is asked for, the database ranks and bounds in one read.
+   * `fetchDirectoryArtistsRankedByDraw` carries the reasoning; the disclosure
+   * half (a performer who has not consented is not placed by a number they did
+   * not publish) lives in the migration's header.
+   *
+   * NOTHING RE-SORTS THE RESULT HERE. The order is the database's in both
+   * branches, and a JavaScript sort on this page is exactly the defect.
+   */
   const admin = createAdminClient()
-  const [artists, citiesResult] = await Promise.all([
-    fetchDirectoryArtists(admin, filters),
-    admin.from('cities').select('slug, name').order('tier').order('name'),
+  const rankByDraw = raw.sort === 'draw'
+  const [artists, cities] = await Promise.all([
+    rankByDraw
+      ? fetchDirectoryArtistsRankedByDraw(admin, filters)
+      : fetchDirectoryArtists(admin, filters),
+    fetchPickerCities(admin),
   ])
-  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]
   const cityName = (slug: string | null) => cities.find((c) => c.slug === slug)?.name ?? null
 
   const draw = await fetchDrawTotalsForArtists(admin, artists.map((a) => a.id))
   const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))
-  if (raw.sort === 'draw') {
-    rows.sort((x, y) => (y.draw?.tickets ?? 0) - (x.draw?.tickets ?? 0))
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -130,7 +146,23 @@ export default async function PerformerDirectoryPage({
 
                     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-200/70 pt-3">
                       {artist.available_for_booking && (
-                        <span className="inline-flex items-center rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
+                        /* text-success-strong, not text-success: #0F9D58 on the
+                           bg-success/15 wash (#dbf0e6) measures 2.94:1, under the
+                           4.5:1 AA floor, found by axe at 1440, 768 and 390.
+                           The token is the one globals.css already carries for
+                           this exact case; no colour is introduced here.
+
+                           AND THE WASH IS /10 RATHER THAN /15, which it was
+                           until 21 September. #0B7038 on the /15 wash is 5.20:1
+                           over white and 4.51:1 over ink-100 by arithmetic, and
+                           Chromium measured that last one at 4.48:1, under the
+                           floor: Tailwind writes a tint as a color-mix in oklab
+                           and the round trip moves one channel by one unit,
+                           which matters only when a pair sits within 0.03 of
+                           4.5. On /10 the same ink measures 4.73:1 on ink-100
+                           and this card cannot be put anywhere that fails.
+                           Measured by scripts/verify/lb-tintaa-drive.mjs. */
+                        <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-strong">
                           Open to bookings
                         </span>
                       )}

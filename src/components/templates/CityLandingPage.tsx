@@ -13,11 +13,22 @@ import { BrowseByCommunityRail } from '@/components/features/city/browse-by-comm
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getAllCities, getCity } from '@/lib/cities/data'
+import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+
+/**
+ * How many of the city's events the grid shows. It was the literal 24 inside
+ * `.slice(0, 24)`; it is named because the reserved height is now derived
+ * from the same number and a ceiling two things depend on should be one
+ * thing (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   city: CityContent
@@ -81,6 +92,10 @@ export function CityLandingPage({
   suburbs,
   mapPins,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards, so the two can
+   * never disagree: the section declares the height of what it renders, not
+   * the height of what it was handed. */
+  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
@@ -135,8 +150,8 @@ export function CityLandingPage({
             }}
           >
             {thisWeekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -154,8 +169,8 @@ export function CityLandingPage({
             }}
           >
             {thisWeekEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -208,8 +223,8 @@ export function CityLandingPage({
             }}
           >
             {popularEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -233,11 +248,11 @@ export function CityLandingPage({
                 <Link
                   key={s.slug}
                   href={`/city/${city.slug}/${sub}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
+                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -265,7 +280,19 @@ export function CityLandingPage({
       ) : null}
 
       {/* S12 All city events grid. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
+      {/* 9,067px at 390 on 19 September 2026, which is 1,789% past the 480px
+          `cv-section` reserves for a rail - so this section declares its own
+          height instead. 24 cards in 1, 2 or 3 columns is arithmetic, not a
+          guess: src/lib/ui/event-grid-intrinsic.ts, proven to the pixel by
+          scripts/verify/event-grid-intrinsic-drive.mjs. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        reveal
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -284,9 +311,9 @@ export function CityLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {allEvents.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allEvents.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
@@ -326,11 +353,11 @@ export function CityLandingPage({
                 <Link
                   key={c.slug}
                   href={`/city/${c.slug}`}
-                  className="group block w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[260px]"
+                  className={`group block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${c.name} on EventLinqs`} />
+                      <CityTileImage src={img} alt={`${c.name} on EventLinqs`} layout="rail-standard-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -341,20 +368,12 @@ export function CityLandingPage({
                         }}
                       />
                     )}
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                      style={{
-                        background:
-                          'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                      }}
-                      aria-hidden
-                    />
-                    <div className="absolute inset-x-0 bottom-0 p-3">
+                    <TileCaption className="p-3">
                       <p className="font-display text-sm font-semibold text-white">{c.name}</p>
                       <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
                         {c.state}
                       </p>
-                    </div>
+                    </TileCaption>
                   </div>
                 </Link>
               )

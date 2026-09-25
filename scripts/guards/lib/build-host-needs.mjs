@@ -48,6 +48,9 @@ export const DECLARED = {
   'scripts/guards/excluded-reads-survive-the-upload.mjs': {
     git: 'a CORRECTION, no longer a dependence (close-out F2.2). The upload is enumerated by walking the filesystem and applying every .gitignore, so it works with no repository at all; where the index IS readable it is asked, because being force-added is a fact only the index holds and 16 shipped rasters under public/ are force-added. This is the FIFTH lost deployment: it ran on the build host, called git ls-files, and threw. It now stands aside there by BUILD SCOPE rather than by failing to find git.',
   },
+  'scripts/guards/founding-offer-matches-configuration.mjs': {
+    docs: 'reads the PRICING-LOCK block out of docs/PRICING.md through src/lib/health/pricing-lock.mjs, to hold the fee sentence on /organisers and /pricing and the last-resort fallback constant to the one locked figure. Same file and same re-inclusion as check-pricing-lock.mjs.',
+  },
   'scripts/guards/launch-readiness-honest.mjs': {
     docs: 'scripts/verify/launch-readiness.mjs re-renders docs/verification/LAUNCH-READINESS.md from the adjudication and compares byte for byte, and checks the evidence each PASS row cites is still under docs/verification/launch-readiness. Both re-included; the fourth lost deployment.',
   },
@@ -59,6 +62,9 @@ export const DECLARED = {
   },
   'scripts/guards/no-plaintext-credential.mjs': {
     docs: 'scans the tracked tree for committed secrets, and its exemptions name docs/ evidence artefacts and docs/modules paths by exact path. Those paths are excluded from the upload, so the exemptions simply match nothing there.',
+  },
+  'scripts/guards/no-published-lane-b-fixture-on-test.mjs': {
+    token: 'the service-role key, through scripts/guards/lib/table-read-credential.mjs, because anon is not granted public.organisations on TEST and the CI build carries anon only. Without it the guard prints NOT JUDGED [no-credential] and reads nothing (pull request 159).',
   },
   'scripts/guards/one-fee-copy.mjs': {
     docs: 'scans docs/marketing and the three fee authority documents for a second fee, because copy the founder pastes into an email reaches an organiser as directly as a page does.',
@@ -88,6 +94,9 @@ export const DECLARED = {
    */
   'scripts/pricing-derive.mjs': {
     docs: 'recomputes every worked fee figure in docs/PRICING.md from that document own PRICING-LOCK block, which is the whole check. Registered in run-guards.mjs from scripts/, so the old directory-shaped scan never saw it.',
+  },
+  'scripts/guards/no-drill-residue.mjs': {
+    git: 'asks git ls-files whether anything under .drill-journal is TRACKED, which nothing but git can answer. Its other two clauses need no repository: the journal is read from disk and the tree is enumerated by the git-free walk, so on the build host clause 2 SKIPs by name and the rest still judge.',
   },
   'scripts/verify/migration-collision-guard.mjs': {
     git: 'asks git for-each-ref for every local and remote branch, to catch two branches claiming one migration version. On the build host it SKIPs by name, which the Vercel log of ffded236 shows it already doing.',

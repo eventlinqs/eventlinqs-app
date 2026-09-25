@@ -14,6 +14,9 @@ import {
   loadHomeUpcoming,
   toBentoEvent,
 } from '@/lib/events/home-queries'
+import { weekendWindowUtc } from '@/lib/events/listing-window'
+import { WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
@@ -153,22 +156,41 @@ export default async function HomePage() {
     .slice(0, 10)
 
   // ── Rail slices ───────────────────────────────────────────────
-  // Saturday-Sunday window for the upcoming weekend.
-  const weekendStart = (() => {
-    const d = new Date(nowIso)
-    const day = d.getUTCDay()
-    const daysToSat = (6 - day + 7) % 7
-    d.setUTCDate(d.getUTCDate() + daysToSat)
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  })()
-  const weekendEnd = new Date(weekendStart)
-  weekendEnd.setUTCDate(weekendEnd.getUTCDate() + 2)
+  /*
+   * THE WEEKEND IS THE PLATFORM'S OWN DEFINITION, NOT A FIFTH COPY OF IT.
+   *
+   * What stood here was a Saturday-to-Sunday window built with `getUTCDay()`
+   * and `setUTCHours`, so it described a weekend in UTC on a platform whose
+   * every event happens between UTC+8 and UTC+11. The two edges were wrong by
+   * the size of the offset: on 19 September 2026 the window ran from Saturday
+   * 10:00 to Monday 10:00 Melbourne time, which DROPPED Saturday morning and
+   * ADMITTED Monday morning.
+   *
+   * It was not a rounding error. Measured against the TEST catalogue the same
+   * day, three of the twelve events on next weekend start on Saturday at 09:40
+   * Melbourne, which is Friday 23:40 UTC: a quarter of the weekend was invisible
+   * on the rail whose whole job is to show it.
+   *
+   * `weekendWindowUtc` already existed and its own header says why: "ONE
+   * DEFINITION, because there were FOUR: the /events weekend preset, the city
+   * page, the suburb page and the community-by-city page each carried their own
+   * copy built on `setHours`". This homepage block was a FIFTH copy that
+   * consolidation never reached, and it is the reason the "View all" link under
+   * this rail could answer with a different set of events than the rail above
+   * it: that link went to `/events?preset=weekend`, which has been asking the
+   * shared rule all along. It now goes to `/this-weekend`, the real page built
+   * on the same rule (close-out AQ3), and the rail, the page and the filter are
+   * three views of one query.
+   *
+   * `to` is INCLUSIVE (the last instant of Sunday), which is why the comparison
+   * below is `<=` where the old exclusive bound used `<`.
+   */
+  const weekend = weekendWindowUtc(new Date(nowIso), PLATFORM_TIME_ZONE)
 
   const thisWeekend = upcoming
     .filter(e => {
       const t = new Date(e.start_date).getTime()
-      return t >= weekendStart.getTime() && t < weekendEnd.getTime()
+      return t >= weekend.from.getTime() && t <= weekend.to.getTime()
     })
     .slice(0, 10)
 
@@ -268,7 +290,7 @@ export default async function HomePage() {
           ariaLabel="Music events"
           railLabel="Music events"
           events={musicEvents}
-          viewAllHref="/events?category=music"
+          viewAllHref="/categories/music"
         />
 
         <EventRailSection
@@ -277,13 +299,24 @@ export default async function HomePage() {
           ariaLabel="Food and drink events"
           railLabel="Food and drink events"
           events={foodEvents}
-          viewAllHref="/events?category=food-drink"
+          viewAllHref="/categories/food-drink"
         />
 
         {/* Trending (general, demand-based) - Variant B: the one larger
-            feature-card row. Uniform feature-sized cards within the rail. */}
+            feature-card row. Uniform feature-sized cards within the rail.
+
+            THE EYEBROW SAID "Selling fast" AND THE RAIL COULD NOT KNOW THAT.
+            `trending` is every upcoming event with percent_sold > 0, ordered by
+            that proportion, so the tenth card can be an event that has sold one
+            ticket out of four hundred. A rail-level scarcity claim is a claim
+            about every card in it, and this one was not true of most of them.
+            The per-card badge engine (src/lib/events/badges.ts) DOES know: it
+            labels a card "Selling fast" only above 70 percent sold, and "Few
+            left" only under ten remaining. The eyebrow now describes the rail,
+            which is what an eyebrow is for, and the stock claim is left to the
+            thing that reads stock. scripts/guards/no-false-urgency.mjs holds it. */}
         <EventRailSection
-          eyebrow="Selling fast"
+          eyebrow="What the city is booking"
           title="Trending now"
           ariaLabel="Trending events"
           railLabel="Trending events"
@@ -298,7 +331,7 @@ export default async function HomePage() {
           ariaLabel="Festival events"
           railLabel="Festival events"
           events={festivalEvents}
-          viewAllHref="/events?category=festival"
+          viewAllHref="/categories/festival"
         />
 
         <EventRailSection
@@ -307,7 +340,7 @@ export default async function HomePage() {
           ariaLabel="Arts and theatre events"
           railLabel="Arts and theatre events"
           events={artsEvents}
-          viewAllHref="/events?category=arts-community"
+          viewAllHref="/categories/arts-community"
         />
 
         {/* This Weekend (general, time-based) */}
@@ -318,7 +351,7 @@ export default async function HomePage() {
           railLabel="Events this weekend"
           invitationSubject="weekend"
           events={thisWeekend}
-          viewAllHref="/events?preset=weekend"
+          viewAllHref={WEEKEND_SURFACE_PATH}
         />
 
         <EventRailSection
@@ -327,7 +360,7 @@ export default async function HomePage() {
           ariaLabel="Nightlife events"
           railLabel="Nightlife events"
           events={nightlifeEvents}
-          viewAllHref="/events?category=nightlife"
+          viewAllHref="/categories/nightlife"
         />
 
         <EventRailSection
@@ -336,7 +369,7 @@ export default async function HomePage() {
           ariaLabel="Comedy events"
           railLabel="Comedy events"
           events={comedyEvents}
-          viewAllHref="/events?category=comedy"
+          viewAllHref="/categories/comedy"
         />
 
         {/* Free (general, price-based) */}
@@ -365,7 +398,7 @@ export default async function HomePage() {
           ariaLabel="Sport events"
           railLabel="Sport events"
           events={sportsEvents}
-          viewAllHref="/events?category=sports"
+          viewAllHref="/categories/sports"
         />
 
         <EventRailSection
@@ -374,7 +407,7 @@ export default async function HomePage() {
           ariaLabel="Family events"
           railLabel="Family events"
           events={familyEvents}
-          viewAllHref="/events?category=family"
+          viewAllHref="/categories/family"
         />
 
         {/* Business and networking rail removed from the homepage (founder

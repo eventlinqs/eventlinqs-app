@@ -1,4 +1,7 @@
+import { readEveryRow, type PagedResult } from '@/lib/supabase/read-every-row'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { formatEventMonthYear } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -23,6 +26,7 @@ import { EventVideo } from '@/components/features/events/event-video'
 import { StructuredRequestButton } from '@/components/marketplace/structured-request-button'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 
 export const revalidate = 300
 
@@ -39,13 +43,42 @@ type Props = { params: Promise<{ slug: string }> }
  * artist surface carries the same premium treatment as every other profile.
  */
 
+/*
+ * MEASURED ON 21 SEPTEMBER 2026, close-out C8 clause C8B.3. Counted at the
+ * global fetch on a production build against TEST
+ * (scripts/verify/lib/count-supabase-reads.mjs), one view of
+ * /artists/lane-c-sitemap-proof made 5 PostgREST calls of which only 4 were
+ * distinct, and the repeat was this row.
+ */
+/**
+ * READ ONCE PER REQUEST.
+ *
+ * `generateMetadata` renders the head and the default export renders the body,
+ * from the same request, and both need this. Next's own reference expects the
+ * second one to be free ("fetch requests are automatically memoized for the
+ * same data across generateMetadata ... React `cache` can be used if `fetch` is
+ * unavailable", node_modules/next/dist/docs/01-app/03-api-reference/
+ * 04-functions/generate-metadata.md, Next 16.3.0). On this platform it is not:
+ * every Supabase request carries its own AbortSignal so that a retry inside a
+ * render is a real second request, and a signal is that deduplicator's
+ * documented opt-OUT (src/lib/supabase/undeduped-fetch.ts). So the memo has to
+ * be asked for, and React's `cache` is the mechanism the reference names. It
+ * memoises for ONE request: no TTL, nothing shared between requests or viewers.
+ *
+ * THE WRAPPER LIVES HERE AND NOT IN THE LIBRARY DELIBERATELY. The duplication
+ * is a property of THIS ROUTE, not of the reader, and the reader is imported by
+ * unit tests that run outside any React request scope.
+ */
+const artistForRoute = cache(async function artistForRoute(slug: string) {
+  return fetchArtistBySlug(createAdminClient(), slug)
+})
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (!(await isFeatureEnabled('broadcast_artists'))) {
     return { title: 'Not found | EventLinqs' }
   }
-  const admin = createAdminClient()
-  const artist = await fetchArtistBySlug(admin, slug)
+  const artist = await artistForRoute(slug)
   if (!artist) return { title: 'Not found | EventLinqs' }
   return {
     title: `${artist.name} | Artists | EventLinqs`,
@@ -61,14 +94,22 @@ async function fetchShowCards(
   eventIds: string[],
 ): Promise<EventCardData[]> {
   if (eventIds.length === 0) return []
-  const { data } = await admin
-    .from('events')
-    .select(
-      'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
-    )
-    .in('id', eventIds)
-    .order('start_date', { ascending: true })
-  return (data ?? []) as unknown as EventCardData[]
+  // A FAILED READ IS NOT A PERFORMER WITH NO SHOWS. This was unbounded with its
+  // error dropped, so a blink drew an empty shows rail on a performer's own
+  // public profile, which is the page an organiser judges their draw from.
+  // Ordered on start_date and then id, because start_date is not unique and a
+  // partial order can repeat one show across two windows and lose another.
+  return readEveryRow<EventCardData>('the shows on this performer\'s profile', (from, to) =>
+    admin
+      .from('events')
+      .select(
+        'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+      )
+      .in('id', eventIds)
+      .order('start_date', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to) as unknown as PromiseLike<PagedResult<EventCardData>>,
+  )
 }
 
 /** Best-effort click-to-play poster: a real YouTube thumb when derivable,
@@ -84,7 +125,7 @@ export default async function ArtistProfilePage({ params }: Props) {
   if (!(await isFeatureEnabled('broadcast_artists'))) notFound()
 
   const admin = createAdminClient()
-  const artist = await fetchArtistBySlug(admin, slug)
+  const artist = await artistForRoute(slug)
   if (!artist) notFound()
 
   const showcaseOn = await isFeatureEnabled('artist_showcase')
@@ -106,12 +147,20 @@ export default async function ArtistProfilePage({ params }: Props) {
     // counting says exactly that. The previous `.limit(1).maybeSingle()` gave the
     // same answer, but it is the same shape as the call sites that broke for an
     // owner of several, and a reader copying it from here would inherit the trap.
-    const { count } = await admin
-      .from('organisations')
-      .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user.id)
-      .eq('status', 'active')
-    viewerHasActiveOrg = (count ?? 0) > 0
+    // A FAILED COUNT HID THE CONTROL. It was `(count ?? 0) > 0` with the error
+    // unbound, so a blink took the structured booking button off the page for
+    // an organiser who does run an active business, on the profile of the
+    // performer they came to book. countOrRaise turns that into a failure the
+    // viewer can retry rather than a control that silently is not there.
+    viewerHasActiveOrg =
+      countOrRaise(
+        'the active organisations this viewer owns',
+        await admin
+          .from('organisations')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', user.id)
+          .eq('status', 'active'),
+      ) > 0
   }
   const isOwnProfile = Boolean(user && artist.owner_user_id === user.id)
 
@@ -185,7 +234,14 @@ export default async function ArtistProfilePage({ params }: Props) {
             {showcase && (showcase.available_for_booking || showcase.mentor_open) && (
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {showcase.available_for_booking && (
-                  <span className="inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
+                  /* text-success-strong, not text-success: #0F9D58 on the
+                     bg-success/15 wash over canvas (#d7ecdf) measures 2.83:1,
+                     under the 4.5:1 AA floor, found by axe at 1440 and 768. The
+                     token already exists for this exact case; no colour is
+                     introduced here. The wash moved from /15 to /10 on
+                     21 September: see the note on /artists for the measurement
+                     that made /15 unsafe on ink-100. */
+                  <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success-strong">
                     Open to bookings
                   </span>
                 )}
@@ -265,8 +321,8 @@ export default async function ArtistProfilePage({ params }: Props) {
             }}
           >
             {showCards.map((card) => (
-              <div key={card.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={card} variant="rail" />
+              <div key={card.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={card} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>

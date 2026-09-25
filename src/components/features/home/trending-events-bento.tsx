@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { TileCaption } from '@/components/media/tile-caption'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { formatEventDateShort } from '@/lib/dates/event-time'
 
@@ -85,15 +86,6 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
           }}
         />
       )}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55) 70%, rgba(10,22,40,0.92) 100%)',
-        }}
-      />
-
       {/* Date badge - top-left */}
       <span
         className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-900"
@@ -101,8 +93,12 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
         {formatDateBadge(event.start_date, event.timezone)}
       </span>
 
-      {/* Bottom content */}
-      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+      {/* Bottom content. The wash under it was `0 at 35%, 0.55 at 70%, 0.92 at
+        *  100%` of the TILE, and a bento cell is anything from 200px to 600px
+        *  tall depending on its size role, so the same ramp met the title in a
+        *  different place in every cell. <TileCaption> anchors it to the label;
+        *  see src/components/media/tile-photo-scrim.ts. */}
+      <TileCaption className="p-4 sm:p-5">
         <h3 className={`font-display text-white ${titleSize}`}>
           {event.title}
         </h3>
@@ -111,7 +107,7 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
             {event.venue_name ? `${event.venue_name} · ${event.venue_city}` : event.venue_city}
           </p>
         ) : null}
-      </div>
+      </TileCaption>
 
       {/* Price chip - bottom-right (solid navy, gold edge) */}
       <span
@@ -143,8 +139,13 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
           <div className="flex items-start gap-3">
             <div className="mt-1 h-8 w-0.5 shrink-0 bg-[var(--brand-accent)]" aria-hidden />
             <div>
+              {/* Was "Selling fast", over a rail that reads no stock at all.
+                  See the same correction on the homepage rail: the per-card
+                  badge engine is the only thing on this platform allowed to say
+                  a ticket is running out, because it is the only thing that
+                  counts them. */}
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-                Selling fast
+                What the city is booking
               </p>
               <h2
                 id="trending-bento-heading"

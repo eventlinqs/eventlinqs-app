@@ -109,6 +109,16 @@ export const SHAPES = {
     minLength: 40,
     describe: 'a legacy eyJ JWT or an sb_secret_ key',
   },
+  measurementOff: {
+    // Any value switches measurement off except the two that unambiguously
+    // mean no. The failure direction of a kill switch is "killed": somebody
+    // writing `true` in a hurry must not end up with every tracker still
+    // running while they believe they are off. See
+    // src/lib/analytics/measurement-off.ts.
+    pattern: '^.+$',
+    minLength: 1,
+    describe: 'write 1; any value but 0 or false switches every measurement script off',
+  },
   googleMapId: {
     // A Google Cloud Map ID. The 16-character floor is deliberate: Google's
     // own placeholder, DEMO_MAP_ID, is 11 characters, so a real ID passes and
@@ -146,6 +156,36 @@ export const SHAPES = {
     // Applied per comma-separated entry: Stripe mints one signing secret per
     // endpoint and this platform runs two.
     listSeparator: ',',
+  },
+  posthogKey: {
+    // PostHog project API keys are phc_ followed by the body. Public by design:
+    // it is in every page that loads the snippet and can only write events.
+    pattern: '^phc_[A-Za-z0-9]{20,}$',
+    minLength: 24,
+    describe: 'phc_ followed by the project key body',
+  },
+  ga4MeasurementId: {
+    pattern: '^G-[A-Z0-9]{6,20}$',
+    minLength: 8,
+    describe: 'G- followed by the measurement id',
+  },
+  googleAdsId: {
+    pattern: '^AW-[0-9]{8,15}$',
+    minLength: 11,
+    describe: 'AW- followed by the conversion id',
+  },
+  metaPixelId: {
+    pattern: '^[0-9]{10,20}$',
+    minLength: 10,
+    describe: 'the numeric Meta pixel id',
+  },
+  googleSiteVerification: {
+    // Google mints a 43-character token for the meta-tag method. Bounded rather
+    // than pinned to 43 exactly, because the format is Google's to change and a
+    // guard that refuses a valid token is a guard that gets switched off.
+    pattern: '^[A-Za-z0-9_-]{20,64}$',
+    minLength: 20,
+    describe: 'the token from the Search Console HTML tag method, without the meta wrapper',
   },
   resendKey: {
     pattern: '^re_[A-Za-z0-9_-]{16,}$',
@@ -929,6 +969,111 @@ export const ENV_MANIFEST = [
     githubActions: false,
     publicVar: true,
   },
+  /*
+   * MEASUREMENT AND ADVERTISING (close-out AN1). Every one of these is
+   * OPTIONAL on every environment, and that is the design rather than a
+   * concession: a provider with no identifier loads nothing at all, which is
+   * the same posture as a visitor refusing consent. So a tree that has never
+   * been given any of them is a tree that measures nothing and is correct.
+   *
+   * None is sensitive. A PostHog project key, a GA4 measurement id, a Google
+   * Ads conversion id and a Meta pixel id are all published in the page that
+   * loads them, by design, and can only write events into their own project.
+   * Marking them sensitive would be theatre and would stop them being read
+   * where they are needed, which is the browser.
+   *
+   * Each one is the owner's to mint: see FOUNDER STEPS in close-out AN1.
+   */
+  {
+    name: 'NEXT_PUBLIC_POSTHOG_KEY',
+    describe: 'PostHog project key for the organiser funnel, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the funnel is measurement: with no key nothing loads, which is the same as a visitor refusing consent, and a build with no PostHog project must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.posthogKey,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_GA4_MEASUREMENT_ID',
+    describe: 'Google Analytics 4 measurement id for advertising attribution, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'advertising attribution is off until the owner mints a property, and a build without one must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.ga4MeasurementId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_GOOGLE_ADS_ID',
+    describe: 'Google Ads conversion id, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'there is no advertising account until the owner creates one, and paid comes last by the growth plan',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.googleAdsId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_META_PIXEL_ID',
+    describe: 'Meta pixel id, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'same as the Google Ads id: no account, no tag, and a build without one must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.metaPixelId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_MEASUREMENT_OFF',
+    describe: 'the one flag that removes every analytics and advertising script from the build',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'AN1 reversal condition: absent is the normal state, in which measurement runs behind the consent banner. It is set only to switch every tracker off at once, and a build without it must succeed everywhere',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.measurementOff,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'GOOGLE_SITE_VERIFICATION',
+    describe: 'Google Search Console verification token, rendered as a meta tag when present',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the token does not exist until Google mints it in the owner account, and an EMPTY meta tag is worse than none because it looks verified and fails',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.googleSiteVerification,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
   {
     name: 'SENTRY_ORG',
     describe: 'Sentry organisation slug for source-map upload at build time',
@@ -1156,6 +1301,81 @@ export const ENV_MANIFEST = [
     previewBranchScoping: 'forbidden',
     shape: SHAPES.anyNonEmpty,
     paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'GOOGLE_SITE_VERIFICATION',
+    describe: 'Search Console ownership token, emitted as the google-site-verification meta tag',
+    /*
+     * NOT REQUIRED ANYWHERE, and the reason is worth writing down rather than
+     * inferring from the empty array. The token is minted by Search Console for
+     * a signed-in Google account, which is the one act in this chain a machine
+     * cannot perform (close-out SEO2, Law 10 rule 2). Requiring it would fail
+     * every build on every scope until the founder had signed in, which is a
+     * gate that blocks the launch it exists to help.
+     *
+     * It must still be well formed wherever it exists: an unusable value means
+     * somebody believes the property is verified and it is not, which is worse
+     * than an absent one. src/lib/seo/site-verification.ts refuses it by name
+     * in the build log rather than emitting a broken tag.
+     */
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the token is minted by Search Console for a signed-in Google account, which no script can do, so it ' +
+      'arrives when the founder runs `npm run seo2:verify-property` and not before. Until then the property ' +
+      'is simply unverified and every page is unchanged',
+    /*
+     * NOT A SECRET. It is published in the homepage HTML by design, exactly like
+     * the Maps browser key beside it: its whole purpose is to be read by anyone
+     * who fetches the page. Marking it sensitive would make it unreadable in the
+     * dashboard for no protection at all.
+     */
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    /*
+     * Read in a server component at build time, not inlined into the browser
+     * bundle: the layout's metadata is composed on the server and only the
+     * rendered tag reaches the client. So it is not a public variable in the
+     * NEXT_PUBLIC_ sense, even though its VALUE is public once rendered.
+     */
+    publicVar: false,
+  },
+  {
+    name: 'GOOGLE_SEARCH_CONSOLE_KEY',
+    describe: 'Search Console service-account key JSON, read only by the weekly indexing check',
+    /*
+     * FORBIDDEN IN EVERY VERCEL STORE, and that is the whole point of declaring
+     * it (close-out SEO2 step 3). No application code reads it and none ever
+     * should: it is read by `scripts/ops/indexing-check.mjs` on the runner that
+     * composes the owner digest, and by a laptop running the same command by
+     * hand. Putting a private key into a deployment scope that nothing reads
+     * would be pure attack surface.
+     *
+     * It carries the read-only webmasters scope, so a leak would let somebody
+     * read what Google thinks of this site and change nothing. That is a reason
+     * to keep it out of the browser bundle and the deployment stores, not a
+     * reason to relax about where it lives.
+     */
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    /*
+     * Not declared as a required GitHub Actions secret either. The weekly step
+     * passes it when the repository holds it and the check says in the digest,
+     * in words, that Google was not asked when it does not. A gate that failed
+     * for want of a credential nobody has minted yet would block the report that
+     * exists to say the credential is missing.
+     */
     githubActions: false,
     publicVar: false,
   },

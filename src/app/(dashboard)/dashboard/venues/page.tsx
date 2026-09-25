@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { VenuesClient } from './venues-client'
+import { readVenuesAccessibility } from '@/lib/accessibility/read'
 
 export default async function VenuesPage({
   searchParams,
@@ -60,6 +61,17 @@ export default async function VenuesPage({
     console.error('[venues/page] failed to load venues:', error)
   }
 
+  /*
+   * ACCESSIBILITY (close-out SEO5 step 4), read separately on purpose.
+   *
+   * The select above names its columns, and PostgREST fails the WHOLE query on
+   * a column it does not have. The migration that creates these is parked
+   * awaiting the founder, so naming them there would empty this page for every
+   * organiser until he applied it. Read on its own, the worst case is a panel
+   * that starts with every box unticked.
+   */
+  const venueAccessibility = await readVenuesAccessibility((venues ?? []).map(v => v.id))
+
   return (
     <>
       {scope.ok ? (
@@ -69,7 +81,7 @@ export default async function VenuesPage({
           basePath="/dashboard/venues"
         />
       ) : null}
-      <VenuesClient venues={venues ?? []} />
+      <VenuesClient venues={venues ?? []} accessibility={venueAccessibility} />
     </>
   )
 }

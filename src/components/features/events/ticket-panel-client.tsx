@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { TicketSelector } from '@/components/checkout/ticket-selector'
 import { AccessCodeInput } from '@/components/features/events/access-code-input'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
@@ -49,6 +49,23 @@ interface Props {
   // the selector shows the true total (incl. fees) before checkout.
   feeRates?: FeeRates
   feePassType?: FeePassType
+  /**
+   * Close-out SEO5's reversal condition, threaded from the event page.
+   *
+   * It governs BOTH availability surfaces in this panel: the per-tier
+   * social-proof badges above the selector and the remaining-tickets line
+   * inside it. Gating one and not the other would leave "Selling Fast" on a
+   * page that had stopped saying how many were left, which is the least
+   * defensible of the three possible states.
+   */
+  showAvailability?: boolean
+  /**
+   * AQ1. The discovery consent question, server rendered, threaded straight
+   * through to the selector. Null, the ordinary case, means the payment step
+   * asks it. Passed as a slot rather than as data so this page pays no client
+   * bytes for a question that is not being asked on it.
+   */
+  discoveryConsentSlot?: ReactNode
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -102,7 +119,7 @@ export function TicketPanelClient(props: Props) {
 
   return (
     <>
-      {visibleTiers.length > 0 && (
+      {props.showAvailability !== false && visibleTiers.length > 0 && (
         <div className="mb-3 space-y-1.5">
           {visibleTiers.map(tier => {
             const inv = props.tierInventory[tier.id]
@@ -124,10 +141,12 @@ export function TicketPanelClient(props: Props) {
         addons={props.addons.filter(a => a.is_active)}
         isTicketingSuspended={props.isTicketingSuspended}
         currency={visibleTiers[0]?.currency ?? props.defaultCurrency}
+        showAvailability={props.showAvailability !== false}
         waitlistEnabled={props.waitlistEnabled}
         squadBookingEnabled={props.squadBookingEnabled}
         feeRates={props.feeRates}
         feePassType={props.feePassType}
+        discoveryConsentSlot={props.discoveryConsentSlot}
       />
 
       {showAccessCodeInput && (

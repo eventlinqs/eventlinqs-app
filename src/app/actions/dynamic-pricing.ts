@@ -99,7 +99,22 @@ export async function saveDynamicPricing(
    * scripts/guards/price-history-integrity.mjs refuses a return to direct
    * writes on dynamic_pricing_rules from application code.
    */
-  const normalised = enabled ? normaliseDynamicPricingSteps(steps) : []
+  /*
+   * A PAUSE KEEPS THE LADDER. LB-PRICEWHOLE, 20 September 2026.
+   *
+   * This was `enabled ? normaliseDynamicPricingSteps(steps) : []`, and
+   * save_dynamic_pricing deleted every rule before deciding whether to insert
+   * any, so turning the switch off and pressing Save destroyed the organiser's
+   * whole price ladder. Nothing on the screen said so, and turning the switch
+   * back on showed a single step at the base price, which reads as "this tier
+   * never had a ladder".
+   *
+   * The steps are now sent whatever the switch says, so a paused ladder is
+   * stored and comes back when it is resumed. Migration
+   * 20260920000040 makes the database itself refuse to read an empty list as an
+   * instruction to delete, so an older caller cannot reopen the defect either.
+   */
+  const normalised = normaliseDynamicPricingSteps(steps)
   const { error: saveError } = await adminClient.rpc('save_dynamic_pricing', {
     p_tier_id: tier_id,
     p_enabled: enabled,

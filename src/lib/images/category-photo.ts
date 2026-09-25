@@ -69,6 +69,14 @@ const CATEGORY_QUERIES: Record<string, string> = {
   'nightlife':                 'rooftop bar friends sunset drinks vibrant colorful',
   'technology':                'tech conference startup speakers stage',
   'other':                     'community celebration friends together event',
+
+  // ---- the three real categories no query covered (close-out SEO3 step 4) --
+  // Every slug in `event_categories` now has a real /categories/<slug> landing,
+  // and a landing with no query fell through to the branded SVG while its
+  // twenty-one siblings carried a photograph. Descriptive, never generic.
+  'pride':                     'pride parade rainbow flags crowd celebration day',
+  'middle-eastern':            'middle eastern feast long table lanterns celebration',
+  'pacific':                   'pacific island dance performance flowers celebration',
 }
 
 export interface PexelsPhoto {
@@ -78,11 +86,46 @@ export interface PexelsPhoto {
   photographer: string
 }
 
+/**
+ * THE BRANDED FALLBACK IS A SENTINEL, NOT A PHOTOGRAPH, AND SAYING SO IS THE
+ * WHOLE POINT OF `isBrandedFallbackPhoto` BELOW.
+ *
+ * It is an SVG. `HeroMedia` REFUSES an SVG, because an SVG is not LCP-eligible
+ * (docs/MEDIA-ARCHITECTURE.md 5.1), so handing this object's `src` to a hero is
+ * a 500 in development and a hero that cannot be the LCP in production.
+ *
+ * That is not hypothetical. On 19 September 2026 the link-integrity crawler
+ * found `/categories/technology` answering 500, linked from `/categories/music`:
+ *
+ *     [HeroMedia] image must be a raster URL (got SVG):
+ *     /images/event-fallback-hero.svg
+ *
+ * `/categories/[slug]/page.tsx` passed `photo.src` straight into the hero, and
+ * because the sentinel is a non-empty string the hero's own last resort
+ * (`?? HERO_RASTER_DEFAULT`) was never reached. `??` cannot tell a photograph
+ * from a placeholder; only a named test can.
+ *
+ * src/lib/images/event-media.ts already knew this and compared against a PRIVATE
+ * copy of the literal. One decision spelled twice is how the next caller gets it
+ * wrong, so the test lives here, beside the declaration, and that copy is gone.
+ */
 const FALLBACK: PexelsPhoto = {
   src: '/images/event-fallback-hero.svg',
   thumb: '/images/event-fallback-thumb.svg',
   alt: 'EventLinqs',
   photographer: 'EventLinqs',
+}
+
+/** The branded placeholder itself, for callers that want to show it deliberately. */
+export const BRANDED_FALLBACK_PHOTO: PexelsPhoto = FALLBACK
+
+/**
+ * True when the resolver had NO photograph and handed back the branded
+ * placeholder. A HERO caller must pass `null` in that case and let its own
+ * bundled raster win; a tile or card caller may render the placeholder.
+ */
+export function isBrandedFallbackPhoto(photo: Pick<PexelsPhoto, 'src'>): boolean {
+  return photo.src === FALLBACK.src
 }
 
 function simpleHash(s: string): number {

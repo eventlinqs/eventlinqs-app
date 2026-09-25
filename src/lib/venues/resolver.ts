@@ -27,6 +27,16 @@ export function venueSlugify(name: string): string {
 export interface VenueProfile {
   /** Stable identifier for SEO + page rendering. */
   handle: string
+  /**
+   * The `public.venues` row id, or null when this profile was resolved from
+   * event rows alone and no venue record exists.
+   *
+   * Added for close-out SEO5 step 4: the accessibility columns are read by id,
+   * in their own best-effort query (`src/lib/accessibility/read.ts`), because
+   * naming a not-yet-migrated column in the select above would fail the WHOLE
+   * venue query with 42703 and blank the page.
+   */
+  id: string | null
   name: string
   description: string | null
   imageUrl: string | null
@@ -172,6 +182,7 @@ export async function resolveVenueProfile(handle: string): Promise<VenueProfile 
 
   return {
     handle,
+    id: row?.id ?? null,
     name: venueName,
     description: row?.description ?? null,
     imageUrl: row?.image_url ?? null,

@@ -120,6 +120,37 @@ describe('usesInFile', () => {
   })
 })
 
+/*
+ * PULL REQUEST 159. A guard that needs the service-role key reaches it through
+ * table-read-credential.mjs, and reaching it IS a token dependence, exactly as
+ * reaching the Vercel CLI login is. The CI build carries the anon key only.
+ */
+describe('the table-read credential module is a token dependence', () => {
+  const MODULE = 'scripts/guards/lib/table-read-credential.mjs'
+
+  test('importing it makes the importing entry point need token', () => {
+    const root = fixture({
+      '.vercelignore': IGNORE,
+      'scripts/guards/entry.mjs': "import { tableReadCredential } from './lib/table-read-credential.mjs'\ntableReadCredential()\n",
+      [MODULE]: 'export const tableReadCredential = () => null\n',
+    })
+    const uses = usedBy(root, 'scripts/guards/entry.mjs', strippedTopLevels(root))
+    expect(uses.token?.map((u) => u.file)).toEqual([MODULE])
+  })
+
+  test('a module of any other name reading the same key is not counted, so the fallback readers stay as they are', () => {
+    const root = fixture({
+      '.vercelignore': IGNORE,
+      'scripts/guards/lib/other.mjs': 'export const k = () => process.env.SUPABASE_SERVICE_ROLE_KEY\n',
+    })
+    expect(usesInFile(root, 'scripts/guards/lib/other.mjs', strippedTopLevels(root))).toEqual([])
+  })
+
+  test('the lane B fixture guard declares the need it now has', () => {
+    expect(DECLARED['scripts/guards/no-published-lane-b-fixture-on-test.mjs']?.token).toBeDefined()
+  })
+})
+
 describe('usedBy follows imports, which is how the fourth failure stayed invisible', () => {
   test('a dependence in an imported module is attributed to the file that holds it', () => {
     const root = fixture({

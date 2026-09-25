@@ -108,6 +108,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       await sendEmail({
         to: ALERT_TO(),
         subject: `Connect divergence: ${report.blocking.length} organisation(s) described wrongly`,
+        messageType: 'platform_sentinel_alert',
+        recipientRole: 'platform_owner',
         text: body,
         html: `<pre style="font-family:ui-monospace,monospace;white-space:pre-wrap">${escapeHtml(body)}</pre>`,
       })

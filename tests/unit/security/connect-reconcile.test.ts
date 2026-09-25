@@ -174,6 +174,15 @@ const SELLABLE_DEFAULTS = {
   stripe_payouts_enabled: true,
   stripe_account_country: 'AU',
   payout_status: 'active',
+  /*
+   * A FRESH VERIFICATION IS PART OF THE SELLABLE BASELINE (MONEY FIX A3 layer
+   * two). The five columns above are a cache of what Stripe last said, and the
+   * gate now asks when it said it. Leaving this out of the baseline would make
+   * every test in this file implicitly about staleness instead of about the
+   * column it overrides, which is the same trap the note above records for the
+   * three-column fixtures.
+   */
+  stripe_status_verified_at: new Date(Date.now() - 60_000).toISOString(),
 }
 
 function orgClient(row: Record<string, unknown> | null) {
@@ -196,6 +205,12 @@ describe('the publish gate reconciles BEFORE refusing', () => {
       ok: true as const,
       changed: true,
       canSell: true,
+      // MONEY FIX A3 layer two: the gate now grants on the SALE GATE's own
+      // predicate rather than on canSell, so this stub states it. Stripe saying
+      // the account is fine means fine on all five columns, which is the whole
+      // point of the case: the stored row was the only thing that said no.
+      sellable: true,
+      sellableBlockers: [],
       payoutStatus: 'active' as const,
       outstanding: [],
       disabledReason: null,
@@ -212,11 +227,24 @@ describe('the publish gate reconciles BEFORE refusing', () => {
     expect(res.ok, 'a false refusal is exactly the lockout').toBe(true)
   })
 
-  it('makes NO Stripe call when the stored state already permits selling', async () => {
+  it('makes NO Stripe call when the stored state permits selling AND was verified recently', async () => {
     // The working path must not be slowed down by this fix.
+    //
+    // MONEY FIX A3 LAYER TWO CHANGED THE PREMISE OF THIS TEST AND THE NEW ONE
+    // IS WRITTEN OUT RATHER THAN QUIETLY SATISFIED. "The stored state permits
+    // selling" is no longer enough on its own, because those five columns are a
+    // CACHE of what Stripe last said and nothing used to record when it said
+    // it. What earns the fast path now is a cache that is BOTH sellable and
+    // dated recently, which is every account whose account.updated webhooks are
+    // arriving. The undated case is the next test.
     const reconcile = vi.fn()
     const res = await checkPublishGate(
-      orgClient({ stripe_charges_enabled: true, payout_status: 'active', stripe_account_id: 'acct_x' }),
+      orgClient({
+        stripe_charges_enabled: true,
+        payout_status: 'active',
+        stripe_account_id: 'acct_x',
+        stripe_status_verified_at: new Date(Date.now() - 60_000).toISOString(),
+      }),
       paid,
       reconcile as never,
     )
@@ -224,11 +252,43 @@ describe('the publish gate reconciles BEFORE refusing', () => {
     expect(reconcile).not.toHaveBeenCalled()
   })
 
+  it('DOES ask Stripe when the stored state permits selling but nobody can date it', async () => {
+    // The defect A3 layer two closes: a row that said "enabled" six weeks ago
+    // and has heard nothing since was indistinguishable from one confirmed a
+    // minute ago, and the gate believed both. It does not refuse on a stale
+    // cache; it goes and asks, then decides on the answer.
+    const reconcile = vi.fn(async () => ({
+      ok: true as const,
+      changed: false,
+      canSell: true,
+      sellable: true,
+      sellableBlockers: [],
+      payoutStatus: 'active' as const,
+      outstanding: [],
+      disabledReason: null,
+      adminHoldPreserved: false,
+    }))
+    const res = await checkPublishGate(
+      orgClient({
+        stripe_charges_enabled: true,
+        payout_status: 'active',
+        stripe_account_id: 'acct_x',
+        stripe_status_verified_at: null,
+      }),
+      paid,
+      reconcile,
+    )
+    expect(res.ok, 'a stale cache costs a round trip, never a refusal on its own').toBe(true)
+    expect(reconcile).toHaveBeenCalledWith('org_1')
+  })
+
   it('still refuses when Stripe genuinely blocks, and says what Stripe wants', async () => {
     const reconcile = vi.fn(async () => ({
       ok: true as const,
       changed: false,
       canSell: false,
+      sellable: false,
+      sellableBlockers: ['Stripe has not enabled payouts on the account'],
       payoutStatus: 'restricted' as const,
       outstanding: outstandingFrom(blockedAccount),
       disabledReason: 'requirements.past_due',
@@ -268,6 +328,8 @@ describe('the publish gate reconciles BEFORE refusing', () => {
       ok: true as const,
       changed: false,
       canSell: false,
+      sellable: false,
+      sellableBlockers: ['EventLinqs has placed payouts on hold'],
       payoutStatus: 'on_hold' as const,
       outstanding: [],
       disabledReason: null,

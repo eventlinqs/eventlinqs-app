@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { getCommunity, type CommunitySlug } from '@/lib/communities/data'
 
 interface Props {
@@ -17,8 +18,12 @@ interface Props {
  * RelatedCommunitiesRail - cross-discovery between community pages.
  *
  * Batch 5.6: rebuilt from text-only cards to photographic tiles. Each
- * tile carries the related community's hero image with a darkened bottom
- * gradient and the community name + tagline anchored bottom-left in white.
+ * tile carries the related community's hero image with the community NAME
+ * alone on it, inside <TileCaption>, and the eyebrow and tagline below the
+ * image on canvas. The three of them used to share the picture under a wash
+ * that was a percentage of the tile, which measured 130px of caption on a
+ * 223px tile - 69 per cent of the photograph darkened - and left the words
+ * wherever the ramp happened to be. See src/components/media/tile-photo-scrim.ts.
  * Routes to /community/{slug} so users can wander between adjacent scenes
  * (African - Caribbean - Gospel) without dead-ending on a single page.
  */
@@ -47,11 +52,12 @@ export function RelatedCommunitiesRail({ related, images }: Props) {
             <li key={community.slug}>
               <Link
                 href={`/community/${community.slug}`}
-                className="group relative block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
+                className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg motion-reduce:transition-none"
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {img ? (
                     <CityTileImage
+                      layout="grid-one-two-three-sm"
                       src={img}
                       alt={`${community.displayName} on EventLinqs`}
                       className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
@@ -66,25 +72,26 @@ export function RelatedCommunitiesRail({ related, images }: Props) {
                       aria-hidden
                     />
                   )}
-                  <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0) 100%)',
-                    }}
-                    aria-hidden
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/85">
-                      {community.tier === 1 ? 'Community' : 'Cross-community'}
-                    </p>
-                    <p className="mt-1 font-display text-lg font-bold text-white drop-shadow-sm sm:text-xl">
+                  {/* THE NAME AND NOTHING ELSE ON THE PICTURE. The eyebrow and
+                    *  the tagline used to sit here too, and on a 16:10 tile that
+                    *  caption measured 130px against 223px: 69 per cent of the
+                    *  tile darkened, on a rail whose whole job is to show a
+                    *  photograph. The design system asks for exactly this
+                    *  ("Image alone, all details below the image"), and the
+                    *  measurement agrees with it. */}
+                  <TileCaption className="p-5">
+                    <p className="font-display text-lg font-bold text-white drop-shadow-sm sm:text-xl">
                       {community.displayName}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-sm leading-snug text-white/85">
-                      {community.tagline}
-                    </p>
-                  </div>
+                  </TileCaption>
+                </div>
+                <div className="p-5 pt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                    {community.tier === 1 ? 'Community' : 'Cross-community'}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-snug text-[var(--text-secondary)]">
+                    {community.tagline}
+                  </p>
                 </div>
               </Link>
             </li>

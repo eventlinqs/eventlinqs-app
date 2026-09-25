@@ -86,8 +86,28 @@ export default async function LineupPage({ params }: Props) {
         <>
           <LineupManager eventId={id} entries={entries} />
 
-          <div className="mt-6 overflow-x-auto rounded-xl border border-ink-200 bg-white">
-            <div className="border-b border-ink-200 px-5 py-4">
+          {/*
+            * THE SAME PHONE TREATMENT AS THE OTHER FOUR ORGANISER TABLES, AND
+            * THE ONE OF THE FIVE THAT COULD NOT BE DRIVEN.
+            *
+            * `min-w-[480px]` inside a 356px box at 390 is the shape that was
+            * MEASURED on the reach table hours earlier and failed: swiped to
+            * the right edge to read Tickets, the PERFORMER scrolls off the
+            * left, so three numbers sit on a phone with nobody's name against
+            * them. This table is that table with one column fewer, so it is
+            * rebuilt the same way rather than left as the one exception.
+            *
+            * WHY THERE IS NO DRIVEN PROOF OF THIS ONE, stated rather than
+            * omitted: this whole surface renders only when `broadcast_artists`
+            * is on, and that flag is OFF by a dated founder decision recorded
+            * in src/lib/flags/broadcast.ts ("OFF at launch, deliberately").
+            * The flag row lives in a TEST database three build lanes share.
+            * Flipping a founder-decided switch to make a drive greener is not
+            * a build lane's call, so this table is held by the registered
+            * guard instead, and the absence of a screenshot is on the record.
+            */}
+          <div className="mt-6 rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto">
+            <div className="border-b border-ink-200 px-5 py-4 max-lg:border-b-0 max-lg:px-0">
               <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-900">
                 Who filled the room
               </h2>
@@ -95,8 +115,8 @@ export default async function LineupPage({ params }: Props) {
                 Sales through each performer&apos;s own tracked link. Measured, never estimated.
               </p>
             </div>
-            <table className="w-full min-w-[480px] text-sm">
-              <thead>
+            <table className="w-full text-sm max-lg:block lg:min-w-[480px]">
+              <thead className="max-lg:hidden">
                 <tr className="border-b border-ink-200 text-left text-ink-600">
                   <th scope="col" className="px-5 py-3 font-medium">Performer</th>
                   <th scope="col" className="px-5 py-3 font-medium">Clicks</th>
@@ -104,21 +124,33 @@ export default async function LineupPage({ params }: Props) {
                   <th scope="col" className="px-5 py-3 font-medium">Tickets</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="max-lg:block">
                 {attribution.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-6 text-ink-600">
+                  <tr className="max-lg:block">
+                    <td colSpan={4} className="px-5 py-6 text-ink-600 max-lg:block max-lg:px-0">
                       No performer-link activity yet. Hand each tagged artist their share link
                       above; their sales land here.
                     </td>
                   </tr>
                 ) : (
                   attribution.map((row) => (
-                    <tr key={row.artistId} className="border-b border-ink-200/60 last:border-b-0">
-                      <td className="px-5 py-3 font-semibold text-ink-900">{row.artistName}</td>
-                      <td className="px-5 py-3 text-ink-900">{row.clicks}</td>
-                      <td className="px-5 py-3 text-ink-900">{row.conversions}</td>
-                      <td className="px-5 py-3 font-semibold text-ink-900">{row.tickets}</td>
+                    <tr
+                      key={row.artistId}
+                      className="border-b border-ink-200/60 last:border-b-0 max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:border max-lg:border-ink-200 max-lg:bg-white max-lg:px-4 max-lg:py-3"
+                    >
+                      <td className="px-5 py-3 font-semibold text-ink-900 max-lg:block max-lg:px-0 max-lg:py-0">{row.artistName}</td>
+                      <td className="px-5 py-3 text-ink-900 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
+                        {row.clicks}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">clicks</span>
+                      </td>
+                      <td className="px-5 py-3 text-ink-900 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
+                        {row.conversions}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">orders</span>
+                      </td>
+                      <td className="px-5 py-3 font-semibold text-ink-900 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pt-2">
+                        {row.tickets}
+                        <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">tickets</span>
+                      </td>
                     </tr>
                   ))
                 )}

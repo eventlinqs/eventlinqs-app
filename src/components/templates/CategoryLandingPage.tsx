@@ -21,6 +21,7 @@ import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { HeroCategory } from '@/lib/hero-categories'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 /** Map string icon names (stored in data file) to actual Lucide components. */
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
@@ -42,9 +43,22 @@ function resolveIcon(name: string): ComponentType<{ className?: string }> {
 interface CategoryLandingPageProps {
   category: HeroCategory
   liveEvents?: EventCardData[]
+  /**
+   * Where "View all" goes. Resolved by the route, defaulting to the catalogue.
+   *
+   * It used to be `/events?category=<hero slug>`, and no hero slug exists in
+   * `event_categories`, so the link landed on a filtered browse page that could
+   * never match an event: a 200 with nothing on it, which Law 5 counts as a
+   * dead end exactly as it counts a 404 (close-out SEO3 step 4).
+   */
+  browseHref?: string
 }
 
-export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandingPageProps) {
+export function CategoryLandingPage({
+  category,
+  liveEvents = [],
+  browseHref = '/events',
+}: CategoryLandingPageProps) {
   const {
     slug,
     displayName,
@@ -113,7 +127,14 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
       </ContentSection>
 
       {/* ── 4. Live events OR CategoryHeroEmpty ──────────────────── */}
-      <ContentSection surface="base" width="wide">
+      {/* 9,043px at 390, against the 480px `cv-section` reserves for a rail.
+          The section declares its own height instead, from the number of cards
+          it is about to render: src/lib/ui/event-grid-intrinsic.ts. Its
+          heading block is 24px shorter at 390 and 8px taller at 768 and 1440
+          than the three templates that carry an eyebrow, which is 0.26% and
+          0.19% of this section and is named in the module rather than
+          corrected with a second constant. */}
+      <ContentSection surface="base" width="wide" intrinsicSize={eventGridIntrinsicSize(liveEvents.length)}>
         {liveEvents.length > 0 ? (
           <>
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -121,7 +142,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
                 Live {displayName} events
               </h2>
               <Link
-                href={`/events?category=${slug}`}
+                href={browseHref}
                 className="shrink-0 text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)] transition-colors"
               >
                 View all &rsaquo;
@@ -129,7 +150,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {liveEvents.map(event => (
-                <EventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} variant="grid-one-three" />
               ))}
             </div>
           </>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchMyShares, mySharesSentence } from '@/lib/growth/my-shares'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { ChangeSeatControl } from '@/components/features/tickets/change-seat-control'
 import { formatSeatLabel } from '@/lib/seating/format'
@@ -51,10 +52,25 @@ interface MyTicketRow {
 // This is the page people open to check when to turn up.
 
 // Dark ink on the status tint, NOT the semantic text colour. text-success on
-// bg-success/15 measures 2.94:1, well under AA, and there is no darker success
-// token to reach for. src/app/t/[code]/page.tsx already made exactly this call
-// for the bearer view; this is its twin and was missed at the time, so /tickets
-// shipped 57 failing badges on one screen. The tint still carries the status.
+// bg-success/15 measures 2.94:1, well under AA. src/app/t/[code]/page.tsx
+// already made exactly this call for the bearer view; this is its twin and was
+// missed at the time, so /tickets shipped 57 failing badges on one screen. The
+// tint still carries the status.
+//
+// THE SECOND HALF OF THIS NOTE USED TO READ "and there is no darker success
+// token to reach for", AND THAT STOPPED BEING TRUE ON 20 SEPTEMBER 2026, hours
+// after it was written: LB-PRICEWHOLE added --color-success-strong (#0B7038)
+// to globals.css for this exact class of failure.
+//
+// THE INK ABOVE IS NOT WRONG AND IS NOW THE PREFERRED ANSWER FOR A BADGE.
+// LB-TINTAA measured every pair in a real browser on 21 September and settled
+// the platform on two rules: a -strong ink sits on a /10 tint, and dark ink
+// sits on a /15 tint. `text-success-strong` on the /15 wash is 5.20:1 over
+// white but only 4.48:1 over ink-100 once Chromium's oklab round trip is
+// measured rather than calculated, so /15 belongs to ink. These badges already
+// had it right. `scripts/guards/tinted-text-meets-contrast.mjs` clause 2 now
+// refuses the pairing that was corrected here by hand, so no later screen can
+// repeat it.
 const STATUS_TONE: Record<string, string> = {
   valid: 'bg-success/15 text-ink-900',
   scanned: 'bg-ink-200 text-ink-700',
@@ -110,6 +126,18 @@ export default async function MyTicketsPage() {
     }
   }
 
+  /*
+   * AQ2. "The sharer sees what their link produced."
+   *
+   * Read here rather than on the confirmation page because this is the surface
+   * a buyer comes BACK to. The confirmation is where they shared; a number that
+   * only exists on the page they saw once is a number nobody ever sees change.
+   *
+   * It credits only links minted while signed in, which understates rather than
+   * overstates, and it says nothing at all to somebody who has never shared.
+   */
+  const shares = await fetchMyShares(user.id)
+
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-canvas px-4 py-10">
       <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">
@@ -118,6 +146,36 @@ export default async function MyTicketsPage() {
       <p className="mt-2 text-sm text-ink-600">
         Open a ticket to show its QR code at entry.
       </p>
+
+      {shares.byEvent.length > 0 && (
+        <section
+          data-my-shares
+          className="mt-6 rounded-2xl border border-ink-200 bg-white p-6"
+        >
+          <p className="font-display text-base font-semibold text-ink-900">
+            What your sharing did
+          </p>
+          <p className="mt-2 text-sm text-ink-600">{mySharesSentence(shares)}</p>
+          <ul className="mt-4 space-y-2">
+            {shares.byEvent.map(row => (
+              <li key={row.eventId} className="flex items-baseline justify-between gap-4 text-sm">
+                <Link
+                  href={`/events/${row.eventSlug}`}
+                  prefetch={false}
+                  className="truncate text-ink-700 underline-offset-4 hover:underline"
+                >
+                  {row.eventTitle}
+                </Link>
+                <span className="shrink-0 tabular-nums text-ink-500">
+                  {row.joined > 0
+                    ? `${row.joined} came, ${row.clicks} looked`
+                    : `${row.clicks} looked`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {tickets.length === 0 ? (
         <>

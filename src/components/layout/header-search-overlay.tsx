@@ -291,7 +291,7 @@ export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
           </div>
         </form>
 
-        <div role="tablist" aria-label="Search categories" className="mt-8 flex gap-2 overflow-x-auto scrollbar-none">
+        <div role="tablist" aria-label="Search categories" className="relative mt-8 flex gap-2 overflow-x-auto scrollbar-none">
           {TABS.map(t => {
             const active = tab === t.id
             return (
