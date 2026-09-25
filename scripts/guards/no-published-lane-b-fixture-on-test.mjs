@@ -68,10 +68,25 @@
  *
  * SKIPS BY NAME where there is no database, exactly as schema-ahead-of-code
  * does, because CI's typecheck build carries placeholder values by design.
+ *
+ * AND SAYS "NOT JUDGED" WHERE IT HAS NO CREDENTIAL THAT CAN READ THE TABLES.
+ * Pull request 159: the CI build carries the TEST URL and the ANON key only,
+ * anon is not granted public.organisations, and this guard used to fall back to
+ * the anon key and report the refusal as a FAIL:
+ *
+ *     could not reach the database to read organisations?slug=like.lane-b-*...:
+ *     HTTP 401 {"code":"42501", ... "GRANT SELECT ON public.organisations TO anon"}
+ *
+ * The need is now declared as `token` in scripts/guards/lib/build-host-needs.mjs,
+ * through scripts/guards/lib/table-read-credential.mjs, which never falls back
+ * to anon. A host without the service-role key prints that it did not judge and
+ * why. A host WITH it reads and judges exactly as before, and a key that is
+ * present but refused is still a FAIL, because that is a finding about the host.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { declareWork } from '../lib/work-report.mjs'
 import { selectRest, couldNotLook } from './lib/db-read.mjs'
+import { tableReadCredential } from './lib/table-read-credential.mjs'
 
 const TAG = '[no-published-lane-b-fixture-on-test]'
 
@@ -149,7 +164,7 @@ async function main() {
   }
 
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const credential = tableReadCredential(process.env)
 
   const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
   if (url && !REAL_PROJECT.test(url)) {
@@ -157,8 +172,8 @@ async function main() {
     console.log(`${TAG}       so there is no database to ask. This is the CI typecheck build, which uses placeholders by design.`)
     process.exit(0)
   }
-  if (!url || !key) {
-    console.log(`${TAG} SKIP: no database to ask (NEXT_PUBLIC_SUPABASE_URL and a key are both required).`)
+  if (!url) {
+    console.log(`${TAG} SKIP: no database to ask (NEXT_PUBLIC_SUPABASE_URL is not set).`)
     console.log(`${TAG}       Run it with: node --env-file=.env.local scripts/guards/no-published-lane-b-fixture-on-test.mjs`)
     process.exit(0)
   }
@@ -173,6 +188,20 @@ async function main() {
     console.log(`${TAG} SKIP: this asks TEST vkapkibzokmfaxqogypq only, and the environment names another project.`)
     process.exit(0)
   }
+
+  /*
+   * NOT JUDGED, SAID PLAINLY, and never a PASS. The anon key cannot read
+   * public.organisations, so on a host that carries only anon there is no
+   * answer to be had, and reporting the refusal as a published fixture (or as a
+   * clean tree) would both be claims about data this guard never saw.
+   */
+  if (!credential.key) {
+    console.log(`${TAG} NOT JUDGED [no-credential]: ${credential.reason}.`)
+    console.log(`${TAG}       No lane B row was read, so this says nothing about whether one is published.`)
+    console.log(`${TAG}       The need is declared as token in scripts/guards/lib/build-host-needs.mjs; the local gate judges it.`)
+    process.exit(0)
+  }
+  const key = credential.key
 
   /*
    * THROUGH THE SHARED DOOR, and the first version of this guard was not, which

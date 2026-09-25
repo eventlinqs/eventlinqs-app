@@ -57,7 +57,7 @@ import { readVercelIgnore } from './vercelignore.mjs'
 export const CAPABILITIES = Object.freeze({
   docs: 'a file outside src/ that .vercelignore strips from the upload',
   git: 'a usable git repository (the host has an empty .git and no objects)',
-  token: 'a developer or CI credential (VERCEL_TOKEN, GITHUB_TOKEN, a CLI login)',
+  token: 'a developer or CI credential (VERCEL_TOKEN, GITHUB_TOKEN, a CLI login, a service-role key the CI build is not given)',
 })
 
 /** Every capability name, sorted, so a message and a registry cannot disagree on order. */
@@ -95,6 +95,14 @@ const TOKEN_ENV = /process\.env\.([A-Z][A-Z0-9_]*_TOKEN)\b/g
  * point of it is to find a credential the build host does not have.
  */
 const CLI_LOGIN_MODULE = 'scripts/lib/vercel-login.mjs'
+
+/**
+ * The module that hands a guard the service-role key for a table anon is not
+ * granted, with no anon fallback. Importing it is a token dependence for the
+ * same reason: the CI build is given the anon key only, so a guard that needs
+ * it cannot judge there and must say so (pull request 159).
+ */
+const TABLE_READ_KEY_MODULE = 'scripts/guards/lib/table-read-credential.mjs'
 
 /**
  * The top levels .vercelignore strips, EXCEPT `.git`.
@@ -163,6 +171,9 @@ export function usesInFile(root, file, stripped) {
 
   if (file === CLI_LOGIN_MODULE) {
     out.push({ capability: 'token', evidence: 'the Vercel CLI login on disk', line: 1 })
+  }
+  if (file === TABLE_READ_KEY_MODULE) {
+    out.push({ capability: 'token', evidence: 'the service-role key for a table anon is not granted', line: 1 })
   }
 
   for (const { literal, line } of pathLiterals(root, [file])) {

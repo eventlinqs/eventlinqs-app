@@ -63,6 +63,9 @@ export const DECLARED = {
   'scripts/guards/no-plaintext-credential.mjs': {
     docs: 'scans the tracked tree for committed secrets, and its exemptions name docs/ evidence artefacts and docs/modules paths by exact path. Those paths are excluded from the upload, so the exemptions simply match nothing there.',
   },
+  'scripts/guards/no-published-lane-b-fixture-on-test.mjs': {
+    token: 'the service-role key, through scripts/guards/lib/table-read-credential.mjs, because anon is not granted public.organisations on TEST and the CI build carries anon only. Without it the guard prints NOT JUDGED [no-credential] and reads nothing (pull request 159).',
+  },
   'scripts/guards/one-fee-copy.mjs': {
     docs: 'scans docs/marketing and the three fee authority documents for a second fee, because copy the founder pastes into an email reaches an organiser as directly as a page does.',
   },
