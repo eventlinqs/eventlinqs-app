@@ -360,7 +360,8 @@ describe('GA1 v3: the wording is read, never typed into a page', () => {
   it('the privacy page reads the same record and names the service provider', () => {
     const privacy = readFileSync(join(ROOT, 'src', 'app', 'legal', 'privacy', 'page.tsx'), 'utf8')
     expect(privacy).toContain('getCurrentConsentWording')
-    expect(privacy).toContain('Fullproof AI')
+    expect(privacy).toContain('Bookedproof')
+    expect(privacy).not.toContain('Fullproof')
     expect(privacy).toContain('/marketing/preferences')
     expect(privacy).not.toContain(seededBodyOpening)
   })

@@ -7,6 +7,7 @@
  *
  *   node-version-contract      no script may use an API newer than CI's Node
  *   no-deprecated-runtime      Law 9: the pinned runtime is still supported
+ *   no-retired-business-name   no retired name for the second business (Bookedproof) where a person reads
  *   auth-provider-guard        no provider button without a server-resolved gate
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
@@ -3162,6 +3163,14 @@ const GUARDS = [
   // had already deleted. One place deletes an account now, and it fails the run
   // on a refusal instead of printing a clean tear-down and exiting 0.
   'scripts/guards/one-way-to-delete-an-account.mjs',
+
+  // PLATFORM-FIX-1, 26 September 2026. The second business has been Bookedproof
+  // since 18 September, and the live privacy page still named Fullproof AI a
+  // week later because the rename was a decision nothing enforced. Fails on a
+  // retired name anywhere under src, public or supabase; records that must stay
+  // as written (the v1 consent wording, applied migrations) are registered by
+  // file with an exact count and a reason. Drilled red two ways.
+  'scripts/guards/no-retired-business-name.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

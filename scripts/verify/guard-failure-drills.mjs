@@ -1489,6 +1489,27 @@ const DRILLS = [
     expect: 'no longer routes its lighthouse step through lighthouseStep',
   },
   /*
+   * no-retired-business-name (PLATFORM-FIX-1, 26 September 2026): the privacy
+   * page named the retired business for a week after the rename, and a
+   * registered migration must not become a place a new mention can hide.
+   */
+  {
+    name: 'the privacy page names a retired business again',
+    guard: `${GUARDS}/no-retired-business-name.mjs`,
+    file: 'src/app/legal/privacy/page.tsx',
+    find: '<strong>Bookedproof</strong> as its service provider',
+    replace: '<strong>Fullproof AI</strong> as its service provider',
+    expect: 'a retired name',
+  },
+  {
+    name: 'a registered migration gains one more retired name',
+    guard: `${GUARDS}/no-retired-business-name.mjs`,
+    file: 'supabase/migrations/20260913000060_attribution_spine.sql',
+    find: '-- WHY THIS IS NOT REPORTING.',
+    replace: '-- Fillrate. WHY THIS IS NOT REPORTING.',
+    expect: 'registered for exactly 1 occurrence',
+  },
+  /*
    * lighthouse-floor-ratchet had no drill until 26 September 2026, when the
    * local Lighthouse step became conditional on main's protection: where the
    * CI check is required, the floors are asserted only by the CI job, so the

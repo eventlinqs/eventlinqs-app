@@ -2,7 +2,7 @@ import type { RecoveryProof } from '@/lib/fillrate/proof'
 
 /**
  * WHAT WE WON BACK FOR YOU. Close-out D2: "This panel is the product. It is what
- * a future standalone Fillrate customer pays for."
+ * a future standalone [Bookedproof] customer pays for."
  *
  * THE DESIGN DECISIONS, and each one is here because the alternative lies.
  *

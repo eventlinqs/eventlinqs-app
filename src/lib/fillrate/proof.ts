@@ -3,7 +3,7 @@
  *
  *     "On the organiser dashboard: how many abandoned, how many emailed, how
  *      many returned, and revenue recovered in dollars. This panel is the
- *      product. It is what a future standalone Fillrate customer pays for."
+ *      product. It is what a future standalone [Bookedproof] customer pays for."
  *
  * FOUR NUMBERS, AND EVERY ONE OF THEM IS COUNTED RATHER THAN ESTIMATED.
  *
