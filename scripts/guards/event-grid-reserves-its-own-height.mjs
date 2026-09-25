@@ -540,12 +540,32 @@ function squash(text) {
 
 /* -------------------------------------------------------------------- G */
 
+/*
+ * WHERE THE BUILD WRITES ITS STYLESHEETS DEPENDS ON THE HOST, and reading one
+ * place only failed the Vercel preview of a44c30e2 (pull request 159) with
+ * "0 stylesheet(s) read from .next/static/chunks" on a build whose pages link
+ *
+ *     /_next/static/immutable/chunks/13u-t1bzcl6_7.css
+ *
+ * Next 16.3 moves Turbopack's chunks under static/immutable/ when the config
+ * carries supportsImmutableAssets, and the deployment adapter sets that in its
+ * modifyConfig ("In the real world, this is done by the adapter's modifyConfig",
+ * finalizeConfig in node_modules/next/dist/server/config.js). A local
+ * `next build` has no adapter and writes static/chunks. The build is the same;
+ * only the directory differs, so both are read and the count names each.
+ */
+const STYLESHEET_DIRS = ['.next/static/chunks', '.next/static/immutable/chunks']
+
 if (process.argv.includes('--built')) {
-  const dir = '.next/static/chunks'
-  const files = existsSync(join(ROOT, dir))
-    ? readdirSync(join(ROOT, dir)).filter(f => f.endsWith('.css')).map(f => `${dir}/${f}`)
-    : []
-  check(files.length > 0, `--built: ${dir} holds no stylesheet, so there is nothing to judge and this clause cannot pass quietly`)
+  const perDir = STYLESHEET_DIRS.map(dir => ({
+    dir,
+    files: existsSync(join(ROOT, dir))
+      ? readdirSync(join(ROOT, dir)).filter(f => f.endsWith('.css')).map(f => `${dir}/${f}`)
+      : [],
+  }))
+  const files = perDir.flatMap(d => d.files)
+  const dir = perDir.map(d => `${d.dir} (${d.files.length})`).join(' and ')
+  check(files.length > 0, `--built: neither ${STYLESHEET_DIRS.join(' nor ')} holds a stylesheet, so there is nothing to judge and this clause cannot pass quietly`)
   const css = files.map(f => read(f) ?? '').join('\\n')
   const rule = css.includes('.cv-measured')
   check(rule, `--built: no stylesheet the build wrote declares .cv-measured, so nothing reserves anything`)
