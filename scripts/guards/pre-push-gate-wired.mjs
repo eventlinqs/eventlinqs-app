@@ -77,6 +77,9 @@ export function inspectPackage(pkg) {
  * The lighthouse step's jurisdiction, judged. `gateText` is the gate's source;
  * `judge` is the jurisdiction's pure judgement, a parameter so the test can
  * hand it a broken one.
+ *
+ * @param {string} gateText
+ * @param {(state: any) => { judgedHere: boolean }} [judge]
  */
 export function inspectLighthouseJurisdiction(gateText, judge = judgeLighthouseJurisdiction) {
   const problems = []

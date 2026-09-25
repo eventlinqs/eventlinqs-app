@@ -834,6 +834,9 @@ export function readCollectedReports(dir = LHCI_DIR) {
  * Asks, then either names the judge and stands down, or runs the local step
  * exactly as it ran before the ruling. `ask` and `run` are parameters so the
  * decision is unit-tested without GitHub or a build.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @param {{ ask?: () => any, run?: (env: Record<string, string | undefined>) => Promise<number | { code: number, label?: string }> }} [deps]
  */
 export async function lighthouseStep(env, { ask = readMainProtection, run = runLighthouse } = {}) {
   const verdict = judgeLighthouseJurisdiction(ask())
