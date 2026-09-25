@@ -29,15 +29,22 @@ const rendered = renderDerived(locked)
 const text = readDoc(ROOT)
 const current = currentDerived(text)
 
+/*
+ * process.exitCode and a return from main(), never process.exit: this module's
+ * import graph reaches src/lib/health/pricing-lock.mjs, which reads the live
+ * database, and exiting while a socket is closing aborts Node on Windows
+ * (nodejs/node#56645). Held by scripts/guards/no-exit-after-network.mjs.
+ */
+function main() {
 if (current === null) {
   console.error(`[pricing-derive] FAIL - ${DOC} has no PRICING-DERIVED block.`)
-  process.exit(1)
+  return 1
 }
 
 if (write) {
   fs.writeFileSync(path.join(ROOT, DOC), spliceDerived(text, rendered), 'utf8')
   console.log(`[pricing-derive] wrote the derived block into ${DOC}.`)
-  process.exit(0)
+  return 0
 }
 
 if (current.trim() !== rendered.trim()) {
@@ -52,14 +59,20 @@ if (current.trim() !== rendered.trim()) {
       '\n    Fix it by regenerating, never by editing the text:' +
       '\n        node scripts/pricing-derive.mjs --write\n',
   )
-  process.exit(1)
+  return 1
 }
 
-declareWork('pricing-derive', {
+const worked = declareWork('pricing-derive', {
   did: { 'derived line recomputed from the lock block': rendered.trim().split(String.fromCharCode(10)).length },
   found: { 'line disagreeing with the lock block': 0 },
+  exitOnZero: false,
 })
+if (!worked) return 1
 console.log(
   `[pricing-derive] PASS - the worked figures in ${DOC} match the lock block` +
     ` (${locked.platform_fee_percentage}% + ${locked.platform_fee_fixed}c, one fee).`,
 )
+return 0
+}
+
+process.exitCode = main()

@@ -30,16 +30,17 @@ const { verdict, lines } = judge(classification, probe)
 const tag = '[geocoding-key-posture]'
 // What this guard did, in numbers that move: two variables read every time, and
 // one probe only when a distinct server key exists (steps-declare-work).
-declareWork('geocoding-key-posture', {
+const worked = declareWork('geocoding-key-posture', {
   did: {
     'key variable read': 2,
     'geocoding probe sent': probe ? 1 : 0,
   },
   found: { 'refusal from Google': probe && probe.status !== 'OK' && probe.status !== 'UNREACHABLE' ? 1 : 0 },
   zeroIsFine: { 'geocoding probe sent': 'no distinct server key to probe; the shape is ABSENT or BROWSER and the decision is printed below' },
+  exitOnZero: false,
 })
 console.log(`${tag} ${verdict}${verdict === 'PASS' ? ' - ' : ' - '}${lines[0]}`)
 for (const l of lines.slice(1)) console.log(`${tag}   ${l}`)
 // exitCode rather than process.exit(): on Node 24 for Windows, exiting straight after a
 // fetch trips libuv's UV_HANDLE_CLOSING assertion (exit 127) while the socket closes.
-process.exitCode = verdict === 'FAIL' ? 1 : 0
+process.exitCode = verdict === 'FAIL' || !worked ? 1 : 0

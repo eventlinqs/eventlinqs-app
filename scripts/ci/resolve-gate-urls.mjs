@@ -130,7 +130,7 @@ async function main() {
   const base = (process.env.PREVIEW_URL || '').replace(/\/+$/, '')
   if (!base) {
     console.error('PREVIEW_URL is required')
-    process.exit(1)
+    return 1
   }
 
   const { parsed, _paths } = readPinnedSet()
@@ -157,7 +157,7 @@ async function main() {
     console.error(`[gate-urls] The audited set is PINNED on purpose, so this is not silently substituted.`)
     console.error(`[gate-urls] Either the page moved or the fixture changed: update ${SET_FILE} to a path`)
     console.error(`[gate-urls] that represents the same thing, and say in its "why" what that is.`)
-    process.exit(1)
+    return 1
   }
   // The claim contract. This step's whole output IS the audited set, so an
   // empty set would hand Lighthouse nothing to measure and every assertion
@@ -165,20 +165,26 @@ async function main() {
   // reserves for the URL list, so the tally goes to stderr with everything else.
   const out = console.log
   console.log = console.error
-  declareWork('gate-urls', {
+  const worked = declareWork('gate-urls', {
     did: { 'pinned path resolved and answering 200': ordered.length },
     found: { 'path that did not answer 200': bad.length },
+    exitOnZero: false,
   })
   console.log = out
+  if (!worked) return 1
 
   for (const p of ordered) {
     process.stdout.write(`${base}${p}\n`)
   }
+  return 0
 }
 
 const invokedDirectly =
   Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href
 
+// process.exitCode from main's answer, never process.exit: this step fetches
+// every pinned URL, and exiting while a socket closes aborts Node on Windows
+// (nodejs/node#56645). Held by scripts/guards/no-exit-after-network.mjs.
 if (invokedDirectly) {
-  await main()
+  process.exitCode = await main()
 }

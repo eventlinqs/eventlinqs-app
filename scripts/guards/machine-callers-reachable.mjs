@@ -149,9 +149,17 @@ function walk(dir) {
   return out
 }
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (!existsSync(API_ROOT)) {
   console.error(`${TAG} FAIL - ${relative(ROOT, API_ROOT)} does not exist, so nothing could be enumerated.`)
-  process.exit(1)
+  return 1
 }
 
 const routes = walk(API_ROOT).map((full) => {
@@ -412,7 +420,11 @@ if (failures.length > 0) {
    * but a guard that CRASHES instead of failing is a guard whose next reader
    * goes looking for a bug in Node.
    */
-  process.exitCode = 1
+  return 1
 } else {
   console.log(`${TAG} PASS - every machine caller is recorded, no signed webhook is rate limited, and every cron limiter fails open.`)
 }
+  return 0
+}
+
+process.exitCode = await main()

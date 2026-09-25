@@ -89,7 +89,7 @@ describe('the guard and the founder script share the one library', () => {
 
   test('the guard sets the exit code rather than calling process.exit after a fetch (the libuv assertion on Windows)', () => {
     const guard = readFileSync(path.join(ROOT, 'scripts/guards/geocoding-key-posture.mjs'), 'utf8')
-    expect(guard).toMatch(/process\.exitCode = verdict === 'FAIL' \? 1 : 0/)
+    expect(guard).toMatch(/process\.exitCode = verdict === 'FAIL' \|\| !worked \? 1 : 0/)
     // Comment lines may name process.exit(); the code must not call it.
     const codeOnly = guard
       .split(/\r?\n/)

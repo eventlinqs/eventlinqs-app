@@ -45,16 +45,24 @@ const fail = (msg) => console.error(`[types-drift] ${msg}`)
 
 /* ---------------------------------------------------------------- committed */
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (!existsSync(COMMITTED)) {
   fail(`FAIL: ${COMMITTED} not found (run from repo root)`)
-  process.exit(1)
+  return 1
 }
 
 const committedRaw = readFileSync(COMMITTED, 'utf8')
 if (!committedRaw.includes(MARKER)) {
   fail(`FAIL: '${MARKER}' marker missing from ${COMMITTED}.`)
   fail('The appendix-strip step has nothing to anchor on; either restore the marker or remove this guard.')
-  process.exit(1)
+  return 1
 }
 const committedText = committedRaw.slice(0, committedRaw.indexOf(MARKER))
 
@@ -92,7 +100,7 @@ try {
   // failure surfaced at gen-types as "run npx supabase login", which is the
   // wrong repair for a tool that never started (scripts/ci/types-drift-messages.mjs).
   for (const line of cliCannotStartLines(error)) fail(line)
-  process.exit(1)
+  return 1
 }
 say(`generating live types with supabase CLI ${genVersion} (the committed types must come from the same version)`)
 
@@ -107,7 +115,7 @@ try {
   // The CLI started (its version printed above) and Supabase refused or was
   // unreachable: this is the fault a login or the CI secret repairs.
   for (const line of genTypesFailedLines(err, genVersion)) fail(line)
-  process.exit(1)
+  return 1
 }
 
 /* ---------------------------------------------------- first pass: any delta? */
@@ -116,7 +124,7 @@ const dry = analyse({ committedText, liveText, pending: [] })
 
 if (dry.status === 'in-sync') {
   say(`OK: ${COMMITTED} generated section matches the live schema of ${PROJECT_ID}.`)
-  process.exit(0)
+  return 0
 }
 
 /*
@@ -132,7 +140,7 @@ if (!token) {
   fail('The token is needed to list which migrations the target has already applied,')
   fail('which is the only way to tell PENDING MIGRATIONS apart from STALE TYPES.')
   fail('Without it this guard will not guess, so it reports the difference as unclassified.')
-  process.exit(1)
+  return 1
 }
 
 let appliedVersions
@@ -146,13 +154,13 @@ try {
     if (res.status === 401 || res.status === 403) {
       fail('The token is PRESENT but REJECTED: it has expired or lacks access to this project.')
     }
-    process.exit(1)
+    return 1
   }
   const body = await res.json()
   appliedVersions = new Set((Array.isArray(body) ? body : []).map((m) => String(m.version)))
 } catch (err) {
   fail(`FAIL: could not reach the Supabase Management API: ${err.message}`)
-  process.exit(1)
+  return 1
 }
 
 /* ------------------------------------------------------- pending migrations */
@@ -189,4 +197,7 @@ for (const line of lines) {
   if (exitCode === 0) console.log(line)
   else console.error(line)
 }
-process.exit(exitCode)
+return exitCode
+}
+
+process.exitCode = await main()

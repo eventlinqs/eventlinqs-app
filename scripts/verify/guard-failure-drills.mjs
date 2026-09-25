@@ -1489,6 +1489,42 @@ const DRILLS = [
     expect: 'no longer routes its lighthouse step through lighthouseStep',
   },
   /*
+   * no-exit-after-network (PLATFORM-FIX-1, 26 September 2026): the Windows
+   * UV_HANDLE_CLOSING abort. One drill puts process.exit back after a live
+   * database read; the other drops the exitOnZero opt-out from a declareWork
+   * call in a network path, which is the same exit one hop away.
+   */
+  {
+    name: 'a live-database guard exits with process.exit again after its read',
+    guard: `${GUARDS}/no-exit-after-network.mjs`,
+    file: 'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
+    find: "  console.error(`${TAG} ${breaches.length} breach(es) of the campaigner invariant.`)\n  return 1",
+    replace: "  console.error(`${TAG} ${breaches.length} breach(es) of the campaigner invariant.`)\n  process.exit(1)",
+    expect: 'calls process.exit in a process that does network work',
+  },
+  {
+    name: 'a declareWork call in a network path leaves the library to process.exit on zero',
+    guard: `${GUARDS}/no-exit-after-network.mjs`,
+    file: 'scripts/ci/warm-preview.mjs',
+    find: "        : [],\n    exitOnZero: false,\n  })",
+    replace: "        : [],\n  })",
+    expect: 'calls declareWork without exitOnZero: false',
+  },
+  /*
+   * no-unguarded-production-write reads `process.exitCode = 1; return` as a
+   * refusal since PLATFORM-FIX-1 (the network scripts may not process.exit).
+   * The widening must not accept a line that does not STOP the script: a lone
+   * exitCode lets the seed carry on and write to whatever it was pointed at.
+   */
+  {
+    name: 'the seed refuses production by setting an exit code and carrying on',
+    guard: `${GUARDS}/no-unguarded-production-write.mjs`,
+    file: 'scripts/seed-events-catalogue.mjs',
+    find: "Point at staging or local only.`); process.exitCode = 1; return }",
+    replace: "Point at staging or local only.`); process.exitCode = 1 }",
+    expect: 'scripts/seed-events-catalogue.mjs',
+  },
+  /*
    * no-retired-business-name (PLATFORM-FIX-1, 26 September 2026): the privacy
    * page named the retired business for a week after the rename, and a
    * registered migration must not become a place a new mention can hide.

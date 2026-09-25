@@ -83,7 +83,7 @@ const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
 const hasRealProject = typeof url === 'string' && REAL_PROJECT.test(url.trim())
 
 function report(checkedRows, breaches) {
-  declareWork('matcher-consented-and-capped', {
+  return declareWork('matcher-consented-and-capped', {
     did: {
       'migration read': files,
       'structural half checked': 2,
@@ -100,13 +100,22 @@ function report(checkedRows, breaches) {
       'score row judged':
         'no matcher run has been produced yet, so there are no score rows to judge. The structural half still ran.',
     },
+    exitOnZero: false,
   })
 }
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (structural.length > 0) {
   report(0, [])
   for (const problem of structural) console.error(`${TAG} FAIL: ${problem}`)
-  process.exit(1)
+  return 1
 }
 
 if (url && !hasRealProject) {
@@ -116,7 +125,7 @@ if (url && !hasRealProject) {
   console.log(`SKIP: NEXT_PUBLIC_SUPABASE_URL is not a real Supabase project URL`)
   console.log(`      (${url.length} characters), so there are no matcher rows to judge.`)
   console.log('      This is the CI typecheck build, which uses placeholders by design.')
-  process.exit(0)
+  return 0
 }
 
 if (!url || !key) {
@@ -125,7 +134,7 @@ if (!url || !key) {
   console.error(`${TAG} FAIL: no Supabase URL or key in the environment, so the stored matcher`)
   console.error('      runs could not be checked. A check that cannot look is not a check that')
   console.error('      passed.')
-  process.exit(1)
+  return 1
 }
 
 const db = createClient(url, key, { auth: { persistSession: false } })
@@ -137,14 +146,14 @@ const { data: breaches, error } = await db
 if (error) {
   report(0, [])
   console.error(`${TAG} FAIL: could not read marketing_match_invariant_breaches: ${error.message}`)
-  process.exit(1)
+  return 1
 }
 
 const { count: scoreRows } = await db
   .from('marketing_match_score')
   .select('id', { count: 'exact', head: true })
 
-report(scoreRows ?? 0, breaches ?? [])
+if (!report(scoreRows ?? 0, breaches ?? [])) return 1
 
 console.log(
   `${TAG} the trigger and the view are both defined by the migrations; ${scoreRows ?? 0} stored score row(s) judged`,
@@ -153,7 +162,11 @@ console.log(
 if ((breaches ?? []).length > 0) {
   for (const row of breaches) console.error(`${TAG} FAIL: ${row.breach}: ${row.detail}`)
   console.error(`${TAG} ${breaches.length} breach(es) of the matcher invariant.`)
-  process.exit(1)
+  return 1
 }
 
 console.log(`${TAG} OK`)
+  return 0
+}
+
+process.exitCode = await main()

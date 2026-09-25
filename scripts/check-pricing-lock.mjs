@@ -55,10 +55,16 @@ for (const w of result.warnings ?? []) {
   console.warn(`[pricing-lock] WARNING  ${w}`)
 }
 
+/*
+ * process.exitCode, never process.exit, from here on: resolve() may have read
+ * the live database over the network, and exiting while that socket is still
+ * closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
 if (result.ok) {
-  process.exit(0)
-}
-
+  process.exitCode = 0
+} else {
 const message =
   `\n[pricing-lock] ${PRICING_LOCK_RULE.name} FAILED.\n    ${result.reason}\n\n` +
   `    ${PRICING_DOC} is the single authority for every fee figure. Nothing else may\n` +
@@ -71,10 +77,11 @@ const message =
 
 if (blocks && !bypass) {
   console.error(`${message}\n[pricing-lock] BUILD BLOCKED.\n`)
-  process.exit(1)
+  process.exitCode = 1
+} else {
+  console.warn(
+    `${message}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING_DRIFT=1 is set' : `${scope} build`}); this WOULD block on Vercel and in CI.\n`,
+  )
+  process.exitCode = 0
 }
-
-console.warn(
-  `${message}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING_DRIFT=1 is set' : `${scope} build`}); this WOULD block on Vercel and in CI.\n`,
-)
-process.exit(0)
+}

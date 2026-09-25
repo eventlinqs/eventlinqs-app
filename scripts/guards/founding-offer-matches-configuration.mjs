@@ -419,20 +419,25 @@ if (feeDisplaySource) {
 
 /* ------------------------------------------------------------------ verdict */
 
-declareWork('founding-offer-matches-configuration', {
+const worked = declareWork('founding-offer-matches-configuration', {
   did: checks,
   found: { 'published number that disagrees with the configuration': faults.length },
+  exitOnZero: false,
 })
+if (!worked) faults.push('the guard counted no work, so it cannot pass')
 
 console.log(
   `${TAG} configuration: no cap (LAW 24), ${INITIAL_MONTHS} months from registration, ${REFERRAL_MONTHS} months per referral` +
     (locked ? `, fee ${locked.platform_fee_percentage}% + ${locked.currency} ${(Number(locked.platform_fee_fixed) / 100).toFixed(2)}` : ''),
 )
 
+// process.exitCode, never process.exit: this guard's import graph reaches
+// src/lib/health/pricing-lock.mjs, which can read the live database, and exiting
+// while a socket closes aborts Node on Windows (nodejs/node#56645).
 if (faults.length > 0) {
   console.error(`${TAG} FAIL: ${faults.length} disagreement(s) between what the platform publishes and what it does.`)
   for (const fault of faults) console.error(`${TAG}   - ${fault}`)
-  process.exit(1)
+  process.exitCode = 1
+} else {
+  console.log(`${TAG} PASS - every published offer number and the fee sentence agree with the configuration.`)
 }
-
-console.log(`${TAG} PASS - every published offer number and the fee sentence agree with the configuration.`)

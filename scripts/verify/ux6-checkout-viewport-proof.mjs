@@ -102,13 +102,21 @@ const CHROME_WIDTHS = (process.env.UX6_CHROME_WIDTHS || '1024,1100,1280,1366')
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (/gndnldyfudbytbboxesk/.test(SUPABASE_URL)) {
   console.error(`${TAG} refusing to run against production: this drive buys tickets`)
-  process.exit(1)
+  return 1
 }
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error(`${TAG} FAIL: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required`)
-  process.exit(1)
+  return 1
 }
 const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 
@@ -818,7 +826,7 @@ if (!paid) fail(`no published, unseated, sellable PAID event with room for ${PLA
 if (!free) fail(`no published, unseated, sellable FREE event with room for ${PLACES_A_RUN_CONSUMES} on this database`)
 if (!paid || !free) {
   console.error(`${TAG} cannot drive without both events`)
-  process.exit(1)
+  return 1
 }
 note(`base ${BASE}`)
 note(`paid event: ${paid.event.slug} (tier "${paid.name}", ${paid.price} cents)`)
@@ -871,7 +879,7 @@ console.log(
 console.log(`${TAG} axe: ${axeScans} scan(s), WCAG 2.0/2.1 A and AA; ${thirdPartyAxe} violation(s) inside third-party frames, reported and not judged`)
 if (faults.length > 0) {
   console.error(`${TAG} FAIL`)
-  process.exit(1)
+  return 1
 }
 if (paymentStepSkipped > 0) {
   console.log(`${TAG} ${verdict}`)
@@ -879,6 +887,10 @@ if (paymentStepSkipped > 0) {
     `${TAG} every surface this environment can reach fits its viewport and shows its total. ` +
       `The Stripe payment step is UNMEASURED here and must be driven where a TEST key exists.`,
   )
-  process.exit(0)
+  return 0
 }
 console.log(`${TAG} PASS - every buyer surface, payment step included, fits its viewport and shows its total.`)
+  return 0
+}
+
+process.exitCode = await main()

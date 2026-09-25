@@ -47,9 +47,17 @@ const loaded = spawnSync(
   ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', './scripts/lib/src-alias-loader.mjs', '--input-type=module', '-e', policyScript],
   { cwd: process.cwd(), encoding: 'utf8' },
 )
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (loaded.status !== 0) {
   console.error(`${TAG} could not load the indexing policy: ${(loaded.stderr || loaded.stdout).trim().slice(0, 400)}`)
-  process.exit(1)
+  return 1
 }
 const { policy, unlinked } = JSON.parse(loaded.stdout.trim().split(LINES).find((l) => l.startsWith('{')))
 
@@ -271,6 +279,10 @@ console.log(`${TAG} ${unreachablePrivate} never route(s) are reachable by no int
 if (faults.length) {
   for (const f of faults) console.error(`${TAG} FAIL: ${f}`)
   console.error(`${TAG} ${faults.length} fault(s)`)
-  process.exit(1)
+  return 1
 }
 console.log(`${TAG} PASS`)
+  return 0
+}
+
+process.exitCode = await main()

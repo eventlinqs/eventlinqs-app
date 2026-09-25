@@ -133,7 +133,7 @@ const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
 const hasRealProject = typeof url === 'string' && REAL_PROJECT.test(url.trim())
 
 function report(ordersJudged, breaches) {
-  declareWork('attribution-one-record-per-order-never-billable-when-reversed', {
+  return declareWork('attribution-one-record-per-order-never-billable-when-reversed', {
     did: {
       'migration read': files,
       'structural clause checked': STRUCTURAL_CLAUSES.length,
@@ -150,13 +150,22 @@ function report(ordersJudged, breaches) {
       'order judged':
         'no order exists on this project yet, so there is nothing to attribute. The structural half still ran.',
     },
+    exitOnZero: false,
   })
 }
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (structural.length > 0) {
   report(0, 0)
   for (const problem of structural) console.error(`${TAG} FAIL: ${problem}`)
-  process.exit(1)
+  return 1
 }
 
 if (url && !hasRealProject) {
@@ -166,7 +175,7 @@ if (url && !hasRealProject) {
   console.log('SKIP: NEXT_PUBLIC_SUPABASE_URL is not a real Supabase project URL')
   console.log(`      (${url.length} characters), so there are no attribution rows to judge.`)
   console.log('      This is the CI typecheck build, which uses placeholders by design.')
-  process.exit(0)
+  return 0
 }
 
 if (!url || !key) {
@@ -175,7 +184,7 @@ if (!url || !key) {
   console.error(`${TAG} FAIL: no Supabase URL or key in the environment, so the stored`)
   console.error('      attributions could not be checked. A check that cannot look is not a')
   console.error('      check that passed.')
-  process.exit(1)
+  return 1
 }
 
 const db = createClient(url, key, { auth: { persistSession: false } })
@@ -187,7 +196,7 @@ const { data: rawBreaches, error } = await db
 if (error) {
   report(0, 0)
   console.error(`${TAG} FAIL: could not read marketing_attribution_invariant_breaches: ${error.message}`)
-  process.exit(1)
+  return 1
 }
 
 /*
@@ -239,7 +248,7 @@ if (unrecorded.length > 0) {
 
 const { count: orders } = await db.from('orders').select('id', { count: 'exact', head: true })
 
-report(orders ?? 0, breaches.length)
+if (!report(orders ?? 0, breaches.length)) return 1
 
 console.log(
   `${TAG} the primary key, both triggers and the view are all defined by the migrations; ${orders ?? 0} order(s) judged`,
@@ -280,7 +289,11 @@ if (breaches.length > 0) {
     console.error(`${TAG} It refuses production, writes only the orders that have no record, and`)
     console.error('      records "none" with a reason for the ones no campaign produced.')
   }
-  process.exit(1)
+  return 1
 }
 
 console.log(`${TAG} OK`)
+  return 0
+}
+
+process.exitCode = await main()

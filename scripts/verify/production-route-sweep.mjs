@@ -82,9 +82,17 @@ const OUT = argOf('--out')
  * flag; the production smoke does not.
  */
 const ALL_ROUTES = args.includes('--all-routes')
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (!OUT) {
   console.error('FAIL: --out <directory> is required')
-  process.exit(1)
+  return 1
 }
 mkdirSync(OUT, { recursive: true })
 
@@ -616,6 +624,10 @@ console.log(`  ${twoPreloadHits.size} route pattern(s) carried more than one, ${
 if (defects.length > 0) {
   console.error(`\n[sweep] ${defects.length} DEFECT(S):`)
   for (const d of defects) console.error(`  ${d}`)
-  process.exit(1)
+  return 1
 }
 console.log('\n[sweep] PASS - no server error, no error boundary inside a 200, no soft 404, no undeliberate 404.')
+  return 0
+}
+
+process.exitCode = await main()

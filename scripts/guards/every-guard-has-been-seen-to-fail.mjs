@@ -133,7 +133,6 @@ const BASELINE = [
   'scripts/guards/no-partial-builds.mjs',
   'scripts/guards/no-plaintext-credential.mjs',
   'scripts/guards/no-unguarded-credential-form.mjs',
-  'scripts/guards/no-unguarded-production-write.mjs',
   'scripts/guards/offline-door-integrity.mjs',
   'scripts/guards/one-contact-domain.mjs',
   'scripts/guards/one-db-read-door.mjs',

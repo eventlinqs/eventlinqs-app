@@ -421,7 +421,10 @@ if (failures.length > 0) {
   console.error('')
   console.error('  Authority: CLAUDE.md (the indexing policy), src/lib/seo/indexing-policy.ts,')
   console.error('             close-out SEO3.')
-  process.exit(1)
+  // process.exitCode, never process.exit: this guard does network work, and
+  // exiting while a socket closes aborts Node on Windows (nodejs/node#56645).
+  process.exitCode = 1
+} else {
+  console.log('PASS: the discovery layer is indexable, the sitemap agrees with it, and every')
+  console.log('      category is a page.')
 }
-console.log('PASS: the discovery layer is indexable, the sitemap agrees with it, and every')
-console.log('      category is a page.')

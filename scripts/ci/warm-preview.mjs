@@ -178,7 +178,10 @@ async function main() {
    * best-effort and a page that 500s is the Lighthouse run's problem to report.
    * Doing nothing at all is a different thing, and it is this one.
    */
-  declareWork('warm', {
+  // exitOnZero: false and process.exitCode, never process.exit: this step has
+  // just fetched every page, and exiting while a socket closes aborts Node on
+  // Windows (nodejs/node#56645). Held by scripts/guards/no-exit-after-network.mjs.
+  const worked = declareWork('warm', {
     did: {
       'page warmed twice': pages,
       'optimised image variant requested': images,
@@ -188,7 +191,9 @@ async function main() {
       truncatedPages > 0
         ? [`${truncatedPages} page(s) hit the ${MAX_IMAGES_PER_PAGE}-variant cap and were NOT fully warmed`]
         : [],
+    exitOnZero: false,
   })
+  if (!worked) process.exitCode = 1
   if (truncatedPages > 0) {
     console.log('[warm] Read a red Lighthouse run on those pages against that, and raise the cap if it matters.')
   }

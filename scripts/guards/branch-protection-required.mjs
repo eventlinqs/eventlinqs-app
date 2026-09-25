@@ -128,7 +128,13 @@ function hasCredentials() {
 }
 
 const invokedDirectly = process.argv[1] && /branch-protection-required\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
-if (invokedDirectly) {
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: reading main's protection is network work, and exiting while a
+ * socket is still closing aborts Node on Windows (nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
   const repo = repositoryFromEnvOrGit()
   if (!repo) {
     /*
@@ -144,19 +150,19 @@ if (invokedDirectly) {
         ? `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and this checkout has no origin remote.`
         : `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and there is no git repository here to read a remote from.`,
     )
-    process.exit(0)
+    return 0
   }
   if (!hasCredentials()) {
     console.warn(`${TAG} SKIP - NO GITHUB CREDENTIALS HERE (no GITHUB_TOKEN, no gh login), so main's protection is UNKNOWN, not good.`)
     console.warn(`${TAG}   The CI job carries GITHUB_TOKEN and judges it before any merge. Locally, run gh auth login to make this real.`)
-    process.exit(0)
+    return 0
   }
   let state
   try {
     state = await readProtection(repo)
   } catch (err) {
     console.error(`${TAG} FAIL - could not read main's protection on ${repo}: ${err.message}`)
-    process.exit(1)
+    return 1
   }
   const faults = judgeProtection(state)
   console.log(`${TAG} did ${1 + (state.rulesets?.length ?? 0)} protection read(s) on ${repo}, ${REQUIRED_CONTEXTS.length} required context(s) checked`)
@@ -165,7 +171,10 @@ if (invokedDirectly) {
     console.error(`${TAG} FAIL - main's protection does not hold the merge gate:`)
     for (const f of faults) console.error(`  ${f}`)
     console.error(`${TAG}   Required contexts: ${REQUIRED_CONTEXTS.map((c) => JSON.stringify(c)).join(', ')}; pull requests required; admins held; no force push, no deletion, no bypass actor.`)
-    process.exit(1)
+    return 1
   }
   console.log(`${TAG} PASS - main requires ${REQUIRED_CONTEXTS.map((c) => JSON.stringify(c)).join(', ')}, holds admins to it, requires a pull request, and no ruleset carries a bypass.`)
+  return 0
 }
+
+if (invokedDirectly) process.exitCode = await main()
