@@ -138,6 +138,15 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }))
 
+// The admin client above stands for a host that HOLDS the service-role key,
+// so the key is declared too: fetchPublicEventsCached fails soft to an empty
+// result on a host without one (the CI build job), and without this line the
+// weekend read would take that branch instead of reading `state.weekend`.
+vi.mock('@/lib/supabase/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/supabase/env')>()),
+  getSupabaseServiceRoleKey: () => 'test-service-role-key',
+}))
+
 /*
  * THE THRESHOLD, STUBBED AT THE RESOLVER AND NOWHERE ELSE. The functions below
  * are the real policy functions reading one stubbed number, so a test that moves
