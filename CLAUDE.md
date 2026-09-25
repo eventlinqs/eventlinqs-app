@@ -660,6 +660,21 @@ change is the one thing he wants to press himself. That is a decision about
 authority, not capability, and Law 10 does not touch it. See Verification and
 gates, Migrations.
 
+[[OPS RULES 25SEP START]]
+
+## Operating rules learned on 25 September 2026 (founder ruling)
+1. Ship small and daily. Work reaches GitHub the day it is done and production within 48 hours. No branch carries more than two days of unmerged work. On 25 September, 355 commits held for 13 days hid six faults that only appeared on GitHub, on Vercel and against the live database.
+2. The judge is where the code runs. Page speed is judged by Lighthouse CI on GitHub against the Vercel preview, not on this laptop. A check that needs a key or a folder the build host lacks declares it through build-host-needs and says NOT JUDGED, never a silent pass or a false failure.
+3. Before any merge to main, run every guard that reads the live database against production, read only, and prepare any backfill before the merge, never after a failed deploy.
+4. Every production write is a script with a dry run by default, applied only when the founder types APPLY, and logged in C:\dev\PRODUCTION-WRITES.txt.
+5. Business names come from one place and a guard enforces them. A rename is a sweep plus a guard on the same day. The second business is Bookedproof.
+6. Legal and consent wording is versioned, never edited. A change is a new dated version, and every existing consent keeps the wording the person agreed to.
+7. Keys are checked, not trusted. Every credential a pipeline uses has a health check that fails loudly when it is rejected, and its expiry date is recorded. VERCEL_TOKEN was replaced on 25 September 2026 with a one year expiry.
+8. A model change checks the tool version first. Claude Code must support the model named in C:\dev\BUILD-MODEL.txt before any window starts.
+9. No cause is named without quoting the line that terminated the process.
+
+[[OPS RULES 25SEP END]]
+
 ## Scene layer (locked, national) - V2, research-backed
 
 Scenes are the EventLinqs differentiator layered on top of the general
