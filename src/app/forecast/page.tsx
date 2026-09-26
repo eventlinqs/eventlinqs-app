@@ -10,6 +10,7 @@ import { METHOD_SENTENCE, methodOf, methodSentence } from '@/lib/forecast/method
 import { readForecastOptions } from '@/lib/forecast/read'
 import {
   EMAIL_CONSENT_TEXT,
+  FOUNDING_FIGURE_LABEL,
   FOUNDING_SENTENCE,
   feeSentence,
   centsAsFormDollars,
@@ -342,7 +343,7 @@ export default async function ForecastPage({ searchParams }: Props) {
                     <dd className="text-ink-900">{scenario.fee}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt className="text-ink-600">In your first six months</dt>
+                    <dt className="text-ink-600">{FOUNDING_FIGURE_LABEL}</dt>
                     <dd className="text-ink-900">{scenario.foundingFee}</dd>
                   </div>
                   <div className="flex justify-between gap-3">

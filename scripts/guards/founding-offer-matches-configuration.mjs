@@ -119,65 +119,103 @@ try {
 /* ------------------------------------------------ 1. the offer copy's numbers */
 
 /**
- * Each claim names the shape it expects, the constant it must equal, and the
- * fact that it MUST appear. The "must appear" half is what stops the guard
- * passing vacuously when somebody deletes the sentence instead of correcting it.
+ * LAW 24 AS RULED (26 September 2026): the offer lives in ONE module,
+ * src/lib/payments/founding-waiver.ts, and the landing band RENDERS it. So the
+ * claims below are judged in two places, and both halves must hold:
+ *
+ *   - THE MODULE says each claim, in FOUNDING_TERMS, with its numbers
+ *     interpolated from the two constants rather than typed;
+ *   - THE BAND renders each claim from the module (an interpolation of the
+ *     constant, or FOUNDING_TERMS.<name>) and never types a month figure.
+ *
+ * Each claim still MUST be present, which is what stops the guard passing
+ * vacuously when somebody deletes the sentence instead of correcting it.
  */
-const OFFER_CLAIMS = [
-  {
-    what: 'the six-month fee-free window',
-    pattern: /(\d+)\s+months? completely fee-free/gi,
-    expected: () => INITIAL_MONTHS,
-  },
-  {
-    what: 'the three months earned per referral',
-    pattern: /(\d+)\s+more fee-free months/gi,
-    expected: () => REFERRAL_MONTHS,
-  },
-]
+const waiverCode = waiverSource ? withoutComments(waiverSource) : ''
+const offerSource = read(OFFER)
+const offerCode = offerSource ? withoutComments(offerSource) : ''
 
-/** The promises rather than numbers, so they are checked as phrases. */
-const OFFER_PHRASES = [
+/** The body of `export const FOUNDING_TERMS = { ... }` in the module. */
+const termsBlock = (() => {
+  const at = waiverCode.indexOf('export const FOUNDING_TERMS')
+  if (at === -1) return null
+  const end = waiverCode.indexOf('} as const', at)
+  return end === -1 ? null : waiverCode.slice(at, end)
+})()
+
+checks['offer claim'] += 1
+if (!termsBlock) {
+  faults.push(`${WAIVER} no longer exports FOUNDING_TERMS, the one wording of the offer every surface renders`)
+}
+
+/** The word constants must be DERIVED from the numbers, never typed. */
+for (const [word, num] of [
+  ['FOUNDING_INITIAL_MONTHS_WORD', 'FOUNDING_INITIAL_MONTHS'],
+  ['FOUNDING_REFERRAL_MONTHS_WORD', 'FOUNDING_REFERRAL_MONTHS'],
+]) {
+  checks['offer claim'] += 1
+  if (!new RegExp(String.raw`export const ${word}\s*=\s*monthsInWords\(\s*${num}\s*\)`).test(waiverCode)) {
+    faults.push(`${WAIVER} does not derive ${word} from ${num} through monthsInWords(); a typed month word is a second copy of the number`)
+  }
+}
+
+const MODULE_CLAIMS = [
   {
-    what: 'the promise that the terms are applied before the first on-sale',
-    pattern: /before your first on-sale/i,
+    what: 'the six months, stated in FOUNDING_TERMS.initial from the constant',
+    pattern: /initial:\s*`Every organiser gets \$\{FOUNDING_INITIAL_MONTHS_WORD\} months with no platform fee/,
   },
   {
     what: 'LAW 24: the six months are counted from registration',
-    pattern: /counted from the day they sign up/i,
+    pattern: /counted from the date they register on EventLinqs/,
   },
   {
-    what: 'LAW 24: there is no cap',
-    pattern: /\bNo cap\b/,
+    what: 'LAW 24: there is no cap, no limit on places and no invitation',
+    pattern: /No cap, no limit on places, no invitation needed/,
+  },
+  {
+    what: 'the three months per referral who sells a ticket, from the constant',
+    pattern: /referral:\s*`\$\{capitalised\(FOUNDING_REFERRAL_MONTHS_WORD\)\} more fee-free months for each organiser you refer who sells a ticket/,
+  },
+  {
+    what: 'the standard fee after the free months',
+    pattern: /after:\s*'When the free months end, the standard fee applies\.'/,
+  },
+  {
+    what: 'every organiser holds the badge',
+    pattern: /badge:\s*`Every organiser is a \$\{FOUNDING_BADGE_NAME\}\.`/,
   },
 ]
-
-const offerSource = read(OFFER)
-if (offerSource) {
-  for (const claim of OFFER_CLAIMS) {
-    const expected = claim.expected()
-    if (expected === null) continue
-    const found = [...offerSource.matchAll(claim.pattern)].map(m => Number(m[1]))
+if (termsBlock) {
+  for (const claim of MODULE_CLAIMS) {
     checks['offer claim'] += 1
-    if (found.length === 0) {
+    if (!claim.pattern.test(termsBlock)) faults.push(`${WAIVER} FOUNDING_TERMS no longer carries ${claim.what}`)
+  }
+}
+
+/** What the band must render, and must not type. */
+const BAND_RENDERS = [
+  { what: 'the six-month fee-free window', pattern: /\$\{FOUNDING_INITIAL_MONTHS\} months completely fee-free/ },
+  { what: 'the offer sentence', pattern: /\$\{FOUNDING_TERMS\.initial\}/ },
+  { what: 'the three months earned per referral', pattern: /\bFOUNDING_TERMS\.referral\b/ },
+  { what: 'the standard fee afterwards', pattern: /\$\{FOUNDING_TERMS\.after\}/ },
+  { what: 'the badge for every organiser', pattern: /\$\{FOUNDING_TERMS\.badge\}/ },
+  { what: 'the national scope', pattern: /\$\{FOUNDING_TERMS\.scope\}/ },
+  { what: 'the promise that the terms are applied before the first on-sale', pattern: /before your first on-sale/i },
+]
+if (offerSource) {
+  for (const claim of BAND_RENDERS) {
+    checks['offer claim'] += 1
+    if (!claim.pattern.test(offerCode)) {
       faults.push(
-        `${OFFER} no longer states ${claim.what}. The offer is published and is repeated in every outreach message, so a claim cannot be removed from the copy without a decision; if the offer changed, change the constant in ${WAIVER} and this pattern together`,
+        `${OFFER} no longer renders ${claim.what}. The offer is published and is repeated in every outreach message, so a claim cannot be removed from the copy without a decision; if the offer changed, change it in ${WAIVER}`,
       )
-      continue
-    }
-    for (const value of found) {
-      if (value !== expected) {
-        faults.push(
-          `${OFFER} states ${value} for ${claim.what}, and the engine that charges uses ${expected} (${WAIVER}). The page and the invoice must not disagree`,
-        )
-      }
     }
   }
-  for (const phrase of OFFER_PHRASES) {
-    checks['offer claim'] += 1
-    if (!phrase.pattern.test(offerSource)) {
-      faults.push(`${OFFER} no longer carries ${phrase.what}`)
-    }
+  // A typed month figure in the band is a second copy of the constant.
+  checks['offer claim'] += 1
+  const typed = offerCode.match(/(?<![$\w{])\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:more\s+)?(?:fee-free\s+)?months?\b/i)
+  if (typed) {
+    faults.push(`${OFFER} types "${typed[0]}". Every month figure on the band is rendered from ${WAIVER}`)
   }
 }
 

@@ -193,10 +193,18 @@ charge, the display and the payout each make identically.
 
 | Term | Value | Where it lives |
 |---|---|---|
-| Initial grant | 6 months from the organisation's OWN registration, every organiser (LAW 24, 20 September 2026) | `FOUNDING_INITIAL_MONTHS`; stamped at insert by `trg_registration_fee_free_window` |
-| Per confirmed referral | plus 3 months | `FOUNDING_REFERRAL_MONTHS` |
-| Cap | none. "Not a cap of 50. Every organiser." The fifty cap (`FOUNDING_WAIVER_CAP`, `trg_founding_waiver_cap`) was removed on 26 September 2026 | migration `20260926000001` |
+| Initial grant | 6 months from the organisation's OWN registration, every organiser, including those who registered before 20 September 2026, each from their own registration date (LAW 24 as ruled, 26 September 2026) | `FOUNDING_INITIAL_MONTHS`; stamped at insert by `trg_registration_fee_free_window` |
+| Per confirmed referral | plus 3 months, for each organiser referred who sells a ticket, on top of the six | `FOUNDING_REFERRAL_MONTHS` |
+| After the window | the standard fee | `pricing_rules`, through `getPricingRule` |
+| Cap | none: no cap, no limit on places, no invitation needed. The earlier cap (`FOUNDING_WAIVER_CAP`, `trg_founding_waiver_cap`) was removed on 26 September 2026 | migration `20260926000001` |
+| Name and badge | "Founding Organiser", held by every organiser | `FOUNDING_BADGE_NAME` |
+| Scope | national: every organiser in Australia | `FOUNDING_OFFER_SCOPE` |
 | Stored as | `organisations.founding_fee_free_until` (TIMESTAMPTZ) | migration `20260727000002` |
+
+Every value in this table is defined once, in `src/lib/payments/founding-waiver.ts`,
+and every surface renders it from there. This document cannot render, so
+`scripts/guards/offer-is-one-rule.mjs` holds the two month figures above to the
+module and fails the build if they disagree.
 
 <!-- ONE-FEE-ALLOW-BEGIN: quotes the superseded wording it replaces. -->
 **Fee-free now means genuinely fee-free.** This used to read "the PLATFORM fee
@@ -217,14 +225,16 @@ while the value is stored and compared as UTC, so a six-month window granted in
 July (UTC+10) and expiring in January (UTC+11) came out a day short. The helper
 uses `setUTCMonth` so the window is identical wherever it is computed.
 
-**The cap is enforced twice**: in code
-(`acceptFoundingInvite` checks the holder count and audit-logs a refusal) and by
-the database trigger `trg_founding_waiver_cap`, which cannot be bypassed by a
-direct SQL grant or a code path nobody has written yet.
+**There is no cap.** Until 26 September 2026 a cap was enforced in code and by
+the database trigger `trg_founding_waiver_cap`. Migration `20260926000001`
+dropped the trigger, and `scripts/guards/founding-offer-matches-configuration.mjs`
+fails the build if either comes back.
 
 **Every grant and extension is audit-logged** with the organisation, the reason,
 the previous expiry and the new expiry: `founding.waiver.granted`,
-`founding.waiver.extended`, `founding.waiver.cap_reached`.
+`founding.waiver.extended`, and `founding.waiver.law24_backfill` for the windows
+the 26 September 2026 migration opened. (`founding.waiver.cap_reached` was written
+only while the cap existed.)
 
 **Where the waiver is applied.** One shared function,
 `applyFoundingWaiver()` in `src/lib/payments/founding-waiver.ts`, called from

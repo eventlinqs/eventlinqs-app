@@ -12,6 +12,7 @@ import { getCityPhoto } from '@/lib/images/city-photo'
 import { WAITLIST_HERO, WAITLIST_ORGANISER_BAND } from '@/lib/images/waitlist-photos'
 import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 import { WaitlistClient, type WaitlistCityWithImage } from './waitlist-client'
+import { FOUNDING_TERMS } from '@/lib/payments/founding-waiver'
 
 export const metadata: Metadata = {
   title: 'Local event alerts | EventLinqs',
@@ -113,12 +114,11 @@ export default async function WaitlistPage() {
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
             We email you when there is something on near you, nothing else, and one click stops
-            it. Organisers who sign up are candidates for the invite-only Founding Organiser
-            programme.
+            it. Organising something? {FOUNDING_TERMS.initial} {FOUNDING_TERMS.badge}
           </p>
         </div>
         <div className="mt-10">
-          <WaitlistClient cities={withImages} />
+          <WaitlistClient cities={withImages} offer={{ initial: FOUNDING_TERMS.initial, referral: FOUNDING_TERMS.referral }} />
         </div>
       </ContentSection>
 

@@ -9,7 +9,9 @@ import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
 import { createFoundingInvite, isFoundingCity } from '@/lib/founding/invites'
 import {
+  FOUNDING_OFFER_SCOPE,
   FOUNDING_REFERRAL_MONTHS,
+  FOUNDING_TERMS,
   extendWaiver,
   initialWaiverUntil,
   isWaiverActive,
@@ -94,23 +96,29 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
   try {
     await sendEmail({
       to: entry.email,
-      subject: `Your founding invitation for ${cityName}`,
+      subject: `EventLinqs is open in ${cityName}`,
       messageType: 'founding_invitation',
       recipientRole: 'prospect',
+      // LAW 24 as ruled (26 September 2026): the offer is rendered from the one
+      // module that holds it, and nothing here says the recipient needs this
+      // email to receive it. "Founding Organisers also get their first event
+      // set up with the founder" was removed: it cannot hold for every organiser.
       text: [
         `Hi ${firstName},`,
         '',
-        `${cityName} is opening on EventLinqs, and you are invited to join as a Founding Organiser.`,
+        `EventLinqs is open in ${cityName}, and everywhere else in ${FOUNDING_OFFER_SCOPE}.`,
         '',
-        'Every organiser pays no platform fee for 6 months from the day they register. Founding Organisers also get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer who runs an event.',
+        `${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.badge}`,
         '',
-        `Claim your spot: ${inviteUrl}`,
+        `${FOUNDING_TERMS.referral} ${FOUNDING_TERMS.after}`,
         '',
-        `You are receiving this because you joined the ${cityName} waitlist and asked to hear about Founding Organiser invitations. Leave the waitlist any time: ${unsubscribeUrl}`,
+        `Create your organiser account: ${inviteUrl}`,
+        '',
+        `You are receiving this because you joined the ${cityName} waitlist as an organiser. Leave the waitlist any time: ${unsubscribeUrl}`,
         '',
         'EventLinqs',
       ].join('\n'),
-      html: `<p>Hi ${firstName},</p><p><strong>${cityName} is opening on EventLinqs</strong>, and you are invited to join as a Founding Organiser.</p><p>Every organiser pays no platform fee for 6 months from the day they register. Founding Organisers also get their first event set up with the founder, and earn 3 more fee-free months for every organiser they refer who runs an event.</p><p><a href="${inviteUrl}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Claim your founding spot</a></p><p style="font-size:12px;color:#888;">You are receiving this because you joined the ${cityName} waitlist and asked to hear about Founding Organiser invitations. <a href="${unsubscribeUrl}">Leave the waitlist</a> any time.</p><p>EventLinqs</p>`,
+      html: `<p>Hi ${firstName},</p><p><strong>EventLinqs is open in ${cityName}</strong>, and everywhere else in ${FOUNDING_OFFER_SCOPE}.</p><p>${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.badge}</p><p>${FOUNDING_TERMS.referral} ${FOUNDING_TERMS.after}</p><p><a href="${inviteUrl}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Create your organiser account</a></p><p style="font-size:12px;color:#888;">You are receiving this because you joined the ${cityName} waitlist as an organiser. <a href="${unsubscribeUrl}">Leave the waitlist</a> any time.</p><p>EventLinqs</p>`,
     })
   } catch (err) {
     console.error('[admin/network] invite email failed:', err)

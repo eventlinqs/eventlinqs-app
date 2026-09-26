@@ -4735,13 +4735,36 @@ const DRILLS = [
     replace: 'founding_add_months(COALESCE(NEW.created_at, now()), 3)',
     expect: 'stamps 3 months at registration',
   },
+  /*
+   * LAW 24 as ruled (26 September 2026): the band RENDERS the offer from
+   * src/lib/payments/founding-waiver.ts, so the drill that used to delete a
+   * typed sentence now deletes the rendered one, and two more drills cover the
+   * ways a second copy of a number creeps back: a figure typed onto the band,
+   * and a month word typed into the module instead of derived.
+   */
   {
     name: 'a published claim is deleted from the offer instead of corrected',
     guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
     file: 'src/lib/organisers/founding-offer.ts',
-    find: "    '3 more fee-free months for every organiser you refer who runs an event',",
-    replace: "    'More fee-free months for every organiser you refer who runs an event',",
-    expect: 'no longer states',
+    find: '    FOUNDING_TERMS.referral,',
+    replace: "    'More fee-free months for every organiser you refer',",
+    expect: 'no longer renders the three months earned per referral',
+  },
+  {
+    name: 'the band types a month figure instead of rendering it',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/organisers/founding-offer.ts',
+    find: "  ctaLabel: 'Create your organiser account',",
+    replace: "  ctaLabel: 'Claim 6 months free',",
+    expect: 'types "6 months"',
+  },
+  {
+    name: 'the module types the month word instead of deriving it',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/payments/founding-waiver.ts',
+    find: 'export const FOUNDING_INITIAL_MONTHS_WORD = monthsInWords(FOUNDING_INITIAL_MONTHS)',
+    replace: "export const FOUNDING_INITIAL_MONTHS_WORD = 'six'",
+    expect: 'does not derive FOUNDING_INITIAL_MONTHS_WORD from FOUNDING_INITIAL_MONTHS',
   },
   {
     name: 'the fee is typed onto the organiser page instead of read',

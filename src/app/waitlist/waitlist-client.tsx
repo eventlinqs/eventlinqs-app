@@ -24,7 +24,18 @@ export interface WaitlistCityWithImage extends WaitlistCity {
  * city-opening email (wording shown beside it and stored verbatim), and the
  * marketing opt-in is a separate, unticked box.
  */
-export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) {
+export function WaitlistClient({
+  cities,
+  offer,
+}: {
+  cities: WaitlistCityWithImage[]
+  /**
+   * FOUNDING_TERMS from src/lib/payments/founding-waiver.ts, the one module
+   * that holds the organiser offer, passed in by the server page so the offer
+   * is said in its words without that module entering the client bundle.
+   */
+  offer: { initial: string; referral: string }
+}) {
   const [selected, setSelected] = useState<WaitlistCityWithImage>(cities[0])
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -151,7 +162,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-600">
                 {joined.foundingCandidate && joined.role === 'organiser'
-                  ? 'You are registered as an organiser. Every organiser on EventLinqs is fee-free for 6 months from the day they register, and earns 3 more months for every organiser they refer who runs an event. You can build and sell today.'
+                  ? `You are registered as an organiser. ${offer.initial} ${offer.referral} You can build and sell today.`
                   : joined.role === 'organiser'
                     ? `We will email you when there is something on near you in ${joined.cityName}. EventLinqs is open there today: you can build your event, get your launch kit and start selling right now.`
                     : `We will email you when there is something on near you in ${joined.cityName}. No noise, and one click unsubscribes you.`}
@@ -180,8 +191,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
               </h2>
               <p className="mt-2 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-xs leading-relaxed text-ink-900">
                 <span className="font-semibold">EventLinqs is open in {selected.name} today.</span>{' '}
-                Every organiser is fee-free for 6 months from the day they register, plus 3 more
-                months for every organiser they refer who runs an event.
+                {offer.initial} {offer.referral}
               </p>
 
               <div className="mt-5 space-y-4">

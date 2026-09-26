@@ -11,6 +11,7 @@ import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 import { WaitlistBridge } from './waitlist-bridge'
 import { FoundingTerms, type FoundingTermsRow } from './founding-terms'
 import {
+  FOUNDING_BADGE_NAME,
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_REFERRAL_MONTHS,
   isWaiverActive,
@@ -218,14 +219,14 @@ export default async function AdminNetworkPage({
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Demand signal</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          The tipping-point view: where demand is building, how many founding organisers have joined, and how the
+          The tipping-point view: where demand is building, how many organisers have joined through an invite, and how the
           Launch Kit is being used. All figures are live counts.
         </p>
       </header>
 
       {/* Founding programme */}
       <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Metric label="Founding organisers" value={String(signal.founding.spotsTaken)} accent />
+        <Metric label="Invited or granted by hand" value={String(signal.founding.spotsTaken)} accent />
         <Metric label="Invites issued" value={String(signal.founding.invitesIssued)} />
         <Metric label="Invites converted" value={String(signal.founding.invitesAccepted)} />
       </section>
@@ -306,11 +307,11 @@ export default async function AdminNetworkPage({
       {/* Waitlist-to-invite bridge */}
       <section>
         <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">
-          Invite founding organisers from the waitlist
+          Invite organisers from the waitlist
         </h2>
         <p className="mb-3 max-w-2xl text-sm text-white/60">
-          These are organiser waitlist sign-ups in the open cities who have not yet been invited. Inviting one mints
-          a founding invite and emails them the warm link. They consented to hear about founding invitations when
+          These are organiser waitlist sign-ups who have not yet been invited. Inviting one mints a referral link
+          from EventLinqs and emails it to them. They consented to hear about founding invitations when
           they joined, and every email carries the one-click leave link.
         </p>
         <WaitlistBridge rows={bridgeRows} />
@@ -322,7 +323,7 @@ export default async function AdminNetworkPage({
           Founding terms
         </h2>
         <p className="mb-3 max-w-2xl text-sm text-white/60">
-          Grant, extend or revoke a Founding Organiser fee-free window. The charge reads this field on every order,
+          Grant, extend or revoke the fee-free window of any organiser. The charge reads this field on every order,
           so a change here applies to the next order placed, with no deploy. Every change is written to the audit log
           with who made it and what it moved. The list shows every organisation holding a window first, then the
           newest accounts; search by name or handle to reach any other.
@@ -356,6 +357,7 @@ export default async function AdminNetworkPage({
           holders={holders}
           initialMonths={FOUNDING_INITIAL_MONTHS}
           referralMonths={FOUNDING_REFERRAL_MONTHS}
+          badgeName={FOUNDING_BADGE_NAME}
         />
       </section>
     </div>

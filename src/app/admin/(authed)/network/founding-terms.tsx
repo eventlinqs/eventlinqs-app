@@ -47,11 +47,19 @@ export function FoundingTerms({
   holders,
   initialMonths,
   referralMonths,
+  badgeName,
 }: {
   rows: FoundingTermsRow[]
   holders: number
   initialMonths: number
   referralMonths: number
+  /**
+   * FOUNDING_BADGE_NAME from the one module that holds the offer. Every
+   * organiser holds it (LAW 24 as ruled, 26 September 2026, point 5), so it
+   * heads every row; `is_founding` now only says whether a founding invite or a
+   * hand grant is on record for the organisation.
+   */
+  badgeName: string
 }) {
   // The row's DESCRIPTIVE LINE is tracked here as well as the date, because a
   // control that half-updates is a control the owner cannot trust. Found by
@@ -122,7 +130,7 @@ export function FoundingTerms({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{r.name}</p>
                     <p className="truncate text-xs text-white/50">
-                      {founding ? 'Founding Organiser' : 'Standard organiser'} · fee free until {formatUntil(until)} ·{' '}
+                      {badgeName}{founding ? ' · invite or hand grant on record' : ''} · fee free until {formatUntil(until)} ·{' '}
                       {r.referralsConfirmed} referral{r.referralsConfirmed === 1 ? '' : 's'} counted
                     </p>
                     {outcome?.message ? (

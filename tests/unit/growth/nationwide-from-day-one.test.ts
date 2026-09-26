@@ -85,7 +85,7 @@ describe('the offer is national and uncapped (LAW 24, 20 September 2026)', () =>
     const prose = `${FOUNDING_OFFER.body} ${FOUNDING_OFFER.note} ${FOUNDING_OFFER.points.join(' ')}`
     expect(prose).not.toMatch(/first 50/i)
     expect(prose).toMatch(/6 months/i)
-    expect(prose).toMatch(/3 more fee-free months|3 more months/i)
+    expect(prose).toMatch(/(3|three) more fee-free months/i)
   })
 })
 
