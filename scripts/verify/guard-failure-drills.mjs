@@ -9426,14 +9426,16 @@ const DRILLS = [
     name: 'the invites screen reads its list inline again, unbounded',
     guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
     file: 'src/app/(dashboard)/dashboard/invites/page.tsx',
-    find: '  const invites = org.is_founding',
+    // Anchored on the list read itself since LAW 24 as ruled (26 September
+    // 2026) removed the `org.is_founding ?` gate that used to precede it.
+    find: '  const invites = await readEveryRow<{',
     replace: [
       '  const { data: unbounded } = await admin',
       "    .from('founding_invites')",
       "    .select('code, city_slug, status, invitee_email, accepted_at, created_at')",
       "    .eq('inviter_org_id', org.id)",
       '  void unbounded',
-      '  const invites = org.is_founding',
+      '  const invites = await readEveryRow<{',
     ].join('\n'),
     expect: 'reads founding_invites with no bound',
   },

@@ -14,9 +14,11 @@ import {
 } from '@/lib/founding/invites'
 
 /**
- * A founding organiser generates a personal invite for a fellow organiser in
- * ANY Australian city. Only a founding organisation may issue invites, and
- * only up to its allowance. The invite is not tied to a specific email here
+ * An organiser generates a personal referral invite for a fellow organiser in
+ * ANY Australian city, up to its allowance. Every organiser may: LAW 24 as
+ * ruled (26 September 2026) makes every organiser a Founding Organiser, and
+ * the invite is the referral mechanism that earns them their extra months, so
+ * the old gate on `is_founding` (set only by an invitation) is gone. The invite is not tied to a specific email here
  * (the organiser shares the link personally); the founder's admin bridge is
  * the email-targeted path.
  *
@@ -32,7 +34,7 @@ export async function generateMyFoundingInvite(citySlug: string): Promise<{ code
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // The caller's ACTIVE business must be a FOUNDING organisation.
+  // The caller's ACTIVE business is the one that refers.
   //
   // This was `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
   // `data: null` when the caller owns more than one, so an owner of several was
@@ -55,14 +57,11 @@ export async function generateMyFoundingInvite(citySlug: string): Promise<{ code
   const org = await readOrThrow('founding-invite-issuer', () =>
     createAdminClient()
       .from('organisations')
-      .select('id, name, is_founding')
+      .select('id, name')
       .eq('id', scope.active.id)
       .maybeSingle(),
   )
   if (!org) return { error: 'Organisation not found.' }
-  if (!org.is_founding) {
-    return { error: 'Founding invites are available to Founding Organisers. Yours is not one yet.' }
-  }
 
   // Enforce the per-organiser allowance against real issued rows.
   //

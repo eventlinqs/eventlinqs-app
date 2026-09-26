@@ -1,4 +1,4 @@
-import { isWaiverActive } from '@/lib/payments/founding-waiver'
+import { FOUNDING_TERMS, isWaiverActive } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -9,7 +9,6 @@ import { isFlagEnabled } from '@/lib/flags'
 import { getRequestOrigin } from '@/lib/site-origin'
 import {
   INVITES_PER_FOUNDING_ORGANISER,
-  REFERRAL_BONUS_MONTHS,
   getFoundingReferralSummary,
 } from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
@@ -21,7 +20,7 @@ import { InvitesClient } from './invites-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Founding invites | EventLinqs',
+  title: 'Referral invites | EventLinqs',
   robots: { index: false, follow: false },
 }
 
@@ -30,8 +29,9 @@ export const metadata = {
  * organisers anywhere in Australia, and watch conversions turn into fee-free
  * months. There are no "open cities": the platform is open nationwide from day
  * one (founder ruling 2026-08-23), so the picker offers every city.
- * Non-founding organisers see the page but are told the programme is
- * invite-only, never a broken control.
+ * Every organiser gets the whole surface: LAW 24 as ruled (26 September 2026)
+ * makes every organiser a Founding Organiser, so there is no second, lesser
+ * version of this page for an organiser who registered without an invitation.
  */
 export default async function InvitesPage({
   searchParams,
@@ -65,7 +65,7 @@ export default async function InvitesPage({
     ? await readOrThrow('founding-invites-organisation', () =>
         createAdminClient()
           .from('organisations')
-          .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
+          .select('id, name, founding_fee_free_until')
           .eq('id', scope.active.id)
           .maybeSingle(),
       )
@@ -74,7 +74,7 @@ export default async function InvitesPage({
   if (!org) {
     return (
       <div className="mx-auto max-w-2xl py-10 text-center">
-        <h1 className="font-display text-2xl font-bold text-ink-900">Founding invites</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-900">Referral invites</h1>
         <p className="mt-3 text-sm text-ink-600">Create your organisation first to take part.</p>
         <Link href="/dashboard/organisation/create" className="mt-5 inline-block rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900">
           Set up your organisation
@@ -96,8 +96,7 @@ export default async function InvitesPage({
   // ORDERED ON created_at AND THEN id, because created_at is not unique and
   // paging over a partial order can hand back one row in two windows and no
   // window at all for another.
-  const invites = org.is_founding
-    ? await readEveryRow<{
+  const invites = await readEveryRow<{
         code: string
         city_slug: string
         status: string
@@ -113,7 +112,6 @@ export default async function InvitesPage({
           .order('id', { ascending: false })
           .range(from, to),
       )
-    : []
 
   const rows = (invites ?? []).map(i => ({
     code: i.code,
@@ -130,9 +128,7 @@ export default async function InvitesPage({
   // more: the three months arrive when the referred organiser's first paid
   // ticket sells, so the screen has to separate the two or it promises time the
   // charge has not granted.
-  const referrals = org.is_founding
-    ? await getFoundingReferralSummary(org.id)
-    : { confirmed: 0, pending: 0 }
+  const referrals = await getFoundingReferralSummary(org.id)
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -146,39 +142,25 @@ export default async function InvitesPage({
 
       <div className="mb-6">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-          The founding programme
+          Referrals
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
-          Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months once they sell
-          their first paid ticket, and gives them their own founding spot.
+          {FOUNDING_TERMS.referral}
         </p>
       </div>
 
-      {org.is_founding ? (
-        <InvitesClient
-          initialInvites={rows}
-          allowance={INVITES_PER_FOUNDING_ORGANISER}
-          feeFreeUntil={org.founding_fee_free_until ?? null}
-          waiverActive={isWaiverActive(org.founding_fee_free_until)}
-          acceptedCount={acceptedCount}
-          referralsConfirmed={referrals.confirmed}
-          referralsPending={referrals.pending}
-          cities={getAllCities().map(c => ({ slug: c.slug, name: c.name, state: c.state }))}
-        />
-      ) : (
-        <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold text-ink-900">The founding programme is invite-only.</p>
-          <p className="mt-2 text-sm leading-relaxed text-ink-600">
-            Founding Organisers are invited personally. If you were invited, sign up through your invitation
-            link and your founding spot is applied automatically. Your six fee-free months already run from the
-            day you registered, and you can build events and get your launch kit today.
-          </p>
-          <Link href="/dashboard/events/create" className="mt-4 inline-block rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900">
-            Build an event
-          </Link>
-        </div>
-      )}
+      <InvitesClient
+        initialInvites={rows}
+        allowance={INVITES_PER_FOUNDING_ORGANISER}
+        feeFreeUntil={org.founding_fee_free_until ?? null}
+        waiverActive={isWaiverActive(org.founding_fee_free_until)}
+        offerInitial={FOUNDING_TERMS.initial}
+        acceptedCount={acceptedCount}
+        referralsConfirmed={referrals.confirmed}
+        referralsPending={referrals.pending}
+        cities={getAllCities().map(c => ({ slug: c.slug, name: c.name, state: c.state }))}
+      />
     </div>
   )
 }

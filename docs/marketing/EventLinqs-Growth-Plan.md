@@ -100,8 +100,10 @@ pointed where it can actually hit density and flip the network.
 - The "influencers" worth your time are NOT Instagram personalities: they are local event
   organisers, promoters, community leaders, and DJs who already own an audience. Signing
   one is supply AND demand in a single move. Lawal's DJ background is a real asset here.
-- SEEDING SUBSIDY: offer early organisers a fee holiday or reduced take-rate, then raise it
-  once you have liquidity. Straight from the marketplace playbook.
+- SEEDING SUBSIDY: settled by LAW 24 as ruled (26 September 2026). Every organiser, not
+  only early ones, gets six months with no platform fee from their own registration, with
+  no cap and no invitation, plus three more months for each organiser they refer who sells
+  a ticket. When the free months end, the standard fee applies.
 - Founders who write publicly about their supply-side problem recruit supply 3 to 5x
   faster (relevant to the separate YouTube track, kept in its own chat).
 
