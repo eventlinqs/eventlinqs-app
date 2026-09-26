@@ -4735,13 +4735,124 @@ const DRILLS = [
     replace: 'founding_add_months(COALESCE(NEW.created_at, now()), 3)',
     expect: 'stamps 3 months at registration',
   },
+  /*
+   * LAW 24 as ruled (26 September 2026): the band RENDERS the offer from
+   * src/lib/payments/founding-waiver.ts, so the drill that used to delete a
+   * typed sentence now deletes the rendered one, and two more drills cover the
+   * ways a second copy of a number creeps back: a figure typed onto the band,
+   * and a month word typed into the module instead of derived.
+   */
   {
     name: 'a published claim is deleted from the offer instead of corrected',
     guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
     file: 'src/lib/organisers/founding-offer.ts',
-    find: "    '3 more fee-free months for every organiser you refer who runs an event',",
-    replace: "    'More fee-free months for every organiser you refer who runs an event',",
-    expect: 'no longer states',
+    find: '    FOUNDING_TERMS.referral,',
+    replace: "    'More fee-free months for every organiser you refer',",
+    expect: 'no longer renders the three months earned per referral',
+  },
+  /*
+   * offer-is-one-rule (LAW 24 as ruled, 26 September 2026). Each drill is one
+   * way the offer comes to be said twice, or said wrong: a cap on the band, a
+   * typed figure on a rendered surface, a draft with another number, the two
+   * cities as a limit, invite-only on the waitlist, a countdown in a draft, the
+   * pricing authority drifting, a registered record gaining a sentence, the two
+   * offer guards reading different modules, and the module losing the badge.
+   */
+  {
+    name: 'offer rule: the offer band promises the first fifty again',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'src/lib/organisers/founding-offer.ts',
+    find: "  ctaLabel: 'Create your organiser account',",
+    replace: "  ctaLabel: 'Join the first 50 founding organisers',",
+    expect: '[first-50]',
+  },
+  {
+    name: 'offer rule: a month figure is typed onto the referral landing instead of rendered',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'src/app/join/[code]/page.tsx',
+    find: '                <li>{FOUNDING_TERMS.referral}</li>',
+    replace: '                <li>3 more fee-free months for every organiser you refer</li>',
+    expect: '[typed-month-claim]',
+  },
+  {
+    name: 'offer rule: the waitlist calls the programme invite-only again',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'src/app/waitlist/page.tsx',
+    find: 'Organising something? {FOUNDING_TERMS.initial}',
+    replace: 'Organising something? The invite-only Founding Organiser programme: {FOUNDING_TERMS.initial}',
+    expect: '[invite-only]',
+  },
+  {
+    name: 'offer rule: a marketing draft states a different number of free months',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'docs/marketing/eventlinqs-organiser-landing-page-copy.md',
+    find: '**Offer line (directly under the table):** Every organiser pays zero platform fees for 6 months',
+    replace: '**Offer line (directly under the table):** Every organiser pays zero platform fees for 12 months',
+    expect: '[initial-months-disagree]',
+  },
+  {
+    name: 'offer rule: a draft limits the platform to Geelong and Melbourne again',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'docs/marketing/EventLinqs-Growth-Plan.md',
+    find: 'RECRUITMENT and SEEDING effort goes to one wedge',
+    replace: 'We are launching in Geelong and Melbourne only. RECRUITMENT and SEEDING effort goes to one wedge',
+    expect: '[geelong-and-melbourne]',
+  },
+  {
+    name: 'offer rule: a spots countdown returns to the content pack',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'docs/marketing/eventlinqs-day-one-content-pack (1).md',
+    find: 'RULE FOR POST 9: never a countdown',
+    replace: 'Tile text: [XX] founding spots left. RULE FOR POST 9: never a countdown',
+    expect: '[spots-left]',
+  },
+  {
+    name: 'offer rule: the pricing authority states a different initial grant',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'docs/PRICING.md',
+    find: '| Initial grant | 6 months from',
+    replace: '| Initial grant | 12 months from',
+    expect: 'states an initial grant of 12 months',
+  },
+  {
+    name: 'offer rule: a registered record gains a second sentence',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'docs/legal/LEGAL-REVIEW-SUMMARY.md',
+    find: '   Re-issue this item to the reviewer on the current terms.',
+    replace: '   Re-issue this item to the reviewer on the current terms. The first 50 organisers keep their terms.',
+    expect: 'at exactly 1, and it now carries 2',
+  },
+  {
+    name: 'offer rule: the two offer guards stop reading the same module',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'scripts/guards/founding-offer-matches-configuration.mjs',
+    find: "const WAIVER = 'src/lib/payments/founding-waiver.ts'",
+    replace: "const WAIVER = 'src/lib/payments/founding-terms.ts'",
+    expect: 'The two must hold the offer to the same file',
+  },
+  {
+    name: 'offer rule: the module stops defining the badge name',
+    guard: `${GUARDS}/offer-is-one-rule.mjs`,
+    file: 'src/lib/payments/founding-waiver.ts',
+    find: "export const FOUNDING_BADGE_NAME = 'Founding Organiser'",
+    replace: "export const FOUNDING_BADGE_TITLE = 'Founding Organiser'",
+    expect: 'no longer defines badge',
+  },
+  {
+    name: 'the band types a month figure instead of rendering it',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/organisers/founding-offer.ts',
+    find: "  ctaLabel: 'Create your organiser account',",
+    replace: "  ctaLabel: 'Claim 6 months free',",
+    expect: 'types "6 months"',
+  },
+  {
+    name: 'the module types the month word instead of deriving it',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/payments/founding-waiver.ts',
+    find: 'export const FOUNDING_INITIAL_MONTHS_WORD = monthsInWords(FOUNDING_INITIAL_MONTHS)',
+    replace: "export const FOUNDING_INITIAL_MONTHS_WORD = 'six'",
+    expect: 'does not derive FOUNDING_INITIAL_MONTHS_WORD from FOUNDING_INITIAL_MONTHS',
   },
   {
     name: 'the fee is typed onto the organiser page instead of read',
@@ -9403,14 +9514,16 @@ const DRILLS = [
     name: 'the invites screen reads its list inline again, unbounded',
     guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
     file: 'src/app/(dashboard)/dashboard/invites/page.tsx',
-    find: '  const invites = org.is_founding',
+    // Anchored on the list read itself since LAW 24 as ruled (26 September
+    // 2026) removed the `org.is_founding ?` gate that used to precede it.
+    find: '  const invites = await readEveryRow<{',
     replace: [
       '  const { data: unbounded } = await admin',
       "    .from('founding_invites')",
       "    .select('code, city_slug, status, invitee_email, accepted_at, created_at')",
       "    .eq('inviter_org_id', org.id)",
       '  void unbounded',
-      '  const invites = org.is_founding',
+      '  const invites = await readEveryRow<{',
     ].join('\n'),
     expect: 'reads founding_invites with no bound',
   },

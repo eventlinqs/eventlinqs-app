@@ -20,7 +20,25 @@
  * organisers anywhere in the country", invited personally. There is no cap and
  * nothing to be invited to: every organiser in Australia holds the six months
  * from the day they register, and the CTA goes straight to signup.
+ *
+ * LAW 24 AS RULED (26 September 2026): every number, the badge name and the
+ * national scope below are RENDERED from src/lib/payments/founding-waiver.ts,
+ * the one module that holds the offer. Two points were removed that day
+ * because they cannot be true for every organiser in the country with no cap:
+ * "Hands-on onboarding: your first event set up with you, end to end" and "A
+ * direct line to the founder, not a ticket queue". Whether to restore either,
+ * in a form that holds at scale, is the founder's decision.
  */
+import {
+  FOUNDING_BADGE_NAME,
+  FOUNDING_INITIAL_MONTHS,
+  FOUNDING_INITIAL_MONTHS_WORD,
+  FOUNDING_OFFER_SCOPE,
+  FOUNDING_TERMS,
+} from '@/lib/payments/founding-waiver'
+
+const SIX = FOUNDING_INITIAL_MONTHS_WORD.charAt(0).toUpperCase() + FOUNDING_INITIAL_MONTHS_WORD.slice(1)
+
 export interface FoundingOffer {
   enabled: boolean
   eyebrow: string
@@ -52,19 +70,18 @@ export interface FoundingOffer {
 
 export const FOUNDING_OFFER: FoundingOffer = {
   enabled: true,
-  eyebrow: 'Six months free · every organiser',
-  title: 'Your first six months are on us.',
-  body: 'EventLinqs is open right across Australia today, in every city and every state. Every organiser who registers pays nothing to the platform for their first six months, counted from the day they sign up. No cap, no invitation needed: after six months the standard fee applies.',
+  eyebrow: `${SIX} months free · every organiser`,
+  title: `Your first ${FOUNDING_INITIAL_MONTHS_WORD} months are on us.`,
+  body: `${FOUNDING_TERMS.scope} ${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.after}`,
   points: [
-    '6 months completely fee-free on every paid ticket, applied to your account through the same pricing engine that runs checkout',
-    '3 more fee-free months for every organiser you refer who runs an event',
-    'Hands-on onboarding: your first event set up with you, end to end',
-    'A direct line to the founder, not a ticket queue',
+    `${FOUNDING_INITIAL_MONTHS} months completely fee-free on every paid ticket, applied to your account through the same pricing engine that runs checkout`,
+    FOUNDING_TERMS.referral,
+    `${FOUNDING_TERMS.badge} The name and the badge are yours from the day you register.`,
   ],
   ctaLabel: 'Create your organiser account',
   ctaHref: '/organisers/signup',
   founderCtaLabel: 'Set up my event with Lawal',
   founderCtaNote: 'I set up the first events myself, on a 20 minute call. Lawal Adams, founder.',
-  founderCtaSubject: 'Founding Organiser',
-  note: 'Start free today: you can build, publish and sell straight away, wherever in Australia you are. Your six months begin the day you register and are applied to your account before your first on-sale.',
+  founderCtaSubject: FOUNDING_BADGE_NAME,
+  note: `Start free today: you can build, publish and sell straight away, wherever in ${FOUNDING_OFFER_SCOPE} you are. Your ${FOUNDING_INITIAL_MONTHS_WORD} months begin the day you register and are applied to your account before your first on-sale.`,
 }

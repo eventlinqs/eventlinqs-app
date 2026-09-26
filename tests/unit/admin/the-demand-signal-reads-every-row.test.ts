@@ -229,7 +229,7 @@ describe('getFoundingCounts: the number the founder acts on', () => {
 
   test('THE WORST ONE: a failed count no longer reports every founding spot as free', async () => {
     database({ counts: allCounts(), failOn: 'organisations' })
-    await expect(getFoundingCounts()).rejects.toThrow(/founding spots taken could not be read/)
+    await expect(getFoundingCounts()).rejects.toThrow(/organisations that joined through a founding invite could not be read/)
   })
 
   test('a failed invites count raises rather than reporting no invites ever issued', async () => {

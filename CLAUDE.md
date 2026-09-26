@@ -675,6 +675,21 @@ gates, Migrations.
 
 [[OPS RULES 25SEP END]]
 
+[[LAW 24 RULED 26SEP START]]
+
+## LAW 24 as ruled, 26 September 2026 (founder ruling)
+1. Every organiser gets six months with no platform fee, counted from the date they register on EventLinqs. No cap, no limit on places, no invitation needed.
+2. It applies to every organiser, including those who registered before 20 September 2026, each from their own registration date.
+3. Referral months stay exactly as built: three fee free months for each organiser they refer who sells a ticket, on top of the six months.
+4. When the free months end, the standard fee applies.
+5. "Founding Organiser" stays as the name and badge, and every organiser receives it. It is never described as invite only, by invitation, limited, first come, or for a number of places.
+6. EventLinqs is national. No surface limits the offer or the platform to Geelong and Melbourne.
+7. The outreach drafts in docs/marketing are rewritten to this ruling now, so nothing in the repository says otherwise.
+
+The offer lives in one module. A change to it is made there and nowhere else, and the guard offer-is-one-rule fails the build anywhere it is restated or contradicted.
+
+[[LAW 24 RULED 26SEP END]]
+
 ## Scene layer (locked, national) - V2, research-backed
 
 Scenes are the EventLinqs differentiator layered on top of the general

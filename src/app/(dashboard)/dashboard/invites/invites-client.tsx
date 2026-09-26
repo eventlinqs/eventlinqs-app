@@ -17,6 +17,7 @@ export function InvitesClient({
   referralsPending,
   feeFreeUntil,
   waiverActive,
+  offerInitial,
   cities,
 }: {
   initialInvites: InviteRow[]
@@ -41,6 +42,12 @@ export function InvitesClient({
   feeFreeUntil: string | null
   /** Computed server-side with isWaiverActive(), the charge authority helper. */
   waiverActive: boolean
+  /**
+   * FOUNDING_TERMS.initial from src/lib/payments/founding-waiver.ts, passed in
+   * so the offer is said in the module's words without that server module
+   * entering the client bundle.
+   */
+  offerInitial: string
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
   const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
@@ -67,7 +74,7 @@ export function InvitesClient({
     ? 'Your fee is zero until then. There is no second fee, so your buyers pay the ticket price and nothing else'
     : waiverUntil
       ? 'Ended ' + waiverDate + '. Standard platform fee applies'
-      : 'Claim a founding spot to start your six months'
+      : offerInitial
 
   const generate = () => {
     setError(null)

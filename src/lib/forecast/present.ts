@@ -1,5 +1,6 @@
 import { formatMoneyDisplay } from '@/lib/money/format'
 import type { BreakEven, ForecastResult, ScenarioResult } from './arithmetic'
+import { FOUNDING_INITIAL_MONTHS_WORD, FOUNDING_TERMS } from '@/lib/payments/founding-waiver'
 
 /**
  * TURNING THE ARITHMETIC INTO WORDS, IN ONE PLACE.
@@ -101,8 +102,10 @@ export function feeSentence(percent: number, fixedCents: number, currency: strin
  * whole charge to zero, so the sentence says what the figures beside it already
  * show rather than restating a number.
  */
-export const FOUNDING_SENTENCE =
-  'The second figure is what you pay in your first six months. Every organiser is fee-free for six months from the day they register, with no cap on places, and the standard fee applies after that.'
+export const FOUNDING_SENTENCE = `The second figure is what you pay in your first ${FOUNDING_INITIAL_MONTHS_WORD} months. ${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.after}`
+
+/** The label beside that second figure, from the same module. */
+export const FOUNDING_FIGURE_LABEL = `In your first ${FOUNDING_INITIAL_MONTHS_WORD} months`
 
 /** The consent wording an address is taken under, and stored beside it. */
 export const EMAIL_CONSENT_TEXT =

@@ -92,6 +92,17 @@ software do not currently agree, so a lawyer's answer alone will not close them.
    applied as a per-organiser override, and that needs to be set up and audited
    before the first Founding Organiser sells a ticket.
 
+   **SUPERSEDED 26 September 2026 (LAW 24 as ruled).** The terms described in
+   this item are no longer the offer, and the item is kept as written because it
+   records what was drafted for review. The offer now is: every organiser gets six
+   months with no platform fee from their own registration date, including those
+   who registered before 20 September 2026, with no cap, no limit on places and
+   no invitation needed; three more fee-free months for each organiser they refer
+   who sells a ticket; the standard fee after that; the Founding Organiser name
+   and badge for every organiser; national. There is no processing fee. The
+   waiver is applied by the charge engine (src/lib/payments/founding-waiver.ts).
+   Re-issue this item to the reviewer on the current terms.
+
 6. **Entity and personal liability.** Everything is contracted through a sole
    trader, "Lawal Adams trading as EventLinqs, ABN 30 837 447 587". The
    indemnities, the funds-holding, and the consumer-facing refund guarantee all

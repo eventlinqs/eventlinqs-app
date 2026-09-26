@@ -1,6 +1,7 @@
 import { getSiteUrl } from '@/lib/site-url'
 import type { WaitlistRole } from './city-waitlist'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { FOUNDING_TERMS } from '@/lib/payments/founding-waiver'
 
 /**
  * The local-alerts confirmation email.
@@ -41,7 +42,7 @@ export function buildWaitlistConfirmationEmail(input: {
 
   const foundingLine =
     foundingCandidate && role === 'organiser'
-      ? `You are registered as an organiser. Every organiser on EventLinqs is fee-free for 6 months from the day they register, plus 3 more months for every organiser they refer who runs an event. You can build and sell today.`
+      ? `You are registered as an organiser. ${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.referral} You can build and sell today.`
       : role === 'organiser'
         ? `You registered as an organiser, so you are first in line for onboarding. EventLinqs is open in ${cityName} today: you can build your event, map your room, get your complete promo kit and start selling right now, free.`
         : `We will email you when there is something on near you in ${cityName}. No noise.`

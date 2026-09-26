@@ -84,9 +84,10 @@ programmatic SEO across scene-city pages, not before.
 
 ## THE LAUNCH SHAPE: nationally available, locally dense
 
-Launch the platform nationally (anyone in Australia can use it), but concentrate
-RECRUITMENT and SEEDING effort on one wedge where Lawal has real reach: Geelong and
-Melbourne music and community scenes (DJ ties, local relationships). Depth before breadth
+The platform is national from day one: anyone in Australia can use it, and the offer
+is the same everywhere. RECRUITMENT and SEEDING effort goes to one wedge where Lawal has
+real reach: the Geelong and Melbourne music and community scenes (DJ ties, local
+relationships). Depth before breadth
 is the single most repeated lesson in the research. National launch decision kept; effort
 pointed where it can actually hit density and flip the network.
 
@@ -100,8 +101,10 @@ pointed where it can actually hit density and flip the network.
 - The "influencers" worth your time are NOT Instagram personalities: they are local event
   organisers, promoters, community leaders, and DJs who already own an audience. Signing
   one is supply AND demand in a single move. Lawal's DJ background is a real asset here.
-- SEEDING SUBSIDY: offer early organisers a fee holiday or reduced take-rate, then raise it
-  once you have liquidity. Straight from the marketplace playbook.
+- SEEDING SUBSIDY: settled by LAW 24 as ruled (26 September 2026). Every organiser, not
+  only early ones, gets six months with no platform fee from their own registration, with
+  no cap and no invitation, plus three more months for each organiser they refer who sells
+  a ticket. When the free months end, the standard fee applies.
 - Founders who write publicly about their supply-side problem recruit supply 3 to 5x
   faster (relevant to the separate YouTube track, kept in its own chat).
 

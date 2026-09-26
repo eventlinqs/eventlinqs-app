@@ -1,5 +1,5 @@
 # EventLinqs: For Organisers Landing Page Copy
-## Conversion copy for the redesigned organiser page. Version 1.0, 4 July 2026.
+## Conversion copy for the redesigned organiser page. Version 1.0, 4 July 2026. Offer rewritten to LAW 24 as ruled, 26 September 2026.
 ## Australian English. No em-dashes or en-dashes. "Community" always.
 
 ---
@@ -49,7 +49,7 @@ Option B (local-led): "Sell out your next event, right here in your city." Use f
 
 **Comparison prompt (under the table):** Pull up what your current platform charges on a $20 ticket, and what it holds back from you. Then compare. We publish our numbers because we are happy for you to.
 
-**Founding organiser line (directly under the table):** Founding organisers pay zero fees for 6 months, and zero means zero: your $20 ticket costs your attendees exactly $20.00.
+**Offer line (directly under the table):** Every organiser pays zero platform fees for 6 months from the day they register, and zero means zero: your $20 ticket costs your attendees exactly $20.00.
 
 **Secondary example line (small text under the table):** On a $30 ticket: $2.04 all-in, buyer pays $32.04, you keep the full $30. Fees correct as at [date].
 
@@ -71,30 +71,27 @@ Option B (local-led): "Sell out your next event, right here in your city." Use f
 
 ---
 
-## 3. FOUNDING ORGANISER PROGRAM (the conversion engine)
+## 3. FOUNDING ORGANISER OFFER (the conversion engine)
 
-**Section heading:** The first 50 organisers get the best deal we will ever offer.
+**Section heading:** Your first six months are on us.
 
 **Body copy:**
-We are launching in Geelong and Melbourne first, and we are doing it with 50 founding organisers who get in before everyone else.
+EventLinqs is national, open to every organiser in Australia today, in every city and every state.
 
-Here is the deal, plainly: you get 6 months with zero platform fees, and in return we get your honest feedback. One short chat after your first event, a quick survey each quarter, and an open line for the features and ideas you want. You are not just early, you are helping build the platform around organisers like you.
+Here is the deal, plainly: every organiser gets 6 months with no platform fee, counted from the date they register on EventLinqs. No cap, no limit on places, no invitation needed. When the free months end, the standard fee applies. We ask for your honest feedback in return: one short chat after your first event, a quick survey each quarter, and an open line for the features and ideas you want.
 
-As a founding organiser you get:
+Every organiser gets:
 
 - **Zero fees for 6 months, and zero means zero.** There is no second fee left to charge, so on a $20 ticket your attendees pay exactly $20.00 instead of $21.69.
-- **Extend it by referring.** Every organiser you successfully refer adds 3 months to your zero-fee period.
-- **Free migration.** Send us your event details and attendee list, and we will have your events live within a day. You approve everything before it goes public.
-- **A direct line to the founder.** Not a ticket queue. A real person who will fix your problem today.
-- **The Founding Organiser badge** on every event you run, permanently.
-- **Your feedback, built.** Founding organisers shape the roadmap. When we ship something you asked for, you will know it came from you.
+- **3 more fee-free months for each organiser you refer who sells a ticket,** on top of the 6 months.
+- **The Founding Organiser badge** on every event you run. Every organiser receives it, from the day they register.
+- **Your feedback, built.** When we ship something you asked for, you will know it came from you.
 
 (COPY RULE: the feedback exchange is always framed as light and specific, one chat, one quarterly survey, an open line. It is never presented as a condition that can revoke the zero-fee period, and the free period is never revoked for non-participation.)
 
-**Scarcity line:** [XX] of 50 spots remaining.
-(PRODUCTION NOTE: this number must be real and must update. A fake countdown is the fastest way to lose this market's trust.)
+(REMOVED 26 September 2026, founder decision pending: "Free migration" done for you and "A direct line to the founder". Both were promises to a small group and cannot be true for every organiser in the country. Restore either only in a form that holds at any scale.)
 
-**CTA:** Claim a founding spot
+**CTA:** Create your organiser account
 
 ---
 
@@ -118,7 +115,7 @@ As a founding organiser you get:
 **Section heading:** A platform where your neighbours are actually looking.
 
 **Body copy:**
-Most ticketing platforms are a national firehose. Your event sits on page nine behind everything happening everywhere. EventLinqs is different by design: we are building city by city, starting with Geelong and Melbourne, so the people browsing the platform are your actual local audience.
+Most ticketing platforms are a national firehose. Your event sits on page nine behind everything happening everywhere. EventLinqs is national and built local by design: discovery is organised by city and suburb, so the people browsing your city are your actual local audience, wherever in Australia you are.
 
 Every event you list makes the platform better for every local looking for something to do, and every local browsing makes the platform better for you. That is the point. Local events, local community, local sellouts.
 
@@ -147,7 +144,7 @@ Every event you list makes the platform better for every local looking for somet
 - Payments are processed by Stripe, PCI-DSS compliant and used by millions of businesses worldwide. EventLinqs never stores card details.
 - Payouts go directly to your nominated account in [X days].
 - Attendee data belongs to you. Export your list any time. We never sell it, and we never email your attendees without consent.
-- Australian-based support, with founding organisers getting a direct line to the founder.
+- Australian-based support.
 
 ---
 
@@ -159,7 +156,7 @@ Every event you list makes the platform better for every local looking for somet
 
 **Heading:** A note from the founder.
 
-I'm Lawal. I built EventLinqs in Melbourne because local organisers deserve a platform that takes less of their money and gives more back to their community. For our first 50 organisers, I am personally handling migration and support. If something is not right, you message me and I fix it. That is the deal.
+I'm Lawal. I built EventLinqs in Melbourne because local organisers deserve a platform that takes less of their money and gives more back to their community. I set up the first events myself, on a 20 minute call. If something is not right, you message me and I fix it.
 
 **CTA:** Talk to me directly
 
@@ -171,16 +168,16 @@ I'm Lawal. I built EventLinqs in Melbourne because local organisers deserve a pl
 No. Run one event with us and see how it goes. Most organisers move the rest after their first payout.
 
 **What does it cost?**
-One fee, with card processing already inside it, shown up front. On a $20 ticket that is $1.69 all-in, and you keep the full $20. There is no separate processing charge and no second fee anywhere. Free events are always free, no fee at all. Founding organisers pay zero fees for 6 months, extendable by 3 months per successful organiser referral.
+One fee, with card processing already inside it, shown up front. On a $20 ticket that is $1.69 all-in, and you keep the full $20. There is no separate processing charge and no second fee anywhere. Free events are always free, no fee at all. Every organiser pays zero platform fees for 6 months from the day they register, plus 3 more fee-free months for each organiser they refer who sells a ticket. After that, the standard fee applies.
 
 **When do I get paid?**
 [X days] after [purchase / your event]. Payouts go straight to your nominated bank account via Stripe.
 
 **Can you migrate my events from Eventbrite or Humanitix?**
-Yes. Founding organisers get migration done for them, free. Send us your event details and attendee list and we will have everything live within a day for your approval.
+[FOUNDER DECISION, 26 September 2026: migration was promised free to a capped group. With no cap, decide whether migration help is offered to every organiser before this answer is published.]
 
 **What if I need help?**
-Founding organisers have a direct line to the founder. Everyone gets Australian-based support that actually responds.
+Everyone gets Australian-based support that actually responds.
 
 **Is my attendee data mine?**
 Yes. Export it any time. We never sell it and never contact your attendees without consent.
@@ -191,9 +188,9 @@ Yes. Export it any time. We never sell it and never contact your attendees witho
 
 **Headline:** Your next event, more of the money, all of the community.
 
-**Subline:** [XX] founding organiser spots remain in Geelong and Melbourne.
+**Subline:** Six months with no platform fee, for every organiser in Australia, from the day you register.
 
-**Primary CTA:** Claim a founding spot
+**Primary CTA:** Create your organiser account
 **Secondary CTA:** Create a free event first
 
 ---
@@ -201,7 +198,7 @@ Yes. Export it any time. We never sell it and never contact your attendees witho
 ## 11. SEO AND META (for the production team)
 
 - **Title tag:** Sell Tickets Online in Australia | Low Fee Ticketing for Event Organisers | EventLinqs
-- **Meta description:** EventLinqs is the Australian platform where local events get made. Lower fees, fast payouts, free events always free. Launching in Geelong and Melbourne. Claim a founding organiser spot.
+- **Meta description:** EventLinqs is the Australian platform where local events get made. Lower fees, fast payouts, free events always free. Six months with no platform fee for every organiser in Australia.
 - Target terms to weave naturally (already present in the copy): sell tickets online Australia, event platform Australia, Eventbrite alternative Australia, low fee ticketing, sell tickets Geelong, sell tickets Melbourne.
 - One H1 only (the hero headline). Section headings as H2s.
 
@@ -220,6 +217,6 @@ Yes. Export it any time. We never sell it and never contact your attendees witho
 **Claims law, locked 8 July 2026 (build side, binding on every asset):** BETTER claims are made only on creation speed, seating, share-attribution, and check-in integrity, all benchmark-proven. Everything else is claimed as EQUAL at most. No competitor is ever named publicly (naming a prospect's own current platform in private one-to-one outreach is acceptable). Never claim: recurring events, wallet passes, organiser email campaigns, offline check-in, or cheapest all-in pricing. The gig board and performer directory are built but OFF: they are never marketed until the post-launch "performers, bring your numbers" moment. The Event Launch Kit hook is verbatim and unedited: "Build your event, map your room, get your complete promo kit, in minutes. Free."
 
 <!-- ONE-FEE-ALLOW: records what the waiver used to leave behind. -->
-**Founding Organiser offer, locked 4 July 2026, amended 5 July 2026 and 15 August 2026:** zero fees for 6 months, and with the second fee deleted that is now literally zero to the buyer rather than the ticket price plus a processing line, extendable by 3 months per successful organiser referral, capped at the first 50 organisers in Geelong and Melbourne, offered in exchange for the organiser's honest feedback (one short chat after their first event, a brief quarterly survey, and an open line for feature and growth ideas). The feedback ask is light and specific, and the zero-fee period is never revoked for non-participation. Every mention of the offer, in this document and in every template, uses this term and no other.
+**Founding Organiser offer, LAW 24 as ruled, 26 September 2026 (replaces the terms locked 4 July 2026 and amended 5 July and 15 August 2026):** every organiser gets 6 months with no platform fee, counted from the date they register on EventLinqs, including those who registered before 20 September 2026, each from their own registration date. No cap, no limit on places, no invitation needed. 3 more fee-free months for each organiser they refer who sells a ticket, on top of the 6 months. When the free months end, the standard fee applies. With the second fee deleted, zero is literally zero to the buyer. Every organiser receives the Founding Organiser name and badge, and EventLinqs is national. We ask for the organiser's honest feedback (one short chat after their first event, a brief quarterly survey, and an open line for feature and growth ideas). The feedback ask is light and specific, and the zero-fee period is never revoked for non-participation. Every mention of the offer, in this document and in every template, uses this term and no other.
 
 **Pricing anchor rule, locked 5 July 2026, figures RE-DERIVED 15 August 2026:** all fee examples anchor on a $20 ticket as the primary example, $30 as the secondary where a second helps. Exact figures come only from the derived block in docs/PRICING.md section 3, used exactly as given with no rounding into different numbers. STATUS: there is now ONE fee and the second fee is deleted, so every canonical row below changed. Canonical rows: $20 ticket = $1.69 all-in, buyer pays $21.69, organiser keeps $20.00; $30 ticket = $2.04 all-in, buyer pays $32.04, organiser keeps $30.00; founding period $20 ticket = $20.00 to the buyer, because the waiver now takes the whole fee to zero. Binding caveats: single-ticket, pass-on mode figures only, never extrapolated to multi-ticket orders; "keep full face value" claims apply to pass-on mode only; never imply a separate GST line and never name a processing fee; confirm production pricing rules match the lock block before anything publishes.

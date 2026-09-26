@@ -2,10 +2,11 @@
  * The Founding Organiser fee waiver: ONE definition, applied everywhere a fee
  * is computed.
  *
- * THE TERMS (LAW 24, founder ruling of 20 September 2026): "Every new
- * organiser gets six months free, counted from the date they register or set
- * up on EventLinqs. Not a cap of 50. Every organiser. After six months the
- * standard fee applies."
+ * THE TERMS are LAW 24 as ruled on 26 September 2026, written out in full
+ * beside FOUNDING_BADGE_NAME below. The first ruling (20 September 2026) read:
+ * "Every new organiser gets six months free, counted from the date they
+ * register or set up on EventLinqs. Not a cap of 50. Every organiser. After
+ * six months the standard fee applies."
  *   - Zero fee for six months from the organisation's OWN registration. There
  *     is one fee, so the waiver takes the whole charge to zero.
  *   - Plus three months for every organiser they bring on board who sells a
@@ -52,6 +53,69 @@ export const FOUNDING_INITIAL_MONTHS = 6
 
 /** Months added to the window for each confirmed referral. */
 export const FOUNDING_REFERRAL_MONTHS = 3
+
+/*
+ * THE OFFER, IN ONE PLACE (LAW 24 as ruled, 26 September 2026, founder ruling).
+ *
+ *   1. Every organiser gets six months with no platform fee, counted from the
+ *      date they register on EventLinqs. No cap, no limit on places, no
+ *      invitation needed.
+ *   2. It applies to every organiser, including those who registered before
+ *      20 September 2026, each from their own registration date.
+ *   3. Referral months stay exactly as built: three fee free months for each
+ *      organiser they refer who sells a ticket, on top of the six months.
+ *   4. When the free months end, the standard fee applies.
+ *   5. "Founding Organiser" stays as the name and badge, and every organiser
+ *      receives it.
+ *   6. EventLinqs is national.
+ *
+ * The two numbers above, the badge name and the scope below are the whole of
+ * the offer. Every surface that states it renders these values (pages, the
+ * organiser agreement, emails, SMS, admin, dashboard, the forecast, metadata);
+ * a static document that cannot render them is held to them by
+ * scripts/guards/offer-is-one-rule.mjs. A change is made HERE and nowhere else.
+ */
+
+/** Point 5: the name and the badge, held by every organiser. */
+export const FOUNDING_BADGE_NAME = 'Founding Organiser'
+
+/** Point 6: where the offer and the platform apply. The whole country. */
+export const FOUNDING_OFFER_SCOPE = 'Australia'
+
+const MONTH_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+/** A month count as a word ("six"), so prose says the module's number rather than a typed one. */
+export function monthsInWords(months: number): string {
+  return MONTH_WORDS[months] ?? String(months)
+}
+
+function capitalised(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
+
+/** "six", from FOUNDING_INITIAL_MONTHS. */
+export const FOUNDING_INITIAL_MONTHS_WORD = monthsInWords(FOUNDING_INITIAL_MONTHS)
+
+/** "three", from FOUNDING_REFERRAL_MONTHS. */
+export const FOUNDING_REFERRAL_MONTHS_WORD = monthsInWords(FOUNDING_REFERRAL_MONTHS)
+
+/**
+ * The ruling, said one way. A surface that states the offer in a sentence
+ * renders one of these rather than writing its own, so there is no second
+ * wording to drift.
+ */
+export const FOUNDING_TERMS = {
+  /** Points 1 and 2. */
+  initial: `Every organiser gets ${FOUNDING_INITIAL_MONTHS_WORD} months with no platform fee, counted from the date they register on EventLinqs. No cap, no limit on places, no invitation needed.`,
+  /** Point 3. */
+  referral: `${capitalised(FOUNDING_REFERRAL_MONTHS_WORD)} more fee-free months for each organiser you refer who sells a ticket, on top of the ${FOUNDING_INITIAL_MONTHS_WORD} months.`,
+  /** Point 4. */
+  after: 'When the free months end, the standard fee applies.',
+  /** Point 5. */
+  badge: `Every organiser is a ${FOUNDING_BADGE_NAME}.`,
+  /** Point 6. */
+  scope: `EventLinqs is national: the offer is open to every organiser in ${FOUNDING_OFFER_SCOPE}.`,
+} as const
 
 export interface FoundingWaiver {
   /** The expiry timestamp, or null when the organisation has no waiver. */

@@ -66,6 +66,9 @@ export const DECLARED = {
   'scripts/guards/no-published-lane-b-fixture-on-test.mjs': {
     token: 'the service-role key, through scripts/guards/lib/table-read-credential.mjs, because anon is not granted public.organisations on TEST and the CI build carries anon only. Without it the guard prints NOT JUDGED [no-credential] and reads nothing (pull request 159).',
   },
+  'scripts/guards/offer-is-one-rule.mjs': {
+    docs: 'judges docs/PRICING.md (re-included), docs/marketing and docs/legal against the one module that holds the organiser offer (LAW 24 as ruled, 26 September 2026). The two stripped roots are reported NOT JUDGED through lib/stripped-or-deleted.mjs on the build host, and judged in full by the local gate and CI.',
+  },
   'scripts/guards/one-fee-copy.mjs': {
     docs: 'scans docs/marketing and the three fee authority documents for a second fee, because copy the founder pastes into an email reaches an organiser as directly as a page does.',
   },

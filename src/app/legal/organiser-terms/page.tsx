@@ -3,6 +3,17 @@ import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import {
+  FOUNDING_INITIAL_MONTHS,
+  FOUNDING_INITIAL_MONTHS_WORD,
+  FOUNDING_REFERRAL_MONTHS,
+} from '@/lib/payments/founding-waiver'
+
+// The fee-free section's numbers are RENDERED from the one module that holds
+// the offer (LAW 24 as ruled, 26 September 2026). The rendered wording is
+// byte-for-byte the wording of the 26 September 2026 version; a change to the
+// words themselves is a new dated version of this agreement, never an edit.
+const SIX_MONTHS_TITLE = `${FOUNDING_INITIAL_MONTHS_WORD.charAt(0).toUpperCase()}${FOUNDING_INITIAL_MONTHS_WORD.slice(1)} Months Fee-Free`
 
 export const metadata: Metadata = {
   title: 'Organiser Agreement | EventLinqs',
@@ -22,7 +33,7 @@ const SECTIONS = [
   { id: 'eligibility',    title: 'Eligibility and Verification' },
   { id: 'listings',       title: 'Your Listings' },
   { id: 'fees',           title: 'Fees' },
-  { id: 'founding',       title: 'Six Months Fee-Free' },
+  { id: 'founding',       title: SIX_MONTHS_TITLE },
   { id: 'rate-changes',   title: 'Rate Changes' },
   { id: 'payouts',        title: 'Payouts and the Reserve' },
   { id: 'refund-duties',  title: 'Refunds' },
@@ -172,18 +183,18 @@ export default async function OrganiserAgreementPage() {
         the buyer total.
       </p>
 
-      <h2 id="founding">Six Months Fee-Free for Every Organiser</h2>
+      <h2 id="founding">{SIX_MONTHS_TITLE} for Every Organiser</h2>
       <p>
         Every organiser on EventLinqs has a fee-free period. There is no cap on the
         number of organisers and nothing to apply for:
       </p>
       <ul>
         <li>
-          You pay <strong>zero platform fees for 6 months</strong>, counted from the
+          You pay <strong>zero platform fees for {FOUNDING_INITIAL_MONTHS} months</strong>, counted from the
           date you register on EventLinqs.
         </li>
         <li>
-          The fee-free period extends by a further <strong>3 months</strong> for
+          The fee-free period extends by a further <strong>{FOUNDING_REFERRAL_MONTHS} months</strong> for
           each organiser you successfully refer who publishes and sells a paid
           event.
         </li>

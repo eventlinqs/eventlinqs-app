@@ -249,6 +249,9 @@
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
+ *   offer-is-one-rule          LAW 24 as ruled: the offer is defined once, rendered in src,
+ *                              agreed with in every document, and never restated as a cap,
+ *                              a countdown, an invitation or a two-city limit
  *   drive-quantity-control-selector  the money drives press the button they name: the
  *                              selector is anchored, it matches the label the product
  *                              puts on the tier increase control, and nothing else in
@@ -1526,6 +1529,14 @@ const GUARDS = [
   // set of numbers, and holds /organisers and /pricing to rendering the fee as a
   // read rather than a sentence. Drilled red by changing one number in the copy.
   'scripts/guards/founding-offer-matches-configuration.mjs',
+  // LAW 24 as ruled (26 September 2026). The offer lives in ONE module,
+  // src/lib/payments/founding-waiver.ts, and this fails the build anywhere a
+  // person reads it restated or contradicted: a month figure typed into src
+  // instead of rendered, a document whose figure disagrees, "first 50",
+  // founding spots, invite-only, a countdown, or Geelong and Melbourne as a
+  // limit. Historic records sit in its register at exact counts. It and the
+  // guard above must name the same module, and it checks that they do.
+  'scripts/guards/offer-is-one-rule.mjs',
   // Close-out FO1 (18 September 2026). Every driven proof that a ticket can be
   // bought goes through one helper, and that helper asked Playwright for a
   // button whose name merely STARTED with "add". On 14 September an "Add to

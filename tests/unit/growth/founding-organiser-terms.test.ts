@@ -35,6 +35,8 @@ import {
   registrationWaiverUntil,
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_REFERRAL_MONTHS,
+  FOUNDING_TERMS,
+  monthsInWords,
 } from '@/lib/payments/founding-waiver'
 import { REFERRAL_BONUS_MONTHS } from '@/lib/founding/invites'
 import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
@@ -219,8 +221,8 @@ describe('FO1 acceptance 5: the published offer numbers ARE the configuration', 
 
   it('states no cap, and says the six months run from registration (LAW 24)', () => {
     expect(copy).not.toMatch(/first \d+|\d+ (founding )?(spots|places)|limited to|invite-only/i)
-    expect(copy).toContain('counted from the day they sign up')
-    expect(copy).toContain('No cap')
+    expect(copy).toContain('counted from the date they register')
+    expect(copy).toContain('No cap, no limit on places, no invitation needed')
   })
 
   it('states the six months the grant actually opens', () => {
@@ -228,17 +230,29 @@ describe('FO1 acceptance 5: the published offer numbers ARE the configuration', 
   })
 
   it('states the three months a referral actually earns', () => {
-    expect(copy).toContain(`${FOUNDING_REFERRAL_MONTHS} more fee-free months`)
+    // Said as a word ("Three"), rendered from the same constant the grant uses.
+    expect(monthsInWords(FOUNDING_REFERRAL_MONTHS)).toBe('three')
+    expect(copy.toLowerCase()).toContain(`${monthsInWords(FOUNDING_REFERRAL_MONTHS)} more fee-free months`)
   })
 
   it('promises the terms before the first on-sale, which is the fourth claim', () => {
     expect(copy).toContain('before your first on-sale')
   })
 
-  it('promises the months for an organiser who RUNS AN EVENT, which is when they are granted', () => {
+  it('promises the months for an organiser who SELLS A TICKET, which is when they are granted', () => {
     // The copy and the machine agreed on the number and disagreed on the
-    // moment. This is the assertion that would have caught that.
-    expect(copy).toContain('for every organiser you refer who runs an event')
+    // moment. This is the assertion that would have caught that. LAW 24 as
+    // ruled (26 September 2026): "for each organiser they refer who sells a
+    // ticket", which is the moment credit_founding_referral pays.
+    expect(copy).toContain('for each organiser you refer who sells a ticket')
+  })
+
+  it('says the whole ruling, from the one module, on the landing band', () => {
+    expect(copy).toContain(FOUNDING_TERMS.initial)
+    expect(copy).toContain(FOUNDING_TERMS.referral)
+    expect(copy).toContain(FOUNDING_TERMS.after)
+    expect(copy).toContain(FOUNDING_TERMS.badge)
+    expect(copy).toContain(FOUNDING_TERMS.scope)
   })
 
   it('has ONE three, not two that happen to match today', () => {
@@ -392,10 +406,19 @@ describe('FO1: the words Founding Organiser reach the public surfaces once', () 
     expect(event).toContain('foundingBadge.isFounding ?')
   })
 
-  it('the badge reads is_founding with the service role and widens no grant to anon', () => {
+  it('LAW 24 as ruled, point 5: every organiser receives the badge, with no invitation behind it', async () => {
+    const { getFoundingBadge, FOUNDING_BADGE_LABEL } = await import('@/lib/organisers/founding-badge')
+    const { FOUNDING_BADGE_NAME } = await import('@/lib/payments/founding-waiver')
+    expect(FOUNDING_BADGE_LABEL).toBe(FOUNDING_BADGE_NAME)
+    // An organisation that registered with no invitation has is_founding false;
+    // the badge does not read it, so it cannot withhold the badge from them.
+    expect(await getFoundingBadge('00000000-0000-4000-8000-000000000001')).toEqual({ isFounding: true })
+    expect(await getFoundingBadge(null)).toEqual({ isFounding: false })
     const badge = readFileSync(join(REPO_ROOT, 'src/lib/organisers/founding-badge.ts'), 'utf8')
-    expect(badge).toContain('createAdminClient()')
-    expect(badge).toContain("select('is_founding')")
+    expect(badge).not.toMatch(/select\(['"]is_founding['"]\)/)
+  })
+
+  it('the badge widens no grant to anon', () => {
     // The founder ruling of 2026-08-08 fixes the public column list at six.
     // Nothing here may add a seventh.
     const lockdown = readFileSync(
