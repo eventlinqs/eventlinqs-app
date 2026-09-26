@@ -1,5 +1,5 @@
 # EventLinqs Organiser Recruitment Playbook
-## Mission: 50 organiser conversions per week, recruiting first where the founder has reach (Geelong and Melbourne) on a platform that is national from day one, bootstrapped, zero ad spend
+## Mission: 50 organiser conversions per week, recruiting where the founder has reach (Geelong and Melbourne) on a platform that is national from day one, bootstrapped, zero ad spend
 ### Version 1.0, 4 July 2026. Offer rewritten to LAW 24 as ruled, 26 September 2026. Australian English. No em-dashes or en-dashes. "Community" always, never the banned word.
 
 ---
@@ -58,7 +58,7 @@ A prospect who receives a DM will check three things within 60 seconds. All thre
 
 1. **The website.** Home page must load fast, look professional (Tab 4's job), show real-looking events, and have a clear "For organisers" page stating fees, payout timing, and the Founding Organiser Program. If the fee page does not exist, build it before outreach.
 2. **The founder's LinkedIn.** Lawal's profile is the trust anchor for a bootstrapped platform. It should say founder of EventLinqs, show 2 or 3 posts about building the platform, and look active. People buy from people when the brand is unknown.
-3. **One social profile with life in it.** Pick Instagram as primary (event organisers live there). 9 to 12 posts before outreach starts: platform screenshots, the founding organiser offer, one founder-to-camera or founder-story post, local Geelong and Melbourne event community content. It does not need followers. It needs to not look abandoned.
+3. **One social profile with life in it.** Pick Instagram as primary (event organisers live there). 9 to 12 posts before outreach starts: platform screenshots, the founding organiser offer, one founder-to-camera or founder-story post. Add local event community content from Geelong and Melbourne. It does not need followers. It needs to not look abandoned.
 
 Also required before scale: **one real, public, demonstrable event on the platform.** Run your own free launch event ("EventLinqs Founding Organisers Meetup, Geelong") if no organiser is live yet. It is a demo, a proof point, and a recruitment event in one.
 

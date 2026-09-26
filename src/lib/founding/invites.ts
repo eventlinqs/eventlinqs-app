@@ -93,7 +93,7 @@ export async function getFoundingCounts(): Promise<FoundingCounts> {
     admin.from('founding_invites').select('id', { count: 'exact', head: true }),
     admin.from('founding_invites').select('id', { count: 'exact', head: true }).eq('status', 'accepted'),
   ])
-  const spotsTaken = countOrRaise('founding spots taken', takenRes)
+  const spotsTaken = countOrRaise('organisations that joined through a founding invite', takenRes)
   return {
     spotsTaken,
     invitesIssued: countOrRaise('founding invites issued', issuedRes),

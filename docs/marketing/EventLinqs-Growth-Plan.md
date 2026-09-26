@@ -84,9 +84,10 @@ programmatic SEO across scene-city pages, not before.
 
 ## THE LAUNCH SHAPE: nationally available, locally dense
 
-Launch the platform nationally (anyone in Australia can use it), but concentrate
-RECRUITMENT and SEEDING effort on one wedge where Lawal has real reach: Geelong and
-Melbourne music and community scenes (DJ ties, local relationships). Depth before breadth
+The platform is national from day one: anyone in Australia can use it, and the offer
+is the same everywhere. RECRUITMENT and SEEDING effort goes to one wedge where Lawal has
+real reach: the Geelong and Melbourne music and community scenes (DJ ties, local
+relationships). Depth before breadth
 is the single most repeated lesson in the research. National launch decision kept; effort
 pointed where it can actually hit density and flip the network.
 
