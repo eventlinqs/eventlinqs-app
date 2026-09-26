@@ -342,7 +342,7 @@ export default async function ForecastPage({ searchParams }: Props) {
                     <dd className="text-ink-900">{scenario.fee}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt className="text-ink-600">As a Founding Organiser</dt>
+                    <dt className="text-ink-600">In your first six months</dt>
                     <dd className="text-ink-900">{scenario.foundingFee}</dd>
                   </div>
                   <div className="flex justify-between gap-3">

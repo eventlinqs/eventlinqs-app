@@ -12,7 +12,12 @@ import {
   parseClientReferenceManifest,
   summariseModules,
 } from '../../../scripts/perf/lib/chunk-attribution.mjs'
-import { judgeBuilt, judgeContract } from '../../../scripts/guards/the-cost-table-can-name-what-it-measures.mjs'
+import {
+  CHUNK_DIRS,
+  calibrateLayouts,
+  judgeBuilt,
+  judgeContract,
+} from '../../../scripts/guards/the-cost-table-can-name-what-it-measures.mjs'
 
 /**
  * WHAT A CHUNK SERVES, AND THE TWO WAYS THE ANSWER WAS WRONG.
@@ -216,9 +221,10 @@ describe('the-cost-table-can-name-what-it-measures, built mode', () => {
   const make = (
     manifests: { route: string; modules: Record<string, string[]> }[],
     chunks: string[],
+    layout: 'static/chunks' | 'static/immutable/chunks' = 'static/chunks',
   ): string => {
     const root = mkdtempSync(join(tmpdir(), 'lane-c-next-'))
-    const chunkDir = join(root, 'static', 'chunks')
+    const chunkDir = join(root, ...layout.split('/'))
     mkdirSync(chunkDir, { recursive: true })
     for (const chunk of chunks) writeFileSync(join(chunkDir, chunk), 'nothing recognisable in here')
     for (const manifest of manifests) {
@@ -227,7 +233,7 @@ describe('the-cost-table-can-name-what-it-measures, built mode', () => {
       const clientModules = Object.fromEntries(
         Object.entries(manifest.modules).map(([module_, files]) => [
           module_,
-          { chunks: files.map((f) => `/_next/static/chunks/${f}`) },
+          { chunks: files.map((f) => `/_next/${layout}/${f}`) },
         ]),
       )
       writeFileSync(
@@ -267,6 +273,35 @@ describe('the-cost-table-can-name-what-it-measures, built mode', () => {
     const { findings } = judgeBuilt(root) as { findings: string[] }
     expect(findings.join(' ')).toContain('1 of 5')
     expect(findings.join(' ')).toContain('floor 60%')
+  })
+
+  /**
+   * PLATFORM-FIX-1, 26 September 2026. A Vercel build writes its chunks to
+   * static/immutable/chunks (commit 583b764b), and this clause read only
+   * static/chunks, so on the host that matters it found nothing and skipped.
+   */
+  it('reads a Vercel build, whose chunks are under static/immutable/chunks, instead of skipping it', () => {
+    const root = make([{ route: 'page', modules: { '[project]/src/a.tsx': ['a.js'] } }], ['a.js', 'b.js'], 'static/immutable/chunks')
+    const { skipped, counts } = judgeBuilt(root) as { skipped: string | null; counts: { files: number; namedByManifest: number; where: string } }
+    expect(skipped).toBeNull()
+    expect(counts.files).toBe(2)
+    expect(counts.namedByManifest).toBe(1)
+    expect(counts.where).toContain('.next/static/immutable/chunks (2)')
+  })
+
+  it('reads the same collapse on the Vercel layout as on the local one', () => {
+    const root = make(
+      [{ route: 'page', modules: { '[project]/src/a.tsx': ['a.js'] } }],
+      ['a.js', 'b.js', 'c.js', 'd.js', 'e.js'],
+      'static/immutable/chunks',
+    )
+    const { findings } = judgeBuilt(root) as { findings: string[] }
+    expect(findings.join(' ')).toContain('1 of 5')
+  })
+
+  it('calibrates both layouts in contract mode, and the calibration passes on the real judge', () => {
+    expect(CHUNK_DIRS).toEqual(['static/chunks', 'static/immutable/chunks'])
+    expect(calibrateLayouts()).toEqual([])
   })
 
   it('names the manifest that stopped parsing rather than reporting a total', () => {

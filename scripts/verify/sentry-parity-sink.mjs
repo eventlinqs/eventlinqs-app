@@ -147,9 +147,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`[sentry-parity-sink] listening on 127.0.0.1:${port}; envelopes are counted and discarded`)
   })
 
+  // No process.exit once the server has been serving: exiting while a socket is
+  // still closing aborts Node on Windows (nodejs/node#56645). Every connection
+  // is closed, then the listener, and the process ends by itself with nothing
+  // left open. Held by scripts/guards/no-exit-after-network.mjs.
   const stop = () => {
     console.log(`[sentry-parity-sink] swallowed ${envelopes} envelope(s)`)
-    server.close(() => process.exit(0))
+    server.closeAllConnections()
+    server.close(() => {
+      process.exitCode = 0
+    })
   }
   process.on('SIGINT', stop)
   process.on('SIGTERM', stop)

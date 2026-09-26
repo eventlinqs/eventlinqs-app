@@ -22,7 +22,7 @@ const SECTIONS = [
   { id: 'eligibility',    title: 'Eligibility and Verification' },
   { id: 'listings',       title: 'Your Listings' },
   { id: 'fees',           title: 'Fees' },
-  { id: 'founding',       title: 'Founding Organiser Offer' },
+  { id: 'founding',       title: 'Six Months Fee-Free' },
   { id: 'rate-changes',   title: 'Rate Changes' },
   { id: 'payouts',        title: 'Payouts and the Reserve' },
   { id: 'refund-duties',  title: 'Refunds' },
@@ -51,7 +51,7 @@ export default async function OrganiserAgreementPage() {
   return (
     <LegalPageShell
       title="Organiser Agreement"
-      lastUpdated="24 July 2026"
+      lastUpdated="26 September 2026"
       sections={SECTIONS}
     >
       <h2 id="about">About This Agreement</h2>
@@ -172,16 +172,15 @@ export default async function OrganiserAgreementPage() {
         the buyer total.
       </p>
 
-      <h2 id="founding">Founding Organiser Offer</h2>
+      <h2 id="founding">Six Months Fee-Free for Every Organiser</h2>
       <p>
-        The Founding Organiser offer is available to the{' '}
-        <strong>first 50 organisers in Australia</strong>. If you are accepted
-        into it:
+        Every organiser on EventLinqs has a fee-free period. There is no cap on the
+        number of organisers and nothing to apply for:
       </p>
       <ul>
         <li>
-          You pay <strong>zero platform fees for 6 months</strong> from the date we
-          confirm your place.
+          You pay <strong>zero platform fees for 6 months</strong>, counted from the
+          date you register on EventLinqs.
         </li>
         <li>
           The fee-free period extends by a further <strong>3 months</strong> for
@@ -199,10 +198,9 @@ export default async function OrganiserAgreementPage() {
         separately in its place.
       </p>
       <p>
-        The offer is capped and closes once 50 places are taken. Places are
-        confirmed by us in writing. We may withdraw a place where an organiser
-        breaches this agreement. At the end of your fee-free period, the standard
-        published rates apply, and we will tell you before that happens.
+        We may end the fee-free period early where an organiser breaches this
+        agreement. At the end of your fee-free period, the standard published rates
+        apply, and we will tell you before that happens.
       </p>
 
       <h2 id="rate-changes">Rate Changes</h2>

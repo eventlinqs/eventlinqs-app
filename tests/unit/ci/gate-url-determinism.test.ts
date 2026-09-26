@@ -109,7 +109,11 @@ describe('the gate is not quietly narrowed to make it pass', () => {
     // A silent substitution is how this gate became a coin toss. The resolver
     // must exit non-zero and name the path.
     expect(source).toMatch(/pinned path\(s\) do not answer 200/)
-    expect(source).toMatch(/process\.exit\(1\)/)
+    // Non-zero through process.exitCode since PLATFORM-FIX-1: this step fetches
+    // every pinned URL, and process.exit while a socket closes aborts Node on
+    // Windows (nodejs/node#56645).
+    expect(source).toMatch(/say in its "why" what that is\.`\)\s*return 1/)
+    expect(source).toMatch(/process\.exitCode = await main\(\)/)
   })
 
   it('verifies before auditing, so a 404 can never hard-fail the LHCI collect', () => {

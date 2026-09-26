@@ -55,7 +55,7 @@ export type PricingRuleType =
   | 'application_fee_composition_mode'
   | 'venue_revenue_share_percentage'
   /*
-   * Close-out GA5. What a Fullproof AI client pays on sales a campaign
+   * Close-out GA5. What a Bookedproof client pays on sales a campaign
    * produced, as a percentage. It lives HERE rather than in a table of its own
    * because pricing_rules is this platform's one money configuration and a
    * second one would be a second place a money value lives.

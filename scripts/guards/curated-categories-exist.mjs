@@ -48,7 +48,7 @@ function curatedSlugs() {
   const block = /CURATED_HOMEPAGE_CATEGORY_SLUGS[^=]*=\s*\[([\s\S]*?)\]/.exec(src)
   if (!block) {
     console.error(`FAIL: could not find CURATED_HOMEPAGE_CATEGORY_SLUGS in ${CURATION_FILE}.`)
-    process.exit(1)
+    return null
   }
   return [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1])
 }
@@ -95,7 +95,16 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUP
 const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
 const hasRealProject = typeof url === 'string' && REAL_PROJECT.test(url.trim())
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 const curated = curatedSlugs()
+if (!curated) return 1
 console.log(`curated-categories-exist: ${curated.length} curated slug(s) read from ${CURATION_FILE}`)
 
 if (url && !hasRealProject) {
@@ -104,7 +113,7 @@ if (url && !hasRealProject) {
   console.log(`      (${url.length} characters), so there is no taxonomy to compare against.`)
   console.log('      This is the CI typecheck build, which uses placeholders by design.')
   console.log('      A build that deploys carries real values and is checked.')
-  process.exit(0)
+  return 0
 }
 
 if (!url || !key) {
@@ -116,7 +125,7 @@ if (!url || !key) {
   console.error('taxonomy cannot know whether the homepage is about to drop a tile, and')
   console.error('"could not look" reported as a pass is the shape this repository has')
   console.error('spent a week removing.')
-  process.exit(1)
+  return 1
 }
 
 const supabase = createClient(url, key)
@@ -177,7 +186,7 @@ if (error) {
   console.error('It still FAILS, because a build that cannot see the taxonomy cannot know')
   console.error('whether the homepage is about to drop a tile, and "could not look"')
   console.error('reported as a pass is the shape this repository has spent a week removing.')
-  process.exit(1)
+  return 1
 }
 
 const live = new Map((data ?? []).map(c => [c.slug, c.name]))
@@ -197,8 +206,12 @@ if (missing.length > 0) {
   console.error('would render nothing at all: the rail would silently show fewer tiles')
   console.error('than it is meant to, and nobody would be told.')
   console.error(`Fix the slug in ${CURATION_FILE}, or add the row.`)
-  process.exit(1)
+  return 1
 }
 
 console.log('')
 console.log(`PASS: all ${curated.length} curated homepage categories exist in ${TABLE}.`)
+  return 0
+}
+
+process.exitCode = await main()

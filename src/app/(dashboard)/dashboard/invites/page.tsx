@@ -10,7 +10,6 @@ import { getRequestOrigin } from '@/lib/site-origin'
 import {
   INVITES_PER_FOUNDING_ORGANISER,
   REFERRAL_BONUS_MONTHS,
-  FOUNDING_SPOT_CAP,
   getFoundingReferralSummary,
 } from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
@@ -152,7 +151,7 @@ export default async function InvitesPage({
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
           Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months once they sell
-          their first paid ticket, and gives them their own founding spot while any of the {FOUNDING_SPOT_CAP} remain.
+          their first paid ticket, and gives them their own founding spot.
         </p>
       </div>
 
@@ -171,9 +170,9 @@ export default async function InvitesPage({
         <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-ink-900">The founding programme is invite-only.</p>
           <p className="mt-2 text-sm leading-relaxed text-ink-600">
-            Founding Organisers are the first 50 nationally, invited personally. If you were invited, sign up
-            through your invitation link and your founding spot is applied automatically. You can still build
-            events and get your launch kit today.
+            Founding Organisers are invited personally. If you were invited, sign up through your invitation
+            link and your founding spot is applied automatically. Your six fee-free months already run from the
+            day you registered, and you can build events and get your launch kit today.
           </p>
           <Link href="/dashboard/events/create" className="mt-4 inline-block rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900">
             Build an event

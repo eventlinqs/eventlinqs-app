@@ -12,9 +12,9 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
  * Every row is a real organisation read from the database. The three controls
  * do exactly what their labels say and nothing else: Grant opens six months
  * from today, Extend adds three months from wherever the window currently
- * stands (or from today if it has lapsed), Revoke clears it. The fifty cap is
- * enforced by the database, and the override is a separate, deliberate tick
- * rather than something a mis-click can do.
+ * stands (or from today if it has lapsed), Revoke clears it. There is no cap
+ * (LAW 24): every organisation already holds six months from its own
+ * registration, and these controls are the owner's hand on top of that.
  */
 export type FoundingTermsRow = {
   id: string
@@ -44,13 +44,11 @@ function formatUntil(value: string | null): string {
 
 export function FoundingTerms({
   rows,
-  cap,
   holders,
   initialMonths,
   referralMonths,
 }: {
   rows: FoundingTermsRow[]
-  cap: number
   holders: number
   initialMonths: number
   referralMonths: number
@@ -63,7 +61,6 @@ export function FoundingTerms({
   const [state, setState] = useState<
     Record<string, { until: string | null; founding: boolean; message: string | null; failed: boolean }>
   >({})
-  const [overrideCap, setOverrideCap] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -74,7 +71,6 @@ export function FoundingTerms({
         organisationId: id,
         action,
         months: action === 'extend' ? referralMonths : undefined,
-        overrideCap,
       })
       setState(s => ({
         ...s,
@@ -105,18 +101,9 @@ export function FoundingTerms({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-white/60">
-          {holders} of {cap} founding windows are open. Grant opens {initialMonths} months from today; extend adds{' '}
-          {referralMonths} months to wherever the window stands.
+          {holders} fee-free windows are on record. Every organiser holds {initialMonths} months from registration;
+          grant opens {initialMonths} months from today, extend adds {referralMonths} months to wherever the window stands.
         </p>
-        <label className="flex items-center gap-2 text-xs text-white/70">
-          <input
-            type="checkbox"
-            checked={overrideCap}
-            onChange={e => setOverrideCap(e.target.checked)}
-            className="h-4 w-4 rounded border-white/30 bg-transparent"
-          />
-          Override the {cap} cap on the next grant
-        </label>
       </div>
 
       {rows.length === 0 ? (

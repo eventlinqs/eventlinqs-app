@@ -30,17 +30,13 @@ import { parseLockedValues } from '@/lib/health/pricing-lock.mjs'
 import {
   applyFoundingWaiver,
   extendWaiver,
-  foundingGrantVerdict,
   initialWaiverUntil,
   isWaiverActive,
+  registrationWaiverUntil,
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_REFERRAL_MONTHS,
-  FOUNDING_WAIVER_CAP,
 } from '@/lib/payments/founding-waiver'
-import {
-  FOUNDING_SPOT_CAP,
-  REFERRAL_BONUS_MONTHS,
-} from '@/lib/founding/invites'
+import { REFERRAL_BONUS_MONTHS } from '@/lib/founding/invites'
 import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
 import { BROADCAST_FLAGS, BROADCAST_FLAG_DEFAULTS, BROADCAST_FLAG_DECISIONS } from '@/lib/flags/broadcast'
 
@@ -125,26 +121,64 @@ describe('FO1 acceptance 1: the waived amount is the fee that would have been ch
   })
 })
 
-describe('FO1 acceptance 1: the fifty-first grant is refused unless the owner overrides', () => {
-  it('grants the fiftieth and refuses the fifty-first', () => {
-    expect(foundingGrantVerdict({ holders: FOUNDING_WAIVER_CAP - 1, opensNewWindow: true })).toBe('granted')
-    expect(foundingGrantVerdict({ holders: FOUNDING_WAIVER_CAP, opensNewWindow: true })).toBe('refused_cap')
+/**
+ * LAW 24 (founder ruling, 20 September 2026): "Every new organiser gets six
+ * months free, counted from the date they register or set up on EventLinqs.
+ * Not a cap of 50. Every organiser. After six months the standard fee applies."
+ *
+ * These replaced "the fifty-first grant is refused unless the owner overrides"
+ * on 26 September 2026, when the cap was removed from the engine.
+ */
+describe('LAW 24: six months free for every organiser, from their own registration', () => {
+  it('the window is six months from registration, by the same month arithmetic the database uses', () => {
+    expect(registrationWaiverUntil('2026-09-13T00:00:00.000Z').slice(0, 10)).toBe('2027-03-13')
+    // Month-end roll-forward, the rule founding_add_months reproduces in SQL.
+    expect(registrationWaiverUntil('2026-08-31T04:05:06.000Z')).toBe('2027-03-03T04:05:06.000Z')
   })
 
-  it('grants the fifty-first when the owner overrides by hand', () => {
-    expect(
-      foundingGrantVerdict({ holders: FOUNDING_WAIVER_CAP, opensNewWindow: true, override: true }),
-    ).toBe('granted')
+  it('the charge is zero inside the six months and the standard fee after, for ANY organiser', () => {
+    const registered = '2026-09-13T00:00:00.000Z'
+    const until = registrationWaiverUntil(registered)
+    const inside = new Date('2027-03-12T23:59:59.000Z')
+    const after = new Date('2027-03-13T00:00:01.000Z')
+    const insideFees = computeFeeLineCents(TWENTY_DOLLARS, 1, applyFoundingWaiver(STANDARD_RATES, isWaiverActive(until, inside)))
+    const afterFees = computeFeeLineCents(TWENTY_DOLLARS, 1, applyFoundingWaiver(STANDARD_RATES, isWaiverActive(until, after)))
+    expect(insideFees.platform_fee_cents).toBe(0)
+    expect(afterFees.platform_fee_cents).toBe(computeFeeLineCents(TWENTY_DOLLARS, 1, STANDARD_RATES).platform_fee_cents)
+    expect(afterFees.platform_fee_cents).toBeGreaterThan(0)
   })
 
-  it('never caps an EXTENSION, because a referral costs no new spot', () => {
-    expect(foundingGrantVerdict({ holders: 500, opensNewWindow: false })).toBe('granted')
+  it('the clock is per organiser: two organisers registered months apart hold different windows', () => {
+    const early = registrationWaiverUntil('2026-08-07T17:07:44.648Z')
+    const late = registrationWaiverUntil('2026-09-19T08:53:25.519Z')
+    const between = new Date('2027-02-20T00:00:00.000Z')
+    expect(isWaiverActive(early, between)).toBe(false)
+    expect(isWaiverActive(late, between)).toBe(true)
   })
 
-  it('refuses every count at or above the cap, not just the boundary', () => {
-    for (const holders of [FOUNDING_WAIVER_CAP, FOUNDING_WAIVER_CAP + 1, FOUNDING_WAIVER_CAP + 99]) {
-      expect(foundingGrantVerdict({ holders, opensNewWindow: true })).toBe('refused_cap')
-    }
+  it('the engine has no cap left to apply: no cap constant, no verdict, no fifty', async () => {
+    const waiver = await import('@/lib/payments/founding-waiver')
+    expect('FOUNDING_WAIVER_CAP' in waiver).toBe(false)
+    expect('foundingGrantVerdict' in waiver).toBe(false)
+    const invites = stripComments(readFileSync(join(REPO_ROOT, 'src/lib/founding/invites.ts'), 'utf8'))
+    expect(invites).not.toMatch(/\b50\b|CAP\b/)
+  })
+
+  it('the database stamps every new organisation at registration and no longer counts to fifty', () => {
+    const migration = readFileSync(
+      join(REPO_ROOT, 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql'),
+      'utf8',
+    )
+      // SQL line comments out: the header names the cap it removes.
+      .split('\n')
+      .map(line => line.replace(/--.*$/, ''))
+      .join('\n')
+    expect(migration).toMatch(/DROP TRIGGER IF EXISTS trg_founding_waiver_cap ON public\.organisations/)
+    expect(migration).toMatch(/DROP FUNCTION IF EXISTS public\.enforce_founding_waiver_cap\(\)/)
+    expect(migration).toMatch(/founding_add_months\(COALESCE\(NEW\.created_at, now\(\)\), 6\)/)
+    expect(migration).toMatch(/BEFORE INSERT ON public\.organisations/)
+    expect(migration).not.toMatch(/v_cap|holder_count\s*>=/)
+    expect(FOUNDING_INITIAL_MONTHS).toBe(6)
   })
 })
 
@@ -183,10 +217,10 @@ describe('FO1 acceptance 1: a referral sale extends the window by exactly three 
 describe('FO1 acceptance 5: the published offer numbers ARE the configuration', () => {
   const copy = [FOUNDING_OFFER.title, FOUNDING_OFFER.body, FOUNDING_OFFER.note, ...FOUNDING_OFFER.points].join('\n')
 
-  it('states the cap the machine enforces', () => {
-    expect(copy).toContain(`The first ${FOUNDING_WAIVER_CAP} build it with us`)
-    expect(copy).toContain(`first ${FOUNDING_WAIVER_CAP} organisers anywhere in the country`)
-    expect(copy).toContain(`limited to the first ${FOUNDING_WAIVER_CAP} organisers nationally`)
+  it('states no cap, and says the six months run from registration (LAW 24)', () => {
+    expect(copy).not.toMatch(/first \d+|\d+ (founding )?(spots|places)|limited to|invite-only/i)
+    expect(copy).toContain('counted from the day they sign up')
+    expect(copy).toContain('No cap')
   })
 
   it('states the six months the grant actually opens', () => {
@@ -207,8 +241,7 @@ describe('FO1 acceptance 5: the published offer numbers ARE the configuration', 
     expect(copy).toContain('for every organiser you refer who runs an event')
   })
 
-  it('has ONE fifty and ONE three, not two of each that happen to match today', () => {
-    expect(FOUNDING_SPOT_CAP).toBe(FOUNDING_WAIVER_CAP)
+  it('has ONE three, not two that happen to match today', () => {
     expect(REFERRAL_BONUS_MONTHS).toBe(FOUNDING_REFERRAL_MONTHS)
   })
 

@@ -41,7 +41,7 @@ export function buildWaitlistConfirmationEmail(input: {
 
   const foundingLine =
     foundingCandidate && role === 'organiser'
-      ? `You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers in Australia: 6 months fee-free, plus 3 more months for every organiser you refer. Invitations go out personally.`
+      ? `You are registered as an organiser. Every organiser on EventLinqs is fee-free for 6 months from the day they register, plus 3 more months for every organiser they refer who runs an event. You can build and sell today.`
       : role === 'organiser'
         ? `You registered as an organiser, so you are first in line for onboarding. EventLinqs is open in ${cityName} today: you can build your event, map your room, get your complete promo kit and start selling right now, free.`
         : `We will email you when there is something on near you in ${cityName}. No noise.`

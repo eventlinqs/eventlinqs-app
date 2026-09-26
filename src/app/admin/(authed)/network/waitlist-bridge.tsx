@@ -25,7 +25,7 @@ type Row = { id: string; name: string; email: string; city: string }
  * cannot remove it, and it is a live region so it is announced rather than only
  * seen. The list keeps its one meaning: not yet invited.
  */
-export function WaitlistBridge({ rows, spotsRemaining }: { rows: Row[]; spotsRemaining: number }) {
+export function WaitlistBridge({ rows }: { rows: Row[] }) {
   const [done, setDone] = useState<Record<string, 'sent' | string>>({})
   const [sent, setSent] = useState<Row[]>([])
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -88,7 +88,7 @@ export function WaitlistBridge({ rows, spotsRemaining }: { rows: Row[]; spotsRem
                       <button
                         type="button"
                         onClick={() => invite(r)}
-                        disabled={isPending || spotsRemaining <= 0}
+                        disabled={isPending}
                         className="inline-flex min-h-[40px] items-center rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-[#0A1628] transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {pendingId === r.id ? 'Sending...' : 'Invite'}

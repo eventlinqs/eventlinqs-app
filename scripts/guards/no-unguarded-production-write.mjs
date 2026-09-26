@@ -201,7 +201,16 @@ const DIRECT_POSTGRES = new RegExp(
     /pooler\.supabase\.com/.source, // shared pooler host
   ].join('|'),
 )
-const REFUSAL = /throw\s+new\s+Error|process\.exit\s*\(\s*1\s*\)|\bdie\s*\(/
+/*
+ * A refusal STOPS the script. Since PLATFORM-FIX-1 (26 September 2026) a script
+ * that talks to a database may not stop with process.exit (Windows aborts Node
+ * when a socket is still closing, nodejs/node#56645; held by
+ * no-exit-after-network), so two more shapes stop it and are read as refusals:
+ * `process.exitCode = 1; return` on one line, and a bare `return 1` from a
+ * main() whose return value is the exit code. A lone `process.exitCode = 1`
+ * with no return does NOT stop the script and is not a refusal.
+ */
+const REFUSAL = /throw\s+new\s+Error|process\.exit\s*\(\s*1\s*\)|process\.exitCode\s*=\s*1\s*;\s*return\b|^\s*return\s+1\s*$|\bdie\s*\(/
 /**
  * All three entry points: the Supabase-client one, the Postgres one, and
  * openProject(), added 2026-08-25 for the scripts that legitimately preflight

@@ -62,7 +62,7 @@ export default async function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      lastUpdated="24 July 2026"
+      lastUpdated="26 September 2026"
       sections={SECTIONS}
     >
       <h2 id="about">About This Policy</h2>
@@ -396,7 +396,7 @@ export default async function PrivacyPolicyPage() {
         city and by the kinds of events you have bought before. EventLinqs is always
         the sender and the authorising party. Your name, email and mobile are not
         given to those organisers. EventLinqs uses{' '}
-        <strong>Fullproof AI</strong> as its service provider to send these messages on
+        <strong>Bookedproof</strong> as its service provider to send these messages on
         its behalf, under a written agreement that restricts it to that purpose, and no
         client audiences are ever merged. We do not sell your details and we do not buy
         lists.

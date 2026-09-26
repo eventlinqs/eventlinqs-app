@@ -2,14 +2,18 @@
  * The Founding Organiser fee waiver: ONE definition, applied everywhere a fee
  * is computed.
  *
- * THE TERMS (founder, locked 2026-07-27, recorded in docs/PRICING.md):
- *   - Zero fee for six months from onboarding. There is one fee, so the waiver
- *     takes the whole charge to zero.
- *   - Plus three months for every organiser they bring on board.
- *   - Capped at the first fifty organisations nationally. The cap was the
- *     only real scarcity; the "across Geelong and Melbourne" that used to end
- *     this line was a geographic gate and was removed on 2026-08-23 when the
- *     platform opened nationwide from day one. The number 50 is unchanged.
+ * THE TERMS (LAW 24, founder ruling of 20 September 2026): "Every new
+ * organiser gets six months free, counted from the date they register or set
+ * up on EventLinqs. Not a cap of 50. Every organiser. After six months the
+ * standard fee applies."
+ *   - Zero fee for six months from the organisation's OWN registration. There
+ *     is one fee, so the waiver takes the whole charge to zero.
+ *   - Plus three months for every organiser they bring on board who sells a
+ *     paid ticket (unchanged; LAW 24 does not mention it).
+ *   - No cap. Until 26 September 2026 this said "capped at the first fifty
+ *     organisations nationally", and the code, two SQL functions and every
+ *     surface enforced it. Migration 20260926000001 removed the cap and made
+ *     the database stamp every organisation's window at registration.
  *
  * ONE-FEE-ALLOW-BEGIN: quotes the wrong text it replaced, so the correction is
  * legible rather than a silent edit.
@@ -38,50 +42,16 @@
 import type { FeeRates } from './fee-math'
 import { captureException } from '@/lib/observability/sentry'
 
-/** The founder's cap on how many organisations may hold the waiver at once. */
-export const FOUNDING_WAIVER_CAP = 50
-
-/** Months of waiver granted when an organisation is onboarded as founding. */
+/**
+ * Months fee-free from an organisation's OWN registration (LAW 24). The
+ * database stamps the window at insert (trigger trg_registration_fee_free_window,
+ * migration 20260926000001) with founding_add_months(created_at, 6), the SQL
+ * twin of addMonthsUtc below.
+ */
 export const FOUNDING_INITIAL_MONTHS = 6
 
 /** Months added to the window for each confirmed referral. */
 export const FOUNDING_REFERRAL_MONTHS = 3
-
-/**
- * MAY THIS GRANT OPEN A NEW FOUNDING WINDOW?
- *
- * The fifty cap is decided in three places and must be decided the same way in
- * all three: the invite conversion, the owner's hand in the admin console, and
- * the database trigger that is the backstop against a path nobody has written
- * yet. The first two now call this; the third is SQL and is held to the same
- * number by the registered guard
- * scripts/guards/founding-offer-matches-configuration.mjs.
- *
- * PURE, so the rule can be tested exhaustively without a database, which is the
- * whole reason it is not an `if` inside an async function. The cases that
- * matter are the boundary (the fiftieth is granted, the fifty-first is not) and
- * the owner's deliberate override, and none of those is reachable from a test
- * that has to stand up fifty organisations first.
- *
- * EXTENDING IS NEVER CAPPED. The cap governs how many organisations hold a
- * window, not how long a window somebody already holds may run for. A referral
- * earned by an organisation already inside the programme costs no new spot.
- */
-export type FoundingGrantVerdict = 'granted' | 'refused_cap'
-
-export function foundingGrantVerdict(input: {
-  /** How many organisations already hold a window, excluding this one. */
-  holders: number
-  /** True only when this change takes an organisation from no window to one. */
-  opensNewWindow: boolean
-  /** The owner's deliberate, audit-logged override. */
-  override?: boolean
-  cap?: number
-}): FoundingGrantVerdict {
-  if (!input.opensNewWindow) return 'granted'
-  if (input.override === true) return 'granted'
-  return input.holders >= (input.cap ?? FOUNDING_WAIVER_CAP) ? 'refused_cap' : 'granted'
-}
 
 export interface FoundingWaiver {
   /** The expiry timestamp, or null when the organisation has no waiver. */
@@ -150,10 +120,22 @@ export function extendWaiver(
 }
 
 /**
- * The initial window granted at onboarding: six months from `from`.
+ * The six-month window from `from`. Under LAW 24 `from` is the organisation's
+ * registration (organisations.created_at), which is what
+ * registrationWaiverUntil says out loud.
  */
 export function initialWaiverUntil(from: Date = new Date()): string {
   return addMonthsUtc(from, FOUNDING_INITIAL_MONTHS)
+}
+
+/**
+ * LAW 24: the window every organisation holds, six months from its own
+ * registration. The database trigger computes the same instant with
+ * founding_add_months(created_at, 6); tests/unit/payments/law24-every-organiser.test.ts
+ * pins the two to the same rule.
+ */
+export function registrationWaiverUntil(registeredAt: string | Date): string {
+  return initialWaiverUntil(new Date(registeredAt))
 }
 
 /**

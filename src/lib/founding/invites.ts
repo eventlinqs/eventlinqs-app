@@ -3,32 +3,29 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
-import {
-  foundingGrantVerdict,
-  initialWaiverUntil,
-  FOUNDING_INITIAL_MONTHS,
-  FOUNDING_REFERRAL_MONTHS,
-  FOUNDING_WAIVER_CAP,
-} from '@/lib/payments/founding-waiver'
+import { FOUNDING_REFERRAL_MONTHS } from '@/lib/payments/founding-waiver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * The founding-organiser network: spots, invite codes, and conversion.
  *
- * The growth doctrine's supply-side loop made real. The 50 founding spots are
- * a REAL count (organisations.is_founding), never fabricated scarcity. Invites
- * are single-use codes, either from a founding organiser (their personal
- * links) or from the founder. A conversion grants the new organisation a spot
- * (if any remain), opens its six-month fee-free window, and records WHO
- * REFERRED IT. The inviter's three extra months are credited later, by the
+ * The growth doctrine's supply-side loop made real. Founding membership is
+ * a REAL count (organisations.is_founding), never fabricated scarcity, and
+ * since LAW 24 (founder ruling, 20 September 2026) it has no cap: "Not a cap
+ * of 50. Every organiser." Invites are single-use codes, either from a
+ * founding organiser (their personal links) or from the founder. A conversion
+ * grants the new organisation founding membership and records WHO REFERRED
+ * IT. The six-month fee-free window is not granted here any more: every
+ * organisation already holds one from its own registration, stamped by the
+ * database at insert (trigger trg_registration_fee_free_window, migration
+ * 20260926000001). The inviter's three extra months are credited later, by the
  * database, when the referred organiser's first paid ticket actually sells
  * (close-out FO1); this module no longer pays on a signup.
  *
  * NATIONWIDE FROM DAY ONE (founder ruling 2026-08-23). This module used to
  * carry `FOUNDING_CITIES = ['geelong','melbourne']` and gate every invite on
  * it, so an organiser in Perth could not be invited and could not invite
- * anyone. The cap and the referral mechanic are the scarcity; the two-city
- * list was a separate, geographic restriction and it is gone. A city slug is
+ * anyone. The two-city list was a geographic restriction and it is gone. A city slug is
  * still VALIDATED, because the column is not free text and the invite landing
  * renders the city name, but it is validated against the canonical city
  * registry (src/lib/cities/data.ts) rather than against a launch order.
@@ -36,14 +33,13 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isCitySlug, getCity, type CitySlug } from '@/lib/cities/data'
 
 /**
- * ONE FIFTY, ONE THREE. These used to be separate literals that happened to
- * equal the constants in src/lib/payments/founding-waiver.ts, which is how the
- * fee engine and the invite mechanic come to disagree about the same offer
- * without anything failing. They are re-exports now: the terms live in the
- * waiver module, beside the charge that applies them, and this module names
- * them in its own vocabulary.
+ * ONE THREE. This used to be a separate literal that happened to equal the
+ * constant in src/lib/payments/founding-waiver.ts, which is how the fee engine
+ * and the invite mechanic come to disagree about the same offer without
+ * anything failing. It is a re-export: the terms live in the waiver module,
+ * beside the charge that applies them. (FOUNDING_SPOT_CAP, the fifty, was
+ * removed with the cap under LAW 24.)
  */
-export const FOUNDING_SPOT_CAP = FOUNDING_WAIVER_CAP
 /** How many personal invites a single founding organiser may generate. */
 export const INVITES_PER_FOUNDING_ORGANISER = 5
 export const REFERRAL_BONUS_MONTHS = FOUNDING_REFERRAL_MONTHS
@@ -78,7 +74,6 @@ function generateCode(): string {
 
 export type FoundingCounts = {
   spotsTaken: number
-  spotsRemaining: number
   invitesIssued: number
   invitesAccepted: number
 }
@@ -86,13 +81,10 @@ export type FoundingCounts = {
 /**
  * Live, real counts for the programme (no fabricated numbers).
  *
- * A FAILED COUNT RAISES RATHER THAN READING AS ZERO. These four numbers are the
- * top of the founder's demand-signal screen, and the one he acts on is SPOTS
- * REMAINING, which is derived by subtraction: `taken ?? 0` on a failed read
- * renders the whole programme as untouched, so a screen that could not reach
- * the database says all fifty founding spots are free. That is the one wrong
- * answer that causes an action, and it is indistinguishable at the UI from the
- * truth on the day the platform launches.
+ * A FAILED COUNT RAISES RATHER THAN READING AS ZERO. These three numbers are
+ * the top of the founder's demand-signal screen: `taken ?? 0` on a failed read
+ * renders the whole programme as untouched, which is indistinguishable at the
+ * UI from the truth on the day the platform launches.
  */
 export async function getFoundingCounts(): Promise<FoundingCounts> {
   const admin = createAdminClient()
@@ -104,7 +96,6 @@ export async function getFoundingCounts(): Promise<FoundingCounts> {
   const spotsTaken = countOrRaise('founding spots taken', takenRes)
   return {
     spotsTaken,
-    spotsRemaining: Math.max(0, FOUNDING_SPOT_CAP - spotsTaken),
     invitesIssued: countOrRaise('founding invites issued', issuedRes),
     invitesAccepted: countOrRaise('founding invites accepted', acceptedRes),
   }
@@ -229,12 +220,11 @@ type FoundingInviteRow = {
 /**
  * What actually happened when an invite was converted.
  *
- * FIVE FACTS RATHER THAN THREE, because the old shape could not tell the
- * caller apart from itself. `alreadyFull` was returned whenever no spot came
- * back, and no spot comes back for four different reasons: the programme is
- * full, the organisation already holds a spot, the offer is closed, or the
- * database could not be reached. Only the first of those is "full", and the
- * last one now throws.
+ * SEPARATE FACTS, because the old shape could not tell the caller apart from
+ * itself: no spot comes back when the organisation already holds one, when the
+ * offer is closed, or when the database could not be reached, and the last one
+ * now throws. `alreadyFull` (no spot because all fifty were taken) was removed
+ * with the cap under LAW 24: the programme can no longer be full.
  */
 export type FoundingInviteOutcome = {
   /** The single-use code was spent by THIS call. */
@@ -248,8 +238,6 @@ export type FoundingInviteOutcome = {
   offerClosed: boolean
   /** The organisation already held a spot before this call. */
   alreadyFounding: boolean
-  /** No spot BECAUSE all fifty are taken. Never true for any other reason. */
-  alreadyFull: boolean
 }
 
 /**
@@ -395,7 +383,6 @@ export async function acceptFoundingInvite(input: {
       referralRecorded: false,
       offerClosed: false,
       alreadyFounding: false,
-      alreadyFull: false,
     }
   }
 
@@ -427,10 +414,16 @@ export async function acceptFoundingInvite(input: {
       referralRecorded: row.referral_recorded === true,
       offerClosed: true,
       alreadyFounding: false,
-      alreadyFull: false,
     }
   }
 
+  // NO WINDOW IS GRANTED HERE (LAW 24). This used to open the new
+  // organisation's six-month window from the moment of the invite, behind an
+  // in-code fifty cap and the database trigger trg_founding_waiver_cap. Every
+  // organisation now holds its window from its own REGISTRATION, stamped by the
+  // database at insert (trg_registration_fee_free_window, migration
+  // 20260926000001), so an invited organiser has it already and on the same
+  // clock as everybody else.
   const outcome: FoundingInviteOutcome = {
     consumed: true,
     granted,
@@ -438,93 +431,6 @@ export async function acceptFoundingInvite(input: {
     referralRecorded: row.referral_recorded === true,
     offerClosed: false,
     alreadyFounding: row.already_founding === true,
-    // ONLY WHEN IT IS ACTUALLY FULL. This used to be `!granted`, which said
-    // "all fifty spots are taken" for three different things:
-    // claim_founding_spot answers NULL when the programme is full AND when the
-    // organisation already holds a spot, and the closed-offer path returned it
-    // too. An organiser holding spot 7 was told the offer had run out.
-    alreadyFull: !granted && row.already_founding !== true,
-  }
-
-  // Grant the NEW organisation its six-month window. claim_founding_spot sets
-  // is_founding and allocates the numbered spot atomically (that RPC is what
-  // enforces the fifty-spot race); this writes the date the charge actually
-  // reads. The database trigger trg_founding_waiver_cap is the final backstop:
-  // if fifty organisations already hold a window this update is rejected and the
-  // failure is audit-logged rather than silently swallowed.
-  if (granted) {
-    // THE FIFTY CAP, IN CODE. It used to be copy only. Checked here so the
-    // refusal is readable and audit-logged; the database trigger
-    // trg_founding_waiver_cap is the backstop that a direct SQL grant or a
-    // future code path cannot get around.
-    //
-    // A FAILED COUNT NO LONGER READS AS NOUGHT HOLDERS. It was `holders ?? 0`,
-    // which turned a dropped socket into "nobody holds a window" and disabled
-    // the check silently. It is not turned into a REFUSAL either: refusing on
-    // an unreadable count would cost an organiser the six months they had just
-    // earned, and the database trigger enforce_founding_waiver_cap is the real
-    // authority on this number. So the count failing means the check is
-    // skipped, loudly and on the record, and the update below is attempted with
-    // the database as the judge.
-    const holdersRes = await admin
-      .from('organisations')
-      .select('id', { count: 'exact', head: true })
-      .not('founding_fee_free_until', 'is', null)
-
-    let holders: number | null = null
-    if (holdersRes.error) {
-      console.error('[founding] could not count waiver holders before granting:', holdersRes.error)
-      await recordAnonAuditEvent({
-        action: 'founding.waiver.cap_unreadable',
-        metadata: {
-          organisation_id: input.orgId,
-          invite_code: input.code,
-          error: holdersRes.error.message,
-          note: 'the in-code cap check was skipped; enforce_founding_waiver_cap in the database decides',
-        },
-      })
-    } else {
-      holders = countOrRaise('organisations holding a founding waiver', holdersRes)
-    }
-
-    if (
-      holders !== null &&
-      foundingGrantVerdict({ holders, opensNewWindow: true }) === 'refused_cap'
-    ) {
-      await recordAnonAuditEvent({
-        action: 'founding.waiver.cap_reached',
-        metadata: {
-          organisation_id: input.orgId,
-          invite_code: input.code,
-          holders,
-          cap: FOUNDING_WAIVER_CAP,
-        },
-      })
-      // The founding SPOT is still granted (the RPC allocated it); only the fee
-      // waiver is withheld, and it is recorded so the founder can see it.
-      return outcome
-    }
-
-    const until = initialWaiverUntil()
-    const { error: grantError } = await admin
-      .from('organisations')
-      .update({ founding_fee_free_until: until })
-      .eq('id', input.orgId)
-      .is('founding_fee_free_until', null)
-
-    await recordAnonAuditEvent({
-      action: grantError ? 'founding.waiver.grant_failed' : 'founding.waiver.granted',
-      metadata: {
-        organisation_id: input.orgId,
-        reason: 'founding_spot_claimed',
-        spot_number: spotNumber,
-        invite_code: input.code,
-        months_granted: FOUNDING_INITIAL_MONTHS,
-        new_fee_free_until: grantError ? null : until,
-        cap: FOUNDING_WAIVER_CAP,
-        ...(grantError ? { error: grantError.message } : {}),
-      },
-    })
   }
 
   // THE INVITER IS NOT CREDITED HERE. It used to be, the moment this line ran,

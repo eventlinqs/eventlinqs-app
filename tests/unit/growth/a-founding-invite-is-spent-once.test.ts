@@ -214,7 +214,7 @@ describe('spending the code', () => {
 
     expect(outcome.granted).toBe(false)
     expect(outcome.alreadyFounding).toBe(true)
-    expect(outcome.alreadyFull).toBe(false)
+    expect('alreadyFull' in outcome).toBe(false)
   })
 
   test('a closed offer says closed, consumes the code, and is audit-logged', async () => {
@@ -224,7 +224,7 @@ describe('spending the code', () => {
     const outcome = await acceptFoundingInvite(input)
 
     expect(rpc.mock.calls[0][1]).toMatchObject({ p_offer_open: false })
-    expect(outcome).toMatchObject({ consumed: true, offerClosed: true, alreadyFull: false, granted: false })
+    expect(outcome).toMatchObject({ consumed: true, offerClosed: true, granted: false })
     expect(audit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'founding.offer.closed_refusal' }),
     )
@@ -242,58 +242,37 @@ describe('spending the code', () => {
       referralRecorded: false,
       offerClosed: false,
       alreadyFounding: false,
-      alreadyFull: false,
     })
   })
 
-  test('a genuinely full programme is the only thing that reports alreadyFull', async () => {
-    rpc.mockResolvedValue(conversion({ spot_number: null, already_founding: false }))
-
-    const outcome = await acceptFoundingInvite(input)
-
-    expect(outcome.alreadyFull).toBe(true)
-  })
-
-  test('a granted spot opens the six-month window', async () => {
+  /*
+   * LAW 24, 26 September 2026. The three tests that stood here proved the
+   * conversion OPENED the six-month window behind an in-code fifty cap: that a
+   * full programme reported alreadyFull, that an unreadable cap left the
+   * database to judge, and that a reached cap withheld the window. The cap is
+   * gone and every organisation holds its window from REGISTRATION, stamped by
+   * the database at insert, so the conversion writes no window at all. These
+   * prove that instead.
+   */
+  test('a granted spot writes no fee-free window: the organisation already holds one from registration', async () => {
     rpc.mockResolvedValue(conversion({ spot_number: 12, referral_recorded: true }))
-    const seen = server({ organisations: [{ count: 3, error: null }, { data: null, error: null }] })
+    const seen = server({ organisations: { data: null, error: null } })
 
     const outcome = await acceptFoundingInvite(input)
 
     expect(outcome).toMatchObject({ consumed: true, granted: true, spotNumber: 12, referralRecorded: true })
-    const writes = seen.filter(s => s.chain.some(c => c.startsWith('update')))
-    expect(writes).toHaveLength(1)
-    expect(writes[0].chain.join(' ')).toMatch(/founding_fee_free_until/)
-    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'founding.waiver.granted' }))
-  })
-
-  test('an unreadable cap is recorded and leaves the database to judge, not silently zero', async () => {
-    rpc.mockResolvedValue(conversion({ spot_number: 12 }))
-    const seen = server({
-      organisations: [{ count: null, error: { message: 'pool exhausted' } }, { data: null, error: null }],
-    })
-
-    const outcome = await acceptFoundingInvite(input)
-
-    expect(outcome.granted).toBe(true)
-    expect(audit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'founding.waiver.cap_unreadable' }),
-    )
-    // The grant is still ATTEMPTED: enforce_founding_waiver_cap in the database
-    // is the authority, and refusing here would cost an organiser the six
-    // months they had just earned for a fault that lasted a second.
-    expect(seen.filter(s => s.chain.some(c => c.startsWith('update')))).toHaveLength(1)
-  })
-
-  test('a cap that IS readable and IS reached withholds the window and keeps the spot', async () => {
-    rpc.mockResolvedValue(conversion({ spot_number: 50 }))
-    const seen = server({ organisations: { count: 50, error: null } })
-
-    const outcome = await acceptFoundingInvite(input)
-
-    expect(outcome).toMatchObject({ granted: true, spotNumber: 50 })
-    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'founding.waiver.cap_reached' }))
     expect(seen.filter(s => s.chain.some(c => c.startsWith('update')))).toHaveLength(0)
+    expect(audit).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'founding.waiver.granted' }))
+  })
+
+  test('a spot numbered past fifty is granted like any other: there is no cap to reach', async () => {
+    rpc.mockResolvedValue(conversion({ spot_number: 51 }))
+    server({ organisations: { count: 50, error: null } })
+
+    const outcome = await acceptFoundingInvite(input)
+
+    expect(outcome).toMatchObject({ consumed: true, granted: true, spotNumber: 51 })
+    expect(audit).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'founding.waiver.cap_reached' }))
   })
 })
 

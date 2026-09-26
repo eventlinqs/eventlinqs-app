@@ -6,7 +6,7 @@ import type { RecoveryProof } from '@/lib/fillrate/proof'
 /**
  * "SALES WE WON BACK" IS THE PRODUCT, so it must not overclaim by a word.
  * Close-out D2: "This panel is the product. It is what a future standalone
- * Fillrate customer pays for."
+ * [Bookedproof] customer pays for."
  *
  * Two failure modes are worth a test each, and the platform has already been
  * caught by the first one once: on 10 September 2026 the sales pace panel showed

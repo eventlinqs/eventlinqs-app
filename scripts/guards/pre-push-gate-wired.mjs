@@ -19,7 +19,15 @@
  *      the one command, `npm run gate:push`;
  *   3. where git is present and this is not CI or Vercel: the hook is
  *      executable in the index (mode 100755, the bit git preserves across
- *      clones), and core.hooksPath is .githooks, so git runs the file at all.
+ *      clones), and core.hooksPath is .githooks, so git runs the file at all;
+ *   4. the gate's lighthouse step stands down ONLY when main requires the
+ *      Lighthouse CI check (founder ruling, 25 September 2026). Its step runs
+ *      through lighthouseStep, and the judgement in
+ *      scripts/ops/lighthouse-jurisdiction.mjs is driven here with the four
+ *      answers that matter: required stands down, and not required, an
+ *      unreadable protection and no answer at all each run the local step.
+ *      A gate that waives Lighthouse on doubt looks exactly like one that
+ *      waives it on evidence, so the fallback is checked, not trusted.
  *
  * WHAT IT DOES NOT NEED. Git. Vercel builds from a tarball with no repository,
  * so the git-backed checks degrade to a printed SKIP there, the way
@@ -33,6 +41,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gitEnv } from '../lib/git-env.mjs'
 import { gitAvailability, noGitLine } from './lib/git-availability.mjs'
 import { declareWork } from '../lib/work-report.mjs'
+import { LIGHTHOUSE_CI_CHECK, judgeLighthouseJurisdiction } from '../ops/lighthouse-jurisdiction.mjs'
 
 export const HOOK = '.githooks/pre-push'
 export const GATE = 'scripts/ops/pre-push-gate.mjs'
@@ -64,6 +73,46 @@ export function inspectPackage(pkg) {
   return [`package.json scripts.${NPM_SCRIPT} is ${actual === undefined ? 'missing' : JSON.stringify(actual)}; the one command is "node ${GATE}"`]
 }
 
+/**
+ * The lighthouse step's jurisdiction, judged. `gateText` is the gate's source;
+ * `judge` is the jurisdiction's pure judgement, a parameter so the test can
+ * hand it a broken one.
+ *
+ * @param {string} gateText
+ * @param {(state: any) => { judgedHere: boolean }} [judge]
+ */
+export function inspectLighthouseJurisdiction(gateText, judge = judgeLighthouseJurisdiction) {
+  const problems = []
+  if (!/id: 'lighthouse',[\s\S]*?run: \(env\) => lighthouseStep\(env\),/.test(gateText ?? '')) {
+    problems.push(`${GATE} no longer routes its lighthouse step through lighthouseStep, so main's protection is not asked`)
+  }
+  const required = { protection: { required_status_checks: { contexts: [LIGHTHOUSE_CI_CHECK] } }, rulesets: [] }
+  const notRequired = { protection: { required_status_checks: { contexts: ['lint · typecheck · build'] } }, rulesets: [] }
+  const cases = [
+    ['main requires the check', required, false],
+    ['main does not require the check', notRequired, true],
+    ['protection could not be read', { error: 'HTTP 401' }, true],
+    ['protection gave no answer', null, true],
+  ]
+  for (const [label, state, judgedHere] of cases) {
+    let verdict
+    try {
+      verdict = judge(state)
+    } catch (error) {
+      problems.push(`the Lighthouse jurisdiction threw when ${label} (${error.message})`)
+      continue
+    }
+    if (verdict?.judgedHere !== judgedHere) {
+      problems.push(
+        judgedHere
+          ? `the Lighthouse jurisdiction waives the local step when ${label}; doubt must run the local step and block exactly as before`
+          : `the Lighthouse jurisdiction still judges locally when ${label}; GitHub is the judge then`,
+      )
+    }
+  }
+  return problems
+}
+
 function git(root, args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnv(), stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 }
@@ -90,7 +139,12 @@ function main() {
   }
 
   checks += 1
-  if (!existsSync(join(root, GATE))) problems.push(`${GATE} is missing, so the hook has nothing to run`)
+  if (!existsSync(join(root, GATE))) {
+    problems.push(`${GATE} is missing, so the hook has nothing to run`)
+  } else {
+    checks += 1
+    for (const p of inspectLighthouseJurisdiction(readFileSync(join(root, GATE), 'utf8'))) problems.push(p)
+  }
 
   checks += 1
   try {
@@ -143,7 +197,7 @@ function main() {
     process.exitCode = 1
     return
   }
-  console.log(`[pre-push-gate-wired] PASS - ${HOOK} runs the whole gate, npm run ${NPM_SCRIPT} is the same command, git is pointed at it.`)
+  console.log(`[pre-push-gate-wired] PASS - ${HOOK} runs the whole gate, npm run ${NPM_SCRIPT} is the same command, git is pointed at it, and the lighthouse step stands down only when main requires "${LIGHTHOUSE_CI_CHECK}".`)
 }
 
 const invokedDirectly = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(resolve(process.argv[1])).href

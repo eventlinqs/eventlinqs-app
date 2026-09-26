@@ -60,9 +60,17 @@ const loaded = spawnSync(
   ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', './scripts/lib/src-alias-loader.mjs', '--input-type=module', '-e', policyScript],
   { cwd: ROOT, encoding: 'utf8' },
 )
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 if (loaded.status !== 0) {
   console.error(`${TAG} could not load the indexing policy: ${(loaded.stderr || loaded.stdout).trim().slice(0, 400)}`)
-  process.exit(1)
+  return 1
 }
 const { policy, threshold } = JSON.parse(loaded.stdout.trim().split('\n').find((l) => l.startsWith('{')))
 
@@ -71,13 +79,13 @@ const { policy, threshold } = JSON.parse(loaded.stdout.trim().split('\n').find((
 /**
  * The paths the host is serving in its sitemap right now.
  *
- * @returns {Promise<Set<string>>}
+ * @returns {Promise<Set<string> | null>} null when the sitemap did not answer 200
  */
 async function readSitemapPaths() {
   const res = await fetch(`${BASE}/sitemap.xml`)
   if (!res.ok) {
     console.error(`${TAG} ${BASE}/sitemap.xml answered ${res.status}; nothing can be asserted against it`)
-    process.exit(1)
+    return null
   }
   const xml = await res.text()
   return new Set(
@@ -134,6 +142,7 @@ async function readSitemapPaths() {
  * actually arrives: below, once something has already looked wrong.
  */
 const sitemapPaths = await readSitemapPaths()
+if (!sitemapPaths) return 1
 
 /* ------------------------------------------- the targets, enumerated not guessed */
 
@@ -342,6 +351,7 @@ for (let i = 0; i < sitemapSample.length; i += CONC) {
  */
 if (misses.length > 0) {
   const nowAdvertised = await readSitemapPaths()
+  if (!nowAdvertised) return 1
   for (const entry of misses) {
     const stillAdvertised = nowAdvertised.has(entry.path)
     if (!stillAdvertised) withdrawn.push(describeWithdrawnSitemapEntry(entry))
@@ -366,6 +376,10 @@ if (OUT) {
 
 if (faults.length) {
   console.error(`${TAG} ${faults.length} fault(s)`)
-  process.exit(1)
+  return 1
 }
 console.log(`${TAG} PASS`)
+  return 0
+}
+
+process.exitCode = await main()

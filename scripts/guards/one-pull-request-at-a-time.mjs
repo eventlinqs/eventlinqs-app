@@ -184,7 +184,14 @@ function credentialSource() {
 }
 
 const invokedDirectly = process.argv[1] && /one-pull-request-at-a-time\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
-if (invokedDirectly) {
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
   const record = JSON.parse(readFileSync(RECORD_PATH, 'utf8'))
   const parked = record.parked ?? []
 
@@ -212,13 +219,13 @@ if (invokedDirectly) {
         ? `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and this checkout has no origin remote.`
         : `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and there is no git repository here to read a remote from.`,
     )
-    process.exit(0)
+    return 0
   }
   const source = credentialSource()
   if (!source) {
     console.warn(`${TAG} SKIP - NO GITHUB CREDENTIALS HERE (no GITHUB_TOKEN, no gh login), so the open pull request count is UNKNOWN, not one.`)
     console.warn(`${TAG}   Locally, run gh auth login. This is a real gate on the machine that runs the pre-push gate, which is where a pull request is opened.`)
-    process.exit(0)
+    return 0
   }
 
   let open
@@ -226,7 +233,7 @@ if (invokedDirectly) {
     open = await readOpenPullRequests(repo)
   } catch (error) {
     console.error(`${TAG} FAIL - could not list the open pull requests on ${repo}: ${error.message}`)
-    process.exit(1)
+    return 1
   }
 
   const { faults, active, parkedOpen } = judgeOpenPullRequests({ open, parked })
@@ -260,10 +267,13 @@ if (invokedDirectly) {
     console.error('')
     console.error(`${TAG}   Close-out PR5: one open pull request at a time. Open the next only when the previous is merged or closed.`)
     console.error(`${TAG}   A pull request held on purpose belongs in scripts/guards/lib/parked-pull-requests.json with a why and an unblockedBy.`)
-    process.exit(1)
+    return 1
   }
 
   console.log(
     `${TAG} PASS - ${active.length} active (limit ${MAX_ACTIVE}), ${parkedOpen.length} parked with a reason, ${open.length} open in total.`,
   )
+  return 0
 }
+
+if (invokedDirectly) process.exitCode = await main()

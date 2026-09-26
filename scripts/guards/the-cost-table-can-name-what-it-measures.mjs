@@ -58,6 +58,16 @@
  *   5. every page_client-reference-manifest.js parses
  *   6. the manifests name at least 60% of the chunks in the build
  *
+ * BOTH CHUNK DIRECTORIES (PLATFORM-FIX-1, 26 September 2026). Built mode read
+ * .next/static/chunks only. On Vercel, Next 16.3 writes the chunks to
+ * .next/static/immutable/chunks (the deployment adapter sets
+ * supportsImmutableAssets; FIX-159 fault 3, commit 583b764b, which fixed the
+ * same blindness in event-grid-reserves-its-own-height), so on the host that
+ * matters this clause found no chunk directory and SKIPPED. It now reads every
+ * directory in CHUNK_DIRS and counts each, and contract mode (7) calibrates
+ * the built judge against a throwaway build of EACH layout, so dropping a
+ * directory fails on every prebuild rather than on the next Vercel deploy.
+ *
  * Clause 6 is a PERCENTAGE and not a count, and the floor is far below the
  * measurement on purpose. The failure worth a gate is not "one more chunk is
  * lazily imported", which is ordinary and which a count would fire on; it is
@@ -68,7 +78,8 @@
  * Run standalone:  node scripts/guards/the-cost-table-can-name-what-it-measures.mjs
  *                  node scripts/guards/the-cost-table-can-name-what-it-measures.mjs --built
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -89,6 +100,23 @@ const TABLE = 'scripts/perf/chunk-cost-table.mjs'
 
 /* Measured 21 September 2026: 126 of 154 chunks named by a manifest, 81.8%. */
 const MANIFEST_SHARE_FLOOR = 0.6
+
+/**
+ * Where a build writes its client chunks, relative to .next: a local
+ * `next build` writes static/chunks, a Vercel build static/immutable/chunks.
+ */
+export const CHUNK_DIRS = ['static/chunks', 'static/immutable/chunks']
+
+/**
+ * The layouts each host is KNOWN to write, held apart from CHUNK_DIRS on
+ * purpose: the calibration judges CHUNK_DIRS against this list, so dropping a
+ * directory from the reader cannot also drop it from the test of the reader
+ * (the first version iterated CHUNK_DIRS and its own drill passed through it).
+ */
+export const HOST_LAYOUTS = [
+  { host: 'a local next build', dir: 'static/chunks' },
+  { host: 'a Vercel build (supportsImmutableAssets, commit 583b764b)', dir: 'static/immutable/chunks' },
+]
 
 /** Clauses 1 to 4. Pure: the two sources in, findings out. */
 export function judgeContract(markers, tableSource) {
@@ -137,10 +165,10 @@ export function judgeContract(markers, tableSource) {
 /** Clauses 5 and 6, against a real build. Returns findings plus the numbers. */
 export function judgeBuilt(nextDir) {
   const findings = []
-  const chunkDir = join(nextDir, 'static', 'chunks')
+  const chunkDirs = CHUNK_DIRS.map((dir) => ({ dir, full: join(nextDir, ...dir.split('/')) })).filter((d) => existsSync(d.full))
   const manifests = listClientReferenceManifests(nextDir)
 
-  if (manifests.length === 0 || !existsSync(chunkDir)) {
+  if (manifests.length === 0 || chunkDirs.length === 0) {
     return { findings, skipped: `no build on disk under ${relative(ROOT, nextDir) || nextDir}`, counts: null }
   }
 
@@ -156,12 +184,14 @@ export function judgeBuilt(nextDir) {
   }
 
   const byChunk = readClientModuleChunks(nextDir)
-  const files = readdirSync(chunkDir).filter((f) => f.endsWith('.js'))
-  const namedByManifest = files.filter((f) => byChunk.has(f)).length
+  const perDir = chunkDirs.map((d) => ({ ...d, files: readdirSync(d.full).filter((f) => f.endsWith('.js')) }))
+  const files = perDir.flatMap((d) => d.files.map((file) => ({ file, full: join(d.full, file) })))
+  const namedByManifest = files.filter((f) => byChunk.has(f.file)).length
   const share = files.length === 0 ? 0 : namedByManifest / files.length
+  const where = perDir.map((d) => `.next/${d.dir} (${d.files.length})`).join(' and ')
 
   if (files.length === 0) {
-    findings.push(`${relative(ROOT, chunkDir).split(/[\\/]/).join('/')} holds no chunk, which is not a build this table can read.`)
+    findings.push(`${where} hold no chunk, which is not a build this table can read.`)
   } else if (share < MANIFEST_SHARE_FLOOR) {
     findings.push(
       `only ${namedByManifest} of ${files.length} chunk(s) are named by a client-reference manifest ` +
@@ -171,16 +201,51 @@ export function judgeBuilt(nextDir) {
   }
 
   const blind = []
-  for (const file of files) {
-    const body = readFileSync(join(chunkDir, file), 'utf8')
+  for (const { file, full } of files) {
+    const body = readFileSync(full, 'utf8')
     if (nameChunk({ file, body, modules: byChunk.get(file) }).how === 'none') blind.push({ file, kb: body.length / 1024 })
   }
 
   return {
     findings,
     skipped: null,
-    counts: { manifests: manifests.length, unparsed, namedByManifest, files: files.length, share, blind },
+    counts: { manifests: manifests.length, unparsed, namedByManifest, files: files.length, share, blind, where },
   }
+}
+
+/**
+ * Clause 7, in contract mode: the built judge reads EVERY layout a host writes.
+ * A throwaway build of each layout (one manifest naming one chunk) is written
+ * under os.tmpdir() and judged; each must be read in full and its chunk
+ * named. Removed afterwards.
+ */
+export function calibrateLayouts() {
+  const findings = []
+  for (const { host, dir } of HOST_LAYOUTS) {
+    const root = mkdtempSync(join(tmpdir(), 'cost-table-layout-'))
+    try {
+      const nextDir = join(root, '.next')
+      mkdirSync(join(nextDir, 'server', 'app'), { recursive: true })
+      writeFileSync(
+        join(nextDir, 'server', 'app', 'page_client-reference-manifest.js'),
+        'globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {};\n' +
+          `globalThis.__RSC_MANIFEST["/page"] = {"clientModules":{"[project]/src/a.tsx":{"chunks":["/_next/${dir}/calibration.js"]}}}`,
+      )
+      mkdirSync(join(nextDir, ...dir.split('/')), { recursive: true })
+      writeFileSync(join(nextDir, ...dir.split('/'), 'calibration.js'), 'void 0')
+      const { skipped, counts } = judgeBuilt(nextDir)
+      if (skipped || !counts || counts.files !== 1 || counts.namedByManifest !== 1) {
+        findings.push(
+          `the built judge cannot read a build laid out under .next/${dir}, which is what ${host} writes (${skipped ?? `${counts?.files ?? 0} chunk(s) read`}). ` +
+            'A local build writes static/chunks and a Vercel build static/immutable/chunks (commit 583b764b); ' +
+            'a judge that reads one of them skips, silently, on the other host.',
+        )
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }
+  return findings
 }
 
 const invokedDirectly =
@@ -189,6 +254,8 @@ const invokedDirectly =
 
 if (invokedDirectly) {
   const failures = judgeContract(FEATURE_MARKERS, readFileSync(join(ROOT, TABLE), 'utf8'))
+  failures.push(...calibrateLayouts())
+  console.log(`${TAG} the built judge reads ${CHUNK_DIRS.map((d) => `.next/${d}`).join(' and ')}, calibrated against a throwaway build of each.`)
   console.log(`${TAG} ${FEATURE_MARKERS.length} reviewed marker(s) in ${LIBRARY}, and ${TABLE} reads that one list.`)
 
   if (process.argv.includes('--built')) {
@@ -198,7 +265,7 @@ if (invokedDirectly) {
       console.log(`${TAG} BUILT MODE SKIPPED: ${skipped}. The contract clauses above still ran.`)
     } else {
       console.log(
-        `${TAG} ${counts.manifests} client-reference manifest(s), ${counts.unparsed} unparsed; ` +
+        `${TAG} ${counts.manifests} client-reference manifest(s), ${counts.unparsed} unparsed; chunks read from ${counts.where}; ` +
           `${counts.namedByManifest} of ${counts.files} chunk(s) named by one ` +
           `(${(counts.share * 100).toFixed(1)}%, floor ${(MANIFEST_SHARE_FLOOR * 100).toFixed(0)}%).`,
       )

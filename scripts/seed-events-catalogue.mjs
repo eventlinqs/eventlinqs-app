@@ -389,8 +389,11 @@ function writeFixture(rows) {
 async function seedDb(env) {
   const url = process.env.STAGING_SUPABASE_URL || env.STAGING_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.STAGING_SUPABASE_SERVICE_ROLE_KEY || env.STAGING_SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) { console.error('[seed:db] ABORT: no Supabase url/key. Set STAGING_SUPABASE_URL + STAGING_SUPABASE_SERVICE_ROLE_KEY.'); process.exit(1) }
-  if (url.includes(PROD_REF)) { console.error(`[seed:db] ABORT: refusing to seed PRODUCTION (${PROD_REF}). Point at staging or local only.`); process.exit(1) }
+  // process.exitCode and return, never process.exit: this process talks to
+  // Supabase, and exiting while a socket closes aborts Node on Windows
+  // (nodejs/node#56645). Held by scripts/guards/no-exit-after-network.mjs.
+  if (!url || !key) { console.error('[seed:db] ABORT: no Supabase url/key. Set STAGING_SUPABASE_URL + STAGING_SUPABASE_SERVICE_ROLE_KEY.'); process.exitCode = 1; return }
+  if (url.includes(PROD_REF)) { console.error(`[seed:db] ABORT: refusing to seed PRODUCTION (${PROD_REF}). Point at staging or local only.`); process.exitCode = 1; return }
 
   const s = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
   console.log(`[seed:db] target ${url}`)
@@ -413,7 +416,7 @@ async function seedDb(env) {
   const { data: profile } = profileId
     ? { data: { id: profileId } }
     : await s.from('profiles').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle()
-  if (!org || !profile) { console.error('[seed:db] ABORT: need at least one organisation and profile (run migrations/base seed first).'); process.exit(1) }
+  if (!org || !profile) { console.error('[seed:db] ABORT: need at least one organisation and profile (run migrations/base seed first).'); process.exitCode = 1; return }
   console.log(`[seed:db] using org ${org.id}${payOrg ? ' (Stripe-ready)' : ' (WARNING: no Stripe-onboarded org; paid events will be sale-guarded)'}`)
 
   // Resolve category ids by slug at runtime (portable across projects).

@@ -1467,6 +1467,100 @@ const DRILLS = [
     expect: 'step selection',
   },
   /*
+   * The Lighthouse jurisdiction (founder ruling, 25 September 2026). The local
+   * step stands down only when main's protection REQUIRES the Lighthouse CI
+   * check. The two ways that dies quietly: doubt read as a waiver, and a gate
+   * whose step no longer asks at all.
+   */
+  {
+    name: 'an unreadable branch protection waives the local Lighthouse step',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: 'scripts/ops/lighthouse-jurisdiction.mjs',
+    find: "return { judgedHere: true, reason: `main's protection could not be read",
+    replace: "return { judgedHere: false, reason: `main's protection could not be read",
+    expect: 'waives the local step when protection could not be read',
+  },
+  {
+    name: 'the gate stops asking branch protection before it waives Lighthouse',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: 'run: (env) => lighthouseStep(env),',
+    replace: 'run: () => 0,',
+    expect: 'no longer routes its lighthouse step through lighthouseStep',
+  },
+  /*
+   * no-exit-after-network (PLATFORM-FIX-1, 26 September 2026): the Windows
+   * UV_HANDLE_CLOSING abort. One drill puts process.exit back after a live
+   * database read; the other drops the exitOnZero opt-out from a declareWork
+   * call in a network path, which is the same exit one hop away.
+   */
+  {
+    name: 'a live-database guard exits with process.exit again after its read',
+    guard: `${GUARDS}/no-exit-after-network.mjs`,
+    file: 'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
+    find: "  console.error(`${TAG} ${breaches.length} breach(es) of the campaigner invariant.`)\n  return 1",
+    replace: "  console.error(`${TAG} ${breaches.length} breach(es) of the campaigner invariant.`)\n  process.exit(1)",
+    expect: 'calls process.exit in a process that does network work',
+  },
+  {
+    name: 'a declareWork call in a network path leaves the library to process.exit on zero',
+    guard: `${GUARDS}/no-exit-after-network.mjs`,
+    file: 'scripts/ci/warm-preview.mjs',
+    find: "        : [],\n    exitOnZero: false,\n  })",
+    replace: "        : [],\n  })",
+    expect: 'calls declareWork without exitOnZero: false',
+  },
+  /*
+   * no-unguarded-production-write reads `process.exitCode = 1; return` as a
+   * refusal since PLATFORM-FIX-1 (the network scripts may not process.exit).
+   * The widening must not accept a line that does not STOP the script: a lone
+   * exitCode lets the seed carry on and write to whatever it was pointed at.
+   */
+  {
+    name: 'the seed refuses production by setting an exit code and carrying on',
+    guard: `${GUARDS}/no-unguarded-production-write.mjs`,
+    file: 'scripts/seed-events-catalogue.mjs',
+    find: "Point at staging or local only.`); process.exitCode = 1; return }",
+    replace: "Point at staging or local only.`); process.exitCode = 1 }",
+    expect: 'scripts/seed-events-catalogue.mjs',
+  },
+  /*
+   * no-retired-business-name (PLATFORM-FIX-1, 26 September 2026): the privacy
+   * page named the retired business for a week after the rename, and a
+   * registered migration must not become a place a new mention can hide.
+   */
+  {
+    name: 'the privacy page names a retired business again',
+    guard: `${GUARDS}/no-retired-business-name.mjs`,
+    file: 'src/app/legal/privacy/page.tsx',
+    find: '<strong>Bookedproof</strong> as its service provider',
+    replace: '<strong>Fullproof AI</strong> as its service provider',
+    expect: 'a retired name',
+  },
+  {
+    name: 'a registered migration gains one more retired name',
+    guard: `${GUARDS}/no-retired-business-name.mjs`,
+    file: 'supabase/migrations/20260913000060_attribution_spine.sql',
+    find: '-- WHY THIS IS NOT REPORTING.',
+    replace: '-- Fillrate. WHY THIS IS NOT REPORTING.',
+    expect: 'registered for exactly 1 occurrence',
+  },
+  /*
+   * lighthouse-floor-ratchet had no drill until 26 September 2026, when the
+   * local Lighthouse step became conditional on main's protection: where the
+   * CI check is required, the floors are asserted only by the CI job, so the
+   * guard that holds them is the last thing between a lowered number and a
+   * merge.
+   */
+  {
+    name: 'a Lighthouse floor is lowered',
+    guard: `${GUARDS}/lighthouse-floor-ratchet.mjs`,
+    file: 'lighthouserc.json',
+    find: '"canonical": ["error", { "minScore": 1, "aggregationMethod": "median" }],',
+    replace: '"canonical": ["error", { "minScore": 0.9, "aggregationMethod": "median" }],',
+    expect: 'LOWERED',
+  },
+  /*
    * card-raster-traced (close-out C3, 6 September 2026): the resvg binary is
    * pinned into each rasterising route's lambda trace by hand, and the only
    * environment that shows a lost entry is Vercel. The drill removes the binary
@@ -4592,18 +4686,54 @@ const DRILLS = [
   },
 
   /*
-   * founding-offer-matches-configuration (FO1), five drills. The offer is
+   * founding-offer-matches-configuration (FO1), the offer drills. The offer is
    * published, is repeated in every outreach message, and is charged by a
    * different module from the one that prints it, so each drill is a way the
    * page and the invoice come to disagree.
+   *
+   * LAW 24 (26 September 2026) replaced "the engine changes the founding cap
+   * and the published page does not" with the ways the cap comes back, and the
+   * way the registration stamp drifts from the copy.
    */
   {
-    name: 'the engine changes the founding cap and the published page does not',
+    name: 'the engine grows a founding cap again',
     guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
     file: 'src/lib/payments/founding-waiver.ts',
-    find: 'export const FOUNDING_WAIVER_CAP = 50',
-    replace: 'export const FOUNDING_WAIVER_CAP = 75',
-    expect: 'and the engine that charges uses',
+    find: 'export const FOUNDING_INITIAL_MONTHS = 6',
+    replace: 'export const FOUNDING_WAIVER_CAP = 50\nexport const FOUNDING_INITIAL_MONTHS = 6',
+    expect: 'exports FOUNDING_WAIVER_CAP again',
+  },
+  {
+    name: 'the organiser terms promise the offer to the first fifty again',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/app/legal/organiser-terms/page.tsx',
+    find: '        number of organisers and nothing to apply for:',
+    replace: '        number of organisers and nothing to apply for, for the first 50 organisers in Australia:',
+    expect: 'states a cap',
+  },
+  {
+    name: 'claim_founding_spot counts to fifty again',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: '  v_taken integer;\nBEGIN',
+    replace: '  v_taken integer;\n  v_cap constant integer := 50;\nBEGIN',
+    expect: 'defines claim_founding_spot with a cap',
+  },
+  {
+    name: 'the fifty-window cap trigger is left installed',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: 'DROP TRIGGER IF EXISTS trg_founding_waiver_cap ON public.organisations;',
+    replace: '-- the cap trigger stays',
+    expect: 'no later migration drops it',
+  },
+  {
+    name: 'the registration stamp gives fewer months than the page promises',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'supabase/migrations/20260926000001_law24_six_months_for_every_organiser.sql',
+    find: 'founding_add_months(COALESCE(NEW.created_at, now()), 6)',
+    replace: 'founding_add_months(COALESCE(NEW.created_at, now()), 3)',
+    expect: 'stamps 3 months at registration',
   },
   {
     name: 'a published claim is deleted from the offer instead of corrected',
@@ -7338,6 +7468,28 @@ const DRILLS = [
     find: "  { feature: 'Supabase client', test: /GoTrueClient|PostgrestClient/,",
     replace: "  { feature: 'React DOM', test: /GoTrueClient|PostgrestClient/,",
     expect: 'both claim the feature',
+  },
+  /*
+   * PLATFORM-FIX-1, 26 September 2026: built mode read .next/static/chunks only
+   * and SKIPPED on a Vercel build, which writes static/immutable/chunks (the
+   * event-grid guard's fault 3, commit 583b764b). The calibration in contract
+   * mode is what a drill can reach: drop either directory and it fails.
+   */
+  {
+    name: 'the cost table reads only the local chunk directory again, and goes blind on Vercel',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
+    find: "export const CHUNK_DIRS = ['static/chunks', 'static/immutable/chunks']",
+    replace: "export const CHUNK_DIRS = ['static/chunks']",
+    expect: 'cannot read a build laid out under .next/static/immutable/chunks',
+  },
+  {
+    name: 'the cost table reads only the Vercel chunk directory, and goes blind on a local build',
+    guard: `${GUARDS}/the-cost-table-can-name-what-it-measures.mjs`,
+    file: 'scripts/guards/the-cost-table-can-name-what-it-measures.mjs',
+    find: "export const CHUNK_DIRS = ['static/chunks', 'static/immutable/chunks']",
+    replace: "export const CHUNK_DIRS = ['static/immutable/chunks']",
+    expect: 'cannot read a build laid out under .next/static/chunks',
   },
 
   /*

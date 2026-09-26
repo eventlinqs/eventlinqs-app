@@ -51,8 +51,16 @@
  * WHAT THE NUMBERS MEAN. See lighthouserc.json's own _derivation note: each
  * performance floor is the LOWER of two independent local median-of-five
  * collections, minus 3 points, minus 1 more where that URL's run spread exceeded
- * 5 points. The local gate is the binding environment because it measures 4 to 8
+ * 5 points. The floors were DERIVED on the local gate because it measured 4 to 8
  * points below the runner on the same commit.
+ *
+ * WHERE THEY ARE JUDGED (founder ruling, 25 September 2026). Since that day
+ * main's branch protection requires the Lighthouse CI check `Lighthouse mobile
+ * gate`, which asserts these floors against the Vercel preview, and the pre-push
+ * gate's local step stands down while that is so (scripts/ops/lighthouse-jurisdiction.mjs).
+ * This laptop measured a BenchmarkIndex of 1844 to 2102 that day against the
+ * 2700 the floors were confirmed at. No floor moved: the same numbers are
+ * asserted, on the runner, and this guard holds them exactly as before.
  *
  * Run standalone:  node scripts/guards/lighthouse-floor-ratchet.mjs
  */

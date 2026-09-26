@@ -51,12 +51,20 @@ const fail = (m) => {
   console.error(`${TAG} FAIL: ${m}`)
 }
 
+/*
+ * main() returns the exit code and process.exitCode carries it, never
+ * process.exit: this script does network work, and exiting while a socket is
+ * still closing aborts Node on Windows ("Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)", exit 3221226505, nodejs/node#56645). Held by
+ * scripts/guards/no-exit-after-network.mjs.
+ */
+async function main() {
 let paths = process.argv.slice(3)
 if (paths.length === 0) {
   const res = await fetch(`${BASE}/sitemap.xml`)
   if (!res.ok) {
     console.error(`${TAG} ${BASE}/sitemap.xml answered ${res.status}`)
-    process.exit(1)
+    return 1
   }
   const xml = await res.text()
   paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname)
@@ -172,6 +180,10 @@ if (seen.has('Event') || [...seen.keys()].some((t) => /Festival|Concert|MusicEve
 
 if (faults.length) {
   console.error(`${TAG} ${faults.length} fault(s)`)
-  process.exit(1)
+  return 1
 }
 console.log(`${TAG} PASS`)
+  return 0
+}
+
+process.exitCode = await main()

@@ -215,12 +215,13 @@ describe('getDemandSignal: every waitlist row, or an honest failure', () => {
 })
 
 describe('getFoundingCounts: the number the founder acts on', () => {
-  test('the four figures are the counts the database gave', async () => {
+  // Three figures since LAW 24 (26 September 2026): spotsRemaining was fifty
+  // minus spotsTaken, and there is no fifty any more.
+  test('the three figures are the counts the database gave', async () => {
     database({ counts: allCounts({ organisations: 5, founding_invites: 12 }) })
     const counts = await getFoundingCounts()
     expect(counts).toEqual({
       spotsTaken: 5,
-      spotsRemaining: 45,
       invitesIssued: 12,
       invitesAccepted: 12,
     })
