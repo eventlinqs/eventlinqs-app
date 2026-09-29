@@ -41,6 +41,12 @@
  *   node scripts/verify/r1-out-of-app-refund-drive.mjs [--build] [--build-only]
  *        [--profile default] [--viewport mobile-390|tablet-768|desktop-1440]
  *        [--out C:/dev/EVIDENCE/R1/<stamp>]
+ *        [--proof scripts/verify/<proof>.mjs]
+ *
+ * --proof runs a different per-width proof under the same four arrangements.
+ * Added 29 September 2026 for MONEY FIX (scripts/verify/money-b7-proof.mjs),
+ * which needs exactly this server, key pair and forwarder, so it borrows them
+ * rather than holding a second copy of this file that would drift from it.
  *
  * Refuses: a production Supabase project, a live or restricted or expired or
  * mismatched key pair, a build that does not carry the publishable key (unless
@@ -65,6 +71,11 @@ const has = (name) => args.includes(`--${name}`)
 const profileName = flag('profile') ?? 'default'
 const stamp = new Date().toISOString().slice(0, 10)
 const OUT = (flag('out') ?? `C:/dev/EVIDENCE/R1/${stamp}`).replace(/\\/g, '/')
+const PROOF = flag('proof') ?? 'scripts/verify/r1-out-of-app-refund-proof.mjs'
+if (!existsSync(join(ROOT, PROOF))) {
+  console.error(`${TAG} REFUSING: --proof ${PROOF} does not exist`)
+  process.exit(1)
+}
 mkdirSync(OUT, { recursive: true })
 mkdirSync(join(ROOT, '.tmp'), { recursive: true })
 const LOG = join(ROOT, '.tmp', 'r1-drive-server.log')
@@ -246,7 +257,7 @@ try {
   const only = flag('viewport')
   const run = only ? [only] : viewports
   for (const viewport of run) {
-    say(`${TAG} ---- a refund issued outside the application, at ${viewport} ----`)
+    say(`${TAG} ---- ${PROOF === 'scripts/verify/r1-out-of-app-refund-proof.mjs' ? 'a refund issued outside the application' : PROOF}, at ${viewport} ----`)
     const r = spawnSync(
       process.execPath,
       [
@@ -260,7 +271,7 @@ try {
         '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
         '--import',
         './scripts/lib/src-alias-loader.mjs',
-        'scripts/verify/r1-out-of-app-refund-proof.mjs',
+        PROOF,
         '--out',
         `${OUT}/${viewport}`,
       ],
