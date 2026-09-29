@@ -27,6 +27,9 @@ import { getSiteUrl } from '@/lib/site-url'
 import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { computeDashboardKpis, DAY_MS } from '@/lib/dashboard/kpis'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getOrganiserMoneySummary } from '@/lib/payouts/money-summary'
+import { MoneyPanel } from '@/components/dashboard/money-panel'
 
 type OrderSummary = {
   id: string
@@ -250,6 +253,17 @@ export default async function DashboardPage({
 
   const revenueFormatted = formatCurrency(revenueCents30, currency)
 
+  /*
+   * MONEY FIX B7: sales, refunds, payouts and the next payout date, summed from
+   * organiser_balance_ledger by src/lib/payouts/money-summary.ts, never typed.
+   * The service role reads the ledger because it carries no organiser policy;
+   * `org` has already been proved the viewer's by resolveOrganisationScope.
+   * Gated on `org` alone, the same as the figures above it: whoever owns the
+   * organisation is owed its money, whatever their profile role says.
+   */
+  const moneySummary =
+    org ? await getOrganiserMoneySummary(createAdminClient(), org.id, renderedAt) : null
+
   // ── Recent activity (up to 10 items) ─────────────────────────────────────
   const recentActivity: ActivityItem[] = ordersLast60.slice(0, 10).map((o) => {
     const isRefund = o.status === 'refunded' || o.status === 'partially_refunded'
@@ -339,6 +353,8 @@ export default async function DashboardPage({
           emptyHint="Create your first event"
         />
       </div>
+
+      {moneySummary ? <MoneyPanel summary={moneySummary} /> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
