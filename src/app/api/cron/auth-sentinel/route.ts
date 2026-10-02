@@ -6,6 +6,7 @@ import { alertDestination } from '@/lib/env/destinations'
 import { getSiteUrl } from '@/lib/site-url'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 import { RENDERABLE_PROVIDERS } from '@/lib/auth/providers'
+import { shouldSendTransportProbe, TRANSPORT_PROBE_UTC_HOUR } from '@/lib/cron/transport-probe-schedule'
 
 export const runtime = 'nodejs'
 
@@ -43,7 +44,9 @@ export const runtime = 'nodejs'
  *     nothing, sends nothing, and mutates nothing. Verified against production
  *     on 2026-08-02.
  *   - Check C sends to `delivered@resend.dev`, Resend's official delivery
- *     simulator. It is not a mailbox and reaches no person.
+ *     simulator. It is not a mailbox and reaches no person. It sends ONCE a
+ *     day, not every run, because Resend counts it against the account quota
+ *     (src/lib/cron/transport-probe-schedule.ts).
  *   - Checks D, E, F are reads.
  * No probe touches `orders`, `profiles`, `auth.users`, or any other table.
  */
@@ -231,8 +234,18 @@ async function checkRedirectConfig(origin: string): Promise<CheckResult> {
 // ---------------------------------------------------------------------------
 // C. MAIL TRANSPORT
 // ---------------------------------------------------------------------------
-async function checkMailTransport(): Promise<CheckResult> {
+async function checkMailTransport(sendProbe: boolean): Promise<CheckResult> {
   const name = 'auth mail transport'
+  if (!sendProbe) {
+    // Resend counts the probe against the account quota, so it is sent once a
+    // day, not every ten minutes (src/lib/cron/transport-probe-schedule.ts).
+    // Check D below still asks Resend about the key and domain on every run.
+    return {
+      name,
+      status: 'unverified',
+      detail: `transport probe not sent on this run; it is sent once a day at ${TRANSPORT_PROBE_UTC_HOUR}:00 UTC so it never uses the Resend daily quota`,
+    }
+  }
   if (!process.env.RESEND_API_KEY) {
     return {
       name,
@@ -441,7 +454,9 @@ export async function GET(request: NextRequest) {
       : [
           await checkProviderParity(),
           await checkRedirectConfig(origin),
-          await checkMailTransport(),
+          await checkMailTransport(
+            shouldSendTransportProbe(new Date(), request.nextUrl.searchParams.get('probe') === 'transport'),
+          ),
           await checkSenderDomain(),
           await checkContentTypes(origin),
           await checkSupabaseSmtp(),
