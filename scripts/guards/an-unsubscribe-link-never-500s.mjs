@@ -47,6 +47,9 @@
  *         written in one file and stay there
  *   THREE the predicate is anchored at both ends and carries no `g` flag, the
  *         two ways a shape test can be wrong while looking right
+ *   FOUR  /unsubscribe/outreach, the one member with no token (its link carries
+ *         a HubSpot contact id), reads no database on load and tests the id's
+ *         shape through one anchored predicate (added 3 October 2026)
  *
  * WHAT IT CANNOT SEE, stated so a pass is not read as more than it is: whether
  * the page RENDERS something useful. That is proven by driving both URLs at
@@ -291,6 +294,67 @@ if (!predicateSrc) {
     failures.push(`${PREDICATE_MODULE}: no longer exports ${PREDICATE}, so clause one is reading for a call that cannot exist`)
   } else {
     passes.push(`${PREDICATE_MODULE} exports the one predicate the family calls`)
+  }
+}
+
+// ── CLAUSE FOUR ──────────────────────────────────────────────────────────────
+// The outreach unsubscribe, /unsubscribe/outreach (added 3 October 2026). It is
+// the one member of this family that carries NO token: the link holds a HubSpot
+// contact id, `?id=<digits>`, typed into an Outlook footer by hand, so a
+// mangled value is the expected case rather than the rare one. It cannot 500
+// on that value for a structural reason, and this clause holds the reason:
+//
+//   a. the PAGE reads no database at all. Loading it does nothing, so a mail
+//      scanner prefetching the link unsubscribes nobody and no value of `id`
+//      reaches a query. The write lives only in the server action.
+//   b. the page tests the id's shape through the one predicate before using it.
+//   c. that predicate is anchored at both ends and carries no `g` flag, for the
+//      same two reasons clause three gives for the token shape.
+//
+// The route sweep in the push gate drives the page itself (it is a static
+// segment, so it is swept with no id), which is the rendered half of this.
+
+const OUTREACH_PAGE = 'src/app/unsubscribe/outreach/page.tsx'
+const OUTREACH_MODULE = 'src/lib/outreach/unsubscribe.ts'
+const OUTREACH_PREDICATE = 'isHubspotContactId'
+
+if (!existsSync(join(ROOT, OUTREACH_PAGE))) {
+  failures.push(`${OUTREACH_PAGE}: missing. The outreach emails link to it, so every one of those links would 404.`)
+} else {
+  const page = codeOnly(readFileSync(join(ROOT, OUTREACH_PAGE), 'utf8'))
+  const readsDatabase =
+    /from\s+['"]@\/lib\/supabase\//.test(page) || /\.from\(\s*['"]/.test(page) || /\.rpc\(/.test(page)
+  if (readsDatabase) {
+    failures.push(
+      `${OUTREACH_PAGE}: the page now touches the database on load. It must not: a GET is what a ` +
+        `mail scanner sends, so loading the page has to do nothing, and a read keyed by the id turns a ` +
+        `mangled id into a 500. Record the unsubscribe in the server action only.`,
+    )
+  } else {
+    passes.push(`${OUTREACH_PAGE} reads no database on load`)
+  }
+  if (!page.includes(`${OUTREACH_PREDICATE}(`)) {
+    failures.push(`${OUTREACH_PAGE}: no longer tests the contact id with ${OUTREACH_PREDICATE}() before using it.`)
+  } else {
+    passes.push(`${OUTREACH_PAGE} tests the contact id's shape before using it`)
+  }
+}
+
+const outreachSrc = existsSync(join(ROOT, OUTREACH_MODULE))
+  ? codeOnly(readFileSync(join(ROOT, OUTREACH_MODULE), 'utf8'))
+  : null
+if (!outreachSrc) {
+  failures.push(`${OUTREACH_MODULE}: missing, so nothing tells a mangled outreach id from a usable one.`)
+} else {
+  const shape = outreachSrc.match(/HUBSPOT_CONTACT_ID_SHAPE\s*=\s*(\/.*\/[a-z]*)/)
+  if (!shape || !/^\/\^.*\$\/[a-z]*$/.test(shape[1])) {
+    failures.push(`${OUTREACH_MODULE}: the contact id shape is no longer anchored with ^ and $.`)
+  } else if (/\$\/[a-z]*g/.test(shape[1])) {
+    failures.push(`${OUTREACH_MODULE}: the contact id shape carries the g flag, so one id alternates valid and invalid.`)
+  } else if (!new RegExp(`export function ${OUTREACH_PREDICATE}\\b`).test(outreachSrc)) {
+    failures.push(`${OUTREACH_MODULE}: no longer exports ${OUTREACH_PREDICATE}.`)
+  } else {
+    passes.push('the outreach contact id shape is anchored at both ends and carries no g flag')
   }
 }
 

@@ -211,6 +211,7 @@
     "/tickets": 161645,
     "/unsubscribe/[token]": 156114,
     "/unsubscribe/digest/[token]": 156114,
+    "/unsubscribe/outreach": 159083,
     "/unsubscribe/recovery/[token]": 156114,
     "/venues/[handle]": 179742,
     "/verify-email-sent": 166684,

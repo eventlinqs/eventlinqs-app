@@ -218,6 +218,8 @@ const PUBLIC_BY_DESIGN = {
     'the same token, the same rule as the other unsubscribe actions; returns void so nothing can be enumerated with it',
   'actions/marketing-rights.ts::stopFacilitationByEmailAction':
     'APP 7.6 from the privacy policy, keyed by a typed address and DELIBERATELY unverified: it can only ever stop mail, it answers identically whether or not the address is known, and it is rate limited by the marketing-rights policy',
+  'actions/outreach-unsubscribe.ts::unsubscribeFromOutreachAction':
+    'the Spam Act unsubscribe for the founder outreach emails (3 October 2026). Public BY NECESSITY: ACMA says the facility "does not require the person to give extra personal information or log in to, or create, an account" (https://www.acma.gov.au/avoid-sending-spam), and the people it serves have no account here. Keyed by the HubSpot contact id in the link or a typed address, DELIBERATELY unverified, and safe for the same reason as stopFacilitationByEmailAction: it can only ever record a request to STOP mail. It writes one row to outreach_unsubscribes (append only, RLS on, no policy, no grant to anon or authenticated), reads nothing back to the caller, answers the same whatever the id, and its one email goes to alertDestination(), never to an address the caller supplies. Rate limited by outreach-unsubscribe',
   'actions/email-subscribe.ts::submitEmailSignup': 'public newsletter opt-in',
   'actions/queue.ts::getQueuePosition': 'reads a position by queue id; positions are not sensitive',
   'actions/queue.ts::validateQueueToken': 'verifies a signed admission token; the signature is the credential',
