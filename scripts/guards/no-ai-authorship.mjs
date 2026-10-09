@@ -117,6 +117,23 @@ const WINDOW = 800
  */
 const INHERITED_DEFERRED = new Map([
   [
+    '948b0b75cf017aff700aeac3fc4114ca527e5425',
+    'origin/main tip: "MONEY FIX B7: the organiser\'s sales, refunds, payouts and next\n' +
+      '      payout date on their dashboard, from the ledger (#166)", squash-merged by GitHub\n' +
+      '      on 9 October 2026. The author is eventlinqs and the committer is GitHub; the\n' +
+      '      one trailer was aggregated by the squash from a constituent commit made in a\n' +
+      '      cloud session whose git identity was still the tool default. That identity\n' +
+      '      was corrected the same day, so later commits are clean.\n' +
+      '      THE REWRITE WAS TRIED AND REFUSED. The founder first chose to rewrite only\n' +
+      '      this message. The rewritten commit passed the full local gate, 16 of 16, and\n' +
+      '      GitHub refused it on 10 October 2026: "GH013: Repository rule violations found\n' +
+      '      for refs/heads/main ... Cannot force-push to this branch". Main is protected\n' +
+      '      against exactly that, correctly. Founder ruling 10 October 2026 (option A):\n' +
+      '      defer it by name under the standing ruling (R-LAW8-DEBT, 2026-08-12), NOT by\n' +
+      '      advancing the boundary. Clears with the rewrite in\n' +
+      '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
+  ],
+  [
     '9cf7d3651f0d3b24ea4750d35f4eb378210a9d22',
     'origin/main tip: "Integration/launch (#121)", squash-merged by GitHub on\n' +
       '      28 August 2026 and CURRENTLY DEPLOYED TO PRODUCTION. Same shape and same\n' +
