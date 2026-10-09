@@ -13,6 +13,13 @@ type Props = {
    * allowed to change.
    */
   testId?: string
+  /**
+   * One line under the figure saying what it is made of ("2 orders, your
+   * share"), for a card that carries no sparkline. It sits in the slot the
+   * sparkline and the empty hint already reserve, so the card height does not
+   * change. Added for MONEY FIX B7.
+   */
+  detail?: string | null
 }
 
 function Sparkline({ points }: { points: number[] }) {
@@ -68,7 +75,7 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint, testId }: Props) {
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail }: Props) {
   const hasSparkline = Array.isArray(sparkline) && sparkline.length >= 2
   const hasData = value !== '0' || hasSparkline
 
@@ -105,6 +112,10 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint, testId }: P
       <div className="mt-3 h-8">
         {hasSparkline ? (
           <Sparkline points={sparkline as number[]} />
+        ) : detail ? (
+          <p className="line-clamp-2 text-xs text-ink-600" data-kpi-detail>
+            {detail}
+          </p>
         ) : hasData ? null : (
           <p className="text-xs text-ink-400">
             {emptyHint ?? 'No data yet'}
