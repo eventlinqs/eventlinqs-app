@@ -32,6 +32,7 @@ export type PolicyName =
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
+  | 'outreach-unsubscribe'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -204,6 +205,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The RFC 8058 one-click unsubscribe endpoint, POST /api/marketing/one-click-unsubscribe/[token]. KEYED BY THE TOKEN, passed explicitly, NEVER by the IP, and that is the whole point of this entry rather than a detail of it. The caller is a mailbox provider: Google or Yahoo infrastructure posting on a recipient behalf, so every recipient of one campaign arrives from a handful of egress addresses. An IP-keyed bucket of any size would start refusing real unsubscribes the moment a campaign went out at volume, which is the carrier-NAT bucket this platform has already met twice (launch-artefact, launch-compose-daily) and which payouts-read and stream-message were both re-keyed to escape. One token is one subscriber, which is the unit of abuse worth bounding, and the token is an unguessable uuid rather than something a stranger enumerates. Twenty per token per ten minutes covers a provider retrying a delivery and a person pressing the button in every copy of every message they hold, and is useless for anything else, because the only thing the endpoint can do with a valid token is stop mail to that one address. FAIL-OPEN, the same posture and the same reason as marketing-rights: this surface can only ever STOP mail, the write is idempotent so a flood of valid requests produces one ledger row, and a Redis blip that refused a one-click unsubscribe would be the platform failing the exact facility the headers promise a mailbox provider works. That is a deliverability failure, which is the cost launch-email prices in domains rather than in requests, and it is incurred by refusing rather than by allowing.',
+  },
+  'outreach-unsubscribe': {
+    keyPrefix: 'out-unsub',
+    limit: 10,
+    windowSec: 600,
+    rationale:
+      'The outreach unsubscribe form, /unsubscribe/outreach, per IP per 10 min. Public and unauthenticated, and each press writes one append-only row to outreach_unsubscribes and sends ONE alert to the platform owner, so it is a write-amplification and inbox-flooding target like marketing-rights. Ten covers a person pressing the button again after a slow connection, or a small office unsubscribing a few colleagues, and bounces a scripted flood. Keyed by the forwarded IP (the actionRateLimit default): unlike marketing-one-click the caller is a person in a browser, not a mailbox provider, and the outreach is sent one to one to a few dozen organisers, so the carrier-NAT bucket is not a realistic collision here. FAIL-OPEN, and why the waitlist-join rule ("two policies sending from one domain cannot hold opposite postures") does not bind it: that rule prices a send as the DOMAIN because a public form that mails a stranger-chosen address is an open relay. This one cannot mail anybody but the owner: the alert goes to alertDestination(), a fixed platform inbox, never to an address the submitter supplies, so there is no relay and no third-party complaint to burn the domain with. What a misconfigured deploy would leave open is rows in a service-role table and mail to our own inbox. Against that, a fail-closed posture would refuse a Spam Act unsubscribe, which ACMA requires to work (https://www.acma.gov.au/avoid-sending-spam, fetched 2026-10-03), the same trade marketing-rights refuses: this surface can only ever STOP mail.',
   },
   'forecast-run': {
     keyPrefix: 'fc-run',

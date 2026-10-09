@@ -78,9 +78,17 @@ const RETIRED_STRAPLINE = /ticketing platform built for every community/i
  * A sentence that is talking about somebody else. Deliberately generous: the
  * cost of letting one competitor sentence through is nil, and the cost of
  * failing the build on a correct sentence is a guard nobody keeps.
+ *
+ * `current` was added on 3 October 2026 for the outreach unsubscribe page
+ * (src/lib/outreach/unsubscribe.ts), whose founder-worded reason reads "We're
+ * happy with our current ticketing platform". That is an organiser describing
+ * the platform THEY already use, which is a competitor by definition: the
+ * person reading it is being written to precisely because they are not on
+ * EventLinqs. "Your current ticketing platform" has no reading in which it
+ * describes us, so the marker cannot launder a self-description.
  */
 const COMPETITOR_MARKER =
-  /\b(other|others|most|mainstream|major|dominant|best|unlike|than|rival|rivals|incumbent|incumbents|traditional|conventional|competitor|competitors|competing|versus|vs)\b/i
+  /\b(other|others|most|mainstream|major|dominant|best|unlike|than|rival|rivals|incumbent|incumbents|traditional|conventional|competitor|competitors|competing|versus|vs|current)\b/i
 
 /**
  * The file that declares the ban. It quotes both phrases in its own

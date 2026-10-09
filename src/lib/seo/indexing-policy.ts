@@ -279,6 +279,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/digest/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/recovery/[token]', klass: 'never', why: 'a one-time token' },
+  { route: '/unsubscribe/outreach', klass: 'never', why: 'the unsubscribe form linked from the founder outreach emails, reached from a message rather than from search' },
   { route: '/verify-email-sent', klass: 'never', why: 'authentication' },
   { route: '/waitlist/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
 ]

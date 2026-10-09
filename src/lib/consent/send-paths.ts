@@ -207,6 +207,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Alerts the platform when a webhook stops arriving.',
   },
   {
+    file: 'src/app/actions/outreach-unsubscribe.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason:
+      'Tells the platform owner that somebody unsubscribed from his outreach emails. It sends to alertDestination() only, never to the person who pressed the button or to any address they typed, so it cannot be used to mail a member of the public.',
+  },
+  {
     file: 'src/app/api/cron/connect-divergence/route.ts',
     kind: 'operations',
     purpose: 'platform_operations',

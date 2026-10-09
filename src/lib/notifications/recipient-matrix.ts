@@ -386,6 +386,21 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'The daily settlement reconciliation found money on the platform balance that nothing records as owed onward.',
   },
   {
+    /*
+     * THE OUTREACH UNSUBSCRIBE. An organiser pressed Unsubscribe on a link in
+     * the founder's one to one outreach email (/unsubscribe/outreach). The row
+     * in outreach_unsubscribes is the record; this tells the founder so he
+     * stops writing to them. Declared `concernsOrganiserEvent: false`: it is
+     * about the PERSON's mail preference, not any organiser's event, money or
+     * attendees, and the person who asked already saw the confirmation on the
+     * page they pressed it on.
+     */
+    type: 'outreach_unsubscribe_alert',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: 'Somebody unsubscribed from the founder outreach emails.',
+  },
+  {
     type: 'platform_transport_probe',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,

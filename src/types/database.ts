@@ -4622,6 +4622,33 @@ export type Database = {
           },
         ]
       }
+      outreach_unsubscribes: {
+        Row: {
+          comment: string | null
+          created_at: string
+          email: string | null
+          hubspot_contact_id: string | null
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
