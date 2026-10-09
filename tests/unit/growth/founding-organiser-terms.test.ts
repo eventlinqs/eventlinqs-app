@@ -172,7 +172,7 @@ describe('LAW 24: six months free for every organiser, from their own registrati
       'utf8',
     )
       // SQL line comments out: the header names the cap it removes.
-      .split('\n')
+      .split(/\r?\n/)
       .map(line => line.replace(/--.*$/, ''))
       .join('\n')
     expect(migration).toMatch(/DROP TRIGGER IF EXISTS trg_founding_waiver_cap ON public\.organisations/)
