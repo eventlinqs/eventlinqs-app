@@ -190,6 +190,18 @@ function request(): NextRequest {
   return new Request('https://eventlinqs.com/api/cron/notify-just-announced') as unknown as NextRequest
 }
 
+/**
+ * A creation time inside the route's 14 day window, counted back from now.
+ * The seeds were fixed dates (19 to 21 September 2026) and every test that used
+ * them went red once those dates fell outside the window on 4 October, with no
+ * change to the route. Relative dates keep the same order and never expire.
+ * Reversal condition: if the route's window shrinks below 3 days, these seeds
+ * fall outside it and the alerts tests here fail on their first case.
+ */
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 86400_000).toISOString()
+}
+
 /** An event published now, starting in the future, so the route's filters pass. */
 function seedEvent(id: string, orgId: string, createdAt: string) {
   ;(h.db.events ||= []).push({
@@ -264,7 +276,7 @@ describe('the just-announced router reads every follower', () => {
     // Isolates FAULT 1: the ceiling is set small so the follower count is far
     // below MAX_DISPATCHES and the dispatch cap cannot be what stops the run.
     h.ceiling = 50
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 120)
 
     const first = await run()
@@ -276,7 +288,7 @@ describe('the just-announced router reads every follower', () => {
   it('pages the artist follower list too, when the broadcast stage is on', async () => {
     h.ceiling = 50
     h.broadcastArtists = true
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 10)
     ;(h.db.event_artists ||= []).push({ event_id: 'e1', artist_id: 'a-1', status: 'confirmed' })
     for (let i = 0; i < 120; i += 1) {
@@ -319,8 +331,8 @@ describe('the just-announced router drains its backlog', () => {
     // One organisation, 600 followers, two events: 1,200 pairs against a cap of
     // 1,000, so the first run cannot finish and the second must carry on.
     h.ceiling = 100_000
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
-    seedEvent('e2', 'org-1', '2026-09-19T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
+    seedEvent('e2', 'org-1', daysAgo(3))
     seedFollowers('org-1', 600)
 
     const first = await run()
@@ -335,7 +347,7 @@ describe('the just-announced router drains its backlog', () => {
   it('reaches every follower of a heavily followed organiser over repeated runs', async () => {
     // The operational truth, with the real default ceiling and both faults in
     // play at once: a cron on a schedule must converge.
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 2_400)
 
     for (let i = 0; i < 5; i += 1) await run()
@@ -351,11 +363,11 @@ describe('the just-announced router drains its backlog', () => {
     // 1,200 followers means the first run cannot finish e1 on its own, so there
     // is a genuine tail for e2 to push away.
     h.ceiling = 100_000
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 1_200)
     await run()
 
-    seedEvent('e2', 'org-1', '2026-09-21T00:00:00.000Z')
+    seedEvent('e2', 'org-1', daysAgo(1))
     for (let i = 0; i < 3; i += 1) await run()
 
     expect(reached('e1').size).toBe(1_200)
@@ -368,7 +380,7 @@ describe('the just-announced router drains its backlog', () => {
     // asked for silence overnight were the ones the cap starved - and a city's
     // worth of followers sharing a timezone is precisely this shape.
     h.ceiling = 100_000
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 1_500)
     for (let i = 0; i < 1_500; i += 1) h.quiet.add(`u-${String(i).padStart(5, '0')}`)
 
@@ -389,7 +401,7 @@ describe('the just-announced router drains its backlog', () => {
     // a future alert - so under the old cap a large opted-out set sitting ahead of
     // everybody else consumed the whole budget on every run, for ever.
     h.ceiling = 100_000
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 1_400)
     for (let i = 0; i < 1_200; i += 1) optOut(`u-${String(i).padStart(5, '0')}`)
 
@@ -419,7 +431,7 @@ describe('the just-announced router drains its backlog', () => {
 
 describe('the just-announced router survives a read it could not make', () => {
   it('defers the one recipient whose read blinked and still reaches everybody else', async () => {
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 5)
     h.blinking.add('u-00002')
 
@@ -436,7 +448,7 @@ describe('the just-announced router survives a read it could not make', () => {
   })
 
   it('reaches the deferred recipient on the next run, once the read works again', async () => {
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 3)
     h.blinking.add('u-00001')
 
@@ -457,7 +469,7 @@ describe('the just-announced router survives a read it could not make', () => {
     // fault in this route and still takes the run down loudly, which is what a
     // 500 on a cron is for. A catch-all here would hide a real bug behind a
     // counter nobody reads.
-    seedEvent('e1', 'org-1', '2026-09-20T00:00:00.000Z')
+    seedEvent('e1', 'org-1', daysAgo(2))
     seedFollowers('org-1', 2)
     const dispatch = await import('@/lib/notifications/dispatch')
     vi.mocked(dispatch.dispatchAlert).mockRejectedValueOnce(new TypeError('a genuine bug'))
