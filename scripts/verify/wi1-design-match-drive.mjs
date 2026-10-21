@@ -28,6 +28,7 @@
  * gone.
  */
 import { chromium } from 'playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
@@ -205,6 +206,7 @@ try {
 
   browser = await chromium.launch()
   const shots = {}
+  const axeFound = {}
   for (const vp of [
     { label: '1440', width: 1440, height: 1000 },
     { label: '768', width: 768, height: 1024 },
@@ -233,10 +235,47 @@ try {
       window.scrollTo(0, 0)
       await Promise.all([...document.images].map((img) => (img.complete ? null : img.decode().catch(() => null))))
     })
+    // A FAILED image is `complete` too, and its decode rejection was swallowed
+    // above, so a broken tile was photographed as though it were the design (a
+    // gallery photo showed only its alt text on 22 October). Name every broken
+    // image, ask its own address for a status, and reload once to tell a cold
+    // optimiser from a lasting fault.
+    const brokenNow = () =>
+      page.evaluate(() => [...document.images].filter((i) => i.complete && i.naturalWidth === 0).map((i) => i.currentSrc || i.src))
+    let broken = await brokenNow()
+    if (broken.length > 0) {
+      for (const src of broken) console.log(`[wi1-design-match] ${vp.label}: broken image, HTTP ${(await page.request.get(src)).status()} on a fresh request: ${src}`)
+      await page.reload({ waitUntil: 'load' })
+      await page.evaluate(async () => {
+        for (let y = 0; y < document.body.scrollHeight; y += 600) {
+          window.scrollTo(0, y)
+          await new Promise((r) => setTimeout(r, 120))
+        }
+        window.scrollTo(0, 0)
+        await Promise.all([...document.images].map((img) => (img.complete ? null : img.decode().catch(() => null))))
+      })
+      broken = await brokenNow()
+      console.log(`[wi1-design-match] ${vp.label}: after one reload, ${broken.length} broken image(s)${broken.length ? ': ' + broken.join(', ') : ''}`)
+    }
     shots[vp.label] = join(OUT, `drive-${vp.label}.png`)
     await page.screenshot({ path: shots[vp.label], fullPage: true })
     // The phone board shows the bottom bar over the first screen: the same view, unscrolled.
     if (phone) await page.screenshot({ path: join(OUT, `drive-${vp.label}-first-screen.png`), fullPage: false })
+    // axe on the same page with the board's own content: the constitution's
+    // 0 violations, WCAG 2 A and AA, tagged as scripts/axe-marketing-scan.mjs tags it.
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+    axeFound[vp.label] = axe.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help }))
+    // Every photo tile is a button that opens the gallery viewer (the
+    // interactive-affordance law): count them against the photos, open the
+    // first, and close it again.
+    const tiles = page.locator('[data-walk-in-page] button[aria-label^="View image"]')
+    const tileCount = await tiles.count()
+    await tiles.first().click()
+    const viewerOpened = await page.getByRole('dialog', { name: /^Image 1 of / }).waitFor({ timeout: 10000 }).then(() => true, () => false)
+    await page.keyboard.press('Escape')
+    const viewerClosed = await page.getByRole('dialog', { name: /^Image 1 of / }).waitFor({ state: 'hidden', timeout: 10000 }).then(() => true, () => false)
+    console.log(`[wi1-design-match] ${vp.label}: ${tileCount} photo tile button(s) for ${e.gallery.length} photo(s); the first opens the viewer ${viewerOpened}, Escape closes it ${viewerClosed}`)
+    console.log(`[wi1-design-match] ${vp.label}: axe ${axe.violations.length} violation(s)${axe.violations.length ? ': ' + axe.violations.map((v) => `${v.id} (${v.impact}, ${v.nodes.length})`).join(', ') : ''}`)
     await context.close()
     console.log(`${TAG} captured ${vp.label}`)
   }
@@ -244,6 +283,7 @@ try {
   await sideBySide('AMCF-Main-1440.png', shots['1440'], join(OUT, 'side-by-side-1440-Main.png'), 'walk-in page at 1440')
   await sideBySide('AMCF-Main-390.png', shots['390'], join(OUT, 'side-by-side-390-Main.png'), 'walk-in page at 390')
   await sideBySide('AMCF-PhoneA-390.png', join(OUT, 'drive-390-first-screen.png'), join(OUT, 'side-by-side-390-PhoneA.png'), 'walk-in page at 390, first screen')
+  writeFileSync(join(OUT, 'axe.json'), JSON.stringify(axeFound, null, 2))
   writeFileSync(join(OUT, 'fixture.json'), JSON.stringify({ base: BASE, slug: event.slug, stamp, kept: KEEP }, null, 2))
 } catch (error) {
   failed = true
