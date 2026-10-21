@@ -475,7 +475,16 @@ try {
     }, { timeoutMs: 45000 })
     check(`program: one update to each of the ${reminders} people who asked, each recorded sent`, Boolean(programSends), `${programSends?.length ?? 0} sends`)
     const mail = logSince(from)
-    check('program: the mail names the program, free entry, and carries the one-click stop headers', mail.includes(`The full program for ${titleA} is out`) && mail.includes('Free entry, no ticket needed') && mail.includes('List-Unsubscribe'))
+    // The console inbox prints the subject, the headers and the links, never the
+    // body (src/lib/email/send.ts), so the body's "Free entry, no ticket needed"
+    // is held by tests/unit/walk-in/reminder-sends.test.ts, not read here.
+    check(
+      'program: the mail names the program, links the page, and carries the one-click stop headers',
+      mail.includes(`The full program for ${titleA} is out`) &&
+        mail.includes(`/events/${eventA.slug}`) &&
+        mail.includes('List-Unsubscribe: <') &&
+        mail.includes('List-Unsubscribe-Post: List-Unsubscribe=One-Click'),
+    )
     await page.screenshot({ path: join(OUT, 'dashboard-sent-1440.png'), fullPage: true })
     await context.close()
   }
@@ -543,8 +552,15 @@ try {
     const card = page.locator(`a[href$="/events/${eventA.slug}"]`).first()
     await card.scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(OUT, 'browse-free-1440.png'), fullPage: false })
-    const [nav] = await Promise.all([page.waitForNavigation({ waitUntil: 'load' }), card.click()])
-    check('browse: clicking the card opens the walk-in page, 200', nav?.status() === 200 && (await page.locator('[data-walk-in-page]').count()) === 1, `HTTP ${nav?.status()}`)
+    // The card is a Next <Link>, so the click is an in-app navigation and
+    // waitForNavigation sees no HTTP response for it (run1 read HTTP undefined).
+    // Judge where the click lands and what it renders, and ask that address for
+    // its status as a fresh request.
+    await card.click()
+    await page.waitForURL(`**/events/${eventA.slug}`, { timeout: 30000 })
+    const landed = await page.locator('[data-walk-in-page]').first().waitFor({ timeout: 30000 }).then(() => true, () => false)
+    const status = (await page.request.get(page.url())).status()
+    check('browse: clicking the card opens the walk-in page, 200', landed && status === 200, `HTTP ${status}, walk-in page ${landed}`)
     await context.close()
   }
 
@@ -584,7 +600,15 @@ try {
     await page.goto(`${BASE}/dashboard/events/${eventB.id}/edit`, { waitUntil: 'load' })
     for (let i = 0; i < 4; i += 1) await page.getByRole('button', { name: 'Continue' }).click()
     const opensShown = await page.locator(`#opens-${dateB}`).inputValue().catch(() => null)
-    check('form: reopened, the edit page reads the saved hours back through the organiser session', opensShown === '19:00', `opens shows ${opensShown}`)
+    await page.screenshot({ path: join(OUT, 'form-reopened-1440.png'), fullPage: true })
+    // The same read the edit page makes, under the organiser's own session, so a
+    // failure says whether the row never came back or the form never showed it.
+    const asOrganiser = createClient(URL_, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '', { auth: { persistSession: false, autoRefreshToken: false } })
+    await asOrganiser.auth.signInWithPassword({ email, password })
+    const { data: sessionGuide, error: sessionError } = await asOrganiser.from('event_guides').select('*').eq('event_id', eventB.id).maybeSingle()
+    await asOrganiser.auth.signOut()
+    const sessionRead = sessionError ? `error ${sessionError.message}` : sessionGuide ? `days ${JSON.stringify(sessionGuide.days)}` : 'no row'
+    check('form: reopened, the edit page reads the saved hours back through the organiser session', opensShown === '19:00', `opens shows ${opensShown}; the session read: ${sessionRead}`)
     await context.close()
   }
 
