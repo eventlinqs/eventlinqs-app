@@ -65,10 +65,15 @@ export function WalkInDayTabs({
     <div className="flex flex-col gap-3.5 lg:gap-5">
       {/* WITHOUT SCRIPT the tabs cannot switch, so every day is shown stacked and
           the tab row, which would do nothing, is not shown. Read only when
-          scripting is off, so a visitor with it sees no change and no shift. */}
+          scripting is off, so a visitor with it sees no change and no shift.
+          The panel rule sits IN @layer base: Tailwind's preflight hides
+          [hidden] with !important there, and an important rule in a layer beats
+          an unlayered important rule whatever its specificity, so unlayered it
+          lost and only the first day showed (the WI1 drive, 22 October). In
+          the same layer the two-attribute selector wins. */}
       {days.length > 1 && (
         <noscript>
-          <style>{'[data-day-panel][hidden]{display:flex !important}[data-day-tabs]{display:none !important}'}</style>
+          <style>{'@layer base{[data-day-panel][hidden]{display:flex !important}}[data-day-tabs]{display:none !important}'}</style>
         </noscript>
       )}
       {days.length > 1 && (
