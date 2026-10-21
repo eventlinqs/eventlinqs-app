@@ -27,14 +27,17 @@ DECLARE
   v_ended uuid;
   v_rem uuid;
   v_rem_old uuid;
+  v_owner uuid;
+  v_owner_org uuid;
+  v_owned_draft uuid;
   v_out text := '';
   v_fail int := 0;
   v_n int;
   v_stamp text := extract(epoch from clock_timestamp())::bigint::text;
   v_cover text;
 BEGIN
-  -- An organiser who may act for their organisation, by the same rule the
-  -- organiser policy uses (el_member_organisation_ids: owner, admin, manager).
+  -- An organiser who acts for their organisation as a member (owner, admin or
+  -- manager row). The owner with no membership row is O5's, below.
   SELECT m.organisation_id, m.user_id INTO v_org, v_member
     FROM public.organisation_members m
    WHERE m.role::text IN ('owner', 'admin', 'manager')
@@ -69,7 +72,29 @@ BEGIN
           'in_person', 'walk_in', 'Proof Hall', 'published', 'unlisted', now() - interval '50 days', v_cover)
   RETURNING id INTO v_ended;
 
-  INSERT INTO public.event_guides (event_id, days) VALUES (v_public, '[]'::jsonb), (v_draft, '[]'::jsonb);
+  -- An organiser who owns their organisation by organisations.owner_id ALONE,
+  -- with no organisation_members row. "Org members can view their events" lets
+  -- them view their own event, so the guide policy must let them read its guide:
+  -- the WI1 drive found the edit page blank for one on 22 October, and O1 could
+  -- not see it, because O1's organiser is chosen by the narrower member rule.
+  SELECT o.id, o.owner_id INTO v_owner_org, v_owner
+    FROM public.organisations o
+   WHERE o.owner_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.organisation_members m
+                      WHERE m.organisation_id = o.id AND m.user_id = o.owner_id)
+   ORDER BY o.id
+   LIMIT 1;
+  IF v_owner_org IS NULL THEN
+    RAISE EXCEPTION 'PROOF FAILED: no organisation owned without a membership row to act as on this database';
+  END IF;
+  INSERT INTO public.events (organisation_id, created_by, title, slug, start_date, end_date, timezone,
+                             event_type, entry_mode, venue_name, status, visibility)
+  VALUES (v_owner_org, v_owner, 'WI1 grants proof owner draft', 'wi1-grants-proof-owner-draft-' || v_stamp,
+          now() + interval '20 days', now() + interval '21 days', 'Australia/Melbourne',
+          'in_person', 'walk_in', 'Proof Hall', 'draft', 'unlisted')
+  RETURNING id INTO v_owned_draft;
+
+  INSERT INTO public.event_guides (event_id, days) VALUES (v_public, '[]'::jsonb), (v_draft, '[]'::jsonb), (v_owned_draft, '[]'::jsonb);
   INSERT INTO public.event_reminders (event_id, email, consent_version, consent_text)
   VALUES (v_public, 'wi1-grants-' || v_stamp || '@eventlinqs.test', 'remind-me-v1-2026-10-21', 'proof')
   RETURNING id INTO v_rem;
@@ -184,6 +209,20 @@ BEGIN
     SELECT count(*) INTO v_n FROM public.event_reminders WHERE event_id = v_public;
     v_out := v_out || ' | O4 organiser read of their Remind me list refused (numbers come from the server): FAIL (read ' || v_n || ')'; v_fail := v_fail + 1;
   EXCEPTION WHEN insufficient_privilege THEN v_out := v_out || ' | O4 organiser read of their Remind me list refused (numbers come from the server): PASS';
+  END;
+  RESET ROLE;
+
+  -- ---------------------------------------------------------------------
+  -- AUTHENTICATED, AN OWNER WITH NO MEMBERSHIP ROW: reads its own draft guide.
+  -- ---------------------------------------------------------------------
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', v_owner)::text, true);
+  PERFORM set_config('request.jwt.claim.sub', v_owner::text, true);
+  BEGIN
+    SELECT count(*) INTO v_n FROM public.event_guides WHERE event_id = v_owned_draft;
+    IF v_n = 1 THEN v_out := v_out || ' | O5 an owner with no membership row reads its own draft guide, as it views the event: PASS';
+    ELSE v_out := v_out || ' | O5 owner without a membership row reads its draft guide: FAIL (' || v_n || ' rows, expected 1)'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN insufficient_privilege THEN v_out := v_out || ' | O5 owner without a membership row reads its draft guide: FAIL (' || SQLERRM || ')'; v_fail := v_fail + 1;
   END;
   RESET ROLE;
 

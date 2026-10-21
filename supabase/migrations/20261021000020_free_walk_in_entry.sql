@@ -311,6 +311,11 @@ create policy "Walk-in guides of published public events are public"
     )
   );
 
+-- The guide is read by whoever may view the event, by the same rule as "Org
+-- members can view their events" (20260819000001): an owner by owner_id, or a
+-- member in any role. The member-only rule it first used left an owner with no
+-- membership row an edit page with blank hours, which a save would have written
+-- back over the real ones (the WI1 drive, 22 October; grants proof O5).
 drop policy if exists "Organisers read their own walk-in guides" on public.event_guides;
 create policy "Organisers read their own walk-in guides"
   on public.event_guides for select
@@ -319,7 +324,8 @@ create policy "Organisers read their own walk-in guides"
     exists (
       select 1 from public.events e
        where e.id = event_guides.event_id
-         and e.organisation_id in (select public.el_member_organisation_ids())
+         and (e.organisation_id in (select public.el_owned_organisation_ids())
+              or e.organisation_id in (select public.el_any_member_organisation_ids()))
     )
   );
 
