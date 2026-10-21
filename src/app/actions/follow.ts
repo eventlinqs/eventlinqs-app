@@ -2,6 +2,9 @@
 
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { afterResponse } from '@/lib/after-response'
+import { recordDemand, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/ledger/adapter'
 
 /**
  * Follow-graph server actions (demand engine 1: the Attendee Demand Graph).
@@ -84,7 +87,11 @@ export async function getFollowState(input: {
  * Toggle following an organiser. Writes to `saved_organisers`.
  * Insert when not yet followed, delete when already followed.
  */
-export async function toggleFollowOrganiser(organisationId: string): Promise<FollowResult> {
+export async function toggleFollowOrganiser(
+  organisationId: string,
+  /** WI1. The event page the follow was made from, so it counts on that event. */
+  fromEventId?: string,
+): Promise<FollowResult> {
   const parsed = UuidSchema.safeParse(organisationId)
   if (!parsed.success) return { following: false, error: 'Invalid organiser id' }
 
@@ -116,7 +123,34 @@ export async function toggleFollowOrganiser(organisationId: string): Promise<Fol
     .from('saved_organisers')
     .insert({ user_id: user.id, organisation_id: parsed.data })
   if (error) return { following: false, error: 'Could not follow. Please try again.' }
+  if (fromEventId && UuidSchema.safeParse(fromEventId).success) {
+    afterResponse('the follow demand row', () => recordFollowOnEvent(fromEventId, parsed.data, user.id))
+  }
   return { following: true }
+}
+
+/**
+ * WI1. A follow from an event page is one of the conversions a free event has
+ * (WI1-ITEM.md point 5), so it is a demand row on that event: one per person per
+ * event, carrying no address. Only when the event is published, public and run
+ * by the organiser just followed, so a crafted id cannot credit somebody else's
+ * event.
+ */
+async function recordFollowOnEvent(eventId: string, organisationId: string, userId: string) {
+  const admin = createAdminClient()
+  const { data: event } = await admin
+    .from('events')
+    .select(`${LEDGER_EVENT_COLUMNS}, status, visibility`)
+    .eq('id', eventId)
+    .maybeSingle()
+  const row = event as ({ status?: string; visibility?: string; organisation_id?: string } & Record<string, unknown>) | null
+  if (!row || row.status !== 'published' || row.visibility !== 'public' || row.organisation_id !== organisationId) return
+  await recordDemand({
+    event: event as unknown as EventForLedger,
+    action: 'follow',
+    occurrenceKey: `${eventId}:${userId}`,
+    visitorId: userId,
+  })
 }
 
 /** Shared follows-table toggle for artist / subgenre. */

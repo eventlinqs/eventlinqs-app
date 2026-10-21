@@ -260,6 +260,10 @@
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
+ *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
+ *                              module, its own words carry no ticket or book word and
+ *                              no dollar sign, the route dispatches it before any ticket
+ *                              work, and its structured data says free at price 0
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
  *   public-tables-carry-their-grants  a migration that creates a public table grants it
@@ -3201,6 +3205,13 @@ const GUARDS = [
   // serve and never wider. The 153 migrations on main before the rule are the
   // known gap, counted on every run. Drilled red seven ways, green two.
   'scripts/guards/public-tables-carry-their-grants.mjs',
+
+  // WI1, 21 October 2026. A free walk-in event page sells nothing: no ticket
+  // selector, no price and no Get tickets, and no line EventLinqs writes on it
+  // says ticket or book except No ticket needed (Lawal, rulings of 21 October).
+  // The route sends a walk-in event to its own page before any ticket work, and
+  // the structured data still carries offers.price 0. Drilled red five ways.
+  'scripts/guards/walk-in-page-sells-nothing.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

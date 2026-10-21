@@ -96,6 +96,8 @@ import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
+import { isWalkIn } from '@/lib/events/entry-mode'
+import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -230,6 +232,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // Always non-empty (root fix for the SEO meta-description failure on events
   // with no summary/description/venue_city - see buildEventMetaDescription).
+  const walkIn = isWalkIn(event)
   const description = buildEventMetaDescription({
     title: event.title,
     summary: event.summary,
@@ -238,6 +241,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     venueName: event.venue_name,
     dateLabel,
     categoryName: event.category?.name,
+    walkIn,
   })
 
   const baseUrl = getSiteUrl()
@@ -260,7 +264,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       event.title,
       event.venue_city ?? '',
       event.category?.name ?? '',
-      'tickets',
+      // WI1: a walk-in page names no ticket anywhere, its metadata included.
+      walkIn ? 'free entry' : 'tickets',
       'events',
     ].filter(Boolean) as string[],
     ...(robots ? { robots } : {}),
@@ -518,6 +523,15 @@ export default async function EventDetailPage({ params }: Props) {
       </div>
     )
   }
+
+  /*
+   * WI1. A FREE WALK-IN EVENT IS ITS OWN PAGE (locked design A, "the festival
+   * guide"), dispatched HERE: before a ticket, a seat, a price or a sale posture
+   * is read or built below. Nothing on the ticketed page is computed for it.
+   * scripts/guards/walk-in-page-sells-nothing.mjs holds this line above the
+   * first ticket component in this file.
+   */
+  if (isWalkIn(event)) return <WalkInEventPage event={event} />
 
   const now = new Date()
   const isTicketingSuspended =

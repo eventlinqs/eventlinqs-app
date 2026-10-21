@@ -306,6 +306,25 @@ export const BASELINE = [
     write: "events.visibility='public'",
     why: 'it opens /venues/<handle>, and resolveVenueProfile derives that page through PUBLIC_EVENT_MATCH, so an unlisted fixture leaves that page with nothing to resolve',
   },
+  /*
+   * The same two writes for WI1's design match (Lawal's change 2 of
+   * 21 October 2026): the page drawn with locked design A's own content and
+   * photographed beside the board. The guide is read through the policy that
+   * admits only a published, public walk-in event, and the organiser band
+   * only renders for an organisation the public read can see, so an unlisted
+   * event or a pending organisation photographs a different page from the one
+   * the board shows. Its teardown also asks the database.
+   */
+  {
+    drive: 'wi1-design-match-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'the guide is read through a policy that admits only a published, public walk-in event, so an unlisted fixture photographs a page without the guide the board is compared against',
+  },
+  {
+    drive: 'wi1-design-match-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'the organiser band the board shows only renders for an organisation the public client can read, so a pending one photographs a page without it',
+  },
 ]
 
 /**

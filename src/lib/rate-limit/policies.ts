@@ -27,6 +27,7 @@ export type PolicyName =
   | 'share-track'
   | 'ledger-demand'
   | 'waitlist-join'
+  | 'event-reminder'
   | 'forecast-run'
   | 'newsletter-subscribe'
   | 'discovery-consent-carry'
@@ -234,6 +235,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'event-reminder': {
+    keyPrefix: 'evt-remind',
+    limit: 5,
+    windowSec: 600,
+    failClosed: true,
+    rationale:
+      'WI1 Remind me on a walk-in event page, per IP per 10 min. A household asking to be reminded of two or three free nights fits comfortably; a script enrolling other people\'s addresses is bounced. FAIL-CLOSED for the reason waitlist-join gives: the row leads to real mail from our verified sending domain (the full program once, and one reminder the day before), the surface is PUBLIC and unauthenticated, and so the limiter is the only thing in front of that mail. The mail is not sent at signup, which bounds a single abuse at two messages per address per event, each with a one-click stop; the domain is still the unit priced, as launch-email and waitlist-join price it.',
   },
   'refund-request': {
     keyPrefix: 'ref-req',

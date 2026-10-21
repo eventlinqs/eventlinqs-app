@@ -3,6 +3,7 @@ import { canonicalHost } from '@/lib/site-url'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { fetchImageDataUri } from '@/lib/media/fetch-image'
 import { captureException } from '@/lib/observability/sentry'
+import { isWalkIn } from '@/lib/events/entry-mode'
 import { renderOgResponse, OG_DISPLAY_FAMILY, OG_BODY_FAMILY } from '@/lib/broadcast/og-response'
 
 /**
@@ -46,6 +47,7 @@ interface OgEvent {
   timezone: string | null
   venue_name: string | null
   venue_city: string | null
+  entry_mode: string | null
 }
 
 async function fetchOgEvent(slug: string): Promise<OgEvent | null> {
@@ -53,7 +55,7 @@ async function fetchOgEvent(slug: string): Promise<OgEvent | null> {
     const client = createPublicClient()
     const { data } = await client
       .from('events')
-      .select('title, cover_image_url, start_date, timezone, venue_name, venue_city, status')
+      .select('title, cover_image_url, start_date, timezone, venue_name, venue_city, status, entry_mode')
       .eq('slug', slug)
       .eq('status', 'published')
       .maybeSingle()
@@ -92,8 +94,10 @@ function eventCard(opts: {
   eyebrow: string
   metaLabel: string
   cover: string | null
+  /** WI1: "Free entry at" on a walk-in event's card, which names no ticket. */
+  footerLead: string
 }): ReactNode {
-  const { title, eyebrow, metaLabel, cover } = opts
+  const { title, eyebrow, metaLabel, cover, footerLead } = opts
   return (
     <div
       style={{
@@ -235,7 +239,7 @@ function eventCard(opts: {
               fontWeight: 500,
             }}
           >
-            Tickets at {canonicalHost()}
+            {footerLead} {canonicalHost()}
           </div>
         </div>
       </div>
@@ -269,12 +273,13 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
    */
   const cover = await fetchImageDataUri(event?.cover_image_url ?? null)
 
-  return renderOgResponse(eventCard({ title, eyebrow, metaLabel, cover }), {
+  const footerLead = event && isWalkIn(event) ? 'Free entry at' : 'Tickets at'
+  return renderOgResponse(eventCard({ title, eyebrow, metaLabel, cover, footerLead }), {
     ...size,
     where: 'app/events/[slug]/opengraph-image',
     // A cover that satori cannot draw is the one failure this card can still
     // answer beautifully, and the answer is the composition it already
     // documents: the same card on the navy and gold treatment.
-    fallback: eventCard({ title, eyebrow, metaLabel, cover: null }),
+    fallback: eventCard({ title, eyebrow, metaLabel, cover: null, footerLead }),
   })
 }
