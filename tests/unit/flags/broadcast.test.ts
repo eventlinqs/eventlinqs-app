@@ -82,8 +82,17 @@ describe('broadcast flag resolver', () => {
        * found saying something no inventory or organiser supplied.
        */
       event_availability_and_access: true,
+      // WI1 Remind me. OFF, because production holds it off until Lawal
+      // approves the privacy version that names it (ruling of 21 October 2026),
+      // so the safe posture when the table cannot be read is no capture.
+      walk_in_remind_me: false,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(11)
+    expect(BROADCAST_FLAGS).toHaveLength(12)
+  })
+
+  test('Remind me stays OFF when the flags table cannot be read or has no row', async () => {
+    expect(await isFeatureEnabled('walk_in_remind_me', { client: clientReturning(null) })).toBe(false)
+    expect(await isFeatureEnabled('walk_in_remind_me', { client: clientReturning(null, 'connection reset') })).toBe(false)
   })
 
   test('the reversal flag defaults ON in both failure paths', async () => {

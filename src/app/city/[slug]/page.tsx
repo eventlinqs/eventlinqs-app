@@ -4,6 +4,7 @@ import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -96,7 +97,7 @@ export default async function CityPage({ params }: Props) {
   // ilike match (city_primary FK is the new path post-migration; until
   // organisers fill the column, venue_city ilike is the bridge).
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   const { data: rows } = await withBuildRetry(
     () =>
@@ -129,6 +130,9 @@ export default async function CityPage({ params }: Props) {
     timezone: r.timezone ?? null,
     venue_name: r.venue_name, venue_city: r.venue_city, venue_country: r.venue_country,
     created_at: r.created_at, is_free: r.is_free,
+    // WI1. Carried for the same reason: without it a walk-in event's city card
+    // says "Free" while its own map pin on this page says "Free entry".
+    entry_mode: r.entry_mode ?? null,
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],
   }))
 
@@ -151,7 +155,7 @@ export default async function CityPage({ params }: Props) {
         id: r.id, slug: r.slug, title: r.title,
         date: dateStr,
         suburb: r.venue_city,
-        price: cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+        price: isWalkIn(r) ? FREE_ENTRY_LABEL : cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
         cover: r.cover_image_url,
         latitude: r.venue_latitude as number,
         longitude: r.venue_longitude as number,

@@ -34,11 +34,24 @@ function isOffered(tier: SellableTier): boolean {
  * @param tiers the event's ticket tiers
  * @param opts.hasReservedSeating true when the seat map, not the tier, holds
  *   the inventory. Capacity is not checked in that case.
+ * @param opts.walkIn true for a free walk-in event (WI1). It has nothing to
+ *   buy by design, so zero ticket types is the correct state, and any ticket
+ *   type at all is the defect. Its hours are judged by the publish gate.
  */
 export function checkSellable(
   tiers: SellableTier[],
-  opts: { hasReservedSeating?: boolean } = {},
+  opts: { hasReservedSeating?: boolean; walkIn?: boolean } = {},
 ): SellableCheck {
+  if (opts.walkIn) {
+    return (tiers ?? []).length === 0
+      ? { ok: true }
+      : {
+          ok: false,
+          message:
+            'A free walk-in event has no ticket types. Remove them, or choose Sell tickets as the way in.',
+        }
+  }
+
   const offered = (tiers ?? []).filter(isOffered)
 
   if (offered.length === 0) {

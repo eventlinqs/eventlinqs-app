@@ -74,4 +74,28 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260909000002_platform_notifications.sql',
     readBy: 'src/lib/notifications/platform-send.ts (the worker and the admin feed), /api/cron/platform-notify, the admin Notifications screen; the five triggers that write the rows come from the same migration',
   },
+  {
+    table: 'events',
+    column: 'entry_mode',
+    migration: '20261021000020_free_walk_in_entry.sql',
+    readBy: 'every browse select (fetchers BASE_SELECT, home EVENT_SELECT, city, suburb, category, community, faith, venue and organiser pages), the reservation guard, the dashboard publish paths and the scheduled-publish cron; the three demand actions come from 20261021000010_walk_in_demand_actions.sql',
+  },
+  {
+    table: 'organisations',
+    column: 'instagram_handle',
+    migration: '20261021000020_free_walk_in_entry.sql',
+    readBy: 'src/lib/events/event-detail-read.ts (EVENT_PAGE_SELECT, every event page), the walk-in organiser band',
+  },
+  {
+    table: 'organisations',
+    column: 'short_name',
+    migration: '20261021000020_free_walk_in_entry.sql',
+    readBy: 'src/lib/events/event-detail-read.ts (EVENT_PAGE_SELECT, every event page), the walk-in Follow button',
+  },
+  {
+    table: 'event_guides',
+    column: 'days',
+    migration: '20261021000020_free_walk_in_entry.sql',
+    readBy: 'the dashboard publish paths and the scheduled-publish cron (a walk-in event is published on its hours)',
+  },
 ]

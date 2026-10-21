@@ -1,6 +1,7 @@
 'use client'
 
 import { formatEventDateShort } from '@/lib/dates/event-time'
+import { FREE_ENTRY_LABEL } from '@/lib/events/entry-mode'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapPinOff } from 'lucide-react'
 import { loadEventsInBbox } from '@/app/events/actions'
@@ -22,6 +23,7 @@ const BRAND_GOLD_TEXT = '#8B6A0E' // --color-gold-700 (gold text, AA on white)
 
 
 function formatPrice(p: MapEventPoint): string {
+  if (p.walk_in) return FREE_ENTRY_LABEL
   if (p.is_free) return 'Free'
   if (p.starting_from_cents === null) return 'Free'
   const dollars = p.starting_from_cents / 100

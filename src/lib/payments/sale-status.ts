@@ -15,6 +15,8 @@ import { getCurrencyForCountry } from './connect-currency'
 // One mechanism for every gate boundary. See required-fields.ts for why a cast
 // is not enough and why absent is not false.
 import { verifyRowFields } from './required-fields'
+// A leaf with no imports, for the same reason as connect-currency above.
+import { isWalkIn, type EntryModeFields } from '@/lib/events/entry-mode'
 
 // Single source of truth for "can this event sell tickets right now".
 //
@@ -237,6 +239,14 @@ export const TICKETS_SOLD_ELSEWHERE_BODY =
  * an externally ticketed event. Unreachable through the UI, which is why it says
  * what is true rather than apologising for an error.
  */
+/**
+ * What the reservation action returns if anything ever asks it to hold places
+ * at a walk-in event. Unreachable through the UI, and structurally: a walk-in
+ * event has no ticket type to reserve.
+ */
+export const WALK_IN_RESERVATION_ERROR =
+  'Entry to this event is free and needs no ticket, so there is nothing to reserve.'
+
 export const TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR =
   'Tickets for this event are sold on another site, so there is nothing to reserve here.'
 
@@ -290,6 +300,11 @@ export function ticketsOnSale(params: {
 export type SaleRefusalReason =
   /** Sold on another platform. We never take money for it. */
   | 'externally_ticketed'
+  /**
+   * Free entry, no ticket needed (WI1). There is nothing to sell or register,
+   * so a sale is refused because none exists, not because anything is wrong.
+   */
+  | 'walk_in'
   /** Paid event, organiser cannot yet receive funds. The honest, common case. */
   | 'organiser_payment_setup_incomplete'
   /**
@@ -324,7 +339,7 @@ export type SaleDecision =
  */
 export function ticketsOnSaleDetailed(params: {
   isPaidEvent: boolean
-  event?: ExternalTicketFields | null
+  event?: (ExternalTicketFields & EntryModeFields) | null
   lookupFailed?: boolean
   /**
    * The organisation row AS READ, unverified, for a caller that HAS it.
@@ -348,6 +363,9 @@ export function ticketsOnSaleDetailed(params: {
 }): SaleDecision {
   if (params.lookupFailed) return { onSale: false, reason: 'sale_lookup_failed' }
   if (isExternallyTicketed(params.event)) return { onSale: false, reason: 'externally_ticketed' }
+  // A walk-in event holds no ticket type (the database refuses one), so there
+  // is nothing on sale whatever the organiser's payment setup says.
+  if (isWalkIn(params.event)) return { onSale: false, reason: 'walk_in' }
   if (!params.isPaidEvent) return { onSale: true, reason: null }
 
   if (params.organiserSellable !== undefined) {
@@ -385,6 +403,22 @@ export function describeSaleRefusal(
         body: TICKETS_SOLD_ELSEWHERE_BODY,
         action: null,
       }
+
+    case 'walk_in':
+      return audience === 'organiser'
+        ? {
+            reason,
+            heading: 'Free entry, no ticket needed',
+            body:
+              'This is a walk-in event, so there is nothing to sell or register. People who want a reminder can ask for one on the event page.',
+            action: null,
+          }
+        : {
+            reason,
+            heading: 'No ticket needed',
+            body: 'Entry is free. Just come along.',
+            action: null,
+          }
 
     case 'organiser_payment_setup_incomplete':
       return audience === 'organiser'
@@ -431,6 +465,7 @@ export function describeSaleRefusal(
  */
 export function saleRefusalMessage(reason: SaleRefusalReason): string {
   if (reason === 'externally_ticketed') return TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR
+  if (reason === 'walk_in') return WALK_IN_RESERVATION_ERROR
   return describeSaleRefusal(reason, 'buyer').body
 }
 

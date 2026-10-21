@@ -12,6 +12,7 @@ import {
   ticketsOnSaleDetailed,
   type SaleRefusalReason,
 } from '@/lib/payments/sale-status'
+import { isWalkIn } from '@/lib/events/entry-mode'
 import {
   CreateReservationSchema,
   type CreateReservationInput,
@@ -130,7 +131,7 @@ export async function createReservation(
      */
     const { data: ev, error: evError } = await admin
       .from('events')
-      .select('organisation_id, external_ticket_url')
+      .select('organisation_id, external_ticket_url, entry_mode')
       .eq('id', event_id)
       .single()
 
@@ -147,6 +148,13 @@ export async function createReservation(
         error: saleRefusalMessage('externally_ticketed'),
         reason: 'externally_ticketed',
       }
+    }
+
+    // WI1. A walk-in event holds no ticket type, so nothing can be reserved for
+    // it. The database refuses the ticket type first; this answers truthfully if
+    // a request ever names the event anyway.
+    if (isWalkIn(ev)) {
+      return { error: saleRefusalMessage('walk_in'), reason: 'walk_in' }
     }
 
     if (isPaid) {

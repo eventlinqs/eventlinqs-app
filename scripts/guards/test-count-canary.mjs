@@ -3818,8 +3818,29 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 167s, on the merge commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 555
-const MIN_TESTS = 7521
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-10-22, WI1 SLICE 1 (free walk-in entry, schema and plumbing):
+ * 555/7521 -> 568/7712.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FLOOR HAD LAGGED MAIN, and this raise carries that too. Main at
+ * fd9e7411 already ran more than 555 files; the slice's own tree was RUN, not
+ * added up, so the floor is what that tree measured, whatever share of the
+ * difference main had left uncounted.
+ *
+ * THIS SLICE ADDS five test files (the walk-in card and projection, the grant
+ * rule's judge, entry-mode rules, the listing words) and adds cases to eight it
+ * changes (four publish-gate files, affinity, broadcast flags, connect
+ * reconcile, rls-column-exposure).
+ *
+ * MEASURED: 568 files, 7712 tests, 0 failed, 0 skipped
+ * (scripts/guards/test-count-canary.mjs on this slice's own tree, a detached
+ * worktree at the staged index, 22 October 2026).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 568
+const MIN_TESTS = 7712
 
 
 /**

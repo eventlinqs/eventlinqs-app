@@ -104,8 +104,11 @@ describe('the current tree is clean', () => {
 
     const anon = grants.get('organisations')?.get('anon')
     expect(anon?.mode).toBe('columns')
+    // instagram_handle and short_name joined on 21 October 2026 (WI1,
+    // migration 20261021000020): the walk-in page's organiser band shows and
+    // links them to signed-out visitors, as it shows website.
     expect([...anon!.cols].sort()).toEqual(
-      ['description', 'id', 'logo_url', 'name', 'slug', 'website'].sort(),
+      ['description', 'id', 'instagram_handle', 'logo_url', 'name', 'short_name', 'slug', 'website'].sort(),
     )
     expect(anon!.cols.has('email')).toBe(false)
     expect(anon!.cols.has('stripe_account_id')).toBe(false)

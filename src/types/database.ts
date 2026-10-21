@@ -1391,6 +1391,167 @@ export type Database = {
           },
         ]
       }
+      event_guides: {
+        Row: {
+          access_notes: string | null
+          at_a_glance: Json
+          cover_credit: string | null
+          created_at: string
+          days: Json
+          event_id: string
+          getting_there: string | null
+          highlights: Json
+          highlights_note: string | null
+          photo_credit: string | null
+          photos_heading: string | null
+          program_note: string | null
+          program_published_at: string | null
+          quote_attribution: string | null
+          quote_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_notes?: string | null
+          at_a_glance?: Json
+          cover_credit?: string | null
+          created_at?: string
+          days?: Json
+          event_id: string
+          getting_there?: string | null
+          highlights?: Json
+          highlights_note?: string | null
+          photo_credit?: string | null
+          photos_heading?: string | null
+          program_note?: string | null
+          program_published_at?: string | null
+          quote_attribution?: string | null
+          quote_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_notes?: string | null
+          at_a_glance?: Json
+          cover_credit?: string | null
+          created_at?: string
+          days?: Json
+          event_id?: string
+          getting_there?: string | null
+          highlights?: Json
+          highlights_note?: string | null
+          photo_credit?: string | null
+          photos_heading?: string | null
+          program_note?: string | null
+          program_published_at?: string | null
+          quote_attribution?: string | null
+          quote_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_guides_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_guides_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_reminder_sends: {
+        Row: {
+          claimed_at: string
+          error: string | null
+          id: string
+          kind: string
+          provider_message_id: string | null
+          reminder_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          claimed_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          provider_message_id?: string | null
+          reminder_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          claimed_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          provider_message_id?: string | null
+          reminder_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_reminder_sends_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "event_reminders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_reminders: {
+        Row: {
+          consent_text: string
+          consent_version: string
+          created_at: string
+          email: string
+          event_id: string
+          id: string
+          requested_at: string
+          unsubscribe_token: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          consent_text: string
+          consent_version: string
+          created_at?: string
+          email: string
+          event_id: string
+          id?: string
+          requested_at?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          consent_text?: string
+          consent_version?: string
+          created_at?: string
+          email?: string
+          event_id?: string
+          id?: string
+          requested_at?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_stream_links: {
         Row: {
           event_id: string
@@ -1500,6 +1661,7 @@ export type Database = {
           created_by: string
           description: string | null
           end_date: string
+          entry_mode: string
           event_type: Database["public"]["Enums"]["event_type"]
           external_ticket_url: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
@@ -1514,6 +1676,7 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          listing_source: string
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
@@ -1584,6 +1747,7 @@ export type Database = {
           created_by: string
           description?: string | null
           end_date: string
+          entry_mode?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           external_ticket_url?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
@@ -1598,6 +1762,7 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          listing_source?: string
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id: string
@@ -1668,6 +1833,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           end_date?: string
+          entry_mode?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           external_ticket_url?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
@@ -1682,6 +1848,7 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          listing_source?: string
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id?: string
@@ -4258,6 +4425,7 @@ export type Database = {
           gst_registered: boolean
           hold_amount_cents: number
           id: string
+          instagram_handle: string | null
           is_founding: boolean
           legal_name: string | null
           logo_url: string | null
@@ -4274,6 +4442,7 @@ export type Database = {
           refund_window_days: number
           risk_tier: string
           sales_notification_mode: string
+          short_name: string | null
           slug: string
           status: Database["public"]["Enums"]["org_status"]
           stripe_account_country: string | null
@@ -4301,6 +4470,7 @@ export type Database = {
           gst_registered?: boolean
           hold_amount_cents?: number
           id?: string
+          instagram_handle?: string | null
           is_founding?: boolean
           legal_name?: string | null
           logo_url?: string | null
@@ -4317,6 +4487,7 @@ export type Database = {
           refund_window_days?: number
           risk_tier?: string
           sales_notification_mode?: string
+          short_name?: string | null
           slug: string
           status?: Database["public"]["Enums"]["org_status"]
           stripe_account_country?: string | null
@@ -4344,6 +4515,7 @@ export type Database = {
           gst_registered?: boolean
           hold_amount_cents?: number
           id?: string
+          instagram_handle?: string | null
           is_founding?: boolean
           legal_name?: string | null
           logo_url?: string | null
@@ -4360,6 +4532,7 @@ export type Database = {
           refund_window_days?: number
           risk_tier?: string
           sales_notification_mode?: string
+          short_name?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["org_status"]
           stripe_account_country?: string | null
@@ -8189,6 +8362,7 @@ export type Database = {
           created_by: string
           description: string | null
           end_date: string
+          entry_mode: string
           event_type: Database["public"]["Enums"]["event_type"]
           external_ticket_url: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
@@ -8203,6 +8377,7 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          listing_source: string
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
@@ -8363,6 +8538,7 @@ export type Database = {
         }
         Returns: number
       }
+      purge_walk_in_reminders: { Args: { p_days: number }; Returns: number }
       reassign_ticket_seat: {
         Args: { p_new_seat_id: string; p_ticket_id: string }
         Returns: Json
@@ -8558,6 +8734,23 @@ export type Database = {
         Args: { p_payout_id: string; p_reason?: string; p_status?: string }
         Returns: Json
       }
+      walk_in_reminders_due: {
+        Args: {
+          p_event_id?: string
+          p_kind: string
+          p_limit?: number
+          p_local_hour?: number
+          p_now?: string
+        }
+        Returns: {
+          email: string
+          event_id: string
+          first_day: string
+          reminder_id: string
+          timezone: string
+          unsubscribe_token: string
+        }[]
+      }
       write_pricing_rule: {
         Args: {
           p_country_code: string
@@ -8595,6 +8788,9 @@ export type Database = {
         | "checkout_abandoned"
         | "waitlist_join"
         | "sold_out_view"
+        | "calendar_add"
+        | "share"
+        | "follow"
       ledger_entry_kind:
         | "sale"
         | "price_change"
@@ -8853,6 +9049,9 @@ export const Constants = {
         "checkout_abandoned",
         "waitlist_join",
         "sold_out_view",
+        "calendar_add",
+        "share",
+        "follow",
       ],
       ledger_entry_kind: [
         "sale",

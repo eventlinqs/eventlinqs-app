@@ -40,7 +40,9 @@ const SRC = path.join(ROOT, 'src')
 
 /** table -> the columns anon/authenticated KEEP after 20260808000010. */
 const GRANTED = {
-  organisations: ['id', 'name', 'slug', 'description', 'logo_url', 'website'],
+  // instagram_handle and short_name: granted to anon and authenticated by
+  // 20261021000020 (WI1), shown on the walk-in page's organiser band.
+  organisations: ['id', 'name', 'slug', 'description', 'logo_url', 'website', 'instagram_handle', 'short_name'],
   seats: [
     'id', 'event_id', 'seat_map_section_id', 'ticket_tier_id',
     'row_label', 'seat_number', 'seat_type', 'status',

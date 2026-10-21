@@ -197,7 +197,7 @@ function orgClient(row: Record<string, unknown> | null) {
 }
 
 describe('the publish gate reconciles BEFORE refusing', () => {
-  const paid = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
+  const paid = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
 
   it('does NOT refuse on a stale restricted column when Stripe says it can sell', async () => {
     // THE EXACT LOCKOUT. Stored columns say no; Stripe says yes.
@@ -349,7 +349,7 @@ describe('the publish gate reconciles BEFORE refusing', () => {
     const reconcile = vi.fn()
     const res = await checkPublishGate(
       orgClient(null),
-      { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' },
+      { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null },
       reconcile as never,
     )
     expect(res.ok).toBe(true)

@@ -62,7 +62,7 @@ silently follow the stale doc.
 | Scenes, categories, taxonomy | Scene layer, Law 3, the `seed-events` skill |
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
-| A migration or the database | Verification and gates (Migrations) |
+| A migration or the database | Verification and gates (Migrations). A new public table is granted in its own migration (the 21 October 2026 grant rule there) |
 | A build-time script (a guard, a `check-*`, anything `prebuild` runs) reading a file outside `src/` | Verification and gates (What a build-time script may read). Re-include it in `.vercelignore` AND prove the behaviour against the stripped tree. Four deployments have been lost to this |
 | An event status change, archive, restore or delete, or what a deleted or archived event URL answers | `docs/EVENT-LIFECYCLE.md` (AUTHORITY: the total state machine, the money-records delete rule the database enforces, the 410 and 404 rules), `src/lib/event-lifecycle.ts` (the table the code runs), `scripts/guards/event-lifecycle-total.mjs` and `event-lifecycle-installed.mjs` (the gates) |
 | An environment variable, a secret, a store scope, a sender or alert address | `docs/ENV-DOCTRINE.md`, `src/lib/env/manifest.mjs` (declare it there and the guards pick it up), Verification and gates |
@@ -1110,6 +1110,26 @@ the relevant surface section before reworking it.
   --linked` in PowerShell. Never the Dashboard SQL editor, never the Supabase
   MCP. Verify applied migrations by a direct database query, not the cached
   client (its schema cache lags).
+- **A migration that creates a public table grants it (founder ruling,
+  21 October 2026).** From 30 October 2026 Supabase stops granting new public
+  tables to anon, authenticated and service_role: "New tables in the public
+  schema will no longer be exposed to the Data API automatically"
+  (https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically),
+  and supabase-js then answers "permission denied", including on db reset and
+  preview branches (Supabase's notice to hello@eventlinqs.com, 20 October). So
+  every migration that creates a table in public, in that same migration,
+  revokes all from anon, authenticated and service_role and then grants it to
+  exactly the roles its row security policies serve: anon only where a signed
+  out visitor must read it, authenticated where a signed in user does,
+  service_role for server jobs, never wider than the policies. Enforced by
+  `scripts/guards/public-tables-carry-their-grants.mjs` (blocking). Proved by
+  `scripts/verify/replay-under-new-default.mjs`, which replays the migration on
+  TEST under Supabase's own opt-in, in one transaction. Reversal: if a fresh
+  TEST replay shows any role reaching a row its policy should refuse, that
+  role's grant is removed and the reason recorded. The 153 migrations on main
+  before the ruling are the known gap the guard counts on every run: a database
+  rebuilt from them reaches their tables only once a migration writes their
+  grants down.
 
 **Dependency bumps on a user-content path (locked 2026-08-08)**
 

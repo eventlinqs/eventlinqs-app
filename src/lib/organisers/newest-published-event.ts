@@ -40,7 +40,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
  */
 export const NEWEST_EVENT_SELECT =
   'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, ' +
-  'venue_country, created_at, is_free, published_at, ' +
+  'venue_country, created_at, is_free, entry_mode, published_at, ' +
   'category:event_categories(name, slug), organisation:organisations(name, slug), ' +
   'ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 

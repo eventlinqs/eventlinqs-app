@@ -9,6 +9,7 @@ import type { EventInventory } from '@/lib/redis/inventory-cache'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 import { priceLabel } from '@/lib/events/price-label'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 
 /**
  * EventCard - spec §6.2
@@ -58,6 +59,8 @@ export type EventCardData = {
   category: { name: string; slug: string } | null
   ticket_tiers: EventCardTier[]
   is_free?: boolean | null
+  /** WI1. A walk-in event says "Free entry" where the price goes. */
+  entry_mode?: string | null
   organisation?: { name: string; slug?: string } | null
   badge?: M5Badge | null
 }
@@ -95,7 +98,11 @@ function formatPrice(
   tiers: EventCardTier[],
   dynamicPrices: Map<string, number>,
   isFree: boolean | null = null,
+  entryMode: string | null = null,
 ): string {
+  // Walk-in first: it is also is_free, and "Free" would hide that no ticket is
+  // needed at all, which is the whole difference for the person reading it.
+  if (isWalkIn({ entry_mode: entryMode })) return FREE_ENTRY_LABEL
   if (isFree === true) return 'Free'
   if (!tiers || tiers.length === 0) return 'Free'
   return priceLabel(
@@ -126,7 +133,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   // badge at the bottom and swaps the top-left pill.
   const m5Mode = 'badge' in event
 
-  const priceLabel = formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null)
+  const priceLabel = formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null, event.entry_mode ?? null)
   const inventory  = ticket_tiers.length > 0 ? buildInventory(ticket_tiers) : null
 
   // Location display: city if available, else country
