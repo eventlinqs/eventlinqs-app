@@ -45,7 +45,7 @@ export default async function OrganisationPage({
   const { data: org } = scope.ok
     ? ((await createAdminClient()
         .from('organisations')
-        .select('id, name, slug, description, website, email, phone, status, stripe_onboarding_complete, legal_name, abn, gst_registered')
+        .select('id, name, slug, description, website, instagram_handle, short_name, email, phone, status, stripe_onboarding_complete, legal_name, abn, gst_registered')
         .eq('id', scope.active.id)
         .maybeSingle()) as { data: Organisation | null })
     : { data: null }
@@ -149,6 +149,8 @@ export default async function OrganisationPage({
         name={org.name}
         description={org.description ?? null}
         website={org.website ?? null}
+        instagramHandle={org.instagram_handle ?? null}
+        shortName={org.short_name ?? null}
         email={org.email ?? null}
         phone={org.phone ?? null}
         publicHref={`/organisers/${org.slug}`}

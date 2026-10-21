@@ -49,6 +49,16 @@ import type {
   VenueGeocodeSource,
 } from '@/types/database'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import {
+  WalkInEntryEditor,
+  EMPTY_WALK_IN_FORM,
+  syncWalkInDays,
+  walkInFormFromGuide,
+  walkInGuidePayload,
+  type WalkInFormState,
+} from './walk-in-entry-editor'
+import { spanDates } from '@/lib/walk-in/dates'
+import type { Guide } from '@/lib/walk-in/guide'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -124,6 +134,10 @@ type FormData = {
   media: MediaImage[]
   video_url: string
   // Step 5
+  /** WI1. How a person gets in: tickets (every event before WI1) or free walk-in. */
+  entry_mode: 'tickets' | 'walk_in'
+  /** WI1. The walk-in hours and guide; read only when entry_mode is walk_in. */
+  walk_in: WalkInFormState
   ticket_tiers: TicketTierInput[]
   // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
   // default) or absorb (deducted from the organiser payout).
@@ -325,6 +339,8 @@ function getDefaultFormData(prefill?: EventShapePrefill): FormData {
     squad_timeout_hours: '24',
     is_high_demand: false,
     queue_admission_window_minutes: '10',
+    entry_mode: 'tickets',
+    walk_in: EMPTY_WALK_IN_FORM,
     fee_pass_type: 'pass_to_buyer',
     // The DEFAULT IS THE GENEROUS ONE, matching Eventbrite's "Allow refunds"
     // default. It also matters for the one-way rule: an organiser can always
@@ -411,10 +427,13 @@ function fromExistingEvent(
     refund_policy_days?: number | null
     refund_policy_absorb_fee?: boolean | null
     refund_policy_self_service?: boolean | null
+    entry_mode?: string | null
   },
   tiers: TicketTier[],
   /** Read from the vault by the edit page with the organiser's own session. */
   streamUrl: string | null = null,
+  /** WI1. The walk-in guide, read by the edit page; null for a ticketed event. */
+  guide: Guide | null = null,
 ): FormData {
   // THE EDIT ROUND TRIP, which is where the shift accumulated. The stored value
   // is a UTC instant; the input must show it as a wall clock in the EVENT's own
@@ -484,6 +503,8 @@ function fromExistingEvent(
     refund_policy_days: event.refund_policy_days ?? 7,
     refund_policy_absorb_fee: event.refund_policy_absorb_fee ?? false,
     refund_policy_self_service: event.refund_policy_self_service ?? false,
+    entry_mode: event.entry_mode === 'walk_in' ? 'walk_in' : 'tickets',
+    walk_in: walkInFormFromGuide(guide),
   }
 }
 
@@ -507,6 +528,8 @@ type Props = {
   existingTiers?: TicketTier[]
   /** The vault row for this event, read by the edit page under the organiser's session. */
   existingStreamUrl?: string | null
+  /** WI1. The walk-in guide of the event being edited, or null. */
+  existingGuide?: Guide | null
   existingStatus?: EventStatus
   /** Launch Kit flag (read server-side): publish delivers the kit screen. */
   launchKitEnabled?: boolean
@@ -537,6 +560,7 @@ export function EventForm({
   existingEvent,
   existingTiers = [],
   existingStreamUrl = null,
+  existingGuide = null,
   existingStatus = 'draft',
   launchKitEnabled = false,
   lineupEnabled = false,
@@ -552,7 +576,7 @@ export function EventForm({
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<FormData>(() =>
     editMode && existingEvent
-      ? fromExistingEvent(existingEvent, existingTiers, existingStreamUrl)
+      ? fromExistingEvent(existingEvent, existingTiers, existingStreamUrl, existingGuide)
       : getDefaultFormData(shapePrefill)
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -579,6 +603,25 @@ export function EventForm({
     () => isPaidPublishBlocked({ canSellPaid, editMode, tierPrices: formData.ticket_tiers }),
     [canSellPaid, editMode, formData.ticket_tiers],
   )
+
+  /*
+   * WI1. The walk-in days follow the dates in step 2, keeping whatever was typed
+   * for a date that is still there. Derived on render rather than synced in an
+   * effect, so the editor and the payload always read the same list.
+   */
+  const walkInDates = useMemo(
+    () =>
+      formData.entry_mode === 'walk_in' && formData.start_date && formData.end_date
+        ? spanDates(
+            fromZonedInputValue(formData.start_date, formData.timezone),
+            fromZonedInputValue(formData.end_date, formData.timezone),
+            formData.timezone,
+          )
+        : [],
+    [formData.entry_mode, formData.start_date, formData.end_date, formData.timezone],
+  )
+  const walkInState = useMemo(() => syncWalkInDays(formData.walk_in, walkInDates), [formData.walk_in, walkInDates])
+  const stepLabel = (index: number) => (index === 4 && formData.entry_mode === 'walk_in' ? 'Free entry' : STEPS[index])
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
@@ -744,7 +787,10 @@ export function EventForm({
     refund_policy_days: formData.refund_policy_days,
     refund_policy_absorb_fee: formData.refund_policy_absorb_fee,
     refund_policy_self_service: formData.refund_policy_self_service,
-    ticket_tiers: formData.ticket_tiers.map((t, i) => ({
+    // WI1. A walk-in event carries its guide and never a ticket type.
+    entry_mode: formData.entry_mode,
+    walk_in_guide: formData.entry_mode === 'walk_in' ? walkInGuidePayload(walkInState) : undefined,
+    ticket_tiers: formData.entry_mode === 'walk_in' ? [] : formData.ticket_tiers.map((t, i) => ({
       // The id goes to the server ONLY when it names a row that already exists,
       // so updateEvent can update that ticket type in place instead of deleting
       // it. A tier drafted in this session carries the unsaved prefix and is sent
@@ -831,7 +877,30 @@ export function EventForm({
         return
       }
     }
-    if (step === 5) {
+    if (step === 5 && formData.entry_mode === 'walk_in') {
+      const open = walkInState.days.filter((d) => d.include)
+      if (open.length === 0) {
+        setStepError('Keep at least one day, and give it its hours.')
+        return
+      }
+      // The same rules the publish gate applies (walkInHoursProblems), asked here
+      // so the organiser hears them at this step rather than at Publish.
+      if (!walkInState.days[0]?.include) {
+        setStepError('Keep the first day: it is the day the event starts. To open later, change the start in step 2.')
+        return
+      }
+      const missing = open.find((d) => !d.closes || (!d.toConfirm && !d.opens))
+      if (missing) {
+        setStepError('Give every day you kept an opening and a closing time, or say the opening is still to confirm.')
+        return
+      }
+      const unlabelled = open.find((d) => d.toConfirm && !d.hoursLabel.trim())
+      if (unlabelled) {
+        setStepError('For an opening still to confirm, say what to show instead, such as "10am or 11am, to confirm".')
+        return
+      }
+    }
+    if (step === 5 && formData.entry_mode !== 'walk_in') {
       const eventStart = formData.start_date ? new Date(formData.start_date) : null
       const eventEnd = formData.end_date ? new Date(formData.end_date) : null
       for (let i = 0; i < formData.ticket_tiers.length; i++) {
@@ -1378,6 +1447,47 @@ export function EventForm({
 
   const renderStep5 = () => (
     <div className="space-y-6">
+      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <legend className="mb-2 text-sm font-semibold text-ink-900">How do people get in?</legend>
+        {(
+          [
+            { mode: 'tickets', title: 'Sell tickets', body: 'Paid or free ticket types, sold or registered here.' },
+            { mode: 'walk_in', title: 'Free entry, no ticket needed', body: 'People just come along. You set the hours; they can ask for a reminder.' },
+          ] as const
+        ).map((choice) => {
+          const blocked = choice.mode === 'walk_in' && formData.event_type !== 'in_person'
+          return (
+            <label
+              key={choice.mode}
+              className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${formData.entry_mode === choice.mode ? 'border-ink-900 bg-white' : 'border-ink-200 bg-white'} ${blocked ? 'cursor-not-allowed opacity-60' : ''}`}
+            >
+              <input
+                type="radio"
+                name="entry_mode"
+                className="mt-1 h-5 w-5"
+                value={choice.mode}
+                checked={formData.entry_mode === choice.mode}
+                disabled={blocked || (editMode && existingStatus !== 'draft')}
+                onChange={() => set('entry_mode', choice.mode)}
+              />
+              <span>
+                <span className="block text-sm font-bold text-ink-900">{choice.title}</span>
+                <span className="mt-0.5 block text-sm text-ink-600">
+                  {blocked ? 'A walk-in event happens in person. Choose In person in step 3 to use this.' : choice.body}
+                </span>
+              </span>
+            </label>
+          )
+        })}
+        {editMode && existingStatus !== 'draft' && (
+          <p className="text-xs text-ink-600 sm:col-span-2">The way in is fixed once an event has been published.</p>
+        )}
+      </fieldset>
+
+      {formData.entry_mode === 'walk_in' ? (
+        <WalkInEntryEditor value={walkInState} onChange={(next) => set('walk_in', next)} />
+      ) : (
+      <>
       {formData.ticket_tiers.map((tier, idx) => (
         <div key={tier.id} className="rounded-lg border border-ink-200 p-5">
           <div className="mb-4 flex items-center justify-between">
@@ -1860,6 +1970,8 @@ export function EventForm({
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 
@@ -2136,13 +2248,24 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Tickets</h3>
-            <p className="text-sm text-ink-600">
-              {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString('en-AU')} total capacity
-            </p>
-            <p className="text-xs text-ink-400">
-              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
-            </p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">{formData.entry_mode === 'walk_in' ? 'Entry' : 'Tickets'}</h3>
+            {formData.entry_mode === 'walk_in' ? (
+              <>
+                <p className="text-sm text-ink-600">Free entry, no ticket needed</p>
+                <p className="text-xs text-ink-400">
+                  {walkInState.days.filter((d) => d.include).length} day{walkInState.days.filter((d) => d.include).length === 1 ? '' : 's'} with hours
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-600">
+                  {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString('en-AU')} total capacity
+                </p>
+                <p className="text-xs text-ink-400">
+                  {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="px-5 py-4">
@@ -2292,7 +2415,7 @@ export function EventForm({
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-ink-400">Step {step} of {STEPS.length}</span>
-          <span className="text-sm font-medium text-ink-900">{STEPS[step - 1]}</span>
+          <span className="text-sm font-medium text-ink-900">{stepLabel(step - 1)}</span>
         </div>
         <div className="flex gap-1">
           {STEPS.map((_, i) => (
@@ -2308,7 +2431,7 @@ export function EventForm({
 
       {/* Step content */}
       <div className="rounded-xl border border-ink-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-ink-900 mb-6">{STEPS[step - 1]}</h2>
+        <h2 className="text-lg font-semibold text-ink-900 mb-6">{stepLabel(step - 1)}</h2>
         {stepContent[step - 1]()}
       </div>
 
