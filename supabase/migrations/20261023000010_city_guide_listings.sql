@@ -16,8 +16,10 @@
 -- 3. event_series: what a host runs, with its rule. A one-off is a series of
 --    one, so every listing has one home for its source, check and removal.
 -- 4. listing_checks: the append-only history of each check. A trigger keeps
---    event_series.last_checked_at and the series' events' listing_fresh_until
---    in step, so the 21-day rule reads one value.
+--    event_series.last_checked_on (the latest day the source was confirmed)
+--    and the series' events' listing_fresh_until in step, and an occurrence
+--    written later takes the same value, so the 21-day rule is one function,
+--    listing_fresh_until_for, and runs from the day the source was read.
 -- 5. events: series_id, occurrence_date (both set or both null, unique per
 --    series) and listing_fresh_until. 5b: only the service role sets or
 --    changes the listing columns on events and venues (the reason is there).
@@ -129,7 +131,9 @@ create table if not exists public.event_series (
   skip_dates date[] not null default '{}',
   listing_source text not null default 'eventlinqs' check (listing_source in ('organiser', 'eventlinqs')),
   status text not null default 'active' check (status in ('active', 'paused', 'removed')),
-  last_checked_at timestamptz,
+  -- The latest day the source was confirmed (a listing check's source_date),
+  -- the date "Last checked" shows. Kept by listing_checks' trigger.
+  last_checked_on date,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint event_series_day_is_anchor_weekday check (day = extract(dow from anchor_date)::int2),
@@ -189,22 +193,43 @@ create unique index if not exists events_series_occurrence_key
   on public.events (series_id, occurrence_date) where series_id is not null;
 
 comment on column public.events.listing_fresh_until is
-  'For an EventLinqs listing: 21 days after its series was last checked. Null for every event an organiser lists. WI2 Part 1.';
+  'For an EventLinqs listing: the end of the 21st day after its series'' source was last confirmed, in the series'' zone. Null for every event an organiser lists. WI2 Part 1.';
 
--- A check confirms (or changes) the source: the series records when, and every
--- occurrence of it stays on the guides for 21 days from that check.
+-- THE 21-DAY RULE, ONCE. A listing whose source was confirmed on day D stays
+-- on the guides to the end of day D + 21 in its own zone, and is gone from the
+-- first moment of D + 22. The import refuses a source older than 21 days by the
+-- same count (SOURCE_MAX_AGE_DAYS in src/lib/listings/listing-rows.ts), so the
+-- oldest row it accepts is on the guides for the rest of that day only. It runs
+-- from the day the source was read, never from when the import happened to run.
+create or replace function public.listing_fresh_until_for(p_checked_on date, p_timezone text)
+returns timestamptz
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select case when p_checked_on is null then null
+              else ((p_checked_on + 22)::timestamp at time zone p_timezone) end
+$$;
+
+-- A check confirms (or changes) the source: the series keeps the latest day it
+-- was confirmed, and every occurrence of it takes its freshness from that day.
+-- A later check can only move the day forward.
 create or replace function public.listing_check_keeps_freshness()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
 as $$
+declare
+  v_on date;
+  v_tz text;
 begin
   update public.event_series
-     set last_checked_at = greatest(coalesce(last_checked_at, new.checked_at), new.checked_at),
+     set last_checked_on = greatest(coalesce(last_checked_on, new.source_date), new.source_date),
          updated_at = now()
-   where id = new.series_id;
+   where id = new.series_id
+  returning last_checked_on, timezone into v_on, v_tz;
   update public.events
-     set listing_fresh_until = greatest(coalesce(listing_fresh_until, new.checked_at), new.checked_at) + interval '21 days'
+     set listing_fresh_until = public.listing_fresh_until_for(v_on, v_tz)
    where series_id = new.series_id;
   return new;
 end;
@@ -214,6 +239,30 @@ drop trigger if exists trg_listing_check_keeps_freshness on public.listing_check
 create trigger trg_listing_check_keeps_freshness
   after insert on public.listing_checks
   for each row execute function public.listing_check_keeps_freshness();
+
+-- An occurrence written after the series' last check takes the same freshness
+-- the moment it is written, so no occurrence ever exists without it.
+create or replace function public.event_takes_its_series_freshness()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if new.series_id is null then
+    return new;
+  end if;
+  select public.listing_fresh_until_for(s.last_checked_on, s.timezone)
+    into new.listing_fresh_until
+    from public.event_series s
+   where s.id = new.series_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_event_takes_its_series_freshness on public.events;
+create trigger trg_event_takes_its_series_freshness
+  before insert or update of series_id on public.events
+  for each row execute function public.event_takes_its_series_freshness();
 
 -- ---------------------------------------------------------------------------
 -- 5b. ONLY THE IMPORT WRITES THE LISTING COLUMNS.
@@ -309,6 +358,15 @@ begin
   end if;
   if not exists (select 1 from pg_trigger where tgname = 'trg_listing_check_keeps_freshness') then
     v_missing := v_missing || ' trg_listing_check_keeps_freshness';
+  end if;
+  if not exists (select 1 from pg_trigger where tgname = 'trg_event_takes_its_series_freshness') then
+    v_missing := v_missing || ' trg_event_takes_its_series_freshness';
+  end if;
+  -- The rule's own arithmetic: confirmed on 1 October in Melbourne (UTC+10
+  -- until 4 October), gone from midnight starting 23 October (UTC+11).
+  if public.listing_fresh_until_for(date '2026-10-01', 'Australia/Melbourne')
+     is distinct from timestamptz '2026-10-22 13:00:00+00' then
+    v_missing := v_missing || ' listing_fresh_until_for.arithmetic';
   end if;
   if not exists (select 1 from pg_trigger where tgname = 'trg_event_listing_columns_are_the_imports') then
     v_missing := v_missing || ' trg_event_listing_columns_are_the_imports';
