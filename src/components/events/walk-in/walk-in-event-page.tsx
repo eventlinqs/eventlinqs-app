@@ -3,6 +3,7 @@ import { CalendarClock, Clock, XCircle } from 'lucide-react'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -333,11 +334,14 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                 </section>
               )}
 
+              {/* From here down, below the fold, each block fade-rises once as it
+                  arrives (the Motion law), through the shared <Reveal> the ticketed
+                  page's sections use; above it nothing moves but the cover's LCP. */}
               {/* The organiser's description, when they wrote one. The AMCF board has
                   none, so design A draws no such section; an organiser's own words
                   are never dropped, so they render here, through the one door. */}
               {showAbout && (
-                <section className="flex flex-col gap-3 lg:gap-4">
+                <Reveal as="section" className="flex flex-col gap-3 lg:gap-4">
                   <h2 className="type-rail-heading font-headline text-ink-900">{ABOUT_THIS_EVENT}</h2>
                   <div data-text-source={source}>
                     <OrganiserProse
@@ -345,12 +349,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       className="type-measure space-y-4 text-pretty text-base leading-relaxed text-ink-700"
                     />
                   </div>
-                </section>
+                </Reveal>
               )}
 
               {/* Day by day */}
               {days.length > 0 && (
-                <section className="flex flex-col gap-3.5 lg:gap-5">
+                <Reveal as="section" className="flex flex-col gap-3.5 lg:gap-5">
                   <div>
                     <p className="type-eyebrow mb-1.5 hidden font-display text-[var(--brand-accent-strong)] lg:block">
                       {PLAN_YOUR_VISIT}
@@ -363,12 +367,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       {guide.program_note}
                     </p>
                   )}
-                </section>
+                </Reveal>
               )}
 
               {/* Highlights */}
               {(guide.highlights.length > 0 || guide.highlights_note) && (
-                <section className="flex flex-col gap-2.5 lg:gap-5">
+                <Reveal as="section" className="flex flex-col gap-2.5 lg:gap-5">
                   <h2 className="type-rail-heading font-headline text-ink-900">{highlightsHeading(dayCount)}</h2>
                   {guide.highlights.length > 0 && (
                     <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3 lg:gap-3">
@@ -385,12 +389,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       {guide.highlights_note}
                     </p>
                   )}
-                </section>
+                </Reveal>
               )}
 
               {/* Photos: every tile is a button that opens the viewer (no dead-end tiles). */}
               {gallery.length > 0 && (
-                <section className="flex flex-col gap-2 lg:gap-4">
+                <Reveal as="section" className="flex flex-col gap-2 lg:gap-4">
                   {guide.photos_heading ? (
                     <h2 data-text-source={source} className="type-rail-heading hidden font-headline text-ink-900 lg:block">
                       {guide.photos_heading}
@@ -404,24 +408,24 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       Photos: {guide.photo_credit}.
                     </p>
                   )}
-                </section>
+                </Reveal>
               )}
 
               {/* Quote (Main only). */}
               {guide.quote_text && (
-                <figure data-text-source={source} className="m-0 hidden rounded-[var(--radius-card)] bg-white px-10 py-9 lg:block">
+                <Reveal as="figure" data-text-source={source} className="m-0 hidden rounded-[var(--radius-card)] bg-white px-10 py-9 lg:block">
                   <blockquote className="m-0 font-headline text-2xl font-semibold leading-[1.4] tracking-[-0.01em] text-ink-900">
                     &quot;{guide.quote_text}&quot;
                   </blockquote>
                   {guide.quote_attribution && (
                     <figcaption className="mt-4 text-[15px] text-ink-600">{guide.quote_attribution}</figcaption>
                   )}
-                </figure>
+                </Reveal>
               )}
 
               {/* Getting there and access */}
               {(event.venue_name || guide.getting_there || guide.access_notes) && (
-                <section className="flex flex-col gap-2.5 lg:gap-4">
+                <Reveal as="section" className="flex flex-col gap-2.5 lg:gap-4">
                   <h2 className="type-rail-heading font-headline text-ink-900">{GETTING_THERE_AND_ACCESS}</h2>
                   {/* Phone: one card, the link under it (PhoneA). */}
                   <div className="rounded-[var(--radius-card)] bg-white p-4 text-sm leading-[1.6] text-ink-800 lg:hidden">
@@ -464,12 +468,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       </div>
                     )}
                   </div>
-                </section>
+                </Reveal>
               )}
 
               {/* Organised by */}
               {org && (
-                <section className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-white p-5 lg:flex-wrap lg:gap-4 lg:px-7 lg:py-6">
+                <Reveal as="section" className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-white p-5 lg:flex-wrap lg:gap-4 lg:px-7 lg:py-6">
                   <div className="min-w-0">
                     <p className="type-eyebrow m-0 font-display text-[var(--brand-accent-strong)]">{ORGANISED_BY}</p>
                     <p data-text-source={NAME_SOURCE} className="m-0 mt-0.5 text-[15px] font-bold text-ink-900 lg:mt-1 lg:font-headline lg:text-xl">
@@ -501,7 +505,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                     compactLabel="Follow"
                     fromEventId={event.id}
                   />
-                </section>
+                </Reveal>
               )}
             </div>
 
