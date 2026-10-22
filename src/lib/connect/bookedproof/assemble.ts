@@ -159,15 +159,21 @@ export function firstTouch(
   for (const row of conversions) {
     if (!row.order_id || !linkIds.has(row.link_id)) continue
     const prior = byOrder.get(row.order_id)
-    if (!prior || row.occurred_at < prior.occurred_at || (row.occurred_at === prior.occurred_at && row.link_id < prior.link_id)) {
-      byOrder.set(row.order_id, row)
-    }
+    const order = prior ? byTime(row.occurred_at, prior.occurred_at) || byId(row.link_id, prior.link_id) : -1
+    if (order < 0) byOrder.set(row.order_id, row)
   }
   return byOrder
 }
 
-const newestFirst = (a: ListingEventRow, b: ListingEventRow) =>
-  a.start_date === b.start_date ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : a.start_date < b.start_date ? 1 : -1
+/*
+ * Moments are compared as moments, never as text: the database writes
+ * "09:00:00+00:00" and "09:00:00.5+00:00" for times half a second apart, and a
+ * fixture writes "09:00:00Z", so a string comparison is right only by luck.
+ */
+const byTime = (a: string, b: string) => Math.sign(Date.parse(a) - Date.parse(b))
+const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
+const newestFirst = (a: ListingEventRow, b: ListingEventRow) => byTime(b.start_date, a.start_date) || byId(a.id, b.id)
 
 export function assembleListing(input: {
   event: ListingEventRow
@@ -191,11 +197,7 @@ export function assembleListing(input: {
     if (!order || order.event_id !== event.id || order.confirmed_at === null) continue
     paid.push({ order, code: codeByLink.get(touch.link_id) as string })
   }
-  paid.sort((a, b) =>
-    a.order.confirmed_at === b.order.confirmed_at
-      ? a.order.id < b.order.id ? -1 : 1
-      : (a.order.confirmed_at as string) < (b.order.confirmed_at as string) ? -1 : 1,
-  )
+  paid.sort((a, b) => byTime(a.order.confirmed_at as string, b.order.confirmed_at as string) || byId(a.order.id, b.order.id))
 
   let tickets = 0
   let fee = 0
@@ -229,7 +231,7 @@ export function assembleListing(input: {
     first_published_at: event.published_at === null ? null : new Date(event.published_at).toISOString(),
     share_links: links
       .slice()
-      .sort((a, b) => (a.created_at === b.created_at ? (a.code < b.code ? -1 : 1) : a.created_at < b.created_at ? -1 : 1))
+      .sort((a, b) => byTime(a.created_at, b.created_at) || byId(a.code, b.code))
       .map((l) => ({ code: l.code, url: `${origin}/e/${l.code}`, channel: l.channel, created_at: new Date(l.created_at).toISOString() })),
     orders,
     tickets_through_share_links: tickets,

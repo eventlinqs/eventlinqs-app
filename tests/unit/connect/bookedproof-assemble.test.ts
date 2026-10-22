@@ -139,6 +139,22 @@ describe('the section 6 case', () => {
     ])
   })
 
+  test('first touch compares moments, not text: another offset or a fraction of a second cannot reorder them', () => {
+    for (const [igAt, waAt] of [
+      ['2026-10-16T19:00:00+10:00', '2026-10-16T09:30:00Z'], // 09:00Z written at a ten hour offset
+      ['2026-10-16T09:00:00Z', '2026-10-16T09:00:00.5+00:00'], // the database's fractional form
+    ]) {
+      const r = rows({
+        conversions: [
+          { link_id: WA.id, order_id: O2.id, occurred_at: waAt },
+          { link_id: IG.id, order_id: O2.id, occurred_at: igAt },
+        ],
+      })
+      const [listing] = listingOf(answer({ rows: r }))
+      expect(listing.orders.map((o) => o.share_code)).toEqual(['igcode1'])
+    }
+  })
+
   test('an order never paid is never returned', () => {
     const [listing] = listingOf(answer({}))
     expect(listing.orders).toHaveLength(3)
