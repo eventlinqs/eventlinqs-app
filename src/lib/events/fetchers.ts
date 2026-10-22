@@ -560,6 +560,8 @@ type RawRow = {
   venue_longitude: number | null
   created_at: string
   is_free: boolean | null
+  /** WI1. Carried to the card so a walk-in event says "Free entry". */
+  entry_mode: string | null
   category: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
   organisation: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
   ticket_tiers: {
@@ -574,7 +576,7 @@ type RawRow = {
 
 const DEFAULT_PAGE_SIZE = 24
 const BASE_SELECT =
-  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null
@@ -642,6 +644,7 @@ function toPublicEventRow(raw: RawRow): PublicEventRow {
     venue_longitude: raw.venue_longitude,
     created_at: raw.created_at,
     is_free: raw.is_free,
+    entry_mode: raw.entry_mode,
     category: normaliseRelation(raw.category),
     organisation: normaliseRelation(raw.organisation),
     ticket_tiers: raw.ticket_tiers ?? [],

@@ -4,6 +4,7 @@ import { getEventMedia } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 import { priceLabel } from '@/lib/events/price-label'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
@@ -23,8 +24,10 @@ import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/r
 
 
 
-function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
-  return priceLabel(tiers ?? [])
+function formatPrice(event: BentoEvent): string {
+  // WI1. A walk-in event says "Free entry" where the price goes.
+  if (isWalkIn(event)) return FREE_ENTRY_LABEL
+  return priceLabel(event.ticket_tiers ?? [])
 }
 
 export async function ThisWeekCard({
@@ -62,7 +65,7 @@ export async function ThisWeekCard({
     venue: event.venue_name ?? '',
     city: event.venue_city ?? '',
     dateLabel: formatEventDateShort(event.start_date, event.timezone),
-    priceLabel: formatPrice(event.ticket_tiers ?? null),
+    priceLabel: formatPrice(event),
     // Feature cards default to priority=true (built for above-fold hero use).
     // Every homepage feature RAIL is below the fold, so force priority off
     // here - the hero owns LCP and these must not preload as critical.

@@ -60,10 +60,10 @@ export const STORED_AGGREGATES = [
     summarises: 'public.ticket_tiers',
     maintenance: 'trigger',
     maintainedBy:
-      'trg_update_event_is_free, AFTER INSERT OR DELETE OR UPDATE on ticket_tiers, RECOMPUTES from the whole tier set (migration 20260101000001).',
+      'trg_update_event_is_free, AFTER INSERT OR DELETE OR UPDATE on ticket_tiers, RECOMPUTES from the whole tier set (migration 20260101000001). trg_walk_in_event_is_free, BEFORE INSERT OR UPDATE on events, sets it true for a walk-in event, which never holds a tier (migration 20261021000020).',
     reconciled: true,
     caveat:
-      'An event that has NEVER had a tier touched has never fired the trigger, so it keeps the INSERT default rather than the recomputed value. The recount and the trigger share one definition, COALESCE(MAX(price),0)=0, which is true over an empty tier set, so a tier-less event reads as disagreeing. Found by the first reconciliation run on 25 August 2026: 1 of 117 events on TEST. Whether "no tiers at all" should mean free is a product question and is NOT answered by silently changing the definition here.',
+      'An event that has NEVER had a tier touched has never fired the trigger, so it keeps the INSERT default rather than the recomputed value. The recount and the trigger share one definition, COALESCE(MAX(price),0)=0, which is true over an empty tier set, so a tier-less event reads as disagreeing. Found by the first reconciliation run on 25 August 2026: 1 of 117 events on TEST. Whether "no tiers at all" should mean free is a product question and is NOT answered by silently changing the definition here. It IS answered for one case: a walk-in event (WI1, entry_mode walk_in) is free by definition, and the recount in stored_aggregate_drift says so since 20261021000020. A tierless TICKETED event still reads as disagreeing, as before.',
     decision: null,
   },
   {

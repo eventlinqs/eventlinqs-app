@@ -9,6 +9,7 @@ import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/li
 import { SaveEventButton } from './save-event-button'
 import type { BentoSize } from './bento-grid'
 import { priceLabel } from '@/lib/events/price-label'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 
 /**
  * EventBentoTile: renders a single event tile with EventCardMedia background.
@@ -40,6 +41,8 @@ export interface BentoEvent extends EventMediaInput {
   ticket_tiers?: { price: number; currency: string }[] | null
   summary?: string | null
   is_free?: boolean | null
+  /** WI1. A walk-in event says "Free entry" where the price goes. */
+  entry_mode?: string | null
   percent_sold?: number | null
   sold_today?: number | null
 }
@@ -55,8 +58,10 @@ interface Props {
 
 
 
-function formatCheapestPrice(tiers: BentoEvent['ticket_tiers']): string | null {
-  return priceLabel(tiers ?? [])
+function formatCheapestPrice(event: BentoEvent): string | null {
+  // WI1. A walk-in event says "Free entry" where the price goes.
+  if (isWalkIn(event)) return FREE_ENTRY_LABEL
+  return priceLabel(event.ticket_tiers ?? [])
 }
 
 function liveSignal(event: BentoEvent): string | null {
@@ -139,7 +144,7 @@ export async function EventBentoTile({
 
   const { imageSrc, imageAlt, placeholderCategory } = resolveTileMedia(event, media)
   const variant = mediaVariantFor(size)
-  const price = formatCheapestPrice(event.ticket_tiers ?? null)
+  const price = formatCheapestPrice(event)
   const signal = liveSignal(event)
   const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
   const category = pillLabel ?? event.category?.name ?? null

@@ -40,11 +40,22 @@ export const DEMAND_ACTIONS = [
   'checkout_abandoned',
   'waitlist_join',
   'sold_out_view',
+  // WI1. Three conversions beside the page view: an add to a calendar, a
+  // share, and a follow of the page's owner from the page.
+  'calendar_add',
+  'share',
+  'follow',
 ] as const
 export type DemandAction = (typeof DEMAND_ACTIONS)[number]
 
 /** The demand actions that genuinely have nobody attached to them. */
-export const ANONYMOUS_DEMAND_ACTIONS: readonly DemandAction[] = ['page_view', 'sold_out_view']
+export const ANONYMOUS_DEMAND_ACTIONS: readonly DemandAction[] = [
+  'page_view',
+  'sold_out_view',
+  'calendar_add',
+  'share',
+  'follow',
+]
 
 /**
  * A dated unit of perishable capacity, in the ledger's own terms.

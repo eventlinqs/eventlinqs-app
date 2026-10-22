@@ -26,6 +26,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtc,
@@ -162,7 +163,7 @@ export default async function CommunityByCityPage({ params }: Props) {
   // category-bridge resolved every community to zero on live
   // generic-category events.
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   let allEvents: EventCardData[] = []
   let mapPins: MapEventPin[] = []
@@ -199,7 +200,7 @@ export default async function CommunityByCityPage({ params }: Props) {
           id: r.id, slug: r.slug, title: r.title,
           date: dateStr,
           suburb: r.venue_city,
-          price: cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+          price: isWalkIn(r) ? FREE_ENTRY_LABEL : cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
           cover: r.cover_image_url,
           latitude: r.venue_latitude as number,
           longitude: r.venue_longitude as number,

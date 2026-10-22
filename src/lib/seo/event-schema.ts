@@ -25,6 +25,7 @@ import type { Event, TicketTier, Organisation } from '@/types/database'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { toZonedIso8601 } from '@/lib/dates/event-time'
 import { pruneJsonLd } from '@/lib/seo/structured-data'
+import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -268,15 +269,42 @@ export function buildEventSchemaPayload({
   const sortedTiers = [...ticketTiers].sort((a, b) => priceOf(a) - priceOf(b))
   const lowestPrice = sortedTiers.length > 0 ? priceOf(sortedTiers[0]) / 100 : 0
 
-  const offers = sortedTiers.map(tier => ({
-    '@type': 'Offer',
-    name: tier.name,
-    price: (priceOf(tier) / 100).toFixed(2),
-    priceCurrency: tier.currency ?? 'AUD',
-    availability: schemaAvailability(state),
-    url: eventUrl,
-    validFrom: event.created_at,
-  }))
+  /*
+   * A FREE WALK-IN EVENT (WI1) has no ticket type, and is still described with
+   * one Offer at price 0, because Google says so for exactly this case:
+   *
+   *   "If the event is available without payment, fees, or service charges,
+   *    set the price to 0."
+   *   developers.google.com/search/docs/appearance/structured-data/event
+   *   (last updated 2026-09-08, read 2026-10-21)
+   *
+   * isAccessibleForFree is set below for it as well. Google's page does not name
+   * that property; it is schema.org's ("A flag to signal that the item, event,
+   * or place is accessible for free", https://schema.org/isAccessibleForFree,
+   * read 2026-10-21), which is the authority it is emitted on.
+   */
+  const walkIn = isWalkIn(event)
+  const offers = walkIn
+    ? [
+        {
+          '@type': 'Offer',
+          name: FREE_ENTRY_LABEL,
+          price: (0).toFixed(2),
+          priceCurrency: 'AUD',
+          availability: schemaAvailability(state),
+          url: eventUrl,
+          validFrom: event.created_at,
+        },
+      ]
+    : sortedTiers.map(tier => ({
+        '@type': 'Offer',
+        name: tier.name,
+        price: (priceOf(tier) / 100).toFixed(2),
+        priceCurrency: tier.currency ?? 'AUD',
+        availability: schemaAvailability(state),
+        url: eventUrl,
+        validFrom: event.created_at,
+      }))
 
   const payload = {
     '@context': 'https://schema.org',
@@ -373,7 +401,7 @@ export function buildEventSchemaPayload({
     // An array of one is still an array, so every event describes its tickets in
     // the same shape and a reader never has to branch on how many there are.
     offers: offers.length > 0 ? offers : undefined,
-    ...(lowestPrice === 0 ? { isAccessibleForFree: true } : {}),
+    ...(walkIn || lowestPrice === 0 ? { isAccessibleForFree: true } : {}),
     url: eventUrl,
   }
 

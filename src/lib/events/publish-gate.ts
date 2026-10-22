@@ -6,6 +6,7 @@ import {
   isOrganiserSellable,
 } from '@/lib/payments/sale-status'
 import { connectVerificationIsFresh } from './connect-verification-freshness'
+import { walkInHoursProblems, type GuideDay } from '@/lib/walk-in/guide'
 
 /**
  * Result of the publish-gate check.
@@ -30,6 +31,8 @@ export type PublishGateResult =
         | 'cover_image_required'
         | 'event_already_ended'
         | 'venue_required'
+        | 'walk_in_has_ticket_types'
+        | 'walk_in_hours_missing'
       message: string
       /** What Stripe says is outstanding, most urgent first. Empty if Stripe wants nothing. */
       outstanding?: OutstandingRequirement[]
@@ -50,6 +53,22 @@ export function hasRealCover(url: string | null | undefined): boolean {
   if (typeof url !== 'string' || url.trim() === '') return false
   if (/^https:\/\/picsum\.photos\//i.test(url)) return false
   return true
+}
+
+/**
+ * The facts a walk-in event is published on (WI1). `null` for a ticketed event.
+ *
+ * REQUIRED on the gate's input, for the reason the gate gives for every field: a
+ * check a caller can skip by forgetting a field is not a check. A caller that
+ * has a walk-in event and passes `null` publishes it without its hours, so every
+ * caller reads the mode from the row and passes what it read.
+ */
+export type WalkInPublishFacts = {
+  tierCount: number
+  days: GuideDay[]
+  startsAt: string
+  endsAt: string
+  timezone: string
 }
 
 /**
@@ -159,6 +178,8 @@ export async function checkPublishGate(
     isPhysical: boolean
     venueName: string | null
     venueAddress: string | null
+    /** WI1. The walk-in facts, or null for a ticketed event. See WalkInPublishFacts. */
+    walkIn: WalkInPublishFacts | null
   },
   /** `null` opts out of the Stripe re-read; see the branch below for when that is right. */
   reconcile: ReconcileFn | null = defaultReconcile,
@@ -220,6 +241,37 @@ export async function checkPublishGate(
         'Add where this event happens before publishing. An in-person event with no venue cannot be found or attended.',
       nextAction: { label: 'Add the venue', href: '#location' },
     }
+  }
+
+  /*
+   * A FREE WALK-IN EVENT (WI1) has nothing to sell, so the Stripe question below
+   * never applies to it. What it must have instead is the hours people come at:
+   * a walk-in page with no hours tells nobody when to turn up. The database
+   * already refuses a ticket type on it; this says so in words before the save.
+   */
+  if (input.walkIn) {
+    if (input.walkIn.tierCount > 0) {
+      return {
+        ok: false,
+        reason: 'walk_in_has_ticket_types',
+        message:
+          'A free walk-in event has no ticket types. Remove them, or choose Sell tickets as the way in.',
+      }
+    }
+    const problems = walkInHoursProblems(input.walkIn.days, {
+      startsAt: input.walkIn.startsAt,
+      endsAt: input.walkIn.endsAt,
+      timezone: input.walkIn.timezone,
+    })
+    if (problems.length > 0) {
+      return {
+        ok: false,
+        reason: 'walk_in_hours_missing',
+        message: problems[0],
+        nextAction: { label: 'Add the hours', href: '#entry' },
+      }
+    }
+    return { ok: true }
   }
 
   if (!input.tiersHavePaid) return { ok: true }

@@ -2,6 +2,7 @@
 
 import { fetchPublicEvents } from '@/lib/events'
 import { lowestPaidCents } from '@/lib/events/price-label'
+import { isWalkIn } from '@/lib/events/entry-mode'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import {
   parseEventsSearchParams,
@@ -92,6 +93,7 @@ export async function loadEventsInBbox(
       timezone: e.timezone,
       starting_from_cents: lowestPaid,
       is_free: e.is_free === true || (e.ticket_tiers.length > 0 && lowestPaid === null),
+      walk_in: isWalkIn(e),
       currency,
       lat: e.venue_latitude,
       lng: e.venue_longitude,

@@ -262,6 +262,9 @@
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
+ *   public-tables-carry-their-grants  a migration that creates a public table grants it
+ *                              in the same file, revoked first, to exactly the roles its
+ *                              policies serve (Supabase stops granting them on 30 October 2026)
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *   gate-fields-complete       a query feeding a gate selects every field that gate reads
  *   refund-restores-inventory  a refund can never take the money and keep the seat sold
@@ -3191,6 +3194,13 @@ const GUARDS = [
   // as written (the v1 consent wording, applied migrations) are registered by
   // file with an exact count and a reason. Drilled red two ways.
   'scripts/guards/no-retired-business-name.mjs',
+
+  // Lawal, 21 October 2026. From 30 October Supabase grants no new public table
+  // to anon, authenticated or service_role, so a migration that creates one
+  // grants it in the same file, revoked first, to exactly the roles its policies
+  // serve and never wider. The 153 migrations on main before the rule are the
+  // known gap, counted on every run. Drilled red seven ways, green two.
+  'scripts/guards/public-tables-carry-their-grants.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

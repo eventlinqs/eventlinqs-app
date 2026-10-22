@@ -27,7 +27,7 @@ const FUTURE_END = new Date(Date.now() + 7 * 864e5).toISOString()
  * two predicates agreeing.
  */
 
-const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
+const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
 
 function clientReturning(row: Record<string, unknown> | null) {
   return {
@@ -105,7 +105,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       stripe_account_country: null,
       payout_status: 'restricted',
     }
-    const free = { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
+    const free = { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
     const result = await checkPublishGate(clientReturning(worst), free, null)
     expect(result.ok).toBe(true)
   })
@@ -119,7 +119,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       stripe_account_country: 'AU',
       payout_status: 'active',
     }
-    const noCover = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: null, endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
+    const noCover = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: null, endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
     const result = await checkPublishGate(clientReturning(sellable), noCover, null)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('cover_image_required')

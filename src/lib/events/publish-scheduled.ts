@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkPublishGate, hasPaidTier } from './publish-gate'
+import { embeddedGuideDays, walkInFactsFromRow } from '@/lib/walk-in/publish-facts'
 
 /**
  * Publish the events whose scheduled time has arrived.
@@ -68,7 +69,7 @@ export async function publishScheduledEvents(
   const { data, error } = await admin
     .from('events')
     .select(
-      'id, slug, title, organisation_id, cover_image_url, scheduled_publish_at, end_date, event_type, venue_name, venue_address, ticket_tiers(price)',
+      'id, slug, title, organisation_id, cover_image_url, scheduled_publish_at, start_date, end_date, timezone, entry_mode, event_type, venue_name, venue_address, ticket_tiers(price), event_guides(days)',
     )
     .eq('status', 'scheduled')
     .not('scheduled_publish_at', 'is', null)
@@ -98,6 +99,12 @@ export async function publishScheduledEvents(
     // Read so the gate can refuse an event that has already ended, and an
     // in-person event with nowhere to go. Added 29 August 2026 with those rules.
     end_date: string | null
+    // WI1. A walk-in event is judged on its hours, so the cron reads them in
+    // the same query as everything else it judges.
+    start_date: string
+    timezone: string | null
+    entry_mode: string | null
+    event_guides: unknown
     event_type: string | null
     venue_name: string | null
     venue_address: string | null
@@ -118,6 +125,14 @@ export async function publishScheduledEvents(
         isPhysical: event.event_type !== 'virtual',
         venueName: event.venue_name,
         venueAddress: event.venue_address,
+        walkIn: walkInFactsFromRow({
+          entry_mode: event.entry_mode,
+          start_date: event.start_date,
+          end_date: event.end_date ?? event.start_date,
+          timezone: event.timezone,
+          tierCount: (event.ticket_tiers ?? []).length,
+          guideDays: embeddedGuideDays(event.event_guides),
+        }),
       },
       // NO STRIPE RE-READ FROM THE CRON. Deliberate, and this is a
       // MERGE-INDUCED defect being closed rather than a feature being declined.

@@ -10441,6 +10441,86 @@ const DRILLS = [
     replace: 'data-el-consent="refused"',
     expect: 'has no data-el-consent="refuse"',
   },
+  /*
+   * public-tables-carry-their-grants (Lawal, 21 October 2026). Seven ways a new
+   * public table ends up unreachable or wider than its policies once Supabase
+   * stops granting new tables on 30 October, each made in WI1's own migration,
+   * plus the history list growing to excuse a new file. Two more prove it does
+   * not count a create table it should not: one in a comment, one in another
+   * schema.
+   */
+  {
+    name: 'grants: a new table is granted to nobody',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select, insert, update, delete on public.event_reminders to service_role;',
+    replace: '-- the grant was removed by the drill',
+    expect: 'NO GRANT: public.event_reminders',
+  },
+  {
+    name: 'grants: a table is granted without revoking the old default first',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'revoke all on public.event_reminder_sends from public, anon, authenticated, service_role;',
+    replace: '-- the revoke was removed by the drill',
+    expect: 'NOT REVOKED: public.event_reminder_sends',
+  },
+  {
+    name: 'grants: anon is granted ALL on the guide',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select on public.event_guides to anon, authenticated;',
+    replace: 'grant all on public.event_guides to anon, authenticated;',
+    expect: 'WIDER: public.event_guides grants ALL to anon',
+  },
+  {
+    name: 'grants: authenticated is granted INSERT that no policy serves',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select on public.event_guides to anon, authenticated;',
+    replace: 'grant select on public.event_guides to anon;\ngrant select, insert on public.event_guides to authenticated;',
+    expect: 'NOT SERVED: public.event_guides grants INSERT to authenticated',
+  },
+  {
+    name: 'grants: the public read policy serves anon, and anon is never granted',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select on public.event_guides to anon, authenticated;',
+    replace: 'grant select on public.event_guides to authenticated;',
+    expect: 'NOT GRANTED: a SELECT policy on public.event_guides serves anon',
+  },
+  {
+    name: 'grants: anon is granted on a table whose row security is off',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'alter table public.event_guides enable row level security;',
+    replace: '-- row level security was left off by the drill',
+    expect: 'NO RLS: public.event_guides',
+  },
+  {
+    name: 'grants: the history list grows to excuse a migration written after the rule',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    file: 'scripts/guards/lib/migrations-before-the-grant-rule.json',
+    find: '"versions": [\n',
+    replace: '"versions": [\n    "20261021000020",\n',
+    expect: 'the history list holds 154 version(s)',
+  },
+  {
+    name: 'NO FALSE POSITIVE: grants, a create table in a comment is not a table',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    expectPass: '3 public tables judged',
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select on public.event_guides to anon, authenticated;',
+    replace: 'grant select on public.event_guides to anon, authenticated;\n-- create table public.drill_not_a_table (id int);',
+  },
+  {
+    name: 'NO FALSE POSITIVE: grants, a table in another schema is not a public table',
+    guard: `${GUARDS}/public-tables-carry-their-grants.mjs`,
+    expectPass: '3 public tables judged',
+    file: 'supabase/migrations/20261021000020_free_walk_in_entry.sql',
+    find: 'grant select on public.event_guides to anon, authenticated;',
+    replace: 'grant select on public.event_guides to anon, authenticated;\ncreate table if not exists private.drill_elsewhere (id int);',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -425,6 +425,11 @@ function runSerialiser() {
         { ...F.orgA, description: '' },
         F.blankTiers,
       ),
+      walkIn: build(
+        { ...F.rowA, slug: F.rowA.slug + '-walk-in', entry_mode: 'walk_in' },
+        F.orgA,
+        [],
+      ),
     }
     console.log(JSON.stringify(out))
   `
@@ -678,6 +683,51 @@ try {
         `${FIXTURES.rowA.slug}-blank: a nameless tier must still produce its Offer ` +
           `(price, currency, availability, url); pruning a blank name must not ` +
           `delete the offer with it.`,
+      )
+    }
+  }
+
+  /*
+   * CLAUSE 8. A FREE WALK-IN EVENT (WI1) IS DESCRIBED AS FREE, AND SAYS NOTHING
+   * ABOUT A TICKET.
+   *
+   * It has no ticket type, so the tier loop above has nothing to emit, and a
+   * walk-in event would otherwise reach Google with no `offers` at all. Google
+   * names this exact case: "If the event is available without payment, fees,
+   * or service charges, set the price to 0" (event structured data, last
+   * updated 2026-09-08, read 2026-10-21). isAccessibleForFree is schema.org's
+   * property for the same fact (https://schema.org/isAccessibleForFree).
+   *
+   * And no "ticket" or "book" in the block: Lawal's ruling of 21 October 2026
+   * puts the structured data of a walk-in page inside the word ban.
+   */
+  judged++
+  const walkIn = result.walkIn
+  if (!walkIn) {
+    failures.push(
+      `${FIXTURES.rowA.slug}-walk-in: a published walk-in event emitted no block. ` +
+        `It is a real in-person event and must be described.`,
+    )
+  } else {
+    const offers = Array.isArray(walkIn.offers) ? walkIn.offers : [walkIn.offers].filter(Boolean)
+    if (offers.length !== 1 || Number(offers[0]?.price) !== 0 || offers[0]?.priceCurrency !== 'AUD') {
+      failures.push(
+        `${FIXTURES.rowA.slug}-walk-in: a free walk-in event must carry exactly one ` +
+          `Offer at price 0 in AUD; it emitted ${JSON.stringify(walkIn.offers ?? null).slice(0, 200)}. ` +
+          `Google: "set the price to 0".`,
+      )
+    }
+    if (walkIn.isAccessibleForFree !== true) {
+      failures.push(
+        `${FIXTURES.rowA.slug}-walk-in: isAccessibleForFree is ` +
+          `${JSON.stringify(walkIn.isAccessibleForFree)}, and a walk-in event is free by definition.`,
+      )
+    }
+    const words = JSON.stringify(walkIn).match(/\b(tickets?|book\w*)\b/gi)
+    if (words) {
+      failures.push(
+        `${FIXTURES.rowA.slug}-walk-in: the block says ${[...new Set(words)].join(', ')}. ` +
+          `A walk-in page carries no ticket or book word in its structured data (Lawal, 21 October 2026).`,
       )
     }
   }

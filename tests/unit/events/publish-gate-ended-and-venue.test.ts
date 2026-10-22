@@ -54,6 +54,7 @@ const base = {
   isPhysical: true,
   venueName: 'The Wool Exchange',
   venueAddress: '44 Moorabool St, Geelong',
+  walkIn: null,
 }
 
 describe('an event that has already ended', () => {
@@ -116,7 +117,7 @@ describe('a physical event with nowhere to go', () => {
   it('an address with no venue name is enough', async () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
-      { ...base, venueName: null, venueAddress: '44 Moorabool St, Geelong' },
+      { ...base, venueName: null, venueAddress: '44 Moorabool St, Geelong', walkIn: null },
       null,
     )
     expect(r.ok).toBe(true)

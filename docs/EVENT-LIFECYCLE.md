@@ -151,7 +151,7 @@ after migration `20260906000002`:
 
 | On delete | Tables |
 |---|---|
-| CASCADE | discount_codes (and through it discount_code_claims, discount_code_usages), event_addons, event_artists, event_stream_links, kit_poster_downloads, notifications, pricing_rules, refund_requests (and refund_request_tickets), reservations, saved_events, seat_holds, seats, squads (and squad_members), stream_messages, ticket_price_history, ticket_scans, ticket_tiers (and dynamic_pricing_rules, tier_access_codes, waitlist), ticket_transfers, tickets, virtual_queue, waitlist (and waitlist_notifications) |
+| CASCADE | discount_codes (and through it discount_code_claims, discount_code_usages), event_addons, event_artists, event_guides, event_reminders (and event_reminder_sends), event_stream_links, kit_poster_downloads, notifications, pricing_rules, refund_requests (and refund_request_tickets), reservations, saved_events, seat_holds, seats, squads (and squad_members), stream_messages, ticket_price_history, ticket_scans, ticket_tiers (and dynamic_pricing_rules, tier_access_codes, waitlist), ticket_transfers, tickets, virtual_queue, waitlist (and waitlist_notifications) |
 | SET NULL | booking_requests, community_contributions, gigs, organiser_balance_ledger, organiser_marketing_consents, payout_holds, payouts, share_links (with `retired_at` stamped), venue_payouts, venue_share_ledger, events.parent_event_id (was NO ACTION; fixed) |
 | RESTRICT | orders (and through orders: payments, refunds, community_contributions; through tickets: refund_tickets). These can never be reached, because the trigger refuses first, and they stay RESTRICT as the last line. |
 

@@ -15,6 +15,8 @@ export type MapEventPoint = {
   timezone: string | null
   starting_from_cents: number | null
   is_free: boolean
+  /** WI1. A walk-in event's pin says "Free entry". */
+  walk_in: boolean
   currency: string
   lat: number
   lng: number

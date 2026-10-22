@@ -34,6 +34,7 @@ function evt(over: Partial<PublicEventRow> & { id: string }): PublicEventRow {
     venue_longitude: null,
     created_at: NOW.toISOString(),
     is_free: false,
+    entry_mode: over.entry_mode ?? null,
     category: over.category ?? { id: 'cat-music', name: 'Music', slug: 'music' },
     organisation: over.organisation ?? { id: 'org-x', name: 'Org X', slug: 'org-x' },
     ticket_tiers: over.ticket_tiers ?? [],

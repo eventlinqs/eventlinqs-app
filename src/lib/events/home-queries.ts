@@ -12,7 +12,7 @@ export const EVENT_SELECT =
   // in the EVENT's zone. Without it the homepage formats in the runtime zone,
   // which is UTC on the server and the reader's in the browser, so a Perth
   // event at 9pm shows the wrong DAY to someone in Sydney.
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, entry_mode, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string
@@ -30,6 +30,8 @@ export type RawRow = {
   venue_state: string | null
   venue_country: string | null
   is_free: boolean | null
+  /** WI1. Carried to the card so a walk-in event says "Free entry". */
+  entry_mode: string | null
   created_at: string
   category: { name: string; slug: string } | null
   organisation: { name: string } | null
@@ -54,6 +56,7 @@ export function toBentoEvent(r: RawRow): BentoEvent {
     venue_name: r.venue_name,
     venue_city: r.venue_city,
     is_free: r.is_free,
+    entry_mode: r.entry_mode,
     category: r.category,
     ticket_tiers: tiers.map(t => ({ price: t.price, currency: t.currency })),
     percent_sold,

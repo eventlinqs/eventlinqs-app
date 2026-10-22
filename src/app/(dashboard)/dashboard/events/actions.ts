@@ -16,6 +16,9 @@ import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
 import { recordLifecycleAudit } from '@/lib/events/lifecycle-audit'
 import { typedMatches } from '@/lib/events/typed-confirmation'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
+import { walkInFactsFromRow } from '@/lib/walk-in/publish-facts'
+import { parseGuide, type Guide } from '@/lib/walk-in/guide'
+import { eventlinqsListingProblems } from '@/lib/events/eventlinqs-listing-words'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
@@ -206,6 +209,10 @@ export type CreateEventInput = {
   refund_policy_absorb_fee: boolean
   refund_policy_self_service: boolean
   ticket_tiers: TicketTierInput[]
+  /** WI1. How a person gets in; absent means tickets, as for every event before WI1. */
+  entry_mode?: 'tickets' | 'walk_in'
+  /** WI1. The walk-in hours and guide, parsed again here by parseGuide. Read only for walk_in. */
+  walk_in_guide?: unknown
   // M4: Reserved seating
   has_reserved_seating: boolean
   allow_seat_self_service: boolean
@@ -282,6 +289,11 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
+  // WI1. A free walk-in event is in person, holds no ticket type, and is judged
+  // on the hours it is created with. The database refuses the first two as well.
+  const walkIn = walkInIntent(input)
+  if ('error' in walkIn) return { error: walkIn.error }
+
   if (input.status === 'published' || input.status === 'scheduled') {
     // A livestream cannot go live without a link (one rule, shared with the form).
     if (
@@ -303,6 +315,10 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       isPhysical: input.event_type !== 'virtual',
       venueName: input.venue_name || null,
       venueAddress: input.venue_address || null,
+      walkIn:
+        walkIn.mode === 'walk_in'
+          ? { tierCount: 0, days: walkIn.guide?.days ?? [], startsAt: input.start_date, endsAt: input.end_date, timezone: input.timezone }
+          : null,
     })
     if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
@@ -310,6 +326,7 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
     // See src/lib/events/sellable-guard.ts.
     const sellable = checkSellable(input.ticket_tiers ?? [], {
       hasReservedSeating: Boolean(input.has_reserved_seating),
+      walkIn: walkIn.mode === 'walk_in',
     })
     if (!sellable.ok) return { error: sellable.message }
 
@@ -433,6 +450,7 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       max_capacity: input.max_capacity || null,
       status: input.status,
       published_at: input.status === 'published' ? now : null,
+      entry_mode: walkIn.mode,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
       has_reserved_seating: input.has_reserved_seating,
       allow_seat_self_service: input.has_reserved_seating ? input.allow_seat_self_service : false,
@@ -458,6 +476,18 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
   // event clears any link left over from a previous type.
   const vault = await writeStreamLink(admin, input.eventId, input.event_type === 'in_person' ? null : input.stream_url)
   if (!vault.ok) return { error: vault.error }
+
+  // WI1. The guide goes with the event. If it cannot be saved, a walk-in event
+  // is never left live without its hours: it goes back to draft and says so.
+  if (walkIn.guide) {
+    const saved = await saveGuideRow(admin, input.eventId, walkIn.guide)
+    if (!saved.ok) {
+      if (input.status !== 'draft') {
+        await admin.from('events').update({ status: 'draft', published_at: null }).eq('id', input.eventId)
+      }
+      return { error: 'Your event was saved as a draft, but its hours did not save. Open it and save again.' }
+    }
+  }
 
   if (input.ticket_tiers.length > 0) {
     const tiers = input.ticket_tiers.map((tier, i) => ({
@@ -556,7 +586,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   // Verify ownership via event → org
   const { data: event } = await supabase
     .from('events')
-    .select('id, organisation_id, status, slug')
+    .select('id, organisation_id, status, slug, entry_mode, timezone, listing_source')
     .eq('id', input.eventId)
     .single()
 
@@ -616,6 +646,19 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
+  // WI1. The mode this save keeps or sets; the database refuses a change once out of draft.
+  const walkIn = walkInIntent({ ...input, entry_mode: input.entry_mode ?? (event.entry_mode === 'walk_in' ? 'walk_in' : 'tickets') })
+  if ('error' in walkIn) return { error: walkIn.error }
+  const walkInMode = walkIn.mode === 'walk_in'
+
+  // WI1, Lawal's rulings 2 and 3: on a walk-in listing EventLinqs wrote, no line
+  // we wrote says ticket or book (but "No ticket needed") or carries a dollar
+  // sign. An organiser's own words are never judged here.
+  if (walkInMode && event.listing_source === 'eventlinqs') {
+    const words = eventlinqsListingProblems({ summary: input.summary, description: input.description, guide: walkIn.guide })
+    if (words.length > 0) return { error: words[0] }
+  }
+
   if (input.status === 'published' || input.status === 'scheduled') {
     // A livestream cannot go live without a link (one rule, shared with the form).
     if (
@@ -628,6 +671,12 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       return { error: STREAM_LINK_REQUIRED_MESSAGE }
     }
 
+    // WI1. A walk-in event is judged on its hours: the ones being saved now, or
+    // the stored ones when this save does not carry a guide.
+    const guideDays =
+      walkInMode && !walkIn.guide ? await readGuideDays(input.eventId) : walkIn.guide ? { days: walkIn.guide.days } : null
+    if (guideDays && 'error' in guideDays) return { error: guideDays.error }
+
     const gate = await checkPublishGate(createAdminClient(), {
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
@@ -636,6 +685,14 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       isPhysical: input.event_type !== 'virtual',
       venueName: input.venue_name || null,
       venueAddress: input.venue_address || null,
+      walkIn: walkInFactsFromRow({
+        entry_mode: walkInMode ? 'walk_in' : 'tickets',
+        start_date: input.start_date,
+        end_date: input.end_date,
+        timezone: input.timezone ?? event.timezone,
+        tierCount: (input.ticket_tiers ?? []).length,
+        guideDays: guideDays?.days ?? null,
+      }),
     })
     if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
@@ -643,6 +700,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     // bypassed by saving a draft and publishing from the edit screen.
     const sellable = checkSellable(input.ticket_tiers ?? [], {
       hasReservedSeating: Boolean(input.has_reserved_seating),
+      walkIn: walkInMode,
     })
     if (!sellable.ok) return { error: sellable.message }
 
@@ -700,6 +758,32 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   }
   if (venueVerdict.warning) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venueVerdict.warning}`)
   const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
+
+  /*
+   * WI1. A DRAFT SWITCHING FROM TICKETS TO WALK-IN SHEDS ITS TICKET TYPES FIRST.
+   * The database refuses the switch while any exist (trg_entry_mode_holds), and
+   * the form hides the tier editor once free entry is chosen, so an organiser
+   * who had added one ticket type and then chose free entry could never make the
+   * switch and would be shown a trigger message. The one reconcile function does
+   * the removal, so a type that has sold is refused in words, never deleted; a
+   * draft has sold nothing.
+   */
+  if (walkInMode && event.entry_mode !== 'walk_in') {
+    const { data: clearedRaw, error: clearError } = await admin.rpc('save_event_ticket_tiers', {
+      p_event_id: input.eventId,
+      p_tiers: tierSavePayload([]),
+    })
+    if (clearError) return { error: `Your ticket types could not be removed for free entry: ${clearError.message}` }
+    const cleared = readTierSaveVerdict(clearedRaw)
+    if (!cleared || !cleared.ok) {
+      return {
+        error:
+          (cleared && describeTierRefusal(cleared)) ??
+          'Your ticket types could not be removed for free entry, so the event was left as it was.',
+      }
+    }
+  }
+
   const { error: eventError } = await admin
     .from('events')
     .update({
@@ -772,10 +856,17 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       refund_policy_days: input.refund_policy_days,
       refund_policy_absorb_fee: input.refund_policy_absorb_fee,
       refund_policy_self_service: input.refund_policy_self_service,
+      // WI1. Written as it is; the database refuses a change once out of draft.
+      entry_mode: walkInMode ? 'walk_in' : 'tickets',
     })
     .eq('id', input.eventId)
 
   if (eventError) return { error: `Failed to update event: ${eventError.message}` }
+
+  if (walkIn.guide) {
+    const saved = await saveGuideRow(admin, input.eventId, walkIn.guide)
+    if (!saved.ok) return { error: 'The event saved, but its hours and guide did not. Nothing else changed. Save again.' }
+  }
 
   // The stream link goes to the vault, where anon has no grant. Moving the
   // event to in-person clears it.
@@ -904,7 +995,7 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, organisation_id, cover_image_url, slug, has_reserved_seating, end_date, event_type, venue_name, venue_address')
+    .select('status, organisation_id, cover_image_url, slug, has_reserved_seating, start_date, end_date, timezone, entry_mode, event_type, venue_name, venue_address')
     .eq('id', eventId)
     .single()
 
@@ -969,6 +1060,68 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
 }
 
 /**
+ * WI1. What a save says about the way in, checked before anything is written.
+ * A walk-in event is in person and has no ticket types; its guide is parsed
+ * against the one shape the page is drawn for. `guide` is null for a ticketed
+ * event, and for a walk-in update that does not carry the guide this time.
+ */
+function walkInIntent(input: {
+  entry_mode?: 'tickets' | 'walk_in'
+  walk_in_guide?: unknown
+  event_type: string
+  ticket_tiers: unknown[]
+}): { mode: 'tickets' | 'walk_in'; guide: Guide | null } | { error: string } {
+  if (input.entry_mode !== 'walk_in') return { mode: 'tickets', guide: null }
+  if (input.event_type !== 'in_person') {
+    return { error: 'A free walk-in event happens in person. Choose In person in step 3.' }
+  }
+  if ((input.ticket_tiers ?? []).length > 0) {
+    return { error: 'A free walk-in event has no ticket types. Remove them, or choose Sell tickets as the way in.' }
+  }
+  if (input.walk_in_guide === undefined) return { mode: 'walk_in', guide: null }
+  const parsed = parseGuide(input.walk_in_guide)
+  if (!parsed.ok) return { error: `The hours and guide could not be saved: ${parsed.problems[0]}` }
+  return { mode: 'walk_in', guide: parsed.guide }
+}
+
+/** WI1. Save a walk-in event's guide. program_published_at is never written here. */
+async function saveGuideRow(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  guide: Guide,
+): Promise<{ ok: boolean }> {
+  const { program_published_at: _sentSeparately, ...row } = guide
+  void _sentSeparately
+  const { error } = await admin.from('event_guides').upsert({ event_id: eventId, ...row }, { onConflict: 'event_id' })
+  if (error) console.error('[events] the walk-in guide could not be saved', { eventId, error: error.message })
+  return { ok: !error }
+}
+
+/**
+ * A walk-in event's days, for the publish gate (WI1).
+ *
+ * Read with the service role after the caller's ownership check, like the gate's
+ * own organisation read. A FAILED read is a refusal that says so, never an empty
+ * guide: an empty guide would tell the organiser to add hours they have already
+ * added, which is the unanswerable message refuseUnlessPublishable warns about.
+ */
+async function readGuideDays(eventId: string): Promise<{ days: unknown } | { error: string }> {
+  const { data, error } = await createAdminClient()
+    .from('event_guides')
+    .select('days')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (error) {
+    console.error('[publish-gate] the walk-in guide could not be read', { eventId, error })
+    return {
+      error:
+        'Your opening hours could not be read just now, so publishing was not attempted. Nothing was changed. Try again in a moment.',
+    }
+  }
+  return { days: data?.days ?? null }
+}
+
+/**
  * THE PUBLISH GATE, IN ONE PLACE. publishEvent ran it inline; restoreEvent
  * needs the same gate when an archived event returns to published, because
  * "an archived event cannot be published without being restored first" is
@@ -982,7 +1135,10 @@ async function refuseUnlessPublishable(
   event: {
     organisation_id: string
     cover_image_url: string | null
+    start_date: string
     end_date: string
+    timezone: string | null
+    entry_mode: string | null
     event_type: string | null
     venue_name: string | null
     venue_address: string | null
@@ -1023,6 +1179,10 @@ async function refuseUnlessPublishable(
     }
   }
 
+  // WI1. A walk-in event is judged on its hours, read from its guide.
+  const guideDays = event.entry_mode === 'walk_in' ? await readGuideDays(eventId) : null
+  if (guideDays && 'error' in guideDays) return { refusal: { error: guideDays.error }, tiers }
+
   const gate = await checkPublishGate(createAdminClient(), {
     organisationId: event.organisation_id,
     tiersHavePaid: hasPaidTier(tiers),
@@ -1031,11 +1191,20 @@ async function refuseUnlessPublishable(
     isPhysical: event.event_type !== 'virtual',
     venueName: event.venue_name,
     venueAddress: event.venue_address,
+    walkIn: walkInFactsFromRow({
+      entry_mode: event.entry_mode,
+      start_date: event.start_date,
+      end_date: event.end_date,
+      timezone: event.timezone,
+      tierCount: tiers.length,
+      guideDays: guideDays?.days ?? null,
+    }),
   })
   if (!gate.ok) return { refusal: { error: gate.message, nextAction: gate.nextAction }, tiers }
 
   const sellable = checkSellable(tiers, {
     hasReservedSeating: Boolean(event.has_reserved_seating),
+    walkIn: event.entry_mode === 'walk_in',
   })
   if (!sellable.ok) return { refusal: { error: sellable.message }, tiers }
   return { refusal: null, tiers }
@@ -1221,7 +1390,7 @@ export async function restoreEvent(eventId: string): Promise<ActionResult> {
   const { data: event } = await supabase
     .from('events')
     .select(
-      'id, slug, title, status, organisation_id, archived_from_status, cover_image_url, end_date, event_type, venue_name, venue_address, has_reserved_seating',
+      'id, slug, title, status, organisation_id, archived_from_status, cover_image_url, start_date, end_date, timezone, entry_mode, event_type, venue_name, venue_address, has_reserved_seating',
     )
     .eq('id', eventId)
     .maybeSingle()

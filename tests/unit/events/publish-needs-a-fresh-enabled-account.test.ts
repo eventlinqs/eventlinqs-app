@@ -30,6 +30,7 @@ const PAID = {
   isPhysical: true,
   venueName: 'The Wool Exchange',
   venueAddress: '44 Moorabool St, Geelong',
+  walkIn: null,
 }
 
 const ENABLED = {
