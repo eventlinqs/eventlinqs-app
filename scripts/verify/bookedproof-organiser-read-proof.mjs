@@ -86,7 +86,9 @@ const SLUG = {
 }
 const TIER = { listing: fid('tier-listing'), older: fid('tier-older') }
 const LINK = { ig: fid('link-ig'), wa: fid('link-wa'), digest: fid('link-digest') }
-const CODE = { ig: 'pfbpig01', wa: 'pfbpwa01', digest: 'pfbpdg01' }
+// The platform's code format (SHARE_CODE_RE in src/lib/broadcast/share-codes.ts: ten base62 characters), so
+// each fixture's /e/ address is one the short-link route would accept.
+const CODE = { ig: 'pfbpIG0001', wa: 'pfbpWA0001', digest: 'pfbpDG0001' }
 
 const ORDERS = [
   // id, event, buyer, qty, retained, paid at, link touches, final status
