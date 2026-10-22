@@ -85,11 +85,13 @@ describe('the plan', () => {
   test('under 30 days out it rolls to 60, on the hour, three hours long', () => {
     const near = { ...fitEvent, start_date: new Date(NOW + 29 * DAY).toISOString() }
     const plan = planFixture({ event: near, tier: fitTier }, NOW)
-    const start = new Date(plan.eventUpdates.start_date).getTime()
+    const { start_date, end_date } = plan.eventUpdates
+    if (!start_date || !end_date) throw new Error('the plan did not roll the dates')
+    const start = new Date(start_date).getTime()
     expect(start).toBe(rollStart(NOW).getTime())
     expect(start - NOW).toBeGreaterThanOrEqual(ROLL_TO_DAYS * DAY - 60 * 60 * 1000)
     expect(new Date(start).getUTCMinutes()).toBe(0)
-    expect(new Date(plan.eventUpdates.end_date).getTime() - start).toBe(3 * 60 * 60 * 1000)
+    expect(new Date(end_date).getTime() - start).toBe(3 * 60 * 60 * 1000)
   })
 
   test('an event that has already started rolls too', () => {

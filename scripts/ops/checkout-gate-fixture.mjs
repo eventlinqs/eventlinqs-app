@@ -48,12 +48,24 @@ export const PUBLIC_SURFACES = ['/', '/events', '/sitemap.xml', '/city/melbourne
 const PRODUCTION_ORIGIN = 'https://www.eventlinqs.com.au'
 
 /**
+ * @typedef {{ status?: string, published_at?: string, visibility?: string, seat_map_id?: null,
+ *   external_ticket_url?: null, start_date?: string, end_date?: string }} EventUpdates
+ * @typedef {{ is_active?: boolean, is_visible?: boolean, price?: number, max_per_order?: number,
+ *   sale_start?: null, sale_end?: null, total_capacity?: number }} TierUpdates
+ * @typedef {{ createEvent: boolean, eventUpdates: EventUpdates, createTier: boolean,
+ *   tierUpdates: TierUpdates, reasons: string[] }} FixturePlan
+ */
+
+/**
  * What the fixture needs, from what TEST holds now. Pure, so its own test can
  * drive every branch. `event` and `tier` are the rows as read (or null).
+ * @returns {FixturePlan}
  */
 export function planFixture({ event, tier }, now) {
+  /** @type {string[]} */
   const reasons = []
   if (!event) return { createEvent: true, eventUpdates: {}, createTier: true, tierUpdates: {}, reasons: ['no fixture event yet'] }
+  /** @type {EventUpdates} */
   const eventUpdates = {}
   if (event.status !== 'published') {
     eventUpdates.status = 'published'
@@ -80,6 +92,7 @@ export function planFixture({ event, tier }, now) {
     reasons.push(`it was under ${MIN_DAYS_OUT} days out`)
   }
   if (!tier) return { createEvent: false, eventUpdates, createTier: true, tierUpdates: {}, reasons: [...reasons, 'no fixture ticket type yet'] }
+  /** @type {TierUpdates} */
   const tierUpdates = {}
   if (!tier.is_active) tierUpdates.is_active = true
   if (!tier.is_visible) tierUpdates.is_visible = true
