@@ -18,7 +18,11 @@
 //   node --env-file=.env.local scripts/ops/checkout-gate-fixture.mjs --ensure
 //   node --env-file=.env.local scripts/ops/checkout-gate-fixture.mjs --check-public <base>
 //
-// TEST ONLY, checked twice: the repository preflight, then the TEST ref itself.
+// TEST ONLY: it refuses any Supabase URL that is not the TEST ref, before it
+// opens a client (the TEST allowlist shape of no-unguarded-production-write).
+// It never calls process.exit: it does network work, and an exit can tear a
+// closing socket down on Windows (no-exit-after-network), so it sets
+// process.exitCode and returns, or throws a refusal.
 //
 // REVERSAL, read by the machine: --check-public fails the gate when the fixture's
 // slug appears on any browse surface of the build under test, or when production
@@ -26,7 +30,6 @@
 // (a dry run first, then Lawal's APPLY), never by this script.
 import { createClient } from '@supabase/supabase-js'
 import { pathToFileURL } from 'node:url'
-import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 
 export const TEST_REF = 'vkapkibzokmfaxqogypq'
 export const FIXTURE_SLUG = 'gate-fixture-checkout-viewport'
@@ -134,18 +137,14 @@ function sellable(o) {
   )
 }
 
+/** A refusal before anything is touched; the run ends with exit code 2. */
+class Refusal extends Error {}
+
 function testOnly() {
-  assertNotProduction()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!url.includes(TEST_REF)) {
-    console.error(`${TAG} REFUSED: NEXT_PUBLIC_SUPABASE_URL is not TEST (${TEST_REF}); this script never runs anywhere else`)
-    process.exit(2)
-  }
-  if (!key) {
-    console.error(`${TAG} REFUSED: SUPABASE_SERVICE_ROLE_KEY is not set`)
-    process.exit(2)
-  }
+  if (!url.includes(TEST_REF)) throw new Error(`REFUSED: NEXT_PUBLIC_SUPABASE_URL is not TEST (${TEST_REF}); this script never runs anywhere else`)
+  if (!key) throw new Refusal('SUPABASE_SERVICE_ROLE_KEY is not set')
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
@@ -274,17 +273,15 @@ async function ensure() {
   else if (!(tier.price > 0) || left < MIN_ROOM || !tier.is_active || !tier.is_visible) faults.push(`ticket type not sellable (price ${tier.price}, ${left} left)`)
   if (faults.length > 0) {
     console.error(`${TAG} FAIL: ${faults.join('; ')}`)
-    process.exit(1)
+    process.exitCode = 1
+    return
   }
   const note = plan.reasons.length ? `fixed: ${plan.reasons.join('; ')}` : 'nothing to fix'
   console.log(`${TAG} PASS: ${FIXTURE_SLUG} is published, unlisted, unseated, starts ${event.start_date.slice(0, 10)}, ${left} places at ${tier.price} cents (${note})`)
 }
 
 async function checkPublic(base) {
-  if (!base) {
-    console.error(`${TAG} REFUSED: --check-public needs the base URL of the build under test`)
-    process.exit(2)
-  }
+  if (!base) throw new Refusal('--check-public needs the base URL of the build under test')
   const db = testOnly()
   const event = must(
     await db.from('events').select('slug, organisation:organisations!inner(slug)').eq('slug', FIXTURE_SLUG).maybeSingle(),
@@ -310,7 +307,8 @@ async function checkPublic(base) {
   }
   if (shown.length > 0) {
     console.error(`${TAG} FAIL: the fixture is visible where it must never be: ${shown.join('; ')}`)
-    process.exit(1)
+    process.exitCode = 1
+    return
   }
   console.log(`${TAG} PASS: on none of ${surfaces.join(', ')}; production ${production}`)
 }
@@ -320,10 +318,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const run = mode === '--ensure' ? ensure() : mode === '--check-public' ? checkPublic(process.argv[3]) : null
   if (!run) {
     console.error(`${TAG} usage: --ensure | --check-public <base>`)
-    process.exit(2)
+    process.exitCode = 2
+  } else {
+    run.catch((error) => {
+      const refused = error instanceof Refusal || error.message.startsWith('REFUSED: ')
+      const message = error.message.replace(/^REFUSED: /, '')
+      console.error(`${TAG} ${refused ? 'REFUSED' : 'FAIL'}: ${message}`)
+      process.exitCode = refused ? 2 : 1
+    })
   }
-  run.catch((error) => {
-    console.error(`${TAG} FAIL: ${error.message}`)
-    process.exit(1)
-  })
 }

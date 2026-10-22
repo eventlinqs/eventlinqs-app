@@ -60,11 +60,16 @@ describe('what the fixture is', () => {
     expect(REFILL_ROOM).toBeGreaterThan(MIN_ROOM)
   })
 
-  test('it runs on TEST only', () => {
+  test('it runs on TEST only, refusing any other URL before it opens a client', () => {
     expect(TEST_REF).toBe('vkapkibzokmfaxqogypq')
     const source = readFileSync('scripts/ops/checkout-gate-fixture.mjs', 'utf8')
-    expect(source).toContain('assertNotProduction()')
-    expect(source).toMatch(/if \(!url\.includes\(TEST_REF\)\)/)
+    expect(source).toMatch(/if \(!url\.includes\(TEST_REF\)\) throw new Error\(`REFUSED: /)
+    expect(source.indexOf('if (!url.includes(TEST_REF))')).toBeLessThan(source.indexOf('return createClient('))
+  })
+
+  test('it never calls process.exit: it does network work, and an exit can tear a closing socket down on Windows', () => {
+    const source = readFileSync('scripts/ops/checkout-gate-fixture.mjs', 'utf8')
+    expect(source).not.toMatch(/process\.exit\(/)
   })
 })
 
