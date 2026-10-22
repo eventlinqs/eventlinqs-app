@@ -265,6 +265,10 @@
  *   public-tables-carry-their-grants  a migration that creates a public table grants it
  *                              in the same file, revoked first, to exactly the roles its
  *                              policies serve (Supabase stops granting them on 30 October 2026)
+ *   reservation-functions-carry-the-end-gate  every definition of create_reservation and
+ *                              create_seat_reservation outside the dated history refuses an
+ *                              event that has ended, so no later migration (an older-numbered
+ *                              one landing late included) sells a ticket to a night that is over
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *   gate-fields-complete       a query feeding a gate selects every field that gate reads
  *   refund-restores-inventory  a refund can never take the money and keep the seat sold
@@ -3201,6 +3205,13 @@ const GUARDS = [
   // serve and never wider. The 153 migrations on main before the rule are the
   // known gap, counted on every run. Drilled red seven ways, green two.
   'scripts/guards/public-tables-carry-their-grants.mjs',
+
+  // Window 4, 23 October 2026, on the project manager's 02:05 order. Nothing
+  // judged an event's end before a sale until 20261023000001; lane/b-growth's
+  // unmerged 20260921000050 would drop the gated create_reservation and make an
+  // ungated one, and its older number would hide it from a version-order check.
+  // Every definition outside the dated history must refuse an ended event.
+  'scripts/guards/reservation-functions-carry-the-end-gate.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
