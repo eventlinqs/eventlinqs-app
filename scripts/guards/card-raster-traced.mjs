@@ -65,6 +65,26 @@ export const FONTS_MODULE = 'src/lib/broadcast/card-fonts.ts'
 export const NEXT_CONFIG = 'next.config.ts'
 export const DIST_DIR = '.next'
 
+/**
+ * IS THERE A COMPLETE BUILD TO JUDGE? (23 October 2026, the project manager's 03:02.)
+ *
+ * A build that is cut short (a process stopped mid-compile, a disk that filled)
+ * leaves .next/server behind with no traces in it. Judging that tree reports
+ * every reaching route as untraced, which is a fault in the run, not in the
+ * tree: on 23 October a gate stopped inside "Creating an optimized production
+ * build" left exactly that, and the next gate's suite failed on 20 routes with
+ * no trace at all. Next writes BUILD_ID (and required-server-files.json) only
+ * once the build has finished, so either is the mark of a complete build.
+ */
+export function completeBuild(root = ROOT) {
+  const at = (rel) => existsSync(join(root, DIST_DIR, rel))
+  if (at('BUILD_ID') || at('required-server-files.json')) return { complete: true, why: null }
+  if (at('server')) {
+    return { complete: false, why: `${DIST_DIR}/server exists but ${DIST_DIR}/BUILD_ID does not: a build that did not finish` }
+  }
+  return { complete: false, why: `there is no ${DIST_DIR} build` }
+}
+
 /** The file names Next treats as route entries under src/app. */
 export const ROUTE_ENTRIES = new Set([
   'page', 'route', 'layout', 'template', 'default',
@@ -459,8 +479,9 @@ function main() {
   let passes
   let did
   if (built) {
-    if (!exists(`${DIST_DIR}/server`)) {
-      console.error(`[${label}] FAIL - ${DIST_DIR}/server does not exist; this mode runs after next build (npm's postbuild), never before it.`)
+    const build = completeBuild()
+    if (!build.complete) {
+      console.error(`[${label}] FAIL - no complete build to judge: ${build.why}; this mode runs after next build (npm's postbuild), never before it.`)
       process.exit(1)
     }
     const readTrace = (traceFile) => {
