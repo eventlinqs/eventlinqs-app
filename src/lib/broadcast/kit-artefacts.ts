@@ -6,6 +6,7 @@ import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
 import type { SocialCardInput } from '@/lib/broadcast/social-cards'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { artefactOrganiser } from './artefact-organiser'
 
 /**
  * ONE source for everything the artefacts are made of.
@@ -88,6 +89,7 @@ type EventRow = {
   category: { name: string | null; slug: string | null } | null
   ticket_tiers: { price: number; currency: string | null }[] | null
   organisation: { name: string | null; logo_url: string | null } | null
+  listing_source: string | null
 }
 
 /**
@@ -112,7 +114,7 @@ export async function loadArtefactContext(
     admin
       .from('events')
       .select(
-        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
+        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
       )
       .eq('id', eventId)
       .maybeSingle(),
@@ -155,6 +157,7 @@ export async function loadArtefactContext(
   }
 
   const city = event.venue_city ?? null
+  const organiser = artefactOrganiser(event, fallbackOrganiserName)
   const categoryName = event.category?.name ?? null
   const eyebrow = [categoryName, city].filter(Boolean).join(' · ') || 'Live event'
 
@@ -175,8 +178,9 @@ export async function loadArtefactContext(
     summary: stripMarkdown(event.summary) || null,
     categorySlug: event.category?.slug ?? null,
     categoryName,
-    organiserName: event.organisation?.name ?? fallbackOrganiserName,
-    organiserLogoUrl: event.organisation?.logo_url ?? null,
+    // An EventLinqs listing names its host, never the listings organisation.
+    organiserName: organiser.name,
+    organiserLogoUrl: organiser.logoUrl,
     coverImageUrl: event.cover_image_url ?? null,
     eyebrow,
     links,

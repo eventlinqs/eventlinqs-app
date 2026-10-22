@@ -16,7 +16,7 @@ Ruling b of 14:08 fixes the order, each part finished before the next starts:
      occurrence generator, the import's own tests.
    - 1b. What an EventLinqs listing shows on its occurrence page: "Hosted by",
      the provenance line, "Last checked", the removal link and its request
-     form, the category image, the 21-day rule, the guard (section 10).
+     form, the designed typographic cover (ruling B), the 21-day rule, the guard (section 10).
    Every page Part 1 makes live is an unclaimed listing, so the provenance line,
    the removal link and the 21-day rule ship in Part 1, not later.
 2. **Part 2, the city "this week" pages**, `/free/<city>/this-week`, one slice.
@@ -294,14 +294,14 @@ optional: `venue_email`.
 | date | yes | `YYYY-MM-DD`. For `once`, the date. For a repeating night, the first date the source confirms |
 | day | yes | Mon to Sun, and must be `date`'s weekday |
 | start | yes | `7pm` or `7:30pm` form, as the files write it now |
-| finish | see question 1 | same form; earlier than start means past midnight |
+| finish | no | same form; earlier than start means past midnight. Blank: the page says "From 7pm", never a made up end (answer 1) |
 | frequency | yes | `once`, `weekly`, `fortnightly`, `monthly-1st`, `monthly-2nd`, `monthly-3rd`, `monthly-4th`, `monthly-last` |
 | name | yes | the night's own name, 80 characters at most |
 | host | yes | who runs it, whose page it is: "Hosted by [host]" |
 | address | yes | street address |
 | suburb | yes | suburb or town |
 | category | yes | one of the 17 live `event_categories` slugs (`--categories` prints them) |
-| entry | yes | `free`: walk in, nothing to book or register. Anything else is refused (questions 2 and 5) |
+| entry | yes | `Free` or `Free; no booking required`: walk in, nothing to book or register. Free with a donation the source calls optional imports and the page says so (answer 5); a donation not called optional, or any booking, registration, RSVP or ticket, is refused (answer 2: WI3 lists those) |
 | age_limit | no | blank (not stated), `all ages`, `16+`, `18+`. Audience lines ("children aged 0 to 5") belong in what_happens |
 | what_happens | yes | one line in EventLinqs' words, judged by `eventlinqsListingProblems`: no ticket or book word, no dollar sign |
 | website | no | the host's own `https://` address |
@@ -352,6 +352,40 @@ skipped or removed date off sale through `docs/EVENT-LIFECYCLE.md` (cancelled
 when anyone asked to be reminded, deleted when nobody has). No person ever
 types a row per date.
 
+### 7a. The writer, as built so far (23 October 2026)
+
+Written and tested against a store held in memory: `occurrence-plan.ts` (which
+dates to make, change, take off or hold) and `occurrence-run.ts` (the run, one
+night failing never stopping the next). Written next, untested until a lock
+turn: the database store (`occurrence-store.ts`) and the daily cron route
+(`/api/cron/listing-occurrences`, 14:10 UTC), which reuse what the organiser's
+own path uses: the publish gate
+(`checkPublishGate`, never around it), the venue coordinates rule
+(`resolveVenueCoordinates`, stored once on the venue; `judgeVenueSave` refuses a
+night with no coordinates on production exactly as it refuses an organiser), the
+suburb claim (`resolveSuburbSlug`), and the lifecycle law for taking a date off.
+`city_primary` is the row's `city` column (answer 4), never a guess from
+coordinates.
+
+An occurrence's address is `occurrenceSlug` (night, host, date, never a random
+suffix), in the listings module, so the organiser's actions file is not touched.
+Two small changes to shared code come with the store, each with its own test:
+
+1. `deleteEventEverywhere` takes the route-handler form of revalidation. It ends
+   in `revalidateEventSurfaces`, whose `updateTag` "can only be called from
+   within a Server Action" (that function's own comment, next@16), so from a
+   cron route it would throw after the delete had already happened.
+2. `LifecycleActor.id` may be null for a system run: `audit_log.actor_id` is
+   nullable (20260502000003), and a run has no person to name.
+
+Ruled on 23 October at 01:15: A, the listings organisation is Lawal's and is
+never shown, so every artefact of an EventLinqs listing names its host
+(`artefactOrganiser`, src/lib/broadcast/artefact-organiser.ts); B, each
+occurrence carries the designed typographic cover composed from its own saved
+details (`attachGeneratedCover`, Law 6), so an occurrence is written as a draft
+with its guide day, given its cover, judged by the gate, and only then published;
+C, see question D in WINDOW4-STATUS.txt, which C's consent promise raised.
+
 ## 8. Part 2: `/free/<city>/this-week`
 
 Inherits `/this-weekend`: one module (`week-surface.ts`) owns the window (today
@@ -378,7 +412,8 @@ Ballarat and Bendigo on day one.
   organisation's own page answers 404.
 - **Photos.** An unclaimed listing shows Instagram's own embed of the post in
   `instagram_post` when there is one (the route is question 6), and otherwise
-  the spine image for its category. Only the post's address is stored, never
+  its designed typographic cover (ruling B, Law 6: never a stock photograph
+  standing in for the host's night; the spine photos stay on category surfaces). Only the post's address is stored, never
   the post, its picture or the embed response (Meta: "persisting the metadata
   and content" is prohibited). The embed loads only as its box nears the
   screen, so Instagram's script never sits in the LCP window, and the content
@@ -413,8 +448,8 @@ Ballarat and Bendigo on day one.
 Everything an EventLinqs listing renders lives in `src/components/listings/`,
 and the guard fails when:
 
-1. a file there renders an image other than `InstagramEmbed` or the spine
-   category image component;
+1. a file there renders an image other than `InstagramEmbed` or the
+   occurrence's own designed cover;
 2. the unclaimed venue page or an unclaimed occurrence page renders without
    `ListingProvenance` (which holds the exact line and the removal link), or that
    component loses the line or the link;
@@ -443,6 +478,23 @@ verdicts against the competitor captures; Lighthouse on the Vercel preview.
 | Part 3 privacy version | RESERVED, Lawal approves the wording |
 
 ## 12. Questions, in full
+
+**ANSWERED** on 21 October 2026 at 22:25 (reached Window 4 on 23 October at
+00:16, through the project manager's note in BP-STATE.md):
+
+1. A night with no finish time shows "From 6:30pm", never a made up end. (b).
+2. A free event that needs a booking is refused by the WI2 import and listed
+   in WI3.
+3. `/free/<city>/this-week` shows walk-in events and free-ticketed events
+   already on EventLinqs, each labelled which it is.
+4. The city column decides each row, and Geelong includes the Bellarine and
+   the Surf Coast.
+5. A donation is allowed only where entry is free and the donation optional,
+   said so on the page.
+6. Instagram's own public embed, nothing scraped.
+7. Regular weekly nights stand as listings, each with its frequency.
+
+The questions as they were put follow, unchanged.
 
 1. **A night with no finish time.** 11 of 43 Melbourne rows, 7 of 35 Ballarat,
    1 of 29 Bendigo and 41 of 74 Geelong rows give none, and an event row must

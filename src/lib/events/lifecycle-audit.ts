@@ -24,9 +24,14 @@ export const LIFECYCLE_AUDIT_ACTIONS = ['event.archived', 'event.restored', 'eve
 export type LifecycleAuditAction = (typeof LIFECYCLE_AUDIT_ACTIONS)[number]
 
 export interface LifecycleActor {
-  id: string
+  /**
+   * The person who acted, or null for a system run with no person behind it
+   * (WI2's daily listings run): audit_log.actor_id is nullable
+   * (20260502000003), and naming somebody who did not act would be false.
+   */
+  id: string | null
   email: string | null
-  /** `organiser`, or the admin role when the admin path shares this writer. */
+  /** `organiser`, the admin role when the admin path shares this writer, or the run's own name. */
   role: string
 }
 

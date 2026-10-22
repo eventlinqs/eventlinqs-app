@@ -294,6 +294,12 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // WI2: the daily listings run composes each new occurrence's typographic
+    // cover (ruling B of 23 October 2026, Law 6) through the same rasteriser.
+    '/api/cron/listing-occurrences': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     /*
      * THE METADATA IMAGES, added 6 September 2026 (close-out C3) when every one
      * of them moved off next/og and onto this repository's own rasteriser.
