@@ -8689,7 +8689,6 @@ export type Database = {
           name: string
         }[]
       }
-      marketing_attribution_default_window: { Args: never; Returns: number }
       listing_fresh_until_for: {
         Args: { p_checked_on: string; p_timezone: string }
         Returns: string
