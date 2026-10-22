@@ -20,15 +20,23 @@
 --    and the series' events' listing_fresh_until in step, and an occurrence
 --    written later takes the same value, so the 21-day rule is one function,
 --    listing_fresh_until_for, and runs from the day the source was read.
--- 5. events: series_id, occurrence_date (both set or both null, unique per
---    series) and listing_fresh_until. 5b: only the service role sets or
+-- 5. events: listing_series_id, occurrence_date (both set or both null, unique
+--    per series) and listing_fresh_until. 5b: only the service role sets or
 --    changes the listing columns on events and venues (the reason is there).
+--
+-- WHY listing_series_id AND NOT series_id. The C10 lane's unmerged migration
+-- 20260908000001 (feat/c10-scope-audit-and-series) adds events.series_id as a
+-- plain group key for an organiser's recurring events, deliberately with no
+-- foreign key, and it is applied on TEST. One name for two meanings would make
+-- whichever landed second silently skip its own column ("add column if not
+-- exists") and inherit the other's rules: found on TEST on 23 October 2026, when
+-- this file's first version took C10's column and got no foreign key at all.
 --
 -- REMOVAL IS A STATUS, NEVER A DELETE. A series is removed by status and a venue
 -- by removed_at, so history stays. The keys to a series therefore RESTRICT
--- rather than set null: the plan first said "on delete set null" for
--- events.series_id, and a set null would break the both-or-neither check on
--- (series_id, occurrence_date), so deleting a series would always fail.
+-- rather than set null: the plan first said "on delete set null" for the
+-- series key, and a set null would break the both-or-neither check on
+-- (listing_series_id, occurrence_date), so deleting a series would always fail.
 --
 -- GRANTS (the 21 October 2026 rule): each new table revokes all from public,
 -- anon, authenticated and service_role, then grants exactly what its policies
@@ -84,7 +92,11 @@ comment on column public.cities.timezone is
 -- ---------------------------------------------------------------------------
 alter table public.venues add column if not exists slug text;
 alter table public.venues add column if not exists suburb text;
-alter table public.venues add column if not exists city_slug text references public.cities(slug) on delete restrict;
+alter table public.venues add column if not exists city_slug text;
+-- Its key named and made on its own, for the reason given at events.listing_series_id.
+alter table public.venues drop constraint if exists venues_city_slug_fkey;
+alter table public.venues add constraint venues_city_slug_fkey
+  foreign key (city_slug) references public.cities(slug) on delete restrict;
 alter table public.venues add column if not exists website_url text;
 alter table public.venues add column if not exists instagram_handle text;
 alter table public.venues add column if not exists published_email text;
@@ -185,16 +197,26 @@ grant select, insert on public.listing_checks to service_role;
 -- ---------------------------------------------------------------------------
 -- 5. EVENTS
 -- ---------------------------------------------------------------------------
-alter table public.events add column if not exists series_id uuid references public.event_series(id) on delete restrict;
+-- The key is its own named constraint, never part of "add column if not
+-- exists": that clause is skipped whole when the column is already there, key
+-- and all, which is how a re-run (or a replay that drops event_series) would
+-- leave the column with no key.
+alter table public.events add column if not exists listing_series_id uuid;
+alter table public.events drop constraint if exists events_listing_series_id_fkey;
+alter table public.events add constraint events_listing_series_id_fkey
+  foreign key (listing_series_id) references public.event_series(id) on delete restrict;
 alter table public.events add column if not exists occurrence_date date;
 alter table public.events add column if not exists listing_fresh_until timestamptz;
 
-alter table public.events drop constraint if exists events_series_and_date_together;
-alter table public.events add constraint events_series_and_date_together
-  check ((series_id is null) = (occurrence_date is null));
+alter table public.events drop constraint if exists events_listing_series_and_date_together;
+alter table public.events add constraint events_listing_series_and_date_together
+  check ((listing_series_id is null) = (occurrence_date is null));
 
-create unique index if not exists events_series_occurrence_key
-  on public.events (series_id, occurrence_date) where series_id is not null;
+create unique index if not exists events_listing_series_occurrence_key
+  on public.events (listing_series_id, occurrence_date) where listing_series_id is not null;
+
+comment on column public.events.listing_series_id is
+  'The EventLinqs listing night (event_series) this event is one dated occurrence of. Not the C10 lane''s series_id, which groups an organiser''s own recurring events. WI2 Part 1.';
 
 comment on column public.events.listing_fresh_until is
   'For an EventLinqs listing: the end of the 21st day after its series'' source was last confirmed, in the series'' zone. Null for every event an organiser lists. WI2 Part 1.';
@@ -234,7 +256,7 @@ begin
   returning last_checked_on, timezone into v_on, v_tz;
   update public.events
      set listing_fresh_until = public.listing_fresh_until_for(v_on, v_tz)
-   where series_id = new.series_id;
+   where listing_series_id = new.series_id;
   return new;
 end;
 $$;
@@ -252,20 +274,20 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
-  if new.series_id is null then
+  if new.listing_series_id is null then
     return new;
   end if;
   select public.listing_fresh_until_for(s.last_checked_on, s.timezone)
     into new.listing_fresh_until
     from public.event_series s
-   where s.id = new.series_id;
+   where s.id = new.listing_series_id;
   return new;
 end;
 $$;
 
 drop trigger if exists trg_event_takes_its_series_freshness on public.events;
 create trigger trg_event_takes_its_series_freshness
-  before insert or update of series_id on public.events
+  before insert or update of listing_series_id on public.events
   for each row execute function public.event_takes_its_series_freshness();
 
 -- ---------------------------------------------------------------------------
@@ -293,12 +315,12 @@ begin
     return new;
   end if;
   if tg_op = 'INSERT' then
-    if new.series_id is not null or new.occurrence_date is not null
+    if new.listing_series_id is not null or new.occurrence_date is not null
        or new.listing_fresh_until is not null or new.listing_source <> 'organiser' then
       raise exception 'only EventLinqs'' import sets an event''s series, date, freshness or listing source'
         using errcode = '42501';
     end if;
-  elsif new.series_id is distinct from old.series_id
+  elsif new.listing_series_id is distinct from old.listing_series_id
      or new.occurrence_date is distinct from old.occurrence_date
      or new.listing_fresh_until is distinct from old.listing_fresh_until
      or new.listing_source is distinct from old.listing_source then
@@ -311,7 +333,7 @@ $$;
 
 drop trigger if exists trg_event_listing_columns_are_the_imports on public.events;
 create trigger trg_event_listing_columns_are_the_imports
-  before insert or update of series_id, occurrence_date, listing_fresh_until, listing_source on public.events
+  before insert or update of listing_series_id, occurrence_date, listing_fresh_until, listing_source on public.events
   for each row execute function public.event_listing_columns_are_the_imports();
 
 create or replace function public.venue_listing_columns_are_the_imports()
@@ -365,6 +387,19 @@ begin
   end if;
   if not exists (select 1 from pg_trigger where tgname = 'trg_event_takes_its_series_freshness') then
     v_missing := v_missing || ' trg_event_takes_its_series_freshness';
+  end if;
+  -- "add column if not exists" skips the whole clause, foreign key included,
+  -- when a column of that name is already there (it happened on TEST with the
+  -- C10 lane's events.series_id). So the keys are read back, not trusted.
+  if not exists (select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+                  where c.conrelid = 'public.events'::regclass and c.contype = 'f'
+                    and c.confrelid = 'public.event_series'::regclass and a.attname = 'listing_series_id') then
+    v_missing := v_missing || ' events.listing_series_id_references_event_series';
+  end if;
+  if not exists (select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+                  where c.conrelid = 'public.venues'::regclass and c.contype = 'f'
+                    and c.confrelid = 'public.cities'::regclass and a.attname = 'city_slug') then
+    v_missing := v_missing || ' venues.city_slug_references_cities';
   end if;
   -- The rule's own arithmetic: confirmed on 1 October in Melbourne (UTC+10
   -- until 4 October), gone from midnight starting 23 October (UTC+11).

@@ -251,10 +251,15 @@ no new table grants a write to anon or authenticated.
    `changed`, `removed`). A trigger keeps `event_series.last_checked_at` and the
    series' events' `listing_fresh_until` (item 5) in step, so the 21-day rule
    reads one source. RLS on, no policy. Grants: service_role SELECT, INSERT.
-5. `events`: add `series_id` (references event_series, on delete set null),
-   `occurrence_date`, unique (series_id, occurrence_date), a check that both
-   are null or both set, and `listing_fresh_until timestamptz` (null for
-   everything not listed by EventLinqs).
+5. `events`: add `listing_series_id` (references event_series, on delete
+   restrict, because removal is a status and a set null would break the check
+   below), `occurrence_date`, unique (listing_series_id, occurrence_date), a
+   check that both are null or both set, and `listing_fresh_until timestamptz`
+   (null for everything not listed by EventLinqs). Named `listing_series_id`,
+   not `series_id`, on 23 October 2026: the C10 lane's unmerged migration
+   20260908000001 adds `events.series_id` as a plain group key for an
+   organiser's own recurring events, and one name for two meanings let this
+   file's first version silently take that column, with no key, on TEST.
 
 Migration post-condition (as WI1's): the file raises if any new table lacks its
 exact grants or RLS. Proved on TEST by `replay-under-new-default.mjs`, red (no

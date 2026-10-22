@@ -131,7 +131,7 @@ export function occurrenceStore(): OccurrenceStore {
       const { data, error } = await admin
         .from('events')
         .select('id, occurrence_date, status, title, summary, start_date, end_date, timezone, category_id, age_restriction_min, guide:event_guides(days)')
-        .eq('series_id', seriesId)
+        .eq('listing_series_id', seriesId)
       if (error) throw new Error(`the occurrences of ${seriesId} could not be read: ${error.message}`)
       const rows: ExistingOccurrence[] = []
       for (const e of data ?? []) {
@@ -217,7 +217,7 @@ export function occurrenceStore(): OccurrenceStore {
           status: 'draft',
           entry_mode: 'walk_in',
           listing_source: 'eventlinqs',
-          series_id: night.id,
+          listing_series_id: night.id,
           occurrence_date: date,
           venue_id: venue.id,
           venue_name: venue.name,
