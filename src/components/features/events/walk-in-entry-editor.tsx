@@ -72,7 +72,9 @@ export function walkInFormFromGuide(guide: Guide | null): WalkInFormState {
       opens: d.opens ?? '',
       toConfirm: d.opens === null,
       hoursLabel: d.hours_label ?? '',
-      closes: d.closes,
+      // A day with no finish (an EventLinqs listing a host has claimed) opens
+      // blank, and the form asks for one as it does for every organiser.
+      closes: d.closes ?? '',
       items: d.items.map((i) => ({ when: i.when, what: i.what })),
       closerName: d.closer?.name ?? '',
       closerNote: d.closer?.note ?? '',

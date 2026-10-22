@@ -10,9 +10,9 @@ import {
 } from '@/lib/listings/listing-rows'
 
 /**
- * WI2 Part 1: each row of a checked listings file becomes IMPORT, REFUSED (a
- * rule it breaks, named) or HELD (an unruled question, by number), and nothing
- * in the file is ever mended or invented (docs/walk-in/WI2-PLAN.md section 6).
+ * WI2 Part 1: each row of a checked listings file becomes IMPORT or REFUSED (a
+ * rule it breaks, named), and nothing in the file is ever mended or invented
+ * (docs/walk-in/WI2-PLAN.md section 6, and the 21 October 22:25 answers).
  * The names and places below are invented for the test.
  */
 
@@ -140,25 +140,43 @@ describe('refused, each with its reason', () => {
   })
 })
 
-describe('held, by the question that has not been ruled', () => {
-  it('no finish time: question 1', () => {
+describe('the 21 October 22:25 answers', () => {
+  it('(1) a night with no finish imports with no finish, never a made up one', () => {
     const v = judge({ finish: '' })
-    expect(v.verdict === 'held' && v.questions).toEqual([1])
+    expect(v.verdict).toBe('import')
+    expect(v.verdict === 'import' && v.row.endsAt).toBeNull()
   })
 
-  it('a booking, registration or RSVP: question 2', () => {
-    const v = judge({ entry: 'Free; team booking recommended' })
-    expect(v.verdict === 'held' && v.questions).toEqual([2])
+  it('(2) a free event that needs a booking, registration or RSVP is refused, for WI3', () => {
+    for (const entry of ['Free; booking required', 'Free; register on Humanitix', 'Free; RSVP on Meetup', 'Free with a registered ticket']) {
+      const v = judge({ entry })
+      expect(v.verdict, entry).toBe('refused')
+      expect(reasons({ entry }), entry).toMatch(/needs a booking, registration, RSVP or ticket.*WI3/)
+    }
   })
 
-  it('a donation: question 5', () => {
-    const v = judge({ entry: 'Gold coin donation' })
-    expect(v.verdict === 'held' && v.questions).toEqual([5])
+  it('(2) "no booking required" is free walk-in entry, as the files write it', () => {
+    const v = judge({ entry: 'Free; no booking required' })
+    expect(v.verdict).toBe('import')
+    expect(v.verdict === 'import' && v.row.donationOptional).toBe(false)
   })
 
-  it('a row that both breaks a rule and waits on a question is refused, with the rule named', () => {
-    const v = judge({ finish: '', city: 'sydney' })
-    expect(v.verdict).toBe('refused')
+  it('(5) a donation imports only where entry is free and the donation optional, and says so', () => {
+    const v = judge({ entry: 'Free; optional donation on a sliding scale from $0' })
+    expect(v.verdict).toBe('import')
+    expect(v.verdict === 'import' && v.row.donationOptional).toBe(true)
+  })
+
+  it('(5) a donation the file does not call optional is refused', () => {
+    for (const entry of ['Gold coin donation', 'Free; pay as you feel donation']) {
+      expect(judge({ entry }).verdict, entry).toBe('refused')
+      expect(reasons({ entry }), entry).toMatch(/donation.*not said to be optional/)
+    }
+  })
+
+  it('a plain free entry has no donation', () => {
+    const v = judge({ entry: 'Free' })
+    expect(v.verdict === 'import' && v.row.donationOptional).toBe(false)
   })
 })
 
@@ -173,7 +191,7 @@ describe('a whole file', () => {
     const header = LISTING_COLUMNS.join(',')
     const line = (over: Partial<typeof good>) => LISTING_COLUMNS.map((c) => JSON.stringify({ ...good, ...over }[c])).join(',')
     const f = judgeFile([header, line({}), line({ finish: '' }), line({ city: 'perth' })].join('\n'), ctx)
-    expect(f.counts).toEqual({ import: 1, held: 1, refused: 1 })
+    expect(f.counts).toEqual({ import: 2, refused: 1 })
     expect(f.rows.map((r) => r.line)).toEqual([2, 3, 4])
   })
 })

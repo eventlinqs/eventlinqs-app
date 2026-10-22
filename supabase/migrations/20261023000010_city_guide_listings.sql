@@ -121,12 +121,16 @@ create table if not exists public.event_series (
   anchor_date date not null,
   day int2 not null check (day between 0 and 6),
   starts_at time not null,
-  -- Null only while the plan's question 1 (a night with no finish) is unruled;
-  -- the import holds such rows, so none is written yet.
+  -- Null when the source gives no finish (the 21 October 22:25 answer 1): the
+  -- page says "From 6:30pm", never a made up end, and each occurrence counts as
+  -- ended at the end of its own day for its state only.
   ends_at time,
   timezone text not null,
   age_restriction_min int2 check (age_restriction_min is null or age_restriction_min in (0, 16, 18)),
   summary text not null,
+  -- Entry is free and a donation is welcome but optional (answer 5); the page
+  -- says so. A donation that is not optional is never imported.
+  donation_optional boolean not null default false,
   instagram_post_url text check (instagram_post_url is null or instagram_post_url ~ '^https://www\.instagram\.com/(p|reel)/[A-Za-z0-9_-]+/?'),
   skip_dates date[] not null default '{}',
   listing_source text not null default 'eventlinqs' check (listing_source in ('organiser', 'eventlinqs')),

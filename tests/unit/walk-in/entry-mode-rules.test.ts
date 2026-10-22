@@ -26,6 +26,9 @@ import {
   type GuideDay,
 } from '@/lib/walk-in/guide'
 import { walkInFactsFromRow, embeddedGuideDays } from '@/lib/walk-in/publish-facts'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { createElement } from 'react'
+import { HoursText } from '@/components/events/walk-in/hours-list'
 import { buildEventSchemaPayload } from '@/components/features/events/event-schema-jsonld'
 import { validateEventNode } from '../../../scripts/verify/event-structured-data-audit.mjs'
 
@@ -117,6 +120,12 @@ describe('the guide parses only the shape the page was drawn for', () => {
     expect(parseGuide({ at_a_glance: [tile, tile, tile, tile, tile] }).ok).toBe(false)
   })
 
+  it('a day with no finish parses, with no close (the 21 October 22:25 answer 1)', () => {
+    const r = parseGuide({ days: [{ date: '2026-11-20', opens: '18:30', closes: null }] })
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.guide.days[0].closes).toBeNull()
+  })
+
   it('refuses a clock that is not HH:MM', () => {
     expect(parseGuide({ days: [{ date: '2026-11-20', opens: '10am', closes: '22:00' }] }).ok).toBe(false)
   })
@@ -138,6 +147,21 @@ describe('clock and hours read the way design A writes them', () => {
     ['09:05', '9:05am'],
   ])('%s is %s', (clock, words) => {
     expect(formatClock(clock)).toBe(words)
+  })
+
+  it('a day with no finish has no close, never a made up one', () => {
+    expect(dayHours(day('2026-11-20', { opens: '18:30', closes: null }))).toEqual({
+      opens: '6:30pm',
+      unconfirmed: null,
+      closes: null,
+    })
+  })
+
+  it('the page reads a day with no finish as "From" its opening, and a day with one as before', () => {
+    const html = (closes: string | null) =>
+      renderToStaticMarkup(createElement(HoursText, { hours: dayHours(day('2026-11-20', { opens: '18:30', closes })) }))
+    expect(html(null)).toBe('From 6:30pm')
+    expect(html('22:00')).toBe('6:30pm to 10pm')
   })
 
   it('an unconfirmed opening shows the organiser words instead of a time', () => {

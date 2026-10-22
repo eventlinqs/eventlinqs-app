@@ -28,17 +28,22 @@ export function HoursList({
   )
 }
 
+/**
+ * "6:30pm to 10pm", or "From 6:30pm" when the source gives no finish (WI2, the
+ * 21 October 22:25 answer 1): an end is never made up.
+ */
 export function HoursText({ hours, source = 'organiser' }: { hours: DayHours; source?: Source }) {
+  const opening = hours.opens ? (
+    hours.opens
+  ) : (
+    <span data-text-source={source} className="rounded bg-[var(--color-gold-100)] px-1.5 py-px">
+      {hours.unconfirmed}
+    </span>
+  )
+  if (hours.closes === null) return <>From {opening}</>
   return (
     <>
-      {hours.opens ? (
-        hours.opens
-      ) : (
-        <span data-text-source={source} className="rounded bg-[var(--color-gold-100)] px-1.5 py-px">
-          {hours.unconfirmed}
-        </span>
-      )}{' '}
-      to {hours.closes}
+      {opening} to {hours.closes}
     </>
   )
 }

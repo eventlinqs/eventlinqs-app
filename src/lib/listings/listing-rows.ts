@@ -7,9 +7,9 @@ import { seriesProblem, weekdayOf, type SeriesRule } from './occurrences'
  * docs/walk-in/WI2-PLAN.md section 6).
  *
  * The project manager's checked files in C:\dev\design\listings are judged row
- * by row here, before anything is written: each row is IMPORT, REFUSED (a rule
- * it breaks, named) or HELD (a question nobody has ruled yet, by its number in
- * the plan's section 12). Nothing is guessed or mended: the file is never
+ * by row here, before anything is written: each row is IMPORT or REFUSED (a
+ * rule it breaks, named), under the plan's rules and the 21 October 22:25
+ * answers to its section 12 questions. Nothing is guessed or mended: the file is never
  * edited, and a value the file does not give is never invented, so a row is
  * either taken as written or reported for the project manager to set.
  *
@@ -66,6 +66,8 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const AGE: Record<string, number | null> = { '': null, 'all ages': 0, '16+': 16, '18+': 18 }
 /** Google: "Don't mark business hours as events", "Don't mark coupons or vouchers as events". The plain cases only. */
 const NOT_AN_EVENT = /happy hour|% off|\bopen from\b/i
+/** Free walk-in entry, as the files write it: nothing to book, register or pay. */
+const FREE_WALK_IN = /^free(;\s*no booking required)?$/i
 const BOOKING = /\bbook|\bregist|\brsvp\b|\breserv|\bticket/i
 const DONATION = /donation|pay as you feel|gold coin/i
 
@@ -86,6 +88,8 @@ export type ListingRow = {
   instagramHandle: string | null
   instagramPostUrl: string | null
   venueEmail: string | null
+  /** Entry is free and the source calls the donation optional (answer 5); the page says so. */
+  donationOptional: boolean
   sourceUrl: string
   sourceDate: string
 }
@@ -93,7 +97,6 @@ export type ListingRow = {
 export type RowVerdict =
   | { verdict: 'import'; row: ListingRow }
   | { verdict: 'refused'; reasons: string[] }
-  | { verdict: 'held'; questions: number[]; reasons: string[] }
 
 export type JudgeContext = {
   now: Date
@@ -177,7 +180,6 @@ const isHttpUrl = (v: string) => {
 export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeContext): RowVerdict {
   const v = (c: ListingColumn) => (record[c] ?? '').trim()
   const refused: string[] = []
-  const held: Array<{ q: number; why: string }> = []
 
   const city = v('city')
   const zone = ctx.guideCities.get(city)
@@ -190,9 +192,10 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
 
   const startsAt = clockFrom12h(v('start'))
   if (!startsAt) refused.push(`start "${v('start')}" is not a time like 7pm or 6:30pm`)
+  // Answer 1: a night with no finish imports with none, and the page says
+  // "From 6:30pm"; a finish is never made up.
   let endsAt: string | null = null
-  if (v('finish') === '') held.push({ q: 1, why: 'no finish time (question 1 is not ruled)' })
-  else {
+  if (v('finish') !== '') {
     endsAt = clockFrom12h(v('finish'))
     if (!endsAt) refused.push(`finish "${v('finish')}" is not a time like 10pm`)
   }
@@ -212,11 +215,15 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   const category = v('category')
   if (!ctx.categorySlugs.has(category)) refused.push(`category "${category}" is not one of the live category slugs (the project manager sets it)`)
 
-  const entry = v('entry').toLowerCase()
-  if (entry !== 'free') {
-    if (BOOKING.test(entry)) held.push({ q: 2, why: `entry "${v('entry')}" needs a booking, registration or RSVP (question 2 is not ruled)` })
-    else if (DONATION.test(entry)) held.push({ q: 5, why: `entry "${v('entry')}" asks for a donation (question 5 is not ruled)` })
-    else refused.push(`entry "${v('entry')}" is not free walk-in entry`)
+  // Answer 2: a free event that needs a booking is WI3's, never this import's.
+  // Answer 5: a donation only where entry is free and the source calls it optional.
+  const entry = v('entry')
+  let donationOptional = false
+  if (!FREE_WALK_IN.test(entry)) {
+    if (BOOKING.test(entry)) refused.push(`entry "${entry}" needs a booking, registration, RSVP or ticket: WI3 lists these, the WI2 import does not`)
+    else if (DONATION.test(entry) && /^free\b/i.test(entry) && /\boptional\b/i.test(entry)) donationOptional = true
+    else if (DONATION.test(entry)) refused.push(`entry "${entry}" asks for a donation that is not said to be optional`)
+    else refused.push(`entry "${entry}" is not free walk-in entry`)
   }
 
   const ageKey = v('age_limit').toLowerCase()
@@ -250,7 +257,6 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   if (v('freshness') !== 'CURRENT') refused.push(`freshness "${v('freshness')}" is not CURRENT`)
 
   if (refused.length) return { verdict: 'refused', reasons: refused }
-  if (held.length) return { verdict: 'held', questions: [...new Set(held.map((h) => h.q))], reasons: held.map((h) => h.why) }
   return {
     verdict: 'import',
     row: {
@@ -270,6 +276,7 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
       instagramHandle: handle || null,
       instagramPostUrl: post || null,
       venueEmail: email || null,
+      donationOptional,
       sourceUrl,
       sourceDate,
     },
@@ -279,14 +286,14 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
 export type FileJudgement = {
   headerProblem: string | null
   rows: Array<{ line: number; name: string } & RowVerdict>
-  counts: { import: number; refused: number; held: number }
+  counts: { import: number; refused: number }
 }
 
 /** A whole file: the header first (a wrong header refuses every row), then each row. */
 export function judgeFile(text: string, ctx: JudgeContext): FileJudgement {
   const [header = [], ...body] = parseCsv(text)
   const problem = headerProblem(header)
-  const counts = { import: 0, refused: 0, held: 0 }
+  const counts = { import: 0, refused: 0 }
   if (problem) return { headerProblem: problem, rows: [], counts }
   const rows = body.map((cells, i) => {
     const record = Object.fromEntries(header.map((h, k) => [h.trim(), cells[k] ?? '']))
