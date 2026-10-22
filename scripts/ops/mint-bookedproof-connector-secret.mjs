@@ -170,7 +170,7 @@ async function prove(origin, secret) {
       : `an unexpected answer: ${text.slice(0, 200)}`
     fail(why)
   }
-  console.log('  proved              the endpoint verified a request signed with the handed-over value')
+  console.log('  proved              the endpoint verified a request signed with the handed-over copy')
 }
 
 if (PROVE) {
@@ -205,7 +205,7 @@ const shape = SHAPES.strongSecret32
 if (!new RegExp(shape.pattern).test(value) || value.length < (shape.minLength ?? 32) || /\s/.test(value)) {
   fail('the value does not satisfy SHAPES.strongSecret32; refusing to store it.')
 }
-console.log(`  value               ${existing ? 'the one already handed over' : 'newly minted'}, length ${value.length}, fp ${fingerprint(value)}`)
+console.log(`  secret              ${existing ? 'the one already handed over' : 'newly minted'}, length ${value.length}, fp ${fingerprint(value)}`)
 
 if (!APPLY) {
   console.log('dry run: nothing stored, nothing written. Add --apply --handoff <file> to store it.')
@@ -247,5 +247,5 @@ if (SCOPE === 'production') {
 }
 
 console.log('')
-console.log('The value takes effect on the next deployment of that environment. Then prove it with:')
+console.log('It takes effect on the next deployment of that environment. Then prove it with:')
 console.log(`  node scripts/ops/mint-bookedproof-connector-secret.mjs --prove <deployment origin> --handoff ${HANDOFF}`)
