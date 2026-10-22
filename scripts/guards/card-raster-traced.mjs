@@ -356,6 +356,29 @@ export function traceFileCandidates(entry) {
 }
 
 /**
+ * WHICH OF THE ROUTES IS IN THE BUILD ON DISK AT ALL (23 October 2026).
+ *
+ * A complete build can still be a build of ANOTHER TREE: a gate's suite runs
+ * before its own build step, so .next is whatever the last build left. On
+ * 23 October it held slice 2's build while the tree under test added a cron
+ * that reaches the rasteriser, and the test read "no trace was written" for a
+ * route that build never had. A route whose compiled output (the .js beside
+ * either trace candidate) is absent is not in this build, which says nothing
+ * about its trace; it is reported, never judged. The postbuild mode judges a
+ * build of this very tree and so judges every route, unfiltered.
+ */
+export function routesInBuild(routes, exists) {
+  const present = []
+  const absent = []
+  for (const r of routes) {
+    // A subtree entry has no trace of its own; judgeTraces decides it as before.
+    const compiled = r.subtree || traceFileCandidates(r.entry).some((trace) => exists(trace.replace(/\.nft\.json$/, '')))
+    ;(compiled ? present : absent).push(r)
+  }
+  return { present, absent }
+}
+
+/**
  * POSTBUILD: the verdict on the traces Next actually wrote.
  *
  * A trace lists the files the lambda is packed from, as paths relative to the

@@ -18,6 +18,7 @@ import {
   reachers,
   reachingRoutes,
   resolveSourceImport,
+  routesInBuild,
   routeEntryName,
   runtimeImports,
   traceFileCandidates,
@@ -382,13 +383,43 @@ describe('judgeTraces, the postbuild proof on the traces Next wrote', () => {
       return
     }
     const { routes } = reachingRoutes(ROOT)
+    // A build of another tree (the suite runs before a gate's own build) may
+    // lack a route this tree added: reported, not judged (routesInBuild).
+    const { present, absent } = routesInBuild(routes, (rel) => existsSync(join(ROOT, rel)))
+    for (const r of absent) console.log(`[card-raster-traced test] not in the build on disk, so not judged here: ${r.entry}`)
     const wasmReal = wasmPathFrom(readFileSync(join(ROOT, RASTER_MODULE), 'utf8'))
     const fontsReal = fontsFrom(readFileSync(join(ROOT, FONTS_MODULE), 'utf8'))
     const readTrace = (traceFile: string) => {
       const p = join(ROOT, traceFile)
       return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).files as string[]) : null
     }
-    const { faults } = judgeTraces(routes, readTrace, wasmReal, fontsReal)
+    const { faults } = judgeTraces(present, readTrace, wasmReal, fontsReal)
     expect(faults).toEqual([])
+  })
+
+  test('a complete build of ANOTHER tree is not judged for a route it never had (23 October 2026)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'card-raster-stale-'))
+    try {
+      // A finished build that compiled the icon, with its trace, and never saw the cron.
+      mkdirSync(join(root, '.next', 'server', 'app', 'api', 'cron'), { recursive: true })
+      writeFileSync(join(root, '.next', 'BUILD_ID'), 'another-tree')
+      writeFileSync(join(root, '.next', 'server', 'app', 'icon.js'), '')
+      writeFileSync(join(root, '.next', 'server', 'app', 'icon.js.nft.json'), JSON.stringify({ files: ['../../../node_modules/@resvg/resvg-wasm/index_bg.wasm', '../../../src/assets/fonts/A.ttf', '../../../src/assets/fonts/B.ttf'] }))
+      const icon = { entry: 'app/icon', file: 'src/app/icon.tsx', needsFonts: true, subtree: false }
+      const cron = { entry: 'app/api/cron/listing-occurrences/route', file: 'src/app/api/cron/listing-occurrences/route.ts', needsFonts: true, subtree: false }
+      const readTrace = (traceFile: string) => {
+        const p = join(root, traceFile)
+        return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).files as string[]) : null
+      }
+      expect(completeBuild(root).complete).toBe(true)
+      // RED, as the test read it before: the cron judged against a build that never had it.
+      expect(judgeTraces([icon, cron], readTrace, wasm, fonts).faults).toHaveLength(1)
+      // GREEN: the cron is reported as absent from this build; the icon is still judged, and passes.
+      const { present, absent } = routesInBuild([icon, cron], (rel) => existsSync(join(root, rel)))
+      expect(absent.map((r) => r.entry)).toEqual(['app/api/cron/listing-occurrences/route'])
+      expect(judgeTraces(present, readTrace, wasm, fonts).faults).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
