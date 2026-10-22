@@ -3839,8 +3839,19 @@ const ROOT = join(HERE, '..', '..')
  * worktree at the staged index, 22 October 2026).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 568
-const MIN_TESTS = 7712
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-10-22, THE CHECKOUT GATE'S OWN PAID EVENT: 568/7712 -> 569/7726.
+ * ---------------------------------------------------------------------------
+ *
+ * tests/unit/ops/checkout-gate-fixture.test.ts   +1 file, +14 (run on its own:
+ * 14 passed). The gate's checkout-viewport step now keeps one unlisted paid
+ * event fit on TEST instead of buying whatever TEST holds (project manager,
+ * 22 October 2026, 18:50).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 569
+const MIN_TESTS = 7726
 
 
 /**

@@ -791,10 +791,22 @@ async function runCheckoutViewportDrive(env) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
     return 1
   }
+  // THE GATE'S OWN PAID EVENT, FIRST (project manager, 22 October 2026). The
+  // drive used to buy whatever paid event TEST held, and on 22 October none was
+  // left, so this step stopped every push. The fixture script keeps one unlisted
+  // event fit on TEST, rolling its date and refilling its room when either runs
+  // short, and the drive finds it by its own pick.
+  if (exec(NODE, ['scripts/ops/checkout-gate-fixture.mjs', '--ensure'], env) !== 0) {
+    console.error('[gate] the checkout fixture could not be made fit on TEST; the drive would have nothing to buy.')
+    return 1
+  }
   const started = await startGateServer(env, CHECKOUT_LOG)
   if (started.error) return 1
   const { base, stop } = started
   try {
+    // Its reversal, before a ticket is bought: never on a browse surface of
+    // this build, never answering on production.
+    if (exec(NODE, ['scripts/ops/checkout-gate-fixture.mjs', '--check-public', base], env) !== 0) return 1
     return exec(NODE, ['scripts/verify/ux6-checkout-viewport-proof.mjs', base], env)
   } finally {
     stop()
