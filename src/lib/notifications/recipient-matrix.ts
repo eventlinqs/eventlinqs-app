@@ -159,6 +159,18 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     concernsOrganiserEvent: true,
     what: 'A resumable checkout the buyer abandoned.',
   },
+  {
+    type: 'walk_in_program_update',
+    roles: ['prospect'],
+    concernsOrganiserEvent: true,
+    what: 'WI1 Remind me: the full program of a free walk-in event, once, to a person who asked for it on the event page before the organiser published it.',
+  },
+  {
+    type: 'walk_in_day_before',
+    roles: ['prospect'],
+    concernsOrganiserEvent: true,
+    what: 'WI1 Remind me: one reminder the day before a free walk-in event, to a person who asked for it on the event page.',
+  },
 
   // ── The organiser ───────────────────────────────────────────────────────
   {

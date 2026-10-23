@@ -241,6 +241,13 @@ const NO_ANONYMOUS_VALUE = {
     'consent ledger (close-out GA1) and was the one UNEXPLAINED gap this sweep reported on',
     '18 September 2026. The unparameterised /marketing/preferences IS driven and answers 200.',
   ].join(' '),
+  '/remind/stop/[token]': [
+    'a Remind me stop token (WI1, 21 October 2026), minted per reminder request on a free walk-in',
+    'event page and carried only in the two Remind me emails, so there is no value an anonymous sweep',
+    'can hold. A mangled one renders the "not one we recognise" page rather than a 500: the token',
+    'shape is tested before every query (an-unsubscribe-link-never-500s), and',
+    'scripts/verify/wi1-walk-in-drive.mjs drives a real token, a one-click POST and a mangled link.',
+  ].join(' '),
   '/launch/k/[code]': 'a Launch Kit code, minted when an organiser publishes',
   '/launch/with/[code]': 'the same Launch Kit code',
   '/events/[slug]/holder': 'the holder view of an event, reached with a bearer ticket',

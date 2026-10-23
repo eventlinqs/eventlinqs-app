@@ -3871,8 +3871,27 @@ const ROOT = join(HERE, '..', '..')
  * own push gate measures it.
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 572
-const MIN_TESTS = 7754
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-10-22, WI1 SLICE 3 (the organiser form, the reminder sends, the
+ * numbers): 572/7754 -> 573/7764.
+ * ---------------------------------------------------------------------------
+ *
+ * THIS SLICE ADDS one test file and no case to any other:
+ *
+ *   tests/unit/walk-in/reminder-sends.test.ts               +1 file, +10
+ *
+ * MEASURED: 572 files, 7749 tests, 0 failed, 0 skipped
+ * (scripts/guards/test-count-canary.mjs on this slice's own tree, a detached
+ * worktree at the staged index, 22 October 2026).
+ *
+ * THE CHECKOUT GATE FIXTURE (+1 file, +15) joined slice 1 after that measure,
+ * so this floor is that measure plus its 1 file and 15 tests, COMPUTED: slice 3's
+ * own push gate measures it.
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 573
+const MIN_TESTS = 7764
 
 
 /**

@@ -151,6 +151,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Confirms a city waitlist signup the person just submitted.',
   },
   {
+    file: 'src/lib/walk-in/reminder-store.ts',
+    kind: 'transactional',
+    purpose: 'event_reminder_requested',
+    reason:
+      'WI1 Remind me. Sends the two messages a person asked for, by name, about ONE free walk-in event: the full program once when the organiser publishes it, and one reminder the day before. WI1-ITEM.md: "It is stored as a reminder request for that one event. It is never a marketing consent." Each is claimed before it is sent, so neither can go twice, and each carries a one-click stop.',
+  },
+  {
     file: 'src/lib/launch/kit-email.ts',
     kind: 'transactional',
     purpose: 'organiser_operations',

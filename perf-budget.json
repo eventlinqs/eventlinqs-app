@@ -201,6 +201,7 @@
     "/press": 156114,
     "/pricing": 165700,
     "/queue/[slug]": 168667,
+    "/remind/stop/[token]": 163567,
     "/scan/[eventId]": 166719,
     "/signup": 171043,
     "/squad/[token]": 166180,
