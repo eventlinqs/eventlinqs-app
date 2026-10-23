@@ -90,6 +90,16 @@ const sorted = (v) =>
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const ref = TARGETS[args.target]
+  /*
+   * THE PRODUCT CODE JUDGES AGAINST THE TARGET, NOT WHATEVER THE SHELL CARRIES.
+   * moderateEventMedia accepts only images stored in the platform's own project
+   * (getSupabaseUrl(), src/lib/supabase/env.ts: the _PREVIEW variable first, then
+   * the plain one). The first TEST drive, 23 October 23:33, uploaded to TEST and
+   * was refused as "linked from another site" because the shell named no project.
+   * So the project this run writes to is the project the product code reads.
+   */
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL_PREVIEW
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `https://${ref}.supabase.co`
   const { extractListingBlock, planWalkInDraft, writeWalkInDraft } = await import('@/lib/walk-in/list-draft')
   const { processEventImage } = await import('@/lib/media/image-pipeline')
 
