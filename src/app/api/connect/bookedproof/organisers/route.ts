@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { captureException } from '@/lib/observability/sentry'
 import { getSiteUrl } from '@/lib/site-url'
-import { SIGNATURE_HEADER, TIMESTAMP_HEADER, verifySignature } from '@/lib/connect/bookedproof/signature'
+import { SIGNATURE_HEADER, TIMESTAMP_HEADER, verifyBookedproofSignature } from '@/lib/connect/bookedproof/signature'
 import { parseOrganiserReadRequest } from '@/lib/connect/bookedproof/request'
 import { readOrganiserRows } from '@/lib/connect/bookedproof/read'
 import { assembleResponse } from '@/lib/connect/bookedproof/assemble'
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   if (Buffer.byteLength(rawBody, 'utf8') > MAX_BODY_BYTES) return refuse(413, 'too-large')
 
   const now = new Date()
-  const verdict = verifySignature({
+  const verdict = verifyBookedproofSignature({
     secret,
     timestamp: request.headers.get(TIMESTAMP_HEADER),
     signature: request.headers.get(SIGNATURE_HEADER),

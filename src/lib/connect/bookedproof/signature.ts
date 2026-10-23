@@ -29,7 +29,7 @@ export function signatureFor(secret: string, timestamp: string, rawBody: string)
   return `v1=${hmacHex(secret, `${timestamp}.${rawBody}`)}`
 }
 
-export function verifySignature(input: {
+export function verifyBookedproofSignature(input: {
   secret: string
   timestamp: string | null
   signature: string | null

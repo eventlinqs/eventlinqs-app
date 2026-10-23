@@ -33,6 +33,11 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'node:crypto'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+
+// The repository's one preflight first (scripts/guards/no-unguarded-production-write.mjs),
+// then the TEST-only check below, which names the project this proof writes fixtures to.
+assertNotProduction()
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY

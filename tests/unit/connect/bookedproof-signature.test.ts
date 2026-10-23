@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { orderKey, signatureFor, verifySignature } from '@/lib/connect/bookedproof/signature'
+import { orderKey, signatureFor, verifyBookedproofSignature } from '@/lib/connect/bookedproof/signature'
 
 /**
  * E51, THE FIXED SIGNING VECTOR BOTH SIDES TEST AGAINST (the contract's
@@ -14,8 +14,8 @@ const BODY = '{"emails":["bp-vector-organiser@bookedproof.test"],"pages":[],"sin
 const SIGNATURE = 'v1=244e6db4d85690359509c76e76ad6459ff6d0a728db49202277d9fdd936e9894'
 const SIGNED_AT = new Date('2026-10-23T07:00:00Z')
 
-const verify = (over: Partial<Parameters<typeof verifySignature>[0]> = {}) =>
-  verifySignature({ secret: SECRET, timestamp: TIMESTAMP, signature: SIGNATURE, rawBody: BODY, now: SIGNED_AT, ...over })
+const verify = (over: Partial<Parameters<typeof verifyBookedproofSignature>[0]> = {}) =>
+  verifyBookedproofSignature({ secret: SECRET, timestamp: TIMESTAMP, signature: SIGNATURE, rawBody: BODY, now: SIGNED_AT, ...over })
 
 describe('the section 8 vector', () => {
   test('the body is the 75 bytes the contract names', () => {
