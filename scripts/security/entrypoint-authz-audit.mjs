@@ -87,11 +87,14 @@ const AUTH = [
   { re: /getOrganiserEvent\s*\(/, how: 'organiser event gate' },
   { re: /requireAdmin|assertAdmin|requireCapability/, how: 'admin capability' },
   { re: /verifyHealthToken|HEALTH_CHECK_TOKEN/, how: 'health token' },
-  // E51, 23 October 2026, READ in src/lib/connect/bookedproof/signature.ts: an
-  // HMAC-SHA256 of "<timestamp>.<raw body>" under BOOKEDPROOF_CONNECTOR_SECRET,
-  // 300 seconds either way, compared in constant time, verified before the body
-  // is parsed; the route answers 503 while the secret is unset. Named for the one
-  // function, so no other signature check is credited by its name.
+  // E51, 23 October 2026, READ in src/lib/connect/bookedproof/signature.ts, and
+  // declared the way the Stripe webhook's signature is above: an HMAC-SHA256 of
+  // "<timestamp>.<raw body>" under BOOKEDPROOF_CONNECTOR_SECRET, 300 seconds either
+  // way, compared in constant time, verified before the body is parsed. In
+  // src/app/api/connect/bookedproof/organisers/route.ts, line 38 refuses 503 while
+  // the secret is unset (fail closed) and line 51 refuses 401 an unsigned, stale
+  // or wrongly signed request. Named for the one function, so no other signature
+  // check is credited by its name.
   { re: /verifyBookedproofSignature\s*\(/, how: 'Bookedproof request signature (HMAC-SHA256, 300 s, constant time)' },
 ]
 
