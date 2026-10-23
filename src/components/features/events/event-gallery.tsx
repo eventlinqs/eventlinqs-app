@@ -14,9 +14,14 @@ import type { GalleryImage as GalleryItem } from '@/lib/media/event-media-model'
 type Props = {
   images: GalleryItem[]
   eventTitle: string
+  /**
+   * WI1. 'walk-in' draws locked design A's photo row: square tiles, two across
+   * on a phone and four from lg. Every tile is still a button to the viewer.
+   */
+  layout?: 'default' | 'walk-in'
 }
 
-export function EventGallery({ images, eventTitle }: Props) {
+export function EventGallery({ images, eventTitle, layout = 'default' }: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const valid = images.filter((i) => i.url)
 
@@ -30,14 +35,18 @@ export function EventGallery({ images, eventTitle }: Props) {
 
   return (
     <div>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <ul className={layout === 'walk-in' ? 'm-0 grid list-none grid-cols-2 gap-2 p-0 lg:grid-cols-4 lg:gap-3' : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'}>
         {valid.map((img, i) => (
           <li key={`${img.url}-${i}`}>
             <button
               type="button"
               onClick={() => setOpenIndex(i)}
               aria-label={`View image ${i + 1}${img.alt ? `: ${img.alt}` : ''}`}
-              className="group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl border border-ink-200 bg-ink-100 transition-shadow hover:shadow-[var(--shadow-card-hover)] focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className={
+                layout === 'walk-in'
+                  ? 'group relative block aspect-square w-full overflow-hidden rounded-[var(--radius-panel)] bg-ink-100 transition-shadow hover:shadow-[var(--shadow-card-hover)] focus:outline-none focus:ring-2 focus:ring-gold-500'
+                  : 'group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl border border-ink-200 bg-ink-100 transition-shadow hover:shadow-[var(--shadow-card-hover)] focus:outline-none focus:ring-2 focus:ring-gold-500'
+              }
             >
               <GalleryImage
                 src={img.url}

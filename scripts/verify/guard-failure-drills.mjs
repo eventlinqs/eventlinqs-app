@@ -10521,6 +10521,71 @@ const DRILLS = [
     find: 'grant select on public.event_guides to anon, authenticated;',
     replace: 'grant select on public.event_guides to anon, authenticated;\ncreate table if not exists private.drill_elsewhere (id int);',
   },
+  /*
+   * walk-in-page-sells-nothing (WI1, 21 October 2026). Five ways a free walk-in
+   * page comes to sell, or to say it sells: the ticket selector imported into
+   * it, "Get tickets" written on it, a "book" word in its own copy, a price in
+   * its own copy, and the route building ticket work before it dispatches. Two
+   * more prove it stays quiet on what is allowed: "No ticket needed" itself, and
+   * the structured data's price of 0, which is a fact for Google and not a price
+   * on the page.
+   */
+  {
+    name: 'walk-in: the ticket selector is imported into the walk-in page',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    file: 'src/components/events/walk-in/walk-in-event-page.tsx',
+    find: "import { HoursList } from './hours-list'",
+    replace: "import { HoursList } from './hours-list'\nimport { TicketSelector } from '@/components/checkout/ticket-selector'\nvoid TicketSelector",
+    expect: 'reaches src/components/checkout/ticket-selector',
+  },
+  {
+    name: 'walk-in: the phone bar says Get tickets',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    file: 'src/lib/walk-in/page-copy.ts',
+    find: "export const REMIND_ME = 'Remind me'",
+    replace: "export const REMIND_ME = 'Get tickets'",
+    expect: '"Get tickets"',
+  },
+  {
+    name: 'walk-in: the panel copy asks people to book',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    file: 'src/lib/walk-in/page-copy.ts',
+    find: "    : 'Entry is free. Just come along.'",
+    replace: "    : 'Entry is free. Book now to hold your place.'",
+    expect: 'a "book" word',
+  },
+  {
+    name: 'walk-in: a price appears in the page copy',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    file: 'src/lib/walk-in/page-copy.ts',
+    find: "export const ACCESS = 'Access'",
+    replace: "export const ACCESS = 'Access from $5'",
+    expect: 'a dollar amount',
+  },
+  {
+    name: 'walk-in: the route reads ticket types before it dispatches a walk-in event',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '  if (isWalkIn(event)) return <WalkInEventPage event={event} />',
+    replace: '  const allTiersEarly = event.ticket_tiers\n  void allTiersEarly\n  const allTiers = allTiersEarly\n  void allTiers\n  if (isWalkIn(event)) return <WalkInEventPage event={event} />',
+    expect: 'reaches "const allTiers" before it dispatches',
+  },
+  {
+    name: 'NO FALSE POSITIVE: walk-in, "No ticket needed" itself is allowed',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    expectPass: 'PASS',
+    file: 'src/lib/walk-in/page-copy.ts',
+    find: "export const SHARE = 'Share'",
+    replace: "export const SHARE = 'Share'\nexport const DRILL_ALLOWED = 'No ticket needed'",
+  },
+  {
+    name: 'NO FALSE POSITIVE: walk-in, the structured data price of 0 is not a price on the page',
+    guard: `${GUARDS}/walk-in-page-sells-nothing.mjs`,
+    expectPass: 'says free at price 0',
+    file: 'src/lib/walk-in/page-copy.ts',
+    find: "export const SHARE = 'Share'",
+    replace: "export const SHARE = 'Share'\nexport const DRILL_SCHEMA_NOTE = 'offers.price is 0'",
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

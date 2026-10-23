@@ -34,6 +34,8 @@ export function FollowButton({
   label = 'Follow',
   variant = 'solid',
   className = '',
+  fromEventId,
+  compactLabel,
 }: {
   type: FollowType
   /** organisation id (organiser), artist id (artist), or scene slug (subgenre). */
@@ -42,6 +44,14 @@ export function FollowButton({
   label?: string
   variant?: Variant
   className?: string
+  /** WI1. The event page this button sits on, so a follow counts on that event. */
+  fromEventId?: string
+  /**
+   * WI1. A shorter visible label below lg, where locked design A's phone board
+   * draws plain "Follow" beside a long organiser name. The accessible name stays
+   * `label`, which contains it (WCAG 2.5.3, label in name).
+   */
+  compactLabel?: string
 }) {
   const router = useRouter()
   const [following, setFollowing] = useState(false)
@@ -68,7 +78,7 @@ export function FollowButton({
   }, [type, id])
 
   const runToggle = async (): Promise<FollowResult> => {
-    if (type === 'organiser') return toggleFollowOrganiser(id)
+    if (type === 'organiser') return toggleFollowOrganiser(id, fromEventId)
     if (type === 'artist') return toggleFollowArtist(id)
     return toggleFollowScene(id)
   }
@@ -126,7 +136,14 @@ export function FollowButton({
       ) : (
         <>
           <Plus className="h-4 w-4" aria-hidden />
-          {label}
+          {compactLabel ? (
+            <>
+              <span className="lg:hidden">{compactLabel}</span>
+              <span className="hidden lg:inline">{label}</span>
+            </>
+          ) : (
+            label
+          )}
         </>
       )}
     </button>

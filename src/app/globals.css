@@ -681,6 +681,22 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   @apply flex h-full flex-col items-center justify-center gap-1 transition-colors;
 }
 
+/*
+ * ONE BAR AT THE FOOT (WI1, 21 October 2026). A free walk-in page brings its
+ * own bar to the foot of a phone's window (Remind me and Share), and the site's
+ * bottom nav is fixed to the same place at the same layer, later in the
+ * document, so it covered that bar until the visitor scrolled. Locked design A
+ * (PhoneA.dc.html) draws the walk-in bar alone there, so the nav steps aside on
+ * any page that carries one.
+ *
+ * In CSS, not in the nav's script: both are in the server HTML, so the answer is
+ * right at first paint with no flash and no layout shift. The header and its
+ * menu still carry every destination the nav does.
+ */
+body:has([data-walk-in-bar]) [data-bottom-nav] {
+  display: none;
+}
+
 /* The wordmark, and the link it sits in. Both render in the header and again
  * in the footer, and the logo is rendered by more than one surface. */
 @utility chrome-wordmark {
