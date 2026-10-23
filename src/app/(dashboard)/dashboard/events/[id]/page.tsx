@@ -37,6 +37,9 @@ import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
 import { RecoveryProofPanel } from '@/components/dashboard/recovery-proof-panel'
 import { proofForSourceRef } from '@/lib/fillrate/proof'
 import { paceForSlot } from '@/lib/ledger/pace'
+import { isWalkIn } from '@/lib/events/entry-mode'
+import { readWalkInNumbers, oneIn } from '@/lib/walk-in/organiser-numbers'
+import { WalkInProgramPanel } from '@/components/features/dashboard/walk-in-program-panel'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -145,6 +148,28 @@ export default async function EventViewPage({ params }: Props) {
   )
 
   if (!org) notFound()
+
+  /*
+   * WI1. A FREE WALK-IN EVENT has nothing sold and no capacity, so its numbers
+   * are the conversions a free event has (WI1-ITEM.md point 5), read from the
+   * slot ledger and its Remind me rows after the ownership check above.
+   */
+  const walkIn = isWalkIn(event)
+  const [walkInNumbers, walkInGuide] = walkIn
+    ? await Promise.all([
+        readWalkInNumbers(event.id),
+        admin.from('event_guides').select('program_published_at').eq('event_id', event.id).maybeSingle(),
+      ])
+    : [null, null]
+  const walkInActiveReminders = walkIn
+    ? (
+        await admin
+          .from('event_reminders')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', event.id)
+          .is('unsubscribed_at', null)
+      ).count ?? 0
+    : 0
 
   /*
    * REVENUE AND TICKET STATS via admin (buyer rows aren't visible to the
@@ -359,7 +384,50 @@ export default async function EventViewPage({ params }: Props) {
         />
       )}
 
+      {/* ─── WI1: a free walk-in event's numbers ─────────────────────────── */}
+      {walkIn && walkInNumbers && (
+        <>
+          <section aria-label="What people did" className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <KpiCard
+              icon={<Eye className="h-4 w-4" aria-hidden="true" />}
+              label="Views"
+              value={walkInNumbers.views.toLocaleString('en-AU')}
+              hint={oneIn(walkInNumbers.actionsPerView) ? `${oneIn(walkInNumbers.actionsPerView)} took an action` : 'One per visitor per day'}
+            />
+            <KpiCard
+              icon={<Calendar className="h-4 w-4" aria-hidden="true" />}
+              label="Remind me"
+              value={walkInNumbers.reminders.toLocaleString('en-AU')}
+              hint="People who asked for a reminder"
+            />
+            <KpiCard
+              icon={<Calendar className="h-4 w-4" aria-hidden="true" />}
+              label="Calendar adds"
+              value={walkInNumbers.calendarAdds.toLocaleString('en-AU')}
+            />
+            <KpiCard
+              icon={<ArrowUpRight className="h-4 w-4" aria-hidden="true" />}
+              label="Shares"
+              value={walkInNumbers.shares.toLocaleString('en-AU')}
+            />
+            <KpiCard
+              icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
+              label="Follows"
+              value={walkInNumbers.follows.toLocaleString('en-AU')}
+              hint="Followed you from this page"
+            />
+          </section>
+          <WalkInProgramPanel
+            eventId={event.id}
+            published={(walkInGuide?.data as { program_published_at: string | null } | null)?.program_published_at ?? null}
+            waiting={walkInActiveReminders}
+            isLive={event.status === 'published'}
+          />
+        </>
+      )}
+
       {/* ─── KPI row ────────────────────────────────────────────────────── */}
+      {!walkIn && (
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
           icon={<Ticket className="h-4 w-4" aria-hidden="true" />}
@@ -391,6 +459,7 @@ export default async function EventViewPage({ params }: Props) {
           hint="Confirmed tickets against capacity"
         />
       </section>
+      )}
 
       {/* ─── Tabs ───────────────────────────────────────────────────────── */}
       <nav aria-label="Event sections" className="mt-8 border-b border-ink-100">

@@ -12,6 +12,11 @@
 // tickets." listing still showing a "Get tickets" button
 // (docs/walk-in/LAW7-READING-2026-10-21.md).
 //
+// NO EVENTBRITE. Eventbrite's terms forbid automated reading of its pages, so
+// it is not captured by this or any script (project manager, 22 October 2026,
+// 11:15). What Eventbrite does is read by a person, in a browser, and recorded
+// in the Law 7 reading with its URL.
+//
 // Usage: node scripts/wi1-competitor-capture.mjs [outDir]
 // Default out: C:/dev/EVIDENCE/WI1/competitors. Screenshots are clamped to
 // 1800px on the longest side (the skill's capture rule); a fold capture and a
@@ -30,20 +35,11 @@ const VPS = [
 ]
 
 /*
- * The pages. Two are fixed URLs; two are found the way a person finds them, by
- * opening the listing page and following its first event, so the capture is of
- * whatever is live that day rather than of a URL that may have gone.
+ * The pages, each found the way a person finds it, by opening the listing page
+ * and following its first event, so the capture is of whatever is live that day
+ * rather than of a URL that may have gone.
  */
 const TARGETS = [
-  {
-    name: 'eb-garba-free-no-rsvp',
-    url: 'https://www.eventbrite.com/e/schaumburg-garba-festival-2026-8-nights-of-free-garba-no-rsvp-needed-tickets-1995397422405',
-  },
-  {
-    name: 'eb-melbourne-free-first-event',
-    from: 'https://www.eventbrite.com.au/d/australia--melbourne/free--events/',
-    follow: 'a[href*="/e/"]',
-  },
   {
     name: 'tm-au-festival-first-event',
     from: 'https://www.ticketmaster.com.au/search?q=festival',
@@ -122,7 +118,12 @@ try {
         await page.screenshot({ path: full, fullPage: true })
         await clamp(fold, join(OUT, `${target.name}-${vp.label}-fold.png`))
         await clamp(full, join(OUT, `${target.name}-${vp.label}-full.png`))
-        record.ok = true
+        // A refused page is not a capture: Ticketmaster answered 401 with its
+        // "Your Browsing Activity Has Been Paused" wall, no title and no h1, on
+        // 22 October, and this line used to call that CAPTURED. The screenshots
+        // stay, as evidence of the refusal, and the record says INVALID.
+        record.ok = typeof record.status === 'number' && record.status < 400 && Boolean(record.h1)
+        if (!record.ok) record.error = `INVALID: HTTP ${record.status}, h1 ${record.h1 === null ? 'missing' : JSON.stringify(record.h1)}`
       } catch (error) {
         record.ok = false
         record.error = error.message.split('\n')[0]

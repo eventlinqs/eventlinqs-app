@@ -286,6 +286,16 @@ const OrganisationProfileSchema = z.object({
   website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   email: z.string().email('Must be a valid email').optional().or(z.literal('')),
   phone: z.string().max(30).optional(),
+  // WI1. The organiser band on a free walk-in page. The handle is stored without
+  // its @ and checked only for what would break a link (Instagram's own username
+  // rules are UNSOURCED: docs/walk-in/LAW7-READING-2026-10-21.md).
+  instagram_handle: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/^@/, ''))
+    .refine((v) => v === '' || (v.length <= 64 && !/[\s/@?#]/.test(v)), 'Enter the handle on its own, without spaces or a link.')
+    .optional(),
+  short_name: z.string().trim().max(24, 'Keep the short name to 24 characters.').optional(),
 })
 
 export async function updateOrganisationProfile(
@@ -303,6 +313,8 @@ export async function updateOrganisationProfile(
     website: formData.get('website') ?? '',
     email: formData.get('email') ?? '',
     phone: formData.get('phone') ?? '',
+    instagram_handle: formData.get('instagram_handle') ?? '',
+    short_name: formData.get('short_name') ?? '',
   })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Those details could not be read.' }
@@ -326,6 +338,8 @@ export async function updateOrganisationProfile(
       website: parsed.data.website?.trim() || null,
       email: parsed.data.email?.trim() || null,
       phone: parsed.data.phone?.trim() || null,
+      instagram_handle: parsed.data.instagram_handle || null,
+      short_name: parsed.data.short_name || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', parsed.data.organisationId)

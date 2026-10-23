@@ -14,6 +14,7 @@ import { resolveEventAccess } from '@/lib/organisations/event-access'
 import { readStreamLink } from '@/lib/stream/link'
 import { readEventRevenue } from '@/lib/organisers/event-revenue'
 import { readEventCategories, readOrganisationVenues } from '@/lib/organisers/event-form-options'
+import { parseGuide } from '@/lib/walk-in/guide'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -37,6 +38,15 @@ export default async function EditEventPage({ params }: Props) {
   )
 
   if (!event) notFound()
+
+  // WI1. A walk-in event's guide, read under the organiser's own session (the
+  // organiser read policy on event_guides) and parsed against the page's shape.
+  const { data: guideRow } =
+    event.entry_mode === 'walk_in'
+      ? await supabase.from('event_guides').select('*').eq('event_id', event.id).maybeSingle()
+      : { data: null }
+  const parsedGuide = guideRow ? parseGuide(guideRow) : null
+  const existingGuide = parsedGuide && parsedGuide.ok ? parsedGuide.guide : null
 
   /*
    * ACCESS, VIA THE SHARED GATE. Two defects in one line.
@@ -129,6 +139,7 @@ export default async function EditEventPage({ params }: Props) {
           existingEvent={eventData}
           existingTiers={ticket_tiers ?? []}
           existingStreamUrl={existingStreamUrl}
+          existingGuide={existingGuide}
           existingStatus={event.status}
           lineupEnabled={await isFeatureEnabled('broadcast_artists')}
           />
