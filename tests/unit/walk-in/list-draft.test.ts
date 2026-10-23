@@ -92,9 +92,12 @@ describe('the founder\'s ruling: no placeholder, every day opens at a clock time
 })
 
 describe('the rest of the form\'s rules', () => {
-  test('a day missing from the guide is refused by the publish gate\'s own hours check', () => {
-    const g = { days: [day('2026-11-20', '11:00', '22:00'), day('2026-11-22', '10:00', '20:00')] }
-    expect(problems(block({ guide: g })).length).toBeGreaterThan(0)
+  test('a day outside the event\'s dates is refused by the publish gate\'s own hours check', () => {
+    // The gate allows a gap (a festival may be closed one day); it refuses a day the event does not span.
+    const g = { days: [day('2026-11-20', '11:00', '22:00'), day('2026-11-21', '10:00', '22:00'), day('2026-11-23', '10:00', '20:00')] }
+    expect(problems(block({ guide: g }))).toContain("2026-11-23 is outside the event's dates. Check the dates in step 2, or remove that day.")
+    const gap = { days: [day('2026-11-20', '11:00', '22:00'), day('2026-11-22', '10:00', '20:00')] }
+    expect(problems(block({ guide: gap }))).toEqual([])
   })
 
   test("EventLinqs' own words are judged when it wrote them: a dollar sign is refused", () => {
