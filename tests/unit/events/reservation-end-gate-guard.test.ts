@@ -41,7 +41,8 @@ $$;`,
 
 describe('reservation-functions-carry-the-end-gate', () => {
   it('green on this tree: both effective definitions carry the gate', () => {
-    const { failures, effective } = judgeMigrations(tree)
+    const { failures, effective: found } = judgeMigrations(tree)
+    const effective = found as Record<'create_reservation' | 'create_seat_reservation', { file: string }>
     expect(failures).toEqual([])
     expect(effective.create_reservation.file).toBe('20261023000001_an_ended_event_sells_nothing.sql')
     expect(effective.create_seat_reservation.file).toBe('20261023000001_an_ended_event_sells_nothing.sql')

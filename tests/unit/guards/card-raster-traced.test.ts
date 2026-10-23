@@ -385,7 +385,7 @@ describe('judgeTraces, the postbuild proof on the traces Next wrote', () => {
     const { routes } = reachingRoutes(ROOT)
     // A build of another tree (the suite runs before a gate's own build) may
     // lack a route this tree added: reported, not judged (routesInBuild).
-    const { present, absent } = routesInBuild(routes, (rel) => existsSync(join(ROOT, rel)))
+    const { present, absent } = routesInBuild(routes, (rel: string) => existsSync(join(ROOT, rel)))
     for (const r of absent) console.log(`[card-raster-traced test] not in the build on disk, so not judged here: ${r.entry}`)
     const wasmReal = wasmPathFrom(readFileSync(join(ROOT, RASTER_MODULE), 'utf8'))
     const fontsReal = fontsFrom(readFileSync(join(ROOT, FONTS_MODULE), 'utf8'))
@@ -415,7 +415,7 @@ describe('judgeTraces, the postbuild proof on the traces Next wrote', () => {
       // RED, as the test read it before: the cron judged against a build that never had it.
       expect(judgeTraces([icon, cron], readTrace, wasm, fonts).faults).toHaveLength(1)
       // GREEN: the cron is reported as absent from this build; the icon is still judged, and passes.
-      const { present, absent } = routesInBuild([icon, cron], (rel) => existsSync(join(root, rel)))
+      const { present, absent } = routesInBuild([icon, cron], (rel: string) => existsSync(join(root, rel)))
       expect(absent.map((r) => r.entry)).toEqual(['app/api/cron/listing-occurrences/route'])
       expect(judgeTraces(present, readTrace, wasm, fonts).faults).toEqual([])
     } finally {
