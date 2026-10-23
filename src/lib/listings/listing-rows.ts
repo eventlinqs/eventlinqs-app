@@ -66,8 +66,13 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const AGE: Record<string, number | null> = { '': null, 'all ages': 0, '16+': 16, '18+': 18 }
 /** Google: "Don't mark business hours as events", "Don't mark coupons or vouchers as events". The plain cases only. */
 const NOT_AN_EVENT = /happy hour|% off|\bopen from\b/i
-/** Free walk-in entry, as the files write it: nothing to book, register or pay. */
-const FREE_WALK_IN = /^free(;\s*no booking required)?$/i
+/**
+ * Free walk-in entry, as the files write it: nothing to book, register or pay.
+ * "required", "needed" and "necessary" all say the same thing; the project
+ * manager's file of 23 October 2026 writes "Free; no booking needed", and the
+ * first dry run read that as needing a booking (it contains the word).
+ */
+const FREE_WALK_IN = /^free(;\s*no bookings? (required|needed|necessary))?$/i
 const BOOKING = /\bbook|\bregist|\brsvp\b|\breserv|\bticket/i
 const DONATION = /donation|pay as you feel|gold coin/i
 
@@ -181,8 +186,12 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   const v = (c: ListingColumn) => (record[c] ?? '').trim()
   const refused: string[] = []
 
+  // The city column names the city as people write it ("Geelong"); the guide
+  // knows it by its slug ("geelong"). Read as a slug, case and spacing aside, so
+  // an unknown city is still refused and nothing is guessed.
   const city = v('city')
-  const zone = ctx.guideCities.get(city)
+  const citySlug = city.toLowerCase().replace(/\s+/g, '-')
+  const zone = ctx.guideCities.get(citySlug)
   if (!zone) refused.push(`city "${city}" is not a guide city (${[...ctx.guideCities.keys()].join(', ')})`)
 
   const date = v('date')
@@ -260,7 +269,7 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   return {
     verdict: 'import',
     row: {
-      citySlug: city,
+      citySlug,
       date,
       rule: rule!,
       startsAt: startsAt!,

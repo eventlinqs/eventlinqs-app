@@ -161,6 +161,19 @@ describe('the 21 October 22:25 answers', () => {
     expect(v.verdict === 'import' && v.row.donationOptional).toBe(false)
   })
 
+  it('(2) "no booking needed" and "necessary" say the same; the 23 October file writes "needed"', () => {
+    for (const entry of ['Free; no booking needed', 'Free; no booking necessary', 'Free; no bookings required']) {
+      expect(judge({ entry }).verdict, entry).toBe('import')
+    }
+  })
+
+  it('(4) the city as people write it ("Geelong") is its guide city; an unknown one is still refused', () => {
+    const v = judge({ city: 'Geelong' })
+    expect(v.verdict).toBe('import')
+    expect(v.verdict === 'import' && v.row.citySlug).toBe('geelong')
+    expect(reasons({ city: 'Sydney' })).toMatch(/not a guide city/)
+  })
+
   it('(5) a donation imports only where entry is free and the donation optional, and says so', () => {
     const v = judge({ entry: 'Free; optional donation on a sliding scale from $0' })
     expect(v.verdict).toBe('import')
