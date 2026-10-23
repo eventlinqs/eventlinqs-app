@@ -45,6 +45,13 @@ const db = createClient(url, serviceKey, { auth: { persistSession: false } })
 const { readOrganiserRows } = await import('@/lib/connect/bookedproof/read')
 const { assembleResponse } = await import('@/lib/connect/bookedproof/assemble')
 const { orderKey } = await import('@/lib/connect/bookedproof/signature')
+/*
+ * EVERY ORDER CARRIES ITS ATTRIBUTION RECORD, the fixture's too. The first run of
+ * this proof (23 October 11:47) wrote seven orders with none, and main's CI went
+ * red on attribution-one-record-per-order-never-billable-when-reversed, which
+ * judges TEST. The product's own resolver writes each one, as checkout does.
+ */
+const { resolveAndStoreOrder } = await import('@/lib/attribution/store')
 
 const SECRET = 'proof-only-secret-bookedproof-organiser-read-23-october-2026'
 const ORIGIN = 'https://www.eventlinqs.com.au'
@@ -194,6 +201,11 @@ async function seed() {
       }])
       await must(`refund ${o.key}`, db.from('orders').update({ status: 'refunded' }).eq('id', id).eq('status', 'confirmed'))
     }
+    const { data: record } = await db.from('marketing_attribution').select('order_id').eq('order_id', id).maybeSingle()
+    if (!record) {
+      const stored = await resolveAndStoreOrder(id)
+      if (!stored) throw new Error(`order ${o.key} could not be given its attribution record`)
+    }
   }
 }
 
@@ -217,6 +229,12 @@ async function read(since) {
 }
 
 await seed()
+
+const recorded = await must(
+  'the fixture orders\' attribution records',
+  db.from('marketing_attribution').select('order_id').in('order_id', ORDERS.map((o) => oid(o.key))),
+)
+check('every fixture order carries its attribution record, as every order must', recorded.length === ORDERS.length, `${recorded.length} of ${ORDERS.length}`)
 
 // THE RED: B's address as an unescaped LIKE pattern also matches the decoy.
 const loose = await must(
