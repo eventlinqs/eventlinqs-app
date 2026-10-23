@@ -307,6 +307,29 @@ export const BASELINE = [
     why: 'it opens /venues/<handle>, and resolveVenueProfile derives that page through PUBLIC_EVENT_MATCH, so an unlisted fixture leaves that page with nothing to resolve',
   },
   /*
+   * ADDED 21 October 2026, WI1 (free walk-in events). WI1-ITEM.md judges the
+   * build by "the browse surfaces listing it", and every one of them (/events,
+   * the Free preset, the city, the category, the homepage) reads through
+   * PUBLIC_EVENT_MATCH, so an unlisted fixture is invisible to the thing under
+   * test. The Remind me capture and the guide's public read both refuse an
+   * event that is not public, for the same reason. The organisation is active
+   * because the event page reads it through the public client, so a pending
+   * one leaves no organiser band and no Follow button, which WI1 point 5
+   * counts. Only event A is public; B and C are unlisted. The drive's teardown
+   * asks the database whether its rows are gone rather than trusting its own
+   * deletes.
+   */
+  {
+    drive: 'wi1-walk-in-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'it proves a walk-in event is listed on the browse surfaces, all of which read through PUBLIC_EVENT_MATCH, and that Remind me stores a row, which the capture refuses for an event that is not public',
+  },
+  {
+    drive: 'wi1-walk-in-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'the event page reads its organiser through the public client, so a pending organisation renders no organiser band and no Follow button, and the follow the organiser numbers count could not be driven',
+  },
+  /*
    * The same two writes for WI1's design match (Lawal's change 2 of
    * 21 October 2026): the page drawn with locked design A's own content and
    * photographed beside the board. The guide is read through the policy that

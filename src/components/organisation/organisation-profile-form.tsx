@@ -29,6 +29,9 @@ interface Props {
   name: string
   description: string | null
   website: string | null
+  /** WI1. Shown in the organiser band of a free walk-in page (locked design A). */
+  instagramHandle?: string | null
+  shortName?: string | null
   email: string | null
   phone: string | null
   /** The public URL this profile renders at, shown so the edit feels connected. */
@@ -42,6 +45,8 @@ export function OrganisationProfileForm({
   name,
   description,
   website,
+  instagramHandle = null,
+  shortName = null,
   email,
   phone,
   publicHref,
@@ -119,6 +124,38 @@ export function OrganisationProfileForm({
             autoComplete="url"
             className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-900 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="org-profile-instagram" className="mb-1 block text-sm font-medium text-ink-600">
+              Instagram handle
+            </label>
+            <input
+              id="org-profile-instagram"
+              name="instagram_handle"
+              type="text"
+              defaultValue={instagramHandle ?? ''}
+              placeholder="yourhandle"
+              maxLength={64}
+              autoComplete="off"
+              className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-900 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+            />
+          </div>
+          <div>
+            <label htmlFor="org-profile-short-name" className="mb-1 block text-sm font-medium text-ink-600">
+              Short name (optional)
+            </label>
+            <input
+              id="org-profile-short-name"
+              name="short_name"
+              type="text"
+              defaultValue={shortName ?? ''}
+              placeholder="What people call you, for buttons"
+              maxLength={24}
+              className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-900 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

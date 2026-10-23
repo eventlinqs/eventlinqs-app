@@ -75,6 +75,8 @@ export const TRANSACTIONAL_PURPOSES: readonly string[] = [
   'auth_link',
   'event_change_notice',
   'waitlist_offer',
+  // WI1 Remind me: the two messages a person asked for about one free event.
+  'event_reminder_requested',
   'organiser_operations',
   'platform_operations',
 ]

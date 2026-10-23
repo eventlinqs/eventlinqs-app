@@ -267,6 +267,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/orders/[order_id]/confirmation', klass: 'never', why: 'transactional, and it carries a buyer name' },
   { route: '/organisers/signup', klass: 'never', why: 'authentication' },
   { route: '/queue/[slug]', klass: 'never', why: 'transactional, a waiting room' },
+  { route: '/remind/stop/[token]', klass: 'never', why: 'a one-time token, the stop link in a Remind me email' },
   { route: '/scan/[eventId]', klass: 'never', why: 'the door scanner, staff only' },
   { route: '/signup', klass: 'never', why: 'authentication' },
   { route: '/squad/[token]', klass: 'never', why: 'transactional, a bearer token' },
