@@ -62,6 +62,8 @@ export const ListingBlockSchema = z.object({
   }),
   event: z.object({
     title: text(140),
+    /** The event's address. Optional; derived from the title when absent. */
+    slug: z.string().regex(SLUG).max(60).nullable().default(null),
     summary: text(300),
     description: z.string().trim().max(5000).nullable().default(null),
     category_slug: z.string().regex(SLUG),
@@ -89,6 +91,8 @@ export type ListingBlock = z.infer<typeof ListingBlockSchema>
 export type DraftPlan = {
   block: ListingBlock
   guide: Guide
+  /** The event's address, given or derived from the title. */
+  slug: string
   startsAt: string
   endsAt: string
   citySlug: string
@@ -107,6 +111,8 @@ export function extractListingBlock(markdown: string): { ok: true; value: unknow
 }
 
 const PLACEHOLDER = /\bto confirm\b|\bTBC\b|\bTBA\b|coming soon|lorem ipsum|placeholder|\[[^\]]*\]/i
+/** The banned word in every form, the same pattern scripts/guards/no-banned-word-anywhere.mjs holds. */
+const BANNED_IN_ADDRESSES = /cultur(e|es|al|ally)/i
 
 /** Every line the page shows, labelled for a refusal. */
 function linesOf(block: ListingBlock, guide: Guide): Array<[string, string]> {
@@ -168,12 +174,24 @@ export function planWalkInDraft(input: unknown): { ok: true; plan: DraftPlan } |
     problems.push(`the data says city ${block.event.city_primary} but the venue resolves to ${citySlug}`)
   }
 
+  /*
+   * The word the constitution bans in every form reaches no address: "route
+   * names, file names, slugs, identifiers ... and data must all use community"
+   * (CLAUDE.md, Copy and banned content). An organiser's own NAME shows as
+   * written (ruling 2); its addresses do not carry the word.
+   */
+  const slug = block.event.slug ?? slugBase(block.event.title)
+  for (const [label, s] of [['the event address', slug], ['the organisation address', block.organisation.slug]] as const) {
+    if (BANNED_IN_ADDRESSES.test(s)) problems.push(`${label} "${s}" carries a word the constitution bans in every address; give the block its own slug`)
+  }
+
   if (problems.length > 0) return { ok: false, problems }
   return {
     ok: true,
     plan: {
       block,
       guide,
+      slug,
       startsAt,
       endsAt,
       citySlug: citySlug as string,
@@ -245,7 +263,7 @@ export async function writeWalkInDraft(
   const category = must('the category', await client.from('event_categories').select('id').eq('slug', block.event.category_slug).maybeSingle()) as { id: string } | null
   if (!category) return { ok: false, reason: `no category ${block.event.category_slug}` }
 
-  const base = slugBase(block.event.title)
+  const base = plan.slug
   const taken = must('the address', await client.from('events').select('id').eq('slug', base).maybeSingle())
   const slug = taken ? `${base}-${Math.random().toString(36).slice(2, 8)}` : base
   const eventId = crypto.randomUUID()

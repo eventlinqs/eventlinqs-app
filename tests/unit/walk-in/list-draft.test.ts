@@ -117,6 +117,25 @@ describe('the rest of the form\'s rules', () => {
   })
 })
 
+describe('addresses carry no banned word (CLAUDE.md, Copy and banned content)', () => {
+  // The organiser's own NAME shows as written (ruling 2); its addresses do not carry the word.
+  const realName = 'African Music and Cultural Festival 2026'
+
+  test('a title that would give a banned address is refused until the block names its own slug', () => {
+    const p = problems(block({ event: { title: realName } }))
+    expect(p.some((x) => /the event address "african-music-and-cultural-festival-2026" carries a word the constitution bans/.test(x))).toBe(true)
+    const ok = planWalkInDraft(block({ event: { title: realName, slug: 'amcf-2026' } }))
+    expect(ok.ok && ok.plan.slug).toBe('amcf-2026')
+    expect(ok.ok && ok.plan.block.event.title).toBe(realName)
+  })
+
+  test('an organisation slug carrying the word is refused too', () => {
+    const b = block()
+    b.organisation.slug = 'african-cultural-collective'
+    expect(problems(b).some((x) => /the organisation address/.test(x))).toBe(true)
+  })
+})
+
 describe('the data file', () => {
   test('exactly one fenced json block is read; none, two or broken json are refused', () => {
     expect(extractListingBlock('Sources...\n```json\n{"a": 1}\n```\nmore')).toEqual({ ok: true, value: { a: 1 } })
