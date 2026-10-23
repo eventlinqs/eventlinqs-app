@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import {
   assembleResponse,
+  isListing,
+  LISTING_VISIBILITIES,
   type ListingEventRow,
   type OrderRow,
   type ReadRows,
@@ -13,8 +15,9 @@ import { orderKey } from '@/lib/connect/bookedproof/signature'
  * contract's section 6 case: one organisation, one published listing, two of
  * the organiser's share links, three paid orders through one of them, one of
  * which is refunded. Around it sit the rows that must NOT leak or count: a
- * draft, a private event, the weekly digest's link, an order never paid, and
- * buyer data planted on the order rows to prove the composition never reads it.
+ * draft, a private event, an unlisted event, the weekly digest's link, an order
+ * never paid, and buyer data planted on the order rows to prove the composition
+ * never reads it.
  */
 
 const SECRET = 'test-secret-for-the-assembly-only-0000000000000000000000000000'
@@ -30,7 +33,7 @@ const event = (over: Partial<ListingEventRow>): ListingEventRow => ({
   status: 'published',
   start_date: '2026-11-07T09:00:00Z',
   published_at: '2026-10-01T00:00:00Z',
-  visibility: 'unlisted',
+  visibility: 'public',
   ...over,
 })
 
@@ -38,6 +41,8 @@ const LISTING = event({})
 const OLDER = event({ id: 'ev-0', slug: 'geelong-jazz-september', title: 'September session', status: 'completed', start_date: '2026-09-12T09:00:00Z' })
 const DRAFT = event({ id: 'ev-draft', slug: 'draft-night', status: 'draft', published_at: null })
 const PRIVATE = event({ id: 'ev-private', slug: 'members-night', visibility: 'private' })
+/** Published, shared by its own link, off every browse surface: never a listing (public only, 24 October 2026). */
+const UNLISTED = event({ id: 'ev-unlisted', slug: 'shared-by-link-night', title: 'Shared by link', visibility: 'unlisted' })
 
 const link = (id: string, code: string, channel: string, created_at = '2026-10-02T00:00:00Z'): ShareLinkRow => ({
   id,
@@ -78,7 +83,7 @@ function rows(over: Partial<ReadRows> = {}): ReadRows {
     organisationsByEmail: new Map([['organiser@example.com', [ORG]]]),
     listingBySlug: new Map([[LISTING.slug, LISTING], [OLDER.slug, OLDER]]),
     organisations: new Map([[ORG.id, ORG]]),
-    events: [OLDER, LISTING, DRAFT, PRIVATE],
+    events: [OLDER, LISTING, DRAFT, PRIVATE, UNLISTED],
     links: [IG, WA],
     conversions: [
       { link_id: IG.id, order_id: O1.id, occurred_at: O1.confirmed_at as string },
@@ -172,7 +177,7 @@ describe('the section 6 case', () => {
 })
 
 describe('which events are listings', () => {
-  test('published and not private, newest first; a draft and a private event never appear', () => {
+  test('published and public, newest first; a draft, a private and an unlisted event never appear', () => {
     const listings = listingOf(answer({}))
     expect(listings.map((l) => l.event_id)).toEqual([LISTING.id, OLDER.id])
     expect(listings[1]).toMatchObject({ status: 'completed', tickets_through_share_links: 0, orders: [], currency: 'AUD' })
@@ -182,6 +187,25 @@ describe('which events are listings', () => {
     const odd = event({ id: 'ev-odd', slug: 'members-only', visibility: 'members' })
     const listings = listingOf(answer({ rows: rows({ events: [LISTING, odd] }) }))
     expect(listings.map((l) => l.event_id)).toEqual([LISTING.id])
+  })
+
+  /*
+   * PUBLIC ONLY (project manager, 24 October 2026, 07:05). The founder's ruling
+   * of 9 August holds unlisted as not publicly discoverable, and decision B's
+   * win is "a listing published": a read that told another system about an
+   * organiser's unlisted events would be wider than its purpose needs.
+   */
+  test('public only: an unlisted event is never a listing, by address or by its own page', () => {
+    expect(LISTING_VISIBILITIES).toEqual(['public'])
+    expect(isListing(UNLISTED)).toBe(false)
+    const body = answer({
+      pages: [{ page: `${ORIGIN}/events/${UNLISTED.slug}`, slug: UNLISTED.slug }],
+      rows: rows({ events: [UNLISTED], listingBySlug: new Map([[UNLISTED.slug, UNLISTED]]) }),
+    })
+    expect(body.organisers).toEqual([
+      { email: 'organiser@example.com', found: true, listed: false, listings: [] },
+      { page: `${ORIGIN}/events/${UNLISTED.slug}`, found: false },
+    ])
   })
 
   test('an organisation with no listing is found and not listed', () => {

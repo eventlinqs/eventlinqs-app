@@ -11,10 +11,22 @@
  * money-records rule keeps an event with orders from being deleted):
  *
  *   organisation  proof-fixture-bookedproof-read, contact address in MIXED CASE
- *   listing       published, unlisted, two of the organiser's links (instagram,
+ *   listing       published, PUBLIC, two of the organiser's links (instagram,
  *                 whatsapp) and the weekly digest's link
- *   older         a completed listing, no orders through any link
+ *   older         a completed PUBLIC listing, no orders through any link
  *   draft, private  never returned
+ *   unlisted      published and shared by its own link: never returned, by
+ *                 address or by its page (public only, project manager,
+ *                 24 October 2026, 07:05)
+ *
+ * NOTHING HERE IS EVER IN THE SITEMAP. A fixture must be invisible to discovery
+ * for its whole life (scripts/verify/lib/sitemap-footprint.mjs), and a public
+ * event is in the sitemap while its status is `published`. So the listing is
+ * `completed`, which is still a listing (published once, not a draft) and is
+ * off every discovery surface. The proof REFUSES TO RUN twice over: before it
+ * writes, if any fixture event it would write matches the sitemap's predicate,
+ * and after, if the database answers the sitemap's own questions about any
+ * fixture slug with anything but nothing.
  *   orders        O1 buyer A (who paid earlier elsewhere: not first), O2 buyer B
  *                 (first; a decoy whose address differs only where B's has an
  *                 underscore paid earlier and must NOT count), O3 buyer C then
@@ -34,6 +46,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'node:crypto'
 import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+import { SITEMAP_EVENT_MATCH, sitemapFootprint } from './lib/sitemap-footprint.mjs'
 
 // The repository's one preflight first (scripts/guards/no-unguarded-production-write.mjs),
 // then the TEST-only check below, which names the project this proof writes fixtures to.
@@ -89,12 +102,19 @@ const BUYER = {
 }
 
 const ORG = fid('org')
-const EV = { listing: fid('ev-listing'), older: fid('ev-older'), draft: fid('ev-draft'), private: fid('ev-private') }
+const EV = {
+  listing: fid('ev-listing'),
+  older: fid('ev-older'),
+  draft: fid('ev-draft'),
+  private: fid('ev-private'),
+  unlisted: fid('ev-unlisted'),
+}
 const SLUG = {
   listing: 'proof-fixture-bookedproof-read-listing',
   older: 'proof-fixture-bookedproof-read-older',
   draft: 'proof-fixture-bookedproof-read-draft',
   private: 'proof-fixture-bookedproof-read-private',
+  unlisted: 'proof-fixture-bookedproof-read-unlisted',
 }
 const TIER = { listing: fid('tier-listing'), older: fid('tier-older') }
 const LINK = { ig: fid('link-ig'), wa: fid('link-wa'), digest: fid('link-digest') }
@@ -128,7 +148,6 @@ async function seed() {
 
   const up = (table, rows) => must(`seed ${table}`, db.from(table).upsert(rows, { onConflict: 'id', ignoreDuplicates: true }))
 
-  await up('organisations', [{ id: ORG, owner_id: owner.id, name: 'Proof Fixture Bookedproof Read', slug: 'proof-fixture-bookedproof-read', email: CONTACT }])
   const event = (key, over) => ({
     id: EV[key],
     organisation_id: ORG,
@@ -138,16 +157,37 @@ async function seed() {
     start_date: '2026-12-05T09:00:00Z',
     end_date: '2026-12-05T13:00:00Z',
     status: 'published',
-    visibility: 'unlisted',
+    visibility: 'public',
     published_at: '2026-10-05T00:00:00Z',
     ...over,
   })
-  await up('events', [
-    event('listing', {}),
+  const events = [
+    event('listing', { status: 'completed' }),
     event('older', { start_date: '2026-10-10T09:00:00Z', end_date: '2026-10-10T13:00:00Z', status: 'completed', published_at: '2026-09-01T00:00:00Z' }),
     event('draft', { status: 'draft', published_at: null }),
     event('private', { visibility: 'private' }),
-  ])
+    event('unlisted', { visibility: 'unlisted' }),
+  ]
+  const inSitemap = events.filter((e) => Object.entries(SITEMAP_EVENT_MATCH).every(([k, v]) => e[k] === v))
+  if (inSitemap.length > 0) {
+    console.error(`REFUSED: ${inSitemap.map((e) => e.slug).join(', ')} would be in the sitemap (${JSON.stringify(SITEMAP_EVENT_MATCH)}); nothing was written`)
+    process.exit(2)
+  }
+
+  await up('organisations', [{ id: ORG, owner_id: owner.id, name: 'Proof Fixture Bookedproof Read', slug: 'proof-fixture-bookedproof-read', email: CONTACT }])
+  await up('events', events)
+  /*
+   * Rows seeded before 24 October are unlisted and published, and the upsert
+   * above leaves an existing row alone. So each fixture event is brought to its
+   * seeded visibility and status here, both in ONE write, so no fixture is ever
+   * public and published at the same moment.
+   */
+  for (const e of events) {
+    const current = await must(`fixture event ${e.slug}`, db.from('events').select('visibility, status').eq('id', e.id).single())
+    if (current.visibility === e.visibility && current.status === e.status) continue
+    await must(`bring ${e.slug} to its seeded shape`, db.from('events').update({ visibility: e.visibility, status: e.status }).eq('id', e.id))
+    console.log(`fixture: ${e.slug} was ${current.visibility}/${current.status}, now ${e.visibility}/${e.status}`)
+  }
   await up('ticket_tiers', [
     { id: TIER.listing, event_id: EV.listing, name: 'Proof fixture general admission', total_capacity: 500, price: 3000, currency: 'AUD' },
     { id: TIER.older, event_id: EV.older, name: 'Proof fixture general admission', total_capacity: 500, price: 3000, currency: 'AUD' },
@@ -226,6 +266,7 @@ async function read(since) {
     pages: [
       { page: `${ORIGIN}/events/${SLUG.listing}`, slug: SLUG.listing },
       { page: `${ORIGIN}/events/${SLUG.draft}`, slug: SLUG.draft },
+      { page: `${ORIGIN}/events/${SLUG.unlisted}`, slug: SLUG.unlisted },
     ],
     since,
   }
@@ -234,6 +275,13 @@ async function read(since) {
 }
 
 await seed()
+
+const footprint = await sitemapFootprint(db, { organisationSlugs: ['proof-fixture-bookedproof-read'], eventSlugs: Object.values(SLUG) })
+if (footprint.length > 0) {
+  console.error(`REFUSED: the fixtures are in the sitemap: ${footprint.join(', ')}. A fixture is invisible to discovery for its whole life (scripts/verify/lib/sitemap-footprint.mjs); nothing was read.`)
+  process.exit(2)
+}
+check("the fixtures put nothing in the sitemap, asked with the sitemap's own questions", true)
 
 const recorded = await must(
   'the fixture orders\' attribution records',
@@ -249,15 +297,16 @@ const loose = await must(
 check('RED: an unescaped underscore matches the decoy buyer on this database', loose.some((r) => r.id === oid('DECOY')), `${loose.length} rows`)
 
 const body = await read(null)
-const [org, nobody, page, draftPage] = body.organisers
-check('entries come one per address then one per page, in order', body.organisers.length === 4 && org.email === CONTACT.toLowerCase() && page.page?.endsWith(SLUG.listing))
+const [org, nobody, page, draftPage, unlistedPage] = body.organisers
+check('entries come one per address then one per page, in order', body.organisers.length === 5 && org.email === CONTACT.toLowerCase() && page.page?.endsWith(SLUG.listing))
 check('a mixed-case contact address is found by its lower-cased form', org.found === true && org.listed === true)
 check('an address that is no organiser carries nothing else', JSON.stringify(nobody) === JSON.stringify({ email: 'nobody-proof@eventlinqs.test', found: false }))
 check('a draft page is not found', JSON.stringify(draftPage) === JSON.stringify({ page: `${ORIGIN}/events/${SLUG.draft}`, found: false }))
+check('public only: an unlisted page is not found', JSON.stringify(unlistedPage) === JSON.stringify({ page: `${ORIGIN}/events/${SLUG.unlisted}`, found: false }))
 check("a page's entry names the organisation, never its address", page.found === true && page.organisation_name === 'Proof Fixture Bookedproof Read' && !('email' in page))
 
 const ids = (org.listings ?? []).map((l) => l.event_id)
-check('listings are the published, non-private events, newest first', JSON.stringify(ids) === JSON.stringify([EV.listing, EV.older]), ids.join(','))
+check('listings are the published, public events, newest first; never the draft, the private or the unlisted one', JSON.stringify(ids) === JSON.stringify([EV.listing, EV.older]), ids.join(','))
 const listing = org.listings?.[0] ?? {}
 const older = org.listings?.[1] ?? {}
 check("only the organiser's own links: instagram and whatsapp, never the digest", JSON.stringify(listing.share_links?.map((l) => l.code)) === JSON.stringify([CODE.ig, CODE.wa]))

@@ -15,9 +15,10 @@ import { orderKey } from './signature'
  * THE DEFINITIONS, each one the test pins:
  *
  *   a listing        an event of the organisation that has been published
- *                    (`published_at` set) and is not private. A draft, and an
- *                    event put back to draft (which clears `published_at`), is
- *                    never returned. Newest first by start, then by id.
+ *                    (`published_at` set) and is PUBLIC. A draft, an event put
+ *                    back to draft (which clears `published_at`), an unlisted
+ *                    and a private event are never returned. Newest first by
+ *                    start, then by id.
  *   its share links  the ORGANISER'S OWN links on that event: `share_links` with
  *                    no artist (an artist's link is the artist's sharing) on a
  *                    channel the organiser shares through. The weekly digest is
@@ -128,11 +129,14 @@ export type OrganiserReadResponse = {
 /**
  * The visibilities a listing may have, as an ALLOW-LIST (src/lib/events/visibility.ts:
  * "Written as an allow-list so a new enum member can never silently become
- * public"): public, and unlisted, which the organiser shares by its own link
- * (the contract's section 11). Private is never a listing, and neither is any
- * value a future migration adds until it is named here.
+ * public"): PUBLIC ONLY (project manager, 24 October 2026, 07:05; the
+ * contract's section 11 as amended). The founder's ruling of 9 August holds
+ * unlisted as not publicly discoverable, and a read that told another system
+ * about an organiser's unlisted events would be wider than its purpose needs.
+ * Unlisted and private are never listings, and neither is any value a future
+ * migration adds until it is named here. Widening this is the founder's word.
  */
-export const LISTING_VISIBILITIES: readonly string[] = ['public', 'unlisted']
+export const LISTING_VISIBILITIES: readonly string[] = ['public']
 
 /** The one rule for which events are listings. */
 export function isListing(event: Pick<ListingEventRow, 'published_at' | 'visibility' | 'status'>): boolean {
