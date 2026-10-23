@@ -178,6 +178,12 @@ describe('which events are listings', () => {
     expect(listings[1]).toMatchObject({ status: 'completed', tickets_through_share_links: 0, orders: [], currency: 'AUD' })
   })
 
+  test('visibility is an allow-list: a value no one has named is never a listing', () => {
+    const odd = event({ id: 'ev-odd', slug: 'members-only', visibility: 'members' })
+    const listings = listingOf(answer({ rows: rows({ events: [LISTING, odd] }) }))
+    expect(listings.map((l) => l.event_id)).toEqual([LISTING.id])
+  })
+
   test('an organisation with no listing is found and not listed', () => {
     const body = answer({ rows: rows({ events: [DRAFT, PRIVATE] }) })
     expect(body.organisers[0]).toEqual({ email: 'organiser@example.com', found: true, listed: false, listings: [] })

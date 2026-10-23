@@ -125,9 +125,18 @@ export type OrganiserReadResponse = {
   organisers: Array<EmailEntry | PageEntry>
 }
 
+/**
+ * The visibilities a listing may have, as an ALLOW-LIST (src/lib/events/visibility.ts:
+ * "Written as an allow-list so a new enum member can never silently become
+ * public"): public, and unlisted, which the organiser shares by its own link
+ * (the contract's section 11). Private is never a listing, and neither is any
+ * value a future migration adds until it is named here.
+ */
+export const LISTING_VISIBILITIES: readonly string[] = ['public', 'unlisted']
+
 /** The one rule for which events are listings. */
 export function isListing(event: Pick<ListingEventRow, 'published_at' | 'visibility' | 'status'>): boolean {
-  return event.published_at !== null && event.visibility !== 'private' && event.status !== 'draft'
+  return event.published_at !== null && LISTING_VISIBILITIES.includes(event.visibility) && event.status !== 'draft'
 }
 
 export const isReversed = (status: string) => (REVERSED_STATUSES as readonly string[]).includes(status)
