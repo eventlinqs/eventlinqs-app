@@ -3850,8 +3850,29 @@ const ROOT = join(HERE, '..', '..')
  * 22 October 2026, 18:50).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 569
-const MIN_TESTS = 7727
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-10-22, WI1 SLICE 2 (the walk-in event page and Remind me):
+ * 569/7727 -> 572/7754.
+ * ---------------------------------------------------------------------------
+ *
+ * THIS SLICE ADDS three test files and no case to any other:
+ *
+ *   tests/component/walk-in-one-bar-at-the-foot.test.tsx    +1 file, +3
+ *   tests/component/walk-in-page-words.test.tsx             +1 file, +8
+ *   tests/unit/walk-in/remind-me-request.test.ts            +1 file, +16
+ *
+ * MEASURED: 571 files, 7739 tests, 0 failed, 0 skipped
+ * (scripts/guards/test-count-canary.mjs on this slice's own tree, a detached
+ * worktree at the staged index, 22 October 2026).
+ *
+ * THE CHECKOUT GATE FIXTURE (+1 file, +15) joined slice 1 after that measure,
+ * so this floor is that measure plus its 1 file and 15 tests, COMPUTED: slice 2's
+ * own push gate measures it.
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 572
+const MIN_TESTS = 7754
 
 
 /**

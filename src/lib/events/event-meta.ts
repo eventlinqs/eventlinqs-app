@@ -20,6 +20,8 @@ export function buildEventMetaDescription(input: {
   venueName?: string | null
   dateLabel?: string | null
   categoryName?: string | null
+  /** WI1. A walk-in event's snippet names free entry, never a ticket. */
+  walkIn?: boolean
 }): string {
   // A search snippet is plain text. HTML tags were already stripped here;
   // MARKDOWN was not, so an organiser who bolded their name put asterisks in
@@ -41,5 +43,6 @@ export function buildEventMetaDescription(input: {
       : ''
   const when = input.dateLabel ? ` on ${input.dateLabel}` : ''
   const lead = input.categoryName ? `${input.categoryName}. ` : ''
+  if (input.walkIn) return `${lead}Free entry to ${input.title}${where}${when}. No ticket needed.`.slice(0, 155)
   return `${lead}Get tickets to ${input.title}${where}${when}. All-in pricing, no surprise fees.`.slice(0, 155)
 }

@@ -105,7 +105,7 @@ export type FullEvent = Event & {
  * event page. See docs/security/AUDIT-2026-08-08.md.
  */
 export const EVENT_PAGE_SELECT =
-  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)'
+  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website, instagram_handle, short_name), category:event_categories(*), event_addons(*)'
 
 /**
  * The event at this slug as this viewer may see it, or null when there is none.
