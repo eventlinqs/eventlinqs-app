@@ -37,7 +37,10 @@ export const dynamic = 'force-dynamic'
  */
 const BodySchema = z.object({
   eventId: z.string().uuid(),
-  action: z.enum(['page_view', 'sold_out_view']),
+  // WI1 adds calendar_add and share: both happen in the browser and nowhere
+  // else, carry no address, and are deduped exactly as a view is. follow is NOT
+  // here: it is written by the follow action, which saw the follow happen.
+  action: z.enum(['page_view', 'sold_out_view', 'calendar_add', 'share']),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

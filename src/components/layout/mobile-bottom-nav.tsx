@@ -104,6 +104,10 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary"
+      // A page that brings its own bar to the foot of the window hides this one
+      // in CSS (globals.css, "ONE BAR AT THE FOOT"). WI1's walk-in page is the
+      // first: locked design A draws its bar alone there.
+      data-bottom-nav=""
       className={[
         'fixed inset-x-0 bottom-0 z-40 md:hidden',
         'border-t border-white/10 bg-[var(--color-navy-950)]',

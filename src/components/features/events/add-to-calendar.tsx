@@ -38,7 +38,17 @@ import {
  * generated file to a download, so it is used, and the object URL is revoked
  * after the click rather than leaked for the life of the page.
  */
-export function AddToCalendar({ event }: { event: CalendarEvent }) {
+export function AddToCalendar({
+  event,
+  appearance = 'default',
+  onChosen,
+}: {
+  event: CalendarEvent
+  /** WI1. 'pill' is the walk-in panel's button, drawn to locked design A. */
+  appearance?: 'default' | 'pill'
+  /** WI1. Told which calendar was chosen, so the add counts on the event. */
+  onChosen?: (kind: 'google' | 'ics') => void
+}) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -71,20 +81,30 @@ export function AddToCalendar({ event }: { event: CalendarEvent }) {
     // in some browsers before it has read the blob.
     setTimeout(() => URL.revokeObjectURL(url), 0)
     setOpen(false)
+    onChosen?.('ics')
   }
 
+  const buttonClass =
+    appearance === 'pill'
+      ? 'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-[1.5px] border-ink-900 bg-white px-4 text-sm font-bold text-ink-900 transition-colors hover:bg-[var(--color-ink-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
+      : 'inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
+
   return (
-    <div ref={wrap} className="relative inline-block">
+    <div ref={wrap} className={appearance === 'pill' ? 'relative block' : 'relative inline-block'}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+        className={buttonClass}
       >
-        <CalendarPlus className="h-4 w-4 text-[var(--brand-accent-strong)]" aria-hidden />
+        {appearance === 'pill' ? null : (
+          <CalendarPlus className="h-4 w-4 text-[var(--brand-accent-strong)]" aria-hidden />
+        )}
         Add to calendar
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+        {appearance === 'pill' ? null : (
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+        )}
       </button>
 
       {open && (
@@ -97,7 +117,10 @@ export function AddToCalendar({ event }: { event: CalendarEvent }) {
             href={buildGoogleCalendarUrl(event)}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              onChosen?.('google')
+            }}
             className="flex min-h-11 items-center px-4 py-3 text-sm text-ink-900 transition-colors hover:bg-ink-50"
           >
             Google Calendar
