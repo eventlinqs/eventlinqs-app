@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { computePendingMigrations, judgeEnvParity, judgeStoredLogin, productionEnvFromListing, vercelCliAuthCandidates } from '../../../scripts/ops/production-parity.mjs'
+import { computePendingMigrations, judgeEnvParity, judgeStoredLogin, productionEnvFromListing, securityPostConditions, vercelCliAuthCandidates } from '../../../scripts/ops/production-parity.mjs'
 
 /**
  * PRODUCTION PARITY (close-out C16.2): the two questions a production build
@@ -97,5 +97,39 @@ describe('the Vercel CLI login as the local token', () => {
     expect(judgeStoredLogin({ token: 'abc', expiresAt: now + 59 }, now).state).toBe('expired')
     expect(judgeStoredLogin({ token: 'abc', expiresAt: now + 3600 }, now)).toEqual({ state: 'usable', token: 'abc' })
     expect(judgeStoredLogin({ token: 'abc' }, now)).toEqual({ state: 'usable', token: 'abc' })
+  })
+})
+
+/**
+ * THE GRANTS HALF (25 October 2026): production held grants that applied migrations had taken away. Only a
+ * SECURITY migration's own check blocks are re-run, never a block that writes, and only for what the database
+ * has applied.
+ */
+describe('securityPostConditions', () => {
+  const files: Record<string, string> = {
+    '20261023000006_security_grants_hotfix.sql':
+      "do $hotfix_tables$ begin execute 'revoke select on public.venues from anon'; end $hotfix_tables$;\n" +
+      "revoke execute on function public.confirm_order(uuid) from anon;\n" +
+      "do $hotfix_check$ begin if has_table_privilege('anon', 'public.venues', 'SELECT') then raise exception 'x'; end if; end $hotfix_check$;\n",
+    '20261023000007_security_an_owner_cannot_write_their_money_columns.sql':
+      "do $owner_writes_check$ begin null; end $owner_writes_check$;\n",
+    '20261023000010_city_guide_listings.sql': "do $post$ begin null; end $post$;\ndo $listing_check$ begin null; end $listing_check$;\n",
+    'README.md': 'not a migration',
+  }
+  const read = (f: string) => files[f]
+
+  test('re-runs only the check blocks of SECURITY migrations the database has applied', () => {
+    const got = securityPostConditions(Object.keys(files), read, new Set(['20261023000006', '20261023000010']))
+    expect(got.map((c: { name: string }) => c.name)).toEqual(['hotfix_check'])
+    expect(got[0].version).toBe('20261023000006')
+    expect(got[0].sql.startsWith('do $hotfix_check$')).toBe(true)
+    expect(got[0].sql.endsWith('$hotfix_check$;')).toBe(true)
+  })
+
+  test('never takes a block that writes, a statement outside a check block, or a migration not yet applied', () => {
+    const got = securityPostConditions(Object.keys(files), read, new Set(['20261023000006', '20261023000007']))
+    expect(got.map((c: { name: string }) => c.name)).toEqual(['hotfix_check', 'owner_writes_check'])
+    for (const c of got) expect(c.sql).not.toMatch(/revoke|grant /i)
+    expect(securityPostConditions(Object.keys(files), read, new Set())).toEqual([])
   })
 })
