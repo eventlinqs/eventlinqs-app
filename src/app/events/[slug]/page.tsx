@@ -52,7 +52,8 @@ import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { describeRefundPolicy, refundPolicyBadge, policyFromEvent } from '@/lib/refunds/policy'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
-import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
+import { TicketsEnded, TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
+import { eventPageState } from '@/lib/events/event-state'
 import {
   ORG_SALE_FIELDS_SELECT,
   eventIsPaid,
@@ -489,14 +490,10 @@ export default async function EventDetailPage({ params }: Props) {
   //   with a state banner above the hero (Batch 8.1).
   // - private / draft / scheduled: still hard-block - those events
   //   shouldn't surface to anyone without explicit access.
-  const eventBannerState =
-    event.status === 'cancelled' ? 'cancelled' as const :
-    event.status === 'postponed' ? 'postponed' as const :
-    event.status === 'completed' ? 'past' as const :
-    // Only a ticket holder ever reaches an archived event's page
-    // (readEventForRoute, branch 3).
-    event.status === 'archived' ? 'archived' as const :
-    null
+  // Past by its end as well as by status (src/lib/events/event-state.ts): an
+  // event whose end has passed never offers tickets, whatever its status says.
+  const now = new Date()
+  const eventBannerState = eventPageState(event, now)
 
   if (event.visibility === 'private') {
     return (
@@ -533,7 +530,6 @@ export default async function EventDetailPage({ params }: Props) {
    */
   if (isWalkIn(event)) return <WalkInEventPage event={event} />
 
-  const now = new Date()
   const isTicketingSuspended =
     event.status === 'paused' || event.status === 'postponed' || event.status === 'archived'
   // Embedded joins return in arbitrary order; the organiser's tier order
@@ -1587,7 +1583,15 @@ export default async function EventDetailPage({ params }: Props) {
                 id="tickets"
                 className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {externallyTicketed && event.external_ticket_url ? (
+                {eventBannerState === 'past' ? (
+                  /*
+                   * An event that is over offers nothing to buy, here or
+                   * elsewhere: no tier picker, no seats, no outbound ticket link.
+                   * The database refuses a reservation for it as well
+                   * (create_reservation, 20261023000001).
+                   */
+                  <TicketsEnded />
+                ) : externallyTicketed && event.external_ticket_url ? (
                   /*
                    * FIRST branch, ahead of seating, sold-out and everything
                    * else. An externally ticketed event has no inventory here, so
