@@ -10521,6 +10521,50 @@ const DRILLS = [
     find: 'grant select on public.event_guides to anon, authenticated;',
     replace: 'grant select on public.event_guides to anon, authenticated;\ncreate table if not exists private.drill_elsewhere (id int);',
   },
+
+  /*
+   * reservation-functions-carry-the-end-gate (Window 4, 23 October 2026, the
+   * project manager's 02:05 order). Each function loses its gate in turn, then
+   * a definition shaped like lane/b-growth's 20260921000050 lands late, then the
+   * dated history is shown not to be judged. Each anchor names its function by
+   * the comment that follows its gate, because the gate's own words are the
+   * same in both.
+   */
+  {
+    name: 'create_reservation sells to an event that has ended again',
+    guard: `${GUARDS}/reservation-functions-carry-the-end-gate.mjs`,
+    file: 'supabase/migrations/20261023000001_an_ended_event_sells_nothing.sql',
+    find: "'This event has ended.');\n  END IF;\n\n  -- Cancel any existing active reservations",
+    replace: "'Sales are closed.');\n  END IF;\n\n  -- Cancel any existing active reservations",
+    expect: 'defines create_reservation without refusing an event that has ended',
+  },
+  {
+    name: 'create_seat_reservation sells to an event that has ended again',
+    guard: `${GUARDS}/reservation-functions-carry-the-end-gate.mjs`,
+    file: 'supabase/migrations/20261023000001_an_ended_event_sells_nothing.sql',
+    find: "'This event has ended.');\n  END IF;\n\n  -- The reservations_has_owner CHECK",
+    replace: "'Sales are closed.');\n  END IF;\n\n  -- The reservations_has_owner CHECK",
+    expect: 'defines create_seat_reservation without refusing an event that has ended',
+  },
+  {
+    // The lane/b-growth shape: a later file makes its own create_reservation
+    // with no end gate. Planted at the end of the newest file, which is where a
+    // late definition would be read.
+    name: 'a later migration makes its own create_reservation without the gate',
+    guard: `${GUARDS}/reservation-functions-carry-the-end-gate.mjs`,
+    file: 'supabase/migrations/20261023000001_an_ended_event_sells_nothing.sql',
+    find: '-- POST-CONDITION: both functions carry both gates.',
+    replace: "-- POST-CONDITION: both functions carry both gates.\nCREATE OR REPLACE FUNCTION public.create_reservation(p_event_id UUID, p_user_id UUID, p_session_id TEXT, p_items JSONB, p_ttl_minutes INT, p_group_hold BOOLEAN)\nRETURNS JSONB LANGUAGE plpgsql AS $drill$ BEGIN RETURN jsonb_build_object('success', false, 'error', 'This event is not on sale.'); END; $drill$;",
+    expect: 'defines create_reservation (definition 2 of 2) without refusing an event that has ended',
+  },
+  {
+    name: 'NO FALSE POSITIVE: end gate, the dated history is not judged',
+    guard: `${GUARDS}/reservation-functions-carry-the-end-gate.mjs`,
+    expectPass: 'found 0 definitions without the end gate',
+    file: 'supabase/migrations/20260906000002_event_lifecycle_archive_delete.sql',
+    find: "RETURN jsonb_build_object('success', false, 'error', 'No items in reservation');",
+    replace: "RETURN jsonb_build_object('success', false, 'error', 'No items in reservation'); -- drill: history is not judged",
+  },
   /*
    * walk-in-page-sells-nothing (WI1, 21 October 2026). Five ways a free walk-in
    * page comes to sell, or to say it sells: the ticket selector imported into

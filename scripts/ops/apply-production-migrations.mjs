@@ -72,6 +72,21 @@ function fail(line) {
   console.error(`${TAG} ${line}`)
 }
 
+/**
+ * The Vercel link proof 1 needs. scripts/ops/verify-production-schema.mjs reads
+ * production's store through `vercel env pull`, which answers "Your codebase
+ * isn't linked to a project on Vercel" in a tree without this file. On
+ * 23 October 2026 the past event fix's migration was applied from a pinned
+ * worktree that had none: the push succeeded, proof 1 could not look, and the
+ * run ended FAIL with production in fact correct. So the run refuses before it
+ * links or pushes anything, while refusing still costs nothing.
+ */
+export const VERCEL_LINK_FILE = join('.vercel', 'project.json')
+
+export function proofOneCanLook(root = ROOT) {
+  return existsSync(join(root, VERCEL_LINK_FILE))
+}
+
 /** The project the CLI is linked to right now, read back from disk; null when nothing is linked. */
 export function readLinkedRef(root = ROOT) {
   const file = join(root, LINKED_REF_FILE)
@@ -206,6 +221,12 @@ async function main() {
     fail('  scripts/ops/with-supabase-token.ps1 without printing it.')
     return 1
   }
+  if (!proofOneCanLook()) {
+    fail(`this tree has no ${VERCEL_LINK_FILE}, so proof 1 (scripts/ops/verify-production-schema.mjs) could not read`)
+    fail('  production after the push. Nothing linked, nothing pushed. Copy the link from a linked tree into this one,')
+    fail(`  then run this again: mkdir .vercel; copy <a linked tree>\\${VERCEL_LINK_FILE} .vercel\\`)
+    return 1
+  }
 
   say(`target ${PRODUCTION_PROJECT_REF} (PRODUCTION). The CLI is linked to ${readLinkedRef() ?? '(nothing)'} now.`)
   const listed = await fetchAppliedMigrations(token, PRODUCTION_PROJECT_REF)
@@ -274,7 +295,7 @@ async function main() {
   const appliedNow = after.ok ? pending.filter((p) => after.applied.has(p.version)).length : 0
   declareWork('apply-production-migrations', {
     did: { 'migration applied on production': appliedNow },
-    found: { 'migration still pending after the push': stillPending ? stillPending.length : pending.length, 'schema object the code names still absent': verified ? 0 : 1 },
+    found: { 'migration still pending after the push': stillPending ? stillPending.length : pending.length, 'schema proof not passed (an object absent, or proof 1 could not look; its own lines above say which)': verified ? 0 : 1 },
     exitOnZero: false,
   })
 
