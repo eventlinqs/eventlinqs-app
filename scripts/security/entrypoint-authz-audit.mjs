@@ -87,6 +87,15 @@ const AUTH = [
   { re: /getOrganiserEvent\s*\(/, how: 'organiser event gate' },
   { re: /requireAdmin|assertAdmin|requireCapability/, how: 'admin capability' },
   { re: /verifyHealthToken|HEALTH_CHECK_TOKEN/, how: 'health token' },
+  // E51, 23 October 2026, READ in src/lib/connect/bookedproof/signature.ts, and
+  // declared the way the Stripe webhook's signature is above: an HMAC-SHA256 of
+  // "<timestamp>.<raw body>" under BOOKEDPROOF_CONNECTOR_SECRET, 300 seconds either
+  // way, compared in constant time, verified before the body is parsed. In
+  // src/app/api/connect/bookedproof/organisers/route.ts, line 38 refuses 503 while
+  // the secret is unset (fail closed) and line 51 refuses 401 an unsigned, stale
+  // or wrongly signed request. Named for the one function, so no other signature
+  // check is credited by its name.
+  { re: /verifyBookedproofSignature\s*\(/, how: 'Bookedproof request signature (HMAC-SHA256, 300 s, constant time)' },
 ]
 
 /**
@@ -107,6 +116,10 @@ const AUTHZ = [
   { re: /requireCapability|hasCapability/, how: 'capability check' },
   { re: /getAdminSession\s*\(/, how: 'admin-only surface' },
   { re: /requireCronAuth\s*\(/, how: 'machine caller, no user data scoping needed' },
+  // E51 (read 23 October 2026): the signed partner is answered about the
+  // addresses it asks, through the service role in src/lib/connect/bookedproof/read.ts,
+  // with counts only and nothing about any buyer; no user's own data is scoped.
+  { re: /verifyBookedproofSignature\s*\(/, how: 'machine caller (signed partner read), no user data scoping needed' },
   // Cross-module gates, each READ and verified during the 2026-08-09 sweep. A
   // call to one counts as an ownership check because the function itself performs
   // one and fails closed. Adding to this list means "I read it", not "the name
