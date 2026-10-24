@@ -277,7 +277,63 @@ async function checkAi(): Promise<HealthResult> {
   if (!redis) {
     return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key AUTHENTICATED against the Anthropic API; cost-guard store (Redis) not configured here so the monthly budget guard is fail-open' }
   }
-  return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key AUTHENTICATED against the Anthropic API and cost-guard store reachable' }
+  // Configured, not proved: whether the store answers is the shared store's own check below, which pings it.
+  return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key AUTHENTICATED against the Anthropic API; cost-guard store configured (whether it answers is the shared store check)' }
+}
+
+/*
+ * (g2) THE SHARED STORE (Upstash), PINGED, NOT READ OFF ITS CONFIGURATION.
+ *
+ * Added 24 October 2026. Upstash suspended the account for a failed payment, and
+ * the database had already been hibernated for eight weeks of no use, and nothing
+ * here asked it: the AI check above said "cost-guard store reachable" after only
+ * asking whether a client was configured. While it does not answer, every rate
+ * limit falls to a per-instance window (src/lib/redis/rate-limit.ts), the AI
+ * budget refuses, Launch Kit drafts cannot be saved, and the sentinel's own
+ * alert dedupe needs it. Missing configuration is critical in production, where
+ * every failClosed limit (checkout, sign in) then refuses everyone.
+ */
+export const REDIS_PING_TIMEOUT_MS = 5000
+
+export async function checkRedis(): Promise<HealthResult> {
+  const label = 'Shared store (Upstash)'
+  const redis = getRedisClient()
+  if (!redis) {
+    if (process.env.NODE_ENV !== 'production') {
+      return { id: 'redis', label, severity: 'warning', ok: true, detail: 'not configured here (local or test): every limit allows, by design' }
+    }
+    return {
+      id: 'redis', label, severity: 'critical', ok: false,
+      detail: 'not configured on this deployment: every failClosed limit refuses (checkout, sign in, signup)',
+      probableCause: 'UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is not set in the serving deployment',
+      action: 'Set both in Vercel for Production, redeploy, then re-run this check.',
+    }
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const answer = await Promise.race([
+      redis.ping(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`no answer within ${REDIS_PING_TIMEOUT_MS} ms`)), REDIS_PING_TIMEOUT_MS)
+      }),
+    ])
+    if (answer === 'PONG') return { id: 'redis', label, severity: 'critical', ok: true, detail: 'answered PONG' }
+    return {
+      id: 'redis', label, severity: 'critical', ok: false,
+      detail: `answered ${JSON.stringify(String(answer).slice(0, 80))}, not PONG`,
+      probableCause: 'the store answered something other than a ping reply',
+      action: 'Open the Upstash console for the database, then re-run this check.',
+    }
+  } catch (err) {
+    return {
+      id: 'redis', label, severity: 'critical', ok: false,
+      detail: `could not reach it: ${String(err).slice(0, 160)}`,
+      probableCause: 'the Upstash account is suspended (a failed payment) or the database is hibernated or deleted',
+      action: 'Upstash console: Redis, the database, restore it (or settle the account), then re-run this check.',
+    }
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 // (h) PUSH notification configuration.
@@ -682,7 +738,7 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
 /** Re-exported above; aliased here so this module's own uses read naturally. */
 void rollUp
 
-export const CHECK_IDS = ['payment', 'connect_health', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
+export const CHECK_IDS = ['payment', 'connect_health', 'database', 'email', 'storage', 'maps', 'ai', 'redis', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -702,6 +758,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('storage', () => checkStorage()),
     timed('maps', () => checkMaps()),
     timed('ai', () => checkAi()),
+    timed('redis', () => checkRedis()),
     timed('push', () => checkPush()),
     timed('pages', () => checkPrimaryPages(origin)),
     timed('ssl', () => checkSslDomain(origin)),

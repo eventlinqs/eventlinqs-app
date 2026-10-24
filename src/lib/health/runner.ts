@@ -37,6 +37,26 @@ async function dedupe(results: HealthResult[]): Promise<{ toAlert: HealthResult[
   if (!redis) {
     return { toAlert: failingCritical, recovered: [] }
   }
+  try {
+    return await dedupeWith(redis, results, failingCritical)
+  } catch (err) {
+    /*
+     * FAIL OPEN ON A STORE ERROR TOO, as the comment above has always promised.
+     * Until 24 October 2026 only a MISSING store was handled: a store that was
+     * configured but not answering threw out of here, routeAlerts threw, the
+     * sentinel logged "alert routing failed", and no alert went out, including
+     * the one about the store itself. A duplicate email beats a silent outage.
+     */
+    console.error('[health] the dedupe store did not answer; alerting on every failing critical check:', err)
+    return { toAlert: failingCritical, recovered: [] }
+  }
+}
+
+async function dedupeWith(
+  redis: NonNullable<ReturnType<typeof getRedisClient>>,
+  results: HealthResult[],
+  failingCritical: HealthResult[],
+): Promise<{ toAlert: HealthResult[]; recovered: string[] }> {
   const toAlert: HealthResult[] = []
   for (const r of failingCritical) {
     const key = `${DEDUPE_PREFIX}${r.id}`
