@@ -35,6 +35,19 @@
  *      developer machine without one the environment half SKIPS LOUDLY and the
  *      required CI job carries it, which is recorded, not hidden.
  *
+ *   3. GRANTS PARITY (25 October 2026, window 4, ruled by the project manager at
+ *      05:30). On 25 October production was found holding table level select on
+ *      organisations, venues, seats and event_artists, and EXECUTE on definer
+ *      functions meant for the service role, AFTER migrations recorded as applied
+ *      had taken them away: something outside the migrations had granted them
+ *      back, and nothing could see it. Every SECURITY migration
+ *      (supabase/migrations/*_security_*.sql) ends with a block that checks its own
+ *      grants (do $<name>_check$ ... $<name>_check$;). For each one production has
+ *      applied, that block, and only that block, is run again against production
+ *      with read_only true (it reads privileges and raises; it writes nothing). A
+ *      grant that has come back raises its post-condition, and parity FAILS naming
+ *      the file and what drifted.
+ *
  * NEVER PRINTS A VALUE. A name, a state, a length and an 8-character fingerprint
  * at most, the same discipline as every other env lock in this repository.
  *
@@ -61,7 +74,9 @@ const ROOT = join(HERE, '..', '..')
 const TAG = '[production-parity]'
 
 /** What this run did and found, for the claim contract (scripts/lib/work-report.mjs). */
-const tally = { migrations: 0, pending: 0, records: 0, faults: 0, envSkipped: null }
+const tally = { migrations: 0, pending: 0, records: 0, faults: 0, envSkipped: null, grantChecks: 0, grantFaults: 0 }
+/** What production has applied, read once by the schema half and reused by the grants half. */
+let appliedOnProduction = null
 
 export const PRODUCTION_PROJECT_REF = 'gndnldyfudbytbboxesk'
 export const MIGRATIONS_DIR = join(ROOT, 'supabase', 'migrations')
@@ -73,6 +88,27 @@ export function computePendingMigrations(repoFiles, appliedVersions) {
     .sort()
     .map((file) => ({ file, version: (file.match(/^(\d+)/) || [])[1] || null }))
     .filter((m) => m.version && !appliedVersions.has(m.version))
+}
+
+/**
+ * The grant checks to run against a database: from every SECURITY migration
+ * (`*_security_*.sql`) the database has applied, each block named `*_check`, and
+ * no other block, because the others write. Pure: the caller reads the files.
+ *
+ * @param {string[]} files       the migration file names
+ * @param {(file: string) => string} read  the text of one file
+ * @param {Set<string>} applied  the versions the database has applied
+ */
+export function securityPostConditions(files, read, applied) {
+  const out = []
+  for (const file of [...files].sort()) {
+    const version = (file.match(/^(\d+)_/) || [])[1]
+    if (!version || !/_security_/.test(file) || !file.endsWith('.sql') || !applied.has(version)) continue
+    for (const m of read(file).matchAll(/do\s+\$(\w+_check)\$[\s\S]*?\$\1\$\s*;/gi)) {
+      out.push({ file, version, name: m[1], sql: m[0] })
+    }
+  }
+  return out
 }
 
 /**
@@ -176,6 +212,7 @@ async function schemaParity() {
     return false
   }
   const { applied } = listed
+  appliedOnProduction = applied
   const files = existsSync(MIGRATIONS_DIR) ? readdirSync(MIGRATIONS_DIR) : []
   const pending = computePendingMigrations(files, applied)
   tally.migrations = files.filter((f) => f.endsWith('.sql')).length
@@ -193,6 +230,51 @@ async function schemaParity() {
   fail('  (scripts/ops/apply-production-migrations.mjs; add `-- --dry-run` to list only).')
   fail('  Until then this tree cannot reach production, so it does not reach main.')
   return false
+}
+
+async function grantsParity() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN
+  const project = process.env.SUPABASE_PROJECT_ID || PRODUCTION_PROJECT_REF
+  if (!token || !appliedOnProduction) {
+    fail('FAIL grants: what production has applied could not be listed (see the schema half), so its grants cannot be checked.')
+    return false
+  }
+  const files = existsSync(MIGRATIONS_DIR) ? readdirSync(MIGRATIONS_DIR) : []
+  const checks = securityPostConditions(files, (f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'), appliedOnProduction)
+  tally.grantChecks = checks.length
+  let ok = true
+  for (const c of checks) {
+    let res
+    let text
+    try {
+      res = await fetch(`https://api.supabase.com/v1/projects/${project}/database/query`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: c.sql, read_only: true }),
+      })
+      text = await res.text()
+    } catch (err) {
+      fail(`FAIL grants: could not reach the Supabase Management API for ${c.file} (${err.message}).`)
+      ok = false
+      continue
+    }
+    if (res.ok) continue
+    ok = false
+    tally.grantFaults += 1
+    let message = text
+    try {
+      message = JSON.parse(text).message ?? text
+    } catch {
+      // not JSON: shown as it came
+    }
+    const drifted = /post-condition failed/i.test(message)
+    fail(`FAIL grants: ${c.file} (${c.name}) ${drifted ? 'no longer holds on production' : `could not be checked (HTTP ${res.status})`}:`)
+    fail(`    ${message.split('\n')[0].slice(0, 600)}`)
+  }
+  say(`grants: ${checks.length} SECURITY post-condition(s) re-run against ${project}, read only, ${tally.grantFaults} drifted`)
+  if (ok) say('grants: PASS - every SECURITY migration production has applied still holds there')
+  else fail('  A grant production should not hold has come back, or could not be read. Restore it with the migration that set it, never by editing that file.')
+  return ok
 }
 
 function vercelIds() {
@@ -277,17 +359,25 @@ async function envParity() {
 const invokedDirectly = process.argv[1] && /production-parity\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
 if (invokedDirectly) {
   const schemaOk = await schemaParity()
+  const grantsOk = await grantsParity()
   const envOk = await envParity()
   declareWork('production-parity', {
-    did: { 'migration compared against production': tally.migrations, 'production store record judged': tally.records },
-    found: { 'migration pending on production': tally.pending, 'production store fault': tally.faults },
-    zeroIsFine: tally.envSkipped ? { 'production store record judged': tally.envSkipped } : {},
+    did: {
+      'migration compared against production': tally.migrations,
+      'production store record judged': tally.records,
+      'SECURITY post-condition re-run on production': tally.grantChecks,
+    },
+    found: { 'migration pending on production': tally.pending, 'production store fault': tally.faults, 'SECURITY grant drifted': tally.grantFaults },
+    zeroIsFine: {
+      ...(tally.envSkipped ? { 'production store record judged': tally.envSkipped } : {}),
+      'SECURITY post-condition re-run on production': 'a tree that carries no SECURITY migration production has applied has none to re-run',
+    },
     exitOnZero: false,
   })
   // exitCode rather than process.exit: on Windows, exiting while a fetch
   // socket is still closing trips a libuv assertion and the code reads 127.
-  if (schemaOk && envOk) {
-    say('PASS - a production build of this tree would not be refused for a migration or an environment record')
+  if (schemaOk && grantsOk && envOk) {
+    say('PASS - a production build of this tree would not be refused for a migration or an environment record, and production holds every SECURITY grant this tree set')
     process.exitCode = 0
   } else {
     fail('FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy')
