@@ -165,9 +165,11 @@ async function makeFixtures() {
   }
   // THE BUDGET, PROVED ON THE SERVED ROUTE (the-daily-run-finishes-what-it-starts):
   // six weekly nights owe 48 dates, more than one run makes inside its 240 s budget
-  // at the several seconds a date this machine takes. The first call must stop
-  // inside the route's declared 300 s, BETWEEN writes (no draft left), and the
-  // next must finish what is left.
+  // at the several seconds a date this machine takes. EVERY call must stop inside
+  // the route's declared 300 s, BETWEEN writes (no draft left), and the calls that
+  // follow must finish what is left. How many calls that takes is not the claim:
+  // the 25 October drive measured about 100 s of reads before any write on this
+  // machine, so the second call stopped at its budget too, correctly.
   for (let n = 1; n <= 6; n += 1) {
     const series = await must(`budget night ${n}`, db.from('event_series').insert({
       venue_id: host.id,
@@ -196,9 +198,18 @@ async function makeFixtures() {
     budgeted.fine && budgeted.body?.stoppedEarly === true && budgeted.seconds < 300, budgeted.said)
   const halfway = await must('the fixture occurrences after the stopped run', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
   check('the stopped run left no draft behind: it stopped between writes', halfway.every((e) => e.status === 'published'), `${halfway.length} made, ${halfway.filter((e) => e.status !== 'published').length} not published`)
-  const rest = await callRun()
-  check(`the next run finishes what was left (${rest.seconds} s)`, rest.fine && rest.body?.stoppedEarly === false, rest.said)
-  const whole = await must('the fixture occurrences after the next run', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
+  const MAX_CALLS = 5
+  let calls = 1
+  let last = budgeted
+  while (last.fine && last.body?.stoppedEarly === true && calls < MAX_CALLS) {
+    last = await callRun()
+    calls += 1
+    const between = await must(`the fixture occurrences after call ${calls}`, db.from('events').select('status').in('listing_series_id', allFixtureNights()))
+    check(`call ${calls} stops inside its declared 300 s, leaving no draft (${last.seconds} s)`,
+      last.fine && last.seconds < 300 && between.every((e) => e.status === 'published'), last.said)
+  }
+  check(`the calls that follow finish what was left, within ${MAX_CALLS} calls (${calls} made)`, last.fine && last.body?.stoppedEarly === false, last.said)
+  const whole = await must('the fixture occurrences after the last call', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
   check(`every owed date is made and published (${whole.length} of ${2 + 6 * 8})`, whole.length === 2 + 6 * 8 && whole.every((e) => e.status === 'published'))
   for (const f of fixtures) {
     const rows = await must(`the ${f.kind} occurrence`, db.from('events').select('id, slug, status, visibility, listing_fresh_until').eq('listing_series_id', f.seriesId))
