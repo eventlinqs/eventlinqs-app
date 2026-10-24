@@ -75,6 +75,16 @@ const NOT_AN_EVENT = /happy hour|% off|\bopen from\b/i
 const FREE_WALK_IN = /^free(;\s*no bookings? (required|needed|necessary))?$/i
 const BOOKING = /\bbook|\bregist|\brsvp\b|\breserv|\bticket/i
 const DONATION = /donation|pay as you feel|gold coin/i
+/**
+ * A host field that says who is NOT named rather than naming anyone. Every
+ * surface names a listing's host from this field (ruling A of 23 October
+ * 2026), so a note here is shown as who runs the night. Found in the project
+ * manager's checked file of 26 October 2026: "Organiser not named on listing",
+ * "Organiser not named on listing (Malaysian Victoria community contact)" and
+ * "Organiser not named (stall bookings via Issimo Markets)". The host's name
+ * is the project manager's to set, never this module's to guess.
+ */
+const HOST_IS_A_NOTE = /\bnot named\b|^(unknown|tbc|tba|n\/a)$/i
 
 export type ListingRow = {
   citySlug: string
@@ -220,6 +230,9 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   if (!name) refused.push('name is empty')
   else if (name.length > 80) refused.push(`name is ${name.length} characters, over 80`)
   for (const c of ['host', 'address', 'suburb'] as const) if (!v(c)) refused.push(`${c} is empty`)
+  if (HOST_IS_A_NOTE.test(v('host'))) {
+    refused.push(`host "${v('host')}" is a note, not a host's name: held until a source names the host, because every surface would show this as who runs the night (the project manager's ruling of 25 October 2026)`)
+  }
 
   const category = v('category')
   if (!ctx.categorySlugs.has(category)) refused.push(`category "${category}" is not one of the live category slugs (the project manager sets it)`)

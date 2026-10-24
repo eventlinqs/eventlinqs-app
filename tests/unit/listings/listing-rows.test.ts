@@ -133,6 +133,11 @@ describe('refused, each with its reason', () => {
     [{ source_date: '2026-09-30' }, /older than 21 days/],
     [{ freshness: 'STALE' }, /not CURRENT/],
     [{ name: '' }, /name is empty/],
+    // The checked file of 26 October 2026 wrote these three where a host's name goes.
+    [{ host: 'Organiser not named on listing' }, /is a note, not a host's name/],
+    [{ host: 'Organiser not named on listing (Malaysian Victoria community contact)' }, /is a note, not a host's name/],
+    [{ host: 'Organiser not named (stall bookings via Issimo Markets)' }, /is a note, not a host's name/],
+    [{ host: 'TBC' }, /is a note, not a host's name/],
   ])('%o', (over, why) => {
     const v = judge(over as Partial<typeof good>)
     expect(v.verdict).toBe('refused')

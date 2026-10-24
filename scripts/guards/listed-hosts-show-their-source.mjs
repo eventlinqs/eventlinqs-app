@@ -29,6 +29,8 @@
  *   H4  the sitemap's organiser catalogue leaves it out
  *   H5  the event's structured data carries an organiser url only where there
  *       is an organiser page
+ *   H6  the checked file's reading refuses a host that is a note ("Organiser
+ *       not named ..."), because H1 to H5 show that field as who runs the night
  *
  * WHAT IT CANNOT SEE. It reads source, function by function. It cannot see a
  * surface that reads events through a client of its own without the helper;
@@ -115,9 +117,14 @@ const schema = read(EVENT_SCHEMA)
 rule('H5', /\.\.\.\(organisation\.slug \? \{ url: /.test(schema),
   `${EVENT_SCHEMA}: the organizer node carries a url whether or not there is an organiser page`)
 
+const ROWS = 'src/lib/listings/listing-rows.ts'
+const rows = read(ROWS)
+rule('H6', /const HOST_IS_A_NOTE = \/\\bnot named\\b/.test(rows) && /if \(HOST_IS_A_NOTE\.test\(v\('host'\)\)\) \{\s*refused\.push\(/.test(rows),
+  `${ROWS}: the checked file's reading no longer refuses a host that is a note, so "Organiser not named on listing" would be shown as who runs the night`)
+
 declareWork('listed-hosts-show-their-source', {
   did: { 'source file read': filesRead, 'rule judged': rulesJudged },
-  found: { 'promise a listing could break': failures.length },
+  found: { 'broken promise': failures.length },
 })
 
 if (failures.length > 0) {

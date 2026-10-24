@@ -10827,6 +10827,14 @@ const DRILLS = [
     replace: '"schedule": "10 14 * * *"',
     expect: 'not every hour',
   },
+  {
+    name: 'listed hosts: a host that is a note is read as a name',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/listings/listing-rows.ts',
+    find: "  if (HOST_IS_A_NOTE.test(v('host'))) {\n",
+    replace: '  if (false) {\n',
+    expect: 'no longer refuses a host that is a note',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
