@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import {
+  FIXTURES,
   FIXTURE_SLUG,
   FIXTURE_TITLE,
+  FREE_FIXTURE,
+  FREE_FIXTURE_SLUG,
+  FREE_FIXTURE_TITLE,
   MIN_DAYS_OUT,
   MIN_ROOM,
   PUBLIC_SURFACES,
@@ -149,5 +153,47 @@ describe('the reversal: never on a public page', () => {
     expect(ensure).toBeGreaterThan(-1)
     expect(check).toBeGreaterThan(ensure)
     expect(drive).toBeGreaterThan(check)
+  })
+})
+
+/*
+ * THE FREE TWIN (24 October 2026). The drive's free path still took whatever
+ * TEST held, and on 24 October the only free event it could use had started at
+ * 00:06 that morning, so the step stopped every push: the 22 October failure on
+ * the other half. These pin the twin to the same rule, with no charge.
+ */
+describe('the free twin', () => {
+  test('it is a gate fixture by name too, and differs from the paid one only in its price', () => {
+    expect(FREE_FIXTURE_SLUG.startsWith('gate-fixture-')).toBe(true)
+    expect(FREE_FIXTURE_TITLE).toMatch(/Gate fixture/)
+    expect(FREE_FIXTURE_TITLE).toMatch(/not a real event/)
+    expect(FIXTURES.map((f) => f.slug)).toEqual([FIXTURE_SLUG, FREE_FIXTURE_SLUG])
+    expect(FIXTURES.map((f) => f.price > 0)).toEqual([true, false])
+    expect(FREE_FIXTURE.price).toBe(0)
+  })
+
+  test('a fit free fixture is left alone: no charge is its shape, not a drift', () => {
+    const plan = planFixture({ event: fitEvent, tier: { ...fitTier, price: 0 } }, NOW, FREE_FIXTURE)
+    expect(plan.eventUpdates).toEqual({})
+    expect(plan.tierUpdates).toEqual({})
+    expect(plan.reasons).toEqual([])
+  })
+
+  test('a free ticket type that became priced is put back to no charge', () => {
+    const plan = planFixture({ event: fitEvent, tier: { ...fitTier, price: 1500 } }, NOW, FREE_FIXTURE)
+    expect(plan.tierUpdates.price).toBe(0)
+  })
+
+  test("the event rules are the paid one's: made public, already started or short of room, it is put back", () => {
+    const drifted = { ...fitEvent, visibility: 'public', start_date: new Date(NOW - DAY).toISOString() }
+    const tier = { ...fitTier, price: 0, total_capacity: 100, sold_count: 48 }
+    const plan = planFixture({ event: drifted, tier }, NOW, FREE_FIXTURE)
+    expect(plan.eventUpdates.visibility).toBe('unlisted')
+    expect(plan.eventUpdates.start_date).toBeDefined()
+    expect(plan.tierUpdates.total_capacity).toBe(48 + REFILL_ROOM)
+  })
+
+  test('a page naming the free twin is caught by the same reversal', () => {
+    expect(namesFixture(`<a href="/events/${FREE_FIXTURE_SLUG}">x</a>`)).toBe(true)
   })
 })

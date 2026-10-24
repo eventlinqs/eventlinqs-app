@@ -48,6 +48,7 @@ export type PolicyName =
   | 'stream-message'
   | 'api-v1-auth'
   | 'api-v1-read'
+  | 'bookedproof-organiser-read'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -355,5 +356,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'The organiser tier on the public read API (/api/v1/*), 1000 a minute PER ORGANISATION. The number is not chosen here: it is the "1000 requests/minute for organiser APIs" tier published in docs/EventLinqs_Scope_v5.md section 4.1, alongside 100 for anonymous and 300 for authenticated. KEYED BY organisationId, passed explicitly, which is why this limiter sits AFTER authenticateApiKey rather than at the top of the handler: the bucket cannot be named until the key names it, and keying it by IP instead would put every integration behind one office or one carrier NAT into a single window, which is the bucket this platform has already met three times (launch-artefact, launch-compose-daily, payouts-read). An organiser holding several keys shares one window, deliberately: the tier belongs to the tenant, not to the credential, so minting a second key must not double the allowance. FAIL-OPEN: three read-only views, no write, no metered third party spend, and the scope predicate rather than this limit is what bounds what a caller can reach.',
+  },
+  'bookedproof-organiser-read': {
+    keyPrefix: 'bp-orgread',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'Bookedproof\'s signed read of the organisers it found (E51, POST /api/connect/bookedproof/organisers). ONE caller, so ONE bucket: keyed by the fact of a valid signature (the constant "bookedproof"), applied AFTER the signature is verified, so an unsigned caller is refused by the signature and can never empty the real caller\'s window. Sixty a minute against a caller that batches 100 addresses a request and reads each client once a day is far above legitimate use and low enough that a leaked secret cannot page the platform\'s organiser data out quickly. The number is the contract\'s (C:\\dev\\EVIDENCE\\WI1\\EL-BOOKEDPROOF-ORGANISER-READ-CONTRACT.md section 2), agreed with window 1 and the project manager on 23 October 2026. FAIL-CLOSED: this endpoint hands business data to whoever holds the secret, so a missing limiter store blocks rather than opening it.',
+    failClosed: true,
   },
 }
