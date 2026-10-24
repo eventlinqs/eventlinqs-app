@@ -10630,6 +10630,92 @@ const DRILLS = [
     find: "export const SHARE = 'Share'",
     replace: "export const SHARE = 'Share'\nexport const DRILL_SCHEMA_NOTE = 'offers.price is 0'",
   },
+  /*
+   * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
+   * drill per assertion: the freshness group and its predicate, the guide's
+   * read, the shared row, the walk-in page three ways, the organiser page, the
+   * sitemap catalogue and the structured data's organiser url.
+   */
+  {
+    name: 'listed hosts: the visibility helper drops the freshness group',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/events/public-visibility.ts',
+    find: '    .or(listingFreshOrPredicate(now))',
+    replace: '    // the freshness group was removed by the drill',
+    expect: 'applyPublicEventVisibility no longer composes the freshness group',
+  },
+  {
+    name: 'listed hosts: the freshness predicate stops admitting an event with no date',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/events/public-visibility.ts',
+    find: '  return `listing_fresh_until.is.null,listing_fresh_until.gte.${now.toISOString()}`',
+    replace: '  return `listing_fresh_until.gte.${now.toISOString()}`',
+    expect: 'listingFreshOrPredicate no longer admits',
+  },
+  {
+    name: 'listed hosts: the city guide reads events without the visibility helper',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: "  query = applyPublicEventVisibility(query, { now })\n  query = query\n    .eq('is_free', true)",
+    replace: "  query = query\n    .eq('is_free', true)",
+    expect: 'fetchFreeWeekEvents does not compose applyPublicEventVisibility',
+  },
+  {
+    name: 'listed hosts: the shared row prints the listings organisation',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: '      organisation && isEventLinqsListing(raw)\n        ? { ...organisation, name: shownOrganiser(raw, organisation).name }\n        : organisation,',
+    replace: '      organisation,',
+    expect: "toPublicEventRow no longer names a listing's host",
+  },
+  {
+    name: 'listed hosts: the walk-in page names the organisation itself',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/components/events/walk-in/walk-in-event-page.tsx',
+    find: '  const shown = shownOrganiser(event, org)',
+    replace: "  const shown = { name: org?.name ?? 'the organiser', slug: org?.slug ?? null, shortName: org?.short_name ?? null, website: org?.website ?? null, instagram: org?.instagram_handle ?? null, followable: Boolean(org) }",
+    expect: 'no longer asks shownOrganiser who to name',
+  },
+  {
+    name: 'listed hosts: the walk-in page offers Follow without asking',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/components/events/walk-in/walk-in-event-page.tsx',
+    find: '                  {shown.followable && (',
+    replace: '                  {Boolean(org) && (',
+    expect: 'no longer waits for shown.followable',
+  },
+  {
+    name: 'listed hosts: the walk-in page prints org.name around the rule',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/components/events/walk-in/walk-in-event-page.tsx',
+    find: '                          {shown.name}\n                        </Link>',
+    replace: '                          {org.name}\n                        </Link>',
+    expect: 'prints org.name or links',
+  },
+  {
+    name: 'listed hosts: the listings organisation gets a page',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: '  if (isListingsOrganisation(slug)) return null\n',
+    replace: '',
+    expect: 'fetchOrganiser no longer refuses the listings organisation',
+  },
+  {
+    name: 'listed hosts: the listings organisation is offered in the sitemap',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: '      if (isListingsOrganisation(slug)) continue\n',
+    replace: '',
+    expect: 'the organiser catalogue no longer leaves the listings organisation out',
+  },
+  {
+    name: 'listed hosts: the structured data links an organiser page that does not exist',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '      ...(organisation.slug ? { url: `${baseUrl}/organisers/${organisation.slug}` } : {}),',
+    replace: '      url: `${baseUrl}/organisers/${organisation.slug}`,',
+    expect: 'carries a url whether or not there is an organiser page',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

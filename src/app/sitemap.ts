@@ -5,6 +5,8 @@ import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
 import { loadWeekendSurface, WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
+import { loadFreeWeek, readGuideCities } from '@/lib/listings/free-week-surface'
+import { freeWeekPath } from '@/lib/listings/free-week'
 import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
 import { getPublishableCategories } from '@/lib/categories/taxonomy'
@@ -284,6 +286,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 0.9,
     })
+  }
+
+  /*
+   * THE CITY GUIDES' WEEKS, /free/<city>/this-week (WI2 Part 2). The weekend's
+   * rule exactly: each guide city's page is offered only while it holds the live
+   * threshold of events, on the same count its own metadata decides its robots
+   * directive from (loadFreeWeek), so no noindex URL is ever advertised. The
+   * cities are the table's own free_guide rows, the list the route answers for.
+   */
+  for (const guideCity of await readGuideCities()) {
+    const guideWeek = await loadFreeWeek(guideCity)
+    if (isDiscoveryIndexable(guideWeek.total, threshold)) {
+      entries.push({
+        url: `${baseUrl}${freeWeekPath(guideCity.slug)}`,
+        changeFrequency: 'daily',
+        priority: 0.8,
+      })
+    }
   }
 
   // CATEGORY LANDING PAGES. These were missing from the sitemap entirely, which

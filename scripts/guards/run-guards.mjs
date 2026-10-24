@@ -269,6 +269,9 @@
  *   public-tables-carry-their-grants  a migration that creates a public table grants it
  *                              in the same file, revoked first, to exactly the roles its
  *                              policies serve (Supabase stops granting them on 30 October 2026)
+ *   listed-hosts-show-their-source  an EventLinqs listing unchecked for 21 days leaves every
+ *                              surface, and a listing names its host, never the listings
+ *                              organisation (WI2, ruling A of 23 October 2026)
  *   reservation-functions-carry-the-end-gate  every definition of create_reservation and
  *                              create_seat_reservation outside the dated history refuses an
  *                              event that has ended, so no later migration (an older-numbered
@@ -3209,6 +3212,14 @@ const GUARDS = [
   // serve and never wider. The 153 migrations on main before the rule are the
   // known gap, counted on every run. Drilled red seven ways, green two.
   'scripts/guards/public-tables-carry-their-grants.mjs',
+
+  // Window 4, 24 October 2026, WI2 Part 2. "A night not confirmed for 21 days is
+  // hidden from the guide until checked again" (WI2-ITEM.md), held in the one
+  // visibility helper so it holds on every surface; and ruling A of 23 October,
+  // "the listings organisation is Lawal's and is never shown", held on the shared
+  // row, the walk-in page, the organiser page, the sitemap and the structured
+  // data. Part 3 adds its venue-page rules here. Drilled red per rule.
+  'scripts/guards/listed-hosts-show-their-source.mjs',
 
   // Window 4, 23 October 2026, on the project manager's 02:05 order. Nothing
   // judged an event's end before a sale until 20261023000001; lane/b-growth's

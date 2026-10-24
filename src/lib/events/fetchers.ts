@@ -14,6 +14,7 @@ import {
   weekendWindowUtc,
 } from './listing-window'
 import { applyPublicEventVisibility, PUBLIC_EVENT_MATCH } from './public-visibility'
+import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
 import { resolveSearchTab } from './search-tab'
@@ -562,6 +563,8 @@ type RawRow = {
   is_free: boolean | null
   /** WI1. Carried to the card so a walk-in event says "Free entry". */
   entry_mode: string | null
+  /** WI2. 'eventlinqs' for a listing the city import wrote, whose card names its host. */
+  listing_source: string | null
   category: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
   organisation: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
   ticket_tiers: {
@@ -576,7 +579,7 @@ type RawRow = {
 
 const DEFAULT_PAGE_SIZE = 24
 const BASE_SELECT =
-  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, listing_source, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null
@@ -625,6 +628,7 @@ export function realCoverFirst(
 }
 
 function toPublicEventRow(raw: RawRow): PublicEventRow {
+  const organisation = normaliseRelation(raw.organisation)
   const row = {
     id: raw.id,
     slug: raw.slug,
@@ -646,7 +650,12 @@ function toPublicEventRow(raw: RawRow): PublicEventRow {
     is_free: raw.is_free,
     entry_mode: raw.entry_mode,
     category: normaliseRelation(raw.category),
-    organisation: normaliseRelation(raw.organisation),
+    // WI2 ruling A: a listing's card names its HOST; the listings organisation
+    // that holds it is never shown (src/lib/listings/shown-organiser.ts).
+    organisation:
+      organisation && isEventLinqsListing(raw)
+        ? { ...organisation, name: shownOrganiser(raw, organisation).name }
+        : organisation,
     ticket_tiers: raw.ticket_tiers ?? [],
   }
   return withBadge(row)
@@ -968,6 +977,50 @@ export function applyDateWindow<Q extends DateWindowQuery>(
   // narrowing on top of it rather than a replacement for it.
   q = q.or(listingWindowOrPredicate(now))
   return q as Q
+}
+
+/**
+ * THE CITY GUIDE'S WEEK (WI2 Part 2, /free/<city>/this-week): every free event
+ * in one city that is on at some point between `from` and `to`.
+ *
+ * The same select, row shape, client and visibility rule as fetchPublicEvents,
+ * so a card here is the card everywhere else: published and public, still on
+ * (the listing window), fresh (an EventLinqs listing checked within 21 days),
+ * and not externally ticketed (answer 2 of 21 October: WI3 decides those).
+ * Free is the platform's one definition, `is_free`, which the
+ * `/events?preset=free` filter reads too.
+ *
+ * THE CITY is the import's `city_primary` (so Torquay counts for Geelong by its
+ * row, answer 4) or, for an organiser's own event, `venue_city` holding the
+ * city's name, the match every city-scoped read on the platform makes.
+ *
+ * NOT CACHED, by the visibility rule (public-visibility.ts: never cache the rows
+ * this returns); the page itself regenerates every five minutes.
+ */
+export async function fetchFreeWeekEvents(input: {
+  citySlug: string
+  cityName: string
+  to: Date
+  limit: number
+  now?: Date
+}): Promise<{ events: PublicEventRow[]; total: number }> {
+  const now = input.now ?? new Date()
+  const supabase = createPublicClient()
+  let query = supabase.from('events').select(BASE_SELECT, { count: 'exact' })
+  query = applyPublicEventVisibility(query, { now })
+  query = query
+    .eq('is_free', true)
+    .or(`city_primary.eq.${escapeOrValue(input.citySlug)},venue_city.ilike.${escapeOrValue(`%${input.cityName}%`)}`)
+    .lte('start_date', input.to.toISOString())
+    .order('start_date', { ascending: true })
+    .range(0, input.limit - 1)
+  const { data, count, error } = await query
+  if (error) {
+    console.error('[fetchFreeWeekEvents] query failed:', error)
+    return { events: [], total: 0 }
+  }
+  const events = ((data ?? []) as unknown as RawRow[]).map(toPublicEventRow)
+  return { events, total: count ?? events.length }
 }
 
 /**

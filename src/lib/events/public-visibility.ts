@@ -53,6 +53,11 @@ import { listingWindowOrPredicate } from './listing-window'
  *      externally ticketed event is a real event and is not hidden; it is simply
  *      never promoted into a rail that implies buying here. Callers that list
  *      rather than promote pass `includeExternal: true`.
+ *   5. listing_fresh_until is null or not yet passed (WI2). An EventLinqs listing
+ *      of a venue's night carries the date its source was last confirmed plus
+ *      21 days; past that it leaves every discovery surface until it is checked
+ *      again (WI2-ITEM.md, "Last checked"). An organiser's own event carries no
+ *      such date, so this clause never touches it.
  *
  * WHAT THIS FILE DELIBERATELY DOES NOT DECIDE. Whether the ORGANISER can
  * currently charge is a sale-posture question owned by the sale gate, and it is
@@ -165,10 +170,21 @@ export function applyPublicEventVisibility<T>(
     .eq('status', PUBLISHED_STATUS)
     .eq('visibility', PUBLIC_VISIBILITY)
     .or(listingWindowOrPredicate(now))
+    // A second group, ANDed with the first by PostgREST (probed on TEST,
+    // 24 October 2026: two or= parameters return their intersection).
+    .or(listingFreshOrPredicate(now))
   if (!options.includeExternal) {
     out = out.is('external_ticket_url', null)
   }
   return out as T
+}
+
+/**
+ * Clause 5 as a PostgREST `or` group: not an EventLinqs listing, or a listing
+ * whose source was confirmed within its 21 days.
+ */
+export function listingFreshOrPredicate(now: Date = new Date()): string {
+  return `listing_fresh_until.is.null,listing_fresh_until.gte.${now.toISOString()}`
 }
 
 /**

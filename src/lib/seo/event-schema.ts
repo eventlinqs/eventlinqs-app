@@ -44,7 +44,13 @@ type SchemaTier = Pick<TicketTier, 'id' | 'name' | 'price' | 'currency'> & {
 
 export interface EventSchemaProps {
   event: Event
-  organisation: Pick<Organisation, 'name' | 'slug' | 'description'>
+  /**
+   * The organiser as a page shows it. `slug` is null for an EventLinqs listing,
+   * which names its host and has no organiser page (WI2 ruling A,
+   * src/lib/listings/shown-organiser.ts), so the node carries no url to a page
+   * that does not exist.
+   */
+  organisation: Pick<Organisation, 'name' | 'description'> & { slug: string | null }
   ticketTiers: SchemaTier[]
   state: EventStatus
   baseUrl: string
@@ -383,7 +389,7 @@ export function buildEventSchemaPayload({
     organizer: {
       '@type': 'Organization',
       name: organisation.name,
-      url: `${baseUrl}/organisers/${organisation.slug}`,
+      ...(organisation.slug ? { url: `${baseUrl}/organisers/${organisation.slug}` } : {}),
     },
     // One node per performer, in billing order, each linking to its own artist
     // profile so the entity is resolvable rather than a bare string. Omitted

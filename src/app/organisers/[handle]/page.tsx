@@ -29,6 +29,7 @@ import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
@@ -163,6 +164,9 @@ class OrganiserReadFailed extends Error {
  * than a 500 that says ask again.
  */
 const fetchOrganiser = cache(async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
+  // WI2 ruling A: the organisation that holds EventLinqs listings has no public
+  // page; its listings name their hosts (src/lib/listings/shown-organiser.ts).
+  if (isListingsOrganisation(slug)) return null
   const admin = createAdminClient()
   const { data: gate, error: gateError } = await withBuildRetry(
     () =>
