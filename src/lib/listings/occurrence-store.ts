@@ -130,7 +130,7 @@ export function occurrenceStore(): OccurrenceStore {
     async occurrences(seriesId) {
       const { data, error } = await admin
         .from('events')
-        .select('id, occurrence_date, status, title, summary, start_date, end_date, timezone, category_id, age_restriction_min, guide:event_guides(days)')
+        .select('id, occurrence_date, status, created_at, title, summary, start_date, end_date, timezone, category_id, age_restriction_min, guide:event_guides(days)')
         .eq('listing_series_id', seriesId)
       if (error) throw new Error(`the occurrences of ${seriesId} could not be read: ${error.message}`)
       const rows: ExistingOccurrence[] = []
@@ -157,6 +157,7 @@ export function occurrenceStore(): OccurrenceStore {
           opens: day?.opens ?? null,
           closes: day?.closes ?? null,
           reminderCount: count ?? 0,
+          createdAt: e.created_at,
         })
       }
       return rows

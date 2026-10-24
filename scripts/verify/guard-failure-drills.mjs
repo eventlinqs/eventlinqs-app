@@ -10716,6 +10716,117 @@ const DRILLS = [
     replace: '      url: `${baseUrl}/organisers/${organisation.slug}`,',
     expect: 'carries a url whether or not there is an organiser page',
   },
+  /*
+   * the-daily-run-finishes-what-it-starts (window 4, 24 October 2026, WI2 Part
+   * 2's drive). One drill per assertion: the declared duration, the margin, the
+   * deadline handed over, the deadline read, each of the three write loops, the
+   * night loop, the abandoned draft found, its date freed, the young draft left
+   * alone, the created_at read, and the hourly schedule.
+   */
+  {
+    name: 'listings run: the route declares no maximum duration',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/app/api/cron/listing-occurrences/route.ts',
+    find: 'export const maxDuration = 300\n',
+    replace: 'const maxDuration = 300\n',
+    expect: 'the route declares no maxDuration',
+  },
+  {
+    name: 'listings run: the budget leaves no margin inside the duration',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/app/api/cron/listing-occurrences/route.ts',
+    find: 'const RUN_BUDGET_MS = (maxDuration - 60) * 1000',
+    replace: 'const RUN_BUDGET_MS = (maxDuration - 5) * 1000',
+    expect: 'is not maxDuration less a margin',
+  },
+  {
+    name: 'listings run: the route never hands the run its deadline',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/app/api/cron/listing-occurrences/route.ts',
+    find: 'runOccurrences(occurrenceStore(), new Date(started), { deadline: started + RUN_BUDGET_MS })',
+    replace: 'runOccurrences(occurrenceStore(), new Date(started))',
+    expect: 'does not hand the run its deadline',
+  },
+  {
+    name: 'listings run: the deadline is never read',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-run.ts',
+    find: 'const outOfTime = () => options.deadline !== undefined && clock() >= options.deadline',
+    replace: 'const outOfTime = () => false',
+    expect: 'outOfTime no longer reads the deadline',
+  },
+  {
+    name: 'listings run: a date is taken off without checking the deadline',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-run.ts',
+    find: '    for (const r of plan.retire) {\n      if (outOfTime()) return stop()\n',
+    replace: '    for (const r of plan.retire) {\n',
+    expect: 'the plan.retire loop starts a write without checking the deadline',
+  },
+  {
+    name: 'listings run: a date is brought in line without checking the deadline',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-run.ts',
+    find: '    for (const u of plan.update) {\n      if (outOfTime()) return stop()\n',
+    replace: '    for (const u of plan.update) {\n',
+    expect: 'the plan.update loop starts a write without checking the deadline',
+  },
+  {
+    name: 'listings run: a date is made without checking the deadline',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-run.ts',
+    find: '    for (const c of plan.create) {\n      if (outOfTime()) return stop()\n',
+    replace: '    for (const c of plan.create) {\n',
+    expect: 'the plan.create loop starts a write without checking the deadline',
+  },
+  {
+    name: 'listings run: a night is started without checking the deadline',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-run.ts',
+    find: '    if (outOfTime()) return stop()\n    summary.nights += 1\n',
+    replace: '    summary.nights += 1\n',
+    expect: 'a night is started without checking the deadline',
+  },
+  {
+    name: 'listings run: a draft a stopped run left is no longer found',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-plan.ts',
+    find: "(o) => o.status === 'draft' && now.getTime() - Date.parse(o.createdAt) > ABANDONED_DRAFT_AFTER_MS,",
+    replace: '(o) => false,',
+    expect: 'no longer finds a draft a stopped run left behind',
+  },
+  {
+    name: 'listings run: a draft being taken away still holds its date',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-plan.ts',
+    find: 'existing.find((o) => o.occurrenceDate === date && !abandoned.includes(o))',
+    replace: 'existing.find((o) => o.occurrenceDate === date)',
+    expect: 'a draft being taken away still holds its date',
+  },
+  {
+    name: 'listings run: a young draft is updated instead of left to its run',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-plan.ts',
+    find: "      plan.held.push({ date: o.occurrenceDate, why: 'another run is making it' })\n      continue\n",
+    replace: '',
+    expect: 'a draft another run may still be making is updated',
+  },
+  {
+    name: 'listings run: the store stops giving the plan created_at',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'src/lib/listings/occurrence-store.ts',
+    find: '          createdAt: e.created_at,\n',
+    replace: "          createdAt: '',\n",
+    expect: "no longer gives the plan each occurrence's created_at",
+  },
+  {
+    name: 'listings run: the run goes back to once a day',
+    guard: `${GUARDS}/the-daily-run-finishes-what-it-starts.mjs`,
+    file: 'vercel.json',
+    find: '"schedule": "10 * * * *"',
+    replace: '"schedule": "10 14 * * *"',
+    expect: 'not every hour',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

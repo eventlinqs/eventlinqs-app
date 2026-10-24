@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ABANDONED_DRAFT_AFTER_MS,
   occurrenceSlug,
   planOccurrences,
   type ExistingOccurrence,
@@ -46,6 +47,7 @@ const row = (date: string, over: Partial<ExistingOccurrence> = {}): ExistingOccu
     opens: '19:00',
     closes: '22:00',
     reminderCount: 0,
+    createdAt: '2026-10-20T00:00:00.000Z',
     ...over,
   }
 }
@@ -178,5 +180,45 @@ describe('a night with no finish (the 22:25 answer 1)', () => {
     // Midnight starting 29 October in Melbourne, UTC+11.
     expect(p.create[0].fields.end_date).toBe('2026-10-28T13:00:00.000Z')
     expect(Date.parse(p.create[0].fields.end_date)).toBeGreaterThan(Date.parse(p.create[0].fields.start_date))
+  })
+})
+
+/**
+ * A DRAFT IN THE WINDOW (24 October 2026, found by the Part 2 drive). The run
+ * writes a date as a draft and publishes it last, and the platform ends a
+ * function at its maximum duration, so a run ended part way leaves a draft. It
+ * used to hold its date for good, counted unchanged and never published.
+ */
+describe('a draft in the window', () => {
+  const old = new Date(NOW.getTime() - ABANDONED_DRAFT_AFTER_MS - 60_000).toISOString()
+  const young = new Date(NOW.getTime() - 60_000).toISOString()
+
+  it('left by a run that was stopped part way, is taken away and its date made again', () => {
+    const rows = EIGHT.map((d) => row(d, d === '2026-11-04' ? { status: 'draft', createdAt: old } : {}))
+    const p = planOccurrences(night(), rows, NOW)
+    expect(p.retire).toEqual([
+      { id: 'e-2026-11-04', date: '2026-11-04', action: 'delete', why: 'a run that was stopped part way left it unfinished' },
+    ])
+    expect(p.create.map((c) => c.date)).toEqual(['2026-11-04'])
+    expect(p.held).toEqual([])
+    expect(p.update).toEqual([])
+    expect(p.unchanged).toBe(7)
+  })
+
+  it('still being made by another run, is left to it: never updated, never made twice', () => {
+    const rows = EIGHT.map((d) =>
+      row(d, d === '2026-11-04' ? { status: 'draft', createdAt: young, title: 'Folk Night (as first written)' } : {}),
+    )
+    const p = planOccurrences(night(), rows, NOW)
+    expect(p.retire).toEqual([])
+    expect(p.create).toEqual([])
+    expect(p.update).toEqual([])
+    expect(p.held).toEqual([{ date: '2026-11-04', why: 'another run is making it' }])
+  })
+
+  it('a published date of the same age is never mistaken for one', () => {
+    const rows = EIGHT.map((d) => row(d, { createdAt: old }))
+    const p = planOccurrences(night(), rows, NOW)
+    expect(p).toMatchObject({ retire: [], create: [], update: [], held: [], unchanged: 8 })
   })
 })

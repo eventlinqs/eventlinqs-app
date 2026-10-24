@@ -111,7 +111,7 @@
     },
     {
       "path": "/api/cron/listing-occurrences",
-      "schedule": "10 14 * * *"
+      "schedule": "10 * * * *"
     }
   ]
 }

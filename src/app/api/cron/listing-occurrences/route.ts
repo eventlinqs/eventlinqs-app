@@ -5,6 +5,15 @@ import { occurrenceStore } from '@/lib/listings/occurrence-store'
 
 export const dynamic = 'force-dynamic'
 
+// Vercel ends a function at its maximum duration: "If a function runs for
+// longer than its set maximum duration, Vercel will terminate it", and with
+// fluid compute the default is 300 s on every plan
+// (https://vercel.com/docs/functions/configuring-functions/duration, read
+// 24 October 2026). Declared here rather than inherited, and the run stops
+// starting writes a minute inside it, so it is never ended part way.
+export const maxDuration = 300
+const RUN_BUDGET_MS = (maxDuration - 60) * 1000
+
 /**
  * EVERY NIGHT KEEPS ITS NEXT 8 DATES (WI2 Part 1, docs/walk-in/WI2-PLAN.md section 7). Daily.
  *
@@ -24,11 +33,13 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const result = await runOccurrences(occurrenceStore(), new Date())
+    const started = Date.now()
+    const result = await runOccurrences(occurrenceStore(), new Date(started), { deadline: started + RUN_BUDGET_MS })
     console.log(
       `[cron/listing-occurrences] ${result.nights} nights: ${result.created} made, ${result.updated} changed, ` +
         `${result.cancelled} cancelled, ${result.deleted} deleted, ${result.unchanged} unchanged, ` +
-        `${result.held.length} held, ${result.failed.length} failed`,
+        `${result.held.length} held, ${result.failed.length} failed` +
+        (result.stoppedEarly ? `; stopped at its budget with ${result.nightsNotReached} nights not finished, the next run carries on` : ''),
     )
     for (const h of result.held) console.log(`[cron/listing-occurrences] held ${h.seriesId} ${h.date}: ${h.why}`)
     for (const f of result.failed) console.error(`[cron/listing-occurrences] failed ${f.seriesId} ${f.date ?? '(the night)'}: ${f.why}`)

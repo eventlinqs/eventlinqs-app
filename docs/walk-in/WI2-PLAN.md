@@ -391,6 +391,38 @@ details (`attachGeneratedCover`, Law 6), so an occurrence is written as a draft
 with its guide day, given its cover, judged by the gate, and only then published;
 C, see question D in WINDOW4-STATUS.txt, which C's consent promise raised.
 
+### 7b. The run finishes what it starts (window 4, 24 October 2026, found by the Part 2 drive)
+
+MEASURED, not estimated: the Part 2 drive's first call to
+`/api/cron/listing-occurrences`, against TEST with the checked file's 55 nights
+(36 weekly, 19 once), made its dates at a median 7.3 s each (p90 11.8 s, from
+the rows' own `created_at`). Each night is owed its next 8 dates, so a first
+fill after an import owes about 300. Vercel ends a function at its maximum
+duration: "If a function runs for longer than its set maximum duration, Vercel
+will terminate it", 300 s by default with fluid compute
+(https://vercel.com/docs/functions/configuring-functions/duration, read
+24 October 2026). The route declared none and ran once a day at 14:10 UTC, so
+the first run after the production import would have been ended after about
+forty dates, the guide would have filled over about eight days, and the date it
+was making when it was ended would have stayed a draft for good: the plan saw
+the date held by a future occurrence, made nothing, and counted it unchanged
+without reading its status.
+
+What changed, each with its test and the guard
+`the-daily-run-finishes-what-it-starts`:
+
+- The route declares `maxDuration = 300` with its source and hands the run a
+  deadline a minute inside it. The run checks the deadline before every write,
+  never inside one, and answers `stoppedEarly` with the nights it did not
+  finish; the next run reads every plan afresh and carries on.
+- A future occurrence still in draft and older than
+  `ABANDONED_DRAFT_AFTER_MS` (20 minutes) is a stopped run's unfinished work:
+  it is taken away (a draft was never public, so no link and no reminder points
+  at it) and its date made again in the same run. A younger draft is held, left
+  to the run that may be making it.
+- The run is hourly (`10 * * * *`), so a first fill that needs several runs
+  finishes within hours; when nothing is owed a run only reads the nights.
+
 ## 8. Part 2: `/free/<city>/this-week`
 
 Inherits `/this-weekend`: one module (`week-surface.ts`) owns the window (today

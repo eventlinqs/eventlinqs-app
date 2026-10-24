@@ -272,6 +272,9 @@
  *   listed-hosts-show-their-source  an EventLinqs listing unchecked for 21 days leaves every
  *                              surface, and a listing names its host, never the listings
  *                              organisation (WI2, ruling A of 23 October 2026)
+ *   the-daily-run-finishes-what-it-starts  the listings run stops inside its declared maximum
+ *                              duration between writes, the next run finishes a draft a stopped
+ *                              one left, and it runs hourly (WI2, 24 October 2026)
  *   reservation-functions-carry-the-end-gate  every definition of create_reservation and
  *                              create_seat_reservation outside the dated history refuses an
  *                              event that has ended, so no later migration (an older-numbered
@@ -3220,6 +3223,14 @@ const GUARDS = [
   // row, the walk-in page, the organiser page, the sitemap and the structured
   // data. Part 3 adds its venue-page rules here. Drilled red per rule.
   'scripts/guards/listed-hosts-show-their-source.mjs',
+
+  // Window 4, 24 October 2026, WI2 Part 2's drive. The listings run took a
+  // median 7.3 s per date against TEST and a fresh import owes about 300; the
+  // platform ends a function at its maximum duration, and a run ended part way
+  // left the date it was making as a draft for good. The run now stops inside
+  // its declared duration between writes, the next run finishes any draft one
+  // left, and it runs hourly. Drilled red per rule.
+  'scripts/guards/the-daily-run-finishes-what-it-starts.mjs',
 
   // Window 4, 23 October 2026, on the project manager's 02:05 order. Nothing
   // judged an event's end before a sale until 20261023000001; lane/b-growth's

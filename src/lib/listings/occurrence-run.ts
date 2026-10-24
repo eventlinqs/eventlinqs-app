@@ -15,6 +15,13 @@ import {
  * delete frees its date), then future dates are brought in line, then missing
  * dates are made. One night failing never stops the others: its reason is
  * recorded by name and the run goes on.
+ *
+ * IT WORKS TO A DEADLINE when given one. The platform ends a function at its
+ * maximum duration, and a first fill after an import owes about 300 dates at
+ * several seconds each (measured on the Part 2 drive, 24 October 2026), so the
+ * run checks the deadline before every write, never inside one, and stops
+ * saying how many nights it did not finish. The next run carries on: the plan
+ * is read afresh, so what was made is left alone.
  */
 
 export type ListingNight = NightForOccurrences & { id: string; organisationId: string; venueId: string }
@@ -51,9 +58,20 @@ export type RunSummary = {
   unchanged: number
   held: Array<{ seriesId: string; date: string; why: string }>
   failed: Array<{ seriesId: string; date: string | null; why: string }>
+  /** True when it reached its deadline before finishing every night's plan. */
+  stoppedEarly: boolean
+  /** The nights whose plan it did not finish, the one it stopped in included. */
+  nightsNotReached: number
 }
 
-export async function runOccurrences(store: OccurrenceStore, now: Date): Promise<RunSummary> {
+export type RunOptions = {
+  /** Epoch milliseconds after which no write is started; one already started always finishes. */
+  deadline?: number
+  /** Epoch milliseconds now. Given by tests; the real clock otherwise. */
+  clock?: () => number
+}
+
+export async function runOccurrences(store: OccurrenceStore, now: Date, options: RunOptions = {}): Promise<RunSummary> {
   const summary: RunSummary = {
     nights: 0,
     created: 0,
@@ -63,8 +81,20 @@ export async function runOccurrences(store: OccurrenceStore, now: Date): Promise
     unchanged: 0,
     held: [],
     failed: [],
+    stoppedEarly: false,
+    nightsNotReached: 0,
   }
-  for (const night of await store.nights(now)) {
+  const clock = options.clock ?? Date.now
+  const outOfTime = () => options.deadline !== undefined && clock() >= options.deadline
+  const nights = await store.nights(now)
+  for (let i = 0; i < nights.length; i += 1) {
+    const night = nights[i]
+    const stop = () => {
+      summary.stoppedEarly = true
+      summary.nightsNotReached = nights.length - i
+      return summary
+    }
+    if (outOfTime()) return stop()
     summary.nights += 1
     let plan: ReturnType<typeof planOccurrences>
     try {
@@ -81,13 +111,16 @@ export async function runOccurrences(store: OccurrenceStore, now: Date): Promise
       else summary.failed.push({ seriesId: night.id, date, why: result.reason })
     }
     for (const r of plan.retire) {
+      if (outOfTime()) return stop()
       const result = r.action === 'cancel' ? await store.cancel(r.id) : await store.delete(r.id)
       record(r.date, result, () => (r.action === 'cancel' ? (summary.cancelled += 1) : (summary.deleted += 1)))
     }
     for (const u of plan.update) {
+      if (outOfTime()) return stop()
       record(u.date, await store.update({ id: u.id, changes: u.changes, guideDay: u.guideDay }), () => (summary.updated += 1))
     }
     for (const c of plan.create) {
+      if (outOfTime()) return stop()
       record(c.date, await store.create({ night, ...c }), () => (summary.created += 1))
     }
   }

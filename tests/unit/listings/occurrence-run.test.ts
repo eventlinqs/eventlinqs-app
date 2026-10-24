@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ExistingOccurrence } from '@/lib/listings/occurrence-plan'
+import { ABANDONED_DRAFT_AFTER_MS, type ExistingOccurrence } from '@/lib/listings/occurrence-plan'
 import {
   runOccurrences,
   type ListingNight,
@@ -65,6 +65,7 @@ function memoryStore(nights: ListingNight[], refuse: (call: string, date: string
           opens: guideDay.opens,
           closes: guideDay.closes,
           reminderCount: 0,
+          createdAt: NOW.toISOString(),
         })
       }
       return result
@@ -131,5 +132,60 @@ describe('the daily run', () => {
     expect(run.failed).toEqual([
       { seriesId: 's-1', date: '2026-11-11', why: 'the publish gate refused: Add the hours for each day' },
     ])
+  })
+})
+
+/**
+ * THE RUN WORKS TO A DEADLINE (24 October 2026, found by the Part 2 drive: a
+ * median 7.3 s per date against TEST, about 300 dates owed after an import, and
+ * a platform that ends a function at its maximum duration).
+ */
+describe('a run with a deadline', () => {
+  const two = () => [night(), night({ id: 's-2', name: 'Quiz Night' })]
+
+  it('starts no write at or past its deadline, says how many nights it did not finish, and the next run finishes them', async () => {
+    let t = 0
+    const { store } = memoryStore(two())
+    const slow: OccurrenceStore = {
+      ...store,
+      async create(input) {
+        t += 10_000 // each date takes ten seconds to make
+        return store.create(input)
+      },
+    }
+    // Writes start at 0, 10, 20 and 30 s; the fifth would start at 40 s, past 35 s.
+    const first = await runOccurrences(slow, NOW, { deadline: 35_000, clock: () => t })
+    expect(first).toMatchObject({ created: 4, stoppedEarly: true, nightsNotReached: 2, failed: [] })
+    const second = await runOccurrences(slow, NOW, { deadline: t + 3_600_000, clock: () => t })
+    expect(second).toMatchObject({ created: 12, unchanged: 4, stoppedEarly: false, nightsNotReached: 0, failed: [] })
+  })
+
+  it('a deadline already passed starts nothing at all', async () => {
+    const { store, calls } = memoryStore(two())
+    const run = await runOccurrences(store, NOW, { deadline: 0, clock: () => 1 })
+    expect(run).toMatchObject({ nights: 0, created: 0, stoppedEarly: true, nightsNotReached: 2 })
+    expect(calls).toEqual([])
+  })
+
+  it('without a deadline it does every night, as it always did', async () => {
+    const { store } = memoryStore(two())
+    expect(await runOccurrences(store, NOW)).toMatchObject({ created: 16, stoppedEarly: false, nightsNotReached: 0 })
+  })
+
+  it('a draft a stopped run left behind is taken away and its date made again, in that order', async () => {
+    const { store, rows, calls } = memoryStore([night()])
+    await runOccurrences(store, NOW)
+    const left = rows.get('s-1|2026-11-04')
+    if (!left) throw new Error('the first run made no 4 November')
+    rows.set('s-1|2026-11-04', {
+      ...left,
+      status: 'draft',
+      createdAt: new Date(NOW.getTime() - ABANDONED_DRAFT_AFTER_MS - 60_000).toISOString(),
+    })
+    calls.length = 0
+    const run = await runOccurrences(store, NOW)
+    expect(run).toMatchObject({ deleted: 1, created: 1, failed: [], held: [] })
+    expect(calls).toEqual(['delete e-2026-11-04', 'create 2026-11-04'])
+    expect(rows.get('s-1|2026-11-04')?.status).toBe('published')
   })
 })
