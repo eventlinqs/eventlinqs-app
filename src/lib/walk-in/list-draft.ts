@@ -10,15 +10,20 @@ import { MAX_GALLERY_IMAGES } from '@/lib/media/limits'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { checkPublishGate } from '@/lib/events/publish-gate'
+import { canTransition } from '@/lib/event-lifecycle'
+import type { EventStatus } from '@/types/database'
 
 /**
- * ONE WALK-IN EVENT, LISTED AS A DRAFT FROM A CHECKED DATA BLOCK (the AMCF page,
- * the project manager's orders of 23 October 2026, 12:35 and 12:45).
+ * ONE WALK-IN EVENT, LISTED UNLISTED FROM A CHECKED DATA BLOCK (the AMCF page,
+ * the project manager's orders of 23 October 2026, 12:35 and 12:45, and his
+ * ruling on Question F, 24 October 09:48: AMCF goes to production UNLISTED for
+ * Fred's review, reachable only by its link, on no browse surface, noindex).
  *
- * Window 5 writes the data (C:\dev\design\amcf-21oct\AMCF-PAGE-DATA.md, one
- * fenced json block, every fact from the organiser's own sources); this module
- * never writes a fact of its own. It judges the block by the organiser form's
- * own rules, then writes what the form would have written:
+ * The data is one fenced json block, every fact from the organiser's own
+ * sources (for AMCF, C:\dev\EVIDENCE\WI1\AMCF-PAGE-DATA-window4.md, the source
+ * the project manager confirmed on 23 October at 16:05); this module never
+ * writes a fact of its own. It judges the block by the organiser form's own
+ * rules, then writes what the form would have written:
  *
  *   the guide           parseGuide, the one shape of public.event_guides
  *   the hours           walkInHoursProblems against the event's own dates, the
@@ -36,8 +41,22 @@ import { checkPublishGate } from '@/lib/events/publish-gate'
  *   the photos          processEventImage, the organiser upload's own pipeline
  *                       (validation, EXIF strip), stored where an upload goes
  *   the media           moderateEventMedia, before the row takes the urls
- *   publishable?        checkPublishGate is ASKED and its answer reported; the
- *                       draft is never published here
+ *   "to be announced"   allowed: it is AMCF's own state of a fact ("Stay tuned as
+ *                       we reveal this year's topic"), in the project manager's
+ *                       wording of 24 October 11:58; the founder's ruling bans
+ *                       "to confirm", which stands for a fact we have not checked
+ *   SOURCE NEEDED       a line the organiser's own pages do not carry is named
+ *                       in the block's ledger with its exact words, and the run
+ *                       stops while any is unruled; ruled, it shows as the
+ *                       organiser wrote it (that source named) or it is left off
+ *   the listing         UNLISTED from the first write, then published by the
+ *                       pair publishEvent uses (canTransition and
+ *                       checkPublishGate) in one write. An unlisted page is
+ *                       noindex (eventRobotsDirective) and on no browse surface.
+ *                       Not done here, as publishEvent does: the owner's "event
+ *                       published" email (the founder runs this himself), the
+ *                       activation analytics (no organiser published it) and
+ *                       revalidation (a new unlisted page has nothing cached)
  *
  * The writer takes the target project's client from its caller, so the same
  * code writes TEST in a drive and production on Lawal's APPLY.
@@ -50,6 +69,13 @@ const FILE = /^[A-Za-z0-9._-]+\.(jpe?g|png|webp|avif)$/i
 const text = (max: number) => z.string().trim().min(1).max(max)
 
 const PhotoSchema = z.object({ file: z.string().regex(FILE), alt: text(250) })
+
+/** A SOURCE NEEDED line and its ruling: none yet, left off, or as the organiser wrote it with that source named. */
+const SourceNeededSchema = z.object({
+  line: text(120),
+  words: text(600),
+  ruling: z.union([z.null(), z.literal('left_off'), z.object({ as_amcf_wrote: text(300) })]),
+})
 
 export const ListingBlockSchema = z.object({
   listing_source: z.enum(['organiser', 'eventlinqs']),
@@ -84,6 +110,7 @@ export const ListingBlockSchema = z.object({
     gallery: z.array(PhotoSchema).max(MAX_GALLERY_IMAGES).default([]),
   }),
   guide: z.unknown(),
+  source_needed: z.array(SourceNeededSchema).default([]),
 })
 
 export type ListingBlock = z.infer<typeof ListingBlockSchema>
@@ -161,8 +188,16 @@ export function planWalkInDraft(input: unknown): { ok: true; plan: DraftPlan } |
   if (block.event.start[1] !== guide.days[0]?.opens) {
     problems.push(`the event starts at ${block.event.start[1]} but its first day opens at ${guide.days[0]?.opens ?? 'no time'}`)
   }
-  for (const [label, line] of linesOf(block, guide)) {
+  const lines = linesOf(block, guide)
+  for (const [label, line] of lines) {
     if (PLACEHOLDER.test(line)) problems.push(`${label} reads as a placeholder: ${JSON.stringify(line.slice(0, 80))}`)
+  }
+  // SOURCE NEEDED (project manager, 24 October 09:48): as the organiser wrote it, or left off; never shown unruled.
+  for (const needed of block.source_needed) {
+    const onPage = lines.some(([, line]) => line.includes(needed.words))
+    if (needed.ruling === null) problems.push(`${needed.line} is SOURCE NEEDED and not ruled: ${JSON.stringify(needed.words.slice(0, 80))}`)
+    else if (needed.ruling === 'left_off' && onPage) problems.push(`${needed.line} is ruled left off, but the page still carries those words`)
+    else if (needed.ruling !== 'left_off' && !onPage) problems.push(`${needed.line} is ruled as AMCF wrote it, but no line on the page carries those words exactly`)
   }
   if (block.listing_source === 'eventlinqs') {
     problems.push(...eventlinqsListingProblems({ summary: block.event.summary, description: block.event.description, guide }))
@@ -204,8 +239,15 @@ export function planWalkInDraft(input: unknown): { ok: true; plan: DraftPlan } |
   }
 }
 
-export type DraftWriteResult =
-  | { ok: true; created: boolean; organisationId: string; eventId: string; slug: string; publishable: { ok: true } | { ok: false; reason: string } }
+export type ListingWriteResult =
+  | {
+      ok: true
+      /** created: a new event, listed unlisted; published: an existing draft, now listed unlisted; refreshed: an unlisted listing whose words and guide were written again from the block. */
+      outcome: 'created' | 'published' | 'refreshed'
+      organisationId: string
+      eventId: string
+      slug: string
+    }
   | { ok: false; reason: string }
 
 const BUCKET = 'event-images'
@@ -216,15 +258,18 @@ function slugBase(title: string): string {
 }
 
 /**
- * Write the draft. Idempotent: the same event (same organisation, title and
- * start) already there is reported, never written twice. Anything that fails
- * after the event row exists takes the row and its photos away again.
+ * Write the listing, UNLISTED. Idempotent: the same event (same organisation,
+ * title and start) is found, never written twice. A draft of it is published
+ * unlisted; an unlisted listing has its words and guide written again from the
+ * block (so the organiser's corrections go through the same checked file); a public event,
+ * or one in any other state, is never touched. Anything that fails after a new
+ * event row exists takes the row and its photos away again.
  */
-export async function writeWalkInDraft(
+export async function writeWalkInListing(
   client: SupabaseClient,
   plan: DraftPlan,
   deps: { ownerUserId: string; readPhoto: (file: string) => Promise<Buffer> },
-): Promise<DraftWriteResult> {
+): Promise<ListingWriteResult> {
   const { block } = plan
   const must = <T>(label: string, r: { data: T; error: { message: string } | null }): T => {
     if (r.error) throw new Error(`${label}: ${r.error.message}`)
@@ -257,8 +302,31 @@ export async function writeWalkInDraft(
     }
   }
 
-  const already = must('the existing event', await client.from('events').select('id, slug').eq('organisation_id', organisationId).eq('title', block.event.title).eq('start_date', plan.startsAt).maybeSingle()) as { id: string; slug: string } | null
-  if (already) return { ok: true, created: false, organisationId, eventId: already.id, slug: already.slug, publishable: await askGate(client, plan, organisationId, already.id) }
+  const already = must('the existing event', await client.from('events').select('id, slug, status, visibility').eq('organisation_id', organisationId).eq('title', block.event.title).eq('start_date', plan.startsAt).maybeSingle()) as { id: string; slug: string; status: string; visibility: string } | null
+  if (already) {
+    const at = `${already.slug} is ${already.status} and ${already.visibility}`
+    if (already.status === 'draft') {
+      try {
+        await saveWords(client, already.id, plan)
+        await saveGuide(client, already.id, plan)
+      } catch (error) {
+        return { ok: false, reason: (error as Error).message }
+      }
+      const listed = await publishUnlisted(client, plan, organisationId, already.id, 'draft')
+      if (!listed.ok) return { ok: false, reason: `${listed.reason}; the draft is left as it was` }
+      return { ok: true, outcome: 'published', organisationId, eventId: already.id, slug: already.slug }
+    }
+    if (already.status === 'published' && already.visibility === 'unlisted') {
+      try {
+        await saveWords(client, already.id, plan)
+        await saveGuide(client, already.id, plan)
+      } catch (error) {
+        return { ok: false, reason: (error as Error).message }
+      }
+      return { ok: true, outcome: 'refreshed', organisationId, eventId: already.id, slug: already.slug }
+    }
+    return { ok: false, reason: `${at}; this lists a draft or refreshes an unlisted listing, and never touches anything else (the switch to public is its own step)` }
+  }
 
   const category = must('the category', await client.from('event_categories').select('id').eq('slug', block.event.category_slug).maybeSingle()) as { id: string } | null
   if (!category) return { ok: false, reason: `no category ${block.event.category_slug}` }
@@ -269,6 +337,7 @@ export async function writeWalkInDraft(
   const eventId = crypto.randomUUID()
   const objects: string[] = []
 
+  // UNLISTED FROM THE FIRST WRITE: never public, not even as a draft.
   must('create the draft', await client.from('events').insert({
     id: eventId,
     organisation_id: organisationId,
@@ -296,7 +365,7 @@ export async function writeWalkInDraft(
     suburb_primary: plan.suburbSlug,
     is_age_restricted: block.event.age_restriction_min !== null,
     age_restriction_min: block.event.age_restriction_min,
-    visibility: 'public',
+    visibility: 'unlisted',
     status: 'draft',
     published_at: null,
     entry_mode: 'walk_in',
@@ -330,20 +399,60 @@ export async function writeWalkInDraft(
       gallery_urls: serializeGallery(gallery),
     }).eq('id', eventId))
 
-    const { program_published_at: _never, ...guideRow } = plan.guide
-    void _never
-    must('save the guide', await client.from('event_guides').upsert({ event_id: eventId, ...guideRow }, { onConflict: 'event_id' }))
+    await saveGuide(client, eventId, plan)
+    const listed = await publishUnlisted(client, plan, organisationId, eventId, 'draft')
+    if (!listed.ok) throw new Error(listed.reason)
   } catch (error) {
     if (objects.length > 0) await client.storage.from(BUCKET).remove(objects)
     await client.from('event_guides').delete().eq('event_id', eventId)
     await client.from('events').delete().eq('id', eventId)
-    return { ok: false, reason: `${(error as Error).message}; the draft and its photos were taken away again` }
+    return { ok: false, reason: `${(error as Error).message}; the event and its photos were taken away again` }
   }
 
-  return { ok: true, created: true, organisationId, eventId, slug, publishable: await askGate(client, plan, organisationId, eventId) }
+  return { ok: true, outcome: 'created', organisationId, eventId, slug }
 }
 
-/** Ask the publish gate about the saved row, without publishing. */
+/** The event's own words, written from the block, so the organiser's corrections reach a rerun too. */
+async function saveWords(client: SupabaseClient, eventId: string, plan: DraftPlan): Promise<void> {
+  const { error } = await client.from('events').update({ summary: plan.block.event.summary, description: plan.block.event.description }).eq('id', eventId)
+  if (error) throw new Error(`save the event's words: ${error.message}`)
+}
+
+/** The guide, written from the block. program_published_at is never written here. */
+async function saveGuide(client: SupabaseClient, eventId: string, plan: DraftPlan): Promise<void> {
+  const { program_published_at: _never, ...guideRow } = plan.guide
+  void _never
+  const { error } = await client.from('event_guides').upsert({ event_id: eventId, ...guideRow }, { onConflict: 'event_id' })
+  if (error) throw new Error(`save the guide: ${error.message}`)
+}
+
+/**
+ * Publish UNLISTED, by the pair publishEvent uses: the lifecycle allows draft to
+ * published, and the publish gate passes the saved row. One write, guarded on
+ * the status it was read in, so a row someone else changed meanwhile is left.
+ */
+async function publishUnlisted(
+  client: SupabaseClient,
+  plan: DraftPlan,
+  organisationId: string,
+  eventId: string,
+  from: EventStatus,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (!canTransition(from, 'published')) return { ok: false, reason: `the lifecycle does not allow ${from} to published` }
+  const gate = await askGate(client, plan, organisationId, eventId)
+  if (!gate.ok) return { ok: false, reason: `the publish gate refused it: ${gate.reason}` }
+  const { data, error } = await client
+    .from('events')
+    .update({ status: 'published', published_at: new Date().toISOString(), visibility: 'unlisted' })
+    .eq('id', eventId)
+    .eq('status', from)
+    .select('id')
+  if (error) return { ok: false, reason: `it could not be published unlisted: ${error.message}` }
+  if ((data ?? []).length !== 1) return { ok: false, reason: `it was no longer ${from} when it came to be published` }
+  return { ok: true }
+}
+
+/** Ask the publish gate about the saved row. */
 async function askGate(client: SupabaseClient, plan: DraftPlan, organisationId: string, eventId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
   const row = (await client.from('events').select('cover_image_url').eq('id', eventId).single()).data as { cover_image_url: string | null } | null
   const gate = await checkPublishGate(
@@ -361,4 +470,23 @@ async function askGate(client: SupabaseClient, plan: DraftPlan, organisationId: 
     null,
   )
   return gate.ok ? { ok: true } : { ok: false, reason: gate.message }
+}
+
+/**
+ * Every line of the block a visitor reads on the walk-in page
+ * (src/components/events/walk-in/walk-in-event-page.tsx), for the page proof.
+ */
+export function pageLines(plan: DraftPlan): string[] {
+  const g = plan.guide
+  const out: string[] = [plan.block.event.title, plan.block.event.summary]
+  for (const d of g.days) {
+    for (const item of d.items) out.push(item.what)
+    if (d.closer) out.push(d.closer.name)
+  }
+  for (const a of g.at_a_glance) out.push(a.value, a.label)
+  for (const h of g.highlights) out.push(h.title, h.body)
+  for (const v of [g.highlights_note, g.program_note, g.quote_text, g.quote_attribution, g.getting_there, g.access_notes, g.photos_heading, g.cover_credit, g.photo_credit]) {
+    if (v) out.push(v)
+  }
+  return out
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { extractListingBlock, planWalkInDraft } from '@/lib/walk-in/list-draft'
+import { extractListingBlock, pageLines, planWalkInDraft } from '@/lib/walk-in/list-draft'
 
 /**
  * THE LISTING SCRIPT'S JUDGE (scripts/ops/list-walk-in-draft.mjs, for the AMCF
@@ -85,6 +85,11 @@ describe('the founder\'s ruling: no placeholder, every day opens at a clock time
     }
   })
 
+  test("the organiser's own state of a fact is not a placeholder: a topic still to be announced", () => {
+    const forum = 'Forum on a topical issue, with a panel of speakers. Topic to be announced.'
+    expect(problems(block({ guide: { program_note: forum } }))).toEqual([])
+  })
+
   test("the event's start must be its first day's opening", () => {
     const p = problems(block({ event: { start: ['2026-11-20', '10:00'] } }))
     expect(p).toContain('the event starts at 10:00 but its first day opens at 11:00')
@@ -136,6 +141,67 @@ describe('addresses carry no banned word (CLAUDE.md, Copy and banned content)', 
     const b = block()
     b.organisation.slug = 'african-cultural-collective'
     expect(problems(b).some((x) => /the organisation address/.test(x))).toBe(true)
+  })
+})
+
+/*
+ * THE SOURCE NEEDED LINES (project manager, 24 October 2026, 09:48): a line the
+ * organiser's own pages do not carry is shown as the organiser wrote it, with
+ * that source named, or left off. Never invented, and never shown unruled.
+ */
+describe('a line marked SOURCE NEEDED', () => {
+  const quote = 'We started this festival thirteen years ago, by the river.'
+  const withQuote = (ruling: unknown, guide: Record<string, unknown> = {}) => ({
+    ...block({ guide: { quote_text: quote, quote_attribution: 'The chair', ...guide } }),
+    source_needed: [{ line: "the chair's quote", words: quote, ruling }],
+  })
+
+  test('unruled, it stops the run by name', () => {
+    expect(problems(withQuote(null))).toContain(`the chair's quote is SOURCE NEEDED and not ruled: ${JSON.stringify(quote)}`)
+  })
+
+  test('ruled as the organiser wrote it, with that source named, it shows', () => {
+    expect(problems(withQuote({ as_amcf_wrote: "the chair's email of 25 October 2026" }))).toEqual([])
+  })
+
+  test('ruled as the organiser wrote it, the page must carry those words exactly', () => {
+    const p = problems(withQuote({ as_amcf_wrote: "the chair's email" }, { quote_text: 'Thirteen years ago, by the river, we began.' }))
+    expect(p).toContain("the chair's quote is ruled as AMCF wrote it, but no line on the page carries those words exactly")
+  })
+
+  test('ruled as the organiser wrote it, the source must be named', () => {
+    expect(problems(withQuote({ as_amcf_wrote: '' })).some((x) => x.startsWith('source_needed.0.ruling'))).toBe(true)
+  })
+
+  test('ruled left off, the words must be gone from every line the page shows', () => {
+    expect(problems(withQuote('left_off'))).toContain("the chair's quote is ruled left off, but the page still carries those words")
+    expect(problems({ ...block(), source_needed: [{ line: "the chair's quote", words: quote, ruling: 'left_off' }] })).toEqual([])
+  })
+
+  test('a block with no such line needs no ledger', () => {
+    expect(problems(block())).toEqual([])
+  })
+})
+
+describe("the page proof reads every line a visitor reads", () => {
+  test("the title, each day's items and closing act, at a glance, the highlights and the notes", () => {
+    const r = planWalkInDraft(block({ guide: { quote_text: 'A line from the chair.', quote_attribution: 'The chair' } }))
+    if (!r.ok) throw new Error(r.problems.join('; '))
+    expect(pageLines(r.plan)).toEqual(
+      expect.arrayContaining([
+        'Riverside Drum Festival 2026',
+        'Three days of drumming, food and music by the river. Free for everyone.',
+        'Food stalls and markets open',
+        'A headline act',
+        'Free',
+        'for every visitor',
+        'Drumming',
+        'Free sessions across all three days, open to all.',
+        "Times are the festival's published hours.",
+        'A line from the chair.',
+        'The chair',
+      ]),
+    )
   })
 })
 
