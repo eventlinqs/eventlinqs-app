@@ -536,6 +536,28 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'BOOKEDPROOF_CONNECTOR_SECRET',
+    describe: 'Signs Bookedproof\'s read of the organisers it found (E51), FAIL CLOSED',
+    // POST /api/connect/bookedproof/organisers verifies an HMAC-SHA256 under
+    // this secret and answers 503 not-configured while it is unset, so the read
+    // is OFF wherever the secret is absent. It is minted by
+    // scripts/ops/mint-bookedproof-connector-secret.mjs; production waits for
+    // Lawal's ruling on the privacy disclosure (the contract's section 7).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the organiser read is switched on by setting this and off by leaving it unset: the route answers ' +
+      '503 not-configured without it, and production stays off until Lawal rules on telling Bookedproof ' +
+      'which addresses are EventLinqs organisers (EL-BOOKEDPROOF-ORGANISER-READ-CONTRACT.md section 7)',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'ORDER_ACCESS_SECRET',
     describe: 'Signs the guest link that opens a buyer own order',
     // Missing means guest order links are neither issued nor honoured. It fails

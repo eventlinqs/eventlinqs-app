@@ -243,3 +243,27 @@ production is either refusing paying customers (every fail-closed policy returns
 the fail-open ones. Verify by confirming a limiter actually returns 429 on the
 (limit + 1)th request against the preview, measured, not assumed: it has been
 measured both ways before, and an unconfigured Upstash allowed everything.
+
+---
+
+## 8. `bookedproof-organiser-read`: FAIL-CLOSED, on a data premise, not a cost one
+
+**RULING (project manager, 23 October 2026, 10:05 (1), the E51 contract):** the policy
+in front of `POST /api/connect/bookedproof/organisers` is fail-closed, 60 a minute,
+one bucket keyed `bookedproof` after the signature is verified.
+
+It is written here because section 3's reasoning points the other way at first
+sight: a route bounded by a secret is not opened to an anonymous caller by a missing
+Upstash config, which is the only case fail-closed protects against. That holds for
+`cron-job`, `media-upload` and `payouts-stripe-link` because the thing in front of
+each bounds the caller to its OWN scope. The secret here does not: whoever holds it
+can ask about any address, and the answer is whether that address is an EventLinqs
+organiser, with that organiser's listings and sales through their links. If the
+secret ever leaks, the limiter is the only bound on how fast every organiser can be
+enumerated, so it has no reason to stay open when it cannot count.
+
+What it costs when it fails closed (a deploy without the Upstash variables, section
+1): Bookedproof's read is refused 429 until the variables are set, and Bookedproof
+reads again on its next run. No order, no payment, no visitor is touched. The audit
+(`node scripts/verify/rate-limit-audit.mjs`, run 23 October 2026) lists it as
+`60/60s failClosed`, one call site, keyed `'bookedproof'`.
