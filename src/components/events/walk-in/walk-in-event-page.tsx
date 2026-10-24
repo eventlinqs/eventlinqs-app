@@ -15,14 +15,14 @@ import { EventGallery } from '@/components/features/events/event-gallery'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { parseGallery } from '@/lib/media/event-media-model'
-import { createPublicClient } from '@/lib/supabase/public-client'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import type { FullEvent } from '@/lib/events/event-detail-read'
 import type { CalendarEvent } from '@/lib/events/calendar-links'
 import { FREE_ENTRY_LABEL, FREE_ENTRY_NO_TICKET_NEEDED, FREE_NO_TICKET_NEEDED, NO_TICKET_NEEDED } from '@/lib/events/entry-mode'
-import { parseGuide, dayHours, EMPTY_GUIDE, spanDates, type Guide } from '@/lib/walk-in/guide'
+import { dayHours, spanDates, type Guide } from '@/lib/walk-in/guide'
+import { readPublicGuide } from '@/lib/walk-in/guide-read'
 import { remindMeHeading, remindMePurpose } from '@/lib/walk-in/remind-me'
 import {
   ABOUT_THIS_EVENT,
@@ -102,29 +102,11 @@ function directionsHref(event: FullEvent): string | null {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
 }
 
-async function readGuide(eventId: string): Promise<Guide> {
-  const { data, error } = await createPublicClient()
-    .from('event_guides')
-    .select(
-      'days, at_a_glance, highlights, highlights_note, program_note, quote_text, quote_attribution, getting_there, access_notes, photos_heading, cover_credit, photo_credit, program_published_at',
-    )
-    .eq('event_id', eventId)
-    .maybeSingle()
-  if (error) {
-    console.error('[walk-in] the guide read failed', { eventId, error: error.message })
-    return EMPTY_GUIDE
-  }
-  const parsed = parseGuide(data ?? {})
-  if (!parsed.ok) {
-    console.error('[walk-in] the guide did not parse', { eventId, problems: parsed.problems })
-    return EMPTY_GUIDE
-  }
-  return parsed.guide
-}
-
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
   const [guide, remindMeOn, media] = await Promise.all([
-    readGuide(event.id),
+    // The event has already resolved under its own policies; the guide follows it
+    // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
+    readPublicGuide(event),
     isFeatureEnabled('walk_in_remind_me'),
     // THE SAME RESOLVER the route layout preloads with (eventHeroPreloadLink),
     // and HeroMedia's own default sizes below, so the raster this paints is the
