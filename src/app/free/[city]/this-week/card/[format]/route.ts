@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import QRCode from 'qrcode'
 import { captureException } from '@/lib/observability/sentry'
 import { getSiteUrl } from '@/lib/site-url'
+import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { CITY_WEEK_CARD_ROWS, renderCityWeekCard, type CityWeekCardFormat } from '@/lib/broadcast/social-cards'
 import { SOCIAL_CARD_EXTENSION, SOCIAL_CARD_MIME } from '@/lib/broadcast/social-card-spec'
 import { describeFreeWeek, freeEntryLabel, freeWeekPath } from '@/lib/listings/free-week'
@@ -12,14 +13,17 @@ export const dynamic = 'force-dynamic'
 
 /**
  * THE CITY GUIDE'S WEEK AS AN INSTAGRAM CARD (WI2-ITEM.md section 6: "Each page
- * has its own share card for Instagram"). A story (1080 x 1920) or a square
- * (1080 x 1080), drawn from the page's own events through the Launch Kit's
- * renderer (Law 6: composed, never generated), with a QR to the page.
+ * has its own share card for Instagram"). A story or a square, at the sizes
+ * src/lib/broadcast/social-card-spec.ts publishes with their sources, drawn from
+ * the page's own events through the Launch Kit's renderer (Law 6: composed,
+ * never generated), with a QR to the page.
  *
  * PUBLIC, like the page it shares: it reads only what the page shows, the same
  * guide city and the same cached week (src/lib/listings/free-week-surface.ts).
  * A city with no guide, or a format other than story or square, answers 404.
- * Cached five minutes, the page's own regeneration window.
+ * Cached five minutes, the page's own regeneration window. Its cost is CPU on
+ * the one card raster path, so it takes the same limit as every other
+ * anonymous render on that path (launch-artefact, per IP per hour).
  */
 
 function isCardFormat(value: string): value is CityWeekCardFormat {
@@ -34,9 +38,15 @@ function dayLabel(startIso: string, zone: string, todayKey: string): string {
   return new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric' }).format(start)
 }
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ city: string; format: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ city: string; format: string }> }) {
   const { city: slug, format } = await params
   if (!isCardFormat(format)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Render CPU only, no model spend: fails open by the policy's own ruling, as
+  // the Launch Kit's cards do. A Redis blip must not blank a city's card.
+  const limited = await applyRateLimit('launch-artefact', request)
+  if (limited) return limited
+
   const city = await readGuideCity(slug)
   if (!city) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

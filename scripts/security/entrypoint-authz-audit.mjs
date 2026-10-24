@@ -265,6 +265,10 @@ const PUBLIC_BY_DESIGN = {
   'launch/actions.ts::updateKit': 'edits the draft resolved from this browser cookie ownership token, never from a code in the request',
   'launch/actions.ts::emailKitToSelf': 'sends this browser own draft to a supplied address; draft read from the cookie token, and a dedicated send limit protects the sending domain from becoming an open relay',
   'api/launch/[code]/cover/POST': 'BEARER: the cookie ownership token is the credential, and ownership is verified against the code BEFORE any write, so a shared code cannot replace the owner artwork',
+  // THE CITY GUIDE'S WEEK AS AN INSTAGRAM CARD (WI2 Part 2, 24 October 2026).
+  // READ before being declared here, like the composer above.
+  'free/[city]/this-week/card/[format]/GET':
+    'the share card of a public page, downloaded by an anonymous visitor from /free/<city>/this-week, so a caller identity would remove the feature rather than protect it. It takes a city slug and a format from a closed set of two and answers 404 for anything else, including a city with no guide. It reads only what that page shows, the same guide city and the same cached week through the public visibility rule, writes nothing, sends nothing and bills no third party. Its cost is CPU on the one card raster path, bounded by the launch-artefact rate limit that every anonymous render on that path takes, and by a five minute public cache.',
 }
 
 function match(list, body) {
