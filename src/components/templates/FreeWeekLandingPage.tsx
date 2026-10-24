@@ -125,6 +125,21 @@ export function FreeWeekLandingPage({
           )}
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <FreeWeekShareButton url={pageUrl} title={`Free things to do in ${cityName} this week`} citySlug={citySlug} />
+            {/* The week as Instagram cards, drawn from this page's own events (Law 6). */}
+            <a
+              href={`${pagePath}/card/story`}
+              download={`free-in-${citySlug}-this-week-story.jpg`}
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--brand-accent-strong)] hover:underline"
+            >
+              Instagram story card
+            </a>
+            <a
+              href={`${pagePath}/card/square`}
+              download={`free-in-${citySlug}-this-week-square.jpg`}
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--brand-accent-strong)] hover:underline"
+            >
+              Instagram post card
+            </a>
             {cityHref && (
               <Link
                 href={cityHref}

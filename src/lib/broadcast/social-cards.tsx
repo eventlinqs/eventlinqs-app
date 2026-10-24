@@ -17,6 +17,7 @@ import {
   STORY_PANEL_MIN_HEIGHT,
   STORY_PANEL_RATIO_THRESHOLD,
   fitDisplayTitle,
+  fitOneLine,
   fitTicketBar,
   fitTitle,
   photoBox,
@@ -938,9 +939,17 @@ export async function renderSocialCard(
   format: SocialCardFormat,
   input: SocialCardInput,
 ): Promise<Uint8Array> {
+  return rasteriseCard(format, await buildCardElement(format, input))
+}
+
+/**
+ * Element to JPEG bytes at the format's published size: the one raster path
+ * every card on this renderer takes (the event cards above, the city guide's
+ * week card below), so the two can never be rasterised differently.
+ */
+async function rasteriseCard(format: SocialCardFormat, element: React.ReactElement): Promise<Uint8Array> {
   const spec = SOCIAL_CARD_FORMATS[format]
   const fonts = await loadCardFonts()
-  const element = await buildCardElement(format, input)
 
   /*
    * RASTERISED BY US, THROUGH resvg, SINCE 29 AUGUST 2026.
@@ -986,6 +995,166 @@ export async function renderSocialCard(
  * lower half of a story card is one deliberate surface made from the
  * organiser's own image rather than a flat void or a muddy wash.
  */
+/**
+ * THE CITY GUIDE'S WEEK CARD (WI2 Part 2, /free/<city>/this-week): the page's
+ * own events as one Instagram story or square, composed on this renderer's
+ * ground, chip, fitted headline and fonts, from the page's data alone. Nothing
+ * is generated (Law 6): the words are the events' own titles and the guide's
+ * own labels, and the layout is deterministic.
+ *
+ *   FREE THIS WEEK            the gold chip
+ *   Free in Geelong           the fitted headline
+ *   Saturday 24 to Friday 30 October, 12 free events
+ *   TUE 27  Trivia at Murphy's ...   Free entry, no ticket needed
+ *   ...                       one row per event, the soonest first
+ *   EVENTLINQS. and the page path            the QR to the page
+ */
+export type CityWeekCardInput = {
+  cityName: string
+  /** "Saturday 24 to Friday 30 October". */
+  week: string
+  /** Every free event on the week, uncapped. */
+  total: number
+  /** The soonest first; only CITY_WEEK_CARD_ROWS of them are drawn. */
+  items: Array<{ day: string; title: string; label: string }>
+  /** The page's own path, printed under the wordmark. */
+  path: string
+  /** Data URI of the QR to the page. */
+  qr: string | null
+}
+
+export type CityWeekCardFormat = 'story' | 'square'
+
+/** How many events each shape can carry without crowding its rows. */
+export const CITY_WEEK_CARD_ROWS: Record<CityWeekCardFormat, number> = { story: 6, square: 3 }
+
+function CityWeekCard({
+  input,
+  format,
+  measureDisplay,
+}: {
+  input: CityWeekCardInput
+  format: CityWeekCardFormat
+  measureDisplay: (text: string, fontSize: number) => number
+}) {
+  const spec = SOCIAL_CARD_FORMATS[format]
+  const px = scaler(format)
+  const story = format === 'story'
+  const pad = px(story ? 76 : 60)
+  const contentWidth = spec.width - pad * 2
+  const rows = input.items.slice(0, CITY_WEEK_CARD_ROWS[format])
+  const titleSize = px(story ? 36 : 30)
+  const daySize = px(story ? 24 : 21)
+  const labelSize = px(story ? 24 : 20)
+  const dayWidth = px(story ? 150 : 132)
+  const qrSize = px(story ? 150 : 120)
+  const fit = fitDisplayTitle(
+    `Free in ${input.cityName}`,
+    { maxWidth: contentWidth, maxHeight: px(story ? 300 : 190), maxLines: 2, max: px(story ? 150 : 110), min: px(story ? 64 : 52) },
+    measureDisplay,
+  )
+  const plural = input.total === 1 ? 'free event' : 'free events'
+
+  return (
+    <div style={{ width: spec.width, height: spec.height, display: 'flex', position: 'relative', background: GROUND }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: pad,
+          right: pad,
+          top: Math.max(spec.safeTop, pad),
+          bottom: Math.max(spec.safeBottom, pad),
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: px(story ? 26 : 18) }}>
+          <Eyebrow text="Free this week" px={px} />
+          <div style={{ display: 'flex', width: px(140), height: px(8), background: GOLD }} />
+          <DisplayTitle fit={fit} px={px} />
+          <div style={{ display: 'flex', color: WHITE, fontFamily: BODY_FAMILY, fontWeight: 600, fontSize: px(story ? 34 : 28) }}>
+            {`${input.week}, ${input.total} ${plural}`}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center', gap: px(story ? 22 : 14) }}>
+          {rows.map((row, index) => (
+            <div
+              key={index}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: px(18),
+                borderTop: `${px(2)}px solid rgba(255,255,255,0.14)`,
+                paddingTop: px(story ? 18 : 12),
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  width: dayWidth,
+                  flexShrink: 0,
+                  color: GOLD,
+                  fontFamily: DISPLAY_FAMILY,
+                  fontWeight: 800,
+                  fontSize: daySize,
+                  letterSpacing: px(1.6),
+                  textTransform: 'uppercase',
+                  paddingTop: px(6),
+                }}
+              >
+                {row.day}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: px(4), width: contentWidth - dayWidth - px(18) }}>
+                <div style={{ display: 'flex', color: WHITE, fontFamily: BODY_FAMILY, fontWeight: 700, fontSize: titleSize, whiteSpace: 'nowrap' }}>
+                  {fitOneLine(row.title, contentWidth - dayWidth - px(18), titleSize, measureBody)}
+                </div>
+                <div style={{ display: 'flex', color: 'rgba(255,255,255,0.72)', fontFamily: BODY_FAMILY, fontWeight: 500, fontSize: labelSize }}>
+                  {row.label}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: px(CTA_QR_GUTTER) }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: px(6) }}>
+            <div style={{ display: 'flex', color: WHITE, fontFamily: DISPLAY_FAMILY, fontWeight: 800, fontSize: px(story ? 34 : 28), letterSpacing: px(1.4) }}>
+              <span>EVENTLINQS</span>
+              <span style={{ color: GOLD_DEEP }}>.</span>
+            </div>
+            <div style={{ display: 'flex', color: 'rgba(255,255,255,0.62)', fontFamily: BODY_FAMILY, fontWeight: 600, fontSize: px(story ? 22 : 19) }}>
+              {`${printableHost()}${input.path}`}
+            </div>
+          </div>
+          {input.qr ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: px(9), flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: WHITE, borderRadius: px(12), padding: px(10) }}>
+                <img src={input.qr} alt="" width={qrSize} height={qrSize} style={{ width: qrSize, height: qrSize }} />
+              </div>
+              <div style={{ display: 'flex', color: 'rgba(255,255,255,0.70)', fontFamily: BODY_FAMILY, fontWeight: 600, fontSize: px(17) }}>
+                Scan for the week
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The city week card as an element tree, before anything rasterises it. */
+export async function buildCityWeekCardElement(format: CityWeekCardFormat, input: CityWeekCardInput): Promise<React.ReactElement> {
+  const [body, display] = await Promise.all([bodyTextMeasurer(), displayTextMeasurer()])
+  measureBody = body
+  return CityWeekCard({ input, format, measureDisplay: display })
+}
+
+/** The city week card as JPEG bytes, through the one raster path every card takes. */
+export async function renderCityWeekCard(format: CityWeekCardFormat, input: CityWeekCardInput): Promise<Uint8Array> {
+  return rasteriseCard(format, await buildCityWeekCardElement(format, input))
+}
+
 async function backdropTone(
   pipeline: import('sharp').Sharp,
   // The CONSTRUCTOR, not the module namespace. Under sharp 0.34's `export =` the

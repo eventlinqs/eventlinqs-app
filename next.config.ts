@@ -212,6 +212,12 @@ const nextConfig: NextConfig = {
     // The social cards draw brand type. satori is handed real font buffers
     // read from disk at render time, so the TTFs have to be traced into the
     // card lambda or every card would silently fall back to a system face.
+    // WI2 Part 2: the city guide's week as an Instagram story or square, through
+    // the same rasteriser, so it needs the brand fonts and the binary too.
+    '/free/[city]/this-week/card/[format]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/api/organiser/events/[id]/card/[format]': [
       './src/assets/fonts/*.ttf',
       // The resvg WebAssembly binary is read from disk at run time by
