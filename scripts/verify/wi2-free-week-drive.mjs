@@ -69,6 +69,8 @@ async function must(label, promise) {
   return data
 }
 const stamp = Date.now().toString(36)
+/** What a proof night's listing check cites: a reserved documentation address, never a real source. */
+const FIXTURE_SOURCE = 'https://example.org/wi2-proof-fixture'
 /** Text as React escapes it into server HTML, so a host called "Murphy's" is found. */
 const asReactWritesIt = (text) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
@@ -88,16 +90,20 @@ const WIDTHS = [
 // limit here; the time it took is printed, because Vercel's own function limit
 // is what production's first run has to fit inside.
 const patient = new Agent({ headersTimeout: 0, bodyTimeout: 0 })
-async function dailyRun(label) {
+async function callRun() {
   const began = Date.now()
   const r = await fetch(`${BASE}/api/cron/listing-occurrences`, { headers: { Authorization: `Bearer ${CRON}` }, dispatcher: patient })
   const body = await r.json().catch(() => null)
   const seconds = Math.round((Date.now() - began) / 1000)
   for (const f of body?.failed ?? []) console.log(`${TAG}   failed ${f.seriesId} ${f.date ?? ''}: ${f.why}`)
   for (const h of body?.held ?? []) console.log(`${TAG}   held ${h.seriesId} ${h.date}: ${h.why}`)
-  check(`${label}: the daily run answers and no night fails (${seconds} s)`, r.status === 200 && body?.ok === true && (body.failed?.length ?? 1) === 0,
-    JSON.stringify({ status: r.status, nights: body?.nights, made: body?.created, changed: body?.updated, deleted: body?.deleted, unchanged: body?.unchanged, held: body?.held?.length, failed: body?.failed?.length }))
-  return body
+  const said = JSON.stringify({ status: r.status, seconds, nights: body?.nights, made: body?.created, changed: body?.updated, deleted: body?.deleted, unchanged: body?.unchanged, held: body?.held?.length, failed: body?.failed?.length, stoppedEarly: body?.stoppedEarly, nightsNotReached: body?.nightsNotReached })
+  return { status: r.status, body, seconds, said, fine: r.status === 200 && body?.ok === true && (body.failed?.length ?? 1) === 0 }
+}
+async function dailyRun(label) {
+  const run = await callRun()
+  check(`${label}: the daily run answers and no night fails (${run.seconds} s)`, run.fine, run.said)
+  return run
 }
 
 // 1. Every night's dated occurrences, through the daily run's own route. A night
@@ -111,45 +117,109 @@ check('the cities table names the guide cities', cities.length >= 4, cities.map(
 //    check, then the daily run makes its occurrence and the database gives it
 //    its freshness. Only the check's date differs between the two.
 const listings = await must('the listings organisation', db.from('organisations').select('id').eq('slug', 'eventlinqs-listings').single())
-const host = await must('a Geelong host with its coordinates', db.from('venues').select('id, name').eq('city_slug', 'geelong').eq('listing_source', 'eventlinqs').is('removed_at', null).not('latitude', 'is', null).limit(1).single())
+const host = await must('a Geelong host', db.from('venues').select('id, name').eq('city_slug', 'geelong').eq('listing_source', 'eventlinqs').is('removed_at', null).order('name').limit(1).single())
 const donor = await must('a category a real night uses', db.from('event_series').select('category_id').eq('listing_source', 'eventlinqs').not('category_id', 'is', null).limit(1).single())
 const tomorrow = day(1)
 const dow = new Date(`${tomorrow}T12:00:00Z`).getUTCDay()
 const fixtures = []
-for (const [kind, checkedOn] of [['stale', day(-22)], ['fresh', day(-1)]]) {
-  const name = `Freshness proof ${kind} ${stamp}`
-  const series = await must(`the ${kind} night`, db.from('event_series').insert({
-    venue_id: host.id,
-    organisation_id: listings.id,
-    name,
-    category_id: donor.category_id,
-    rule: 'once',
-    anchor_date: tomorrow,
-    day: dow,
-    starts_at: '19:00',
-    ends_at: '21:00',
-    timezone: ZONE,
-    summary: 'A fixture for the WI2 freshness proof, retired when the proof ends.',
-  }).select('id').single())
-  await must(`the ${kind} night's check`, db.from('listing_checks').insert({
-    series_id: series.id,
-    source_url: 'https://www.eventlinqs.com/free/geelong/this-week',
-    source_date: checkedOn,
-    import_file: 'wi2-free-week-drive (a proof fixture)',
-    outcome: 'confirmed',
-  }))
-  fixtures.push({ kind, name, seriesId: series.id, checkedOn })
+const budgetNights = []
+const allFixtureNights = () => [...fixtures.map((f) => f.seriesId), ...budgetNights]
+
+/**
+ * Every proof night is retired (status removed; the service role holds no delete
+ * on event_series) and its occurrences made unlisted, never deleted here. Called
+ * on EVERY way out once the first fixture exists: a throw while they are made, or
+ * the end of the page drive, so no proof night is left active on TEST.
+ */
+async function retireFixtures() {
+  if (allFixtureNights().length === 0) return
+  const retired = await db.from('event_series').update({ status: 'removed' }).in('id', allFixtureNights()).select('id')
+  const hidden = await db.from('events').update({ visibility: 'unlisted' }).in('listing_series_id', allFixtureNights()).select('id')
+  console.log(`${TAG} ${(retired.data ?? []).length} of ${allFixtureNights().length} proof night(s) retired, ${(hidden.data ?? []).length} occurrence(s) made unlisted (the next daily run takes them off)`)
 }
-await dailyRun('the run after the fixture nights')
-for (const f of fixtures) {
-  const rows = await must(`the ${f.kind} occurrence`, db.from('events').select('id, slug, status, visibility, listing_fresh_until').eq('listing_series_id', f.seriesId))
-  Object.assign(f, rows[0] ?? {})
-  check(`the daily run made the ${f.kind} night its one published occurrence`, rows.length === 1 && f.status === 'published' && f.visibility === 'public', `${rows.length} row(s), ${f.status}, ${f.slug}`)
+
+async function makeFixtures() {
+  for (const [kind, checkedOn] of [['stale', day(-22)], ['fresh', day(-1)]]) {
+    const name = `Freshness proof ${kind} ${stamp}`
+    const series = await must(`the ${kind} night`, db.from('event_series').insert({
+      venue_id: host.id,
+      organisation_id: listings.id,
+      name,
+      category_id: donor.category_id,
+      rule: 'once',
+      anchor_date: tomorrow,
+      day: dow,
+      starts_at: '19:00',
+      ends_at: '21:00',
+      timezone: ZONE,
+      summary: 'A fixture for the WI2 freshness proof, retired when the proof ends.',
+    }).select('id').single())
+    await must(`the ${kind} night's check`, db.from('listing_checks').insert({
+      series_id: series.id,
+      source_url: FIXTURE_SOURCE,
+      source_date: checkedOn,
+      import_file: 'wi2-free-week-drive (a proof fixture)',
+      outcome: 'confirmed',
+    }))
+    fixtures.push({ kind, name, seriesId: series.id, checkedOn })
+  }
+  // THE BUDGET, PROVED ON THE SERVED ROUTE (the-daily-run-finishes-what-it-starts):
+  // six weekly nights owe 48 dates, more than one run makes inside its 240 s budget
+  // at the several seconds a date this machine takes. The first call must stop
+  // inside the route's declared 300 s, BETWEEN writes (no draft left), and the
+  // next must finish what is left.
+  for (let n = 1; n <= 6; n += 1) {
+    const series = await must(`budget night ${n}`, db.from('event_series').insert({
+      venue_id: host.id,
+      organisation_id: listings.id,
+      name: `Budget proof ${n} ${stamp}`,
+      category_id: donor.category_id,
+      rule: 'weekly',
+      anchor_date: tomorrow,
+      day: dow,
+      starts_at: '18:00',
+      ends_at: '20:00',
+      timezone: ZONE,
+      summary: 'A fixture for the WI2 budget proof, retired when the proof ends.',
+    }).select('id').single())
+    await must(`budget night ${n}'s check`, db.from('listing_checks').insert({
+      series_id: series.id,
+      source_url: FIXTURE_SOURCE,
+      source_date: day(-1),
+      import_file: 'wi2-free-week-drive (a proof fixture)',
+      outcome: 'confirmed',
+    }))
+    budgetNights.push(series.id)
+  }
+  const budgeted = await callRun()
+  check(`a run owed ${2 + 6 * 8} dates stops at its budget, inside its declared 300 s (${budgeted.seconds} s)`,
+    budgeted.fine && budgeted.body?.stoppedEarly === true && budgeted.seconds < 300, budgeted.said)
+  const halfway = await must('the fixture occurrences after the stopped run', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
+  check('the stopped run left no draft behind: it stopped between writes', halfway.every((e) => e.status === 'published'), `${halfway.length} made, ${halfway.filter((e) => e.status !== 'published').length} not published`)
+  const rest = await callRun()
+  check(`the next run finishes what was left (${rest.seconds} s)`, rest.fine && rest.body?.stoppedEarly === false, rest.said)
+  const whole = await must('the fixture occurrences after the next run', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
+  check(`every owed date is made and published (${whole.length} of ${2 + 6 * 8})`, whole.length === 2 + 6 * 8 && whole.every((e) => e.status === 'published'))
+  for (const f of fixtures) {
+    const rows = await must(`the ${f.kind} occurrence`, db.from('events').select('id, slug, status, visibility, listing_fresh_until').eq('listing_series_id', f.seriesId))
+    Object.assign(f, rows[0] ?? {})
+    check(`the daily run made the ${f.kind} night its one published occurrence`, rows.length === 1 && f.status === 'published' && f.visibility === 'public', `${rows.length} row(s), ${f.status}, ${f.slug}`)
+  }
+  const stale = fixtures.find((f) => f.kind === 'stale')
+  const fresh = fixtures.find((f) => f.kind === 'fresh')
+  check(`checked ${stale.checkedOn}: the database gives the occurrence a freshness already passed`, Boolean(stale.listing_fresh_until) && Date.parse(stale.listing_fresh_until) <= Date.now(), stale.listing_fresh_until)
+  check(`checked ${fresh.checkedOn}: a freshness still to come`, Boolean(fresh.listing_fresh_until) && Date.parse(fresh.listing_fresh_until) > Date.now(), fresh.listing_fresh_until)
+  return { stale, fresh }
 }
-const stale = fixtures.find((f) => f.kind === 'stale')
-const fresh = fixtures.find((f) => f.kind === 'fresh')
-check(`checked ${stale.checkedOn}: the database gives the occurrence a freshness already passed`, Boolean(stale.listing_fresh_until) && Date.parse(stale.listing_fresh_until) <= Date.now(), stale.listing_fresh_until)
-check(`checked ${fresh.checkedOn}: a freshness still to come`, Boolean(fresh.listing_fresh_until) && Date.parse(fresh.listing_fresh_until) > Date.now(), fresh.listing_fresh_until)
+
+let stale
+let fresh
+try {
+  ;({ stale, fresh } = await makeFixtures())
+} catch (error) {
+  await retireFixtures()
+  throw error
+}
 
 const browser = await chromium.launch()
 try {
@@ -248,9 +318,7 @@ try {
   }
 } finally {
   await browser.close()
-  const retired = await db.from('event_series').update({ status: 'removed' }).in('id', fixtures.map((f) => f.seriesId)).select('id')
-  const hidden = await db.from('events').update({ visibility: 'unlisted' }).in('listing_series_id', fixtures.map((f) => f.seriesId)).select('id')
-  console.log(`${TAG} ${(retired.data ?? []).length} of ${fixtures.length} proof night(s) retired, ${(hidden.data ?? []).length} occurrence(s) made unlisted (the next daily run takes them off)`)
+  await retireFixtures()
 }
 
 const passed = results.filter(Boolean).length
