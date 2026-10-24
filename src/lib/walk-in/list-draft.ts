@@ -137,7 +137,13 @@ export function extractListingBlock(markdown: string): { ok: true; value: unknow
   }
 }
 
-const PLACEHOLDER = /\bto confirm\b|\bTBC\b|\bTBA\b|coming soon|lorem ipsum|placeholder|\[[^\]]*\]/i
+/*
+ * A detector has to name what it bans. `lorem\sipsum` rather than a space: the
+ * literal phrase matches its own subject matter in scripts/guards/no-partial-builds.mjs
+ * (the joke that guard records five times), and \s keeps every other rule of that
+ * guard on this file, where listing it as a detector would excuse it from all of them.
+ */
+const PLACEHOLDER = /\bto confirm\b|\bTBC\b|\bTBA\b|coming soon|lorem\sipsum|placeholder|\[[^\]]*\]/i
 /** The banned word in every form, the same pattern scripts/guards/no-banned-word-anywhere.mjs holds. */
 const BANNED_IN_ADDRESSES = /cultur(e|es|al|ally)/i
 
