@@ -63,6 +63,17 @@ function check(name, ok, detail) {
   results.push(Boolean(ok))
   console.log(`${TAG} ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` - ${detail}` : ''}`)
 }
+/**
+ * A check whose subject was never made: counted, never passed, and said as what it is. Drive 3 (25 October
+ * 2026) reported one failed connection as eleven failures, the last a 404 for a night opened with no slug
+ * ("[event-detail] no public row for undefined"); a check that cannot look says NOT REACHED and why.
+ */
+const notReached = []
+function unreached(name, why) {
+  results.push(false)
+  notReached.push(name)
+  console.log(`${TAG} NOT REACHED  ${name} - ${why}`)
+}
 async function must(label, promise) {
   const { data, error } = await promise
   if (error) throw new Error(`${label}: ${error.message}`)
@@ -196,6 +207,13 @@ async function makeFixtures() {
   const budgeted = await callRun()
   check(`a run owed ${2 + 6 * 8} dates stops at its budget, inside its declared 300 s (${budgeted.seconds} s)`,
     budgeted.fine && budgeted.body?.stoppedEarly === true && budgeted.seconds < 300, budgeted.said)
+  if (!budgeted.fine) {
+    const why = `the run's first call answered ${budgeted.said}, so nothing it owed was made`
+    for (const name of ['the stopped run left no draft behind', 'the calls that follow finish what was left', 'every owed date is made and published',
+      'the daily run made the stale night its one published occurrence', 'the daily run made the fresh night its one published occurrence',
+      'the stale night: a freshness already passed', 'the fresh night: a freshness still to come']) unreached(name, why)
+    return { stale: fixtures.find((f) => f.kind === 'stale'), fresh: fixtures.find((f) => f.kind === 'fresh'), made: false }
+  }
   const halfway = await must('the fixture occurrences after the stopped run', db.from('events').select('status').in('listing_series_id', allFixtureNights()))
   check('the stopped run left no draft behind: it stopped between writes', halfway.every((e) => e.status === 'published'), `${halfway.length} made, ${halfway.filter((e) => e.status !== 'published').length} not published`)
   const MAX_CALLS = 5
@@ -220,13 +238,14 @@ async function makeFixtures() {
   const fresh = fixtures.find((f) => f.kind === 'fresh')
   check(`checked ${stale.checkedOn}: the database gives the occurrence a freshness already passed`, Boolean(stale.listing_fresh_until) && Date.parse(stale.listing_fresh_until) <= Date.now(), stale.listing_fresh_until)
   check(`checked ${fresh.checkedOn}: a freshness still to come`, Boolean(fresh.listing_fresh_until) && Date.parse(fresh.listing_fresh_until) > Date.now(), fresh.listing_fresh_until)
-  return { stale, fresh }
+  return { stale, fresh, made: true }
 }
 
 let stale
 let fresh
+let made
 try {
-  ;({ stale, fresh } = await makeFixtures())
+  ;({ stale, fresh, made } = await makeFixtures())
 } catch (error) {
   await retireFixtures()
   throw error
@@ -266,7 +285,8 @@ try {
       check(`${where}: no sideways scroll`, scrollWidth <= vp.width, `${scrollWidth}px`)
       if (city.slug === 'geelong') {
         check(`${where}: the night checked 22 days ago is on no guide page`, !html.includes(stale.name))
-        check(`${where}: the night checked yesterday is on the page`, html.includes(fresh.name))
+        if (made) check(`${where}: the night checked yesterday is on the page`, html.includes(fresh.name))
+        else unreached(`${where}: the night checked yesterday is on the page`, 'the run never made it')
       } else {
         check(`${where}: the stale night is on no other guide either`, !html.includes(stale.name))
       }
@@ -311,10 +331,15 @@ try {
   }
 
   // 4. What answers 404, and the sitemap agreeing with each page's own robots directive.
-  const own = await fetch(`${BASE}/events/${fresh.slug}`)
-  const ownHtml = await own.text()
-  check('the fresh night, on its own page: 200, and its host named', own.status === 200 && ownHtml.includes(asReactWritesIt(host.name)), `${own.status} ${host.name}`)
-  check('and never names the listings organisation or offers to follow it', !/EventLinqs listings/.test(ownHtml) && !/>Follow</.test(ownHtml))
+  if (made) {
+    const own = await fetch(`${BASE}/events/${fresh.slug}`)
+    const ownHtml = await own.text()
+    check('the fresh night, on its own page: 200, and its host named', own.status === 200 && ownHtml.includes(asReactWritesIt(host.name)), `${own.status} ${host.name}`)
+    check('and never names the listings organisation or offers to follow it', !/EventLinqs listings/.test(ownHtml) && !/>Follow</.test(ownHtml))
+  } else {
+    unreached('the fresh night, on its own page: 200, and its host named', 'the run never made it')
+    unreached('and never names the listings organisation or offers to follow it', 'the run never made it')
+  }
   const unknown = await fetch(`${BASE}/free/nowhere/this-week`)
   check('a city with no guide answers 404', unknown.status === 404, String(unknown.status))
   const holder = await fetch(`${BASE}/organisers/eventlinqs-listings`)
@@ -333,5 +358,5 @@ try {
 }
 
 const passed = results.filter(Boolean).length
-console.log(`\n${passed}/${results.length} passed`)
+console.log(`\n${passed}/${results.length} passed${notReached.length ? `, ${notReached.length} of them NOT REACHED` : ''}`)
 process.exitCode = passed === results.length ? 0 : 1
