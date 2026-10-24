@@ -405,6 +405,58 @@ own events by the same renderer the Launch Kit uses for its story and square
 cards (Law 6). Every guide city gets it from its row; Melbourne, Geelong,
 Ballarat and Bendigo on day one.
 
+### 8a. Part 2 as it is built (window 4, 24 October 2026, the project manager's 19:54)
+
+Decided from the code, before any of it was written:
+
+- **Which events.** Free is the platform's one definition, `is_free = true`
+  (the `/events?preset=free` filter's own predicate), so the page and the filter
+  cannot disagree about what is free. Inside it, `entry_mode = 'walk_in'` is
+  labelled "Free entry, no ticket needed" (the WI1 constant) and every other free
+  event "Free, ticket needed", the founder's answer 3; What's On draws the same
+  line ("This is a free event" / "Booking not required", section 3). Externally
+  ticketed events stay off (answer 2: WI3 decides them).
+- **Which city.** `city_primary = <slug>` or `venue_city ilike %<name>%`: the
+  import writes the first (so Torquay counts for Geelong by its row, answer 4),
+  organiser events carry the second, which is the rule every city-scoped read
+  already uses.
+- **Which week.** From the start of today to the end of the sixth day after, in
+  the CITY's own zone (`cities.timezone`, written by part 1), an event listed
+  while it overlaps that window and has not ended (the listing window).
+- **Freshness, for every read, not only the guide.** `applyPublicEventVisibility`
+  gains `listing_fresh_until is null or listing_fresh_until >= now`, so a night
+  unchecked for 21 days leaves the guide, the city pages, search and every rail
+  at once, and an organiser's event (no freshness date) is untouched. Two
+  `.or()` groups are ANDed by PostgREST (probed on TEST, 24 October 2026: the
+  intersection only).
+- **The page.** `/this-weekend`'s shape and components (the shared hero, one
+  grid per day, the shared empty state, the organiser closer), a category filter
+  as links to `?category=<slug>` whose filtered views carry a canonical to the
+  page and noindex, the existing save button on each card, a share button, an
+  ItemList of the occurrences' own pages, a breadcrumb. A guide city that is not
+  `free_guide`, or an unknown slug, answers 404.
+- **The share count.** WI1 counts a share as a row keyed by ONE event. A city
+  page is not an event, so counting it that way needs a new table and a founder
+  migration; it is counted instead through the platform's consent-gated
+  analytics (`trackEvent`), named here as the difference it is.
+- **Indexing.** `discoveryIndexingFor(total, path)`, exactly as `/this-weekend`:
+  indexable while the page holds the live threshold, noindex below it; in the
+  sitemap only while indexable; `src/lib/seo/indexing-policy.ts` classes the
+  route conditional.
+- **The share card (slice 2b).** A city-week composition on the Launch Kit's own
+  renderer (`buildCardElement`'s fonts and resvg path), story and square, from
+  the page's own events, never a generated image (Law 6).
+- **The guard.** `scripts/guards/listed-hosts-show-their-source.mjs` with rule 3
+  now (every guide and discovery read composes the freshness predicate), rules 1
+  and 2 with Part 3's venue pages; drilled red then green for every occurrence it
+  asserts.
+
+Verified by: unit tests red then green; every guard; the drills; part 1's import
+of the project manager's checked file on TEST (dry run then apply) and the
+generator; a TEST proof that a series checked 22 days ago is on no guide; a
+build served locally, driven at 390, 768 and 1440 on every guide city's page;
+axe 0, the link crawler 0 non-200, the affordance scan.
+
 ## 9. Part 3: venue pages, photos, the claim, removal
 
 - **The venue page** extends `/venues/[handle]`: its regular nights, each with
