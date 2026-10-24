@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchFreeWeekEvents } from '@/lib/events/fetchers'
 import type { PublicEventRow } from '@/lib/events/types'
@@ -36,8 +37,12 @@ export async function readGuideCities(): Promise<GuideCity[]> {
   return (data ?? []) as GuideCity[]
 }
 
-/** One guide city by its slug, or null for a city with no guide (the page answers 404). */
-export async function readGuideCity(slug: string): Promise<GuideCity | null> {
+/**
+ * One guide city by its slug, or null for a city with no guide (the page answers
+ * 404). Cached per request with React's `cache`, so the page's head and body read
+ * it once (scripts/guards/the-head-and-the-body-ask-once.mjs).
+ */
+export const readGuideCity = cache(async function readGuideCity(slug: string): Promise<GuideCity | null> {
   const { data, error } = await createAdminClient()
     .from('cities')
     .select('slug, name, state, timezone')
@@ -47,7 +52,7 @@ export async function readGuideCity(slug: string): Promise<GuideCity | null> {
     .maybeSingle()
   if (error) throw new Error(`the guide city ${slug} could not be read: ${error.message}`)
   return (data as GuideCity | null) ?? null
-}
+})
 
 export interface FreeWeekSurface {
   city: GuideCity
@@ -61,8 +66,12 @@ export interface FreeWeekSurface {
   total: number
 }
 
-/** The week, its events and its true count. `now` is an argument so a test can pin a week. */
-export async function loadFreeWeek(city: GuideCity, now: Date = new Date()): Promise<FreeWeekSurface> {
+/**
+ * The week, its events and its true count, cached per request like the city, so
+ * the head and the body ask once. `now` is an argument so a test can pin a week;
+ * the page and the sitemap pass none.
+ */
+export const loadFreeWeek = cache(async function loadFreeWeek(city: GuideCity, now: Date = new Date()): Promise<FreeWeekSurface> {
   const { from, to } = freeWeekWindow(now, city.timezone)
   const { events, total } = await fetchFreeWeekEvents({
     citySlug: city.slug,
@@ -72,4 +81,4 @@ export async function loadFreeWeek(city: GuideCity, now: Date = new Date()): Pro
     now,
   })
   return { city, from, to, events, total }
-}
+})

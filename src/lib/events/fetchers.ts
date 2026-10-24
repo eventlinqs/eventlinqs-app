@@ -1013,7 +1013,9 @@ export async function fetchFreeWeekEvents(input: {
     .or(`city_primary.eq.${escapeOrValue(input.citySlug)},venue_city.ilike.${escapeOrValue(`%${input.cityName}%`)}`)
     .lte('start_date', input.to.toISOString())
     .order('start_date', { ascending: true })
-    .range(0, input.limit - 1)
+    // One page of the week, never paginated and never filtered after the read,
+    // so a limit rather than a range (no-display-time-exclusion rule 4).
+    .limit(input.limit)
   const { data, count, error } = await query
   if (error) {
     console.error('[fetchFreeWeekEvents] query failed:', error)

@@ -33,7 +33,8 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: slug } = await params
   const city = await readGuideCity(slug)
-  if (!city) return { title: 'Not found | EventLinqs', robots: { index: false, follow: false } }
+  // A city with no guide answers 404 from the page itself, which no index keeps.
+  if (!city) return { title: 'Not found | EventLinqs' }
   const { from, to, total } = await loadFreeWeek(city)
   const week = describeFreeWeek(from, to, city.timezone)
   const path = freeWeekPath(city.slug)
@@ -71,7 +72,7 @@ export default async function FreeWeekPage({ params, searchParams }: Props) {
 
   const now = new Date()
   const [{ from, to, events, total }, guideCities, heroImage, query] = await Promise.all([
-    loadFreeWeek(city, now),
+    loadFreeWeek(city),
     readGuideCities(),
     getCityHeroPhoto(city.slug),
     searchParams,

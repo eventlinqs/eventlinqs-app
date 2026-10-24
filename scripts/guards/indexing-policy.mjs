@@ -304,6 +304,9 @@ const SITEMAP_PATH_OF = {
    * than a wide window.
    */
   '/this-weekend': '${WEEKEND_SURFACE_PATH}',
+  // WI2 Part 2: one URL per guide city, written in a `for` over readGuideCities()
+  // and gated by isDiscoveryIndexable on the week's own count, as the weekend is.
+  '/free/[city]/this-week': '${freeWeekPath(guideCity.slug)}',
 }
 let gatedFamilies = 0
 for (const [route, klass] of classified) {
