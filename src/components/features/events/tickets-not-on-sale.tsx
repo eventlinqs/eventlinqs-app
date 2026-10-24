@@ -32,3 +32,20 @@ export function TicketsNotOnSale({ embedded = false }: { embedded?: boolean }) {
     </div>
   )
 }
+
+/**
+ * The ticket panel of an event that is over: the same card, the banner's own
+ * sentence, and no selection controls. Over by its end date as well as by its
+ * status (src/lib/events/event-state.ts).
+ */
+export function TicketsEnded() {
+  return (
+    <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
+      <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
+      <div className="rounded-2xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center">
+        <p className="font-display text-base font-bold text-ink-900">This event has ended.</p>
+        <p className="mt-2 text-sm text-ink-600">Tickets are no longer on sale.</p>
+      </div>
+    </div>
+  )
+}

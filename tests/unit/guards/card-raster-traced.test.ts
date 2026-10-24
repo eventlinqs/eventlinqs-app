@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   FONTS_MODULE,
+  completeBuild,
   NEXT_CONFIG,
   RASTER_MODULE,
   coversFonts,
@@ -16,6 +18,7 @@ import {
   reachers,
   reachingRoutes,
   resolveSourceImport,
+  routesInBuild,
   routeEntryName,
   runtimeImports,
   traceFileCandidates,
@@ -349,16 +352,74 @@ describe('judgeTraces, the postbuild proof on the traces Next wrote', () => {
     expect(faults[0]).toMatch(/looked for .*app\/icon\.js\.nft\.json or .*app\/icon\/route\.js\.nft\.json/)
   })
 
+  test('a build cut short is not judged; a complete one is (23 October 2026)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'card-raster-build-'))
+    try {
+      // RED, as the old check read it: a planted partial build (the server
+      // folder, no BUILD_ID, no trace) judged as though it were finished.
+      mkdirSync(join(root, '.next', 'server', 'app'), { recursive: true })
+      const icon = { entry: 'app/icon', file: 'src/app/icon.tsx', needsFonts: true, subtree: false }
+      const readNothing = (traceFile: string) => {
+        const p = join(root, traceFile)
+        return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).files as string[]) : null
+      }
+      expect(existsSync(join(root, '.next', 'server'))).toBe(true)
+      expect(judgeTraces([icon], readNothing, wasm, fonts).faults).toHaveLength(1)
+      // The rule refuses to judge it, and says why.
+      expect(completeBuild(root)).toEqual({ complete: false, why: '.next/server exists but .next/BUILD_ID does not: a build that did not finish' })
+      // GREEN once Next has finished and written its BUILD_ID.
+      writeFileSync(join(root, '.next', 'BUILD_ID'), 'drill')
+      expect(completeBuild(root)).toEqual({ complete: true, why: null })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    expect(completeBuild(join(tmpdir(), 'card-raster-no-such-root')).why).toBe('there is no .next build')
+  })
+
   test('against the real build output, when one exists, every reaching route carries both', () => {
-    if (!existsSync(join(ROOT, '.next', 'server'))) return
+    const build = completeBuild(ROOT)
+    if (!build.complete) {
+      console.log(`[card-raster-traced test] no complete build to judge: ${build.why}`)
+      return
+    }
     const { routes } = reachingRoutes(ROOT)
+    // A build of another tree (the suite runs before a gate's own build) may
+    // lack a route this tree added: reported, not judged (routesInBuild).
+    const { present, absent } = routesInBuild(routes, (rel: string) => existsSync(join(ROOT, rel)))
+    for (const r of absent) console.log(`[card-raster-traced test] not in the build on disk, so not judged here: ${r.entry}`)
     const wasmReal = wasmPathFrom(readFileSync(join(ROOT, RASTER_MODULE), 'utf8'))
     const fontsReal = fontsFrom(readFileSync(join(ROOT, FONTS_MODULE), 'utf8'))
     const readTrace = (traceFile: string) => {
       const p = join(ROOT, traceFile)
       return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).files as string[]) : null
     }
-    const { faults } = judgeTraces(routes, readTrace, wasmReal, fontsReal)
+    const { faults } = judgeTraces(present, readTrace, wasmReal, fontsReal)
     expect(faults).toEqual([])
+  })
+
+  test('a complete build of ANOTHER tree is not judged for a route it never had (23 October 2026)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'card-raster-stale-'))
+    try {
+      // A finished build that compiled the icon, with its trace, and never saw the cron.
+      mkdirSync(join(root, '.next', 'server', 'app', 'api', 'cron'), { recursive: true })
+      writeFileSync(join(root, '.next', 'BUILD_ID'), 'another-tree')
+      writeFileSync(join(root, '.next', 'server', 'app', 'icon.js'), '')
+      writeFileSync(join(root, '.next', 'server', 'app', 'icon.js.nft.json'), JSON.stringify({ files: ['../../../node_modules/@resvg/resvg-wasm/index_bg.wasm', '../../../src/assets/fonts/A.ttf', '../../../src/assets/fonts/B.ttf'] }))
+      const icon = { entry: 'app/icon', file: 'src/app/icon.tsx', needsFonts: true, subtree: false }
+      const cron = { entry: 'app/api/cron/listing-occurrences/route', file: 'src/app/api/cron/listing-occurrences/route.ts', needsFonts: true, subtree: false }
+      const readTrace = (traceFile: string) => {
+        const p = join(root, traceFile)
+        return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).files as string[]) : null
+      }
+      expect(completeBuild(root).complete).toBe(true)
+      // RED, as the test read it before: the cron judged against a build that never had it.
+      expect(judgeTraces([icon, cron], readTrace, wasm, fonts).faults).toHaveLength(1)
+      // GREEN: the cron is reported as absent from this build; the icon is still judged, and passes.
+      const { present, absent } = routesInBuild([icon, cron], (rel: string) => existsSync(join(root, rel)))
+      expect(absent.map((r) => r.entry)).toEqual(['app/api/cron/listing-occurrences/route'])
+      expect(judgeTraces(present, readTrace, wasm, fonts).faults).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

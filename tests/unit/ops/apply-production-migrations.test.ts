@@ -7,8 +7,10 @@ import { afterEach, describe, expect, test } from 'vitest'
 import {
   LINKED_REF_FILE,
   TEST_PROJECT_REF,
+  VERCEL_LINK_FILE,
   askLine,
   decide,
+  proofOneCanLook,
   readLinkedRef,
   supabaseCommands,
 } from '../../../scripts/ops/apply-production-migrations.mjs'
@@ -85,6 +87,31 @@ describe('readLinkedRef', () => {
     expect(readLinkedRef(root)).toBe(TEST_PROJECT_REF)
     writeFileSync(join(root, LINKED_REF_FILE), '   \n')
     expect(readLinkedRef(root)).toBeNull()
+  })
+})
+
+describe('proof 1 can look, judged before anything is linked or pushed', () => {
+  const dirs: string[] = []
+  afterEach(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+  })
+
+  test('a tree with no .vercel/project.json cannot run proof 1; one with it can', () => {
+    const root = mkdtempSync(join(tmpdir(), 'el-vercel-link-'))
+    dirs.push(root)
+    expect(proofOneCanLook(root)).toBe(false)
+    mkdirSync(join(root, '.vercel'), { recursive: true })
+    writeFileSync(join(root, VERCEL_LINK_FILE), '{"projectId":"prj_x","orgId":"team_x"}')
+    expect(proofOneCanLook(root)).toBe(true)
+  })
+
+  test('the run refuses on a missing link before it links or pushes (23 October: the push landed, proof 1 could not look)', () => {
+    const source = readFileSync(join(process.cwd(), 'scripts', 'ops', 'apply-production-migrations.mjs'), 'utf8')
+    const refusal = source.indexOf('if (!proofOneCanLook())')
+    expect(refusal).toBeGreaterThan(0)
+    expect(refusal).toBeLessThan(source.indexOf('const [link, push] = supabaseCommands()'))
+    expect(refusal).toBeLessThan(source.indexOf('typed = askLine('))
+    expect(source).not.toContain("'schema object the code names still absent'")
   })
 })
 
