@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { filterPermittedRecipients } from '@/lib/consent/resolver'
+import { PLATFORM_TENANT_SLUG } from '@/lib/consent/purposes'
 import { PAID_ORDER_STATUSES } from '@/lib/organisers/event-revenue'
 import type { PlatformPageRequest, PlatformScope } from './platform-request'
 
@@ -316,6 +317,11 @@ export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now
     byEmail.set(email, acc)
   }
 
+  // A consent is evidence for ONE tenant (consent_ledger.sql); only EventLinqs' own counts here.
+  const { data: tenant, error: tenantError } = await admin.from('marketing_tenants').select('id').eq('slug', PLATFORM_TENANT_SLUG).maybeSingle()
+  if (tenantError) fail('the platform tenant', tenantError.message)
+  if (!tenant?.id) fail('the platform tenant', `no tenant ${PLATFORM_TENANT_SLUG}`)
+
   const candidates = [...byEmail.keys()].sort().filter((e) => !req.after || e > req.after)
   const rows: BuyerOut[] = []
   for (let i = 0; i < candidates.length && rows.length < req.limit; i += req.limit) {
@@ -327,6 +333,7 @@ export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now
           .from('consent_events')
           .select('subject_email, decision, wording, wording_version, occurred_at')
           .eq('purpose', CONSENT_PURPOSE)
+          .eq('tenant_id', tenant!.id)
           .in('subject_email', chunk)
           .order('id', { ascending: true })
           .range(from, to),
