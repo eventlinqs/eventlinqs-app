@@ -558,6 +558,94 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'BOOKEDPROOF_PLATFORM_SECRET_ORGANISATIONS',
+    describe: 'Signs the Bookedproof read only platform read of the organisers (trial gate T3), FAIL CLOSED',
+    // POST /api/connect/bookedproof/platform/<scope> verifies an HMAC-SHA256
+    // under the asked scope's own secret (the project manager's 22:45 (3) of
+    // 26 October 2026: each scope its own secret), and answers 503
+    // not-configured while it is unset. Minted by
+    // scripts/ops/mint-bookedproof-connector-secret.mjs --name; production
+    // is the founder's APPLY (C:\dev\GO-LIVE-27OCT.md).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'this scope of the platform read is switched on by setting this and off by leaving it unset: the route ' +
+      'answers 503 not-configured without it, and production holds it only after the founder APPLY',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'BOOKEDPROOF_PLATFORM_SECRET_EVENTS',
+    describe: 'Signs the Bookedproof read only platform read of the events and their tiers (trial gate T3), FAIL CLOSED',
+    // POST /api/connect/bookedproof/platform/<scope> verifies an HMAC-SHA256
+    // under the asked scope's own secret (the project manager's 22:45 (3) of
+    // 26 October 2026: each scope its own secret), and answers 503
+    // not-configured while it is unset. Minted by
+    // scripts/ops/mint-bookedproof-connector-secret.mjs --name; production
+    // is the founder's APPLY (C:\dev\GO-LIVE-27OCT.md).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'this scope of the platform read is switched on by setting this and off by leaving it unset: the route ' +
+      'answers 503 not-configured without it, and production holds it only after the founder APPLY',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'BOOKEDPROOF_PLATFORM_SECRET_BUYERS',
+    describe: 'Signs the Bookedproof read only platform read of the buyers whose consent wording names Bookedproof (trial gate T3), FAIL CLOSED',
+    // POST /api/connect/bookedproof/platform/<scope> verifies an HMAC-SHA256
+    // under the asked scope's own secret (the project manager's 22:45 (3) of
+    // 26 October 2026: each scope its own secret), and answers 503
+    // not-configured while it is unset. Minted by
+    // scripts/ops/mint-bookedproof-connector-secret.mjs --name; production
+    // is the founder's APPLY (C:\dev\GO-LIVE-27OCT.md).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'this scope of the platform read is switched on by setting this and off by leaving it unset: the route ' +
+      'answers 503 not-configured without it, and production holds it only after the founder APPLY',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'BOOKEDPROOF_PLATFORM_SECRET_LEDGER',
+    describe: 'Signs the Bookedproof read only platform read of the checkout ledger (trial gate T3), FAIL CLOSED',
+    // POST /api/connect/bookedproof/platform/<scope> verifies an HMAC-SHA256
+    // under the asked scope's own secret (the project manager's 22:45 (3) of
+    // 26 October 2026: each scope its own secret), and answers 503
+    // not-configured while it is unset. Minted by
+    // scripts/ops/mint-bookedproof-connector-secret.mjs --name; production
+    // is the founder's APPLY (C:\dev\GO-LIVE-27OCT.md).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'this scope of the platform read is switched on by setting this and off by leaving it unset: the route ' +
+      'answers 503 not-configured without it, and production holds it only after the founder APPLY',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'ORDER_ACCESS_SECRET',
     describe: 'Signs the guest link that opens a buyer own order',
     // Missing means guest order links are neither issued nor honoured. It fails

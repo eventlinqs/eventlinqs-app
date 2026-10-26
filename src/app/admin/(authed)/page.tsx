@@ -10,6 +10,7 @@ import { aggregateGmv, ANALYTICS_CURRENCY, type GmvOrderRow } from '@/lib/admin/
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { checkStripeHealth, checkSupabaseHealth, checkRedisHealth, type HealthResult } from '@/lib/admin/health'
 import { captureException } from '@/lib/observability/sentry'
+import { PLATFORM_READ_ACTION, readLoggedReadsWithin, readsSentence, totalReads, type ReadTotals } from '@/lib/connect/bookedproof/platform-log'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -74,6 +75,20 @@ export default async function AdminDashboardPage() {
           </Suspense>
           <Suspense fallback={<TileSkeleton label="Active disputes" />}>
             <DisputesTile />
+          </Suspense>
+        </div>
+      </section>
+
+      <section aria-label="Bookedproof" className="mt-10">
+        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-white/50">
+          Bookedproof
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Suspense fallback={<TileSkeleton label="Bookedproof read today" />}>
+            <BookedproofReadsTile label="Bookedproof read today" sinceMsAgo={dayMs()} when="today" />
+          </Suspense>
+          <Suspense fallback={<TileSkeleton label="Bookedproof read this week" />}>
+            <BookedproofReadsTile label="Bookedproof read this week" sinceMsAgo={7 * dayMs()} when="this week" />
           </Suspense>
         </div>
       </section>
@@ -202,6 +217,30 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
     captureException(error, { where: 'app/admin/(authed)/page:202' })
     return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />
   }
+}
+
+/**
+ * WHAT BOOKEDPROOF READ, IN PLAIN WORDS (trial gate T3, the project manager's
+ * 22:45 (3) of 26 October 2026): every page its read only connection took,
+ * summed from the audit log, as one sentence, linking to each logged read.
+ */
+async function BookedproofReadsTile({ label, sinceMsAgo, when }: { label: string; sinceMsAgo: number; when: string }) {
+  let totals: ReadTotals | null = null
+  try {
+    totals = totalReads(await readLoggedReadsWithin(sinceMsAgo))
+  } catch (error) {
+    captureException(error, { where: 'app/admin/(authed)/page:BookedproofReadsTile' })
+  }
+  if (!totals) return <AdminStatTile label={label} value="-" hint="the audit log could not be read" status="warn" />
+  const rows = totals.organisations + totals.events + totals.buyers + totals.ledger
+  return (
+    <Link
+      href={`/admin/audit?action=${PLATFORM_READ_ACTION}`}
+      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+    >
+      <AdminStatTile label={label} value={rows.toLocaleString('en-AU')} hint={readsSentence(totals, when)} status="ok" />
+    </Link>
+  )
 }
 
 async function NewOrganisersTile() {

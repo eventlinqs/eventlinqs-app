@@ -49,6 +49,7 @@ export type PolicyName =
   | 'api-v1-auth'
   | 'api-v1-read'
   | 'bookedproof-organiser-read'
+  | 'bookedproof-platform-read'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -363,6 +364,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Bookedproof\'s signed read of the organisers it found (E51, POST /api/connect/bookedproof/organisers). ONE caller, so ONE bucket: keyed by the fact of a valid signature (the constant "bookedproof"), applied AFTER the signature is verified, so an unsigned caller is refused by the signature and can never empty the real caller\'s window. Sixty a minute against a caller that batches 100 addresses a request and reads each client once a day is far above legitimate use and low enough that a leaked secret cannot page the platform\'s organiser data out quickly. The number is the contract\'s (C:\\dev\\EVIDENCE\\WI1\\EL-BOOKEDPROOF-ORGANISER-READ-CONTRACT.md section 2), agreed with window 1 and the project manager on 23 October 2026. FAIL-CLOSED: this endpoint hands business data to whoever holds the secret, so a missing limiter store blocks rather than opening it.',
+    failClosed: true,
+  },
+  'bookedproof-platform-read': {
+    keyPrefix: 'bp-platread',
+    limit: 120,
+    windowSec: 60,
+    rationale:
+      'Bookedproof\'s signed, read only read of EventLinqs as its customer one (trial gate T3, POST /api/connect/bookedproof/platform/<scope>, the project manager\'s 22:35 (3) and 22:45 (3) of 26 October 2026). ONE caller, so ONE bucket across the four scopes: keyed by the fact of a valid signature (the constant "bookedproof"), applied AFTER that scope\'s signature is verified, so an unsigned caller is refused by the signature and can never empty the real caller\'s window. A page is at most 500 rows, so 120 a minute reads 60,000 rows a minute, enough for the first day\'s whole read of the platform in a few minutes and its later daily reads in seconds, and low enough that a leaked scope secret cannot page the platform out unnoticed between two log reads. FAIL-CLOSED: this endpoint hands business data and consented buyers to whoever holds a secret, so a missing limiter store blocks rather than opening it.',
     failClosed: true,
   },
 }
