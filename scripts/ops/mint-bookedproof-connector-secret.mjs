@@ -220,8 +220,10 @@ if (PROVE) {
   if (!secret) fail('--prove needs --handoff <file> holding the value to sign with.')
   console.log(`mint-bookedproof-connector-secret: prove against ${PROVE} (fp ${fingerprint(secret)})`)
   await prove(PROVE, secret)
-  process.exit(0)
-}
+  // No process.exit() after a fetch: on Node 24 for Windows it trips libuv's
+  // UV_HANDLE_CLOSING assertion (exit 3221226505) while the socket closes, and a
+  // caller reading the exit code would take a proved scope for a failed one.
+} else {
 
 if (VAR !== 'BOOKEDPROOF_CONNECTOR_SECRET' && !PLATFORM_SCOPE) {
   fail(`--name must be BOOKEDPROOF_CONNECTOR_SECRET or one of ${Object.keys(PLATFORM_SCOPE_OF).join(', ')}, not ${VAR}.`)
@@ -298,3 +300,4 @@ if (SCOPE === 'production') {
 console.log('')
 console.log('It takes effect on the next deployment of that environment. Then prove it with:')
 console.log(`  node scripts/ops/mint-bookedproof-connector-secret.mjs --prove <deployment origin> --handoff ${HANDOFF}`)
+}
