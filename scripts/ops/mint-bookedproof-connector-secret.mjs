@@ -47,6 +47,8 @@
  *       (after the next deploy: signs a request with the handed-over value and
  *        expects 200, which is the only proof the deployment holds it)
  *
+ * --name <VAR>                 BOOKEDPROOF_CONNECTOR_SECRET (default), or one of the
+ *                              four BOOKEDPROOF_PLATFORM_SECRET_* of the platform read
  * --scope preview|production   which Vercel environment (default preview)
  * --apply                      store it; without this nothing is written
  * --handoff <file>             where Bookedproof's copy is written (and read back)
@@ -62,7 +64,19 @@ import { SHAPES } from '../../src/lib/env/manifest.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..', '..')
-const VAR = 'BOOKEDPROOF_CONNECTOR_SECRET'
+/*
+ * WHICH SECRET (--name). The E51 organiser read's, by default, or one of the
+ * four scope secrets of the platform read (trial gate T3, each scope its own
+ * secret by the project manager's 22:45 (3) of 26 October 2026). The --prove
+ * request follows the name: the organiser read's vector, or one signed page of
+ * that scope, expecting 200 with the scope named back.
+ */
+const PLATFORM_SCOPE_OF = {
+  BOOKEDPROOF_PLATFORM_SECRET_ORGANISATIONS: 'organisations',
+  BOOKEDPROOF_PLATFORM_SECRET_EVENTS: 'events',
+  BOOKEDPROOF_PLATFORM_SECRET_BUYERS: 'buyers',
+  BOOKEDPROOF_PLATFORM_SECRET_LEDGER: 'ledger',
+}
 const EXPECTED_PROJECT = 'eventlinqs-app'
 const WRITES_LOG = 'C:\\dev\\PRODUCTION-WRITES.txt'
 const PROOF_ADDRESS = 'bp-connector-proof@bookedproof.test'
@@ -73,6 +87,8 @@ const opt = (name) => {
   const i = args.indexOf(name)
   return i >= 0 ? args[i + 1] : undefined
 }
+const VAR = opt('--name') ?? 'BOOKEDPROOF_CONNECTOR_SECRET'
+const PLATFORM_SCOPE = PLATFORM_SCOPE_OF[VAR] ?? null
 const SCOPE = opt('--scope') ?? 'preview'
 const APPLY = flag('--apply')
 const ROTATE = flag('--rotate')
@@ -146,7 +162,33 @@ function readHandoff() {
   return value.length > 0 ? value : null
 }
 
+async function provePlatform(origin, secret, scope) {
+  const body = JSON.stringify({ after: null, limit: 1 })
+  const timestamp = String(Math.floor(Date.now() / 1000))
+  const signature = `v1=${createHmac('sha256', secret).update(`${timestamp}.${body}`, 'utf8').digest('hex')}`
+  const headers = { 'content-type': 'application/json', 'x-eventlinqs-timestamp': timestamp, 'x-eventlinqs-signature': signature }
+  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  const res = await fetch(`${origin}/api/connect/bookedproof/platform/${scope}`, { method: 'POST', headers, body, redirect: 'manual' })
+  const text = await res.text()
+  let json = null
+  try {
+    json = JSON.parse(text)
+  } catch {
+    /* reported below */
+  }
+  console.log(`  prove               ${origin} answered ${res.status}${json?.error ? ` ${json.error}` : ''}`)
+  if (!(res.status === 200 && json?.scope === scope && Array.isArray(json?.rows))) {
+    const why =
+      res.status === 503 ? 'the deployment does not hold this scope\'s secret yet (redeploy after storing it)'
+      : res.status === 401 ? `the deployment holds a DIFFERENT value (${json?.error ?? 'refused'}); the handoff file and Vercel have parted`
+      : `an unexpected answer: ${text.slice(0, 200)}`
+    fail(why)
+  }
+  console.log(`  proved              the ${scope} read verified a request signed with the handed-over copy (${json.rows.length} row on its first page)`)
+}
+
 async function prove(origin, secret) {
+  if (PLATFORM_SCOPE) return provePlatform(origin, secret, PLATFORM_SCOPE)
   const body = JSON.stringify({ emails: [PROOF_ADDRESS], pages: [], since: null })
   const timestamp = String(Math.floor(Date.now() / 1000))
   const signature = `v1=${createHmac('sha256', secret).update(`${timestamp}.${body}`, 'utf8').digest('hex')}`
@@ -181,6 +223,9 @@ if (PROVE) {
   process.exit(0)
 }
 
+if (VAR !== 'BOOKEDPROOF_CONNECTOR_SECRET' && !PLATFORM_SCOPE) {
+  fail(`--name must be BOOKEDPROOF_CONNECTOR_SECRET or one of ${Object.keys(PLATFORM_SCOPE_OF).join(', ')}, not ${VAR}.`)
+}
 if (!['preview', 'production'].includes(SCOPE)) fail(`--scope must be preview or production, not ${SCOPE}.`)
 console.log(`mint-bookedproof-connector-secret: ${VAR} on ${SCOPE}${APPLY ? '' : ' (dry run)'}`)
 
@@ -215,8 +260,12 @@ if (!APPLY) {
 /* 4. Production waits for the founder's typed APPLY, after the privacy ruling. */
 if (SCOPE === 'production') {
   console.log('')
-  console.log('  PRODUCTION. This switches on the organiser read for Bookedproof on the live site.')
-  console.log('  Only after Lawal has ruled on the privacy disclosure (the contract, section 7).')
+  if (PLATFORM_SCOPE) {
+    console.log(`  PRODUCTION. This switches on Bookedproof's read only ${PLATFORM_SCOPE} read of EventLinqs on the live site (trial gate T3).`)
+  } else {
+    console.log('  PRODUCTION. This switches on the organiser read for Bookedproof on the live site.')
+    console.log('  Only after Lawal has ruled on the privacy disclosure (the contract, section 7).')
+  }
   const typed = askLine('  Type APPLY to store it on production: ')
   if (typed.trim() !== 'APPLY') fail('not applied: APPLY was not typed.')
 }
@@ -242,7 +291,7 @@ console.log(`  listed on ${SCOPE.padEnd(10)} yes`)
 
 if (SCOPE === 'production') {
   const stamp = new Date().toLocaleString('sv-SE', { timeZone: 'Australia/Melbourne' }).slice(0, 16)
-  appendFileSync(WRITES_LOG, `${stamp}  founder typed APPLY: APPLIED: ${VAR} stored on production, fp ${fingerprint(value)} (E51 the won organiser; scripts/ops/mint-bookedproof-connector-secret.mjs)\n`)
+  appendFileSync(WRITES_LOG, `${stamp}  founder typed APPLY: APPLIED: ${VAR} stored on production, fp ${fingerprint(value)} (${PLATFORM_SCOPE ? `T3 the platform read, ${PLATFORM_SCOPE}` : 'E51 the won organiser'}; scripts/ops/mint-bookedproof-connector-secret.mjs)\n`)
   console.log(`  logged              ${WRITES_LOG}`)
 }
 
