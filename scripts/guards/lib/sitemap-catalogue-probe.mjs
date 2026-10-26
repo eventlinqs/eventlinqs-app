@@ -32,6 +32,7 @@
  */
 import { readEventCatalogue, readOrganiserCatalogue, readVenueCatalogue, readArtistCatalogue } from '@/lib/seo/sitemap-catalogue'
 import { isOrganiserProfileIndexable } from '@/lib/seo/indexing-policy'
+import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isStillListed } from '@/lib/events/listing-window'
@@ -235,6 +236,9 @@ async function main() {
   for (const row of rawOrganisations.rows) {
     const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
     if (!slug) continue
+    // The listings organisation has no page (src/app/organisers/[handle]/page.tsx refuses it, ruling A
+    // of 23 October 2026), so the sitemap never names it however many listings it holds.
+    if (isListingsOrganisation(slug)) continue
     const hasBiography = typeof row.description === 'string' && row.description.trim().length > 0
     const count = countByOrganisation.get(String(row.id)) ?? 0
     if (!isOrganiserProfileIndexable(count, hasBiography, threshold)) continue

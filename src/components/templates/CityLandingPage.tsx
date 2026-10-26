@@ -50,6 +50,8 @@ interface Props {
   suburbs: SuburbContent[]
   /** Pre-built Mapbox pins (geocoded events). */
   mapPins: MapEventPin[]
+  /** True when the city has a free guide, so the page links its week. */
+  hasFreeGuide?: boolean
 }
 
 /**
@@ -91,6 +93,7 @@ export function CityLandingPage({
   communityImages,
   suburbs,
   mapPins,
+  hasFreeGuide = false,
 }: Props) {
   /* ONE array feeds both the reserved height and the cards, so the two can
    * never disagree: the section declares the height of what it renders, not
@@ -400,6 +403,23 @@ export function CityLandingPage({
             >
               browse {city.name}
             </Link>.
+            {/* THE ONE INTERNAL LINK /free/[city]/this-week HAS (WI2 Part 2).
+              * The gate's reachability crawl found it an orphan on 26 October
+              * 2026: the week leaves the sitemap while it is empty, so a link is
+              * the only way in, the same door /events/browse/[city] was given. */}
+            {hasFreeGuide ? (
+              <>
+                {' '}
+                Every free event in {city.name} this week is in the
+                {' '}
+                <Link
+                  href={`/free/${city.slug}/this-week`}
+                  className="underline hover:text-[var(--text-primary)]"
+                >
+                  {city.name} free guide
+                </Link>.
+              </>
+            ) : null}
           </p>
         </ContentSection>
       ) : null}

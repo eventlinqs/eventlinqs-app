@@ -391,6 +391,38 @@ details (`attachGeneratedCover`, Law 6), so an occurrence is written as a draft
 with its guide day, given its cover, judged by the gate, and only then published;
 C, see question D in WINDOW4-STATUS.txt, which C's consent promise raised.
 
+### 7b. The run finishes what it starts (window 4, 24 October 2026, found by the Part 2 drive)
+
+MEASURED, not estimated: the Part 2 drive's first call to
+`/api/cron/listing-occurrences`, against TEST with the checked file's 55 nights
+(36 weekly, 19 once), made its dates at a median 7.3 s each (p90 11.8 s, from
+the rows' own `created_at`). Each night is owed its next 8 dates, so a first
+fill after an import owes about 300. Vercel ends a function at its maximum
+duration: "If a function runs for longer than its set maximum duration, Vercel
+will terminate it", 300 s by default with fluid compute
+(https://vercel.com/docs/functions/configuring-functions/duration, read
+24 October 2026). The route declared none and ran once a day at 14:10 UTC, so
+the first run after the production import would have been ended after about
+forty dates, the guide would have filled over about eight days, and the date it
+was making when it was ended would have stayed a draft for good: the plan saw
+the date held by a future occurrence, made nothing, and counted it unchanged
+without reading its status.
+
+What changed, each with its test and the guard
+`the-daily-run-finishes-what-it-starts`:
+
+- The route declares `maxDuration = 300` with its source and hands the run a
+  deadline a minute inside it. The run checks the deadline before every write,
+  never inside one, and answers `stoppedEarly` with the nights it did not
+  finish; the next run reads every plan afresh and carries on.
+- A future occurrence still in draft and older than
+  `ABANDONED_DRAFT_AFTER_MS` (20 minutes) is a stopped run's unfinished work:
+  it is taken away (a draft was never public, so no link and no reminder points
+  at it) and its date made again in the same run. A younger draft is held, left
+  to the run that may be making it.
+- The run is hourly (`10 * * * *`), so a first fill that needs several runs
+  finishes within hours; when nothing is owed a run only reads the nights.
+
 ## 8. Part 2: `/free/<city>/this-week`
 
 Inherits `/this-weekend`: one module (`week-surface.ts`) owns the window (today
@@ -404,6 +436,58 @@ those pages, the venue page's rule. Its share card is rendered from the page's
 own events by the same renderer the Launch Kit uses for its story and square
 cards (Law 6). Every guide city gets it from its row; Melbourne, Geelong,
 Ballarat and Bendigo on day one.
+
+### 8a. Part 2 as it is built (window 4, 24 October 2026, the project manager's 19:54)
+
+Decided from the code, before any of it was written:
+
+- **Which events.** Free is the platform's one definition, `is_free = true`
+  (the `/events?preset=free` filter's own predicate), so the page and the filter
+  cannot disagree about what is free. Inside it, `entry_mode = 'walk_in'` is
+  labelled "Free entry, no ticket needed" (the WI1 constant) and every other free
+  event "Free, ticket needed", the founder's answer 3; What's On draws the same
+  line ("This is a free event" / "Booking not required", section 3). Externally
+  ticketed events stay off (answer 2: WI3 decides them).
+- **Which city.** `city_primary = <slug>` or `venue_city ilike %<name>%`: the
+  import writes the first (so Torquay counts for Geelong by its row, answer 4),
+  organiser events carry the second, which is the rule every city-scoped read
+  already uses.
+- **Which week.** From the start of today to the end of the sixth day after, in
+  the CITY's own zone (`cities.timezone`, written by part 1), an event listed
+  while it overlaps that window and has not ended (the listing window).
+- **Freshness, for every read, not only the guide.** `applyPublicEventVisibility`
+  gains `listing_fresh_until is null or listing_fresh_until >= now`, so a night
+  unchecked for 21 days leaves the guide, the city pages, search and every rail
+  at once, and an organiser's event (no freshness date) is untouched. Two
+  `.or()` groups are ANDed by PostgREST (probed on TEST, 24 October 2026: the
+  intersection only).
+- **The page.** `/this-weekend`'s shape and components (the shared hero, one
+  grid per day, the shared empty state, the organiser closer), a category filter
+  as links to `?category=<slug>` whose filtered views carry a canonical to the
+  page and noindex, the existing save button on each card, a share button, an
+  ItemList of the occurrences' own pages, a breadcrumb. A guide city that is not
+  `free_guide`, or an unknown slug, answers 404.
+- **The share count.** WI1 counts a share as a row keyed by ONE event. A city
+  page is not an event, so counting it that way needs a new table and a founder
+  migration; it is counted instead through the platform's consent-gated
+  analytics (`trackEvent`), named here as the difference it is.
+- **Indexing.** `discoveryIndexingFor(total, path)`, exactly as `/this-weekend`:
+  indexable while the page holds the live threshold, noindex below it; in the
+  sitemap only while indexable; `src/lib/seo/indexing-policy.ts` classes the
+  route conditional.
+- **The share card (slice 2b).** A city-week composition on the Launch Kit's own
+  renderer (`buildCardElement`'s fonts and resvg path), story and square, from
+  the page's own events, never a generated image (Law 6).
+- **The guard.** `scripts/guards/listed-hosts-show-their-source.mjs` with rule 3
+  now (every guide and discovery read composes the freshness predicate), rules 1
+  and 2 with Part 3's venue pages; drilled red then green for every occurrence it
+  asserts.
+
+Verified by: unit tests red then green; every guard; the drills; part 1's import
+of the project manager's checked file on TEST (dry run then apply) and the
+generator; a TEST proof that a series checked 22 days ago is on no guide; a
+build served locally, driven at 390, 768 and 1440 on every guide city's page;
+axe 0, the link crawler 0 non-200, the affordance scan.
 
 ## 9. Part 3: venue pages, photos, the claim, removal
 

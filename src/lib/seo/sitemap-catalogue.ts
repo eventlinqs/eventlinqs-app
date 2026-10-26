@@ -1,3 +1,4 @@
+import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed } from '@/lib/events/listing-window'
@@ -163,6 +164,8 @@ export async function readOrganiserCatalogue(options: {
     for (const row of data ?? []) {
       const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
       if (!slug) continue
+      // WI2 ruling A: the listings organisation has no page, so it is never offered.
+      if (isListingsOrganisation(slug)) continue
       const hasBiography = typeof row.description === 'string' && row.description.trim().length > 0
       if (!isOrganiserProfileIndexable(options.eventCountFor(String(row.id)), hasBiography, options.threshold)) {
         continue

@@ -67,6 +67,14 @@ const state = vi.hoisted(() => ({
    * the catalogue and not on this weekend, which is the ordinary case.
    */
   weekend: [] as Array<Record<string, unknown>>,
+  /**
+   * What `public.cities` holds where `free_guide` is on (WI2 Part 2), and what a
+   * guide city's week read sees. Like the weekend, the week read is told apart by
+   * the one filter only it makes, `.eq('is_free', ...)`, so a guide week is
+   * published only when this list holds events, never because the catalogue does.
+   */
+  guideCities: [] as Array<Record<string, unknown>>,
+  guideWeek: [] as Array<Record<string, unknown>>,
   /** The owner's live indexing threshold. */
   threshold: 1,
 }))
@@ -81,11 +89,16 @@ const state = vi.hoisted(() => ({
  * whatever order the storage engine happened to return. That is the same defect
  * class the sitemap's own events query carries a comment about.
  */
-function chain(rows: unknown[], weekendRows?: unknown[]) {
+function chain(rows: unknown[], weekendRows?: unknown[], guideWeekRows?: unknown[]) {
   let out = rows
   const self: Record<string, unknown> = {}
   for (const method of ['select', 'match', 'not', 'eq', 'in', 'or', 'limit', 'lte', 'is', 'range']) {
     self[method] = () => self
+  }
+  // `.eq('is_free', ...)` is the guide week's read and nothing else's.
+  self.eq = (column: string) => {
+    if (column === 'is_free' && guideWeekRows) out = guideWeekRows
+    return self
   }
   /*
    * `.gte('start_date', ...)` IS THE WEEKEND QUERY AND NOTHING ELSE.
@@ -125,7 +138,8 @@ vi.mock('next/cache', () => ({
 
 vi.mock('@/lib/supabase/public-client', () => ({
   createPublicClient: () => ({
-    from: (table: string) => chain(table === 'event_categories' ? state.categories : state.discovery),
+    from: (table: string) =>
+      chain(table === 'event_categories' ? state.categories : state.discovery, undefined, state.guideWeek),
   }),
 }))
 
@@ -134,7 +148,9 @@ vi.mock('@/lib/supabase/admin', () => ({
     from: (table: string) =>
       table === 'organisations'
         ? chain(state.organisations)
-        : chain(state.events, state.weekend),
+        : table === 'cities'
+          ? chain(state.guideCities)
+          : chain(state.events, state.weekend),
   }),
 }))
 
@@ -236,6 +252,8 @@ beforeEach(() => {
   state.categories = []
   state.events = []
   state.organisations = []
+  state.guideCities = []
+  state.guideWeek = []
   state.threshold = 1
   vi.resetModules()
 })
@@ -526,6 +544,40 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
     expect(urls.filter(u => u.includes('?'))).toEqual([])
   })
 
+  test('sitemap_publishes_a_guide_week_only_while_it_holds_events', async () => {
+    state.discovery = []
+    state.events = []
+    state.organisations = []
+    state.guideCities = [{ slug: 'geelong', name: 'Geelong', state: 'VIC', timezone: 'Australia/Melbourne' }]
+
+    state.guideWeek = []
+    expect(await generate()).not.toContain('/free/geelong/this-week')
+
+    vi.resetModules()
+    state.guideWeek = [
+      {
+        id: 'wi2-trivia-1',
+        slug: 'trivia-murphys-geelong-2026-10-28',
+        title: 'Trivia',
+        start_date: '2026-10-28T08:00:00.000Z',
+        end_date: '2026-10-28T11:00:00.000Z',
+        timezone: 'Australia/Melbourne',
+        is_free: true,
+        entry_mode: 'walk_in',
+        listing_source: 'eventlinqs',
+        cover_image_url: 'https://example.test/cover.avif',
+        ticket_tiers: [],
+      },
+    ]
+    expect(await generate()).toContain('/free/geelong/this-week')
+
+    // The owner's threshold governs it like every other conditional page.
+    vi.resetModules()
+    state.threshold = 2
+    expect(await generate()).not.toContain('/free/geelong/this-week')
+    state.threshold = 1
+  })
+
   test('sitemap_publishes_the_weekend_only_while_it_holds_events', async () => {
     state.discovery = []
     state.events = [{ slug: 'lane-c-comedy-night', venue_name: 'Lane C Hall', updated_at: null }]
@@ -633,6 +685,8 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
     // The weekend surface, published on the same rule as every other
     // conditional page and counted the same way.
     expected += yes(state.weekend.length)
+    // Each guide city's week, on the same rule (WI2 Part 2).
+    for (let i = 0; i < state.guideCities.length; i++) expected += yes(state.guideWeek.length)
     for (const org of state.organisations) {
       expected += isOrganiserProfileIndexable(
         countOrganiser(rows, org.id as string),

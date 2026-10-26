@@ -36,7 +36,8 @@
 // nothing the second time.
 //
 // OCCURRENCES are not written here: the dated walk-in events for each night are
-// made by the daily run (/api/cron/listing-occurrences, 14:10 UTC), through the
+// made by the listings run (/api/cron/listing-occurrences, ten past every hour;
+// a first fill takes several runs, each stopping inside its time), through the
 // WI1 publish gate, and this script says so on every run rather than implying
 // them.
 
@@ -267,7 +268,7 @@ async function main() {
   const { judged, plan } = judgeAndPlan(rules, text, read)
   console.log(`FILE ${importFile}`)
   report(judged, plan)
-  console.log('OCCURRENCES: the dated walk-in events for each night are made by the daily run (/api/cron/listing-occurrences, 14:10 UTC), not by this script')
+  console.log('OCCURRENCES: the dated walk-in events for each night are made by the listings run (/api/cron/listing-occurrences, ten past every hour; a first fill takes several runs), not by this script')
 
   const writes = plan.rows.filter((r) => r.verdict === 'write')
   if (writes.length === 0 && plan.venues.length === 0) {

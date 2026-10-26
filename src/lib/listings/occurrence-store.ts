@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { checkPublishGate } from '@/lib/events/publish-gate'
 import { attachGeneratedCover } from '@/lib/events/generated-cover'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
@@ -54,6 +55,28 @@ type VenueRow = {
   removed_at: string | null
 }
 
+/**
+ * A READ THE RUN CAN REPEAT. A transient fault (the pool, a statement timeout, a dropped connection) is tried
+ * again exactly as a page read is (withBuildRetry, src/lib/supabase/build-retry.ts), so one failed connection
+ * no longer ends a run a second attempt would finish (drive 3 of WI2 Part 2, 25 October 2026: "event_series
+ * could not be read: TypeError: fetch failed"). A read that still fails names its cause: supabase-js keeps
+ * the real error in `details` ("Caused by: ..."), not in `message`, which alone says only "fetch failed".
+ */
+async function reread<R extends { error: unknown }>(what: string, run: () => PromiseLike<R>): Promise<R> {
+  const res = (await withBuildRetry(run as unknown as () => PromiseLike<{ data: unknown; error: unknown }>, {
+    label: `listing-occurrences ${what}`,
+  })) as unknown as R
+  if (res.error) throw new Error(`${what} could not be read: ${described(res.error)}`)
+  return res
+}
+
+function described(error: unknown): string {
+  const e = error as { message?: unknown; details?: unknown } | null
+  const message = typeof e?.message === 'string' ? e.message : String(error)
+  const cause = typeof e?.details === 'string' ? e.details.match(/Caused by: ([^\n]+)/)?.[1] : undefined
+  return cause ? `${message} (${cause})` : message
+}
+
 export function occurrenceStore(): OccurrenceStore {
   const admin = createAdminClient()
   const venues = new Map<string, Promise<VenueRow | null>>()
@@ -63,12 +86,13 @@ export function occurrenceStore(): OccurrenceStore {
     let read = venues.get(id)
     if (!read) {
       read = (async () => {
-        const { data, error } = await admin
-          .from('venues')
-          .select('id, name, slug, address, city, city_slug, state, country, postal_code, latitude, longitude, removed_at')
-          .eq('id', id)
-          .maybeSingle()
-        if (error) throw new Error(`venue ${id} could not be read: ${error.message}`)
+        const { data } = await reread(`venue ${id}`, () =>
+          admin
+            .from('venues')
+            .select('id, name, slug, address, city, city_slug, state, country, postal_code, latitude, longitude, removed_at')
+            .eq('id', id)
+            .maybeSingle(),
+        )
         return (data as VenueRow | null) ?? null
       })()
       venues.set(id, read)
@@ -80,8 +104,9 @@ export function occurrenceStore(): OccurrenceStore {
     let read = owners.get(organisationId)
     if (!read) {
       read = (async () => {
-        const { data, error } = await admin.from('organisations').select('owner_id').eq('id', organisationId).maybeSingle()
-        if (error) throw new Error(`organisation ${organisationId} could not be read: ${error.message}`)
+        const { data } = await reread(`organisation ${organisationId}`, () =>
+          admin.from('organisations').select('owner_id').eq('id', organisationId).maybeSingle(),
+        )
         return (data?.owner_id as string | undefined) ?? null
       })()
       owners.set(organisationId, read)
@@ -98,12 +123,13 @@ export function occurrenceStore(): OccurrenceStore {
     async nights() {
       const out: ListingNight[] = []
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await admin
-          .from('event_series')
-          .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status')
-          .order('id')
-          .range(from, from + PAGE - 1)
-        if (error) throw new Error(`event_series could not be read: ${error.message}`)
+        const { data } = await reread('event_series', () =>
+          admin
+            .from('event_series')
+            .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status')
+            .order('id')
+            .range(from, from + PAGE - 1),
+        )
         for (const r of data ?? []) {
           out.push({
             id: r.id,
@@ -128,19 +154,21 @@ export function occurrenceStore(): OccurrenceStore {
     },
 
     async occurrences(seriesId) {
-      const { data, error } = await admin
-        .from('events')
-        .select('id, occurrence_date, status, title, summary, start_date, end_date, timezone, category_id, age_restriction_min, guide:event_guides(days)')
-        .eq('listing_series_id', seriesId)
-      if (error) throw new Error(`the occurrences of ${seriesId} could not be read: ${error.message}`)
+      const { data } = await reread(`the occurrences of ${seriesId}`, () =>
+        admin
+          .from('events')
+          .select('id, occurrence_date, status, created_at, title, summary, start_date, end_date, timezone, category_id, age_restriction_min, guide:event_guides(days)')
+          .eq('listing_series_id', seriesId),
+      )
       const rows: ExistingOccurrence[] = []
       for (const e of data ?? []) {
-        const { count, error: countError } = await admin
-          .from('event_reminders')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_id', e.id)
-          .is('unsubscribed_at', null)
-        if (countError) throw new Error(`the reminders of ${e.id} could not be counted: ${countError.message}`)
+        const { count } = await reread(`the reminders of ${e.id}`, () =>
+          admin
+            .from('event_reminders')
+            .select('id', { count: 'exact', head: true })
+            .eq('event_id', e.id)
+            .is('unsubscribed_at', null),
+        )
         const guide = (Array.isArray(e.guide) ? e.guide[0] : e.guide) as { days?: Array<{ opens?: string | null; closes?: string | null }> } | null
         const day = guide?.days?.[0]
         rows.push({
@@ -157,6 +185,7 @@ export function occurrenceStore(): OccurrenceStore {
           opens: day?.opens ?? null,
           closes: day?.closes ?? null,
           reminderCount: count ?? 0,
+          createdAt: e.created_at,
         })
       }
       return rows

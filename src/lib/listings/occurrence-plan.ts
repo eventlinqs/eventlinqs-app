@@ -34,6 +34,15 @@ import { addDays, nextOccurrences, occurrenceOn, type Series } from './occurrenc
 
 export const OCCURRENCES_AHEAD = 8
 
+/**
+ * A run writes each new date as a draft and publishes it last. A future draft
+ * older than this was left by a run the platform ended part way (it ends a
+ * function at its maximum duration, 300 s on this route); younger, another run
+ * may be making it now. Ten times the route's budget, so a run still going is
+ * never mistaken for a stopped one.
+ */
+export const ABANDONED_DRAFT_AFTER_MS = 20 * 60 * 1000
+
 export type NightForOccurrences = Series & {
   status: 'active' | 'paused' | 'removed'
   name: string
@@ -59,6 +68,8 @@ export type ExistingOccurrence = {
   closes: string | null
   /** People who asked to be reminded of it. */
   reminderCount: number
+  /** When it was written. A draft's age says whether a run is still making it. */
+  createdAt: string
 }
 
 /** What an occurrence takes from its night, in the events table's column names. */
@@ -136,8 +147,20 @@ export function planOccurrences(
   ahead = OCCURRENCES_AHEAD,
 ): OccurrencePlan {
   const plan: OccurrencePlan = { create: [], update: [], retire: [], held: [], unchanged: 0 }
-  const future = existing.filter((o) => Date.parse(o.startIso) > now.getTime())
-  plan.unchanged += existing.length - future.length
+  const upcoming = existing.filter((o) => Date.parse(o.startIso) > now.getTime())
+  plan.unchanged += existing.length - upcoming.length
+
+  // A draft a stopped run left behind (ABANDONED_DRAFT_AFTER_MS) was never
+  // public, so no link and no reminder points at it: it is taken away and its
+  // date made again below. Before this the date stayed held by an unpublished
+  // row for good and was counted unchanged.
+  const abandoned = upcoming.filter(
+    (o) => o.status === 'draft' && now.getTime() - Date.parse(o.createdAt) > ABANDONED_DRAFT_AFTER_MS,
+  )
+  for (const o of abandoned) {
+    plan.retire.push({ id: o.id, date: o.occurrenceDate, action: 'delete', why: 'a run that was stopped part way left it unfinished' })
+  }
+  const future = upcoming.filter((o) => !abandoned.includes(o))
 
   // The dates the night wants: its next `ahead`, and, so a row made when a
   // skip pushed the window out is not taken off when the skip goes, every rule
@@ -156,7 +179,7 @@ export function planOccurrences(
   for (const date of wanted) {
     if (byDate.has(date)) continue
     // Nothing future holds the date, but a past or cancelled row may still own it.
-    const owner = existing.find((o) => o.occurrenceDate === date)
+    const owner = existing.find((o) => o.occurrenceDate === date && !abandoned.includes(o))
     if (owner) {
       plan.held.push({ date, why: `an occurrence already holds ${date} (${owner.status})` })
       continue
@@ -168,6 +191,11 @@ export function planOccurrences(
     if (o.status === 'cancelled') {
       if (valid.has(o.occurrenceDate)) plan.held.push({ date: o.occurrenceDate, why: `${o.occurrenceDate} was cancelled, and a cancelled event never comes back` })
       else plan.unchanged += 1
+      continue
+    }
+    if (o.status === 'draft') {
+      // Younger than ABANDONED_DRAFT_AFTER_MS: left to the run that may be making it.
+      plan.held.push({ date: o.occurrenceDate, why: 'another run is making it' })
       continue
     }
     if (!valid.has(o.occurrenceDate)) {

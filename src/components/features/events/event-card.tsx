@@ -10,6 +10,7 @@ import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 import { priceLabel } from '@/lib/events/price-label'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { freeEntryLabel } from '@/lib/listings/free-week'
 
 /**
  * EventCard - spec §6.2
@@ -90,6 +91,13 @@ type Props = {
     | 'grid-one-two-four'
     | 'rail-flat'
   >
+  /**
+   * WI2's city guide, a page of free events only: the price position says which
+   * free it is, "Free entry, no ticket needed" or "Free, ticket needed" (the
+   * founder's answer 3 of 21 October 2026, src/lib/listings/free-week.ts).
+   * Every other surface keeps the short labels.
+   */
+  freeLabels?: boolean
 }
 
 
@@ -121,7 +129,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three' }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three', freeLabels = false }: Props) {
   const {
     id, slug, title, cover_image_url, start_date, timezone,
     venue_city, venue_country, created_at, category, ticket_tiers,
@@ -133,7 +141,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   // badge at the bottom and swaps the top-left pill.
   const m5Mode = 'badge' in event
 
-  const priceLabel = formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null, event.entry_mode ?? null)
+  const priceLabel =
+    freeLabels && (event.is_free === true || isWalkIn({ entry_mode: event.entry_mode ?? null }))
+      ? freeEntryLabel(event.entry_mode)
+      : formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null, event.entry_mode ?? null)
   const inventory  = ticket_tiers.length > 0 ? buildInventory(ticket_tiers) : null
 
   // Location display: city if available, else country

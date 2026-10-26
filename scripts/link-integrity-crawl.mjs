@@ -47,6 +47,12 @@ const SEED_PATHS = [
   '/city/sydney/inner-west',        // suburb (BLOCKER-2)
   '/community/african/sydney',        // community-city (BLOCKER-2)
   '/guides',                        // organiser guide hub (renders every guide tile)
+  // THE CITY GUIDE'S WEEK (WI2 Part 2, 24 October 2026). Each guide week links
+  // every other guide city's week, so one load harvests all of them; Geelong
+  // and Melbourne are seeded so a guide city with an empty week cannot leave
+  // the family uncrawled.
+  '/free/geelong/this-week',
+  '/free/melbourne/this-week',
   '/legal/terms',
   '/legal/privacy',
   '/login',

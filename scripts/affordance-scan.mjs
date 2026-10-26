@@ -62,6 +62,8 @@ const PAGES = [
   ['community-city', '/community/african/sydney'],
   ['help', '/help'],
   ['guides-hub', '/guides'],
+  // The city guide's week (WI2 Part 2): a grid of event cards per day.
+  ['free-week', '/free/geelong/this-week'],
   ['guide-page', '/guides/mapping-ticket-tiers-to-seats'],
   ['press', '/press'],
   ['careers', '/careers'],

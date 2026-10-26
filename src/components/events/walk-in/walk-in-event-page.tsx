@@ -11,6 +11,7 @@ import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
+import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
@@ -142,7 +143,10 @@ export type WalkInEventViewProps = {
 export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }: WalkInEventViewProps) {
   const source = textSource(event)
   const org = event.organisation
-  const organiserName = org?.name ?? 'the organiser'
+  // WI2 ruling A: a listing names its host, never the listings organisation
+  // that holds it, and has no organiser page or Follow (src/lib/listings/shown-organiser.ts).
+  const shown = shownOrganiser(event, org)
+  const organiserName = shown.name
   const programPublished = Boolean(guide.program_published_at)
   const eventUrl = `${baseUrl}/events/${event.slug}`
   const dates = guide.days.length > 0 ? guide.days.map((d) => d.date) : spanDates(event.start_date, event.end_date, event.timezone)
@@ -152,8 +156,8 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
   // The venue and its address, for the phone card when the guide says nothing
   // about getting there (one-venue-address-format).
   const venueLine = formatVenueWithAddress({ name: event.venue_name, address: event.venue_address })
-  const host = websiteHost(org?.website)
-  const handle = org?.instagram_handle ?? null
+  const host = websiteHost(shown.website)
+  const handle = shown.instagram
   const ageLabel = event.is_age_restricted && event.age_restriction_min ? `${event.age_restriction_min}+` : null
   const eyebrowPlace = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
   const eyebrowCategory = event.category?.name ?? null
@@ -199,7 +203,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
       {event.organisation && event.status !== 'archived' && (
         <EventSchemaJsonLd
           event={event}
-          organisation={event.organisation}
+          organisation={{ ...event.organisation, name: shown.name, slug: shown.slug }}
           ticketTiers={[]}
           state={event.status === 'cancelled' ? 'cancelled' : event.status === 'postponed' ? 'postponed' : ended ? 'past' : 'upcoming'}
           baseUrl={baseUrl}
@@ -226,7 +230,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
       <SiteHeader staticSafe />
 
       <main id="main-content" className="pb-28 lg:pb-24">
-        {state && <WalkInStateLine state={state} organiserSlug={org?.slug ?? null} />}
+        {state && <WalkInStateLine state={state} organiserSlug={shown.slug} />}
 
         <div className="mx-auto w-full max-w-7xl lg:px-8 lg:pt-6">
           {crumbs.length > 1 && (
@@ -459,14 +463,18 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                   <div className="min-w-0">
                     <p className="type-eyebrow m-0 font-display text-[var(--brand-accent-strong)]">{ORGANISED_BY}</p>
                     <p data-text-source={NAME_SOURCE} className="m-0 mt-0.5 text-[15px] font-bold text-ink-900 lg:mt-1 lg:font-headline lg:text-xl">
-                      <Link href={`/organisers/${org.slug}`} className="hover:underline">
-                        {org.name}
-                      </Link>
+                      {shown.slug ? (
+                        <Link href={`/organisers/${shown.slug}`} className="hover:underline">
+                          {shown.name}
+                        </Link>
+                      ) : (
+                        shown.name
+                      )}
                     </p>
                     {(host || handle) && (
                       <p className="m-0 mt-1 hidden text-sm text-ink-600 lg:block">
                         {host && (
-                          <a href={org.website!.startsWith('http') ? org.website! : `https://${org.website}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                          <a href={shown.website!.startsWith('http') ? shown.website! : `https://${shown.website}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                             {host}
                           </a>
                         )}
@@ -479,14 +487,16 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                       </p>
                     )}
                   </div>
-                  <FollowButton
-                    type="organiser"
-                    id={org.id}
-                    variant="outline"
-                    label={org.short_name ? `Follow ${org.short_name}` : 'Follow'}
-                    compactLabel="Follow"
-                    fromEventId={event.id}
-                  />
+                  {shown.followable && (
+                    <FollowButton
+                      type="organiser"
+                      id={org.id}
+                      variant="outline"
+                      label={shown.shortName ? `Follow ${shown.shortName}` : 'Follow'}
+                      compactLabel="Follow"
+                      fromEventId={event.id}
+                    />
+                  )}
                 </Reveal>
               )}
             </div>
@@ -508,7 +518,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                   calendar={calendarEvent}
                   remindMeOn={remindMeOn && !ended && event.status === 'published'}
                   heading={remindMeHeading(programPublished)}
-                  purpose={remindMePurpose(org?.short_name ?? organiserName, programPublished)}
+                  purpose={remindMePurpose(shown.shortName ?? organiserName, programPublished)}
                 />
               </div>
             </aside>
@@ -524,7 +534,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
         remindMeOn={remindMeOn && !ended && event.status === 'published'}
         programPublished={programPublished}
         heading={remindMeHeading(programPublished)}
-        purpose={remindMePurpose(org?.short_name ?? organiserName, programPublished)}
+        purpose={remindMePurpose(shown.shortName ?? organiserName, programPublished)}
       />
       <SiteFooter />
     </div>

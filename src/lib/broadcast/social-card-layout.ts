@@ -369,3 +369,31 @@ export function cardFilename(slug: string, format: SocialCardFormat, extension: 
   const safeSlug = slug.replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
   return `${safeSlug || 'event'}-${format}.${extension}`
 }
+
+/**
+ * One line that fits `maxWidth` at `fontSize`: the text itself when it fits,
+ * otherwise as many whole words as fit with an ellipsis, and only when a single
+ * word is too long, as many of its characters as fit. Measured against the real
+ * face, so the drawn line is the measured line (WI2 Part 2, the city week card's
+ * rows, where an event title shares a row with its day).
+ */
+export function fitOneLine(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  measure: (text: string, fontSize: number) => number,
+): string {
+  const clean = text.trim().replace(/\s+/g, ' ')
+  if (measure(clean, fontSize) <= maxWidth) return clean
+  const ellipsis = '…'
+  const words = clean.split(' ')
+  for (let n = words.length - 1; n >= 1; n--) {
+    const candidate = `${words.slice(0, n).join(' ')}${ellipsis}`
+    if (measure(candidate, fontSize) <= maxWidth) return candidate
+  }
+  for (let n = clean.length - 1; n >= 1; n--) {
+    const candidate = `${clean.slice(0, n).trimEnd()}${ellipsis}`
+    if (measure(candidate, fontSize) <= maxWidth) return candidate
+  }
+  return ellipsis
+}
