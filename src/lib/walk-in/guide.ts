@@ -40,8 +40,13 @@ export const GuideDaySchema = z.object({
   date: z.string().regex(ISO_DATE),
   /** "HH:MM" in the event's own zone, or null when the opening is not confirmed. */
   opens: z.string().regex(CLOCK).nullable(),
-  /** "HH:MM". Earlier than `opens` means the night runs past midnight. */
-  closes: z.string().regex(CLOCK),
+  /**
+   * "HH:MM". Earlier than `opens` means the night runs past midnight. Null when
+   * the source gives no finish (WI2, the 21 October 22:25 answer 1): the page
+   * says "From" the opening and never makes an end up. The organiser form still
+   * asks for one.
+   */
+  closes: z.string().regex(CLOCK).nullable(),
   /** The organiser's own words for hours that are not confirmed yet. */
   hours_label: z.string().trim().max(60).nullable().default(null),
   items: z.array(GuideItemSchema).max(20).default([]),
@@ -116,13 +121,13 @@ export function formatClock(hhmm: string): string {
  * clock time or the organiser's own "to confirm" words, which the page sets in
  * the highlight design A draws for an unconfirmed time.
  */
-export type DayHours = { opens: string | null; unconfirmed: string | null; closes: string }
+export type DayHours = { opens: string | null; unconfirmed: string | null; closes: string | null }
 
 export function dayHours(day: GuideDay): DayHours {
   return {
     opens: day.opens ? formatClock(day.opens) : null,
     unconfirmed: day.opens ? null : day.hours_label,
-    closes: formatClock(day.closes),
+    closes: day.closes ? formatClock(day.closes) : null,
   }
 }
 

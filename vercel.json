@@ -108,6 +108,10 @@
     {
       "path": "/api/cron/walk-in-reminders",
       "schedule": "25 * * * *"
+    },
+    {
+      "path": "/api/cron/listing-occurrences",
+      "schedule": "10 14 * * *"
     }
   ]
 }

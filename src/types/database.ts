@@ -502,6 +502,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number
+          free_guide: boolean
           hero_query: string | null
           is_active: boolean
           latitude: number
@@ -512,6 +513,7 @@ export type Database = {
           slug: string
           state: string
           tier: number
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -519,6 +521,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          free_guide?: boolean
           hero_query?: string | null
           is_active?: boolean
           latitude: number
@@ -529,6 +532,7 @@ export type Database = {
           slug: string
           state: string
           tier: number
+          timezone: string
           updated_at?: string
         }
         Update: {
@@ -536,6 +540,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          free_guide?: boolean
           hero_query?: string | null
           is_active?: boolean
           latitude?: number
@@ -546,6 +551,7 @@ export type Database = {
           slug?: string
           state?: string
           tier?: number
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
@@ -1552,6 +1558,100 @@ export type Database = {
           },
         ]
       }
+      event_series: {
+        Row: {
+          age_restriction_min: number | null
+          anchor_date: string
+          category_id: string | null
+          created_at: string
+          day: number
+          donation_optional: boolean
+          ends_at: string | null
+          id: string
+          instagram_post_url: string | null
+          last_checked_on: string | null
+          listing_source: string
+          name: string
+          organisation_id: string
+          rule: string
+          skip_dates: string[]
+          starts_at: string
+          status: string
+          summary: string
+          timezone: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          age_restriction_min?: number | null
+          anchor_date: string
+          category_id?: string | null
+          created_at?: string
+          day: number
+          donation_optional?: boolean
+          ends_at?: string | null
+          id?: string
+          instagram_post_url?: string | null
+          last_checked_on?: string | null
+          listing_source?: string
+          name: string
+          organisation_id: string
+          rule: string
+          skip_dates?: string[]
+          starts_at: string
+          status?: string
+          summary: string
+          timezone: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          age_restriction_min?: number | null
+          anchor_date?: string
+          category_id?: string | null
+          created_at?: string
+          day?: number
+          donation_optional?: boolean
+          ends_at?: string | null
+          id?: string
+          instagram_post_url?: string | null
+          last_checked_on?: string | null
+          listing_source?: string
+          name?: string
+          organisation_id?: string
+          rule?: string
+          skip_dates?: string[]
+          starts_at?: string
+          status?: string
+          summary?: string
+          timezone?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_series_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_stream_links: {
         Row: {
           event_id: string
@@ -1676,9 +1776,12 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          listing_fresh_until: string | null
+          listing_series_id: string | null
           listing_source: string
           max_capacity: number | null
           metadata: Json | null
+          occurrence_date: string | null
           organisation_id: string
           organiser_assigns_seats: boolean
           parent_event_id: string | null
@@ -1762,9 +1865,12 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          listing_fresh_until?: string | null
+          listing_series_id?: string | null
           listing_source?: string
           max_capacity?: number | null
           metadata?: Json | null
+          occurrence_date?: string | null
           organisation_id: string
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
@@ -1848,9 +1954,12 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          listing_fresh_until?: string | null
+          listing_series_id?: string | null
           listing_source?: string
           max_capacity?: number | null
           metadata?: Json | null
+          occurrence_date?: string | null
           organisation_id?: string
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
@@ -1936,6 +2045,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "genres"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "events_listing_series_id_fkey"
+            columns: ["listing_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "events_organisation_id_fkey"
@@ -2541,6 +2657,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      listing_checks: {
+        Row: {
+          checked_at: string
+          id: string
+          import_file: string
+          outcome: string
+          series_id: string
+          source_date: string
+          source_url: string
+        }
+        Insert: {
+          checked_at?: string
+          id?: string
+          import_file: string
+          outcome: string
+          series_id: string
+          source_date: string
+          source_url: string
+        }
+        Update: {
+          checked_at?: string
+          id?: string
+          import_file?: string
+          outcome?: string
+          series_id?: string
+          source_date?: string
+          source_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_checks_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_attribution: {
         Row: {
@@ -7501,75 +7655,109 @@ export type Database = {
           address: string | null
           capacity: number | null
           city: string | null
+          city_slug: string | null
+          claimed_at: string | null
           country: string | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
+          instagram_handle: string | null
           is_active: boolean
           latitude: number | null
+          listing_source: string
           longitude: number | null
           name: string
           organisation_id: string
           postal_code: string | null
+          published_email: string | null
+          removed_at: string | null
           revenue_share_enrolled_at: string | null
           revenue_share_status: string
           revenue_share_unenrolled_at: string | null
+          slug: string | null
           state: string | null
           stripe_account_country: string | null
           stripe_account_id: string | null
           stripe_payouts_enabled: boolean
+          suburb: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           address?: string | null
           capacity?: number | null
           city?: string | null
+          city_slug?: string | null
+          claimed_at?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          instagram_handle?: string | null
           is_active?: boolean
           latitude?: number | null
+          listing_source?: string
           longitude?: number | null
           name: string
           organisation_id: string
           postal_code?: string | null
+          published_email?: string | null
+          removed_at?: string | null
           revenue_share_enrolled_at?: string | null
           revenue_share_status?: string
           revenue_share_unenrolled_at?: string | null
+          slug?: string | null
           state?: string | null
           stripe_account_country?: string | null
           stripe_account_id?: string | null
           stripe_payouts_enabled?: boolean
+          suburb?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           address?: string | null
           capacity?: number | null
           city?: string | null
+          city_slug?: string | null
+          claimed_at?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          instagram_handle?: string | null
           is_active?: boolean
           latitude?: number | null
+          listing_source?: string
           longitude?: number | null
           name?: string
           organisation_id?: string
           postal_code?: string | null
+          published_email?: string | null
+          removed_at?: string | null
           revenue_share_enrolled_at?: string | null
           revenue_share_status?: string
           revenue_share_unenrolled_at?: string | null
+          slug?: string | null
           state?: string | null
           stripe_account_country?: string | null
           stripe_account_id?: string | null
           stripe_payouts_enabled?: boolean
+          suburb?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "venues_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
           {
             foreignKeyName: "venues_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -8377,9 +8565,12 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          listing_fresh_until: string | null
+          listing_series_id: string | null
           listing_source: string
           max_capacity: number | null
           metadata: Json | null
+          occurrence_date: string | null
           organisation_id: string
           organiser_assigns_seats: boolean
           parent_event_id: string | null
@@ -8497,6 +8688,10 @@ export type Database = {
           installed: boolean
           name: string
         }[]
+      }
+      listing_fresh_until_for: {
+        Args: { p_checked_on: string; p_timezone: string }
+        Returns: string
       }
       marketing_attribution_default_window: { Args: never; Returns: number }
       marketing_attribution_is_billable: {

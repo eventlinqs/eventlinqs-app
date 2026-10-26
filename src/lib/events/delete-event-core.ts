@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sweepEventStorage, type StorageSweepResult } from '@/lib/upload'
-import { revalidateEventSurfaces } from '@/lib/events/revalidate-event'
+import { revalidateEventSurfaces, revalidateEventSurfacesFromRouteHandler } from '@/lib/events/revalidate-event'
 import { recordLifecycleAudit, type LifecycleActor } from '@/lib/events/lifecycle-audit'
 import {
   deleteRefusalSentence,
@@ -53,6 +53,14 @@ export async function deleteEventEverywhere(input: {
   eventId: string
   actor: LifecycleActor
   deleteWith: DeleteEventClient
+  /**
+   * Which form of revalidation the caller's context allows. A server action
+   * (every organiser and admin path) uses the default; a route handler such as
+   * a cron must say so, because `updateTag` "can only be called from within a
+   * Server Action" (src/lib/events/revalidate-event.ts), and calling it from a
+   * cron would throw after the row was already gone.
+   */
+  revalidateFrom?: 'server-action' | 'route-handler'
 }): Promise<DeleteEventOutcome> {
   const admin = createAdminClient()
 
@@ -128,13 +136,15 @@ export async function deleteEventEverywhere(input: {
 
   const category = row.category as { slug?: string } | { slug?: string }[] | null
   const organisation = row.organisation as { slug?: string } | { slug?: string }[] | null
-  revalidateEventSurfaces({
+  const surfaces = {
     slug: row.slug,
     venue_city: row.venue_city,
     tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
     category_slug: (Array.isArray(category) ? category[0]?.slug : category?.slug) ?? null,
     organiser_handle: (Array.isArray(organisation) ? organisation[0]?.slug : organisation?.slug) ?? null,
-  })
+  }
+  if (input.revalidateFrom === 'route-handler') revalidateEventSurfacesFromRouteHandler(surfaces)
+  else revalidateEventSurfaces(surfaces)
 
   return { ok: true, slug: row.slug, title: row.title, storage, eligibility }
 }

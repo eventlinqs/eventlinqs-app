@@ -45,7 +45,11 @@ const NL = String.fromCharCode(10)
 
 function hoursLine(day: GuideDay): string {
   const h = dayHours(day)
-  return `${dayLabels(day.date).long}, ${h.opens ?? h.unconfirmed ?? ''} to ${h.closes}`
+  const opening = h.opens ?? h.unconfirmed ?? ''
+  // No finish given (WI2 answer 1): "from" the opening, never a made up end.
+  return h.closes === null
+    ? `${dayLabels(day.date).long}, from ${opening}`
+    : `${dayLabels(day.date).long}, ${opening} to ${h.closes}`
 }
 
 export function buildReminderEmail(facts: ReminderEmailFacts): {

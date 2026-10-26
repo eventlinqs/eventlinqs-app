@@ -154,6 +154,12 @@ describe('the emails say why they came and how to stop them', () => {
     expect(m.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click')
   })
 
+  it('a night with no finish reads "from" its opening, never a made up end (the 22:25 answer 1)', () => {
+    const m = buildReminderEmail({ ...facts, kind: 'day_before', days: [{ ...facts.days[0], opens: '18:30', closes: null }] })
+    expect(m.text).toContain('Friday 20 November, from 6:30pm')
+    expect(m.text).not.toMatch(/6:30pm to/)
+  })
+
   it('the program update carries the program and promises only the reminder after it', () => {
     const m = buildReminderEmail({ ...facts, kind: 'program' })
     expect(m.subject).toBe('The full program for Trivia at The Wool Exchange is out')

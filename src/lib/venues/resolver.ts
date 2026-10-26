@@ -17,13 +17,9 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { venueSlugify } from './venue-slug'
 
-export function venueSlugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+export { venueSlugify }
 
 export interface VenueProfile {
   /** Stable identifier for SEO + page rendering. */
