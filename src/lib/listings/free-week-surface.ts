@@ -1,5 +1,6 @@
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 import { fetchFreeWeekEvents } from '@/lib/events/fetchers'
 import type { PublicEventRow } from '@/lib/events/types'
 import { FREE_WEEK_LIMIT, freeWeekWindow } from './free-week'
@@ -22,7 +23,21 @@ export interface GuideCity {
   timezone: string
 }
 
+/**
+ * NO SERVICE-ROLE KEY, NO ADMIN READ, the fail-soft fetchPublicEventsCached
+ * uses (src/lib/events/fetchers.ts): the CI build job carries only NEXT_PUBLIC
+ * values, and createAdminClient throws there, which failed /sitemap.xml's
+ * prerender on #186. Such a host reads no guide city, so it offers no week;
+ * wherever the key exists, nothing changes.
+ */
+function noServiceKey(): boolean {
+  if (getSupabaseServiceRoleKey()) return false
+  console.warn('[free-week] no service-role key on this host; no guide city is read')
+  return true
+}
+
 export async function readGuideCities(): Promise<GuideCity[]> {
+  if (noServiceKey()) return []
   const { data, error } = await createAdminClient()
     .from('cities')
     .select('slug, name, state, timezone')
@@ -43,6 +58,7 @@ export async function readGuideCities(): Promise<GuideCity[]> {
  * it once (scripts/guards/the-head-and-the-body-ask-once.mjs).
  */
 export const readGuideCity = cache(async function readGuideCity(slug: string): Promise<GuideCity | null> {
+  if (noServiceKey()) return null
   const { data, error } = await createAdminClient()
     .from('cities')
     .select('slug, name, state, timezone')
