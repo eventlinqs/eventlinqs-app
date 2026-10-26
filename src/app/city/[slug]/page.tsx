@@ -19,6 +19,7 @@ import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
+import { readGuideCity } from '@/lib/listings/free-week-surface'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
@@ -168,6 +169,14 @@ export default async function CityPage({ params }: Props) {
   const communities = getAllCommunities()
 
   const heroImage = await getCityHeroPhoto(city.slug)
+  // A guide city links its free week; a failed read only leaves the link off.
+  const hasFreeGuide = await readGuideCity(city.slug).then(
+    (g) => g !== null,
+    (err: unknown) => {
+      console.error('[city] the free guide could not be read:', err instanceof Error ? err.message : err)
+      return false
+    },
+  )
 
   const [eventTypePhotos, suburbPhotos, relatedCityPhotos, communityPhotos] = await Promise.all([
     Promise.all(eventTypeSlugs.map(s => getCategoryPhoto(s))),
@@ -253,6 +262,7 @@ export default async function CityPage({ params }: Props) {
         communityImages={communityImages}
         suburbs={suburbs}
         mapPins={mapPins}
+        hasFreeGuide={hasFreeGuide}
       />
     </>
   )
