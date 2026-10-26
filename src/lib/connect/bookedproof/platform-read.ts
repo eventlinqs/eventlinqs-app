@@ -27,8 +27,10 @@ import type { PlatformPageRequest, PlatformScope } from './platform-request'
  *                  names Bookedproof, and whom the consent resolver still
  *                  permits by email (no suppression, no later decline)
  *   ledger         every paid order's money: subtotal, discount, total, the
- *                  platform fee and what EventLinqs kept, and refunds; no
- *                  buyer field and no card field at all
+ *                  platform fee and what EventLinqs kept, refunds, and its
+ *                  places (ticket lines); no buyer field and no card field
+ *                  at all. A consented buyer's row names its own order ids,
+ *                  so the two join there and only there (window 3, 03:54)
  *
  * Seed and fixture events (is_seed_data) and their orders are never read: the
  * trial is on EventLinqs' real business.
@@ -79,7 +81,11 @@ export type BuyerOut = {
   first_name: string | null
   consent_given_at: string
   consent_wording_version: string
+  /** The words the person agreed to, verbatim from the consent ledger. */
+  consent_text: string
   orders: number
+  /** The buyer's own paid orders, so a ledger row (which carries no buyer field) can be joined to them. */
+  order_ids: string[]
   event_ids: string[]
   first_order_at: string
   last_order_at: string
@@ -100,6 +106,8 @@ export type LedgerOut = {
   platform_fee_cents: number
   platform_fee_retained_cents: number | null
   refunded_cents: number
+  /** Places in the order: the sum of its ticket lines' quantities (add-ons are not places). */
+  tickets: number
 }
 
 const pageOf = <T>(rows: T[], limit: number, keyOf: (row: T) => string): PlatformPage<T> => ({
@@ -234,6 +242,7 @@ export async function readLedgerPage(admin: Admin, req: PlatformPageRequest): Pr
         platform_fee_cents: o.platform_fee_cents ?? 0,
         platform_fee_retained_cents: o.platform_fee_retained_cents ?? null,
         refunded_cents: 0,
+        tickets: 0,
       })
     }
     if (batch.length < req.limit) break
@@ -255,6 +264,22 @@ export async function readLedgerPage(admin: Admin, req: PlatformPageRequest): Pr
     for (const r of part) refunded.set(r.order_id, (refunded.get(r.order_id) ?? 0) + r.amount_cents)
   }
   for (const r of rows) r.refunded_cents = refunded.get(r.order_id) ?? 0
+
+  // Places per order, from its ticket lines, so a fee a place is the fee over places, not orders.
+  const places = new Map<string, number>()
+  for (const chunk of chunkInFilterValues(ids)) {
+    const part = await readEveryRow<{ order_id: string; quantity: number }>('order ticket lines', (from, to) =>
+      admin
+        .from('order_items')
+        .select('order_id, quantity')
+        .in('order_id', chunk)
+        .eq('item_type', 'ticket')
+        .order('id', { ascending: true })
+        .range(from, to),
+    )
+    for (const it of part) places.set(it.order_id, (places.get(it.order_id) ?? 0) + it.quantity)
+  }
+  for (const r of rows) r.tickets = places.get(r.order_id) ?? 0
   return { rows, next: rows.length === req.limit ? rows[rows.length - 1].order_id : null }
 }
 
@@ -273,11 +298,11 @@ export function firstNameOf(name: string | null | undefined): string | null {
  */
 export function standingBookedproofConsent(
   events: { decision: string; wording: string | null; wording_version: string; occurred_at: string }[],
-): { occurred_at: string; wording_version: string } | null {
+): { occurred_at: string; wording_version: string; wording: string } | null {
   const newest = [...events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0]
   if (!newest || newest.decision !== 'granted') return null
   if (!(newest.wording ?? '').includes(NAMED_PARTY)) return null
-  return { occurred_at: newest.occurred_at, wording_version: newest.wording_version }
+  return { occurred_at: newest.occurred_at, wording_version: newest.wording_version, wording: newest.wording ?? '' }
 }
 
 export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now: Date = new Date()): Promise<PlatformPage<BuyerOut>> {
@@ -301,15 +326,16 @@ export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now
     for (const p of data ?? []) profiles.set(p.id, { email: p.email, full_name: p.full_name, display_name: p.display_name })
   }
 
-  type Acc = { email: string; name: string | null; orders: number; events: Set<string>; first: string; last: string }
+  type Acc = { email: string; name: string | null; orders: number; orderIds: string[]; events: Set<string>; first: string; last: string }
   const byEmail = new Map<string, Acc>()
   for (const o of orders) {
     const profile = o.user_id ? profiles.get(o.user_id) : undefined
     const email = (profile?.email ?? o.guest_email ?? '').trim().toLowerCase()
     if (!email) continue
     const name = profile?.full_name ?? profile?.display_name ?? o.guest_name ?? null
-    const acc = byEmail.get(email) ?? { email, name, orders: 0, events: new Set<string>(), first: o.created_at, last: o.created_at }
+    const acc = byEmail.get(email) ?? { email, name, orders: 0, orderIds: [] as string[], events: new Set<string>(), first: o.created_at, last: o.created_at }
     acc.orders += 1
+    acc.orderIds.push(o.id)
     acc.events.add(o.event_id)
     if (o.created_at < acc.first) acc.first = o.created_at
     if (o.created_at > acc.last) acc.last = o.created_at
@@ -342,7 +368,7 @@ export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now
     }
     const named = slice
       .map((email) => ({ email, consent: standingBookedproofConsent(events.filter((ev) => ev.subject_email === email)) }))
-      .filter((c): c is { email: string; consent: { occurred_at: string; wording_version: string } } => c.consent !== null)
+      .filter((c): c is { email: string; consent: { occurred_at: string; wording_version: string; wording: string } } => c.consent !== null)
     if (named.length === 0) continue
     // The resolver has the last word: a suppression or anything it refuses keeps the person out.
     const { permitted } = await filterPermittedRecipients(admin, named.map((c) => c.email), {
@@ -359,7 +385,9 @@ export async function readBuyersPage(admin: Admin, req: PlatformPageRequest, now
         first_name: firstNameOf(acc.name),
         consent_given_at: c.consent.occurred_at,
         consent_wording_version: c.consent.wording_version,
+        consent_text: c.consent.wording,
         orders: acc.orders,
+        order_ids: [...acc.orderIds].sort(),
         event_ids: [...acc.events].sort(),
         first_order_at: acc.first,
         last_order_at: acc.last,

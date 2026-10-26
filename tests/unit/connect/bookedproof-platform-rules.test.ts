@@ -46,6 +46,7 @@ describe('the consent that lets a buyer leave', () => {
     expect(standingBookedproofConsent([{ decision: 'granted', wording: v2, wording_version: 'v2', occurred_at: '2026-10-01T00:00:00Z' }])).toEqual({
       occurred_at: '2026-10-01T00:00:00Z',
       wording_version: 'v2',
+      wording: v2,
     })
   })
   test('a grant under wording that does not name Bookedproof does not', () => {

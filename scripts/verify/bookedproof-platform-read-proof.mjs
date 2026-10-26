@@ -187,6 +187,14 @@ check(
   !!o1 && !('email' in o1) && !('guest_email' in o1) && !('user_id' in o1) && typeof o1.platform_fee_cents === 'number',
   o1 ? Object.keys(o1).sort().join(',') : 'no row',
 )
+// Places: the fixture's own ticket lines, summed straight from the table, against what the read says.
+const lineRows = await must('fixture ticket lines', db.from('order_items').select('order_id, quantity').in('order_id', ['O1', 'O2', 'O3'].map(ORDER)).eq('item_type', 'ticket'))
+const placesOf = (key) => lineRows.filter((r) => r.order_id === ORDER(key)).reduce((n, r) => n + r.quantity, 0)
+check(
+  'ledger: each order carries its places, the sum of its ticket lines (O2 holds more than one)',
+  ['O1', 'O2', 'O3'].every((k) => ledger.get(ORDER(k))?.tickets === placesOf(k)) && placesOf('O2') > 1,
+  ['O1', 'O2', 'O3'].map((k) => `${k} ${ledger.get(ORDER(k))?.tickets} of ${placesOf(k)}`).join(', '),
+)
 
 const buyers = new Map()
 const b = await walk(readBuyersPage, (r) => r.email, (r) => buyers.set(r.email, r))
@@ -198,8 +206,14 @@ check('buyers: D, granted then withdrawn, is NOT handed over', !buyers.has(BUYER
 const bRow = buyers.get(BUYER.B)
 check(
   'buyers: a row carries the first name, the consent and the orders, and nothing else',
-  !!bRow && Object.keys(bRow).sort().join(',') === 'consent_given_at,consent_wording_version,email,event_ids,first_name,first_order_at,last_order_at,orders',
+  !!bRow && Object.keys(bRow).sort().join(',') === 'consent_given_at,consent_text,consent_wording_version,email,event_ids,first_name,first_order_at,last_order_at,order_ids,orders',
   bRow ? `${Object.keys(bRow).sort().join(',')}; wording ${bRow.consent_wording_version}` : 'no row',
+)
+check(`buyers: B's consent_text is the ${named.version} wording word for word`, bRow?.consent_text === named.body)
+check(
+  "buyers: B's order_ids are B's own paid orders and join to ledger rows",
+  !!bRow && bRow.order_ids.includes(ORDER('O2')) && bRow.order_ids.every((id) => ledger.has(id)) && !bRow.order_ids.includes(ORDER('O1')),
+  bRow ? `${bRow.order_ids.length} order(s)` : 'no row',
 )
 
 const failed = results.filter((r) => !r.ok)
