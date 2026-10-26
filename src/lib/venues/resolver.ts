@@ -16,6 +16,7 @@
 
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { venueSlugify } from './venue-slug'
 
 export { venueSlugify }
@@ -76,15 +77,25 @@ interface EventRowForVenue {
   start_date: string
 }
 
-/** Slug match against venues.name (no slug column today). */
+/**
+ * Slug match against venues.name (no slug column today), over EVERY active venue.
+ *
+ * It read the first 50 and matched in JavaScript, so the 51st active venue's page
+ * answered 404 while the sitemap listed it: on 25 October 2026 TEST held 54 active
+ * venues and the pre-push gate's indexing step refused four of them
+ * ("/venues/goldfields-libraries-eaglehawk-library is in the sitemap and answered
+ * 404"). Read in pages; a failed read throws, so it is a 500 and never a false 404.
+ */
 async function findVenueRowBySlug(slug: string): Promise<VenueRow | null> {
   const supabase = createPublicClient()
-  const { data } = await supabase
-    .from('venues')
-    .select('id, name, description, image_url, capacity, city, state, country, address, postal_code')
-    .eq('is_active', true)
-    .limit(50)
-  const all = (data ?? []) as VenueRow[]
+  const all = await readEveryRow<VenueRow>('the active venues for a venue handle', (from, to) =>
+    supabase
+      .from('venues')
+      .select('id, name, description, image_url, capacity, city, state, country, address, postal_code')
+      .eq('is_active', true)
+      .order('id')
+      .range(from, to),
+  )
   const match = all.find(v => venueSlugify(v.name) === slug)
   return match ?? null
 }
@@ -148,9 +159,12 @@ export async function resolveVenueProfile(handle: string): Promise<VenueProfile 
   if (venueName) {
     events = await fetchVenueEvents(venueName)
   } else {
-    // No row - derive a candidate venue name by un-slugifying then ilike
-    // matching against events.venue_name. Pick the most-frequent name.
-    const candidate = handle.replace(/-/g, ' ')
+    // No row - match events.venue_name by the handle's words in order, any
+    // characters between them, then keep only names whose slug IS the handle.
+    // The words were joined with spaces, so a name with punctuation between them
+    // ("Goldfields Libraries (Bendigo Library)") was never found (25 October 2026).
+    // A handle is [a-z0-9-] only, so the pattern holds no other wildcard.
+    const candidate = handle.replace(/-/g, '%')
     const { data } = await supabase
       .from('events')
       .select('venue_name')

@@ -119,6 +119,10 @@ const REVIEWED = [
     file: 'src/lib/dev/fixture-events.ts',
     reason: 'fixture plumbing between typed structures; renders nothing itself',
   },
+  {
+    file: 'src/lib/walk-in/list-draft.ts',
+    reason: "the walk-in listing script's writer: copies the organiser's checked words from the data file into the event row and hands them to the words judge; renders nothing itself (the walk-in page renders the summary through stripMarkdown and the description through OrganiserProse)",
+  },
 ]
 const reviewedHits = new Map(REVIEWED.map(r => [r.file, 0]))
 

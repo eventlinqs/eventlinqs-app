@@ -38,6 +38,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import { declareWork } from '../lib/work-report.mjs'
+import { tableReadCredential } from './lib/table-read-credential.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -78,7 +79,19 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL && existsSync(join(ROOT, '.env.test'))
 }
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+/*
+ * THE SERVICE-ROLE KEY OR NOTHING (25 October 2026). The view is the service role's only since
+ * 20261023000008: it ran as its owner for anon past the row policies of marketing_match_score and
+ * audience_members, and the grants pass closed it. This read used to fall back to the anon key, which
+ * worked only because of that hole; on the CI build, which is given the TEST URL and the anon key alone,
+ * it then reported the refusal as a finding ("permission denied for view
+ * marketing_match_invariant_breaches", pull request 183). So it reads through the shared door that never
+ * falls back to anon (lib/table-read-credential.mjs, pull request 159), the need is declared as token in
+ * lib/build-host-needs.mjs, and a host without the key says NOT JUDGED. A key that is present and refused
+ * is still a FAIL, because that is a finding about the host.
+ */
+const credential = tableReadCredential(process.env)
+const key = credential.key
 const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
 const hasRealProject = typeof url === 'string' && REAL_PROJECT.test(url.trim())
 
@@ -128,13 +141,22 @@ if (url && !hasRealProject) {
   return 0
 }
 
-if (!url || !key) {
+if (!url) {
   report(0, [])
   console.error('')
-  console.error(`${TAG} FAIL: no Supabase URL or key in the environment, so the stored matcher`)
+  console.error(`${TAG} FAIL: no Supabase URL in the environment, so the stored matcher`)
   console.error('      runs could not be checked. A check that cannot look is not a check that')
   console.error('      passed.')
   return 1
+}
+
+if (!key) {
+  report(0, [])
+  console.log(`${TAG} the trigger and the view are both defined by the migrations`)
+  console.log(`${TAG} NOT JUDGED [no-credential]: ${credential.reason}.`)
+  console.log(`${TAG}       No matcher row was read, so this says nothing about whether a breach is stored.`)
+  console.log(`${TAG}       The need is declared as token in scripts/guards/lib/build-host-needs.mjs; the local gate judges it.`)
+  return 0
 }
 
 const db = createClient(url, key, { auth: { persistSession: false } })
