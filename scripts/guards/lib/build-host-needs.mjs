@@ -57,6 +57,9 @@ export const DECLARED = {
   'scripts/guards/machine-callers-reachable.mjs': {
     token: 'VERCEL_TOKEN or the Vercel CLI login, to read the project live firewall bypass rules. Clause 4 reports NOT JUDGED [no-token] rather than failing, so the build host says plainly that it cannot see.',
   },
+  'scripts/guards/matcher-consented-and-capped.mjs': {
+    token: 'the service-role key, through scripts/guards/lib/table-read-credential.mjs, because only the service role may read marketing_match_invariant_breaches since 20261023000008 and the CI build carries anon only. Without it the guard prints NOT JUDGED [no-credential] and reads nothing; its structural half still runs (pull request 183).',
+  },
   'scripts/guards/no-ai-authorship.mjs': {
     git: 'reads recent commit messages for a Co-Authored-By trailer naming an AI (Law 8). With no history it can neither pass nor fail, so it stands aside; the commit-msg hook and CI both have history and both run it.',
   },
