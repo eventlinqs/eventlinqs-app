@@ -75,3 +75,8 @@ export async function readLoggedReads(since: Date): Promise<LoggedRead[]> {
       .range(from, to),
   )
 }
+
+/** Every logged read within the last `ms` milliseconds, read at the moment it is called. */
+export async function readLoggedReadsWithin(ms: number): Promise<LoggedRead[]> {
+  return readLoggedReads(new Date(Date.now() - ms))
+}

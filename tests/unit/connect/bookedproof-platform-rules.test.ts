@@ -28,7 +28,7 @@ describe('the page body', () => {
 
 describe('one secret per scope', () => {
   test('each scope reads only its own variable', () => {
-    const env = { BOOKEDPROOF_PLATFORM_SECRET_LEDGER: ' x '.repeat(1) } as NodeJS.ProcessEnv
+    const env = { BOOKEDPROOF_PLATFORM_SECRET_LEDGER: ' x ' } as unknown as NodeJS.ProcessEnv
     expect(platformSecretFor('ledger', env)).toBe('x')
     expect(platformSecretFor('buyers', env)).toBeNull()
     expect(new Set(Object.values(PLATFORM_SECRET_ENV)).size).toBe(4)

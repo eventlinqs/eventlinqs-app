@@ -72,6 +72,8 @@ const KNOWN_ACTIONS = [
   'event.archived',
   'event.restored',
   'event.deleted',
+  // Trial gate T3: every page Bookedproof's read only connection took.
+  'bookedproof.platform_read',
 ]
 
 const KNOWN_TARGET_TYPES = [
