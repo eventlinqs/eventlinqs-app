@@ -13,6 +13,7 @@ export interface AdminNavItem {
 
 export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
+  { label: 'Growth',           href: '/admin/growth',     capability: 'admin.pricing.manage' },
   { label: 'Platform health',  href: '/admin/health',     capability: 'admin.dashboard.view' },
   { label: 'Demand signal',    href: '/admin/network',    capability: 'admin.network.manage' },
   { label: 'Audience',         href: '/admin/audience',   capability: 'admin.network.manage' },
