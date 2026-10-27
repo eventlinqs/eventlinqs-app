@@ -278,7 +278,8 @@ describe('the one button that leaves, on a curated listing (WI3)', () => {
     const links = Array.from(container.querySelectorAll('[data-outbound] a'))
     expect(links.length).toBe(2)
     for (const a of links) {
-      expect(a.getAttribute('href')).toBe('https://www.fedsquare.com/')
+      // B2: every leaving button goes through /out, which counts the press and follows only this event's own pages.
+      expect(a.getAttribute('href')).toBe('/out/amcf-2026?to=https%3A%2F%2Fwww.fedsquare.com%2F')
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
       expect(a.textContent).toMatch(/^See it on .+'s page$/)
