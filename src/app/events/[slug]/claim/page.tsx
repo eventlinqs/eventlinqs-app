@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { ClaimForm } from '@/components/listings/claim-form'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * CLAIM THIS EVENT (the locked foundation's item 7: "Claim this event and claim this venue, free, by a code to the
@@ -24,6 +25,7 @@ export const dynamic = 'force-dynamic'
 type Props = { params: Promise<{ slug: string }> }
 
 export default async function ClaimEventPage({ params }: Props) {
+  if (!(await isFeatureEnabled('listing_claims'))) notFound()
   const { slug } = await params
   const admin = createAdminClient()
   const event = await readOrThrow('claim page event', () =>

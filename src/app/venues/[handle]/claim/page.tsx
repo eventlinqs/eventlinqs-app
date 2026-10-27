@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { resolveVenueProfile } from '@/lib/venues/resolver'
 import { ClaimForm } from '@/components/listings/claim-form'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * CLAIM THIS VENUE (WI2-PLAN.md section 9, Part 3b; the locked foundation's item 7). A venue EventLinqs listed from
@@ -24,6 +25,7 @@ export const dynamic = 'force-dynamic'
 type Props = { params: Promise<{ handle: string }> }
 
 export default async function ClaimVenuePage({ params }: Props) {
+  if (!(await isFeatureEnabled('listing_claims'))) notFound()
   const { handle } = await params
   const profile = await resolveVenueProfile(handle)
   if (!profile?.id) notFound()

@@ -88,8 +88,11 @@ describe('broadcast flag resolver', () => {
       walk_in_remind_me: false,
       // Train C, the 21:51 (E). OFF: nothing paid is offered until Lawal sets the pilot.
       paid_promotions: false,
+      // The claim switch (the project manager, 27 October 2026). OFF until Lawal approves the privacy
+      // version that names claims, and OFF when the table cannot be read.
+      listing_claims: false,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(13)
+    expect(BROADCAST_FLAGS).toHaveLength(14)
   })
 
   test('paid promotions stay OFF when the flags table cannot be read or has no row', async () => {
