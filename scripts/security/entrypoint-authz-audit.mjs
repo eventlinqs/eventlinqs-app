@@ -192,6 +192,8 @@ const PUBLIC_BY_DESIGN = {
   'forecast/actions.ts::runForecast':
     'close-out FT1, the free public forecast tool. It is public BY DESIGN and requiring a caller identity would defeat the point of it: FT1 says in terms that there is no account and no email wall, because the organiser it is written for has not signed up yet and is deciding whether to. What it does is bounded. It READS nothing about anybody: the taxonomy and the fee come from public configuration through the anon client, and it touches no person, no event and no order. It WRITES one row to forecast_runs, a table with RLS on and no policy, so nothing public can read it back, and the row holds only what the submitter typed about their own hypothetical night. The optional address is refused by a database check constraint unless the consent wording it was given under is stored with it. Abuse is bounded by the forecast-run rate limit, and the worst a flood achieves is rows in a table nobody can read: it sends no email, bills no third party and grants no access.',
   'api/location/set/POST': 'writes a non-sensitive location preference cookie',
+  'partners/actions.ts::sendPartnerEnquiry':
+    'Train C row 14, the partner enquiry form on /partners. Public by design: a venue or a council asking to partner has no account. It only inserts one enquiry row for the admin queue, checked field by field (enquiryProblem and the table constraints), reads nothing back, and is held to the partner-enquiry rate limit by address before anything is written.',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',

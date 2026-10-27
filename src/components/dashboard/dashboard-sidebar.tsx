@@ -15,6 +15,7 @@ import {
   Hourglass,
   KeyRound,
   LayoutDashboard,
+  Megaphone,
   PanelLeft,
   PlusCircle,
   Settings,
@@ -57,6 +58,8 @@ const ITEMS: Item[] = [
   // Payouts is live (Stripe Connect onboarding + disbursements): the stale
   // 'Soon' badge was an audit persona C finding.
   { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet, organiserOnly: true },
+  // Featured slots and the services menu, priced in admin (Train C, rows 12 and 13).
+  { href: '/dashboard/promote', label: 'Promote', icon: Megaphone, organiserOnly: true },
   // Venues (and their seating charts) were reachable only through a wizard
   // hint link; seated organisers need the front door (audit persona C).
   { href: '/dashboard/venues', label: 'Venues', icon: Building2, organiserOnly: true },

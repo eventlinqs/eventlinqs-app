@@ -16,7 +16,7 @@ import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getAllCities, getCity } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
@@ -52,6 +52,8 @@ interface Props {
   mapPins: MapEventPin[]
   /** True when the city has a free guide, so the page links its week. */
   hasFreeGuide?: boolean
+  /** The paid Featured row for this city (Train C, row 12), shown under the editorial; none when no slot runs. */
+  featuredRow?: ReactNode
 }
 
 /**
@@ -94,6 +96,7 @@ export function CityLandingPage({
   suburbs,
   mapPins,
   hasFreeGuide = false,
+  featuredRow = null,
 }: Props) {
   /* ONE array feeds both the reserved height and the cards, so the two can
    * never disagree: the section declares the height of what it renders, not
@@ -134,6 +137,8 @@ export function CityLandingPage({
         heading={city.descriptor}
         paragraphs={[city.editorial]}
       />
+
+      {featuredRow}
 
       {/* ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). These curated
         rails were gated at `>= 4`, so a city or community with one, two or three

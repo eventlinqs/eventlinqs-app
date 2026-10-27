@@ -30,6 +30,7 @@ export type PolicyName =
   | 'event-reminder'
   | 'forecast-run'
   | 'newsletter-subscribe'
+  | 'partner-enquiry'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -229,6 +230,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'City newsletter capture per IP per 10 min. It is public, unauthenticated and now writes a consent row, so it is an email-harvesting and list-poisoning target. Five covers a household signing up for two or three cities; a scripted flood is bounced. Fail-open: losing a legitimate signup to a Redis blip is worse than the bounded abuse, and the row carries its own unsubscribe token either way.',
+  },
+  'partner-enquiry': {
+    keyPrefix: 'partner-enq',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The partner enquiry form on /partners per IP per 10 min (Train C, row 14). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone correcting a message twice; a scripted flood is bounded.',
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',

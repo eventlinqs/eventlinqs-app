@@ -31,6 +31,8 @@ import {
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { JsonLd } from '@/components/seo/json-ld'
+import { FeaturedRow } from '@/components/features/promotions/featured-row'
+import { featuredForPage } from '@/lib/promotions/promotions'
 
 export const revalidate = 300
 
@@ -263,6 +265,7 @@ export default async function CityPage({ params }: Props) {
         suburbs={suburbs}
         mapPins={mapPins}
         hasFreeGuide={hasFreeGuide}
+        featuredRow={<FeaturedRow items={await featuredForPage('city', city.slug)} where={city.slug} />}
       />
     </>
   )
