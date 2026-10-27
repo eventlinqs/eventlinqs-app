@@ -47,7 +47,27 @@ export const LISTING_COLUMNS = [
   'freshness',
   'notes',
 ] as const
-export type ListingColumn = (typeof LISTING_COLUMNS)[number]
+/**
+ * WI3's two columns, which a file may carry and need not: every place the night
+ * sells, space separated, the organiser's own first; and the lowest adult price
+ * including fees read on its booking page, in dollars. A file without them is a
+ * free walk-in file, as every file before WI3 is.
+ */
+export const BOOKING_COLUMNS = ['booking_urls', 'price_from'] as const
+export type ListingColumn = (typeof LISTING_COLUMNS)[number] | (typeof BOOKING_COLUMNS)[number]
+
+/**
+ * One place a listing night sells, as the series keeps it until the listings
+ * run makes each dated night (supabase/migrations/20261027184501). The run
+ * copies it into event_booking_links, where the database chooses the button.
+ */
+export type SeriesBookingLink = {
+  url: string
+  kind: 'tickets' | 'free_register'
+  /** The price, only with the day it was read. */
+  price_from_cents: number | null
+  price_checked_on: string | null
+}
 
 /** A source older than this is not confirmed (the 21-day rule, WI2-ITEM.md). */
 export const SOURCE_MAX_AGE_DAYS = 21
@@ -75,6 +95,12 @@ const NOT_AN_EVENT = /happy hour|% off|\bopen from\b/i
 const FREE_WALK_IN = /^free(;\s*no bookings? (required|needed|necessary))?$/i
 const BOOKING = /\bbook|\bregist|\brsvp\b|\breserv|\bticket/i
 const DONATION = /donation|pay as you feel|gold coin/i
+/** Sold elsewhere, as the files write it. */
+const TICKETS = /^tickets$/i
+/** Free, but the host asks people to register first. */
+const FREE_REGISTRATION = /^free;\s*registration (required|needed)$/i
+/** Dollars and cents as a booking page prints them, without the sign. */
+const PRICE = /^\d{1,5}(\.\d{2})?$/
 /**
  * A host field that says who is NOT named rather than naming anyone. Every
  * surface names a listing's host from this field (ruling A of 23 October
@@ -105,6 +131,8 @@ export type ListingRow = {
   venueEmail: string | null
   /** Entry is free and the source calls the donation optional (answer 5); the page says so. */
   donationOptional: boolean
+  /** Where it sells (WI3); empty for a free walk-in night. */
+  bookingLinks: SeriesBookingLink[]
   sourceUrl: string
   sourceDate: string
 }
@@ -168,7 +196,8 @@ export function parseCsv(text: string): string[][] {
 export function headerProblem(header: readonly string[]): string | null {
   const got = new Set(header.map((h) => h.trim()))
   const missing = LISTING_COLUMNS.filter((c) => !got.has(c))
-  const unknown = [...got].filter((c) => !(LISTING_COLUMNS as readonly string[]).includes(c))
+  const known: readonly string[] = [...LISTING_COLUMNS, ...BOOKING_COLUMNS]
+  const unknown = [...got].filter((c) => !known.includes(c))
   const parts = []
   if (missing.length) parts.push(`missing ${missing.join(', ')}`)
   if (unknown.length) parts.push(`not columns of this file: ${unknown.join(', ')}`)
@@ -241,7 +270,30 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   // Answer 5: a donation only where entry is free and the source calls it optional.
   const entry = v('entry')
   let donationOptional = false
-  if (!FREE_WALK_IN.test(entry)) {
+  // WI3: a night sold elsewhere, or free with registration, names where.
+  const urls = [...new Set(v('booking_urls').split(/\s+/).filter(Boolean))]
+  const price = v('price_from')
+  const bookingLinks: SeriesBookingLink[] = []
+  const bookingKind = TICKETS.test(entry) ? 'tickets' : FREE_REGISTRATION.test(entry) ? 'free_register' : null
+  if (bookingKind) {
+    if (urls.length === 0) refused.push(`entry "${entry}" needs booking_urls, where it is booked`)
+    for (const u of urls) if (!isHttpsUrl(u)) refused.push(`booking_urls "${u}" is not an https address`)
+    if (price && bookingKind !== 'tickets') refused.push(`price_from "${price}" is only for a night sold with tickets`)
+    else if (price && !PRICE.test(price)) refused.push(`price_from "${price}" is not dollars like 35 or 35.50`)
+    urls.forEach((url, i) =>
+      bookingLinks.push({
+        url,
+        kind: bookingKind,
+        // The price was read on the first place it sells, the one the file names first.
+        price_from_cents: i === 0 && price ? Math.round(Number(price) * 100) : null,
+        price_checked_on: null,
+      }),
+    )
+  } else if (urls.length > 0 || price) {
+    refused.push(`a free walk-in night has no booking_urls or price_from (entry "${entry}")`)
+  }
+  // Tickets or registration is said by its links; the walk-in rules below judge only a free walk-in night.
+  if (!bookingKind && !FREE_WALK_IN.test(entry)) {
     if (BOOKING.test(entry)) refused.push(`entry "${entry}" needs a booking, registration, RSVP or ticket: WI3 lists these, the WI2 import does not`)
     else if (DONATION.test(entry) && /^free\b/i.test(entry) && /\boptional\b/i.test(entry)) donationOptional = true
     else if (DONATION.test(entry)) refused.push(`entry "${entry}" asks for a donation that is not said to be optional`)
@@ -299,6 +351,7 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
       instagramPostUrl: post || null,
       venueEmail: email || null,
       donationOptional,
+      bookingLinks: bookingLinks.map((l) => ({ ...l, price_checked_on: l.price_from_cents === null ? null : sourceDate })),
       sourceUrl,
       sourceDate,
     },

@@ -64,7 +64,8 @@ import {
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 import { outboundHref, ticketButtonLabel } from '@/lib/listings/outbound'
-import { ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { heroSaleWords, ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { readBookingLinks } from '@/lib/events/booking-links-read'
 // Service role, used for exactly one thing on this page: reading the two
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
@@ -1025,11 +1026,17 @@ export default async function EventDetailPage({ params }: Props) {
    * platform cannot deliver: the waitlist exists to convert into a sale, and
    * there is no sale to convert into while the organiser cannot be paid.
    */
-  const ticketCtaLabel = saleBlocked
-    ? 'Not on sale yet'
-    : isSoldOut
-      ? 'Join the waitlist'
-      : 'Get tickets'
+  // An event sold on another site names the panel's one button (WI3, heroSaleWords).
+  const heroSale = heroSaleWords({
+    externalUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
+    panel: ticketPanel,
+    isFree: Boolean(event.is_free),
+    saleBlocked,
+    isSoldOut,
+    priceLabel,
+  })
+  const ticketCtaLabel = heroSale.cta
+  const heroPriceLabel = heroSale.price
 
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
@@ -1108,7 +1115,7 @@ export default async function EventDetailPage({ params }: Props) {
         title={event.title}
         dateLabel={shortDate}
         venueLabel={venueLabelShort}
-        priceLabel={priceLabel}
+        priceLabel={externallyTicketed ? heroPriceLabel : priceLabel}
         shareUrl={`/events/${event.slug}`}
         ctaLabel={ticketCtaLabel}
       />
@@ -1204,9 +1211,9 @@ export default async function EventDetailPage({ params }: Props) {
                     {ticketCtaLabel}
                   </GetTicketsCta>
                 )}
-                {!eventBannerState ? (
+                {!eventBannerState && heroPriceLabel ? (
                   <span className="inline-flex items-center gap-2 text-sm text-white/80">
-                    <span className="font-display font-bold text-gold-400">{priceLabel ?? 'Free entry'}</span>
+                    <span className="font-display font-bold text-gold-400">{heroPriceLabel}</span>
                   </span>
                 ) : null}
                 <SaveEventButton eventId={event.id} variant="dark" />
@@ -1216,10 +1223,18 @@ export default async function EventDetailPage({ params }: Props) {
                *  sitewide trust band was removed from the homepage in
                *  this batch; trust now lives at the moment that drives
                *  the conversion. */}
-              <EventTrustSignals variant="dark" />
+              {heroSale.trustSignals ? <EventTrustSignals variant="dark" /> : null}
             </HeroCaption>
           </div>
         </section>
+
+        {/* Lawal's ruling of 27 October 2026, 08:33: a listing EventLinqs made from
+            public information shows its licensed library shot until the host's own
+            photo, and says so, here as on the walk-in page, so it is never read as
+            the venue. */}
+        {isLibraryPhoto(event.cover_image_url) && (
+          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs text-ink-600 sm:px-6 lg:px-8">{LIBRARY_PHOTO_CREDIT}</p>
+        )}
 
         {/* Event Media: the video (allowlisted embed, click-to-play facade so the
             cover raster stays the LCP) and the gallery (lazy, below the fold).

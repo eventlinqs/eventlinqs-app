@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { heroSaleWords, ticketPanelOf, type TicketPanel } from '@/lib/listings/ticket-panel'
 import type { BookingLink } from '@/lib/events/booking-links'
 
 /*
@@ -84,5 +84,41 @@ describe('ticketPanelOf', () => {
     ], NOW)
     expect(p.button?.label).toBe('Get tickets on Eventbrite')
     expect(p.also.map((a) => a.name)).toEqual(['Humanitix'])
+  })
+})
+
+describe("the hero's words for an event sold elsewhere (WI3, heroSaleWords)", () => {
+  const panel = (over: Partial<TicketPanel> = {}): TicketPanel => ({
+    button: { href: 'https://humanitix.com/x', label: 'Get tickets on Humanitix', host: 'humanitix.com', price: 'From $35.50' },
+    also: [],
+    soldOut: null,
+    ...over,
+  })
+  const base = { externalUrl: 'https://humanitix.com/x', panel: panel(), isFree: false, saleBlocked: true, isSoldOut: false, priceLabel: null }
+
+  it('names the one button and its fresh price, never "Not on sale yet", "Free entry" or our checkout', () => {
+    expect(heroSaleWords(base)).toEqual({ cta: 'Get tickets on Humanitix', price: 'From $35.50', trustSignals: false })
+  })
+
+  it('a stale price is not shown, a free registration says free, and sold out says where', () => {
+    expect(heroSaleWords({ ...base, panel: panel({ button: { ...panel().button!, price: null } }) }).price).toBeNull()
+    expect(heroSaleWords({ ...base, isFree: true, panel: panel({ button: { ...panel().button!, label: 'Register free on Eventbrite', price: null } }) })).toEqual({
+      cta: 'Register free on Eventbrite',
+      price: 'Free',
+      trustSignals: false,
+    })
+    expect(heroSaleWords({ ...base, panel: panel({ button: null, soldOut: 'Sold out on Humanitix' }) }).cta).toBe('Sold out on Humanitix')
+  })
+
+  it('with no links read it names the site from the address alone', () => {
+    expect(heroSaleWords({ ...base, panel: null }).cta).toBe('Get tickets on Humanitix')
+  })
+
+  it("an event sold here keeps the words it had", () => {
+    const here = { externalUrl: null, panel: null, isFree: false, saleBlocked: false, isSoldOut: false, priceLabel: 'From $20' }
+    expect(heroSaleWords(here)).toEqual({ cta: 'Get tickets', price: 'From $20', trustSignals: true })
+    expect(heroSaleWords({ ...here, saleBlocked: true }).cta).toBe('Not on sale yet')
+    expect(heroSaleWords({ ...here, isSoldOut: true }).cta).toBe('Join the waitlist')
+    expect(heroSaleWords({ ...here, priceLabel: null }).price).toBe('Free entry')
   })
 })

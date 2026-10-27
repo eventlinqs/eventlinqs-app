@@ -25,6 +25,7 @@
 // IT REFUSES BEFORE IT ACTS:
 //   - no --target, or a target other than test or production;
 //   - the WI2 migration (20261023000010) is not applied on the target;
+//   - the WI3 links migration (20261027184501, event_series.booking_links) is not applied there;
 //   - the listings organisation (slug eventlinqs-listings) does not exist there;
 //   - the file's header is not the listings columns.
 // THE WRITE IS ONE STATEMENT, so it lands whole or not at all, and every update
@@ -49,6 +50,7 @@ const TARGETS = { production: 'gndnldyfudbytbboxesk', test: 'vkapkibzokmfaxqogyp
 const LOG = 'C:/dev/PRODUCTION-WRITES.txt'
 const LISTINGS_ORG_SLUG = 'eventlinqs-listings'
 const MIGRATION = '20261023000010_city_guide_listings.sql'
+const LINKS_MIGRATION = '20261027184501_listing_series_booking_links.sql'
 
 class Refusal extends Error {}
 
@@ -126,6 +128,11 @@ async function readState(query) {
     true,
   )
   if (!migrated || migrated.n !== 1) throw new Refusal(`the WI2 migration ${MIGRATION} is not applied on this target`)
+  const [linksColumn] = await query(
+    "select count(*)::int as n from information_schema.columns where table_schema = 'public' and table_name = 'event_series' and column_name = 'booking_links'",
+    true,
+  )
+  if (!linksColumn || linksColumn.n !== 1) throw new Refusal(`the WI3 links migration ${LINKS_MIGRATION} is not applied on this target`)
   const [org] = await query(`select id from public.organisations where slug = '${LISTINGS_ORG_SLUG}'`, true)
   const categories = await query('select id, slug from public.event_categories where is_active order by slug', true)
   const cities = await query(
@@ -141,7 +148,7 @@ async function readState(query) {
   const series = await query(
     `select id, venue_id, name, rule, anchor_date::text as anchor_date, starts_at::text as starts_at,
             ends_at::text as ends_at, timezone, category_id, age_restriction_min, summary,
-            instagram_post_url, donation_optional, listing_source, status, last_checked_on::text as last_checked_on
+            instagram_post_url, donation_optional, booking_links, listing_source, status, last_checked_on::text as last_checked_on
        from public.event_series`,
     true,
   )
@@ -179,6 +186,7 @@ async function readState(query) {
         summary: s.summary,
         instagramPostUrl: s.instagram_post_url,
         donationOptional: s.donation_optional,
+        bookingLinks: typeof s.booking_links === 'string' ? JSON.parse(s.booking_links) : s.booking_links ?? [],
         listingSource: s.listing_source,
         status: s.status,
         lastCheckedOn: s.last_checked_on,
@@ -210,7 +218,7 @@ function report(judged, plan) {
       else {
         const what =
           p.series.kind === 'create'
-            ? `new night (${r.row.rule} from ${r.row.date}, ${r.row.endsAt ? `${r.row.startsAt} to ${r.row.endsAt}` : `from ${r.row.startsAt}, no finish given`}${r.row.donationOptional ? ', donation optional' : ''}) at ${r.row.host}`
+            ? `new night (${r.row.rule} from ${r.row.date}, ${r.row.endsAt ? `${r.row.startsAt} to ${r.row.endsAt}` : `from ${r.row.startsAt}, no finish given`}${r.row.donationOptional ? ', donation optional' : ''}${r.row.bookingLinks.length ? `, ${r.row.bookingLinks[0].kind === 'tickets' ? 'tickets' : 'registration'} at ${r.row.bookingLinks.length} place(s)` : ''}) at ${r.row.host}`
             : p.series.kind === 'update'
               ? `changed: ${p.changed.join(', ')}`
               : p.changed.length > 0

@@ -1,5 +1,5 @@
 import { PROVIDER_NAMES, alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
-import { outboundHost, outboundHref } from './outbound'
+import { outboundHost, outboundHref, ticketButtonLabel } from './outbound'
 
 /**
  * WHAT THE TICKET COLUMN SAYS FOR AN EVENT SOLD ON OTHER SITES (WI3's page, the
@@ -52,5 +52,40 @@ export function ticketPanelOf(eventSlug: string, links: readonly BookingLink[], 
     button: { href: outboundHref(eventSlug, first.url), label, host: outboundHost(first.url), price: cents !== null && cents > 0 ? fromPrice(cents) : null },
     also,
     soldOut: null,
+  }
+}
+
+/** What the hero and the sticky bar say: the call to action and the price beside it. */
+export type HeroSaleWords = { cta: string; price: string | null; trustSignals: boolean }
+
+/**
+ * AN EVENT SOLD ON ANOTHER SITE (WI3) is never "Not on sale yet": it is on sale,
+ * elsewhere, and nothing is checked out here. Its hero and sticky bar name the
+ * same one button as the panel they scroll to, its price is the panel's (only
+ * while fresh), and it never claims a checkout or a refund policy that is not
+ * ours. Found driving the first imported ticketed listing on TEST, 27 October
+ * 2026: the hero read "Not on sale yet", "Free entry" and "Secure checkout"
+ * above a panel saying tickets are sold elsewhere. Every other event keeps the
+ * words it had.
+ */
+export function heroSaleWords(input: {
+  externalUrl: string | null
+  panel: TicketPanel | null
+  isFree: boolean
+  saleBlocked: boolean
+  isSoldOut: boolean
+  priceLabel: string | null
+}): HeroSaleWords {
+  if (input.externalUrl) {
+    return {
+      cta: input.panel?.soldOut ?? input.panel?.button?.label ?? ticketButtonLabel(input.externalUrl),
+      price: input.panel?.button?.price ?? (input.isFree ? 'Free' : null),
+      trustSignals: false,
+    }
+  }
+  return {
+    cta: input.saleBlocked ? 'Not on sale yet' : input.isSoldOut ? 'Join the waitlist' : 'Get tickets',
+    price: input.priceLabel ?? 'Free entry',
+    trustSignals: true,
   }
 }
