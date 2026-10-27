@@ -29,6 +29,8 @@ import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import { readVenueSeries } from '@/lib/listings/venue-series'
+import { VenueRegularNights } from '@/components/features/venues/venue-regular-nights'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
 
 export const revalidate = 300
@@ -204,7 +206,11 @@ export default async function VenueProfilePage({ params }: Props) {
   const venue = await venueForRoute(handle)
   if (!venue) notFound()
 
-  const { upcoming, past } = await fetchVenueEventsByName(venue.name)
+  const [{ upcoming, past }, regularNights] = await Promise.all([
+    fetchVenueEventsByName(venue.name),
+    // WI2 Part 3a: a venue record's regular nights (a profile built from event rows alone has none).
+    venue.id ? readVenueSeries(venue.id) : Promise.resolve([]),
+  ])
 
   /* ONE array feeds both the reserved height and the cards: the section
    * declares the height of what it renders, not of what it was handed
@@ -356,6 +362,13 @@ export default async function VenueProfilePage({ params }: Props) {
               latitude={venue.latitude}
               longitude={venue.longitude}
             />
+          </ContentSection>
+        ) : null}
+
+        {/* WI2 Part 3a: the host's regular nights, each in words with its next dates. */}
+        {regularNights.length > 0 ? (
+          <ContentSection surface="base" width="wide" topBorder>
+            <VenueRegularNights venueName={venue.name} series={regularNights} />
           </ContentSection>
         ) : null}
 

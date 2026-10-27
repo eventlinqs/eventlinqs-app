@@ -9,6 +9,7 @@ import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-
 import { createBrandPin, createClusterBubble } from '@/lib/maps/brand-pin'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import type { MapEventPoint } from './m5-events-map-types'
+import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 type Props = {
   params: EventsSearchParams
@@ -240,6 +241,7 @@ export function EventsMap({ params, initialCenter }: Props) {
         data-testid="events-map"
         className="h-[calc(100vh-14rem)] min-h-[480px] w-full overflow-hidden rounded-xl border border-ink-100 bg-ink-100"
       />
+      <OsmAttribution className="mt-2" />
     </section>
   )
 }

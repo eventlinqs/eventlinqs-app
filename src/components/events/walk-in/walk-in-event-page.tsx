@@ -5,6 +5,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'
+import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
@@ -261,6 +262,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
               <figcaption data-text-source={source} className="mt-2 hidden text-xs font-semibold text-ink-600 lg:block">
                 Photo: {guide.cover_credit}
               </figcaption>
+            )}
+            {/* Lawal's ruling of 27 October 2026, 08:33: a listing night without its
+                host's own photo shows EventLinqs' licensed library shot, and says so,
+                so it is never read as the venue. */}
+            {!guide.cover_credit && isLibraryPhoto(event.cover_image_url) && (
+              <figcaption className="mt-2 px-4 text-xs text-ink-600 sm:px-6 lg:px-0">{LIBRARY_PHOTO_CREDIT}</figcaption>
             )}
           </figure>
 

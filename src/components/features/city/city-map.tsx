@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
 import { createBrandPin } from '@/lib/maps/brand-pin'
 import { isAuditRun } from '@/lib/ui/audit-mode'
+import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 export interface MapEventPin {
   id: string
@@ -181,6 +182,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
           </div>
         )}
       </div>
+      <OsmAttribution className="bg-white px-3 py-2" />
     </div>
   )
 }
