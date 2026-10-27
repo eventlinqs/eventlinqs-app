@@ -175,6 +175,8 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
 
   // ----------------------------------------------------------------- ALIAS
   { route: '/for-organisers', klass: 'alias', why: '308 to /organisers; kept because external links reach for it' },
+  { route: '/events/[slug]/claim', klass: 'never', why: 'a signed in form to claim a curated listing by a code (WI2 Part 3b)' },
+  { route: '/venues/[handle]/claim', klass: 'never', why: 'a signed in form to claim a listed venue by a code (WI2 Part 3b)' },
   { route: '/e/[code]', klass: 'alias', why: 'the printable short link for an event; canonical is /events/[slug]' },
   { route: '/events/[slug]/with/[artist]', klass: 'alias', why: 'an artist-attributed view of one event; canonical is /events/[slug]' },
 
