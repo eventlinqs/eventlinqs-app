@@ -22,6 +22,7 @@ vi.mock('@/lib/supabase/admin', () => ({
 import {
   buildDigestEmailHtml,
   digestDateLabel,
+  digestPriceLabel,
   digestVenueLabel,
   fetchDigestCities,
   fetchDigestEvents,
@@ -243,6 +244,46 @@ describe('what the line actually says', () => {
   test('with nothing to add the label is empty rather than noise', () => {
     expect(digestVenueLabel(null, null, 'Geelong')).toBe('')
     expect(digestVenueLabel('  ', '  ', 'Geelong')).toBe('')
+  })
+})
+
+describe('the price line never calls a night sold elsewhere free', () => {
+  // A listing night sold on another site carries external_ticket_url and no ticket types of ours (WI3), so the
+  // ticket types alone read as free. The email would then tell a whole city a paid night costs nothing.
+  test('a night sold on a known site names the site', () => {
+    expect(digestPriceLabel([], 'https://events.humanitix.com/dead-funny-club')).toBe('Tickets on Humanitix')
+    expect(digestPriceLabel(null, 'https://www.eventbrite.com.au/e/123')).toBe('Tickets on Eventbrite')
+  })
+
+  test('a night sold on another site says so, never free', () => {
+    expect(digestPriceLabel([], 'https://deadfunny.club/tickets')).toBe('Tickets are sold elsewhere')
+    expect(digestPriceLabel([{ price: 0, currency: 'AUD' }], 'https://deadfunny.club/tickets')).toBe('Tickets are sold elsewhere')
+  })
+
+  test('our own tickets keep their price, and a night with none of either is free', () => {
+    expect(digestPriceLabel([{ price: 2500, currency: 'AUD' }], null)).toBe('From AUD $25')
+    expect(digestPriceLabel([], null)).toBe('Free entry')
+    expect(digestPriceLabel([], '  ')).toBe('Free entry')
+  })
+
+  test('the events the email carries use it', async () => {
+    const client = stubClient(() => [
+      {
+        id: 'evt-2',
+        slug: 'bar-humbug-comedy',
+        title: 'Dead Funny Club',
+        start_date: '2026-07-05T09:00:00Z',
+        timezone: 'Australia/Melbourne',
+        venue_name: 'Bar Humbug',
+        venue_city: 'Geelong',
+        visibility: 'public',
+        is_seed_data: false,
+        external_ticket_url: 'https://events.humanitix.com/dead-funny-club',
+        ticket_tiers: [],
+      },
+    ])
+    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })
+    expect(events[0].priceLabel).toBe('Tickets on Humanitix')
   })
 })
 

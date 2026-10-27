@@ -3,6 +3,8 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { priceLabel } from '@/lib/events/price-label'
+import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
+import { TICKETS_SOLD_ELSEWHERE_HEADING, isExternallyTicketed } from '@/lib/payments/sale-status'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
 import { buildShortUrl, getOrCreateShareLink } from './share-links'
@@ -261,6 +263,22 @@ export function digestDateLabel(startDate: string, timezone: string | null): str
  * added only when it differs from the digest's own city; when neither says
  * anything new the label is empty and the price stands alone.
  */
+/**
+ * The price line of one event in the email. A night sold on another site (WI3: external_ticket_url, no ticket types of
+ * ours) is never priced from our ticket types, which read as free; it names the site it is sold on, as the event page's
+ * own button does, or says the page's own words when the site is not a known one. Everything else is priced as before.
+ */
+export function digestPriceLabel(
+  tiers: { price: number; currency: string | null }[] | null | undefined,
+  externalTicketUrl: string | null,
+): string {
+  if (isExternallyTicketed({ external_ticket_url: externalTicketUrl })) {
+    const name = PROVIDER_NAMES[providerOf(externalTicketUrl!.trim())]
+    return name ? `Tickets on ${name}` : TICKETS_SOLD_ELSEWHERE_HEADING
+  }
+  return priceLabel(tiers ?? [], 'Free entry')
+}
+
 export function digestVenueLabel(
   venueName: string | null,
   venueCity: string | null,
@@ -296,7 +314,7 @@ export async function fetchDigestEvents(
     admin
     .from('events')
     .select(
-      'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, ticket_tiers(price, currency)',
+      'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, external_ticket_url, ticket_tiers(price, currency)',
     )
     .eq('city_primary', citySlug)
     .eq('status', 'published')
@@ -322,6 +340,7 @@ export async function fetchDigestEvents(
     venue_city: string | null
     visibility: string | null
     is_seed_data: boolean | null
+    external_ticket_url?: string | null
     ticket_tiers: { price: number; currency: string | null }[] | null
   }
 
@@ -337,7 +356,7 @@ export async function fetchDigestEvents(
       title: e.title,
       dateLabel: digestDateLabel(e.start_date, e.timezone),
       venueLabel: digestVenueLabel(e.venue_name, e.venue_city, cityName),
-      priceLabel: priceLabel(e.ticket_tiers ?? [], 'Free entry'),
+      priceLabel: digestPriceLabel(e.ticket_tiers, e.external_ticket_url ?? null),
       url: `${origin}/events/${e.slug}`,
     }))
 
