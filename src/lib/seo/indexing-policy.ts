@@ -115,6 +115,7 @@ export const DISCOVERY_INDEXING_THRESHOLD = 1
 export const UNLINKED_BY_DESIGN: Record<string, string> = {
   '/launch': 'a campaign landing reached from a link the founder sends, not from site navigation',
   '/waitlist': 'a campaign landing reached from a link the founder sends, not from site navigation',
+  '/partners': 'partnerships are built and off until Lawal sets their terms (the project manager\'s 21:51 (E), 27 October 2026), so no navigation offers them yet; the link goes in when a partner is listed',
 }
 
 export interface PolicyEntry {
