@@ -12,7 +12,7 @@ import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
-import { shownOrganiser } from '@/lib/listings/shown-organiser'
+import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
@@ -44,6 +44,9 @@ import {
 import { WalkInDayTabs, type WalkInDayView } from './walk-in-day-tabs'
 import { WalkInPanelActions } from './walk-in-panel-actions'
 import { WalkInBottomBar } from './walk-in-bottom-bar'
+import { WalkInOutbound } from './walk-in-outbound'
+import { freeListingOutbound, type ListingPages } from '@/lib/listings/outbound'
+import { readListingPages } from '@/lib/listings/listing-pages-read'
 import { HoursList } from './hours-list'
 
 /**
@@ -105,7 +108,7 @@ function directionsHref(event: FullEvent): string | null {
 }
 
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
-  const [guide, remindMeOn, media] = await Promise.all([
+  const [guide, remindMeOn, media, pages] = await Promise.all([
     // The event has already resolved under its own policies; the guide follows it
     // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
     readPublicGuide(event),
@@ -114,6 +117,8 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     // and HeroMedia's own default sizes below, so the raster this paints is the
     // raster the head asked for: one download on the LCP path, not two.
     getFeaturedHeroBackground(eventHeroMediaInput(event)),
+    // WI3's page: the host's own pages, for the one button that leaves (src/lib/listings/outbound.ts).
+    readListingPages(event),
   ])
   // The clock is read here with the other reads, as the ticketed page reads it,
   // so the render below stays pure.
@@ -126,6 +131,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
       now={now.getTime()}
       baseUrl={getSiteUrl()}
       hero={{ image: media.image, alt: event.cover_image_alt || media.alt, objectPosition: media.objectPosition }}
+      pages={pages}
     />
   )
 }
@@ -138,16 +144,21 @@ export type WalkInEventViewProps = {
   now: number
   baseUrl: string
   hero: { image: string | null; alt: string; objectPosition?: string }
+  /** The host's own pages, for a curated listing's one button that leaves; none for an organiser's own event. */
+  pages?: ListingPages
 }
 
 /** The render, separate from the reads so a test can draw it from a fixture. */
-export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }: WalkInEventViewProps) {
+export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, pages = {} }: WalkInEventViewProps) {
   const source = textSource(event)
   const org = event.organisation
   // WI2 ruling A: a listing names its host, never the listings organisation
   // that holds it, and has no organiser page or Follow (src/lib/listings/shown-organiser.ts).
   const shown = shownOrganiser(event, org)
   const organiserName = shown.name
+  // WI3's page: a curated listing's one button to its host's own page (Lawal's finding of 27 October 2026).
+  // An organiser's own event is its own page here, so it draws none.
+  const outbound = isEventLinqsListing(event) ? freeListingOutbound(event.slug, shown.name, pages) : null
   const programPublished = Boolean(guide.program_published_at)
   const eventUrl = `${baseUrl}/events/${event.slug}`
   const dates = guide.days.length > 0 ? guide.days.map((d) => d.date) : spanDates(event.start_date, event.end_date, event.timezone)
@@ -307,6 +318,13 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                   {ageLabel && <Chip>{ageLabel}</Chip>}
                 </div>
               </section>
+
+              {/* The one button that leaves, near the top on a phone; from lg it lives in the panel. */}
+              {outbound && (
+                <div className="lg:hidden">
+                  <WalkInOutbound outbound={outbound} />
+                </div>
+              )}
 
               {/* Hours, near the top on a phone (PhoneA). From lg they live in the panel. */}
               {hours.length > 0 && (
@@ -517,6 +535,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero }
                   <p className="m-0 mt-2 text-[15px] leading-[1.5] text-ink-600">{entryLine(dayCount)}</p>
                 </div>
                 {hours.length > 0 && <HoursList hours={hours} source={source} />}
+                {outbound && <WalkInOutbound outbound={outbound} />}
                 <WalkInPanelActions
                   eventId={event.id}
                   eventSlug={event.slug}
