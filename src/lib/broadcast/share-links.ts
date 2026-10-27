@@ -449,10 +449,14 @@ async function mintExternalCode(
   return generateShareCode()
 }
 
-export type ShareLinkEventKind = 'view' | 'click' | 'conversion'
+/**
+ * 'outbound' (27 October 2026, src/lib/broadcast/outbound.ts): a press of a curated listing's one button out to the
+ * organiser's own booking site, counted apart from 'click', which is an arrival through a link.
+ */
+export type ShareLinkEventKind = 'view' | 'click' | 'conversion' | 'outbound'
 
 /** Kinds de-duplicated per (link, visitor, day). */
-const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click']
+const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click', 'outbound']
 
 /**
  * Record one attribution event. Views AND clicks are de-duplicated per

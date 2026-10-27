@@ -178,6 +178,8 @@ const PRIVILEGED = /createAdminClient\s*\(|\badmin(?:Client)?\s*\.\s*from\s*\(/
 
 /** Deliberately public surfaces, with the reason each is safe unauthenticated. */
 const PUBLIC_BY_DESIGN = {
+  'out/[slug]/GET':
+    'a curated listing button out to the organiser own booking site, pressed by anyone signed out (27 October 2026, src/lib/broadcast/outbound.ts). It reads only a public listing through the public visibility rule, writes at most one de-duplicated outbound count per visitor per link per day, and answers a 302 to a destination the external ticket rule has validated; it changes nothing a person owns.',
   'api/auth/signup/POST': 'creates an account; abuse bounded by auth-signup rate limit',
   'api/auth/recover/POST': 'password reset request; generic response, rate limited',
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
