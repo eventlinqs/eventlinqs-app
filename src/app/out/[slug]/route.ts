@@ -19,6 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const answer = await followOutbound(
     {
       slug,
+      linkId: request.nextUrl.searchParams.get('l'),
       cookieCode: request.cookies.get(SHARE_COOKIE)?.value ?? null,
       userAgent: request.headers.get('user-agent'),
       ip: request.headers.get('x-real-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,

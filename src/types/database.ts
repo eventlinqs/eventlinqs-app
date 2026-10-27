@@ -6704,30 +6704,43 @@ export type Database = {
       }
       share_link_events: {
         Row: {
+          booking_link_id: string | null
           id: string
           kind: string
           link_id: string
           occurred_at: string
           order_id: string | null
+          provider: string | null
           visitor_hash: string | null
         }
         Insert: {
+          booking_link_id?: string | null
           id?: string
           kind: string
           link_id: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Update: {
+          booking_link_id?: string | null
           id?: string
           kind?: string
           link_id?: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "share_link_events_booking_link_id_fkey"
+            columns: ["booking_link_id"]
+            isOneToOne: false
+            referencedRelation: "event_booking_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "share_link_events_link_id_fkey"
             columns: ["link_id"]
