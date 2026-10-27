@@ -36,7 +36,17 @@ export default async function AdminPromotionsPage({ searchParams }: { searchPara
   const { said } = await searchParams
   const admin = createAdminClient()
   await reconcileAwaiting(admin, getStripeClient(), null, new Date()).catch(() => 0)
-  const [offers, orders] = await Promise.all([offersOf(admin), ordersQueue(admin)])
+  const [offers, orders] = await Promise.all([offersOf(admin).catch(() => null), ordersQueue(admin).catch(() => null)])
+  if (offers === null || orders === null) {
+    return (
+      <div>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Promotions</h1>
+        <p data-state="refusal" className="mt-4 max-w-2xl text-sm text-white/70">
+          The prices and orders could not be read. If migration 20261027140501 is not yet applied, this page reads nothing until it is.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>

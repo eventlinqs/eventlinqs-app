@@ -31,7 +31,17 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
   await recordAuditEvent({ action: 'admin.partners.view', session })
   const { said } = await searchParams
   const admin = createAdminClient()
-  const [enquiries, partners] = await Promise.all([enquiriesOf(admin), partnersOf(admin, 'all')])
+  const [enquiries, partners] = await Promise.all([enquiriesOf(admin).catch(() => null), partnersOf(admin, 'all').catch(() => null)])
+  if (enquiries === null || partners === null) {
+    return (
+      <div>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Partners</h1>
+        <p data-state="refusal" className="mt-4 max-w-2xl text-sm text-white/70">
+          The enquiries and partner records could not be read. If migration 20261027140501 is not yet applied, this page reads nothing until it is.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>

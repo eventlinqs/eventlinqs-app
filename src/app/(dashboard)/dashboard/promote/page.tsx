@@ -44,8 +44,8 @@ export default async function PromotePage({ searchParams }: { searchParams: Prom
   await reconcileAwaiting(admin, getStripeClient(), orgId, now).catch(() => 0)
 
   const [offers, events, orders] = await Promise.all([
-    offersOf(admin),
-    promotableEvents(admin, orgId, now),
+    offersOf(admin).catch(() => null),
+    promotableEvents(admin, orgId, now).catch(() => []),
     admin
       .from('promotion_orders')
       .select('id, status, amount_cents, created_at, ends_at, promotion_offers(name), events(title)')
@@ -55,6 +55,17 @@ export default async function PromotePage({ searchParams }: { searchParams: Prom
   ])
   type Named = { name?: string; title?: string }
   const one = (x: Named | Named[] | null): Named | null => (Array.isArray(x) ? (x[0] ?? null) : x)
+
+  if (offers === null) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <h1 className="text-2xl font-bold text-ink-900">Promote</h1>
+        <p data-state="refusal" className="rounded-lg border border-ink-200 bg-white p-4 text-sm text-ink-600">
+          The promotions menu could not be shown just now. Nothing was ordered or charged.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl space-y-8">
