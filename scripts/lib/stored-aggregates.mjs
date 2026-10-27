@@ -198,6 +198,16 @@ export const STORED_AGGREGATES = [
       'NOT A SUMMARY OF ROWS. ticket_scans logs EVERY attempt including failures and not-founds; scan_count counts successful admits only. They answer different questions and neither is a copy of the other.',
   },
   {
+    column: 'listing_claims.attempts',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: "listing_claim_check increments it, under the claim row's lock, on each wrong code (20261027150001_listing_claims.sql), and moves the claim to locked at the fifth.",
+    reconciled: false,
+    caveat: null,
+    decision:
+      "NOT A SUMMARY OF ROWS (27 October 2026, train/el-final). It counts the wrong codes tried against one claim, the five tries before it locks (the project manager's 21:51 (C)); no table holds the tries one per row, and nothing reads it as a total.",
+  },
+  {
     column: 'api_v1_attendees.scan_count',
     summarises: null,
     maintenance: 'not-in-class',
