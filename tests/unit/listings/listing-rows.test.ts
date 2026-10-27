@@ -127,6 +127,10 @@ describe('refused, each with its reason', () => {
     [{ name: 'Happy hour at the Corner Hall' }, /opening hours, a happy hour or a discount/],
     [{ website: 'http://cornerhall.example.com' }, /not an https address/],
     [{ instagram: '@cornerhall' }, /not a bare handle/],
+    // The security pass of 27 October 2026 (the project manager's 21:51 (C)): every source address https only.
+    [{ source_url: 'http://whatson.example.com/corner-hall-trivia' }, /source_url .* is not an https address/],
+    [{ source_url: 'javascript:alert(1)' }, /source_url .* is not an https address/],
+    [{ source_url: 'data:text/html,hi' }, /source_url .* is not an https address/],
     [{ instagram_post: 'https://example.com/p/1' }, /not an Instagram post or reel address/],
     [{ venue_email: 'not-an-email' }, /not an email address/],
     [{ source_date: 'read 2026-10-23' }, /in the future/],
