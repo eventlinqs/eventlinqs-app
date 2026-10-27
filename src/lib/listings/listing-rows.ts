@@ -183,14 +183,6 @@ const isHttpsUrl = (v: string) => {
     return false
   }
 }
-const isHttpUrl = (v: string) => {
-  try {
-    return ['http:', 'https:'].includes(new URL(v).protocol)
-  } catch {
-    return false
-  }
-}
-
 /** One row, as named columns, judged. */
 export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeContext): RowVerdict {
   const v = (c: ListingColumn) => (record[c] ?? '').trim()
@@ -266,7 +258,9 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) refused.push(`venue_email "${email}" is not an email address`)
 
   const sourceUrl = v('source_url')
-  if (!isHttpUrl(sourceUrl)) refused.push(`source_url "${sourceUrl}" is not a web address`)
+  // https only, as every other address the import takes (the security pass of 27 October 2026): a source read
+  // over plain http, or a javascript: or data: address, is refused.
+  if (!isHttpsUrl(sourceUrl)) refused.push(`source_url "${sourceUrl}" is not an https address`)
   const sourceMatch = /^(?:read )?(\d{4}-\d{2}-\d{2})$/.exec(v('source_date'))
   const sourceDate = sourceMatch?.[1] ?? ''
   if (!sourceMatch) refused.push(`source_date "${v('source_date')}" is not a date`)
