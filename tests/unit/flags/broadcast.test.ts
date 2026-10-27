@@ -86,8 +86,15 @@ describe('broadcast flag resolver', () => {
       // approves the privacy version that names it (ruling of 21 October 2026),
       // so the safe posture when the table cannot be read is no capture.
       walk_in_remind_me: false,
+      // Train C, the 21:51 (E). OFF: nothing paid is offered until Lawal sets the pilot.
+      paid_promotions: false,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(12)
+    expect(BROADCAST_FLAGS).toHaveLength(13)
+  })
+
+  test('paid promotions stay OFF when the flags table cannot be read or has no row', async () => {
+    expect(await isFeatureEnabled('paid_promotions', { client: clientReturning(null) })).toBe(false)
+    expect(await isFeatureEnabled('paid_promotions', { client: clientReturning(null, 'connection reset') })).toBe(false)
   })
 
   test('Remind me stays OFF when the flags table cannot be read or has no row', async () => {

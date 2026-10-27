@@ -32,6 +32,8 @@ type Item = {
   icon: React.ComponentType<{ className?: string }>
   match?: (pathname: string) => boolean
   organiserOnly?: boolean
+  /** Shown only while this admin switch is on (feature_flags). */
+  whenOn?: 'paid_promotions'
   emphasis?: 'gold'
   badge?: string
   external?: boolean
@@ -60,7 +62,7 @@ const ITEMS: Item[] = [
   // 'Soon' badge was an audit persona C finding.
   { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet, organiserOnly: true },
   // Featured slots and the services menu, priced in admin (Train C, rows 12 and 13).
-  { href: '/dashboard/promote', label: 'Promote', icon: Megaphone, organiserOnly: true },
+  { href: '/dashboard/promote', label: 'Promote', icon: Megaphone, organiserOnly: true, whenOn: 'paid_promotions' },
   // Venues (and their seating charts) were reachable only through a wizard
   // hint link; seated organisers need the front door (audit persona C).
   { href: '/dashboard/venues', label: 'Venues', icon: Building2, organiserOnly: true },
@@ -78,12 +80,14 @@ const ITEMS: Item[] = [
 
 type Props = {
   profile: { role?: string } | null
+  /** The paid_promotions switch, read by the layout; off hides Promote. */
+  paidPromotionsOpen?: boolean
   initialCollapsed?: boolean
 }
 
 const COOKIE_KEY = 'el_sidebar_collapsed'
 
-export function DashboardSidebar({ profile, initialCollapsed = false }: Props) {
+export function DashboardSidebar({ profile, initialCollapsed = false, paidPromotionsOpen = false }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed)
 
@@ -98,7 +102,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false }: Props) {
   const isOrganiser =
     profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin'
 
-  const visibleItems = ITEMS.filter((item) => !item.organiserOnly || isOrganiser)
+  const visibleItems = ITEMS.filter((item) => (!item.organiserOnly || isOrganiser) && (!item.whenOn || paidPromotionsOpen))
 
   return (
     <aside

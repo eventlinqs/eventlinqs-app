@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// The paid_promotions switch (the 21:51 (E)), read through the one flag resolver; on for the tests of the menu itself,
+// and turned off where the test is the switch.
+const paidSwitch = vi.hoisted(() => ({ on: true }))
+vi.mock('@/lib/flags/broadcast', () => ({ isFeatureEnabled: async (flag: string) => flag === 'paid_promotions' && paidSwitch.on }))
 import { confirmPaid, featuredNow, priceFromDollars, startOrder } from '@/lib/promotions/promotions'
 import { enquiryProblem, recordEnquiry } from '@/lib/partners/partners'
 
@@ -68,6 +73,22 @@ describe('the price Lawal types', () => {
     expect(priceFromDollars('0')).toBe('invalid')
     expect(priceFromDollars('-5')).toBe('invalid')
     expect(priceFromDollars('ten')).toBe('invalid')
+  })
+})
+
+describe('the paid promotions switch, off until Lawal sets the pilot', () => {
+  it('refuses every order while it is off, and writes and charges nothing', async () => {
+    paidSwitch.on = false
+    try {
+      const { admin, writes } = fakeAdmin(() => ({ data: [OFFER_PRICED], error: null }))
+      const { stripe, created } = fakeStripe({ id: 'cs_test_1', url: 'https://checkout.stripe.com/x', client_reference_id: 'order-1', payment_status: 'unpaid' })
+      const done = await startOrder(admin, stripe, { offerId: 'offer-home', eventId: 'event-1', organisationId: ORG, userId: 'u1', origin: 'https://eventlinqs.com', now: NOW })
+      expect(done).toEqual({ state: 'refused', reason: 'Promotions are not open yet. Nothing was ordered or charged.' })
+      expect(writes).toHaveLength(0)
+      expect(created).toHaveLength(0)
+    } finally {
+      paidSwitch.on = true
+    }
   })
 })
 
