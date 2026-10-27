@@ -177,6 +177,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     concernsOrganiserEvent: true,
     what: 'WI1 Remind me: one reminder the day before a free walk-in event, to a person who asked for it on the event page.',
   },
+  {
+    type: 'walk_in_called_off',
+    roles: ['prospect'],
+    concernsOrganiserEvent: true,
+    what: 'Remind me: one short note that a free walk-in event a person asked about is called off (the privacy version of 27 October 2026).',
+  },
 
   // ── The organiser ───────────────────────────────────────────────────────
   {

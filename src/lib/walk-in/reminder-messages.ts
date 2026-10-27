@@ -64,15 +64,25 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
   const where = [facts.event.venueName, facts.event.venueCity].filter(Boolean).join(', ')
 
   const isProgram = facts.kind === 'program'
-  const subject = isProgram ? `The full program for ${facts.event.title} is out` : `Tomorrow: ${facts.event.title}`
-  const lead = isProgram
-    ? `${facts.organiserName} has published the full program for ${facts.event.title}.`
-    : `${facts.event.title} is on tomorrow${where ? ` at ${where}` : ''}.`
-  const why = isProgram
-    ? 'You asked EventLinqs for the program when it landed. This is that one message, and the only other will be a reminder the day before.'
-    : 'You asked EventLinqs for one reminder the day before. This is it, and nothing else will follow.'
+  const isCalledOff = facts.kind === 'called_off'
+  const subject = isCalledOff
+    ? `Called off: ${facts.event.title}`
+    : isProgram
+      ? `The full program for ${facts.event.title} is out`
+      : `Tomorrow: ${facts.event.title}`
+  const lead = isCalledOff
+    ? `${facts.event.title}${where ? ` at ${where}` : ''} will not go ahead. ${facts.organiserName} has called it off.`
+    : isProgram
+      ? `${facts.organiserName} has published the full program for ${facts.event.title}.`
+      : `${facts.event.title} is on tomorrow${where ? ` at ${where}` : ''}.`
+  const why = isCalledOff
+    ? 'You asked EventLinqs to remind you about this event, so we are telling you it is off. This is the last message you will get about it.'
+    : isProgram
+      ? 'You asked EventLinqs for the program when it landed. This is that one message, and the only other will be a reminder the day before.'
+      : 'You asked EventLinqs for one reminder the day before. This is it, and nothing else will follow.'
 
-  const days = isProgram ? facts.days : facts.days.slice(0, 1)
+  // A called-off note carries no hours: there is nothing to turn up to.
+  const days = isCalledOff ? [] : isProgram ? facts.days : facts.days.slice(0, 1)
   const dayBlocks = days.map((d) => ({
     hours: hoursLine(d),
     items: isProgram ? d.items.map((i) => `${i.when}: ${i.what}`) : [],
@@ -82,11 +92,11 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
   const text = [
     lead,
     '',
-    FREE_ENTRY_NO_TICKET_NEEDED + '.',
+    ...(isCalledOff ? [] : [FREE_ENTRY_NO_TICKET_NEEDED + '.']),
     ...dayBlocks.flatMap((b) => ['', b.hours, ...b.items, ...(b.closer ? [b.closer] : [])]),
     '',
     `The event: ${eventUrl}`,
-    ...(facts.event.directionsUrl ? [`Get directions: ${facts.event.directionsUrl}`] : []),
+    ...(facts.event.directionsUrl && !isCalledOff ? [`Get directions: ${facts.event.directionsUrl}`] : []),
     '',
     why,
     `Stop these reminders: ${stopUrl}`,
@@ -108,13 +118,13 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#1A1A1A;">${escapeHtml(lead)}</p>
-    <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#6F5409;">${escapeHtml(FREE_ENTRY_NO_TICKET_NEEDED)}</p>
+    ${isCalledOff ? '' : `<p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#6F5409;">${escapeHtml(FREE_ENTRY_NO_TICKET_NEEDED)}</p>`}
     ${dayHtml}
     <p style="margin:20px 0 8px;">
       <a href="${escapeHtml(eventUrl)}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:14px 28px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;">See the event</a>
     </p>
     ${
-      facts.event.directionsUrl
+      facts.event.directionsUrl && !isCalledOff
         ? `<p style="margin:0 0 24px;font-size:14px;"><a href="${escapeHtml(facts.event.directionsUrl)}" style="color:#0A1628;font-weight:700;">Get directions</a></p>`
         : ''
     }

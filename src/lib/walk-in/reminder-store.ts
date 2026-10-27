@@ -136,7 +136,7 @@ export function reminderStore(): ReminderSendDeps {
         html: email.html,
         text: email.text,
         headers: email.headers,
-        messageType: kind === 'program' ? 'walk_in_program_update' : 'walk_in_day_before',
+        messageType: kind === 'program' ? 'walk_in_program_update' : kind === 'called_off' ? 'walk_in_called_off' : 'walk_in_day_before',
         recipientRole: 'prospect',
       })
     },

@@ -16,7 +16,21 @@
  * A leaf: no imports, so the client form and the server action read one copy.
  */
 
-export const REMIND_ME_CONSENT_VERSION = 'remind-me-v1-2026-10-21'
+export const REMIND_ME_CONSENT_VERSION = 'remind-me-v2-2026-10-27'
+
+/**
+ * APP 5 at the point of collection (the project manager's 21:38 (b), from
+ * OAIC's APP guidelines chapter 5: the matters shown "in the form", not only in
+ * the policy). Shown under the purpose with a link to the policy, and stored in
+ * the consent text with it, since it is part of what the person read.
+ */
+export const REMIND_ME_PRIVACY_LINE = "We use your email only for this event's reminders."
+export const REMIND_ME_PRIVACY_LINK = 'Privacy Policy'
+
+/** The words stored with a request: the purpose and the privacy line, exactly as shown. */
+export function remindMeConsentText(purpose: string): string {
+  return `${purpose} ${REMIND_ME_PRIVACY_LINE} ${REMIND_ME_PRIVACY_LINK}`
+}
 
 /** The heading above the email box, before and after the organiser publishes the program. */
 export function remindMeHeading(programPublished: boolean): string {
@@ -29,8 +43,8 @@ export function remindMeHeading(programPublished: boolean): string {
  * update left to send, so the sentence promises only what is still true.
  */
 export function remindMePurpose(organiserName: string, programPublished: boolean): string {
-  if (programPublished) return 'We send one reminder the day before. Nothing else.'
-  return `We send the full timetable when ${organiserName} releases it, and one reminder the day before. Nothing else.`
+  if (programPublished) return 'We send one reminder the day before, and a short note if it is called off. Nothing else.'
+  return `We send the full timetable when ${organiserName} releases it, one reminder the day before, and a short note if it is called off. Nothing else.`
 }
 
 /** What the person sees once their request is stored, and what a bot sees too. */

@@ -3,7 +3,8 @@
 import { useId, useState, type FormEvent } from 'react'
 import { requestEventReminder } from '@/app/actions/event-reminder'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
-import { REMIND_ME_TRAP_FIELD } from '@/lib/walk-in/remind-me'
+import Link from 'next/link'
+import { REMIND_ME_PRIVACY_LINE, REMIND_ME_PRIVACY_LINK, REMIND_ME_TRAP_FIELD } from '@/lib/walk-in/remind-me'
 import { REMIND_ME, YOUR_EMAIL } from '@/lib/walk-in/page-copy'
 
 /**
@@ -99,7 +100,10 @@ export function RemindMeForm({
         {state === 'sending' ? 'Saving' : REMIND_ME}
       </button>
       <p id={purposeId} className="m-0 text-[13px] leading-[1.5] text-ink-600">
-        {purpose}
+        {purpose} {REMIND_ME_PRIVACY_LINE}{' '}
+        <Link href="/legal/privacy" className="font-semibold text-ink-900 underline">
+          {REMIND_ME_PRIVACY_LINK}
+        </Link>
       </p>
       <p aria-live="polite" role="status" className={message ? 'm-0 text-sm font-semibold text-ink-900' : 'sr-only'}>
         {message}
