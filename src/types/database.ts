@@ -2231,6 +2231,44 @@ export type Database = {
           },
         ]
       }
+      faster_payout_grants: {
+        Row: {
+          buffer_days: number
+          granted_at: string
+          granted_by: string
+          id: string
+          note: string | null
+          organisation_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          buffer_days: number
+          granted_at?: string
+          granted_by: string
+          id?: string
+          note?: string | null
+          organisation_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          buffer_days?: number
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          note?: string | null
+          organisation_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faster_payout_grants_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           description: string
@@ -8911,6 +8949,15 @@ export type Database = {
         }[]
       }
       expire_waitlist_notifications: { Args: never; Returns: number }
+      faster_payout_check: {
+        Args: { p_org: string }
+        Returns: {
+          buffer_days: number
+          qualifies: boolean
+          reason: string
+        }[]
+      }
+      faster_payout_unproven: { Args: { p_org: string }; Returns: string }
       founding_add_months: {
         Args: { p_months: number; p_ts: string }
         Returns: string
