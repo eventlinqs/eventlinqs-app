@@ -41,7 +41,7 @@ export function ClaimForm(props: { kind: 'venue' | 'event'; slug: string; hostNa
 
   if (started?.state === 'sent' && again === 0) {
     return (
-      <form action={check} className="text-left">
+      <form action={check} method="post" className="text-left">
         <input type="hidden" name="claimId" value={started.claimId} />
         <p className="text-sm text-ink-600">We sent a 6-digit code to {started.to}. It works for 15 minutes.</p>
         <label className="mt-4 block text-sm font-medium text-ink-900">
@@ -62,7 +62,7 @@ export function ClaimForm(props: { kind: 'venue' | 'event'; slug: string; hostNa
   }
 
   return (
-    <form action={(formData) => {
+    <form method="post" action={(formData) => {
       setAgain(0)
       return start(formData)
     }} className="text-left">
