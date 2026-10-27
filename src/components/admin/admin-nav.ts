@@ -24,6 +24,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Matches',          href: '/admin/matches',    capability: 'admin.network.manage' },
   { label: 'Attribution',      href: '/admin/attribution', capability: 'admin.network.manage' },
   { label: 'Free traffic',     href: '/admin/traffic',    capability: 'admin.network.manage' },
+  { label: 'Opportunity',      href: '/admin/opportunity', capability: 'admin.network.manage' },
   { label: 'Campaigns',        href: '/admin/campaigns',  capability: 'admin.network.manage' },
   { label: 'Pricing and fees', href: '/admin/pricing',    capability: 'admin.pricing.manage' },
   { label: 'Organisers',       href: '/admin/organisers', capability: 'admin.users.manage' },
