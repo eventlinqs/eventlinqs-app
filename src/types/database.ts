@@ -5042,6 +5042,84 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_enquiries: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          email: string
+          id: string
+          kind: string
+          message: string
+          name: string
+          organisation: string
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          kind: string
+          message: string
+          name: string
+          organisation: string
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          kind?: string
+          message?: string
+          name?: string
+          organisation?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          name: string
+          slug: string
+          status: string
+          summary: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          name: string
+          slug: string
+          status?: string
+          summary: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          name?: string
+          slug?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -5566,6 +5644,127 @@ export type Database = {
             columns: ["referred_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_offers: {
+        Row: {
+          currency: string
+          description: string
+          id: string
+          key: string
+          kind: string
+          name: string
+          placement: string | null
+          price_cents: number | null
+          slots: number | null
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency?: string
+          description: string
+          id?: string
+          key: string
+          kind: string
+          name: string
+          placement?: string | null
+          price_cents?: number | null
+          slots?: number | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          description?: string
+          id?: string
+          key?: string
+          kind?: string
+          name?: string
+          placement?: string | null
+          price_cents?: number | null
+          slots?: number | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      promotion_orders: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          done_at: string | null
+          done_by: string | null
+          ends_at: string | null
+          event_id: string | null
+          id: string
+          offer_id: string
+          ordered_by: string
+          organisation_id: string
+          paid_at: string | null
+          starts_at: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          done_at?: string | null
+          done_by?: string | null
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          offer_id: string
+          ordered_by: string
+          organisation_id: string
+          paid_at?: string | null
+          starts_at?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          done_at?: string | null
+          done_by?: string | null
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          offer_id?: string
+          ordered_by?: string
+          organisation_id?: string
+          paid_at?: string | null
+          starts_at?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_orders_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "promotion_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_orders_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -6105,6 +6304,36 @@ export type Database = {
           },
         ]
       }
+      roundup_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          city_slug: string
+          event_count: number
+          id: string
+          period_start: string
+          whatsapp_text: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          city_slug: string
+          event_count: number
+          id?: string
+          period_start: string
+          whatsapp_text: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          city_slug?: string
+          event_count?: number
+          id?: string
+          period_start?: string
+          whatsapp_text?: string
+        }
+        Relationships: []
+      }
       saved_categories: {
         Row: {
           category_id: string
@@ -6475,30 +6704,43 @@ export type Database = {
       }
       share_link_events: {
         Row: {
+          booking_link_id: string | null
           id: string
           kind: string
           link_id: string
           occurred_at: string
           order_id: string | null
+          provider: string | null
           visitor_hash: string | null
         }
         Insert: {
+          booking_link_id?: string | null
           id?: string
           kind: string
           link_id: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Update: {
+          booking_link_id?: string | null
           id?: string
           kind?: string
           link_id?: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "share_link_events_booking_link_id_fkey"
+            columns: ["booking_link_id"]
+            isOneToOne: false
+            referencedRelation: "event_booking_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "share_link_events_link_id_fkey"
             columns: ["link_id"]

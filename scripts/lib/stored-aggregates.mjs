@@ -178,6 +178,16 @@ export const STORED_AGGREGATES = [
    * excluded column is how an enumeration stops being one.
    * ------------------------------------------------------------------ */
   {
+    column: 'roundup_approvals.event_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'approveRoundup (src/lib/broadcast/roundup.ts) writes it once, with the approval row, and nothing updates it after.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'NOT A SUMMARY OF ROWS. It records how many listings the edition carried at the moment an admin approved it, so the approval says what was approved. Listings published later belong to the next week, and the live count is read from events whenever the edition is drafted again; nothing reads this column as a current count.',
+  },
+  {
     column: 'tickets.scan_count',
     summarises: null,
     maintenance: 'not-in-class',

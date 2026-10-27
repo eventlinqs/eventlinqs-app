@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { freeListingOutbound, outboundHost, ticketButtonLabel } from '@/lib/listings/outbound'
 
+/** Every button that leaves goes through the counted route (window 6's /out), naming where it goes. */
+const out = (url: string) => `/out/a-night?to=${encodeURIComponent(url)}`
+
 /*
  * WI3's page: every curated listing carries one button that leaves for its host's
  * own page or booking site (Lawal's finding of 27 October 2026). The leaf that
@@ -10,7 +13,7 @@ import { freeListingOutbound, outboundHost, ticketButtonLabel } from '@/lib/list
 describe('freeListingOutbound', () => {
   it("sends a free night to the host's own site, named for the host", () => {
     expect(freeListingOutbound('a-night', "Beav's Bar", { websiteUrl: 'https://www.beavsbar.com.au/' })).toEqual({
-      href: 'https://www.beavsbar.com.au/',
+      href: out('https://www.beavsbar.com.au/'),
       label: "See it on Beav's Bar's page",
       host: 'beavsbar.com.au',
     })
@@ -23,21 +26,21 @@ describe('freeListingOutbound', () => {
       instagramPostUrl: 'https://www.instagram.com/p/AbC123/',
       checkedUrl: 'https://someguide.example/beavs',
     }
-    expect(freeListingOutbound('a-night', 'Beav\'s Bar', all)?.href).toBe(all.sourceUrl)
-    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { ...all, sourceUrl: null })?.href).toBe(all.websiteUrl)
-    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { ...all, sourceUrl: null, websiteUrl: null })?.href).toBe(all.instagramPostUrl)
-    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { checkedUrl: all.checkedUrl })).toMatchObject({ href: all.checkedUrl, label: 'See the original listing' })
+    expect(freeListingOutbound('a-night', 'Beav\'s Bar', all)?.href).toBe(out(all.sourceUrl))
+    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { ...all, sourceUrl: null })?.href).toBe(out(all.websiteUrl))
+    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { ...all, sourceUrl: null, websiteUrl: null })?.href).toBe(out(all.instagramPostUrl))
+    expect(freeListingOutbound('a-night', 'Beav\'s Bar', { checkedUrl: all.checkedUrl })).toMatchObject({ href: out(all.checkedUrl), label: 'See the original listing' })
   })
 
   it("never calls another site's listing the host's page (found driving production, 27 October 2026)", () => {
     const listing = 'https://whatson.melbourne.vic.gov.au/things-to-do/damn-fine-laughs'
-    expect(freeListingOutbound('a-night', 'FAD Gallery Bar', { sourceUrl: listing })).toEqual({ href: listing, label: 'See the original listing', host: 'whatson.melbourne.vic.gov.au' })
+    expect(freeListingOutbound('a-night', 'FAD Gallery Bar', { sourceUrl: listing })).toEqual({ href: out(listing), label: 'See the original listing', host: 'whatson.melbourne.vic.gov.au' })
     expect(freeListingOutbound('a-night', 'FAD Gallery Bar', { checkedUrl: listing })?.label).toBe('See the original listing')
   })
 
   it("prefers the host's own site over another site's listing of the night", () => {
     const p = freeListingOutbound('a-night', 'FAD Gallery Bar', { sourceUrl: 'https://whatson.melbourne.vic.gov.au/x', websiteUrl: 'https://fadgallery.com.au' })
-    expect([p?.href, p?.label]).toEqual(['https://fadgallery.com.au', "See it on FAD Gallery Bar's page"])
+    expect([p?.href, p?.label]).toEqual([out('https://fadgallery.com.au'), "See it on FAD Gallery Bar's page"])
   })
 
   it('draws no button where the listing holds no real https page (Law 5: never a dead link)', () => {

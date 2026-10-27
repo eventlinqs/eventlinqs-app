@@ -449,10 +449,14 @@ async function mintExternalCode(
   return generateShareCode()
 }
 
-export type ShareLinkEventKind = 'view' | 'click' | 'conversion'
+/**
+ * 'outbound' (27 October 2026, src/lib/broadcast/outbound.ts): a press of a curated listing's one button out to the
+ * organiser's own booking site, counted apart from 'click', which is an arrival through a link.
+ */
+export type ShareLinkEventKind = 'view' | 'click' | 'conversion' | 'outbound'
 
 /** Kinds de-duplicated per (link, visitor, day). */
-const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click']
+const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click', 'outbound']
 
 /**
  * Record one attribution event. Views AND clicks are de-duplicated per
@@ -479,6 +483,8 @@ export async function recordShareLinkEvent(
     kind: ShareLinkEventKind
     orderId?: string | null
     visitorHash?: string | null
+    /** An 'outbound' press only: the booking link pressed and its platform (20261027140002). */
+    outbound?: { bookingLinkId: string | null; provider: string } | null
   },
   opts?: { client?: BroadcastClient },
 ): Promise<boolean> {
@@ -500,15 +506,29 @@ export async function recordShareLinkEvent(
      * reach. This file has already chosen once between those and chose the
      * smaller number, deliberately, so a failure here takes the same side.
      */
-    const { data: dupe, error: dupeError } = await client
-      .from('share_link_events')
-      .select('id')
-      .eq('link_id', input.linkId)
-      .eq('kind', input.kind)
-      .eq('visitor_hash', input.visitorHash)
-      .gte('occurred_at', dayStart.toISOString())
-      .limit(1)
-      .maybeSingle()
+    // An outbound press is one per booking link: Humanitix then DICE the same day is two platforms reached. Every other
+    // kind reads exactly as it always has.
+    const pressedLink = input.kind === 'outbound' ? (input.outbound?.bookingLinkId ?? null) : null
+    const { data: dupe, error: dupeError } = pressedLink
+      ? await client
+          .from('share_link_events')
+          .select('id')
+          .eq('link_id', input.linkId)
+          .eq('kind', input.kind)
+          .eq('visitor_hash', input.visitorHash)
+          .eq('booking_link_id', pressedLink)
+          .gte('occurred_at', dayStart.toISOString())
+          .limit(1)
+          .maybeSingle()
+      : await client
+          .from('share_link_events')
+          .select('id')
+          .eq('link_id', input.linkId)
+          .eq('kind', input.kind)
+          .eq('visitor_hash', input.visitorHash)
+          .gte('occurred_at', dayStart.toISOString())
+          .limit(1)
+          .maybeSingle()
     if (dupeError) {
       captureException(dupeError, {
         where: 'lib/broadcast/share-links:recordShareLinkEvent daily de-duplication',
@@ -549,6 +569,8 @@ export async function recordShareLinkEvent(
     kind: input.kind,
     order_id: input.orderId ?? null,
     visitor_hash: input.visitorHash ?? null,
+    booking_link_id: input.outbound?.bookingLinkId ?? null,
+    provider: input.outbound?.provider ?? null,
   })
   // The partial unique index rejects a duplicate conversion; that is a
   // success from the caller's perspective (the sale is already counted).
