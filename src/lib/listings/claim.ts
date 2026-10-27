@@ -74,10 +74,21 @@ export function claimEmail(input: { hostName: string; claimantName: string; clai
     '',
     'If this was not you, or you do not know them, ignore this email and nothing changes.',
   ].join('\n')
+  // The reminder emails' own shell (src/lib/walk-in/reminder-messages.ts), so every operational email EventLinqs sends
+  // looks like one company: the same page, type and colours. Found reading the claim email at phone width (the project
+  // manager's 21:56 (3)): it was bare markup in the reader's default type. No link of any kind, as before.
+  const p = 'margin:0 0 8px;font-size:15px;line-height:1.6;color:#1A1A1A;'
   const html = [
-    `<p>${escapeHtml(input.claimantName)} (${escapeHtml(input.claimantRole)}) asked to manage ${escapeHtml(input.hostName)} on EventLinqs.</p>`,
-    `<p>Their code is <strong>${escapeHtml(input.code)}</strong>. It works for ${CODE_MINUTES} minutes.</p>`,
-    '<p>If this was not you, or you do not know them, ignore this email and nothing changes.</p>',
+    '<!DOCTYPE html>',
+    '<html lang="en-AU"><body style="margin:0;background:#FAFAF7;">',
+    '  <div style="font-family:Manrope,Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">',
+    '    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>',
+    `    <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">Your code for ${escapeHtml(input.hostName)}</h1>`,
+    `    <p style="${p}">${escapeHtml(input.claimantName)} (${escapeHtml(input.claimantRole)}) asked to manage ${escapeHtml(input.hostName)} on EventLinqs.</p>`,
+    `    <p style="${p}">Their code is <strong style="font-size:22px;letter-spacing:.12em;color:#0A1628;">${escapeHtml(input.code)}</strong>. It works for ${CODE_MINUTES} minutes.</p>`,
+    '    <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#4A4A4A;">If this was not you, or you do not know them, ignore this email and nothing changes.</p>',
+    '  </div>',
+    '</body></html>',
   ].join('\n')
   return { subject, html, text }
 }
