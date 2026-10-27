@@ -51,3 +51,13 @@ export function WalkInPanelActions({
     </>
   )
 }
+
+/**
+ * Add to calendar on a phone and a tablet, where the panel is not drawn (below
+ * lg). Found driving the AMCF page on production at 390 and 768 on 27 October
+ * 2026: the page offered it only on a desktop, so a visitor on a phone could
+ * not put the event in their calendar at all.
+ */
+export function WalkInPhoneCalendar({ eventId, calendar }: { eventId: string; calendar: CalendarEvent }) {
+  return <AddToCalendar event={calendar} appearance="pill" onChosen={() => countOnEvent(eventId, 'calendar_add')} />
+}
