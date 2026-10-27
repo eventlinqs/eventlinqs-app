@@ -5,6 +5,7 @@ import { resolveOrganiserScope } from '@/lib/payouts/auth'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { formatPlatformDate } from '@/lib/dates/event-time'
 import { confirmPaid, offersOf, promotableEvents, reconcileAwaiting } from '@/lib/promotions/promotions'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { orderPromotionAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,8 @@ export const metadata = {
  * Payment is Stripe Checkout; the order is confirmed only from Stripe's own answer.
  */
 export default async function PromotePage({ searchParams }: { searchParams: Promise<{ paid?: string; cancelled?: string; problem?: string; org?: string }> }) {
+  // OFF until Lawal sets the pilot (the 21:51 (E)): nothing is offered, so the page is not there.
+  if (!(await isFeatureEnabled('paid_promotions'))) redirect('/dashboard')
   const query = await searchParams
   const scope = await resolveOrganiserScope(query.org)
   if (!scope.ok) redirect(scope.status === 401 ? '/login?next=/dashboard/promote' : '/dashboard')

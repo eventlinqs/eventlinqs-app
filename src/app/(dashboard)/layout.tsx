@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -27,12 +28,13 @@ export default async function DashboardLayout({
 
   const cookieStore = await cookies()
   const collapsed = cookieStore.get('el_sidebar_collapsed')?.value === '1'
+  const paidPromotionsOpen = await isFeatureEnabled('paid_promotions')
 
   return (
     <div className="min-h-screen bg-canvas">
       <DashboardTopbar user={user} profile={profile} />
       <div className="flex">
-        <DashboardSidebar profile={profile} initialCollapsed={collapsed} />
+        <DashboardSidebar profile={profile} initialCollapsed={collapsed} paidPromotionsOpen={paidPromotionsOpen} />
         {/*
           min-w-0, found on the B1 drive at 768 (5 September 2026): a flex item's
           minimum width is its content's, so the attendees table (seven columns,

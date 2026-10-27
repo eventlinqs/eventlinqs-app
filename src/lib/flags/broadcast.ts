@@ -63,6 +63,12 @@ export const BROADCAST_FLAGS = [
    * production until he approves the privacy policy version that names it.
    */
   'walk_in_remind_me',
+  /*
+   * Train C rows 12 and 13: paid featured placement and the organiser services menu. Built, priced empty, and OFF:
+   * while it is off no organiser is offered anything (no Promote link, page or order, no Featured row). The
+   * project manager's 21:51 of 27 October 2026, (E), on Lawal's 21:50.
+   */
+  'paid_promotions',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -109,6 +115,8 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // OFF. The safe posture when the flags table cannot be read is the posture
   // production holds until Lawal approves the privacy version: no capture.
   walk_in_remind_me: false,
+  // OFF. Nothing paid is offered until Lawal sets the pilot, so an unreadable table offers nothing.
+  paid_promotions: false,
 }
 
 /**
@@ -153,6 +161,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-09-13: ON. Whether a new click row, order signal or attribution record is WRITTEN. Set it false and nothing new is recorded, at once and with no deploy, while every short link keeps redirecting to its target and every click, attribution and reversal already stored stays intact and readable: a link printed on a poster is not a feature and must not stop working because a switch moved. Orders placed while it is off still get their one attribution record, with the decision none and the reason naming the switch, because an order with no record at all is the one thing this item exists to prevent.',
   walk_in_remind_me:
     'lawal 2026-10-21: OFF in production until he approves the new dated privacy policy version that names Remind me (what is collected, its one purpose, at most two messages, the one-click stop). ON on TEST, where it is driven. Turned on in production by scripts/ops/walk-in-remind-me-flag.mjs with APPLY typed by Lawal, never by a deploy. With it off a walk-in page shows its hours, Add to calendar and Share, and the action refuses.',
+  paid_promotions:
+    'lawal 2026-10-27: OFF. Featured spots and organiser services ship built, prices empty and this switch off; nothing is offered to an organiser until he sets the pilot (the project manager, 21:51 (E)).',
   event_availability_and_access:
     'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }

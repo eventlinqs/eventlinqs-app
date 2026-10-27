@@ -7,6 +7,7 @@ import { getStripeClient } from '@/lib/payments/payout'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { offersOf, ordersQueue, reconcileAwaiting } from '@/lib/promotions/promotions'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { markOrderDoneAction, setOfferPriceAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ export default async function AdminPromotionsPage({ searchParams }: { searchPara
   const { said } = await searchParams
   const admin = createAdminClient()
   await reconcileAwaiting(admin, getStripeClient(), null, new Date()).catch(() => 0)
-  const [offers, orders] = await Promise.all([offersOf(admin).catch(() => null), ordersQueue(admin).catch(() => null)])
+  const [offers, orders, open] = await Promise.all([offersOf(admin).catch(() => null), ordersQueue(admin).catch(() => null), isFeatureEnabled('paid_promotions')])
   if (offers === null || orders === null) {
     return (
       <div>
@@ -57,6 +58,12 @@ export default async function AdminPromotionsPage({ searchParams }: { searchPara
           Featured slots and the services menu. Set a price to put one on sale; leave it empty and organisers see it as not on sale yet.
         </p>
       </header>
+
+      <p data-switch={open ? 'on' : 'off'} className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+        {open
+          ? 'Paid promotions are on: organisers see Promote and can order what has a price.'
+          : 'Paid promotions are off: organisers see no Promote page, nothing can be ordered and no Featured row shows. Set the prices first, then turn on paid_promotions in Feature flags.'}
+      </p>
 
       {said === undefined ? null : (
         <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">

@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * PAID PROMOTION: FEATURED PLACEMENT AND THE ORGANISER SERVICES MENU (Train C, rows 12 and 13).
@@ -115,6 +116,7 @@ export async function startOrder(
   stripe: Pick<Stripe, 'checkout'>,
   input: { readonly offerId: string; readonly eventId: string; readonly organisationId: string; readonly userId: string; readonly origin: string; readonly now: Date },
 ): Promise<StartResult> {
+  if (!(await isFeatureEnabled('paid_promotions'))) return { state: 'refused', reason: 'Promotions are not open yet. Nothing was ordered or charged.' }
   const offers = await offersOf(admin)
   const offer = offers.find((o) => o.id === input.offerId)
   if (offer === undefined) return { state: 'refused', reason: 'That is not something on the menu.' }
@@ -284,6 +286,7 @@ export async function reconcileAwaiting(admin: Admin, stripe: Pick<Stripe, 'chec
 /** For a public page: the featured row, or none when the records cannot be reached, so a page never fails on it. */
 export async function featuredForPage(placement: Placement, citySlug: string | null = null): Promise<FeaturedListing[]> {
   try {
+    if (!(await isFeatureEnabled('paid_promotions'))) return []
     return await featuredNow(createAdminClient(), placement, new Date(), citySlug)
   } catch {
     return []
