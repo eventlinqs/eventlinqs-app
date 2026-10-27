@@ -9,7 +9,7 @@ import { buildShortUrl, getOrCreateShareLink } from '@/lib/broadcast/share-links
  * COLLABORATORS: A VENUE JOINS AN EVENT ANOTHER ORGANISATION RUNS AND SHARES ITS
  * KIT (the locked plan of 27 October 2026, item 15; decided in
  * docs/walk-in/COLLABORATORS-DECISION.md; the table and its rules in
- * supabase/migrations/20261027150001_event_collaborators.sql).
+ * supabase/migrations/20261027150101_event_collaborators.sql).
  *
  * The event's organiser asks; a person who owns the venue's organisation joins
  * or declines. Every write goes through the service role only after this file

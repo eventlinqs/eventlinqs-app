@@ -1,6 +1,6 @@
 -- COLLABORATORS, THE PROOF: a venue joins an event another organisation runs, as the roles themselves.
 --
--- supabase/migrations/20261027150001_event_collaborators.sql makes event_collaborators, its three rules, the
+-- supabase/migrations/20261027150101_event_collaborators.sql makes event_collaborators, its three rules, the
 -- collaborator tag on share_links, the row security and the grants (item 15 of the locked plan of 27 October
 -- 2026; docs/walk-in/COLLABORATORS-DECISION.md). This proves each, on rows TEST already holds.
 --
