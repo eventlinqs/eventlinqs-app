@@ -26,6 +26,7 @@ import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { toZonedIso8601 } from '@/lib/dates/event-time'
 import { pruneJsonLd } from '@/lib/seo/structured-data'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { isExternallyTicketed } from '@/lib/payments/sale-status'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -290,7 +291,30 @@ export function buildEventSchemaPayload({
    * read 2026-10-21), which is the authority it is emitted on.
    */
   const walkIn = isWalkIn(event)
-  const offers = walkIn
+  /*
+   * AN EVENT SOLD ON ANOTHER SITE (WI3) has no tier here, so it had no Offer at
+   * all. Its one Offer is the organiser's booking page, because that is the page
+   * Google asks for:
+   *
+   *   "offers.url | URL | The URL of a page providing the ability to buy tickets."
+   *   developers.google.com/search/docs/appearance/structured-data/event
+   *   (last updated 2026-09-08, read 2026-10-27)
+   *
+   * It carries no price, for the reason ExternalTicketsPanel shows none: we do
+   * not know what the organiser charges today, and a stale figure in a search
+   * result is worse than none (founder ruling 15 August 2026, non-negotiable 3).
+   */
+  const external = !walkIn && isExternallyTicketed(event)
+  const offers = external
+    ? [
+        {
+          '@type': 'Offer',
+          availability: schemaAvailability(state),
+          url: (event.external_ticket_url ?? '').trim(),
+          validFrom: event.created_at,
+        },
+      ]
+    : walkIn
     ? [
         {
           '@type': 'Offer',

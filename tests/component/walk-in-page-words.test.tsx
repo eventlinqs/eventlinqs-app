@@ -248,3 +248,42 @@ describe('a walk-in page, read as rendered', () => {
     expect(container.textContent).toContain('Add to calendar')
   })
 })
+
+describe('the one button that leaves, on a curated listing (WI3)', () => {
+  const pages = { websiteUrl: 'https://www.fedsquare.com/', checkedUrl: 'https://someguide.example/amcf' }
+  const drawWith = (listingSource: string, withPages: typeof pages | Record<string, never>) =>
+    render(
+      <WalkInEventView
+        event={{ ...(event as Record<string, unknown>), listing_source: listingSource } as never}
+        guide={guide.ok ? guide.guide : (null as never)}
+        remindMeOn={false}
+        now={Date.now()}
+        baseUrl="https://www.eventlinqs.com.au"
+        hero={{ image: 'https://cdn.example.com/amcf.avif', alt: '' }}
+        pages={withPages}
+      />,
+    )
+
+  it("draws one button to the host's own site, named for the host, on the phone and in the panel", () => {
+    const { container } = drawWith('eventlinqs', pages)
+    const links = Array.from(container.querySelectorAll('[data-outbound] a'))
+    expect(links.length).toBe(2)
+    for (const a of links) {
+      expect(a.getAttribute('href')).toBe('https://www.fedsquare.com/')
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noopener')
+      expect(a.textContent).toMatch(/^See it on .+'s page$/)
+    }
+    expect(container.textContent).toContain('Opens fedsquare.com')
+  })
+
+  it("draws none on an organiser's own event, which is its own page here", () => {
+    const { container } = drawWith('organiser', pages)
+    expect(container.querySelector('[data-outbound]')).toBeNull()
+  })
+
+  it('draws none, never a dead one, where the listing holds no page', () => {
+    const { container } = drawWith('eventlinqs', {})
+    expect(container.querySelector('[data-outbound]')).toBeNull()
+  })
+})

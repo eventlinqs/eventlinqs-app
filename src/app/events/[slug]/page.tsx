@@ -63,6 +63,7 @@ import {
   verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
+import { outboundHref, ticketButtonLabel } from '@/lib/listings/outbound'
 // Service role, used for exactly one thing on this page: reading the two
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -1599,8 +1600,10 @@ export default async function EventDetailPage({ params }: Props) {
                    * to choose, nothing to sell out of, and no sale to block.
                    */
                   <ExternalTicketsPanel
-                    destinationUrl={event.external_ticket_url}
+                    destinationUrl={outboundHref(event.slug, event.external_ticket_url)}
                     host={externalTicketHost}
+                    // WI3: "Get tickets on Humanitix", the site named from its address where it can be.
+                    label={ticketButtonLabel(event.external_ticket_url)}
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">

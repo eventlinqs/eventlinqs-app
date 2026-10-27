@@ -618,3 +618,19 @@ describe('SEO1: the country code, and the JSON itself', () => {
     expect(Object.values(roundTripped).includes(undefined)).toBe(false)
   })
 })
+
+describe('an event sold on another site (WI3)', () => {
+  it("offers the organiser's booking page, with no price, and stays valid", () => {
+    const payload = build({ external_ticket_url: 'https://events.humanitix.com/an-outside-gig' }, { ticketTiers: [] }) as Record<string, unknown>
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect(offers[0].url).toBe('https://events.humanitix.com/an-outside-gig')
+    expect(offers[0].price).toBeUndefined()
+    expect(validate(payload).errors).toEqual([])
+  })
+
+  it('an event EventLinqs sells still offers its own page', () => {
+    const offers = (build() as Record<string, unknown>).offers as Record<string, unknown>[]
+    expect(offers.every((o) => String(o.url).startsWith(BASE))).toBe(true)
+  })
+})

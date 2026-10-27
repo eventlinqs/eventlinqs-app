@@ -28,8 +28,11 @@ import {
 export function ExternalTicketsPanel({
   destinationUrl,
   host,
+  label = 'Get tickets',
 }: {
   destinationUrl: string
+  /** The words on the button, naming the site where it can (src/lib/listings/outbound.ts, ticketButtonLabel). */
+  label?: string
   /** The destination's hostname, shown so the visitor knows where they land. */
   host: string | null
 }) {
@@ -46,7 +49,7 @@ export function ExternalTicketsPanel({
           rel="noopener noreferrer"
           className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-ink-900 px-6 text-base font-semibold text-white transition hover:bg-ink-800"
         >
-          Get tickets
+          {label}
         </a>
 
         {/*
