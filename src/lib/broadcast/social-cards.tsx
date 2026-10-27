@@ -1021,6 +1021,13 @@ export type CityWeekCardInput = {
   path: string
   /** Data URI of the QR to the page. */
   qr: string | null
+  /**
+   * Data URI of the photograph that fills the card behind the week, already cut
+   * to the card's exact size (Lawal's ruling of 27 October 2026, 08:33: every
+   * Instagram card carries a real photograph). EventLinqs' licensed library shot
+   * for the city or the week; null draws the ground alone.
+   */
+  backdrop?: string | null
 }
 
 export type CityWeekCardFormat = 'story' | 'square'
@@ -1057,6 +1064,28 @@ function CityWeekCard({
 
   return (
     <div style={{ width: spec.width, height: spec.height, display: 'flex', position: 'relative', background: GROUND }}>
+      {input.backdrop ? (
+        <img
+          src={input.backdrop}
+          alt=""
+          width={spec.width}
+          height={spec.height}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: spec.width, height: spec.height }}
+        />
+      ) : null}
+      {input.backdrop ? (
+        // The photograph shows through under the headline and settles to the
+        // brand navy behind the rows, so every line reads at full contrast.
+        <div
+          style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0, left: 0,
+            display: 'flex',
+            background:
+              'linear-gradient(to bottom, rgba(10,22,40,0.40) 0%, rgba(10,22,40,0.62) 30%, rgba(10,22,40,0.88) 52%, rgba(10,22,40,0.94) 100%)',
+          }}
+        />
+      ) : null}
       <div
         style={{
           position: 'absolute',

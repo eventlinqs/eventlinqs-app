@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { isLibraryPhoto, listingPhotoFor, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
+import { cityWeekPhotoFor, isLibraryPhoto, listingPhotoFor, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 
 /**
  * Lawal's ruling of 27 October 2026, 08:33: a listing night carries a real
@@ -33,6 +33,17 @@ describe("a listing night's photograph", () => {
     expect(isLibraryPhoto('https://x.supabase.co/storage/v1/object/public/event-images/generated-covers/e1.png')).toBe(false)
     expect(isLibraryPhoto('https://x.supabase.co/storage/v1/object/public/event-images/org/e1/cover.avif')).toBe(false)
     expect(isLibraryPhoto(null)).toBe(false)
+  })
+
+  it('pictures comedy with a stage, not the arts hero gallery', () => {
+    expect(listingPhotoFor('comedy')).toMatch(/theatre-interior-evening/)
+    expect(listingPhotoFor('health-wellness')).toBe(listingPhotoFor('family'))
+  })
+
+  it("puts the city's own licensed photo behind its week card, else the week's most common category", () => {
+    expect(cityWeekPhotoFor('geelong', ['music'])).toMatch(/\/stock\/cities\/geelong\//)
+    expect(cityWeekPhotoFor('bendigo', ['family', 'family', 'community'])).toBe(listingPhotoFor('family'))
+    expect(cityWeekPhotoFor('bendigo', [])).toBe(listingPhotoFor(null))
   })
 
   it('says it is not the venue, in plain words', () => {
