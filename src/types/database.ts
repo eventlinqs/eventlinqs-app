@@ -2826,6 +2826,88 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_candidates: {
+        Row: {
+          ends_at: string | null
+          event_id: string | null
+          found_at: string
+          id: string
+          image_url: string | null
+          kind: string
+          links: Json
+          page_url: string
+          refused_because: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_id: string
+          starts_at: string
+          status: string
+          title: string
+          venue_address: string | null
+          venue_name: string
+        }
+        Insert: {
+          ends_at?: string | null
+          event_id?: string | null
+          found_at?: string
+          id?: string
+          image_url?: string | null
+          kind: string
+          links?: Json
+          page_url: string
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id: string
+          starts_at: string
+          status?: string
+          title: string
+          venue_address?: string | null
+          venue_name: string
+        }
+        Update: {
+          ends_at?: string | null
+          event_id?: string | null
+          found_at?: string
+          id?: string
+          image_url?: string | null
+          kind?: string
+          links?: Json
+          page_url?: string
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          venue_address?: string | null
+          venue_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_candidates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_candidates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_candidates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_checks: {
         Row: {
           checked_at: string
@@ -2946,6 +3028,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      listing_sources: {
+        Row: {
+          changes: string
+          city_slug: string | null
+          collection: string
+          created_at: string
+          id: string
+          kind: string
+          last_checked_at: string | null
+          last_outcome: string | null
+          name: string
+          notes: string | null
+          page_url: string
+          terms_quote: string | null
+          terms_read_on: string | null
+          terms_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          changes?: string
+          city_slug?: string | null
+          collection: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_checked_at?: string | null
+          last_outcome?: string | null
+          name: string
+          notes?: string | null
+          page_url: string
+          terms_quote?: string | null
+          terms_read_on?: string | null
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          changes?: string
+          city_slug?: string | null
+          collection?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_checked_at?: string | null
+          last_outcome?: string | null
+          name?: string
+          notes?: string | null
+          page_url?: string
+          terms_quote?: string | null
+          terms_read_on?: string | null
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketing_attribution: {
         Row: {
