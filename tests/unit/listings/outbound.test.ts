@@ -44,11 +44,6 @@ describe('freeListingOutbound', () => {
 })
 
 describe('ticketButtonLabel', () => {
-  it('names the booking site WI3 recorded', () => {
-    expect(ticketButtonLabel('https://events.humanitix.com/x', 'humanitix')).toBe('Get tickets on Humanitix')
-    expect(ticketButtonLabel('https://example.com/x', 'TryBooking')).toBe('Get tickets on TryBooking')
-  })
-
   it('names it from the address where no provider is recorded', () => {
     expect(ticketButtonLabel('https://www.eventbrite.com.au/e/123')).toBe('Get tickets on Eventbrite')
     expect(ticketButtonLabel('https://www.moshtix.com.au/v2/event/1')).toBe('Get tickets on Moshtix')

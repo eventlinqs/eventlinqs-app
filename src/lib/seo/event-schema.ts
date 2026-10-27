@@ -27,6 +27,7 @@ import { toZonedIso8601 } from '@/lib/dates/event-time'
 import { pruneJsonLd } from '@/lib/seo/structured-data'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import { isExternallyTicketed } from '@/lib/payments/sale-status'
+import { alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -71,6 +72,15 @@ export interface EventSchemaProps {
    * property empty on a platform whose lead category is music.
    */
   performers?: { id: string; slug: string; name: string }[]
+  /**
+   * WI3: every place an event sold on other sites sells (event_booking_links), so
+   * the markup carries one Offer per link, the button's first, as the page shows
+   * them. With none read, the one Offer is events.external_ticket_url, the
+   * database's mirror of the button.
+   */
+  bookingLinks?: readonly BookingLink[]
+  /** The page's own clock, so a price is said only while it is fresh. */
+  now?: Date
 }
 
 /**
@@ -222,6 +232,8 @@ export function buildEventSchemaPayload({
   state,
   baseUrl,
   performers = [],
+  bookingLinks = [],
+  now = new Date(),
 }: EventSchemaProps & { event: Event & { category?: { slug: string | null; name: string } | null } }) {
   // An event nobody can reach is not described to anybody. Returning null rather
   // than an "empty" payload means the caller needs no condition of its own:
@@ -305,7 +317,38 @@ export function buildEventSchemaPayload({
    * result is worse than none (founder ruling 15 August 2026, non-negotiable 3).
    */
   const external = !walkIn && isExternallyTicketed(event)
-  const offers = external
+  /*
+   * ONE OFFER PER PLACE IT SELLS, THE BUTTON'S FIRST (the project manager's order of half past twelve on
+   * 27 October 2026, point 8). Google's
+   * page asks for "a nested Offer, one for each ticket type" and says nothing of
+   * several sellers, so the first Offer must stand valid alone; each carries its
+   * own page, its availability and, only while it is fresh, its lowest price
+   * including fees ("the lowest available price ... including service charges and
+   * fees", developers.google.com/search/docs/appearance/structured-data/event,
+   * updated 2026-09-08). A dead link is never offered.
+   */
+  const linkOffers = external
+    ? [buttonOf(bookingLinks), ...alsoOn(bookingLinks)]
+        .filter((l): l is BookingLink => l !== null)
+        .map(l => {
+          const cents = priceToShow(l, now)
+          return {
+            '@type': 'Offer',
+            ...(cents !== null ? { price: (cents / 100).toFixed(2), priceCurrency: 'AUD' } : {}),
+            availability:
+              l.availability === 'sold_out' || l.kind === 'sold_out'
+                ? 'https://schema.org/SoldOut'
+                : l.availability === 'not_yet'
+                  ? 'https://schema.org/PreOrder'
+                  : schemaAvailability(state),
+            url: l.url,
+            validFrom: event.created_at,
+          }
+        })
+    : []
+  const offers = linkOffers.length > 0
+    ? linkOffers
+    : external
     ? [
         {
           '@type': 'Offer',

@@ -64,6 +64,8 @@ import {
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 import { outboundHref, ticketButtonLabel } from '@/lib/listings/outbound'
+import { ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { readBookingLinks } from '@/lib/events/booking-links-read'
 // Service role, used for exactly one thing on this page: reading the two
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -664,6 +666,7 @@ export default async function EventDetailPage({ params }: Props) {
     tierInventoryEntries,
     organiserSale,
     foundingBadge,
+    bookingLinks,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -708,7 +711,12 @@ export default async function EventDetailPage({ params }: Props) {
       ? organiserCanSell(event.organisation_id)
       : Promise.resolve({ sellable: true, lookupFailed: false }),
     getFoundingBadge(event.organisation_id),
+    // WI3: every place the event sells, for the one button, "Also on" and the Offers.
+    isExternallyTicketed(event) ? readBookingLinks(event.id) : Promise.resolve([]),
   ])
+  // The ticket column of an event sold on other sites (src/lib/listings/ticket-panel.ts); null with no links read,
+  // where the panel falls back to events.external_ticket_url, the database's mirror of the button.
+  const ticketPanel = bookingLinks.length > 0 ? ticketPanelOf(event.slug, bookingLinks, now) : null
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
   // One timeline per ticket the visitor may see, and the one-line note under
@@ -1051,6 +1059,9 @@ export default async function EventDetailPage({ params }: Props) {
           ticketTiers={enrichedAllTiers}
           state={eventStateForSchema}
           baseUrl={baseUrl}
+          // WI3: one Offer per place it sells, the button's first.
+          bookingLinks={bookingLinks}
+          now={now}
           // The same lineup the page renders visibly below. It was already
           // loaded here and never reached the markup, so `performer` was
           // missing on 36 of 36 production event pages.
@@ -1600,10 +1611,13 @@ export default async function EventDetailPage({ params }: Props) {
                    * to choose, nothing to sell out of, and no sale to block.
                    */
                   <ExternalTicketsPanel
-                    destinationUrl={outboundHref(event.slug, event.external_ticket_url)}
-                    host={externalTicketHost}
-                    // WI3: "Get tickets on Humanitix", the site named from its address where it can be.
-                    label={ticketButtonLabel(event.external_ticket_url)}
+                    destinationUrl={ticketPanel?.button?.href ?? outboundHref(event.slug, event.external_ticket_url)}
+                    host={ticketPanel?.button ? ticketPanel.button.host : externalTicketHost}
+                    // WI3: "Get tickets on Humanitix", the site named where it can be.
+                    label={ticketPanel?.button?.label ?? ticketButtonLabel(event.external_ticket_url)}
+                    price={ticketPanel?.button?.price ?? null}
+                    also={ticketPanel?.also ?? []}
+                    soldOut={ticketPanel?.soldOut ?? null}
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">

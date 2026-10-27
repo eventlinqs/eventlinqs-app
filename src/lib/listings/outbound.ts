@@ -1,3 +1,5 @@
+import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
+
 /**
  * THE ONE BUTTON THAT LEAVES, ON EVERY CURATED LISTING (WI3's page, Lawal's
  * finding of 27 October 2026: "the event link doesn't show an outside event in
@@ -81,41 +83,15 @@ export function freeListingOutbound(eventSlug: string, hostName: string | null |
   return null
 }
 
-/** The booking sites the 12:30 of 27 October names for WI3's booking links, as each writes its own name. */
-export const BOOKING_PROVIDERS: Record<string, string> = {
-  eventbrite: 'Eventbrite',
-  humanitix: 'Humanitix',
-  moshtix: 'Moshtix',
-  oztix: 'Oztix',
-  trybooking: 'TryBooking',
-  ticketek: 'Ticketek',
-  ticketmaster: 'Ticketmaster',
-  dice: 'DICE',
-}
-
-/**
- * A booking site's own name, from the provider a link records or else from its
- * address; null for a venue's or an organiser's own page, which is named plainly.
- */
-export function siteName(url: string, provider?: string | null): string | null {
-  const named = provider ? BOOKING_PROVIDERS[provider.trim().toLowerCase()] : undefined
-  if (named) return named
-  const host = outboundHost(url)
-  if (host === null) return null
-  for (const [key, words] of Object.entries(BOOKING_PROVIDERS)) {
-    if ([`${key}.com`, `${key}.com.au`, `${key}.fm`].some((d) => host === d || host.endsWith(`.${d}`))) return words
-  }
-  return null
-}
-
 /**
  * The words on the ticket button of an event sold on another site: "Get tickets
- * on Humanitix" where the site is one of the booking sites, and "Get tickets"
- * where it is not (the venue's own booking page).
+ * on Humanitix" where the address is a booking platform's, by WI3's own reading
+ * of it (src/lib/events/booking-links.ts, providerOf and PROVIDER_NAMES), and
+ * "Get tickets" where it is not (the venue's own booking page).
  */
-export function ticketButtonLabel(destinationUrl: string, provider?: string | null): string {
-  const name = siteName(destinationUrl, provider)
-  return name === null ? 'Get tickets' : `Get tickets on ${name}`
+export function ticketButtonLabel(destinationUrl: string): string {
+  const name = PROVIDER_NAMES[providerOf(destinationUrl)]
+  return name ? `Get tickets on ${name}` : 'Get tickets'
 }
 
 function isEventLinqs(host: string): boolean {
