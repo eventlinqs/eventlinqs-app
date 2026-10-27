@@ -119,16 +119,18 @@ begin
     update public.listing_claims set status = 'expired' where id = p_claim;
     return 'expired';
   end if;
-  update public.listing_claims set attempts = attempts + 1 where id = p_claim returning * into c;
   if c.code_hash is distinct from p_code_hash then
+    update public.listing_claims set attempts = attempts + 1 where id = p_claim returning * into c;
     if c.attempts >= 5 then
       update public.listing_claims set status = 'locked' where id = p_claim;
       return 'locked';
     end if;
     return 'wrong';
   end if;
+  -- The right code, and nowhere named to move the listing to: nothing changes, so the caller makes the claimant's
+  -- organisation once, only now it is needed, and tries again.
   if p_organisation is null then
-    raise exception 'refused: a verified claim moves the listing to an organisation, and none was named' using errcode = '23514';
+    return 'needs_organisation';
   end if;
 
   if c.venue_id is not null then

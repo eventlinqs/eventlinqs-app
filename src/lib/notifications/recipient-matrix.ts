@@ -142,6 +142,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'The organiser assigned this holder a seat.',
   },
   {
+    type: 'listing_claim_code',
+    roles: ['prospect'],
+    concernsOrganiserEvent: false,
+    what: 'The 6-digit code that proves a venue or event claim, sent only to the address the venue publishes, because the claimant asked for it (WI2 Part 3b, src/lib/listings/claim.ts).',
+  },
+  {
     type: 'waitlist_place_available',
     roles: ['prospect'],
     concernsOrganiserEvent: true,
