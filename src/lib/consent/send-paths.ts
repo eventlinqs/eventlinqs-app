@@ -131,6 +131,12 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Sign-in links, verification and password resets, each one asked for by the person.',
   },
   {
+    file: 'src/lib/listings/claim.ts',
+    kind: 'transactional',
+    purpose: 'listing_claim_code',
+    reason: 'The 6-digit code a claimant asked for, to the address the venue publishes: who asked, the code, and to ignore it if it was not them; nothing else.',
+  },
+  {
     file: 'src/lib/notifications/dispatch.ts',
     kind: 'transactional',
     purpose: 'event_change_notice',

@@ -177,6 +177,8 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
 
   // ----------------------------------------------------------------- ALIAS
   { route: '/for-organisers', klass: 'alias', why: '308 to /organisers; kept because external links reach for it' },
+  { route: '/events/[slug]/claim', klass: 'never', why: 'a signed in form to claim a curated listing by a code (WI2 Part 3b)' },
+  { route: '/venues/[handle]/claim', klass: 'never', why: 'a signed in form to claim a listed venue by a code (WI2 Part 3b)' },
   { route: '/e/[code]', klass: 'alias', why: 'the printable short link for an event; canonical is /events/[slug]' },
   { route: '/events/[slug]/with/[artist]', klass: 'alias', why: 'an artist-attributed view of one event; canonical is /events/[slug]' },
 
@@ -244,6 +246,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/events/[id]/orders/[orderId]', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/pricing', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/reach', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/events/[id]/report', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/refunds', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/seats', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/stream', klass: 'never', why: 'authenticated' },
@@ -260,6 +263,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/reports/gst', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/tickets', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/collaborations', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues/[id]/seat-maps', klass: 'never', why: 'authenticated' },
   { route: '/design/cards', klass: 'never', why: 'a developer preview' },
   { route: '/gigs/[id]', klass: 'never', why: 'a gig posting: the page has declared index:false for itself since it shipped, so the platform already keeps the board out of the index; recorded here rather than reversed' },

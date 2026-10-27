@@ -27,6 +27,7 @@ export type PolicyName =
   | 'share-track'
   | 'ledger-demand'
   | 'waitlist-join'
+  | 'listing-claim'
   | 'event-reminder'
   | 'forecast-run'
   | 'newsletter-subscribe'
@@ -245,6 +246,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'listing-claim': {
+    keyPrefix: 'listing-claim',
+    limit: 3,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      'WI2 Part 3b, claim this venue or event (src/app/actions/listing-claim.ts), per signed in user per hour. Each start sends a 6-digit code to the venue\'s own published address, so three an hour covers a claimant who mistypes their role or asks for a fresh code, and a script mailing codes at venues it does not run is bounced. FAIL-CLOSED for the reason waitlist-join gives: it sends real mail from our verified sending domain to an address we did not collect, so the domain is the unit priced. The tries at one code are held by the database (listing_claim_check: 5, then locked), so this limit bounds starts, not guesses.',
   },
   'event-reminder': {
     keyPrefix: 'evt-remind',

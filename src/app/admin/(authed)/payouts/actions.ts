@@ -127,3 +127,75 @@ export async function submitVoidPayout(input: {
     alreadyReversed: Boolean(result.already_reversed),
   }
 }
+
+export type FasterPayoutActionResult = { ok: true } | { ok: false; error: string }
+
+const FasterGrantSchema = z.object({
+  organisationId: z.string().uuid(),
+  bufferDays: z.number().int().min(0).max(30),
+  note: z.string().max(500).optional(),
+})
+
+/**
+ * Item 21: Lawal switches faster payouts on for one proven organiser, with the buffer after the event he chooses
+ * (supabase/migrations/20261027160001_faster_payouts.sql). The database refuses an organiser who does not qualify (the
+ * locked M6 plan's Tier 3 and a Stripe account paying out) and says why; that sentence is returned here as it is.
+ * Gated by admin.payouts.faster, which super_admin alone holds, and audit-logged.
+ */
+export async function submitFasterPayoutGrant(input: {
+  organisationId: string
+  bufferDays: number
+  note?: string
+}): Promise<FasterPayoutActionResult> {
+  const session = await requireAdminSession()
+  assertCan(session, 'admin.payouts.faster')
+  const parsed = FasterGrantSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Choose a buffer of 0 to 30 days.' }
+
+  const { error } = await createAdminClient()
+    .from('faster_payout_grants')
+    .insert({
+      organisation_id: parsed.data.organisationId,
+      buffer_days: parsed.data.bufferDays,
+      granted_by: session.userId,
+      note: parsed.data.note ?? null,
+    })
+  if (error) {
+    const refused = /refused: (.*)$/.exec(error.message)?.[1]
+    if (refused) return { ok: false, error: refused }
+    if (error.code === '23505') return { ok: false, error: 'Faster payouts are already on for this organiser.' }
+    return { ok: false, error: 'Faster payouts were not switched on. Try again.' }
+  }
+  await recordAuditEvent({
+    action: 'admin.payout.faster_on',
+    targetType: 'organisation',
+    targetId: parsed.data.organisationId,
+    metadata: { organisation_id: parsed.data.organisationId, buffer_days: parsed.data.bufferDays },
+    session,
+  })
+  revalidatePath(`/admin/payouts/${parsed.data.organisationId}`)
+  return { ok: true }
+}
+
+/** Item 21: Lawal switches faster payouts off for an organiser, at once; the next run uses the platform's buffer. */
+export async function submitFasterPayoutRevoke(input: { organisationId: string }): Promise<FasterPayoutActionResult> {
+  const session = await requireAdminSession()
+  assertCan(session, 'admin.payouts.faster')
+  const parsed = z.object({ organisationId: z.string().uuid() }).safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'That organiser was not found.' }
+  const { error } = await createAdminClient()
+    .from('faster_payout_grants')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('organisation_id', parsed.data.organisationId)
+    .is('revoked_at', null)
+  if (error) return { ok: false, error: 'Faster payouts were not switched off. Try again.' }
+  await recordAuditEvent({
+    action: 'admin.payout.faster_off',
+    targetType: 'organisation',
+    targetId: parsed.data.organisationId,
+    metadata: { organisation_id: parsed.data.organisationId },
+    session,
+  })
+  revalidatePath(`/admin/payouts/${parsed.data.organisationId}`)
+  return { ok: true }
+}

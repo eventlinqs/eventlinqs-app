@@ -84,6 +84,8 @@ export type ShareLinkRow = {
   /** The Launch Kit draft these external links belong to. NULL when internal. */
   draft_code: string | null
   artist_id: string | null
+  /** A joined venue's own link (event_collaborators, item 15 of the locked plan of 27 October 2026). */
+  collaborator_id: string | null
   channel: ShareChannel
   code: string
   created_by: string | null
@@ -92,7 +94,7 @@ export type ShareLinkRow = {
 
 /** The columns every read of this table selects. One list, so none drifts. */
 const SHARE_LINK_COLUMNS =
-  'id, event_id, destination_url, draft_code, artist_id, channel, code, created_by, created_at'
+  'id, event_id, destination_url, draft_code, artist_id, collaborator_id, channel, code, created_by, created_at'
 
 export type BroadcastClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
 
@@ -128,6 +130,8 @@ export async function getOrCreateShareLink(
     eventId: string
     channel: ShareChannel
     artistId?: string | null
+    /** A joined venue's collaboration row: its links are its own, never the organiser's. */
+    collaboratorId?: string | null
     createdBy?: string | null
     /**
      * The event slug, used to mint a READABLE code (basement-45-ig). Omit it
@@ -148,6 +152,7 @@ export async function getOrCreateShareLink(
 ): Promise<ShareLinkRow | null> {
   const client = opts?.client ?? createAdminClient()
   const artistId = input.artistId ?? null
+  const collaboratorId = input.collaboratorId ?? null
   const createdBy = input.createdBy ?? null
 
   /*
@@ -168,6 +173,7 @@ export async function getOrCreateShareLink(
     .eq('channel', input.channel)
     .limit(1)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
+  lookup = collaboratorId === null ? lookup.is('collaborator_id', null) : lookup.eq('collaborator_id', collaboratorId)
   lookup = createdBy === null ? lookup.is('created_by', null) : lookup.eq('created_by', createdBy)
   /*
    * A READ THAT FAILED IS NOT AN ANSWER OF "NO SUCH LINK".
@@ -204,6 +210,7 @@ export async function getOrCreateShareLink(
       event_id: input.eventId,
       channel: input.channel,
       artist_id: artistId,
+      collaborator_id: collaboratorId,
       created_by: createdBy,
       code,
     })

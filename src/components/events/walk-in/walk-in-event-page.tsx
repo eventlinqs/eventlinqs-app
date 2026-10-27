@@ -47,6 +47,8 @@ import { WalkInBottomBar } from './walk-in-bottom-bar'
 import { WalkInOutbound } from './walk-in-outbound'
 import { freeListingOutbound, type ListingPages } from '@/lib/listings/outbound'
 import { readListingPages } from '@/lib/listings/listing-pages-read'
+import { readJoinedCollaborators, type JoinedCollaborator } from '@/lib/events/collaborators'
+import { CollaboratorsLine } from '@/components/events/collaborators-line'
 import { HoursList } from './hours-list'
 
 /**
@@ -108,7 +110,7 @@ function directionsHref(event: FullEvent): string | null {
 }
 
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
-  const [guide, remindMeOn, media, pages] = await Promise.all([
+  const [guide, remindMeOn, media, pages, collaborators] = await Promise.all([
     // The event has already resolved under its own policies; the guide follows it
     // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
     readPublicGuide(event),
@@ -119,6 +121,8 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     getFeaturedHeroBackground(eventHeroMediaInput(event)),
     // WI3's page: the host's own pages, for the one button that leaves (src/lib/listings/outbound.ts).
     readListingPages(event),
+    // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
+    readJoinedCollaborators(event.id),
   ])
   // The clock is read here with the other reads, as the ticketed page reads it,
   // so the render below stays pure.
@@ -132,6 +136,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
       baseUrl={getSiteUrl()}
       hero={{ image: media.image, alt: event.cover_image_alt || media.alt, objectPosition: media.objectPosition }}
       pages={pages}
+      collaborators={collaborators}
     />
   )
 }
@@ -146,10 +151,12 @@ export type WalkInEventViewProps = {
   hero: { image: string | null; alt: string; objectPosition?: string }
   /** The host's own pages, for a curated listing's one button that leaves; none for an organiser's own event. */
   pages?: ListingPages
+  /** The venues that joined this event (item 15). */
+  collaborators?: readonly JoinedCollaborator[]
 }
 
 /** The render, separate from the reads so a test can draw it from a fixture. */
-export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, pages = {} }: WalkInEventViewProps) {
+export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, pages = {}, collaborators = [] }: WalkInEventViewProps) {
   const source = textSource(event)
   const org = event.organisation
   // WI2 ruling A: a listing names its host, never the listings organisation
@@ -496,6 +503,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                         shown.name
                       )}
                     </p>
+                    <CollaboratorsLine collaborators={collaborators} className="mt-1" />
                     {(host || handle) && (
                       <p className="m-0 mt-1 hidden text-sm text-ink-600 lg:block">
                         {host && (

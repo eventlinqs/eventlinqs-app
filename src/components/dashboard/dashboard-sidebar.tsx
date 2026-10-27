@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Gift,
+  Handshake,
   Hourglass,
   KeyRound,
   LayoutDashboard,
@@ -63,6 +64,8 @@ const ITEMS: Item[] = [
   // Venues (and their seating charts) were reachable only through a wizard
   // hint link; seated organisers need the front door (audit persona C).
   { href: '/dashboard/venues', label: 'Venues', icon: Building2, organiserOnly: true },
+  // The events other organisers asked a venue of yours to join (item 15 of the locked plan of 27 October 2026).
+  { href: '/dashboard/collaborations', label: 'Collaborations', icon: Handshake, organiserOnly: true },
   // Venue revenue entry removed with the Venue Revenue Sharing Program
   // (founder decision 2026-07-05).
   { href: '/dashboard/organisation', label: 'Organisation', icon: Settings, organiserOnly: true },
