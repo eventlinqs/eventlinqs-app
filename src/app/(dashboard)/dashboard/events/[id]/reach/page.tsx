@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
+import { fetchOutboundWeek, outboundSentence } from '@/lib/broadcast/outbound-reach'
 import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
 import { fetchReferralCoefficient } from '@/lib/growth/referral-coefficient'
 import {
@@ -91,6 +92,13 @@ export default async function ReachPage({ params }: Props) {
   const attribution = await fetchSalesAttribution(id)
 
   /*
+   * THE PEOPLE SENT TO THEIR TICKETS (item 8; src/lib/broadcast/outbound-reach.ts). For an event sold on another site,
+   * this is the one thing EventLinqs can show it did: distinct people this week who pressed through to each site,
+   * counted before they left.
+   */
+  const outboundLine = shareOn ? outboundSentence(await fetchOutboundWeek(id, new Date())) : null
+
+  /*
    * AQ2. "the referral coefficient computed and reported per event".
    *
    * Beside the attribution rather than instead of it, because they answer
@@ -138,6 +146,12 @@ export default async function ReachPage({ params }: Props) {
         <span className="text-sm text-ink-400">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
+
+      {outboundLine ? (
+        <p role="status" className="mb-6 text-sm text-ink-900">
+          {outboundLine}
+        </p>
+      ) : null}
 
       {/*
         WHERE THE SALES CAME FROM. This sits above the link stats because it is
