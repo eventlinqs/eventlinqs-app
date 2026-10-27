@@ -11,6 +11,7 @@ import {
 import { createVenuePin } from '@/lib/maps/brand-pin'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { isAuditRun } from '@/lib/ui/audit-mode'
+import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 interface Props {
   venueName: string | null
@@ -277,6 +278,7 @@ export function VenueMap({
           {fullAddress && (
             <p className="text-xs text-ink-600 line-clamp-2">{fullAddress}</p>
           )}
+          {hasLocation && <OsmAttribution className="mt-1" />}
         </div>
         <Link
           href={mapsLink}
