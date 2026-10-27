@@ -183,7 +183,7 @@ describe('a walk-in page, read as rendered', () => {
     expect(text).toContain('The weekend, day by day')
     expect(text).toContain('All three days')
     expect(text).toContain('Get the program when it lands')
-    expect(text).toContain('We send the full timetable when AMCF releases it, and one reminder the day before. Nothing else.')
+    expect(text).toContain('We send the full timetable when AMCF releases it, one reminder the day before, and a short note if it is called off. Nothing else.')
     expect(text).toContain('Follow AMCF')
     expect(text).toContain('@AMCFOZ')
   })
