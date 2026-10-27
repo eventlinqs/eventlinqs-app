@@ -1309,6 +1309,72 @@ export type Database = {
           },
         ]
       }
+      event_booking_links: {
+        Row: {
+          availability: string
+          created_at: string
+          event_id: string
+          id: string
+          is_primary: boolean
+          kind: string
+          pointed_to_by_organiser: boolean
+          position: number
+          price_checked_at: string | null
+          price_from_cents: number | null
+          provider: string
+          set_by: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          availability?: string
+          created_at?: string
+          event_id: string
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          pointed_to_by_organiser?: boolean
+          position?: number
+          price_checked_at?: string | null
+          price_from_cents?: number | null
+          provider: string
+          set_by: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          availability?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          pointed_to_by_organiser?: boolean
+          position?: number
+          price_checked_at?: string | null
+          price_from_cents?: number | null
+          provider?: string
+          set_by?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_booking_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_booking_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_categories: {
         Row: {
           created_at: string
@@ -8517,6 +8583,8 @@ export type Database = {
         }
         Returns: Json
       }
+      event_booking_button: { Args: { p_event: string }; Returns: string }
+      event_booking_provider_of: { Args: { p_url: string }; Returns: string }
       event_lifecycle_guards: { Args: never; Returns: Json }
       event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
       event_money_record_counts_many: {

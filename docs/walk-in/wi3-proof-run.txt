@@ -1,0 +1,22 @@
+﻿target TEST (vkapkibzokmfaxqogypq), ROLLBACK: proof raises its verdict
+migration 20261027130001_wi3_event_booking_links.sql creates event_booking_links; 0 top-level transaction line(s) set aside
+ON RECORD empty: event_booking_links
+ON RECORD default privileges for postgres in public: [{"type" : "S", "acl" : "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"}, {"type" : "f", "acl" : "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"}, {"type" : "r", "acl" : "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"}]
+PROOF PASSED, 0 failure(s)
+  T1 two sources, one event, the button the first found: PASS
+  T2 on sale before sold out: PASS
+  T3 what the organiser points to: PASS
+  T4 the organiser's choice wins: PASS
+  T5 primary dead, the button re-picks: PASS
+  T6a all sold out, a sold out button: PASS
+  T6b all dead, never a dead button: PASS
+  T7 a direct write is the organiser's link: PASS
+  T8 a direct null takes the links: PASS
+  T9a a curated primary refused: PASS
+  T9b an http link refused: PASS
+  T9c a price with no check refused: PASS
+  T10a anon reads the published event's link alone: PASS
+  T10b anon writes nothing: PASS
+  T10c a signed in user changes nothing: PASS
+READ BACK default privileges unchanged
+READ BACK event_booking_links {postgres=arwdDxtm/postgres,anon=r/postgres,authenticated=r/postgres,service_role=arwd/postgres}
