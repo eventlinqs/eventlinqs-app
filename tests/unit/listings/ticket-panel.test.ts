@@ -34,7 +34,7 @@ describe('ticketPanelOf', () => {
       link({ provider: 'eventbrite', url: 'https://www.eventbrite.com.au/e/1', position: 1 }),
       link({ provider: 'moshtix', url: 'https://www.moshtix.com.au/v2/event/1', position: 2 }),
     ], NOW)
-    expect(p.button).toMatchObject({ label: 'Get tickets on Humanitix', href: 'https://events.humanitix.com/gig', host: 'events.humanitix.com' })
+    expect(p.button).toMatchObject({ label: 'Get tickets on Humanitix', href: `/out/gig?to=${encodeURIComponent('https://events.humanitix.com/gig')}`, host: 'events.humanitix.com' })
     expect(p.also.map((a) => a.name)).toEqual(['Eventbrite', 'Moshtix'])
     expect(p.soldOut).toBeNull()
   })
