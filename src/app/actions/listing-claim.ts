@@ -6,6 +6,9 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { resolveVenueProfile } from '@/lib/venues/resolver'
 import { checkClaim, claimDeps, startClaim, type ClaimTarget } from '@/lib/listings/claim'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+
+const CLOSED = 'Claiming a listing is not open yet.'
 
 /**
  * CLAIM THIS VENUE, CLAIM THIS EVENT: the two presses (src/lib/listings/claim.ts holds the rules and why). Signed in
@@ -50,6 +53,7 @@ async function targetOf(kind: string, slug: string): Promise<ClaimTarget | null>
 }
 
 export async function startListingClaim(_prev: ClaimStartState, formData: FormData): Promise<ClaimStartState> {
+  if (!(await isFeatureEnabled('listing_claims'))) return { state: 'refused', reason: CLOSED }
   const userId = await signedIn()
   if (!userId) return { state: 'refused', reason: 'Sign in to claim this listing.' }
   const limited = await actionRateLimit('listing-claim', `user:${userId}`)
@@ -73,6 +77,7 @@ export async function startListingClaim(_prev: ClaimStartState, formData: FormDa
 }
 
 export async function checkListingClaim(_prev: ClaimCheckState, formData: FormData): Promise<ClaimCheckState> {
+  if (!(await isFeatureEnabled('listing_claims'))) return { state: 'refused', reason: CLOSED }
   const userId = await signedIn()
   if (!userId) return { state: 'refused', reason: 'Sign in to claim this listing.' }
   const answer = await checkClaim(
