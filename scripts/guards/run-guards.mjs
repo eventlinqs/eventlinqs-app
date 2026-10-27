@@ -266,6 +266,9 @@
  *                              work, and its structured data says free at price 0
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
+ *   social-one-writer          the social engine's five tables have one writer, the three
+ *                              triggers that refuse a stray number, a post that is not due
+ *                              and a post without its approval are kept, and no like is counted
  *   public-tables-carry-their-grants  a migration that creates a public table grants it
  *                              in the same file, revoked first, to exactly the roles its
  *                              policies serve (Supabase stops granting them on 30 October 2026)
@@ -3215,6 +3218,13 @@ const GUARDS = [
   // serve and never wider. The 153 migrations on main before the rule are the
   // known gap, counted on every run. Drilled red seven ways, green two.
   'scripts/guards/public-tables-carry-their-grants.mjs',
+
+  // Window 3, 27 October 2026, item 11, the social engine (docs/SOCIAL-ENGINE.md).
+  // One writer of its five tables (src/lib/social/store.ts), the three triggers
+  // that refuse a stray number, an unlisted, ended or sold out event, a post
+  // inside the gap and a post without its approval kept, and never a like
+  // counted. Drilled red three ways.
+  'scripts/guards/social-one-writer.mjs',
 
   // Window 4, 24 October 2026, WI2 Part 2. "A night not confirmed for 21 days is
   // hidden from the guide until checked again" (WI2-ITEM.md), held in the one

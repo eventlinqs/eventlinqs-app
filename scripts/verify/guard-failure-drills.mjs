@@ -10442,6 +10442,36 @@ const DRILLS = [
     expect: 'has no data-el-consent="refuse"',
   },
   /*
+   * social-one-writer (window 3, 27 October 2026, item 11). A second writer of a
+   * social table, a refusing trigger dropped, and a like counted.
+   */
+  {
+    name: 'social: an admin action writes a post itself',
+    guard: `${GUARDS}/social-one-writer.mjs`,
+    file: 'src/app/admin/(authed)/social/actions.ts',
+    find: '  const done = await approveDraft(createAdminClient(), { draftId: draft, by: session.userId, now: new Date() })',
+    replace:
+      "  await createAdminClient().from('social_approvals').insert({ draft_id: draft, approved_by: session.userId })\n" +
+      '  const done = await approveDraft(createAdminClient(), { draftId: draft, by: session.userId, now: new Date() })',
+    expect: 'calls .insert() on social_approvals',
+  },
+  {
+    name: 'social: the approval trigger is dropped',
+    guard: `${GUARDS}/social-one-writer.mjs`,
+    file: 'supabase/migrations/20261027233001_social_engine.sql',
+    find: 'create trigger social_approvals_are_due',
+    replace: 'create trigger social_approvals_were_due',
+    expect: 'no migration creates the trigger social_approvals_are_due',
+  },
+  {
+    name: 'social: a post is judged by its likes',
+    guard: `${GUARDS}/social-one-writer.mjs`,
+    file: 'src/lib/social/results.ts',
+    find: '  readonly arrived: number\n',
+    replace: '  readonly arrived: number\n  readonly likes: number\n',
+    expect: 'names "likes"',
+  },
+  /*
    * public-tables-carry-their-grants (Lawal, 21 October 2026). Seven ways a new
    * public table ends up unreachable or wider than its policies once Supabase
    * stops granting new tables on 30 October, each made in WI1's own migration,

@@ -30,6 +30,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Collected events', href: '/admin/collected',  capability: 'admin.events.manage' },
+  { label: 'Social posts',     href: '/admin/social',     capability: 'admin.network.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
   { label: 'Money taken, no ticket', href: '/admin/orders/unfulfilled', capability: 'admin.refunds.process' },
   { label: 'Refunds',          href: '/admin/refunds',    capability: 'admin.refunds.process' },

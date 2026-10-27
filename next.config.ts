@@ -231,6 +231,12 @@ const nextConfig: NextConfig = {
     // draft and rasterises through the identical path, so it needs the binary
     // just as much. It was the route that proved this: all eighteen of its
     // cards answered HTTP 500 until the lookup was fixed.
+    // Item 11, the social engine: one planned post's card through the same
+    // rasteriser, for staff (src/app/admin/(authed)/social/card/[postId]).
+    '/admin/social/card/[postId]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/api/launch/[code]/card/[format]': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',

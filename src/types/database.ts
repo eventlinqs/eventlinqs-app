@@ -7224,6 +7224,227 @@ export type Database = {
           },
         ]
       }
+      social_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          draft_id: string
+          id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          draft_id: string
+          id?: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          draft_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_approvals_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "social_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_cadence_rules: {
+        Row: {
+          basis: string
+          created_at: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id: string
+          learned_from: number
+          platform: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots: number[]
+          version: number
+        }
+        Insert: {
+          basis: string
+          created_at?: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id?: string
+          learned_from?: number
+          platform?: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots?: number[]
+          version: number
+        }
+        Update: {
+          basis?: string
+          created_at?: string
+          floor_posts?: number
+          format?: string
+          gap_hours?: number
+          id?: string
+          learned_from?: number
+          platform?: string | null
+          reason?: string
+          set_at?: string
+          set_by?: string
+          settle_hours?: number
+          slots?: number[]
+          version?: number
+        }
+        Relationships: []
+      }
+      social_drafts: {
+        Row: {
+          caption: string
+          drafted_at: string
+          id: string
+          post_id: string
+          version: number
+          written_by: string
+          written_by_user: string | null
+        }
+        Insert: {
+          caption: string
+          drafted_at?: string
+          id?: string
+          post_id: string
+          version: number
+          written_by: string
+          written_by_user?: string | null
+        }
+        Update: {
+          caption?: string
+          drafted_at?: string
+          id?: string
+          post_id?: string
+          version?: number
+          written_by?: string
+          written_by_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_drafts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_postings: {
+        Row: {
+          approval_id: string
+          id: string
+          post_id: string
+          post_url: string
+          posted_at: string
+          recorded_at: string
+          recorded_by: string
+        }
+        Insert: {
+          approval_id: string
+          id?: string
+          post_id: string
+          post_url: string
+          posted_at: string
+          recorded_at?: string
+          recorded_by: string
+        }
+        Update: {
+          approval_id?: string
+          id?: string
+          post_id?: string
+          post_url?: string
+          posted_at?: string
+          recorded_at?: string
+          recorded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_postings_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: true
+            referencedRelation: "social_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_postings_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_posts: {
+        Row: {
+          event_id: string
+          facts: string[]
+          format: string
+          id: string
+          link: string
+          planned_at: string
+          planned_by: string | null
+          platform: string
+          share_link_id: string
+        }
+        Insert: {
+          event_id: string
+          facts: string[]
+          format: string
+          id?: string
+          link: string
+          planned_at?: string
+          planned_by?: string | null
+          platform: string
+          share_link_id: string
+        }
+        Update: {
+          event_id?: string
+          facts?: string[]
+          format?: string
+          id?: string
+          link?: string
+          planned_at?: string
+          planned_by?: string | null
+          platform?: string
+          share_link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: true
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       squad_members: {
         Row: {
           attendee_email: string | null
@@ -9611,6 +9832,32 @@ export type Database = {
           seat_label: string
         }[]
       }
+      social_cadence_at: {
+        Args: { p_at: string; p_format: string; p_platform: string }
+        Returns: {
+          basis: string
+          created_at: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id: string
+          learned_from: number
+          platform: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots: number[]
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "social_cadence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      social_event_sold_out: { Args: { p_event: string }; Returns: boolean }
       sync_offline_scans: {
         Args: { p_event_id: string; p_scans: Json }
         Returns: Json

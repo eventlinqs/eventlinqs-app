@@ -114,6 +114,7 @@
     "/admin/refunds": 157306,
     "/admin/roundup": 157450,
     "/admin/search": 157306,
+    "/admin/social": 157450,
     "/admin/staff": 157771,
     "/admin/staff/[id]": 157771,
     "/admin/traffic": 157306,

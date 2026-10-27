@@ -171,6 +171,9 @@ export async function getOrCreateShareLink(
     .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
+    // The oldest wins, so the link this event and channel were first given stays theirs: the social engine mints a
+    // further link per post for the same channel (item 11, src/lib/social/store.ts), and must never be handed out here.
+    .order('created_at', { ascending: true })
     .limit(1)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
   lookup = collaboratorId === null ? lookup.is('collaborator_id', null) : lookup.eq('collaborator_id', collaboratorId)
