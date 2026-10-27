@@ -1363,6 +1363,13 @@ export type Database = {
             foreignKeyName: "event_booking_links_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_booking_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
