@@ -111,6 +111,19 @@ export type SocialCardInput = {
   qr?: string | null
   /** The organiser's own summary. One line of it rides the story card. */
   summary?: string | null
+  /**
+   * A night EventLinqs listed from public information, held or sold by its
+   * host and not ticketed here. The QR then says "Scan for details" rather than
+   * "Scan to buy" and the mark reads "Listed on EVENTLINQS", because neither a
+   * ticket nor our ticketing is on offer.
+   */
+  listing?: boolean
+  /**
+   * The cover is EventLinqs' licensed library photograph, not the venue
+   * (Lawal's ruling of 27 October 2026, 08:33). The card then says so at its
+   * foot, in the words the night's page uses.
+   */
+  libraryPhoto?: boolean
 }
 
 /** One set of numbers, scaled to the format width. */
@@ -422,7 +435,7 @@ function TicketBar({
 }
 
 /** Fixed-width so the tile can never push itself off the edge of the card. */
-function QrTile({ qr, px, size }: { qr: string; px: Px; size: number }) {
+function QrTile({ qr, px, size, label }: { qr: string; px: Px; size: number; label: string }) {
   const tile = size + px(20)
   return (
     <div
@@ -447,13 +460,13 @@ function QrTile({ qr, px, size }: { qr: string; px: Px; size: number }) {
           fontSize: px(17),
         }}
       >
-        Scan to buy
+        {label}
       </div>
     </div>
   )
 }
 
-function Wordmark({ px, size }: { px: Px; size: number }) {
+function Wordmark({ input, px, size }: { input: SocialCardInput; px: Px; size: number }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, gap: px(4) }}>
       <div
@@ -466,7 +479,7 @@ function Wordmark({ px, size }: { px: Px; size: number }) {
           letterSpacing: px(1.4),
         }}
       >
-        <span>Ticketing by EVENTLINQS</span>
+        <span>{input.listing ? 'Listed on EVENTLINQS' : 'Ticketing by EVENTLINQS'}</span>
         <span style={{ color: GOLD_DEEP }}>.</span>
       </div>
       {/*
@@ -495,6 +508,20 @@ function Wordmark({ px, size }: { px: Px; size: number }) {
       >
         <span>{`Run your event at ${printableHost()}${ORGANISER_PATH}`}</span>
       </div>
+      {input.libraryPhoto ? (
+        <div
+          style={{
+            display: 'flex',
+            color: 'rgba(255,255,255,0.42)',
+            fontFamily: BODY_FAMILY,
+            fontWeight: 600,
+            fontSize: Math.round(size * 0.72),
+            letterSpacing: px(0.4),
+          }}
+        >
+          <span>Photo from the EventLinqs library. It is not this venue.</span>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -684,9 +711,9 @@ function TypographicCard({
             }}
           >
             <TicketBar input={input} px={px} size={size} width={ctaTextWidth} />
-            <Wordmark px={px} size={px(story ? 24 : 20)} />
+            <Wordmark input={input} px={px} size={px(story ? 24 : 20)} />
           </div>
-          {input.qr ? <QrTile qr={input.qr} px={px} size={px(story ? 140 : 126)} /> : null}
+          {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(story ? 140 : 126)} /> : null}
         </div>
       </div>
     </div>
@@ -753,9 +780,9 @@ function StoryCard({ input }: { input: SocialCardInput }) {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', width: ctaTextWidth, gap: px(18) }}>
               <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
-              <Wordmark px={px} size={px(24)} />
+              <Wordmark input={input} px={px} size={px(24)} />
             </div>
-            {input.qr ? <QrTile qr={input.qr} px={px} size={px(140)} /> : null}
+            {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(140)} /> : null}
           </div>
         </div>
       </div>
@@ -809,9 +836,9 @@ function StoryCard({ input }: { input: SocialCardInput }) {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: px(6) }}>
           <div style={{ display: 'flex', flexDirection: 'column', width: ctaTextWidth, gap: px(18) }}>
             <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
-            <Wordmark px={px} size={px(24)} />
+            <Wordmark input={input} px={px} size={px(24)} />
           </div>
-          {input.qr ? <QrTile qr={input.qr} px={px} size={px(140)} /> : null}
+          {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(140)} /> : null}
         </div>
       </div>
     </div>
@@ -889,12 +916,12 @@ function BandedCard({ input, format }: { input: SocialCardInput; format: SocialC
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: px(14) }}>
             <TicketBar input={input} px={px} size="sm" width={spec.width - pad * 2 - (input.qr ? qrReserve : 0)} />
-            <Wordmark px={px} size={px(20)} />
+            <Wordmark input={input} px={px} size={px(20)} />
           </div>
         </div>
         {input.qr ? (
           <div style={{ position: 'absolute', right: pad, bottom: pad, display: 'flex' }}>
-            <QrTile qr={input.qr} px={px} size={px(126)} />
+            <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(126)} />
           </div>
         ) : null}
       </div>
@@ -1021,6 +1048,13 @@ export type CityWeekCardInput = {
   path: string
   /** Data URI of the QR to the page. */
   qr: string | null
+  /**
+   * Data URI of the photograph that fills the card behind the week, already cut
+   * to the card's exact size (Lawal's ruling of 27 October 2026, 08:33: every
+   * Instagram card carries a real photograph). EventLinqs' licensed library shot
+   * for the city or the week; null draws the ground alone.
+   */
+  backdrop?: string | null
 }
 
 export type CityWeekCardFormat = 'story' | 'square'
@@ -1057,6 +1091,28 @@ function CityWeekCard({
 
   return (
     <div style={{ width: spec.width, height: spec.height, display: 'flex', position: 'relative', background: GROUND }}>
+      {input.backdrop ? (
+        <img
+          src={input.backdrop}
+          alt=""
+          width={spec.width}
+          height={spec.height}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: spec.width, height: spec.height }}
+        />
+      ) : null}
+      {input.backdrop ? (
+        // The photograph shows through under the headline and settles to the
+        // brand navy behind the rows, so every line reads at full contrast.
+        <div
+          style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0, left: 0,
+            display: 'flex',
+            background:
+              'linear-gradient(to bottom, rgba(10,22,40,0.40) 0%, rgba(10,22,40,0.62) 30%, rgba(10,22,40,0.88) 52%, rgba(10,22,40,0.94) 100%)',
+          }}
+        />
+      ) : null}
       <div
         style={{
           position: 'absolute',
