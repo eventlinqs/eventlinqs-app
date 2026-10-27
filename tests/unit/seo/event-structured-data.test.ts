@@ -618,3 +618,39 @@ describe('SEO1: the country code, and the JSON itself', () => {
     expect(Object.values(roundTripped).includes(undefined)).toBe(false)
   })
 })
+
+describe('an event sold on another site (WI3)', () => {
+  it("offers the organiser's booking page, with no price, and stays valid", () => {
+    const payload = build({ external_ticket_url: 'https://events.humanitix.com/an-outside-gig' }, { ticketTiers: [] }) as Record<string, unknown>
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect(offers[0].url).toBe('https://events.humanitix.com/an-outside-gig')
+    expect(offers[0].price).toBeUndefined()
+    expect(validate(payload).errors).toEqual([])
+  })
+
+  it('an event EventLinqs sells still offers its own page', () => {
+    const offers = (build() as Record<string, unknown>).offers as Record<string, unknown>[]
+    expect(offers.every((o) => String(o.url).startsWith(BASE))).toBe(true)
+  })
+})
+
+describe('an event sold on several sites (WI3, the 12:30 point 8)', () => {
+  const NOW = new Date('2026-10-27T12:00:00+11:00')
+  const base = { isPrimary: false, setBy: 'curated' as const, pointedToByOrganiser: false, createdAt: '2026-10-26T00:00:00Z' }
+  const links = [
+    { ...base, id: 'a', provider: 'humanitix' as const, url: 'https://events.humanitix.com/gig', kind: 'tickets' as const, availability: 'on_sale' as const, priceFromCents: 3550, priceCheckedAt: new Date(NOW.getTime() - 3_600_000).toISOString(), position: 0 },
+    { ...base, id: 'b', provider: 'eventbrite' as const, url: 'https://www.eventbrite.com.au/e/1', kind: 'tickets' as const, availability: 'sold_out' as const, priceFromCents: null, priceCheckedAt: null, position: 1 },
+    { ...base, id: 'c', provider: 'moshtix' as const, url: 'https://www.moshtix.com.au/v2/event/1', kind: 'tickets' as const, availability: 'dead' as const, priceFromCents: 2000, priceCheckedAt: new Date(NOW.getTime() - 30 * 3_600_000).toISOString(), position: 2 },
+  ]
+
+  it("offers each place it sells, the button's first, never a dead one, a price only while fresh", () => {
+    const payload = build({ external_ticket_url: 'https://events.humanitix.com/gig' }, { ticketTiers: [], bookingLinks: links, now: NOW }) as Record<string, unknown>
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers.map((o) => o.url)).toEqual(['https://events.humanitix.com/gig', 'https://www.eventbrite.com.au/e/1'])
+    expect(offers[0]).toMatchObject({ price: '35.50', priceCurrency: 'AUD', availability: 'https://schema.org/InStock' })
+    expect(offers[1].price).toBeUndefined()
+    expect(offers[1].availability).toBe('https://schema.org/SoldOut')
+    expect(validate(payload).errors).toEqual([])
+  })
+})

@@ -116,6 +116,12 @@ const ALLOWLIST = [
       'the RESERVED list has to hold back the two legacy paths that permanently 301 to the community routes. Not reserving them would let a share code be minted that shadows a live redirect, which is a broken link for a real person. The strings are route names being blocked, not copy',
   },
   {
+    file: 'src/lib/events/booking-links.ts',
+    patterns: ['competitor-name'],
+    reason:
+      'WI3 (the project manager\'s order of 27 October 2026, half past twelve): an event sold on other sites carries one button named for where it leaves, "Get tickets on Humanitix", and "Also on Eventbrite", so the one table of platform names the page reads has to spell them; Lawal at twenty three minutes past twelve that day: "He wants to sell tickets. That\'s all that matters to him." No other file may name them.',
+  },
+  {
     file: 'src/lib/communities/intersection-editorial.ts',
     patterns: ['whether-youre-x-or-y'],
     reason:
