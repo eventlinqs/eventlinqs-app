@@ -247,6 +247,15 @@ describe('a walk-in page, read as rendered', () => {
     expect(container.textContent).not.toContain('Remind me')
     expect(container.textContent).toContain('Add to calendar')
   })
+
+  it('offers Add to calendar on a phone too, outside the desktop panel (found driving AMCF at 390, 27 October 2026)', () => {
+    const { container } = drawn()
+    const phone = container.querySelector('[data-testid="phone-calendar"]')
+    expect(phone).not.toBeNull()
+    expect(phone!.closest('aside')).toBeNull()
+    expect(phone!.className).toContain('lg:hidden')
+    expect(phone!.textContent).toContain('Add to calendar')
+  })
 })
 
 describe('the one button that leaves, on a curated listing (WI3)', () => {

@@ -42,7 +42,7 @@ import {
   programHeading,
 } from '@/lib/walk-in/page-copy'
 import { WalkInDayTabs, type WalkInDayView } from './walk-in-day-tabs'
-import { WalkInPanelActions } from './walk-in-panel-actions'
+import { WalkInPanelActions, WalkInPhoneCalendar } from './walk-in-panel-actions'
 import { WalkInBottomBar } from './walk-in-bottom-bar'
 import { WalkInOutbound } from './walk-in-outbound'
 import { freeListingOutbound, type ListingPages } from '@/lib/listings/outbound'
@@ -337,6 +337,13 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {hours.length > 0 && (
                 <div className="rounded-[var(--radius-card)] bg-white p-5 lg:hidden">
                   <HoursList hours={hours} source={source} />
+                </div>
+              )}
+
+              {/* Add to calendar, under the hours on a phone and a tablet. From lg it lives in the panel. */}
+              {!ended && (
+                <div className="lg:hidden" data-testid="phone-calendar">
+                  <WalkInPhoneCalendar eventId={event.id} calendar={calendarEvent} />
                 </div>
               )}
 
