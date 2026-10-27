@@ -483,7 +483,7 @@ export async function recordShareLinkEvent(
     kind: ShareLinkEventKind
     orderId?: string | null
     visitorHash?: string | null
-    /** An 'outbound' press only: the booking link pressed and its platform (20261027140001). */
+    /** An 'outbound' press only: the booking link pressed and its platform (20261027140002). */
     outbound?: { bookingLinkId: string | null; provider: string } | null
   },
   opts?: { client?: BroadcastClient },
