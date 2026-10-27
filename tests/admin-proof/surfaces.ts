@@ -19,6 +19,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
   { name: 'notifications', path: '/admin/notifications', ready: /notifications/i },
   { name: 'events', path: '/admin/events', ready: /events/i },
   { name: 'collected', path: '/admin/collected', ready: /collected events/i },
+  { name: 'social', path: '/admin/social', ready: /social posts/i },
   { name: 'organisers', path: '/admin/organisers', ready: /organisers/i },
   { name: 'payouts', path: '/admin/payouts', ready: /payouts/i },
   { name: 'staff', path: '/admin/staff', ready: /admin staff|staff/i },
