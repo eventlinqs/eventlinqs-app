@@ -472,6 +472,8 @@ export default async function EventViewPage({ params }: Props) {
               mouse (found 4 September 2026, Law 5). This is the way in. */}
           <TabLink href={`/dashboard/events/${event.id}/pricing`}>Pricing</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
+          {/* Item 20 of the locked plan of 27 October 2026: a free event's one page report after it. */}
+          {walkIn && <TabLink href={`/dashboard/events/${event.id}/report`}>Report</TabLink>}
           {event.event_type !== 'in_person' && (
             <TabLink href={`/dashboard/events/${event.id}/stream`}>Stream</TabLink>
           )}

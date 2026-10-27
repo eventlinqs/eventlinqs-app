@@ -14,6 +14,7 @@ import {
 import { ShareKit } from '@/components/broadcast/share-kit'
 import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getRequestOrigin } from '@/lib/site-origin'
+import { CHANNEL_LABELS } from '@/lib/broadcast/channel-labels'
 
 export const metadata: Metadata = {
   title: 'Reach | EventLinqs',
@@ -35,21 +36,7 @@ const KIT_CHANNELS: readonly ShareChannel[] = [
   'copy',
 ]
 
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  messenger: 'Messenger',
-  email: 'Email',
-  sms: 'SMS',
-  copy: 'Copied links',
-  native: 'Share sheet',
-  qr: 'Poster QR',
-  digest: 'Weekly city email',
-  other: 'Other',
-}
+/* The channel names, one map for every page that says them (src/lib/broadcast/channel-labels.ts). */
 
 /**
  * The reach panel: tickets and orders by channel, then clicks and views, plus

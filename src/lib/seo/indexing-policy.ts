@@ -238,6 +238,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/events/[id]/orders/[orderId]', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/pricing', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/reach', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/events/[id]/report', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/refunds', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/seats', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/stream', klass: 'never', why: 'authenticated' },

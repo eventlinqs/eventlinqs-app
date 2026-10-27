@@ -42,6 +42,7 @@ import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { CHANNEL_LABELS } from '@/lib/broadcast/channel-labels'
 
 export const metadata: Metadata = {
   title: 'Launch Kit | EventLinqs',
@@ -79,21 +80,7 @@ const LEAD_FORMAT: Record<CaptionPlatform, SocialCardFormat> = {
   email: 'square',
 }
 
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  messenger: 'Messenger',
-  email: 'Email',
-  sms: 'SMS',
-  copy: 'Copied links',
-  native: 'Share sheet',
-  qr: 'Poster QR',
-  digest: 'Weekly city email',
-  other: 'Other',
-}
+/* The channel names, one map for every page that says them (src/lib/broadcast/channel-labels.ts). */
 
 function formatEventDate(iso: string, timezone: string) {
   return new Date(iso).toLocaleString('en-AU', {
