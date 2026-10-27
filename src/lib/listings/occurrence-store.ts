@@ -5,6 +5,8 @@ import { checkPublishGate } from '@/lib/events/publish-gate'
 import { attachGeneratedCover } from '@/lib/events/generated-cover'
 import { isComposedCover } from '@/lib/images/event-media'
 import { listingPhotoFor } from './listing-photo'
+import { providerOf } from '@/lib/events/booking-links'
+import type { SeriesBookingLink } from './listing-rows'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
 import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
 import { canTransition } from '@/lib/event-lifecycle'
@@ -147,7 +149,7 @@ export function occurrenceStore(): OccurrenceStore {
         const { data } = await reread('event_series', () =>
           admin
             .from('event_series')
-            .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status')
+            .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status, booking_links')
             .order('id')
             .range(from, from + PAGE - 1),
         )
@@ -167,6 +169,7 @@ export function occurrenceStore(): OccurrenceStore {
             endsAt: clock5(r.ends_at),
             timezone: r.timezone,
             skipDates: r.skip_dates ?? [],
+            bookingLinks: (r.booking_links ?? []) as SeriesBookingLink[],
           })
         }
         if ((data ?? []).length < PAGE) break
@@ -253,6 +256,11 @@ export function occurrenceStore(): OccurrenceStore {
         }
       }
 
+      // WI3: a night sold elsewhere, or free with registration, is a tickets event whose
+      // button is its links; a walk-in event may carry no outside link at all
+      // (events_walk_in_is_in_person_and_sells_nothing). Nothing is sold here either way.
+      const links = night.bookingLinks ?? []
+      const soldElsewhere = links.length > 0
       const slug = occurrenceSlug(night.name, venue.slug ?? venueSlugify(venue.name), date)
       const { data: inserted, error: insertError } = await admin
         .from('events')
@@ -265,7 +273,8 @@ export function occurrenceStore(): OccurrenceStore {
           event_type: 'in_person',
           visibility: 'public',
           status: 'draft',
-          entry_mode: 'walk_in',
+          entry_mode: soldElsewhere ? 'tickets' : 'walk_in',
+          ...(soldElsewhere ? { is_free: links.every((l) => l.kind === 'free_register') } : {}),
           listing_source: 'eventlinqs',
           listing_series_id: night.id,
           occurrence_date: date,
@@ -295,6 +304,25 @@ export function occurrenceStore(): OccurrenceStore {
       const cover = await attachListingPhoto(eventId, fields.category_id)
       if (!cover.ok) return takeAway(eventId, `its photograph could not be set: ${cover.reason}`)
 
+      if (soldElsewhere) {
+        // Curated links, in the file's order; the database picks the one button and
+        // writes events.external_ticket_url as its mirror (20261027130001).
+        const { error: linksError } = await admin.from('event_booking_links').insert(
+          links.map((l, position) => ({
+            event_id: eventId,
+            provider: providerOf(l.url),
+            url: l.url,
+            kind: l.kind,
+            availability: 'on_sale',
+            price_from_cents: l.price_from_cents,
+            price_checked_at: l.price_checked_on === null ? null : `${l.price_checked_on}T00:00:00Z`,
+            position,
+            set_by: 'curated',
+          })),
+        )
+        if (linksError) return takeAway(eventId, `where it sells could not be written: ${linksError.message}`)
+      }
+
       const gate = await checkPublishGate(
         admin,
         {
@@ -305,7 +333,9 @@ export function occurrenceStore(): OccurrenceStore {
           isPhysical: true,
           venueName: venue.name,
           venueAddress: venue.address,
-          walkIn: { tierCount: 0, days: [guideDay], startsAt: fields.start_date, endsAt: fields.end_date, timezone: fields.timezone },
+          walkIn: soldElsewhere
+            ? null
+            : { tierCount: 0, days: [guideDay], startsAt: fields.start_date, endsAt: fields.end_date, timezone: fields.timezone },
         },
         null,
       )

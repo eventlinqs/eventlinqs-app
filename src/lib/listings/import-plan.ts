@@ -1,4 +1,4 @@
-import type { ListingRow } from './listing-rows'
+import type { ListingRow, SeriesBookingLink } from './listing-rows'
 import { weekdayOf, type SeriesRule } from './occurrences'
 import { venueSlugify } from '@/lib/venues/venue-slug'
 
@@ -61,6 +61,8 @@ export type ExistingSeries = {
   summary: string
   instagramPostUrl: string | null
   donationOptional: boolean
+  /** Where it sells (WI3), as the database holds it; empty for a free walk-in night. */
+  bookingLinks: SeriesBookingLink[]
   listingSource: ListingSource
   status: 'active' | 'paused' | 'removed'
   /** The latest day the source was confirmed, "YYYY-MM-DD", or null before any check. */
@@ -111,6 +113,24 @@ export type SeriesFields = {
   summary: string
   instagram_post_url: string | null
   donation_optional: boolean
+  /** The links as one canonical JSON array (bookingLinksJson), so two equal lists compare equal. */
+  booking_links: string
+}
+
+/**
+ * A series' links as one JSON text with a fixed key order, whatever order the
+ * database returns a jsonb object's keys in, so the plan's comparison is exact
+ * and the write is the same text either way.
+ */
+export function bookingLinksJson(links: readonly SeriesBookingLink[]): string {
+  return JSON.stringify(
+    links.map((l) => ({
+      url: l.url,
+      kind: l.kind,
+      price_from_cents: l.price_from_cents,
+      price_checked_on: l.price_checked_on,
+    })),
+  )
 }
 
 /** A new series; the import adds `organisation_id` and resolves `venue` to its id. */
@@ -243,6 +263,7 @@ export function planImport(
       summary: row.summary,
       instagram_post_url: row.instagramPostUrl,
       donation_optional: row.donationOptional,
+      booking_links: bookingLinksJson(row.bookingLinks),
     }
     const seriesKey = `${venueRef}|${row.name}|${row.rule}|${row.date}`
     const repeat = plannedSeries.get(seriesKey)
@@ -287,6 +308,7 @@ export function planImport(
         summary: stored.summary,
         instagram_post_url: stored.instagramPostUrl,
         donation_optional: stored.donationOptional,
+        booking_links: bookingLinksJson(stored.bookingLinks),
       }
       const changes: Record<string, unknown> = {}
       for (const k of Object.keys(fields) as Array<keyof SeriesFields>) {

@@ -1689,6 +1689,7 @@ export type Database = {
         Row: {
           age_restriction_min: number | null
           anchor_date: string
+          booking_links: Json
           category_id: string | null
           created_at: string
           day: number
@@ -1712,6 +1713,7 @@ export type Database = {
         Insert: {
           age_restriction_min?: number | null
           anchor_date: string
+          booking_links?: Json
           category_id?: string | null
           created_at?: string
           day: number
@@ -1735,6 +1737,7 @@ export type Database = {
         Update: {
           age_restriction_min?: number | null
           anchor_date?: string
+          booking_links?: Json
           category_id?: string | null
           created_at?: string
           day?: number

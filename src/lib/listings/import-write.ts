@@ -33,6 +33,11 @@ export function sqlLiteral(v: string | number | boolean | null | undefined): str
 const variable = (ref: string) => `v_${ref.replace(':', '_')}`
 const isRef = (idOrRef: string) => idOrRef.includes(':')
 
+/** A series value as SQL; the links are one JSON text (bookingLinksJson) and are cast to the column's jsonb. */
+function seriesValue(column: string, value: string | number | boolean | null): string {
+  return column === 'booking_links' ? `${sqlLiteral(value)}::jsonb` : sqlLiteral(value)
+}
+
 export function buildImportWrite(
   plan: ImportPlan,
   organisationId: string,
@@ -76,14 +81,14 @@ export function buildImportWrite(
       const entries = Object.entries(values) as Array<[string, string | number | null]>
       body.push(
         `insert into public.event_series (venue_id, organisation_id, ${entries.map(([c]) => c).join(', ')})` +
-          ` values (${venueExpr}, ${org}, ${entries.map(([, value]) => lit(value)).join(', ')})` +
+          ` values (${venueExpr}, ${org}, ${entries.map(([c, value]) => seriesValue(c, value)).join(', ')})` +
           ` returning id into ${series};`,
       )
     } else {
       series = `${lit(r.series.id)}::uuid`
       if (r.series.kind === 'update') {
         const sets = Object.entries(r.series.changes).map(
-          ([c, value]) => `${c} = ${lit(value as string | number | null)}`,
+          ([c, value]) => `${c} = ${seriesValue(c, value as string | number | null)}`,
         )
         body.push(
           `update public.event_series set ${sets.join(', ')}, updated_at = now()` +
