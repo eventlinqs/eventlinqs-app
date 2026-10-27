@@ -155,16 +155,6 @@ begin
 end;
 $check$;
 
--- The switch: OFF until Lawal approves the privacy version that names claims (the project manager's 21:33 of 27
--- October 2026); turned on only through the governed switch, never by a deploy.
-insert into public.feature_flags (flag, enabled, description)
-values (
-  'listing_claims',
-  false,
-  'WI2 Part 3b, claim this venue and claim this event. OFF until Lawal approves the privacy policy version that names claims (the project manager, 27 October 2026).'
-)
-on conflict (flag) do nothing;
-
 revoke all on function public.listing_claim_check(uuid, text, uuid, timestamptz) from public, anon, authenticated;
 grant execute on function public.listing_claim_check(uuid, text, uuid, timestamptz) to service_role;
 
