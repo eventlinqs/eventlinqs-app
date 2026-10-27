@@ -241,7 +241,8 @@ export default async function PrivacyPolicyPage() {
         </li>
         <li>
           <strong>To check that you run an event or venue</strong> before we give you control of its listing, and to act on
-          a removal request. We use these details for nothing else.
+          a removal request. We use these details for nothing else. Your claim code is sent by our email provider,
+          Resend, and your details are stored by our database provider, Supabase, both named under Our Service Providers.
         </li>
       </ul>
       <p>
