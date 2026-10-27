@@ -12,9 +12,10 @@ import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
  * A listing's host does have one. The import keeps the venue's own site
  * (venues.website_url), the series' Instagram post (event_series.instagram_post_url)
  * and every page it read the night from (listing_checks.source_url); WI3 adds
- * the night's own page to the event (events.source_url). This picks one, in that
- * order of how near it is to the host: the night's own page, the host's site,
- * the host's post, then the page the import last read.
+ * the night's own page to the event (events.source_url). This picks one, the
+ * host's own first: a page on the host's own site, the host's site, the host's
+ * post, and only then another site's listing of the night, which is never called
+ * the host's page: it reads "See the original listing".
  *
  * PARITY, read 27 October 2026 (Law 7): an Eventfinda event page carries
  * "Buy Tickets" to the organiser's ticket site and "Melbourne Magic Show -
@@ -75,11 +76,19 @@ export function outboundHost(url: string | null | undefined): string | null {
  */
 export function freeListingOutbound(eventSlug: string, hostName: string | null | undefined, pages: ListingPages): Outbound | null {
   const name = hostName?.trim() || null
-  for (const url of [pages.sourceUrl, pages.websiteUrl, pages.instagramPostUrl, pages.checkedUrl]) {
+  const ownWords = name === null ? "See it on the host's page" : `See it on ${name}'s page`
+  const siteHost = outboundHost(pages.websiteUrl)
+  /* A page on the host's own site is the host's own; any other site's page is a listing of it (found driving
+   * production on 27 October 2026: two nights said "FAD Gallery Bar's page" and opened What's On Melbourne). */
+  const onOwnSite = (host: string) => siteHost !== null && (host === siteHost || host.endsWith(`.${siteHost}`))
+  const real = (url: string | null | undefined) => {
     const host = outboundHost(url)
-    if (host === null || isEventLinqs(host)) continue
-    return { href: outboundHref(eventSlug, (url as string).trim()), label: name === null ? 'See it on the host\'s page' : `See it on ${name}'s page`, host }
+    return host === null || isEventLinqs(host) ? null : { url: (url as string).trim(), host }
   }
+  const listed = [real(pages.sourceUrl), real(pages.checkedUrl)].filter((u): u is { url: string; host: string } => u !== null)
+  const own = [...listed.filter((u) => onOwnSite(u.host)), real(pages.websiteUrl), real(pages.instagramPostUrl)].filter((u): u is { url: string; host: string } => u !== null)
+  if (own.length > 0) return { href: outboundHref(eventSlug, own[0].url), label: ownWords, host: own[0].host }
+  if (listed.length > 0) return { href: outboundHref(eventSlug, listed[0].url), label: 'See the original listing', host: listed[0].host }
   return null
 }
 
