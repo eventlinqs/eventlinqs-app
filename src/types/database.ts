@@ -1408,6 +1408,67 @@ export type Database = {
         }
         Relationships: []
       }
+      event_collaborators: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          asked_at: string
+          asked_by: string | null
+          event_id: string
+          id: string
+          organisation_id: string
+          role: string
+          status: string
+          venue_id: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          event_id: string
+          id?: string
+          organisation_id: string
+          role?: string
+          status?: string
+          venue_id: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          event_id?: string
+          id?: string
+          organisation_id?: string
+          role?: string
+          status?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_collaborators_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborators_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborators_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_group_rates: {
         Row: {
           created_at: string
@@ -6527,6 +6588,7 @@ export type Database = {
           artist_id: string | null
           channel: string
           code: string
+          collaborator_id: string | null
           created_at: string
           created_by: string | null
           destination_url: string | null
@@ -6539,6 +6601,7 @@ export type Database = {
           artist_id?: string | null
           channel: string
           code: string
+          collaborator_id?: string | null
           created_at?: string
           created_by?: string | null
           destination_url?: string | null
@@ -6551,6 +6614,7 @@ export type Database = {
           artist_id?: string | null
           channel?: string
           code?: string
+          collaborator_id?: string | null
           created_at?: string
           created_by?: string | null
           destination_url?: string | null

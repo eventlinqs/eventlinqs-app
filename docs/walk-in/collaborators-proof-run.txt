@@ -1,0 +1,19 @@
+target TEST (vkapkibzokmfaxqogypq), ROLLBACK: proof raises its verdict
+migration 20261027150001_event_collaborators.sql creates event_collaborators; 2 top-level transaction line(s) set aside
+ON RECORD empty: event_collaborators
+ON RECORD default privileges for postgres in public: [{"type" : "S", "acl" : "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"}, {"type" : "f", "acl" : "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"}, {"type" : "r", "acl" : "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"}]
+PROOF PASSED, 0 failure(s)
+  C1 the venue's own organisation is asked on another's event: PASS
+  C2 another organisation named for the venue, refused: PASS
+  C3 its own event, refused: PASS
+  C4 an unclaimed listed venue, refused: PASS
+  C5a joined with no moment, refused: PASS
+  C5b a visitor reads the joined row and not the invitation: PASS
+  C5c a visitor writes nothing: PASS
+  C6a the event's organiser reads its invitation: PASS
+  C6b the venue reads what it was asked: PASS
+  C6c somebody else reads nothing of it: PASS
+  C7a the venue reads its own link: PASS
+  C7b somebody else reads nothing of it: PASS
+READ BACK default privileges unchanged
+READ BACK event_collaborators {postgres=arwdDxtm/postgres,anon=r/postgres,authenticated=r/postgres,service_role=arw/postgres}

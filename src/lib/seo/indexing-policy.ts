@@ -254,6 +254,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/reports/gst', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/tickets', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/collaborations', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues/[id]/seat-maps', klass: 'never', why: 'authenticated' },
   { route: '/design/cards', klass: 'never', why: 'a developer preview' },
   { route: '/gigs/[id]', klass: 'never', why: 'a gig posting: the page has declared index:false for itself since it shipped, so the platform already keeps the board out of the index; recorded here rather than reversed' },

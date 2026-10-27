@@ -26,7 +26,8 @@ export function ShareKit({
   posterHref,
 }: {
   links: { channel: ShareChannel; url: string }[]
-  posterHref: string
+  /** The organiser's A4 poster; left off for a venue collaborator, who has no poster route of its own. */
+  posterHref?: string
 }) {
   const [copiedChannel, setCopiedChannel] = useState<ShareChannel | null>(null)
 
@@ -50,6 +51,7 @@ export function ShareKit({
             buyers come from.
           </p>
         </div>
+        {posterHref && (
         <a
           href={posterHref}
           className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
@@ -57,6 +59,7 @@ export function ShareKit({
           <Download className="h-4 w-4" aria-hidden />
           Download A4 QR poster
         </a>
+        )}
       </div>
       <ul className="divide-y divide-ink-200/60">
         {links.map(({ channel, url }) => (

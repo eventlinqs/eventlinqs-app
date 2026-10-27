@@ -66,6 +66,8 @@ import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel
 import { outboundHref, ticketButtonLabel } from '@/lib/listings/outbound'
 import { ticketPanelOf } from '@/lib/listings/ticket-panel'
 import { readBookingLinks } from '@/lib/events/booking-links-read'
+import { readJoinedCollaborators } from '@/lib/events/collaborators'
+import { CollaboratorsLine } from '@/components/events/collaborators-line'
 // Service role, used for exactly one thing on this page: reading the two
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -667,6 +669,7 @@ export default async function EventDetailPage({ params }: Props) {
     organiserSale,
     foundingBadge,
     bookingLinks,
+    collaborators,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -713,6 +716,8 @@ export default async function EventDetailPage({ params }: Props) {
     getFoundingBadge(event.organisation_id),
     // WI3: every place the event sells, for the one button, "Also on" and the Offers.
     isExternallyTicketed(event) ? readBookingLinks(event.id) : Promise.resolve([]),
+    // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
+    readJoinedCollaborators(event.id),
   ])
   // The ticket column of an event sold on other sites (src/lib/listings/ticket-panel.ts); null with no links read,
   // where the panel falls back to events.external_ticket_url, the database's mirror of the button.
@@ -1491,6 +1496,7 @@ export default async function EventDetailPage({ params }: Props) {
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
+                  <CollaboratorsLine collaborators={collaborators} className="mt-2" />
                   {foundingBadge.isFounding ? (
                     <div className="mt-3">
                       <FoundingOrganiserBadge />
