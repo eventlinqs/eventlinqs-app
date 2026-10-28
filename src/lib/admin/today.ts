@@ -73,7 +73,7 @@ async function claimsToDecide(admin: Admin): Promise<QueueItem[]> {
 async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
   const { data, error } = await admin
     .from('removal_requests')
-    .select('id, requester_name, reason, created_at, venues(name), event_series(title)')
+    .select('id, requester_name, reason, created_at, venues(name), event_series(name)')
     .eq('status', 'open')
     .order('created_at', { ascending: true })
     .limit(LIST_CAP)
@@ -83,7 +83,7 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
     const series = Array.isArray(r.event_series) ? r.event_series[0] : r.event_series
     return {
       id: `removal:${r.id}`,
-      what: `${r.requester_name} asks for ${venue?.name ?? series?.title ?? 'a listing'} to be taken down`,
+      what: `${r.requester_name} asks for ${venue?.name ?? series?.name ?? 'a listing'} to be taken down`,
       why: `Their reason: ${r.reason.length > 160 ? `${r.reason.slice(0, 157)}...` : r.reason}. No admin page acts on a removal yet.`,
       since: r.created_at,
       href: null,
