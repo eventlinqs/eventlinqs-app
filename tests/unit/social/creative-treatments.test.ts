@@ -129,4 +129,16 @@ describe('one night per title in a set', () => {
     expect(nights.map((n) => n.title)).toEqual(['The Melbourne Book Market', 'Run the Tan'])
     expect(nights[0].eventId).toBe(sat.eventId)
   })
+
+  it('the venue spotlight lists a title once too, its sooner date (A5, found by the review queue drive on TEST)', () => {
+    const at = (iso: string, title: string) => night({ at: iso, title, host: 'Hop Temple', venueName: 'Hop Temple', citySlug: 'ballarat', cityName: 'Ballarat' })
+    const thu = at('2026-10-29T09:00:00Z', 'Trivia at Hop Temple')
+    const fri = at('2026-10-30T09:00:00Z', 'Trivia at Hop Temple')
+    const sat = at('2026-10-31T09:00:00Z', 'Hop Temple Sessions')
+    const plan = planCampaign({ nights: [thu, fri, sat], cities: [{ slug: 'ballarat', name: 'Ballarat' }], weekStart: '2026-10-26', origin: 'https://www.eventlinqs.com.au' })
+    const spot = plan.pieces.find((p) => p.kind === 'venue_spotlight')
+    expect(spot?.eventIds).toEqual([thu.eventId, sat.eventId])
+    const programme = spot?.slides.find((s) => s.t === 'programme')
+    expect(programme && 'rows' in programme ? programme.rows.map((r) => r.title) : []).toEqual(['Trivia at Hop Temple', 'Hop Temple Sessions'])
+  })
 })

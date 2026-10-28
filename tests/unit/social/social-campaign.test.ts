@@ -124,6 +124,14 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     for (const p of pieces) expect(pieceRefusal(p), `${p.kind} ${p.city}`).toBeNull()
   })
 
+  it('a piece missing its one audience, its one purpose or its one next step is refused (C2)', () => {
+    const whole = pieces[0]
+    expect(pieceRefusal({ ...whole, audience: undefined as never })).toMatch(/one audience/)
+    expect(pieceRefusal({ ...whole, audience: 'everyone' as never })).toMatch(/one audience/)
+    expect(pieceRefusal({ ...whole, purpose: ' ' })).toMatch(/one purpose/)
+    expect(pieceRefusal({ ...whole, nextStep: '' })).toMatch(/one call to action/)
+  })
+
   it('a photograph only with an approved rights row; otherwise the slide is typographic (J1 to J4)', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     const photos = ahead.slides.filter((s) => s.t === 'night').map((s) => (s as { photo: string | null }).photo)

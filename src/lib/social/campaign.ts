@@ -152,6 +152,15 @@ const MAX_PER_CATEGORY = 3
  * never scored down, and nothing is ever bought into a pick. No more than two of one venue or three of one category, so a set
  * is varied. The founder's leave-outs never come back.
  */
+/** One night per title in a set: the key two nights share when they are the same night on two dates. */
+const titleKey = (n: CampaignNight): string => n.title.trim().toLowerCase()
+
+/** A night list with each title once, at its sooner date (the list is in date order). */
+function oncePerTitle(nights: readonly CampaignNight[]): CampaignNight[] {
+  const seen = new Set<string>()
+  return nights.filter((n) => !seen.has(titleKey(n)) && Boolean(seen.add(titleKey(n))))
+}
+
 export function selectNights(candidates: readonly CampaignNight[], max: number): { nights: CampaignNight[]; picks: NightPick[] } {
   const hostCount = new Map<string, number>()
   for (const n of candidates) if (n.host) hostCount.set(n.host, (hostCount.get(n.host) ?? 0) + 1)
@@ -186,7 +195,7 @@ export function selectNights(candidates: readonly CampaignNight[], max: number):
   const titles = new Set<string>()
   for (const s of scored) {
     if (kept.length >= max) break
-    const title = s.n.title.trim().toLowerCase()
+    const title = titleKey(s.n)
     if (titles.has(title)) continue
     const venue = (s.n.venueName ?? '').toLowerCase()
     const category = (s.n.categorySlug ?? '').toLowerCase()
@@ -547,7 +556,9 @@ export function planCampaign(input: {
   for (const { n } of inWeek) if (n.host) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
   const spot = [...hosts.entries()].sort((a, b) => b[1].length - a[1].length)[0]
   if (spot) {
-    const [name, nights] = spot
+    const [name, all] = spot
+    /* One night per title here too: a weekly night on Thursday and Friday is one row, its sooner date (A5). */
+    const nights = oncePerTitle(all)
     const first = nights[0]
     const city = input.cities.find((c) => c.slug === first.citySlug) ?? { slug: first.citySlug, name: first.cityName }
     const hook = `${name} this week.`
@@ -563,7 +574,7 @@ export function planCampaign(input: {
       link: `${origin}/city/${city.slug}`,
       format: 'feed',
       eventIds: nights.slice(0, 4).map((n) => n.eventId),
-      picks: nights.slice(0, 4).map((n) => ({ eventId: n.eventId, reason: `Picked: one of ${nights.length} nights at ${name} this week, the most of any host.` })),
+      picks: nights.slice(0, 4).map((n) => ({ eventId: n.eventId, reason: `Picked: one of ${all.length} nights at ${name} this week, the most of any host.` })),
       mode: modeOf(nights.slice(0, 4)),
       slides: [
         { ...(nightSlide(first) as Extract<Slide, { t: 'night' }>), composition: 'venue_spotlight' },
