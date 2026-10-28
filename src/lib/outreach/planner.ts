@@ -22,6 +22,18 @@ type Admin = SupabaseClient<Database>
 
 export type CohortRule = { cities?: string[] }
 
+/**
+ * Which of an organiser's published addresses to write to first: the one meant for events, bookings or music, then a
+ * general inbox, then anything else (a restaurant or accounts inbox last). A named person always comes first.
+ */
+export function addressRank(address: string, personName: string | null): number {
+  if (personName && personName.trim()) return 0
+  const local = address.split('@')[0].toLowerCase()
+  if (/(event|booking|book|gig|music|entertain|program|band|venue|function)/.test(local)) return 1
+  if (/^(info|hello|hi|contact|enquir|inquir|admin|office|team|general|mail)/.test(local)) return 2
+  return 3
+}
+
 export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[] }
 
 const SPACING_MINUTES = 10
@@ -97,8 +109,9 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     // 2. First messages to the cohort.
     if (room > 0) {
       const rule = (play.cohort_rule ?? {}) as CohortRule
-      const candidates = await db.from('organiser_contacts').select('id, organiser_id').eq('channel', 'email').neq('basis', 'none').order('created_at').limit(500)
-      const ids = (candidates.data ?? []).map((c) => c.id)
+      const found = await db.from('organiser_contacts').select('id, organiser_id, address, person_name').eq('channel', 'email').neq('basis', 'none').order('created_at').limit(500)
+      const candidates = { data: [...(found.data ?? [])].sort((a, b) => addressRank(a.address, a.person_name) - addressRank(b.address, b.person_name)) }
+      const ids = candidates.data.map((c) => c.id)
       const touched = ids.length ? await db.from('outreach_touches').select('contact_id').in('contact_id', ids) : { data: [] as { contact_id: string }[] }
       const written = new Set((touched.data ?? []).map((t) => t.contact_id))
       let allowed: Set<string> | null = null

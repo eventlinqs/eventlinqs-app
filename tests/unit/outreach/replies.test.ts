@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { CLEAR, classifyInbound, stripQuoted } from '@/lib/outreach/replies'
 import { nightsOf, trueLine, whenItRuns } from '@/lib/outreach/facts'
+import { addressRank } from '@/lib/outreach/planner'
 
 /**
  * THE REPLY CLASSIFIER (src/lib/outreach/replies.ts). It acts on a person's words, so the rule tested hardest is the
@@ -84,6 +85,17 @@ describe('bounces and automatic replies are not replies', () => {
   })
   test('an out of office', () => {
     expect(reply('I am away until Monday.', 'Automatic reply: Your nights', { 'auto-submitted': 'auto-replied' })).toEqual({ kind: 'auto_reply' })
+  })
+})
+
+describe('which published address the planner writes to first', () => {
+  test('a named person, then events or bookings, then a general inbox, then the rest', () => {
+    const order = ['steakhouse@mitretavern.com.au', 'info@mitretavern.com.au', 'events@mitretavern.com.au']
+      .map((a) => [a, addressRank(a, null)] as const)
+      .sort((x, y) => x[1] - y[1])
+      .map(([a]) => a)
+    expect(order).toEqual(['events@mitretavern.com.au', 'info@mitretavern.com.au', 'steakhouse@mitretavern.com.au'])
+    expect(addressRank('accounts@venue.example', 'Pat')).toBe(0)
   })
 })
 
