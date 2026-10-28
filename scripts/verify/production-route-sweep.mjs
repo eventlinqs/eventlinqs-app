@@ -221,6 +221,9 @@ const PRIVATE_PREFIXES = ['/dashboard', '/admin', '/account', '/checkout', '/ord
  * purpose: an unexplained gap should read as a gap.
  */
 const NO_ANONYMOUS_VALUE = {
+  '/events/[slug]/claim': "claiming an event stays switched off on production until the security pass and the privacy page are live (the project manager's 21:51 (C) and 22:14 (3)), so no page links to it",
+  '/venues/[handle]/claim': "claiming a venue stays switched off on production under the same rule as an event's claim, so no page links to it",
+  '/partners/[slug]': "a partner is listed only once Lawal sets its terms in admin (the project manager's 21:51 (E): built and off), so until then no page links to one",
   '/t/[code]': 'a ticket bearer code, minted by a purchase. Driven by the buyer journey',
   '/t/[code]/watch': 'the same bearer code, for a streamed event',
   '/e/[code]': 'a short link minted when an organiser shares',

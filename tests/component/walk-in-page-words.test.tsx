@@ -183,7 +183,7 @@ describe('a walk-in page, read as rendered', () => {
     expect(text).toContain('The weekend, day by day')
     expect(text).toContain('All three days')
     expect(text).toContain('Get the program when it lands')
-    expect(text).toContain('We send the full timetable when AMCF releases it, and one reminder the day before. Nothing else.')
+    expect(text).toContain('We send the full timetable when AMCF releases it, one reminder the day before, and a short note if it is called off. Nothing else.')
     expect(text).toContain('Follow AMCF')
     expect(text).toContain('@AMCFOZ')
   })
@@ -247,6 +247,15 @@ describe('a walk-in page, read as rendered', () => {
     expect(container.textContent).not.toContain('Remind me')
     expect(container.textContent).toContain('Add to calendar')
   })
+
+  it('offers Add to calendar on a phone too, outside the desktop panel (found driving AMCF at 390, 27 October 2026)', () => {
+    const { container } = drawn()
+    const phone = container.querySelector('[data-testid="phone-calendar"]')
+    expect(phone).not.toBeNull()
+    expect(phone!.closest('aside')).toBeNull()
+    expect(phone!.className).toContain('lg:hidden')
+    expect(phone!.textContent).toContain('Add to calendar')
+  })
 })
 
 describe('the one button that leaves, on a curated listing (WI3)', () => {
@@ -269,7 +278,8 @@ describe('the one button that leaves, on a curated listing (WI3)', () => {
     const links = Array.from(container.querySelectorAll('[data-outbound] a'))
     expect(links.length).toBe(2)
     for (const a of links) {
-      expect(a.getAttribute('href')).toBe('https://www.fedsquare.com/')
+      // B2: every leaving button goes through /out, which counts the press and follows only this event's own pages.
+      expect(a.getAttribute('href')).toBe('/out/amcf-2026?to=https%3A%2F%2Fwww.fedsquare.com%2F')
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
       expect(a.textContent).toMatch(/^See it on .+'s page$/)

@@ -142,6 +142,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'The organiser assigned this holder a seat.',
   },
   {
+    type: 'listing_claim_code',
+    roles: ['prospect'],
+    concernsOrganiserEvent: false,
+    what: 'The 6-digit code that proves a venue or event claim, sent only to the address the venue publishes, because the claimant asked for it (WI2 Part 3b, src/lib/listings/claim.ts).',
+  },
+  {
     type: 'waitlist_place_available',
     roles: ['prospect'],
     concernsOrganiserEvent: true,
@@ -170,6 +176,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     roles: ['prospect'],
     concernsOrganiserEvent: true,
     what: 'WI1 Remind me: one reminder the day before a free walk-in event, to a person who asked for it on the event page.',
+  },
+  {
+    type: 'walk_in_called_off',
+    roles: ['prospect'],
+    concernsOrganiserEvent: true,
+    what: 'Remind me: one short note that a free walk-in event a person asked about is called off (the privacy version of 27 October 2026).',
   },
 
   // ── The organiser ───────────────────────────────────────────────────────

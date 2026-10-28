@@ -16,11 +16,12 @@ import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getAllCities, getCity } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { cityHubRails } from '@/lib/cities/city-hubs'
 
 /**
  * How many of the city's events the grid shows. It was the literal 24 inside
@@ -52,6 +53,8 @@ interface Props {
   mapPins: MapEventPin[]
   /** True when the city has a free guide, so the page links its week. */
   hasFreeGuide?: boolean
+  /** The paid Featured row for this city (Train C, row 12), shown under the editorial; none when no slot runs. */
+  featuredRow?: ReactNode
 }
 
 /**
@@ -94,11 +97,15 @@ export function CityLandingPage({
   suburbs,
   mapPins,
   hasFreeGuide = false,
+  featuredRow = null,
 }: Props) {
   /* ONE array feeds both the reserved height and the cards, so the two can
    * never disagree: the section declares the height of what it renders, not
    * the height of what it was handed. */
   const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
+  // The city's hubs (the locked plan of 27 October 2026, item 10): free, music, family and nightlife, each a rail
+  // only where it holds an event (src/lib/cities/city-hubs.ts).
+  const hubRails = cityHubRails(allEvents)
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
@@ -134,6 +141,8 @@ export function CityLandingPage({
         heading={city.descriptor}
         paragraphs={[city.editorial]}
       />
+
+      {featuredRow}
 
       {/* ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). These curated
         rails were gated at `>= 4`, so a city or community with one, two or three
@@ -179,6 +188,26 @@ export function CityLandingPage({
           </SnapRailScroller>
         </ContentSection>
       ) : null}
+
+      {hubRails.map(({ hub, events }, i) => (
+        <ContentSection key={hub.key} surface={i % 2 === 0 ? 'alt' : 'base'} width="wide" topBorder reveal>
+          <SnapRailScroller
+            railLabel={hub.title(city.name)}
+            containerBg={i % 2 === 0 ? 'ink-100' : undefined}
+            header={{
+              eyebrow: hub.eyebrow,
+              title: hub.title(city.name),
+              headerLink: { href: hub.href(city.slug), label: 'View all' },
+            }}
+          >
+            {events.map(e => (
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
+              </div>
+            ))}
+          </SnapRailScroller>
+        </ContentSection>
+      ))}
 
       {/* S5 Browse by Community rail - 14 photographic community tiles routing
           to /community/[community]/[city] for the cross-community-city

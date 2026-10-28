@@ -84,6 +84,8 @@ export type ShareLinkRow = {
   /** The Launch Kit draft these external links belong to. NULL when internal. */
   draft_code: string | null
   artist_id: string | null
+  /** A joined venue's own link (event_collaborators, item 15 of the locked plan of 27 October 2026). */
+  collaborator_id: string | null
   channel: ShareChannel
   code: string
   created_by: string | null
@@ -92,7 +94,7 @@ export type ShareLinkRow = {
 
 /** The columns every read of this table selects. One list, so none drifts. */
 const SHARE_LINK_COLUMNS =
-  'id, event_id, destination_url, draft_code, artist_id, channel, code, created_by, created_at'
+  'id, event_id, destination_url, draft_code, artist_id, collaborator_id, channel, code, created_by, created_at'
 
 export type BroadcastClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
 
@@ -128,6 +130,8 @@ export async function getOrCreateShareLink(
     eventId: string
     channel: ShareChannel
     artistId?: string | null
+    /** A joined venue's collaboration row: its links are its own, never the organiser's. */
+    collaboratorId?: string | null
     createdBy?: string | null
     /**
      * The event slug, used to mint a READABLE code (basement-45-ig). Omit it
@@ -148,6 +152,7 @@ export async function getOrCreateShareLink(
 ): Promise<ShareLinkRow | null> {
   const client = opts?.client ?? createAdminClient()
   const artistId = input.artistId ?? null
+  const collaboratorId = input.collaboratorId ?? null
   const createdBy = input.createdBy ?? null
 
   /*
@@ -166,8 +171,12 @@ export async function getOrCreateShareLink(
     .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
+    // The oldest wins, so the link this event and channel were first given stays theirs: the social engine mints a
+    // further link per post for the same channel (item 11, src/lib/social/store.ts), and must never be handed out here.
+    .order('created_at', { ascending: true })
     .limit(1)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
+  lookup = collaboratorId === null ? lookup.is('collaborator_id', null) : lookup.eq('collaborator_id', collaboratorId)
   lookup = createdBy === null ? lookup.is('created_by', null) : lookup.eq('created_by', createdBy)
   /*
    * A READ THAT FAILED IS NOT AN ANSWER OF "NO SUCH LINK".
@@ -204,6 +213,7 @@ export async function getOrCreateShareLink(
       event_id: input.eventId,
       channel: input.channel,
       artist_id: artistId,
+      collaborator_id: collaboratorId,
       created_by: createdBy,
       code,
     })
@@ -449,10 +459,14 @@ async function mintExternalCode(
   return generateShareCode()
 }
 
-export type ShareLinkEventKind = 'view' | 'click' | 'conversion'
+/**
+ * 'outbound' (27 October 2026, src/lib/broadcast/outbound.ts): a press of a curated listing's one button out to the
+ * organiser's own booking site, counted apart from 'click', which is an arrival through a link.
+ */
+export type ShareLinkEventKind = 'view' | 'click' | 'conversion' | 'outbound'
 
 /** Kinds de-duplicated per (link, visitor, day). */
-const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click']
+const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click', 'outbound']
 
 /**
  * Record one attribution event. Views AND clicks are de-duplicated per
@@ -479,6 +493,8 @@ export async function recordShareLinkEvent(
     kind: ShareLinkEventKind
     orderId?: string | null
     visitorHash?: string | null
+    /** An 'outbound' press only: the booking link pressed and its platform (20261027140002). */
+    outbound?: { bookingLinkId: string | null; provider: string } | null
   },
   opts?: { client?: BroadcastClient },
 ): Promise<boolean> {
@@ -500,15 +516,29 @@ export async function recordShareLinkEvent(
      * reach. This file has already chosen once between those and chose the
      * smaller number, deliberately, so a failure here takes the same side.
      */
-    const { data: dupe, error: dupeError } = await client
-      .from('share_link_events')
-      .select('id')
-      .eq('link_id', input.linkId)
-      .eq('kind', input.kind)
-      .eq('visitor_hash', input.visitorHash)
-      .gte('occurred_at', dayStart.toISOString())
-      .limit(1)
-      .maybeSingle()
+    // An outbound press is one per booking link: Humanitix then DICE the same day is two platforms reached. Every other
+    // kind reads exactly as it always has.
+    const pressedLink = input.kind === 'outbound' ? (input.outbound?.bookingLinkId ?? null) : null
+    const { data: dupe, error: dupeError } = pressedLink
+      ? await client
+          .from('share_link_events')
+          .select('id')
+          .eq('link_id', input.linkId)
+          .eq('kind', input.kind)
+          .eq('visitor_hash', input.visitorHash)
+          .eq('booking_link_id', pressedLink)
+          .gte('occurred_at', dayStart.toISOString())
+          .limit(1)
+          .maybeSingle()
+      : await client
+          .from('share_link_events')
+          .select('id')
+          .eq('link_id', input.linkId)
+          .eq('kind', input.kind)
+          .eq('visitor_hash', input.visitorHash)
+          .gte('occurred_at', dayStart.toISOString())
+          .limit(1)
+          .maybeSingle()
     if (dupeError) {
       captureException(dupeError, {
         where: 'lib/broadcast/share-links:recordShareLinkEvent daily de-duplication',
@@ -549,6 +579,8 @@ export async function recordShareLinkEvent(
     kind: input.kind,
     order_id: input.orderId ?? null,
     visitor_hash: input.visitorHash ?? null,
+    booking_link_id: input.outbound?.bookingLinkId ?? null,
+    provider: input.outbound?.provider ?? null,
   })
   // The partial unique index rejects a duplicate conversion; that is a
   // success from the caller's perspective (the sale is already counted).

@@ -46,7 +46,7 @@ export const REMINDER_BATCH = 200
 /** A run stops after this many batches, so one run can never loop forever. */
 export const MAX_BATCHES_PER_KIND = 20
 
-export type ReminderKind = 'program' | 'day_before'
+export type ReminderKind = 'program' | 'day_before' | 'called_off'
 
 export type DueRow = {
   reminderId: string
@@ -104,15 +104,23 @@ async function runPass(
   return summary
 }
 
-/** One run: the program updates owed, then the day-before reminders due now. */
+/**
+ * One run: the program updates owed, the day-before reminders due now, then the
+ * called-off notes (the privacy version of 27 October 2026: "plus a short note
+ * if the event is called off"). Who is owed a note is the database's answer
+ * (walk_in_reminders_due, migration 20261027223001): a live request of a
+ * walk-in event now cancelled whose first day has not passed, under a Remind me
+ * version whose words promised the note.
+ */
 export async function runReminderPasses(
   deps: ReminderSendDeps,
   now: Date,
   eventId: string | null = null,
-): Promise<{ program: PassSummary; dayBefore: PassSummary; purged: number }> {
+): Promise<{ program: PassSummary; dayBefore: PassSummary; calledOff: PassSummary; purged: number }> {
   const program = await runPass(deps, 'program', eventId, now)
   const dayBefore = await runPass(deps, 'day_before', eventId, now)
+  const calledOff = await runPass(deps, 'called_off', eventId, now)
   // Retention runs on the full sweep only, never on one organiser's press.
   const purged = eventId === null ? await deps.purge(REMIND_ME_RETENTION_DAYS_AFTER_EVENT) : 0
-  return { program, dayBefore, purged }
+  return { program, dayBefore, calledOff, purged }
 }

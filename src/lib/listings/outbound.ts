@@ -27,7 +27,7 @@ import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
  */
 
 export type Outbound = {
-  /** Where the button goes: always https, always off EventLinqs. */
+  /** Where the button goes: the counted route, /out/<slug>?to=<an https page off EventLinqs> (outboundHref). */
   href: string
   /** The words on the button. */
   label: string
@@ -48,13 +48,14 @@ export type ListingPages = {
 }
 
 /**
- * THE ONE PLACE A BUTTON THAT LEAVES TAKES ITS ADDRESS. Today the destination
- * itself; window 6's counted redirect (/out/<event slug>, the 12:21 and 12:37
- * of 27 October 2026) changes this function and nothing else, so every button
- * is counted the day it lands.
+ * THE ONE PLACE A BUTTON THAT LEAVES TAKES ITS ADDRESS: window 6's counted
+ * redirect (/out/<event slug>?to=<destination>, the 12:21 and 12:37 of 27
+ * October 2026; src/app/out/[slug]/route.ts). The route follows the destination
+ * only when it is one of that event's own, so this is never an open redirect, and
+ * counts the press before the visitor leaves.
  */
-export function outboundHref(_eventSlug: string, destination: string): string {
-  return destination
+export function outboundHref(eventSlug: string, destination: string): string {
+  return `/out/${encodeURIComponent(eventSlug)}?to=${encodeURIComponent(destination)}`
 }
 
 /** The hostname of an https address, without "www.", or null when it is not one. */

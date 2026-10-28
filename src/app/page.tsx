@@ -5,6 +5,8 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedHero } from '@/components/features/home/FeaturedHero'
+import { FeaturedRow } from '@/components/features/promotions/featured-row'
+import { featuredForPage } from '@/lib/promotions/promotions'
 import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
 import { SoundsRail } from '@/components/features/home/sounds-rail'
 import { CommunityRail } from '@/components/features/home/community-rail'
@@ -208,6 +210,8 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
+  const featured = await featuredForPage('homepage')
+
   return (
     <div className="min-h-screen bg-canvas">
       <SiteHeader />
@@ -221,6 +225,9 @@ export default async function HomePage() {
          *  on the motion flag, manual arrows and dots always available).
          *  This is the only homepage surface where text sits on a photo. */}
         <FeaturedHero events={upcoming} />
+
+        {/* Paid featured slots (Train C, row 12), headed and labelled Featured, never inside the unpaid rails. */}
+        <FeaturedRow items={featured} where="homepage" />
 
         {/* Trust band removed Batch 11.0. The 2026 contextual-trust
          *  pattern places trust signals at the purchase-decision moment

@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { handleReminderRequest, type ReminderDeps, type ReminderEvent } from '@/lib/walk-in/remind-me-request'
-import { REMIND_ME_CONSENT_VERSION, REMIND_ME_DONE, remindMePurpose } from '@/lib/walk-in/remind-me'
+import { REMIND_ME_CONSENT_VERSION, REMIND_ME_DONE, remindMeConsentText, remindMePurpose } from '@/lib/walk-in/remind-me'
 
 const EVENT_ID = '7f3a2c1e-0b4d-4e5f-9a6b-1c2d3e4f5a6b'
 const FUTURE = new Date(Date.now() + 7 * 864e5).toISOString()
@@ -90,7 +90,7 @@ describe('a person asking to be reminded', () => {
         event_id: EVENT_ID,
         email: 'ama@example.com',
         consent_version: REMIND_ME_CONSENT_VERSION,
-        consent_text: remindMePurpose('AMCF', false),
+        consent_text: remindMeConsentText(remindMePurpose('AMCF', false)),
       },
     ])
   })
@@ -110,7 +110,7 @@ describe('a person asking to be reminded', () => {
     )
     await handleReminderRequest(deps, { eventId: EVENT_ID, email: 'a@example.com', trap: '' })
     expect(calls.restarts).toEqual([
-      { id: 'r1', consent: { consent_version: REMIND_ME_CONSENT_VERSION, consent_text: remindMePurpose('AMCF', true) } },
+      { id: 'r1', consent: { consent_version: REMIND_ME_CONSENT_VERSION, consent_text: remindMeConsentText(remindMePurpose('AMCF', true)) } },
     ])
   })
 })
@@ -149,10 +149,10 @@ describe('what is refused, in words, and never stored', () => {
 describe('the purpose beside the button promises only what is still true', () => {
   it('before the program: the timetable once, and a reminder', () => {
     expect(remindMePurpose('AMCF', false)).toBe(
-      'We send the full timetable when AMCF releases it, and one reminder the day before. Nothing else.',
+      'We send the full timetable when AMCF releases it, one reminder the day before, and a short note if it is called off. Nothing else.',
     )
   })
   it('after the program: a reminder only', () => {
-    expect(remindMePurpose('AMCF', true)).toBe('We send one reminder the day before. Nothing else.')
+    expect(remindMePurpose('AMCF', true)).toBe('We send one reminder the day before, and a short note if it is called off. Nothing else.')
   })
 })

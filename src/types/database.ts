@@ -1408,6 +1408,74 @@ export type Database = {
         }
         Relationships: []
       }
+      event_collaborators: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          asked_at: string
+          asked_by: string | null
+          event_id: string
+          id: string
+          organisation_id: string
+          role: string
+          status: string
+          venue_id: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          event_id: string
+          id?: string
+          organisation_id: string
+          role?: string
+          status?: string
+          venue_id: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          event_id?: string
+          id?: string
+          organisation_id?: string
+          role?: string
+          status?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_collaborators_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborators_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborators_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborators_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_group_rates: {
         Row: {
           created_at: string
@@ -1628,6 +1696,7 @@ export type Database = {
         Row: {
           age_restriction_min: number | null
           anchor_date: string
+          booking_links: Json
           category_id: string | null
           created_at: string
           day: number
@@ -1651,6 +1720,7 @@ export type Database = {
         Insert: {
           age_restriction_min?: number | null
           anchor_date: string
+          booking_links?: Json
           category_id?: string | null
           created_at?: string
           day: number
@@ -1674,6 +1744,7 @@ export type Database = {
         Update: {
           age_restriction_min?: number | null
           anchor_date?: string
+          booking_links?: Json
           category_id?: string | null
           created_at?: string
           day?: number
@@ -2166,6 +2237,44 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faster_payout_grants: {
+        Row: {
+          buffer_days: number
+          granted_at: string
+          granted_by: string
+          id: string
+          note: string | null
+          organisation_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          buffer_days: number
+          granted_at?: string
+          granted_by: string
+          id?: string
+          note?: string | null
+          organisation_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          buffer_days?: number
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          note?: string | null
+          organisation_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faster_payout_grants_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -2724,6 +2833,88 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_candidates: {
+        Row: {
+          ends_at: string | null
+          event_id: string | null
+          found_at: string
+          id: string
+          image_url: string | null
+          kind: string
+          links: Json
+          page_url: string
+          refused_because: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_id: string
+          starts_at: string
+          status: string
+          title: string
+          venue_address: string | null
+          venue_name: string
+        }
+        Insert: {
+          ends_at?: string | null
+          event_id?: string | null
+          found_at?: string
+          id?: string
+          image_url?: string | null
+          kind: string
+          links?: Json
+          page_url: string
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id: string
+          starts_at: string
+          status?: string
+          title: string
+          venue_address?: string | null
+          venue_name: string
+        }
+        Update: {
+          ends_at?: string | null
+          event_id?: string | null
+          found_at?: string
+          id?: string
+          image_url?: string | null
+          kind?: string
+          links?: Json
+          page_url?: string
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          venue_address?: string | null
+          venue_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_candidates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_candidates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_candidates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_checks: {
         Row: {
           checked_at: string
@@ -2761,6 +2952,143 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      listing_claims: {
+        Row: {
+          attempts: number
+          claimant_name: string
+          claimant_role: string
+          claimant_user_id: string
+          code_hash: string | null
+          created_at: string
+          email_used: string | null
+          event_id: string | null
+          expires_at: string | null
+          id: string
+          method: string
+          status: string
+          target_organisation_id: string | null
+          venue_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          claimant_name: string
+          claimant_role: string
+          claimant_user_id: string
+          code_hash?: string | null
+          created_at?: string
+          email_used?: string | null
+          event_id?: string | null
+          expires_at?: string | null
+          id?: string
+          method: string
+          status?: string
+          target_organisation_id?: string | null
+          venue_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          claimant_name?: string
+          claimant_role?: string
+          claimant_user_id?: string
+          code_hash?: string | null
+          created_at?: string
+          email_used?: string | null
+          event_id?: string | null
+          expires_at?: string | null
+          id?: string
+          method?: string
+          status?: string
+          target_organisation_id?: string | null
+          venue_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_claims_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_claims_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_claims_target_organisation_id_fkey"
+            columns: ["target_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_claims_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_sources: {
+        Row: {
+          changes: string
+          city_slug: string | null
+          collection: string
+          created_at: string
+          id: string
+          kind: string
+          last_checked_at: string | null
+          last_outcome: string | null
+          name: string
+          notes: string | null
+          page_url: string
+          terms_quote: string | null
+          terms_read_on: string | null
+          terms_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          changes?: string
+          city_slug?: string | null
+          collection: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_checked_at?: string | null
+          last_outcome?: string | null
+          name: string
+          notes?: string | null
+          page_url: string
+          terms_quote?: string | null
+          terms_read_on?: string | null
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          changes?: string
+          city_slug?: string | null
+          collection?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_checked_at?: string | null
+          last_outcome?: string | null
+          name?: string
+          notes?: string | null
+          page_url?: string
+          terms_quote?: string | null
+          terms_read_on?: string | null
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketing_attribution: {
         Row: {
@@ -5042,6 +5370,84 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_enquiries: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          email: string
+          id: string
+          kind: string
+          message: string
+          name: string
+          organisation: string
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          kind: string
+          message: string
+          name: string
+          organisation: string
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          kind?: string
+          message?: string
+          name?: string
+          organisation?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          name: string
+          slug: string
+          status: string
+          summary: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          name: string
+          slug: string
+          status?: string
+          summary: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          name?: string
+          slug?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -5570,6 +5976,134 @@ export type Database = {
           },
         ]
       }
+      promotion_offers: {
+        Row: {
+          currency: string
+          description: string
+          id: string
+          key: string
+          kind: string
+          name: string
+          placement: string | null
+          price_cents: number | null
+          slots: number | null
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency?: string
+          description: string
+          id?: string
+          key: string
+          kind: string
+          name: string
+          placement?: string | null
+          price_cents?: number | null
+          slots?: number | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          description?: string
+          id?: string
+          key?: string
+          kind?: string
+          name?: string
+          placement?: string | null
+          price_cents?: number | null
+          slots?: number | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      promotion_orders: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          done_at: string | null
+          done_by: string | null
+          ends_at: string | null
+          event_id: string | null
+          id: string
+          offer_id: string
+          ordered_by: string
+          organisation_id: string
+          paid_at: string | null
+          starts_at: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          done_at?: string | null
+          done_by?: string | null
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          offer_id: string
+          ordered_by: string
+          organisation_id: string
+          paid_at?: string | null
+          starts_at?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          done_at?: string | null
+          done_by?: string | null
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          offer_id?: string
+          ordered_by?: string
+          organisation_id?: string
+          paid_at?: string | null
+          starts_at?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_orders_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "promotion_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_orders_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -6051,6 +6585,60 @@ export type Database = {
           },
         ]
       }
+      removal_requests: {
+        Row: {
+          actioned_at: string | null
+          created_at: string
+          id: string
+          note: string | null
+          reason: string
+          requester_email: string
+          requester_name: string
+          series_id: string | null
+          status: string
+          venue_id: string | null
+        }
+        Insert: {
+          actioned_at?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: string
+          requester_email: string
+          requester_name: string
+          series_id?: string | null
+          status?: string
+          venue_id?: string | null
+        }
+        Update: {
+          actioned_at?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          requester_email?: string
+          requester_name?: string
+          series_id?: string | null
+          status?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "removal_requests_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_requests_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservations: {
         Row: {
           converted_at: string | null
@@ -6104,6 +6692,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      roundup_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          city_slug: string
+          event_count: number
+          id: string
+          period_start: string
+          whatsapp_text: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          city_slug: string
+          event_count: number
+          id?: string
+          period_start: string
+          whatsapp_text: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          city_slug?: string
+          event_count?: number
+          id?: string
+          period_start?: string
+          whatsapp_text?: string
+        }
+        Relationships: []
       }
       saved_categories: {
         Row: {
@@ -6475,30 +7093,43 @@ export type Database = {
       }
       share_link_events: {
         Row: {
+          booking_link_id: string | null
           id: string
           kind: string
           link_id: string
           occurred_at: string
           order_id: string | null
+          provider: string | null
           visitor_hash: string | null
         }
         Insert: {
+          booking_link_id?: string | null
           id?: string
           kind: string
           link_id: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Update: {
+          booking_link_id?: string | null
           id?: string
           kind?: string
           link_id?: string
           occurred_at?: string
           order_id?: string | null
+          provider?: string | null
           visitor_hash?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "share_link_events_booking_link_id_fkey"
+            columns: ["booking_link_id"]
+            isOneToOne: false
+            referencedRelation: "event_booking_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "share_link_events_link_id_fkey"
             columns: ["link_id"]
@@ -6527,6 +7158,7 @@ export type Database = {
           artist_id: string | null
           channel: string
           code: string
+          collaborator_id: string | null
           created_at: string
           created_by: string | null
           destination_url: string | null
@@ -6539,6 +7171,7 @@ export type Database = {
           artist_id?: string | null
           channel: string
           code: string
+          collaborator_id?: string | null
           created_at?: string
           created_by?: string | null
           destination_url?: string | null
@@ -6551,6 +7184,7 @@ export type Database = {
           artist_id?: string | null
           channel?: string
           code?: string
+          collaborator_id?: string | null
           created_at?: string
           created_by?: string | null
           destination_url?: string | null
@@ -6568,6 +7202,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "share_links_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "event_collaborators"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "share_links_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
@@ -6579,6 +7220,227 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          draft_id: string
+          id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          draft_id: string
+          id?: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          draft_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_approvals_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "social_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_cadence_rules: {
+        Row: {
+          basis: string
+          created_at: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id: string
+          learned_from: number
+          platform: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots: number[]
+          version: number
+        }
+        Insert: {
+          basis: string
+          created_at?: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id?: string
+          learned_from?: number
+          platform?: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots?: number[]
+          version: number
+        }
+        Update: {
+          basis?: string
+          created_at?: string
+          floor_posts?: number
+          format?: string
+          gap_hours?: number
+          id?: string
+          learned_from?: number
+          platform?: string | null
+          reason?: string
+          set_at?: string
+          set_by?: string
+          settle_hours?: number
+          slots?: number[]
+          version?: number
+        }
+        Relationships: []
+      }
+      social_drafts: {
+        Row: {
+          caption: string
+          drafted_at: string
+          id: string
+          post_id: string
+          version: number
+          written_by: string
+          written_by_user: string | null
+        }
+        Insert: {
+          caption: string
+          drafted_at?: string
+          id?: string
+          post_id: string
+          version: number
+          written_by: string
+          written_by_user?: string | null
+        }
+        Update: {
+          caption?: string
+          drafted_at?: string
+          id?: string
+          post_id?: string
+          version?: number
+          written_by?: string
+          written_by_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_drafts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_postings: {
+        Row: {
+          approval_id: string
+          id: string
+          post_id: string
+          post_url: string
+          posted_at: string
+          recorded_at: string
+          recorded_by: string
+        }
+        Insert: {
+          approval_id: string
+          id?: string
+          post_id: string
+          post_url: string
+          posted_at: string
+          recorded_at?: string
+          recorded_by: string
+        }
+        Update: {
+          approval_id?: string
+          id?: string
+          post_id?: string
+          post_url?: string
+          posted_at?: string
+          recorded_at?: string
+          recorded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_postings_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: true
+            referencedRelation: "social_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_postings_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_posts: {
+        Row: {
+          event_id: string
+          facts: string[]
+          format: string
+          id: string
+          link: string
+          planned_at: string
+          planned_by: string | null
+          platform: string
+          share_link_id: string
+        }
+        Insert: {
+          event_id: string
+          facts: string[]
+          format: string
+          id?: string
+          link: string
+          planned_at?: string
+          planned_by?: string | null
+          platform: string
+          share_link_id: string
+        }
+        Update: {
+          event_id?: string
+          facts?: string[]
+          format?: string
+          id?: string
+          link?: string
+          planned_at?: string
+          planned_by?: string | null
+          platform?: string
+          share_link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: true
+            referencedRelation: "share_links"
             referencedColumns: ["id"]
           },
         ]
@@ -8710,6 +9572,15 @@ export type Database = {
         }[]
       }
       expire_waitlist_notifications: { Args: never; Returns: number }
+      faster_payout_check: {
+        Args: { p_org: string }
+        Returns: {
+          buffer_days: number
+          qualifies: boolean
+          reason: string
+        }[]
+      }
+      faster_payout_unproven: { Args: { p_org: string }; Returns: string }
       founding_add_months: {
         Args: { p_months: number; p_ts: string }
         Returns: string
@@ -8756,6 +9627,15 @@ export type Database = {
           installed: boolean
           name: string
         }[]
+      }
+      listing_claim_check: {
+        Args: {
+          p_at: string
+          p_claim: string
+          p_code_hash: string
+          p_organisation: string
+        }
+        Returns: string
       }
       listing_fresh_until_for: {
         Args: { p_checked_on: string; p_timezone: string }
@@ -8952,6 +9832,32 @@ export type Database = {
           seat_label: string
         }[]
       }
+      social_cadence_at: {
+        Args: { p_at: string; p_format: string; p_platform: string }
+        Returns: {
+          basis: string
+          created_at: string
+          floor_posts: number
+          format: string
+          gap_hours: number
+          id: string
+          learned_from: number
+          platform: string | null
+          reason: string
+          set_at: string
+          set_by: string
+          settle_hours: number
+          slots: number[]
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "social_cadence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      social_event_sold_out: { Args: { p_event: string }; Returns: boolean }
       sync_offline_scans: {
         Args: { p_event_id: string; p_scans: Json }
         Returns: Json

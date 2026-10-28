@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
+import { fetchOutboundWeek, outboundSentence } from '@/lib/broadcast/outbound-reach'
 import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
 import { fetchReferralCoefficient } from '@/lib/growth/referral-coefficient'
 import {
@@ -14,6 +15,7 @@ import {
 import { ShareKit } from '@/components/broadcast/share-kit'
 import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getRequestOrigin } from '@/lib/site-origin'
+import { CHANNEL_LABELS } from '@/lib/broadcast/channel-labels'
 
 export const metadata: Metadata = {
   title: 'Reach | EventLinqs',
@@ -35,21 +37,7 @@ const KIT_CHANNELS: readonly ShareChannel[] = [
   'copy',
 ]
 
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  messenger: 'Messenger',
-  email: 'Email',
-  sms: 'SMS',
-  copy: 'Copied links',
-  native: 'Share sheet',
-  qr: 'Poster QR',
-  digest: 'Weekly city email',
-  other: 'Other',
-}
+/* The channel names, one map for every page that says them (src/lib/broadcast/channel-labels.ts). */
 
 /**
  * The reach panel: tickets and orders by channel, then clicks and views, plus
@@ -89,6 +77,13 @@ export default async function ReachPage({ params }: Props) {
    * quoted.
    */
   const attribution = await fetchSalesAttribution(id)
+
+  /*
+   * THE PEOPLE SENT TO THEIR TICKETS (item 8; src/lib/broadcast/outbound-reach.ts). For an event sold on another site,
+   * this is the one thing EventLinqs can show it did: distinct people this week who pressed through to each site,
+   * counted before they left.
+   */
+  const outboundLine = shareOn ? outboundSentence(await fetchOutboundWeek(id, new Date())) : null
 
   /*
    * AQ2. "the referral coefficient computed and reported per event".
@@ -138,6 +133,12 @@ export default async function ReachPage({ params }: Props) {
         <span className="text-sm text-ink-400">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
+
+      {outboundLine ? (
+        <p role="status" className="mb-6 text-sm text-ink-900">
+          {outboundLine}
+        </p>
+      ) : null}
 
       {/*
         WHERE THE SALES CAME FROM. This sits above the link stats because it is

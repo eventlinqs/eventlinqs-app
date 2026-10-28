@@ -40,6 +40,8 @@ import { paceForSlot } from '@/lib/ledger/pace'
 import { isWalkIn } from '@/lib/events/entry-mode'
 import { readWalkInNumbers, oneIn } from '@/lib/walk-in/organiser-numbers'
 import { WalkInProgramPanel } from '@/components/features/dashboard/walk-in-program-panel'
+import { readVenueAsk } from '@/lib/events/collaborators'
+import { askVenueAction } from '../../collaborations/actions'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -155,6 +157,8 @@ export default async function EventViewPage({ params }: Props) {
    * slot ledger and its Remind me rows after the ownership check above.
    */
   const walkIn = isWalkIn(event)
+  // Item 15 of the locked plan of 27 October 2026: the event's venue, where it is another organisation's, can be asked to share it.
+  const venueAsk = await readVenueAsk(event)
   const [walkInNumbers, walkInGuide] = walkIn
     ? await Promise.all([
         readWalkInNumbers(event.id),
@@ -384,6 +388,31 @@ export default async function EventViewPage({ params }: Props) {
         />
       )}
 
+      {venueAsk.venue && (
+        <section id="venue" aria-label="Your venue" data-venue-ask={venueAsk.status ?? 'none'} className="mt-6 flex scroll-mt-6 flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-200 bg-white px-5 py-4">
+          <div className="min-w-0">
+            <p className="font-semibold text-ink-900">{venueAsk.venue.name}</p>
+            <p className="text-sm text-ink-600">
+              {venueAsk.status === null
+                ? 'Your venue can share this event with tracked links of its own.'
+                : venueAsk.status === 'invited'
+                  ? 'Asked to share this event. Waiting for their answer.'
+                  : venueAsk.status === 'joined'
+                    ? 'Shares this event with its own links, and shows on its page.'
+                    : 'Declined to share this event.'}
+            </p>
+          </div>
+          {venueAsk.status === null && (
+            <form action={askVenueAction}>
+              <input type="hidden" name="eventId" value={event.id} />
+              <button type="submit" data-action="ask-venue" className="inline-flex min-h-[44px] items-center rounded-full bg-ink-900 px-5 text-sm font-semibold text-white hover:bg-ink-800">
+                Ask {venueAsk.venue.name} to share it
+              </button>
+            </form>
+          )}
+        </section>
+      )}
+
       {/* ─── WI1: a free walk-in event's numbers ─────────────────────────── */}
       {walkIn && walkInNumbers && (
         <>
@@ -472,6 +501,8 @@ export default async function EventViewPage({ params }: Props) {
               mouse (found 4 September 2026, Law 5). This is the way in. */}
           <TabLink href={`/dashboard/events/${event.id}/pricing`}>Pricing</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
+          {/* Item 20 of the locked plan of 27 October 2026: a free event's one page report after it. */}
+          {walkIn && <TabLink href={`/dashboard/events/${event.id}/report`}>Report</TabLink>}
           {event.event_type !== 'in_person' && (
             <TabLink href={`/dashboard/events/${event.id}/stream`}>Stream</TabLink>
           )}

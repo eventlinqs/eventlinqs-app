@@ -115,6 +115,7 @@ export const DISCOVERY_INDEXING_THRESHOLD = 1
 export const UNLINKED_BY_DESIGN: Record<string, string> = {
   '/launch': 'a campaign landing reached from a link the founder sends, not from site navigation',
   '/waitlist': 'a campaign landing reached from a link the founder sends, not from site navigation',
+  '/partners': 'partnerships are built and off until Lawal sets their terms (the project manager\'s 21:51 (E), 27 October 2026), so no navigation offers them yet; the link goes in when a partner is listed',
 }
 
 export interface PolicyEntry {
@@ -138,6 +139,8 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/cities', klass: 'always', why: 'the city index, its own content' },
   { route: '/communities', klass: 'always', why: 'the community index, its own content' },
   { route: '/contact', klass: 'always', why: 'marketing' },
+  { route: '/partners', klass: 'always', why: 'marketing: the partners and the enquiry form' },
+  { route: '/partners/[slug]', klass: 'always', why: 'a live partner\'s own page, labelled Partner; a draft answers not found' },
   { route: '/events', klass: 'always', why: 'the catalogue index; meaningful with or without events' },
   { route: '/guides', klass: 'always', why: 'the organiser guide hub' },
   { route: '/guides/[slug]', klass: 'always', why: 'hand-written evergreen documentation' },
@@ -175,6 +178,8 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
 
   // ----------------------------------------------------------------- ALIAS
   { route: '/for-organisers', klass: 'alias', why: '308 to /organisers; kept because external links reach for it' },
+  { route: '/events/[slug]/claim', klass: 'never', why: 'a signed in form to claim a curated listing by a code (WI2 Part 3b)' },
+  { route: '/venues/[handle]/claim', klass: 'never', why: 'a signed in form to claim a listed venue by a code (WI2 Part 3b)' },
   { route: '/e/[code]', klass: 'alias', why: 'the printable short link for an event; canonical is /events/[slug]' },
   { route: '/events/[slug]/with/[artist]', klass: 'alias', why: 'an artist-attributed view of one event; canonical is /events/[slug]' },
 
@@ -191,6 +196,8 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/admin/audit', klass: 'never', why: 'staff only' },
   { route: '/admin/campaigns', klass: 'never', why: 'staff only' },
   { route: '/admin/campaigns/[id]/proof', klass: 'never', why: 'staff only' },
+  { route: '/admin/collected', klass: 'never', why: 'staff only' },
+  { route: '/admin/social', klass: 'never', why: 'staff only' },
   { route: '/admin/matches', klass: 'never', why: 'staff only' },
   { route: '/admin/disputes', klass: 'never', why: 'staff only' },
   { route: '/admin/disputes/[id]', klass: 'never', why: 'staff only' },
@@ -198,6 +205,10 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/admin/events', klass: 'never', why: 'staff only' },
   { route: '/admin/events/[id]', klass: 'never', why: 'staff only' },
   { route: '/admin/flags', klass: 'never', why: 'staff only' },
+  { route: '/admin/growth', klass: 'never', why: 'staff only' },
+  { route: '/admin/roundup', klass: 'never', why: 'staff only' },
+  { route: '/admin/partners', klass: 'never', why: 'staff only' },
+  { route: '/admin/promotions', klass: 'never', why: 'staff only' },
   { route: '/admin/health', klass: 'never', why: 'staff only' },
   { route: '/admin/kyc', klass: 'never', why: 'staff only' },
   { route: '/admin/login', klass: 'never', why: 'staff only' },
@@ -238,6 +249,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/events/[id]/orders/[orderId]', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/pricing', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/reach', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/events/[id]/report', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/refunds', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/seats', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]/stream', klass: 'never', why: 'authenticated' },
@@ -250,9 +262,11 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/organisation', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/organisation/create', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/payouts', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/promote', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/reports/gst', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/tickets', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/collaborations', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/venues/[id]/seat-maps', klass: 'never', why: 'authenticated' },
   { route: '/design/cards', klass: 'never', why: 'a developer preview' },
   { route: '/gigs/[id]', klass: 'never', why: 'a gig posting: the page has declared index:false for itself since it shipped, so the platform already keeps the board out of the index; recorded here rather than reversed' },

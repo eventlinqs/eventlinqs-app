@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { sendEmail } from '@/lib/email/send'
+import { roundupApproval } from '@/lib/broadcast/roundup'
 import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
 import { getSiteUrl } from '@/lib/site-url'
 import {
@@ -267,6 +268,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         ...(token ? { headers: oneClickUnsubscribeHeaders(origin, token) } : {}),
       })
       results.push({ city: citySlug, testSentTo: testTo, events: events.length })
+      continue
+    }
+
+    /*
+     * TRAIN C, ROW 9 (window 5, 27 October 2026): "Thursday's edition is drafted from verified listings, approved,
+     * sent". A city goes to its subscribers only once an admin approved its edition on /admin/roundup in the last
+     * seven days (src/lib/broadcast/roundup.ts). The dry run, the preview and the rehearsal above need no approval,
+     * because they reach nobody but the person who asked. A failed read skips the city and says so, never sends it.
+     */
+    const approval = await roundupApproval(admin, citySlug, now)
+    if (approval === 'unreadable') {
+      results.push({ city: citySlug, skipped: 'approval_unreadable' })
+      continue
+    }
+    if (approval === null) {
+      results.push({ city: citySlug, skipped: 'not_approved', events: events.length, recipients: recipients.length })
       continue
     }
 

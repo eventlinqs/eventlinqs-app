@@ -199,6 +199,7 @@ describe('a failed read never reads as a fact', () => {
           select: () => chain,
           eq: () => chain,
           is: () => chain,
+          order: () => chain,
           limit: () => chain,
           maybeSingle: async () => failing('TypeError: fetch failed'),
           insert: () => {

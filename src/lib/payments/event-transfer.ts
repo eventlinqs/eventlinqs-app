@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { captureException } from '@/lib/observability/sentry'
 import { getCurrencyForCountry } from './application-fee'
 import { getPayoutScheduleDays } from './pricing-rules'
+import { dueForDisbursement, scanCutoff } from './faster-payouts'
 import type { TransferGateway } from './gateway'
 import { NON_DISBURSABLE_EVENT_STATUSES } from '@/lib/refunds/postponement'
 
@@ -385,7 +386,27 @@ export async function runEventDisbursements(
   } catch {
     bufferDays = 3
   }
-  const cutoffIso = new Date(Date.now() - bufferDays * 24 * 60 * 60 * 1000).toISOString()
+  /*
+   * ITEM 21, FASTER PAYOUTS FOR PROVEN ORGANISERS (src/lib/payments/faster-payouts.ts, 20261027160001). Lawal's live
+   * grants widen the scan to their shortest buffer; an event inside the widened window is paid only for an organiser
+   * switched on who still qualifies at this run (checked per event below). A failed read of the grants fails towards
+   * the platform's buffer for everyone: nobody is paid sooner on a read that did not happen.
+   */
+  const now = new Date()
+  let grants: { organisation_id: string; buffer_days: number }[] = []
+  try {
+    const { data: grantRows, error: grantError } = await adminClient
+      .from('faster_payout_grants')
+      .select('organisation_id, buffer_days')
+      .is('revoked_at', null)
+      .limit(1000)
+    if (grantError) captureException(grantError, { scope: 'payments-event-transfer', handler: 'faster-payout-grants' })
+    else grants = grantRows ?? []
+  } catch (err) {
+    captureException(err, { scope: 'payments-event-transfer', handler: 'faster-payout-grants' })
+  }
+  const granted = new Set(grants.map(g => g.organisation_id))
+  const cutoffIso = scanCutoff(now, bufferDays, grants.map(g => g.buffer_days))
 
   /*
    * THE PAYOUT HOLD (founder brief, 23 August 2026).
@@ -435,6 +456,19 @@ export async function runEventDisbursements(
   const summary: EventDisbursementSummary = { considered: 0, transferred: 0, skipped: 0, failed: 0, results: [] }
 
   for (const ev of (events ?? []) as EligibleEventRow[]) {
+    if (!dueForDisbursement({ endDate: ev.end_date ?? '', now, bufferDays, faster: null })) {
+      // Inside the widened window: only an organiser switched on who qualifies now is paid sooner; everyone else is
+      // simply not due yet, and is not counted, exactly as before the window was widened.
+      if (!granted.has(ev.organisation_id)) continue
+      const { data: checked, error: checkError } = await adminClient.rpc('faster_payout_check', { p_org: ev.organisation_id })
+      if (checkError) {
+        captureException(checkError, { scope: 'payments-event-transfer', handler: 'faster-payout-check' })
+        continue
+      }
+      const row = Array.isArray(checked) ? checked[0] : null
+      const faster = row ? { qualifies: row.qualifies, bufferDays: row.buffer_days } : null
+      if (!dueForDisbursement({ endDate: ev.end_date ?? '', now, bufferDays, faster })) continue
+    }
     summary.considered++
 
     // DEFENCE IN DEPTH ON THE MONEY PATH. The SQL filter above is the control;

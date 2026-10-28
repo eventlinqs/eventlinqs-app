@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { submitDisburse, submitVoidPayout } from '../actions'
+import { submitDisburse, submitFasterPayoutGrant, submitFasterPayoutRevoke, submitVoidPayout } from '../actions'
 
 function money(cents: number, currency = 'AUD'): string {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100)
@@ -166,4 +166,92 @@ function humaniseError(code: string): string {
     case 'invalid_input': return 'Invalid request.'
     default: return code
   }
+}
+
+/**
+ * Item 21: Lawal's switch for faster payouts, for this organiser. Shows the database's own answer (faster_payout_check)
+ * in its words: on with its buffer, or why not. Switching on is refused by the database for anyone who does not
+ * qualify, and that sentence is shown as it is.
+ */
+export function FasterPayoutPanel({
+  organisationId,
+  qualifies,
+  bufferDays,
+  reason,
+  platformBufferDays,
+}: {
+  organisationId: string
+  qualifies: boolean
+  bufferDays: number | null
+  reason: string | null
+  platformBufferDays: number
+}) {
+  const router = useRouter()
+  const [days, setDays] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const on = qualifies && bufferDays !== null
+
+  async function act(kind: 'on' | 'off') {
+    setSubmitting(true)
+    setError(null)
+    const res = kind === 'on' ? await submitFasterPayoutGrant({ organisationId, bufferDays: days }) : await submitFasterPayoutRevoke({ organisationId })
+    setSubmitting(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    router.refresh()
+  }
+
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+      <h2 className="font-display text-lg font-semibold text-white">Faster payouts</h2>
+      <p className="mt-1 text-sm text-white/60">
+        {on
+          ? `On: paid ${bufferDays} day${bufferDays === 1 ? '' : 's'} after each event, instead of ${platformBufferDays}.`
+          : reason ?? 'Off.'}
+      </p>
+      <p className="mt-1 text-xs text-white/40">
+        Only for a Tier 3 organiser with five events, $50,000 lifetime gross, no disputes and a Stripe account paying out.
+      </p>
+      {error ? (
+        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+      ) : null}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {on ? (
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => act('off')}
+            className="min-h-[44px] rounded-md border border-white/10 px-4 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            Switch off
+          </button>
+        ) : (
+          <>
+            <label className="flex items-center gap-2 text-sm text-white/70">
+              Days after the event
+              <input
+                type="number"
+                min={0}
+                max={Math.max(0, platformBufferDays - 1)}
+                value={days}
+                onChange={(e) => setDays(Number(e.target.value))}
+                className="min-h-[44px] w-20 rounded-md border border-white/10 bg-transparent px-3 text-white"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => act('on')}
+              className="min-h-[44px] rounded-md bg-[var(--brand-accent)] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Switch on
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }

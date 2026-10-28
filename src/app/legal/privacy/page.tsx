@@ -62,7 +62,7 @@ export default async function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      lastUpdated="26 September 2026"
+      lastUpdated="27 October 2026"
       sections={SECTIONS}
     >
       <h2 id="about">About This Policy</h2>
@@ -138,6 +138,20 @@ export default async function PrivacyPolicyPage() {
           that we infer approximately from your IP address, so we can show nearby
           events. We do not collect precise device location unless you explicitly
           grant it in your browser.
+        </li>
+        <li>
+          <strong>Reminder requests:</strong> if you ask us to remind you about a free event on its event page, the email
+          address you type in, the event you asked about, the words shown beside the button when you asked, and when you
+          asked. You do not need an account to do this, and we collect nothing else for it.
+        </li>
+        <li>
+          <strong>Listing claims:</strong> if you claim an event or venue that EventLinqs listed, your name, your role, the
+          email address we send your code to, and when you claimed. We keep only a scrambled form of the code, never the code
+          itself.
+        </li>
+        <li>
+          <strong>Removal requests:</strong> if you ask us to take a listing down, your name, your email address and the
+          reason you give.
         </li>
       </ul>
 
@@ -217,6 +231,18 @@ export default async function PrivacyPolicyPage() {
           <strong>To meet legal obligations:</strong> tax and financial records,
           responding to lawful requests, and complying with consumer, privacy and
           anti-money-laundering law.
+        </li>
+        <li>
+          <strong>To send the reminders you asked for:</strong> we use your email address for that one event and nothing
+          else. We send you at most two messages, the full program once when the organiser publishes it (if you asked before
+          they did) and one reminder the day before, plus a short note if the event is called off. We never use the address
+          for marketing, never add it to any list, and never give it to the organiser. The organiser sees only how many
+          people asked.
+        </li>
+        <li>
+          <strong>To check that you run an event or venue</strong> before we give you control of its listing, and to act on
+          a removal request. We use these details for nothing else. Your claim code is sent by our email provider,
+          Resend, and your details are stored by our database provider, Supabase, both named under Our Service Providers.
         </li>
       </ul>
       <p>
@@ -371,6 +397,11 @@ export default async function PrivacyPolicyPage() {
         and continue while you hold an account or a ticket.
       </p>
       <p>
+        A reminder you ask for on an event page is not marketing and does not sign you up to anything. Every reminder email
+        has a link that stops it with one click. It works without logging in or giving us anything, and it takes effect at
+        once.
+      </p>
+      <p>
         Marketing emails, including event recommendations and platform news, are sent
         only where you have opted in. Consistent with the Spam Act 2003 (Cth) and
         APP 7:
@@ -507,6 +538,15 @@ export default async function PrivacyPolicyPage() {
         <li>
           <strong>Technical logs:</strong> generally up to 12 months, and shorter for
           routine access logs.
+        </li>
+        <li>
+          <strong>Reminder requests:</strong> deleted 30 days after the event ends.
+        </li>
+        <li>
+          <strong>Listing claims:</strong> kept while you manage the listing, and deleted 12 months after you stop.
+        </li>
+        <li>
+          <strong>Removal requests:</strong> kept for 2 years, as a record of what we took down and why.
         </li>
       </ul>
       <p>

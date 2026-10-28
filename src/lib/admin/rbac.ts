@@ -31,6 +31,9 @@ export type AdminCapability =
   | 'admin.disputes.manage'
   // M6 payout management
   | 'admin.payouts.disburse'
+  // Item 21: switch faster payouts on or off for one proven organiser. Lawal's, so super_admin alone (its set takes
+  // every capability; no other role lists it).
+  | 'admin.payouts.faster'
   // Venue Revenue Sharing Program: enrol/un-enrol, rate, venue payouts
   | 'admin.venues.manage'
   // Broadcast Layer stage switches (feature_flags table)
@@ -52,6 +55,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.refunds.process',
   'admin.disputes.manage',
   'admin.payouts.disburse',
+  'admin.payouts.faster',
   'admin.venues.manage',
   'admin.flags.manage',
   'admin.network.manage',
@@ -70,6 +74,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.refunds.process': 'Process refunds',
   'admin.disputes.manage': 'Manage disputes',
   'admin.payouts.disburse': 'Disburse payouts',
+  'admin.payouts.faster': 'Switch faster payouts for a proven organiser',
   'admin.venues.manage': 'Manage venue revenue sharing',
   'admin.flags.manage': 'Switch platform feature stages',
   'admin.network.manage': 'View demand signal and issue founding invites',

@@ -4,7 +4,9 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrgPayoutDetail, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
-import { DisbursePanel, VoidPayoutButton } from './payout-actions'
+import { DisbursePanel, FasterPayoutPanel, VoidPayoutButton } from './payout-actions'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +48,16 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
     metadata: { name: detail.name },
   })
 
+  // Item 21: the database's own answer for faster payouts, read only for the one who may switch it (super_admin).
+  const mayFaster = can(session, 'admin.payouts.faster')
+  const faster = mayFaster
+    ? ((await createAdminClient().rpc('faster_payout_check', { p_org: orgId })).data?.[0] ?? null)
+    : null
+  const platformBufferDays = mayFaster ? await getPayoutScheduleDays('AU', 'AUD').catch((err: unknown) => {
+    console.warn('[admin/payouts] payout_schedule_days not read', err)
+    return 3
+  }) : 3
+
   const activeHolds = detail.holds.filter(h => !h.releasedAt)
   const releasedHolds = detail.holds.filter(h => h.releasedAt)
 
@@ -82,6 +94,16 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
             payoutStatus={detail.payoutStatus}
             stripeConnected={detail.stripeAccountConnected}
           />
+
+          {mayFaster ? (
+            <FasterPayoutPanel
+              organisationId={detail.id}
+              qualifies={faster?.qualifies ?? false}
+              bufferDays={faster?.buffer_days ?? null}
+              reason={faster?.reason ?? null}
+              platformBufferDays={platformBufferDays}
+            />
+          ) : null}
 
           <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
             <h2 className="font-display text-lg font-semibold text-white">Reserve holds</h2>

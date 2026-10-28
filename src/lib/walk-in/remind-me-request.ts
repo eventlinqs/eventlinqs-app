@@ -1,5 +1,5 @@
 import { isWalkIn } from '@/lib/events/entry-mode'
-import { REMIND_ME_CONSENT_VERSION, REMIND_ME_DONE, remindMePurpose } from './remind-me'
+import { REMIND_ME_CONSENT_VERSION, REMIND_ME_DONE, remindMeConsentText, remindMePurpose } from './remind-me'
 
 /**
  * WHAT HAPPENS WHEN SOMEBODY PRESSES REMIND ME (WI1).
@@ -101,7 +101,7 @@ export async function handleReminderRequest(
 
   const consent = {
     consent_version: REMIND_ME_CONSENT_VERSION,
-    consent_text: remindMePurpose(event.organiser_name, event.program_published),
+    consent_text: remindMeConsentText(remindMePurpose(event.organiser_name, event.program_published)),
   }
 
   const existing = await deps.readReminder(event.id, email)

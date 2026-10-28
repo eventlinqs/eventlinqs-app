@@ -63,7 +63,13 @@ everywhere (src/app/(dashboard)/dashboard/events/actions.ts, event-form.tsx).
 
 - The title share for one event, a half of the shorter title's words: UNSOURCED, no page gives one. Reversal: a merge
   the project manager undoes, or a duplicate card a visitor reports, moves it.
-- Window 4: the import's multi URL rows (the 12:30 (9)) call `bookingLinksSql` and `sameEvent`.
+- Window 4: the import's multi URL rows (the 12:30 (9)) call `bookingLinksSql` and `sameEvent`. BUILT 27 October 2026 (window 4) as
+  `supabase/migrations/20261027184501_listing_series_booking_links.sql`: the import takes "Tickets" and "Free;
+  registration required" rows with `booking_urls` and `price_from` (src/lib/listings/listing-rows.ts), keeps them on
+  `event_series.booking_links`, and the listings run makes such a night a tickets event and writes its curated links,
+  so the database sets the button and `external_ticket_url`. The hero and sticky bar name that one button
+  (`heroSaleWords`). Not built: `sameEvent` across two files (each file's rows are one event per row), and a link that
+  changes after its night is made (window 6's daily check writes availability and price).
 - Window 2: the page reads the links (`buttonOf`, `alsoOn`, `priceToShow`, `PROVIDER_NAMES`).
 - Window 6: the daily link check writes availability and price; the claim writes the organiser's primary.
 

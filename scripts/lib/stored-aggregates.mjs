@@ -178,6 +178,16 @@ export const STORED_AGGREGATES = [
    * excluded column is how an enumeration stops being one.
    * ------------------------------------------------------------------ */
   {
+    column: 'roundup_approvals.event_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'approveRoundup (src/lib/broadcast/roundup.ts) writes it once, with the approval row, and nothing updates it after.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'NOT A SUMMARY OF ROWS. It records how many listings the edition carried at the moment an admin approved it, so the approval says what was approved. Listings published later belong to the next week, and the live count is read from events whenever the edition is drafted again; nothing reads this column as a current count.',
+  },
+  {
     column: 'tickets.scan_count',
     summarises: null,
     maintenance: 'not-in-class',
@@ -186,6 +196,16 @@ export const STORED_AGGREGATES = [
     caveat: null,
     decision:
       'NOT A SUMMARY OF ROWS. ticket_scans logs EVERY attempt including failures and not-founds; scan_count counts successful admits only. They answer different questions and neither is a copy of the other.',
+  },
+  {
+    column: 'listing_claims.attempts',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: "listing_claim_check increments it, under the claim row's lock, on each wrong code (20261027150001_listing_claims.sql), and moves the claim to locked at the fifth.",
+    reconciled: false,
+    caveat: null,
+    decision:
+      "NOT A SUMMARY OF ROWS (27 October 2026, train/el-final). It counts the wrong codes tried against one claim, the five tries before it locks (the project manager's 21:51 (C)); no table holds the tries one per row, and nothing reads it as a total.",
   },
   {
     column: 'api_v1_attendees.scan_count',

@@ -1,0 +1,10 @@
+﻿[with-supabase-token] token accepted by the Supabase API (HTTP 200, length 44); running: node 
+scripts/verify/run-proof-on-test.mjs scripts/verify/listing-sources-https-proof.sql
+target TEST (vkapkibzokmfaxqogypq), rolled back: the proof raised its verdict
+PROOF PASSED (0 failure(s), rolled back):
+  H1 an https source is kept: PASS
+  H2 http://whatson.example.com/bp-proof refused: PASS
+  H2 javascript:alert(1) refused: PASS
+  H2 data:text/html,hi refused: PASS
+  H2 https://two words.example.com refused: PASS
+  H3 validated on every existing row: PASS

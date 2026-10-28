@@ -1,3 +1,4 @@
+import type { SeriesBookingLink } from './listing-rows'
 import {
   planOccurrences,
   type ExistingOccurrence,
@@ -24,7 +25,13 @@ import {
  * is read afresh, so what was made is left alone.
  */
 
-export type ListingNight = NightForOccurrences & { id: string; organisationId: string; venueId: string }
+export type ListingNight = NightForOccurrences & {
+  id: string
+  organisationId: string
+  venueId: string
+  /** Where the night sells (WI3, event_series.booking_links); empty or absent for a free walk-in night. */
+  bookingLinks?: SeriesBookingLink[]
+}
 
 export type CreateOccurrence = {
   night: ListingNight

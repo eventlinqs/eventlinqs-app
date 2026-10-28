@@ -40,6 +40,9 @@ let sink: ClientErrorSink | null = null
  * Report a client error. Safe to call at any point in the page lifecycle,
  * including before the Sentry SDK has loaded.
  */
+/** The window event a queued report raises, so the deferred SDK boots at once. */
+export const CLIENT_ERROR_QUEUED = 'el:client-error-queued'
+
 export function reportClientError(error: unknown, context?: Record<string, unknown>): void {
   const report: ClientErrorReport = { error, context }
 
@@ -49,6 +52,13 @@ export function reportClientError(error: unknown, context?: Record<string, unkno
   }
 
   if (queued.length < MAX_QUEUED) queued.push(report)
+
+  // A queued report asks for the SDK at once, as a thrown error does through
+  // the shim in instrumentation-client.ts: an error boundary's report must never
+  // wait on the post-load timer (28 October 2026, when that timer moved past the
+  // paint). The event name is pinned equal on both sides by
+  // tests/unit/observability/sentry-boot-after-paint.test.ts.
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CLIENT_ERROR_QUEUED))
 
   // Development fallback, matching the behaviour the old shim had: with no DSN
   // and no init in `next dev`, an error should still reach stdout rather than
