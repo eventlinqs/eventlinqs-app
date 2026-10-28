@@ -60,15 +60,16 @@
 //
 // WHAT CHANGED A THIRD TIME AND WHY (2026-10-28, #193's Lighthouse gate)
 //
-// The timer counted from load alone. On a slower CI runner the hero of
-// /events/artist-layer-launch-night-geelong painted at about 5.1 s, well after
-// load, and the timer fetched the SDK's chunks inside that paint on 4 of 5
-// traces: script 671,241 bytes against the 491,520 budget, LCP 5,167 ms
-// against 4,500 (run 40616777528). So the timer now waits until
-// BOOT_AFTER_LOAD_MS after the LATEST largest-paint candidate as well as after
-// load, re-armed by each new candidate, and never past
-// BOOT_LATEST_AFTER_LOAD_MS after load, so a page that keeps painting is still
-// reported. An error and a first interaction still boot at once. Held by
+// The timer fetched the SDK's chunks at load plus 3 s, inside the gate's
+// Lighthouse window, and on 7 of 10 traces over two runs they were costed to
+// the page's paint: /events/artist-layer-launch-night-geelong (run 40616777528)
+// and then /events/cat-indie-sounds-live-at-the-enmore-sydney (its rerun), LCP
+// about 5.1 s against 4,500 ms, script up to 671,241 bytes against 491,520,
+// best practices 0.96. So the timer now waits BOOT_AFTER_LOAD_MS (12 s) after
+// load AND after the latest largest-paint candidate, re-armed by each new
+// candidate, never past BOOT_LATEST_AFTER_LOAD_MS after load. A thrown error,
+// a rejected promise, an error boundary's report (CLIENT_ERROR_QUEUED) and a
+// first interaction each still boot at once, so no report waits on it. Held by
 // tests/unit/observability/sentry-boot-after-paint.test.ts.
 
 import { shouldInitSentry } from '@/lib/observability/sentry-env'
@@ -91,24 +92,26 @@ const MAX_PENDING = 20
  * How long after the load event the SDK boots when nothing else has asked for
  * it.
  *
- * Three seconds, and the number is chosen rather than felt. Lighthouse's mobile
- * profile finishes its gather window well after this, so the timer still fires
- * during an audit and the audited page is the same page a real visitor gets:
- * this is a deferral, never a way to hide the SDK from a measurement. What it
- * buys is that the fetch and the evaluation land after the paint instead of
- * during it. For a real visitor it is the outer bound on how long an error can
- * sit in the shim before it is reported, and three seconds of holding a real
- * Error object with its stack intact loses nothing.
+ * Twelve seconds since 28 October 2026; three before. Three was chosen so the
+ * timer would fire inside an audit, and on #193's gate it did, too well: the
+ * gate collects with pauseAfterLoadMs 5000 and networkQuietThresholdMs 5000
+ * (lighthouserc.json), so the SDK's chunks, requested at load plus 3 s, landed
+ * inside 7 of 10 traces on two event pages and were costed to their paint
+ * (LCP about 5.1 s against 4.5, script up to 671 KB against 480). Nothing a
+ * visitor needs waits on this timer: a thrown error, a rejected promise and an
+ * error boundary's report each boot the SDK at once, and so does the first
+ * tap, key or scroll of the wheel. What waits is only the idle reading
+ * visitor's page-load tracing, which is worth less than their paint.
  */
-const BOOT_AFTER_LOAD_MS = 3000
+const BOOT_AFTER_LOAD_MS = 12000
 
 /**
  * The latest the timer may boot, counted from load, however long the page keeps
  * reporting larger paints (a hero carousel, a late font swap). Past it the
- * visitor's errors matter more than the paint: fifteen seconds is longer than
- * any largest paint the gate accepts (4.5 s) by more than three times.
+ * page's tracing matters more than one more paint: thirty seconds is more than
+ * six times any largest paint the gate accepts (4.5 s).
  */
-const BOOT_LATEST_AFTER_LOAD_MS = 15000
+const BOOT_LATEST_AFTER_LOAD_MS = 30000
 
 /**
  * What counts as the visitor interacting with the page.
@@ -161,6 +164,13 @@ const onRejection = (event: PromiseRejectionEvent) => {
 }
 const onInteraction = () => {
   boot('interaction')
+}
+// An error boundary's reportClientError queues its report and raises this
+// event (src/lib/observability/client-error-report.ts, CLIENT_ERROR_QUEUED): a
+// caught error boots the SDK at once, exactly as a thrown one does.
+const CLIENT_ERROR_QUEUED = 'el:client-error-queued'
+const onReported = () => {
+  boot('error')
 }
 
 /**
@@ -249,6 +259,7 @@ function boot(reason: SentryBootReason) {
       // drain is handled by Sentry's own handlers rather than by both.
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onRejection)
+      window.removeEventListener(CLIENT_ERROR_QUEUED, onReported)
 
       bootSentryClient(dsn as string, pending, reason)
       pending.length = 0
@@ -282,6 +293,7 @@ if (typeof window !== 'undefined' && dsn && shouldInitSentry()) {
   // whether the SDK has loaded.
   window.addEventListener('error', onError)
   window.addEventListener('unhandledrejection', onRejection)
+  window.addEventListener(CLIENT_ERROR_QUEUED, onReported)
 
   // Mark the exact moment capture becomes live. This is the boundary the whole
   // safety argument rests on, and without a mark it can only be inferred from

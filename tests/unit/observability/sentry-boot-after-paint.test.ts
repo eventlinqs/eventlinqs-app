@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { CLIENT_ERROR_QUEUED } from '@/lib/observability/client-error-report'
 
 /**
  * THE ERROR-REPORTING SDK NEVER LANDS IN THE LARGEST PAINT'S WINDOW.
@@ -13,10 +16,15 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
  * part only after the page is idle or on first interaction, so a slow runner can
  * never red it again.
  *
- * What these tests hold: the timer waits until 3 s after the LATEST largest
- * paint as well as 3 s after load, with a ceiling so a visitor who never touches
- * the page is still reported; an error and a first interaction still boot at
- * once.
+ * The rerun then failed the same way on
+ * /events/cat-indie-sounds-live-at-the-enmore-sydney, on a faster runner: the
+ * gate collects with a 5 s pause after load, so load plus 3 s is always inside
+ * its window.
+ *
+ * What these tests hold: the timer waits 12 s after load AND after the LATEST
+ * largest paint, with a 30 s ceiling so a page that keeps painting is still
+ * traced; a thrown error, an error boundary's report and a first interaction
+ * still boot at once, so no report ever waits on the timer.
  */
 
 type Handler = (event?: unknown) => void
@@ -92,45 +100,64 @@ afterEach(() => {
 })
 
 describe('the error-reporting SDK schedule', () => {
-  test('waits 3 s after the latest largest paint, not only 3 s after load', async () => {
+  test('waits 12 s after the latest largest paint, not only after load', async () => {
     await loadClient()
     await advance(1000)
     fire('load')
-    await advance(1100)
-    paint(2100) // the hero paints late, 1.1 s after load
-    await advance(1900) // load + 3 s: the old schedule's moment
-    expect(bootedAt, 'the SDK was fetched while the late paint was 1.9 s old').toBeNull()
-    await advance(1100) // the paint + 3 s
-    expect(bootedAt).toBe(5100)
+    await advance(3000) // load + 3 s: the schedule that reddened #193's gate
+    expect(bootedAt, 'the SDK was fetched inside the gate window').toBeNull()
+    await advance(3000)
+    paint(7000) // a late candidate, 6 s after load
+    await advance(6000) // load + 12 s: the late paint is only 6 s old
+    expect(bootedAt, 'the SDK was fetched 6 s after a paint').toBeNull()
+    await advance(6000) // the paint + 12 s
+    expect(bootedAt).toBe(19000)
   })
 
-  test('a paint before load changes nothing: 3 s after load, as before', async () => {
+  test('a paint before load changes nothing: 12 s after load', async () => {
     await loadClient()
     await advance(800)
     paint(800)
     await advance(200)
     fire('load')
-    await advance(3000)
-    expect(bootedAt).toBe(4000)
+    await advance(11999)
+    expect(bootedAt).toBeNull()
+    await advance(1)
+    expect(bootedAt).toBe(13000)
   })
 
-  test('a page that keeps painting is still reported, at the ceiling', async () => {
+  test('a page that keeps painting is still traced, at the 30 s ceiling', async () => {
     await loadClient()
     fire('load')
-    for (let t = 1000; t <= 30000; t += 1000) {
+    for (let t = 1000; t <= 40000; t += 1000) {
       await advance(1000)
       paint(t)
     }
     expect(bootedAt, 'never booted while the page kept painting').not.toBeNull()
-    expect(bootedAt as number).toBeLessThanOrEqual(15000)
+    expect(bootedAt as number).toBeLessThanOrEqual(30000)
   })
 
-  test('an error still boots at once, before any paint', async () => {
+  test('a thrown error still boots at once, before any paint', async () => {
     await loadClient()
     await advance(50)
     fire('error', { error: new Error('boom') })
     await advance(0)
     expect(bootedAt).toBe(50)
+  })
+
+  test("an error boundary's report boots at once, never on the timer", async () => {
+    await loadClient()
+    fire('load')
+    await advance(700)
+    fire(CLIENT_ERROR_QUEUED)
+    await advance(0)
+    expect(bootedAt).toBe(700)
+  })
+
+  test('the report event is the one instrumentation-client.ts listens for', () => {
+    const client = readFileSync(join(__dirname, '../../../instrumentation-client.ts'), 'utf8')
+    expect(client).toContain(`const CLIENT_ERROR_QUEUED = '${CLIENT_ERROR_QUEUED}'`)
+    expect(client).toMatch(/window\.addEventListener\(CLIENT_ERROR_QUEUED, onReported\)/)
   })
 
   test('a first interaction still boots at once', async () => {
