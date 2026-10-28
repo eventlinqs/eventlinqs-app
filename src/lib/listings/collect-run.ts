@@ -148,6 +148,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
     let queued = 0
     let ruled = 0
     let succeeded = false
+    const unpublished: string[] = []
     try {
       if (!source.permits.facts) {
         /* The database never lets such a source be 'read'; the run holds the same rule on its own. */
@@ -207,7 +208,15 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
               const isNew = await store.land(row)
               /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a
                  publish an earlier run could not finish is finished by the next, and nothing is published twice. */
-              if (byRule && plan.kind === 'new') await store.publishPartnerNight(row)
+              if (byRule && plan.kind === 'new') {
+                /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
+                   run asks again. */
+                try {
+                  await store.publishPartnerNight(row)
+                } catch (err) {
+                  unpublished.push(err instanceof Error ? err.message : String(err))
+                }
+              }
               if (!isNew) continue
               landed += 1
               if (byRule) ruled += 1
@@ -217,6 +226,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
               ruled === 0
                 ? `read: ${found} event(s) found, ${landed} new for review`
                 : `read: ${found} event(s) found, ${landed} new: ${ruled} accepted by the partner rule, ${queued} for review`
+            if (unpublished.length > 0) outcome += `; ${unpublished.length} accepted night(s) not yet published: ${unpublished[0]}`
           }
         }
       }

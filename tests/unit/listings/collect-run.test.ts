@@ -172,6 +172,26 @@ describe('the run log and the partner rule', () => {
     expect(published).toHaveLength(2)
   })
 
+  it('one night that cannot be published never stops the rest of the feed, and the run says so', async () => {
+    const two = {
+      status: 200,
+      body:
+        gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio') +
+        gig('Bp Proof Quartet Second Set', 'https://events.humanitix.com/bp-quartet').replace('2026-11-14T20:00:00+11:00', '2026-11-15T20:00:00+11:00'),
+    }
+    const m = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
+    let calls = 0
+    m.store.publishPartnerNight = async () => {
+      calls += 1
+      if (calls === 1) throw new Error('the venue has no city')
+    }
+    const r = await runCollection(m.store, sites({ ...open, [club]: two }).fetcher, NOW)
+    expect(m.landed).toHaveLength(2)
+    expect(calls).toBe(2)
+    expect(r.sources[0].outcome).toBe('read: 2 event(s) found, 2 new: 2 accepted by the partner rule, 0 for review; 1 accepted night(s) not yet published: the venue has no city')
+    expect(m.runs[0]).toMatchObject({ succeeded: true, landed: 2 })
+  })
+
   it("queues a partner's night held at another venue, and a partner with no venue named", async () => {
     const elsewhere = memoryStore([source('club', club, { partner: true, partnerVenue: { name: 'Costa Hall', address: '1 Gheringhap St, Geelong' } })])
     await runCollection(elsewhere.store, sites({ ...open, [club]: trio }).fetcher, NOW)

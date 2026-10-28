@@ -15,10 +15,13 @@ import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 import type { Fetcher } from '@/lib/listings/collect-run'
 import type * as RunModule from '@/lib/listings/collect-run'
 import type * as StoreModule from '@/lib/listings/collect-store'
+import type * as FeedModule from '@/lib/listings/partner-feed'
 
 /* src is CommonJS to tsx; read each module's exports whichever way the loader hands them over. */
 const runMod = (await import('@/lib/listings/collect-run')) as typeof RunModule & { default?: typeof RunModule }
 const storeMod = (await import('@/lib/listings/collect-store')) as typeof StoreModule & { default?: typeof StoreModule }
+const feedMod = (await import('@/lib/listings/partner-feed')) as typeof FeedModule & { default?: typeof FeedModule }
+const partnerSourceRow = feedMod.partnerSourceRow ?? feedMod.default!.partnerSourceRow
 const runCollection = runMod.runCollection ?? runMod.default!.runCollection
 const collectionStore = storeMod.collectionStore ?? storeMod.default!.collectionStore
 
@@ -52,7 +55,7 @@ async function main() {
     .order('created_at')
     .limit(1)
     .single()
-  const { data: org } = await db.from('organisations').select('id').neq('slug', 'eventlinqs-listings').order('created_at').limit(1).single()
+  const { data: org } = await db.from('organisations').select('id, name').neq('slug', 'eventlinqs-listings').order('created_at').limit(1).single()
   const { data: cat } = await db.from('event_categories').select('id').order('created_at').limit(1).single()
   if (!venue || !org || !cat) throw new Error('TEST holds no venue with a city, partner organisation or category to borrow')
 
@@ -104,21 +107,46 @@ async function main() {
     verified_on: '2026-10-28',
     ...extra,
   })
-  const { data: srcs, error: serr } = await db
+  function partnerRow() {
+    const built = partnerSourceRow(
+      {
+        organisationId: org!.id as string,
+        organisationName: `bp-drive ${org!.name as string}`,
+        venueId: venue!.id as string,
+        venueName: `bp-drive ${venue!.name as string}`,
+        venueCitySlug: (venue!.city_slug as string | null) ?? null,
+        categoryId: cat!.id as string,
+        feedUrl: PARTNER,
+        feedKind: 'page',
+        yesUrl: 'https://bp-drive-partner.example.com/yes',
+        yesWords: 'bp-drive: yes, read our events page for EventLinqs listings',
+        yesOn: new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(new Date()),
+      },
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(new Date()),
+    )
+    if ('refused' in built) throw new Error(`the partner row was refused by its builder: ${built.refused}`)
+    return built.row
+  }
+  /* The partner row alone, planted exactly as the form on /admin/collected writes it (one row, one insert), so the
+     database is seen to take that row; the other two together. */
+  const { data: p, error: perr } = await db.from('listing_sources').insert(partnerRow()).select('id, page_url')
+  if (perr) throw new Error(`the partner's source could not be planted: ${perr.message}`)
+  const { data: others, error: serr } = await db
     .from('listing_sources')
     .insert([
-      readable('bp-drive partner feed', PARTNER, { source_type: 'venue_partnership', organisation_id: org.id, venue_id: venue.id, category_id: cat.id }),
       readable('bp-drive stranger feed', STRANGER, { source_type: 'subscription_feed' }),
       readable('bp-drive broken feed', BROKEN, { source_type: 'subscription_feed' }),
     ])
     .select('id, page_url')
+  const srcs = [...(p ?? []), ...(others ?? [])]
+  made.sources = srcs.map((s) => s.id as string)
   if (serr) throw new Error(`the drive's sources could not be planted: ${serr.message}`)
-  made.sources = (srcs ?? []).map((s) => s.id as string)
-  const idOf = (page: string) => (srcs ?? []).find((s) => s.page_url === page)!.id as string
+  const idOf = (page: string) => srcs.find((s) => s.page_url === page)!.id as string
 
   const real = collectionStore(db)
   const store = { ...real, sources: async () => (await real.sources()).filter((s) => made.sources.includes(s.id)) }
   const result = await runCollection(store, fetcher, new Date())
+  for (const s of result.sources) console.log(`  outcome ${s.name}: ${s.outcome}`)
   check(result.read === 2 && result.skipped === 1, `read 2 sources, 1 not read (got read ${result.read}, skipped ${result.skipped})`)
   check(result.acceptedByRule === 1 && result.queued === 2, `1 accepted by the partner rule, 2 for review (got ${result.acceptedByRule} and ${result.queued})`)
 

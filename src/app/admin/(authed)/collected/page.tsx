@@ -17,7 +17,8 @@ import {
 } from '@/lib/listings/collect'
 import { HORIZONS, HORIZON_LABELS, horizonOf } from '@/lib/listings/horizon'
 import { REASON_LABELS, type CandidateReason } from '@/lib/listings/judge'
-import { acceptCandidateAction, refuseCandidateAction } from './actions'
+import { acceptCandidateAction, addPartnerFeedAction, refuseCandidateAction } from './actions'
+import { LISTINGS_ORG_SLUG } from '@/lib/listings/collect-store'
 import { REFUSAL_REASONS } from './reasons'
 import {
   ADMIN_CELL,
@@ -40,7 +41,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
-type SearchParams = Promise<{ status?: string }>
+type SearchParams = Promise<{ status?: string; why?: string }>
 type Link = { url: string; availability: string; priceFromCents: number | null }
 
 const WHEN = new Intl.DateTimeFormat('en-AU', {
@@ -79,6 +80,9 @@ const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   gone: { tone: 'warn', text: 'That one was already reviewed. The list below is current.' },
   invalid: { tone: 'warn', text: 'That review was not valid. Refresh and try again.' },
   error: { tone: 'warn', text: 'The links could not be written. Nothing changed; try again.' },
+  partner_added: { tone: 'ok', text: "The partner's feed is in the register. The next daily run reads it; its nights at their venue publish by the partner rule." },
+  partner_invalid: { tone: 'warn', text: 'That partner feed was not complete. Nothing was written.' },
+  partner_refused: { tone: 'warn', text: 'The register refused that feed (it may be there already). Nothing was written.' },
 }
 
 /**
@@ -92,14 +96,16 @@ const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
 /** Enough of the run log for every source's last five runs while the register holds up to 100 daily sources. */
 const RUNS_READ = 500
 const RUNS_SHOWN = 5
+/* The pickers for a partner's feed; explicit limits, as a select stops at 1,000 rows on its own. */
+const PICK_LIMIT = 500
 export default async function AdminCollectedPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.events.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.collected.view', session })
 
-  const { status } = await searchParams
+  const { status, why } = await searchParams
   const db = createAdminClient()
-  const [waiting, sources, runs] = await Promise.all([
+  const [waiting, sources, runs, partnerOrgs, partnerVenues, categories] = await Promise.all([
     readOrThrow('admin-collected', () =>
       db
         .from('listing_candidates')
@@ -114,6 +120,13 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
     readOrThrow('admin-collected-runs', () =>
       db.from('listing_source_runs').select('source_id, ran_at, succeeded, outcome').order('ran_at', { ascending: false }).limit(RUNS_READ),
     ),
+    readOrThrow('admin-collected-partner-orgs', () =>
+      db.from('organisations').select('id, name').neq('slug', LISTINGS_ORG_SLUG).order('name').limit(PICK_LIMIT),
+    ),
+    readOrThrow('admin-collected-partner-venues', () =>
+      db.from('venues').select('id, name, city').order('name').limit(PICK_LIMIT),
+    ),
+    readOrThrow('admin-collected-categories', () => db.from('event_categories').select('id, name').order('name').limit(PICK_LIMIT)),
   ])
   const notice = status ? NOTICES[status] : undefined
   const now = new Date()
@@ -147,6 +160,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
           }
         >
           {notice.text}
+          {why && notice.tone === 'warn' && <span className="ml-1">{why}</span>}
         </div>
       )}
 
@@ -286,6 +300,77 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
           </table>
         </div>
       )}
+
+      <h2 className="mb-3 mt-10 font-display text-lg font-semibold">Add a partner&apos;s own feed</h2>
+      <p className="mb-3 max-w-2xl text-sm text-white/60">
+        When an organiser says yes to us reading their calendar, put it here with their words. It is read every day; a night
+        it gives at their venue, with nothing doubtful, publishes on its own, and anything else comes to the queue above.
+        Their photos come through the media vault, never from the feed.
+      </p>
+      <form action={addPartnerFeedAction} className="mb-10 grid max-w-3xl grid-cols-1 gap-3 rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm sm:grid-cols-2" data-partner-feed-form>
+        <label className="flex flex-col gap-1 text-white/70">
+          Organiser
+          <select name="organisationId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+            {(partnerOrgs ?? []).map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-white/70">
+          Their venue
+          <select name="venueId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+            {(partnerVenues ?? []).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+                {v.city ? `, ${v.city}` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-white/70">
+          Category of their nights
+          <select name="categoryId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+            {(categories ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-white/70">
+          What it is
+          <select name="feedKind" required defaultValue="calendar" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+            <option value="calendar">A calendar feed (iCal)</option>
+            <option value="page">Their events page</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+          The feed or page address
+          <input name="feedUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+        </label>
+        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+          Where they said yes, or publish it to subscribe
+          <input name="yesUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+        </label>
+        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+          Their words, as they wrote them
+          <textarea name="yesWords" required rows={3} maxLength={2000} className="rounded-md border border-white/15 bg-[#131A2A] px-2 py-2 text-white" />
+        </label>
+        <label className="flex flex-col gap-1 text-white/70">
+          The day they said it
+          <input name="yesOn" type="date" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+        </label>
+        <div className="flex items-end">
+          <button
+            type="submit"
+            className="min-h-[44px] w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:border-emerald-300/60"
+          >
+            Add their feed
+          </button>
+        </div>
+      </form>
 
       <h2 className="mb-3 font-display text-lg font-semibold">The source register ({(sources ?? []).length})</h2>
       <p className="mb-3 max-w-2xl text-sm text-white/60">
