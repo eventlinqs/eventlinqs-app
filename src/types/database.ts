@@ -5514,34 +5514,169 @@ export type Database = {
           },
         ]
       }
+      outreach_delivery_events: {
+        Row: {
+          detail: string | null
+          id: string
+          kind: string
+          logged_at: string
+          occurred_at: string
+          source: string
+          source_message_id: string | null
+          touch_id: string
+        }
+        Insert: {
+          detail?: string | null
+          id?: string
+          kind: string
+          logged_at?: string
+          occurred_at: string
+          source: string
+          source_message_id?: string | null
+          touch_id: string
+        }
+        Update: {
+          detail?: string | null
+          id?: string
+          kind?: string
+          logged_at?: string
+          occurred_at?: string
+          source?: string
+          source_message_id?: string | null
+          touch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_delivery_events_touch_id_fkey"
+            columns: ["touch_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_touches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_plays: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          cap_max: number
+          cap_start: number
+          cap_step: number
+          cohort_rule: Json
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          paused_at: string | null
+          paused_reason: string | null
+          state: string
+          step1_template_id: string
+          step2_template_id: string | null
+          step3_template_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cap_max?: number
+          cap_start?: number
+          cap_step?: number
+          cohort_rule: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          paused_at?: string | null
+          paused_reason?: string | null
+          state?: string
+          step1_template_id: string
+          step2_template_id?: string | null
+          step3_template_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cap_max?: number
+          cap_start?: number
+          cap_step?: number
+          cohort_rule?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          paused_at?: string | null
+          paused_reason?: string | null
+          state?: string
+          step1_template_id?: string
+          step2_template_id?: string | null
+          step3_template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_plays_step1_template_id_fkey"
+            columns: ["step1_template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_plays_step2_template_id_fkey"
+            columns: ["step2_template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_plays_step3_template_id_fkey"
+            columns: ["step3_template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outreach_replies: {
         Row: {
+          action_taken: string | null
+          classified_by: string
+          confidence: number | null
           contact_id: string
           id: string
           logged_at: string
           logged_by: string
+          needs_lawal: boolean
           outcome: string
           received_at: string
+          source_message_id: string | null
           touch_id: string | null
           wording: string
         }
         Insert: {
+          action_taken?: string | null
+          classified_by?: string
+          confidence?: number | null
           contact_id: string
           id?: string
           logged_at?: string
           logged_by: string
+          needs_lawal?: boolean
           outcome: string
           received_at: string
+          source_message_id?: string | null
           touch_id?: string | null
           wording: string
         }
         Update: {
+          action_taken?: string | null
+          classified_by?: string
+          confidence?: number | null
           contact_id?: string
           id?: string
           logged_at?: string
           logged_by?: string
+          needs_lawal?: boolean
           outcome?: string
           received_at?: string
+          source_message_id?: string | null
           touch_id?: string | null
           wording?: string
         }
@@ -5562,6 +5697,84 @@ export type Database = {
           },
         ]
       }
+      outreach_sender: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          dns_checked_at: string | null
+          dns_ok: boolean
+          dns_result: Json | null
+          from_address: string
+          id: boolean
+          mode: string
+          test_domain: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          dns_checked_at?: string | null
+          dns_ok?: boolean
+          dns_result?: Json | null
+          from_address?: string
+          id?: boolean
+          mode?: string
+          test_domain?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          dns_checked_at?: string | null
+          dns_ok?: boolean
+          dns_result?: Json | null
+          from_address?: string
+          id?: boolean
+          mode?: string
+          test_domain?: string
+        }
+        Relationships: []
+      }
+      outreach_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          created_by: string
+          id: string
+          key: string
+          purpose: string
+          source: string
+          step: number | null
+          subject: string | null
+          version: number
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          created_by: string
+          id?: string
+          key: string
+          purpose: string
+          source: string
+          step?: number | null
+          subject?: string | null
+          version: number
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          key?: string
+          purpose?: string
+          source?: string
+          step?: number | null
+          subject?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       outreach_touches: {
         Row: {
           basis_at_send: Json | null
@@ -5569,12 +5782,21 @@ export type Database = {
           contact_id: string
           drafted_at: string
           drafted_by: string
+          failed_reason: string | null
+          held_because: string[]
           id: string
+          in_reply_to: string | null
+          internet_message_id: string | null
+          play_id: string | null
+          provider: string | null
+          purpose: string
+          scheduled_for: string | null
           sent_at: string | null
           sent_by: string | null
           state: string
-          step: number
+          step: number | null
           subject: string | null
+          template_id: string | null
           tracked_link: string | null
           void_reason: string | null
         }
@@ -5584,12 +5806,21 @@ export type Database = {
           contact_id: string
           drafted_at?: string
           drafted_by: string
+          failed_reason?: string | null
+          held_because?: string[]
           id?: string
+          in_reply_to?: string | null
+          internet_message_id?: string | null
+          play_id?: string | null
+          provider?: string | null
+          purpose?: string
+          scheduled_for?: string | null
           sent_at?: string | null
           sent_by?: string | null
           state?: string
-          step: number
+          step?: number | null
           subject?: string | null
+          template_id?: string | null
           tracked_link?: string | null
           void_reason?: string | null
         }
@@ -5599,12 +5830,21 @@ export type Database = {
           contact_id?: string
           drafted_at?: string
           drafted_by?: string
+          failed_reason?: string | null
+          held_because?: string[]
           id?: string
+          in_reply_to?: string | null
+          internet_message_id?: string | null
+          play_id?: string | null
+          provider?: string | null
+          purpose?: string
+          scheduled_for?: string | null
           sent_at?: string | null
           sent_by?: string | null
           state?: string
-          step?: number
+          step?: number | null
           subject?: string | null
+          template_id?: string | null
           tracked_link?: string | null
           void_reason?: string | null
         }
@@ -5614,6 +5854,20 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "organiser_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_touches_play_id_fkey"
+            columns: ["play_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_plays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_touches_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -10014,6 +10268,21 @@ export type Database = {
         Returns: number
       }
       outreach_contact_refusal: { Args: { p_contact: string }; Returns: string }
+      outreach_contact_refusal_for: {
+        Args: { p_contact: string; p_purpose: string; p_template_key: string }
+        Returns: string
+      }
+      outreach_play_cap_today: { Args: { p_play: string }; Returns: number }
+      outreach_play_health: {
+        Args: { p_play: string }
+        Returns: {
+          complaints: number
+          hard_bounces: number
+          healthy: boolean
+          over: string
+          sends: number
+        }[]
+      }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }

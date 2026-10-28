@@ -227,9 +227,9 @@ export async function draftTouch(
   }).select('id').single())
 }
 
-/** Lawal sent it. The database checks the cadence and keeps the basis relied on beside the message. */
+/** Lawal sent it by hand. The database checks the cadence and keeps the basis relied on beside the message. */
 export async function markSent(db: Admin, input: { touchId: string; sentAt: string; sentBy: string }): Promise<Done<{ id: string }>> {
-  return result(await db.from('outreach_touches').update({ state: 'sent', sent_at: input.sentAt, sent_by: input.sentBy }).eq('id', input.touchId).eq('state', 'held').select('id').single())
+  return result(await db.from('outreach_touches').update({ state: 'sent', sent_at: input.sentAt, sent_by: input.sentBy, provider: 'by_hand' }).eq('id', input.touchId).eq('state', 'held').select('id').single())
 }
 
 export async function voidTouch(db: Admin, input: { touchId: string; reason: string }): Promise<Done<{ id: string }>> {
