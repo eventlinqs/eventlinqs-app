@@ -196,6 +196,8 @@ const PUBLIC_BY_DESIGN = {
   'api/location/set/POST': 'writes a non-sensitive location preference cookie',
   'partners/actions.ts::sendPartnerEnquiry':
     'Train C row 14, the partner enquiry form on /partners. Public by design: a venue or a council asking to partner has no account. It only inserts one enquiry row for the admin queue, checked field by field (enquiryProblem and the table constraints), reads nothing back, and is held to the partner-enquiry rate limit by address before anything is written.',
+  'submit-event/actions.ts::submitEvent':
+    'Release checklist H1, the List your event form on /submit-event. Public by design: the organiser of an event sold on another site has no EventLinqs account. It reads nothing about anybody. It writes one photo, re-encoded by the image pipeline, to the private listing-submissions bucket under a random name, and one row to listing_submissions (row security on, service role only), checked field by field (judgeSubmission and the table constraints), and is held to the listing-submission rate limit by address before anything is read or written. Nothing is published from it: a person reviews every row in /admin/submissions.',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
