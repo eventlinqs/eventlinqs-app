@@ -445,6 +445,7 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
           ['permittedUses', 'What they allowed it to be used for, in plain words', 'text', false],
           ['focalX', 'Where the subject is across, 0 to 100 (optional)', 'number', false],
           ['focalY', 'Where the subject is down, 0 to 100 (optional)', 'number', false],
+          ['leadRank', 'Which leads for its night, 1 first (optional)', 'number', false],
         ] as const).map(([name, label, type, required]) => (
           <label key={name} className="text-sm text-white/70">
             {label}

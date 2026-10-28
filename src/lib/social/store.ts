@@ -976,6 +976,8 @@ export type AssetInput = {
   readonly focal: { readonly x: number; readonly y: number } | null
   readonly sourceWidth: number | null
   readonly sourceHeight: number | null
+  /** Which of the night's photographs leads, 1 first (the directive: the strongest photograph is the hero). */
+  readonly leadRank: number | null
 }
 
 export type AssetRow = {
@@ -1038,6 +1040,7 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     focal_y: input.focal?.y ?? null,
     source_width: input.sourceWidth,
     source_height: input.sourceHeight,
+    lead_rank: input.leadRank,
     created_by: input.by,
   })
   if (error) {

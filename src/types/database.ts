@@ -7325,6 +7325,7 @@ export type Database = {
           focal_x: number | null
           focal_y: number | null
           id: string
+          lead_rank: number | null
           original_file: string | null
           permission_evidence: string | null
           permission_id: string | null
@@ -7358,6 +7359,7 @@ export type Database = {
           focal_x?: number | null
           focal_y?: number | null
           id?: string
+          lead_rank?: number | null
           original_file?: string | null
           permission_evidence?: string | null
           permission_id?: string | null
@@ -7391,6 +7393,7 @@ export type Database = {
           focal_x?: number | null
           focal_y?: number | null
           id?: string
+          lead_rank?: number | null
           original_file?: string | null
           permission_evidence?: string | null
           permission_id?: string | null
