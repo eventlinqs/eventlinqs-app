@@ -109,15 +109,18 @@ type GraphMessage = {
   internetMessageHeaders?: { name: string; value: string }[]
 }
 
-/** Inbox messages received at or after `sinceIso`, oldest first, at most `maxPages` pages of 100. */
+/** Messages per page asked of Graph (it allows 1 to 1000). */
+export const INBOX_PAGE_SIZE = 100
+
+/** Inbox messages received at or after `sinceIso`, oldest first, at most `maxPages` pages of INBOX_PAGE_SIZE. */
 export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchImpl: Fetch = fetch, maxPages = 5): Promise<InboundMessage[]> {
   const token = await graphToken(cfg, fetchImpl)
-  const params = new URLSearchParams({
-    $filter: `receivedDateTime ge ${sinceIso}`,
-    $orderby: 'receivedDateTime asc',
-    $top: '100',
-    $select: 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders',
-  })
+  const params = new URLSearchParams([
+    ['$filter', `receivedDateTime ge ${sinceIso}`],
+    ['$orderby', 'receivedDateTime asc'],
+    ['$top', String(INBOX_PAGE_SIZE)],
+    ['$select', 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders'],
+  ])
   let url: string | null = `${GRAPH}/users/${encodeURIComponent(cfg.mailbox)}/mailFolders/inbox/messages?${params.toString()}`
   const out: InboundMessage[] = []
   for (let page = 0; url && page < maxPages; page++) {

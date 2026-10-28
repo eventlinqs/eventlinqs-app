@@ -82,7 +82,9 @@ async function get(url) {
     const type = r.headers.get('content-type') ?? ''
     if (!r.ok || !type.includes('html')) return null
     return { url: r.url, html: await r.text() }
-  } catch {
+  } catch (error) {
+    // An unreadable page is an answer (no basis from it), but it is said, with the reason, never swallowed.
+    console.warn(`  ${url} could not be read: ${error?.cause?.code ?? error?.name ?? error}`)
     return null
   } finally {
     clearTimeout(timer)
