@@ -7612,6 +7612,47 @@ export type Database = {
           },
         ]
       }
+      social_piece_figures: {
+        Row: {
+          entered_at: string
+          entered_by: string
+          id: string
+          metric: string
+          piece_id: string
+          platform: string
+          read_at: string
+          value: number
+        }
+        Insert: {
+          entered_at?: string
+          entered_by: string
+          id?: string
+          metric: string
+          piece_id: string
+          platform: string
+          read_at: string
+          value: number
+        }
+        Update: {
+          entered_at?: string
+          entered_by?: string
+          id?: string
+          metric?: string
+          piece_id?: string
+          platform?: string
+          read_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_figures_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_piece_postings: {
         Row: {
           approval_id: string
@@ -7893,6 +7934,47 @@ export type Database = {
             columns: ["share_link_id"]
             isOneToOne: true
             referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_report_decisions: {
+        Row: {
+          campaign_id: string
+          decided_at: string
+          decided_by: string
+          decision: string
+          evidence: Json
+          id: string
+          recommendation: string
+          rule: string
+        }
+        Insert: {
+          campaign_id: string
+          decided_at?: string
+          decided_by: string
+          decision: string
+          evidence: Json
+          id?: string
+          recommendation: string
+          rule: string
+        }
+        Update: {
+          campaign_id?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          evidence?: Json
+          id?: string
+          recommendation?: string
+          rule?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_report_decisions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
             referencedColumns: ["id"]
           },
         ]
