@@ -72,19 +72,21 @@ async function contextOf(extra: Record<string, unknown>) {
 }
 
 describe('the price line every broadcast shares', () => {
-  it('names the site a night is sold on, or the page\'s own words, never "Free entry"', () => {
-    expect(broadcastPriceLabel([], 'https://events.humanitix.com/late-show')).toBe('Tickets on Humanitix')
-    expect(broadcastPriceLabel(null, 'https://www.barwonclub.com.au/gigs/late-show')).toBe('Tickets are sold elsewhere')
+  it('names the site a night is sold on, never "Free entry"', () => {
+    expect(broadcastPriceLabel({ ticket_tiers: [], external_ticket_url: 'https://events.humanitix.com/late-show' })).toBe('Tickets on Humanitix')
+    expect(broadcastPriceLabel({ external_ticket_url: 'https://www.barwonclub.com.au/gigs/late-show' })).toBe('Tickets on barwonclub.com.au')
   })
 
-  it('prices our own nights as before', () => {
-    expect(broadcastPriceLabel([], null)).toBe('Free entry')
-    expect(broadcastPriceLabel([{ price: 0, currency: 'AUD' }], '  ')).toBe('Free entry')
+  it('says free only when free is checked, and no price when nobody checked it', () => {
+    expect(broadcastPriceLabel({ ticket_tiers: [] })).toBe('')
+    expect(broadcastPriceLabel({ ticket_tiers: [], is_free: true })).toBe('Free entry')
+    expect(broadcastPriceLabel({ entry_mode: 'walk_in' })).toBe('Free entry')
+    expect(broadcastPriceLabel({ ticket_tiers: [{ price: 0, currency: 'AUD' }], external_ticket_url: '  ' })).toBe('Free, registration required')
   })
 
   it('the digest and the kit say the same thing about one night', () => {
     for (const url of ['https://events.humanitix.com/late-show', 'https://www.barwonclub.com.au/gigs/late-show', null]) {
-      expect(digestPriceLabel([], url)).toBe(broadcastPriceLabel([], url))
+      expect(digestPriceLabel([], url)).toBe(broadcastPriceLabel({ ticket_tiers: [], external_ticket_url: url }))
     }
   })
 })
@@ -102,7 +104,7 @@ describe('the Launch Kit for a night sold on another site', () => {
     for (const format of ['story', 'square', 'feed'] as const) {
       const text = textOf(await buildCardElement(format, { ...toCardInput(context, 'instagram'), qr: QR }))
       expect(text).toContain('Listed on EVENTLINQS')
-      expect(text).toContain('Scan for details')
+      expect(text).toContain('Scan for tickets')
       expect(text).not.toContain('Scan to buy')
       expect(text).not.toContain('Ticketing by')
       expect(text).not.toContain('Free entry')

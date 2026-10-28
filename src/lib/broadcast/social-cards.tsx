@@ -118,6 +118,8 @@ export type SocialCardInput = {
    * ticket nor our ticketing is on offer.
    */
   listing?: boolean
+  /** The QR tile's words from the event's call to action (src/lib/events/cta.ts); absent, the listing rule above. */
+  scanLabel?: string
   /**
    * The cover is EventLinqs' licensed library photograph, not the venue
    * (Lawal's ruling of 27 October 2026, 08:33). The card then says so at its
@@ -713,7 +715,7 @@ function TypographicCard({
             <TicketBar input={input} px={px} size={size} width={ctaTextWidth} />
             <Wordmark input={input} px={px} size={px(story ? 24 : 20)} />
           </div>
-          {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(story ? 140 : 126)} /> : null}
+          {input.qr ? <QrTile label={input.scanLabel ?? (input.listing ? 'Scan for details' : 'Scan to buy')} qr={input.qr} px={px} size={px(story ? 140 : 126)} /> : null}
         </div>
       </div>
     </div>
@@ -782,7 +784,7 @@ function StoryCard({ input }: { input: SocialCardInput }) {
               <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
               <Wordmark input={input} px={px} size={px(24)} />
             </div>
-            {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(140)} /> : null}
+            {input.qr ? <QrTile label={input.scanLabel ?? (input.listing ? 'Scan for details' : 'Scan to buy')} qr={input.qr} px={px} size={px(140)} /> : null}
           </div>
         </div>
       </div>
@@ -838,7 +840,7 @@ function StoryCard({ input }: { input: SocialCardInput }) {
             <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
             <Wordmark input={input} px={px} size={px(24)} />
           </div>
-          {input.qr ? <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(140)} /> : null}
+          {input.qr ? <QrTile label={input.scanLabel ?? (input.listing ? 'Scan for details' : 'Scan to buy')} qr={input.qr} px={px} size={px(140)} /> : null}
         </div>
       </div>
     </div>
@@ -921,7 +923,7 @@ function BandedCard({ input, format }: { input: SocialCardInput; format: SocialC
         </div>
         {input.qr ? (
           <div style={{ position: 'absolute', right: pad, bottom: pad, display: 'flex' }}>
-            <QrTile label={input.listing ? 'Scan for details' : 'Scan to buy'} qr={input.qr} px={px} size={px(126)} />
+            <QrTile label={input.scanLabel ?? (input.listing ? 'Scan for details' : 'Scan to buy')} qr={input.qr} px={px} size={px(126)} />
           </div>
         ) : null}
       </div>

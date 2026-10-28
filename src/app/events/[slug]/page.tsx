@@ -104,6 +104,7 @@ import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 import { isWalkIn } from '@/lib/events/entry-mode'
+import { ctaFor } from '@/lib/events/cta'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -1039,6 +1040,13 @@ export default async function EventDetailPage({ params }: Props) {
     saleBlocked,
     isSoldOut,
     priceLabel,
+    /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
+    cta: ctaFor({
+      entryMode: event.entry_mode ?? null,
+      tiers: priceTiersForDisplay,
+      isFree: event.is_free ?? null,
+      externalTicketUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
+    }),
   })
   const ticketCtaLabel = heroSale.cta
   const heroPriceLabel = heroSale.price
@@ -1634,7 +1642,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <ExternalTicketsPanel
                     destinationUrl={ticketPanel?.button?.href ?? outboundHref(event.slug, event.external_ticket_url)}
                     host={ticketPanel?.button ? ticketPanel.button.host : externalTicketHost}
-                    // WI3: "Get tickets on Humanitix", the site named where it can be.
+                    // The checklist's E4: "View tickets at Humanitix", the site named where it can be.
                     label={ticketPanel?.button?.label ?? ticketButtonLabel(event.external_ticket_url)}
                     price={ticketPanel?.button?.price ?? null}
                     also={ticketPanel?.also ?? []}

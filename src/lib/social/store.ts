@@ -8,7 +8,7 @@ import { isLibraryPhoto, listingPhotoFor } from '@/lib/listings/listing-photo'
 import { isComposedCover } from '@/lib/images/event-media'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
-import { factsOf, kitCaption, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
+import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { wordsRefusal } from './words'
 
@@ -23,7 +23,6 @@ import { wordsRefusal } from './words'
 const ORIGIN = `https://${CANONICAL_HOST}`
 const DAY_MS = 86_400_000
 /** The kit's caption for a curated listing that names no price and no place it sells. */
-const PRICE_UNKNOWN = 'Details at the link'
 
 type Db = SupabaseClient
 
@@ -82,7 +81,11 @@ export async function contextFor(db: Db, eventId: string, now: Date): Promise<Ar
   const { data: tiers } = await db.from('ticket_tiers').select('id').eq('event_id', eventId).eq('is_active', true).limit(1)
   if ((tiers ?? []).length > 0) return context
   const { data: free } = await db.from('events').select('is_free').eq('id', eventId).maybeSingle()
-  return { ...context, priceLabel: listingPriceLabel(await readBookingLinks(eventId), (free?.is_free as boolean | null) ?? null, now) ?? PRICE_UNKNOWN }
+  const links = await readBookingLinks(eventId)
+  const isFree = (free?.is_free as boolean | null) ?? null
+  const cta = listingCta(links, isFree)
+  /* An unknown price says none (the checklist's E5): the caption then points at the details, the card prints no price. */
+  return { ...context, priceLabel: listingPriceLabel(links, isFree, now) ?? '', cta, listing: !cta.ticketingByEventLinqs }
 }
 
 export interface PostCard {

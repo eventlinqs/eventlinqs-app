@@ -255,15 +255,17 @@ describe('the price line never calls a night sold elsewhere free', () => {
     expect(digestPriceLabel(null, 'https://www.eventbrite.com.au/e/123')).toBe('Tickets on Eventbrite')
   })
 
-  test('a night sold on another site says so, never free', () => {
-    expect(digestPriceLabel([], 'https://deadfunny.club/tickets')).toBe('Tickets are sold elsewhere')
-    expect(digestPriceLabel([{ price: 0, currency: 'AUD' }], 'https://deadfunny.club/tickets')).toBe('Tickets are sold elsewhere')
+  test('a night sold on another site names it, never free (the checklist E4: the outside destination named)', () => {
+    expect(digestPriceLabel([], 'https://deadfunny.club/tickets')).toBe('Tickets on deadfunny.club')
+    expect(digestPriceLabel([{ price: 0, currency: 'AUD' }], 'https://deadfunny.club/tickets')).toBe('Tickets on deadfunny.club')
   })
 
-  test('our own tickets keep their price, and a night with none of either is free', () => {
+  test('our own tickets keep their price; free only when checked, and no price when nobody checked (E5, E6)', () => {
     expect(digestPriceLabel([{ price: 2500, currency: 'AUD' }], null)).toBe('From AUD $25')
-    expect(digestPriceLabel([], null)).toBe('Free entry')
-    expect(digestPriceLabel([], '  ')).toBe('Free entry')
+    expect(digestPriceLabel([], null)).toBe('')
+    expect(digestPriceLabel([], '  ')).toBe('')
+    expect(digestPriceLabel([], null, { isFree: true })).toBe('Free entry')
+    expect(digestPriceLabel([], null, { entryMode: 'walk_in' })).toBe('Free entry')
   })
 
   test('the events the email carries use it', async () => {

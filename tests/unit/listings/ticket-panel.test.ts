@@ -34,7 +34,7 @@ describe('ticketPanelOf', () => {
       link({ provider: 'eventbrite', url: 'https://www.eventbrite.com.au/e/1', position: 1 }),
       link({ provider: 'moshtix', url: 'https://www.moshtix.com.au/v2/event/1', position: 2 }),
     ], NOW)
-    expect(p.button).toMatchObject({ label: 'Get tickets on Humanitix', href: `/out/gig?to=${encodeURIComponent('https://events.humanitix.com/gig')}`, host: 'events.humanitix.com' })
+    expect(p.button).toMatchObject({ label: 'View tickets at Humanitix', href: `/out/gig?to=${encodeURIComponent('https://events.humanitix.com/gig')}`, host: 'events.humanitix.com' })
     expect(p.also.map((a) => a.name)).toEqual(['Eventbrite', 'Moshtix'])
     expect(p.soldOut).toBeNull()
   })
@@ -44,7 +44,7 @@ describe('ticketPanelOf', () => {
       link({ availability: 'dead', position: 0 }),
       link({ provider: 'eventbrite', url: 'https://www.eventbrite.com.au/e/1', position: 1 }),
     ], NOW)
-    expect(p.button?.label).toBe('Get tickets on Eventbrite')
+    expect(p.button?.label).toBe('View tickets at Eventbrite')
     expect(p.also).toEqual([])
   })
 
@@ -74,7 +74,7 @@ describe('ticketPanelOf', () => {
   })
 
   it("names a venue's own booking page plainly", () => {
-    expect(ticketPanelOf('gig', [link({ provider: 'venue', url: 'https://beavsbar.com.au/book' })], NOW).button?.label).toBe('Get tickets')
+    expect(ticketPanelOf('gig', [link({ provider: 'venue', url: 'https://beavsbar.com.au/book' })], NOW).button?.label).toBe('View tickets at beavsbar.com.au')
   })
 
   it("the organiser's own choice gets the button", () => {
@@ -82,14 +82,14 @@ describe('ticketPanelOf', () => {
       link({ position: 0 }),
       link({ provider: 'eventbrite', url: 'https://www.eventbrite.com.au/e/1', isPrimary: true, setBy: 'organiser', position: 5 }),
     ], NOW)
-    expect(p.button?.label).toBe('Get tickets on Eventbrite')
+    expect(p.button?.label).toBe('View tickets at Eventbrite')
     expect(p.also.map((a) => a.name)).toEqual(['Humanitix'])
   })
 })
 
 describe("the hero's words for an event sold elsewhere (WI3, heroSaleWords)", () => {
   const panel = (over: Partial<TicketPanel> = {}): TicketPanel => ({
-    button: { href: 'https://humanitix.com/x', label: 'Get tickets on Humanitix', host: 'humanitix.com', price: 'From $35.50' },
+    button: { href: 'https://humanitix.com/x', label: 'View tickets at Humanitix', host: 'humanitix.com', price: 'From $35.50' },
     also: [],
     soldOut: null,
     ...over,
@@ -97,7 +97,7 @@ describe("the hero's words for an event sold elsewhere (WI3, heroSaleWords)", ()
   const base = { externalUrl: 'https://humanitix.com/x', panel: panel(), isFree: false, saleBlocked: true, isSoldOut: false, priceLabel: null }
 
   it('names the one button and its fresh price, never "Not on sale yet", "Free entry" or our checkout', () => {
-    expect(heroSaleWords(base)).toEqual({ cta: 'Get tickets on Humanitix', price: 'From $35.50', trustSignals: false })
+    expect(heroSaleWords(base)).toEqual({ cta: 'View tickets at Humanitix', price: 'From $35.50', trustSignals: false })
   })
 
   it('a stale price is not shown, a free registration says free, and sold out says where', () => {
@@ -111,7 +111,7 @@ describe("the hero's words for an event sold elsewhere (WI3, heroSaleWords)", ()
   })
 
   it('with no links read it names the site from the address alone', () => {
-    expect(heroSaleWords({ ...base, panel: null }).cta).toBe('Get tickets on Humanitix')
+    expect(heroSaleWords({ ...base, panel: null }).cta).toBe('View tickets at Humanitix')
   })
 
   it("an event sold here keeps the words it had", () => {
@@ -119,6 +119,8 @@ describe("the hero's words for an event sold elsewhere (WI3, heroSaleWords)", ()
     expect(heroSaleWords(here)).toEqual({ cta: 'Get tickets', price: 'From $20', trustSignals: true })
     expect(heroSaleWords({ ...here, saleBlocked: true }).cta).toBe('Not on sale yet')
     expect(heroSaleWords({ ...here, isSoldOut: true }).cta).toBe('Join the waitlist')
-    expect(heroSaleWords({ ...here, priceLabel: null }).price).toBe('Free entry')
+    /* The checklist's E6: never free because no price is stored. */
+    expect(heroSaleWords({ ...here, priceLabel: null }).price).toBe(null)
+    expect(heroSaleWords({ ...here, priceLabel: null, isFree: true }).price).toBe('Free entry')
   })
 })

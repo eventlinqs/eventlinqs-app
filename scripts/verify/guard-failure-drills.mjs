@@ -10661,6 +10661,36 @@ const DRILLS = [
     replace: "export const SHARE = 'Share'\nexport const DRILL_SCHEMA_NOTE = 'offers.price is 0'",
   },
   /*
+   * cta-five-states (the release checklist of 28 October 2026, section E). Three ways
+   * the five states drift apart: a display falls back to "Free entry" when no price is
+   * stored, the old outside wording comes back, and a surface stops asking the one
+   * call to action.
+   */
+  {
+    name: 'cta: a caption falls back to Free entry when no price is stored',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/broadcast/captions.ts',
+    find: "import type { Cta } from '@/lib/events/cta'",
+    replace: "import type { Cta } from '@/lib/events/cta'\nexport const drillPrice = (p: string | null) => p ?? 'Free entry'",
+    expect: 'falls back to "Free entry"',
+  },
+  {
+    name: 'cta: the outside button says Get tickets on again',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/listings/outbound.ts',
+    find: "import { ctaFor } from '@/lib/events/cta'",
+    replace: "import { ctaFor } from '@/lib/events/cta'\nexport const drillLabel = 'Get tickets on Humanitix'",
+    expect: 'says "Get tickets on"',
+  },
+  {
+    name: 'cta: the ticket panel stops asking the one call to action',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/listings/ticket-panel.ts',
+    find: "from '@/lib/events/cta'",
+    replace: "from '@/lib/events/cta-copy'",
+    expect: 'no longer asks the one call to action',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the
