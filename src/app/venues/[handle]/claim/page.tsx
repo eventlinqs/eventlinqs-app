@@ -6,13 +6,15 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { resolveVenueProfile } from '@/lib/venues/resolver'
 import { ClaimForm } from '@/components/listings/claim-form'
+import { maskAddress } from '@/lib/listings/claim'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * CLAIM THIS VENUE (WI2-PLAN.md section 9, Part 3b; the locked foundation's item 7). A venue EventLinqs listed from
  * public information is claimed free by a 6-digit code to the address it publishes (src/lib/listings/claim.ts). The
- * published address is never shown here: it stays service role only (20261023000010), so the page names where the code
- * goes without saying it. Never indexed: a form, not a page about anything.
+ * published address is never shown whole: it stays service role only (20261023000010), and the project manager's claim
+ * page words (EVENTLINQS-ORGANISER-MESSAGES-28OCT.md, section 6) show it masked, its first letter and its domain
+ * (maskAddress), so the claimant knows which inbox to open. Never indexed: a form, not a page about anything.
  */
 
 export const metadata: Metadata = {
@@ -52,15 +54,13 @@ export default async function ClaimVenuePage({ params }: Props) {
       <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-800">Claim this venue, free</p>
-          <h1 className="mt-2 font-display text-2xl font-bold text-ink-900">{venue.name}</h1>
+          {/* The project manager's claim page words (EVENTLINQS-ORGANISER-MESSAGES-28OCT.md, section 6). */}
+          <h1 className="mt-2 font-display text-2xl font-bold text-ink-900">{claimable ? `${venue.name} is on EventLinqs. Claim it free.` : venue.name}</h1>
           {!claimable ? (
             <p className="mt-3 text-sm text-ink-600">This venue is already run by its owner on EventLinqs.</p>
           ) : (
             <>
-              <p className="mt-3 text-sm text-ink-600">
-                Listed by EventLinqs from public information. Claim it to run its listing, its regular nights and its numbers. We send a
-                code to the address {venue.name} publishes, so only the venue can claim it.
-              </p>
+              <p className="mt-3 text-sm text-ink-600">Takes two minutes. You keep your own tickets and booking page.</p>
               <div className="mt-6">
                 {user ? (
                   <ClaimForm
@@ -68,6 +68,7 @@ export default async function ClaimVenuePage({ params }: Props) {
                     slug={handle}
                     hostName={venue.name}
                     askDomainEmail={!venue.published_email && Boolean(venue.website_url)}
+                    codeTo={maskAddress(venue.published_email)}
                     doneHref="/dashboard"
                   />
                 ) : (

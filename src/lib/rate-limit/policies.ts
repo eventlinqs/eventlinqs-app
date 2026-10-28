@@ -33,6 +33,7 @@ export type PolicyName =
   | 'newsletter-subscribe'
   | 'partner-enquiry'
   | 'listing-submission'
+  | 'organiser-media'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -254,6 +255,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'organiser-media': {
+    keyPrefix: 'org-media',
+    limit: 20,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      "The organiser's own photos and artwork on /dashboard/organisation/media (the engine plan of 28 October 2026, part D), per signed in user per hour: add and replace. Twenty covers an organiser adding a night's set of photos and correcting a few; each add or replace stores a file of up to 10MB in a public bucket, so it is a storage flooding target. FAIL-CLOSED: an outage of the limiter must not open unbounded uploads. Withdrawals are never limited: taking an image or a permission back is the organiser's right and stores nothing.",
   },
   'listing-claim': {
     keyPrefix: 'listing-claim',
