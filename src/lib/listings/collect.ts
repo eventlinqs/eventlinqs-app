@@ -1,4 +1,6 @@
 import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from '@/lib/events/booking-links'
+import { HORIZON_DAYS } from './horizon'
+import { factChange } from './judge'
 
 /**
  * THE WEEKLY COLLECTION RUN (the foundation's item 19, START-16OCT/EVENTLINQS-FOUNDATION-LOCKED-27OCT.md;
@@ -374,7 +376,7 @@ export function eventsFromBody(body: string, pageUrl: string): FoundEvent[] {
 /* ------------------------------------------------------------------ the register and the plan */
 
 export type CollectionPermission = 'read' | 'ask' | 'never'
-export type SourceChanges = 'weekly' | 'monthly' | 'rarely'
+export type SourceChanges = 'daily' | 'weekly' | 'monthly' | 'rarely'
 
 /**
  * What a source permits EventLinqs to use (the checklist's D4; listing_sources.permits_*, 20261028140001): its facts
@@ -397,6 +399,14 @@ export type RegisteredSource = {
   /** The last moment a read of this source succeeded (listing_sources.last_success_at). */
   lastSuccessAt: string | null
   permits: PermittedContent
+  /** The register has verified its terms and page (listing_sources.verification = 'verified'). */
+  verified: boolean
+  /**
+   * A partner's own feed: an organiser submission or venue partnership source that names a real organiser
+   * (listing_sources.organisation_id, not EventLinqs' own listings organisation) or a claimed venue (venue_id). Only a
+   * partner's high confidence finds are accepted without a person (./collect-run.ts).
+   */
+  partner: boolean
 }
 
 /**
@@ -413,11 +423,12 @@ export function withPermittedContent(e: FoundEvent, permits: PermittedContent): 
   }
 }
 
-const RECHECK_DAYS: Readonly<Record<SourceChanges, number>> = { weekly: 6, monthly: 27, rarely: 89 }
+/* A daily source is due again after 18 hours, so a run that starts a little early or late still reads it each day. */
+const RECHECK_DAYS: Readonly<Record<SourceChanges, number>> = { daily: 0.75, weekly: 6, monthly: 27, rarely: 89 }
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** A source's pace, in days: how often its own page changes. */
-export const PACE_DAYS: Readonly<Record<SourceChanges, number>> = { weekly: 7, monthly: 30, rarely: 90 }
+export const PACE_DAYS: Readonly<Record<SourceChanges, number>> = { daily: 1, weekly: 7, monthly: 30, rarely: 90 }
 
 /**
  * Whether a source's last successful collection is current (the checklist's D3): stale once it is more than twice its
@@ -426,6 +437,15 @@ export const PACE_DAYS: Readonly<Record<SourceChanges, number>> = { weekly: 7, m
 export function sourceFreshness(s: Pick<RegisteredSource, 'changes' | 'lastSuccessAt'>, now: Date): 'never' | 'fresh' | 'stale' {
   if (!s.lastSuccessAt) return 'never'
   return now.getTime() - new Date(s.lastSuccessAt).getTime() > 2 * PACE_DAYS[s.changes] * DAY_MS ? 'stale' : 'fresh'
+}
+
+/** Failed runs in a row from a source's newest, after which the register flags it for a person (the engine plan part A). */
+export const FAILING_AFTER_RUNS = 3
+
+/** How many of a source's newest runs failed one after another; runs are given newest first. */
+export function failuresInARow(runs: readonly { succeeded: boolean }[]): number {
+  const i = runs.findIndex((r) => r.succeeded)
+  return i === -1 ? runs.length : i
 }
 
 /**
@@ -463,9 +483,14 @@ export type KnownEvent = ListingKey & { eventId: string }
 export type CandidatePlan =
   | { kind: 'new'; event: FoundEvent }
   | { kind: 'adds_links'; event: FoundEvent; eventId: string }
+  /** A night EventLinqs lists whose time or venue the source now states differently (./judge.ts): always a person. */
+  | { kind: 'changes_facts'; event: FoundEvent; eventId: string; change: 'time_changed' | 'venue_changed' }
 
-/** Only what is still to come, and not more than this far ahead, is worth a person's review. */
-export const COLLECT_AHEAD_DAYS = 120
+/**
+ * Only what is still to come, and not more than this far ahead, is worth a person's review: the end of the rolling
+ * horizon (./horizon.ts, 46 to 90 days for relationships). It was 120 before the engine plan of 28 October 2026.
+ */
+export const COLLECT_AHEAD_DAYS = HORIZON_DAYS.relationships
 
 function keyOf(e: FoundEvent): ListingKey {
   return { venueId: null, venueName: e.venueName, venueAddress: e.venueAddress, title: e.title, startsAt: e.startsAt }
@@ -489,7 +514,12 @@ export function planCandidates(found: readonly FoundEvent[], known: readonly Kno
     }
     const listed = known.find((k) => sameEvent(k, keyOf(e)))
     const event = { ...e, links: [...e.links] }
-    plans.push(listed ? { kind: 'adds_links', event, eventId: listed.eventId } : { kind: 'new', event })
+    if (listed) {
+      plans.push({ kind: 'adds_links', event, eventId: listed.eventId })
+      continue
+    }
+    const moved = factChange(e, known)
+    plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
   }
   return plans
 }

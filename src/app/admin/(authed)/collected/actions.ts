@@ -6,7 +6,8 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { providerOf } from '@/lib/events/booking-links'
+import { addCuratedLinks } from '@/lib/listings/collect-accept'
+import type { FoundLink } from '@/lib/listings/collect'
 import { REFUSAL_REASONS } from './reasons'
 
 /**
@@ -20,8 +21,6 @@ import { REFUSAL_REASONS } from './reasons'
 
 const ReviewSchema = z.object({ id: z.string().uuid() })
 const RefuseSchema = z.object({ id: z.string().uuid(), reason: z.enum(REFUSAL_REASONS) })
-
-type Link = { url: string; availability: 'on_sale' | 'not_yet' | 'sold_out' | 'dead'; priceFromCents: number | null }
 
 export async function acceptCandidateAction(formData: FormData): Promise<void> {
   const session = await requireAdminSession()
@@ -38,26 +37,10 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
   if (error || !c || c.status !== 'waiting') redirect('/admin/collected?status=gone')
 
   if (c.kind === 'adds_links' && c.event_id) {
-    const { data: held, error: herr } = await db.from('event_booking_links').select('url, position').eq('event_id', c.event_id)
-    if (herr) redirect('/admin/collected?status=error')
-    const urls = new Set((held ?? []).map((l) => l.url as string))
-    let position = Math.max(-1, ...(held ?? []).map((l) => Number(l.position))) + 1
-    const rows = (c.links as Link[])
-      .filter((l) => !urls.has(l.url))
-      .map((l) => ({
-        event_id: c.event_id as string,
-        provider: providerOf(l.url),
-        url: l.url,
-        kind: l.availability === 'sold_out' ? 'sold_out' : l.availability === 'not_yet' ? 'presale' : 'tickets',
-        availability: l.availability,
-        price_from_cents: l.priceFromCents,
-        price_checked_at: l.priceFromCents === null ? null : (c.found_at as string),
-        set_by: 'curated',
-        position: position++,
-      }))
-    if (rows.length > 0) {
-      const { error: lerr } = await db.from('event_booking_links').insert(rows)
-      if (lerr) redirect('/admin/collected?status=error')
+    try {
+      await addCuratedLinks(db, c.event_id as string, c.links as FoundLink[], c.found_at as string)
+    } catch {
+      redirect('/admin/collected?status=error')
     }
   }
 

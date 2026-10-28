@@ -2835,6 +2835,9 @@ export type Database = {
       }
       listing_candidates: {
         Row: {
+          change: string | null
+          confidence: string
+          decided_by: string
           description: string | null
           ends_at: string | null
           event_id: string | null
@@ -2844,6 +2847,7 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          reasons: string[]
           refused_because: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2855,6 +2859,9 @@ export type Database = {
           venue_name: string
         }
         Insert: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2864,6 +2871,7 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2875,6 +2883,9 @@ export type Database = {
           venue_name: string
         }
         Update: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2884,6 +2895,7 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -3039,6 +3051,53 @@ export type Database = {
           },
         ]
       }
+      listing_source_runs: {
+        Row: {
+          accepted_by_rule: number
+          found: number
+          http_status: number | null
+          id: string
+          landed: number
+          outcome: string
+          queued: number
+          ran_at: string
+          source_id: string
+          succeeded: boolean
+        }
+        Insert: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome: string
+          queued?: number
+          ran_at?: string
+          source_id: string
+          succeeded: boolean
+        }
+        Update: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome?: string
+          queued?: number
+          ran_at?: string
+          source_id?: string
+          succeeded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_source_runs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_sources: {
         Row: {
           acquisition_order: number | null
@@ -3075,6 +3134,7 @@ export type Database = {
           may_use_dataset_url: string | null
           name: string
           notes: string | null
+          organisation_id: string | null
           page_url: string
           permits_descriptions: boolean
           permits_facts: boolean
@@ -3085,6 +3145,7 @@ export type Database = {
           terms_read_on: string | null
           terms_url: string | null
           updated_at: string
+          venue_id: string | null
           verification: string
           verified_on: string | null
         }
@@ -3123,6 +3184,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name: string
           notes?: string | null
+          organisation_id?: string | null
           page_url: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3133,6 +3195,7 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
@@ -3171,6 +3234,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name?: string
           notes?: string | null
+          organisation_id?: string | null
           page_url?: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3181,10 +3245,26 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listing_sources_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_sources_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_attribution: {
         Row: {
@@ -9738,6 +9818,10 @@ export type Database = {
         Returns: string
       }
       marketing_attribution_default_window: { Args: never; Returns: number }
+      listing_horizon: {
+        Args: { p_now?: string; p_starts_at: string }
+        Returns: string
+      }
       marketing_attribution_is_billable: {
         Args: { p_decision: string; p_order_id: string; p_rung: number }
         Returns: boolean

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runCollection, type CandidateRow, type CollectionStore, type Fetcher } from '@/lib/listings/collect-run'
+import { runCollection, type CandidateRow, type CollectionStore, type Fetcher, type RunRow } from '@/lib/listings/collect-run'
 import type { KnownEvent, RegisteredSource } from '@/lib/listings/collect'
 
 /* Item 19's run: robots.txt before the page, only due sources whose terms allow it, a second source a link. */
@@ -9,6 +9,8 @@ const NOW = new Date('2026-10-27T03:00:00Z')
 function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held: Record<string, string[]> = {}) {
   const landed: CandidateRow[] = []
   const recorded: Record<string, string> = {}
+  const added: { eventId: string; urls: string[] }[] = []
+  const runs: RunRow[] = []
   const store: CollectionStore = {
     sources: async () => sources,
     known: async () => known,
@@ -21,8 +23,14 @@ function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held
     record: async (id, outcome) => {
       recorded[id] = outcome
     },
+    addLinks: async (eventId, links) => {
+      added.push({ eventId, urls: links.map((l) => l.url) })
+    },
+    logRun: async (row) => {
+      runs.push(row)
+    },
   }
-  return { store, landed, recorded }
+  return { store, landed, recorded, added, runs }
 }
 
 function sites(pages: Record<string, { status: number; body?: string } | 'down'>): { fetcher: Fetcher; asked: string[] } {
@@ -37,7 +45,7 @@ function sites(pages: Record<string, { status: number; body?: string } | 'down'>
 }
 
 const source = (id: string, pageUrl: string, over: Partial<RegisteredSource> = {}): RegisteredSource => ({
-  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, ...over,
+  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, ...over,
 })
 
 const gig = (name: string, ticket: string) =>
@@ -125,5 +133,64 @@ describe('the weekly collection run', () => {
     const r = await runCollection(store, sites({}).fetcher, NOW, Date.now() - 1)
     expect(r.notReached).toBe(2)
     expect(r.sources).toEqual([])
+  })
+})
+
+/* The engine plan's parts A and E (28 October 2026): a run log per source, and the partner rule. */
+describe('the run log and the partner rule', () => {
+  const club = 'https://club.example.com.au/gigs'
+  const open = { 'https://club.example.com.au/robots.txt': { status: 404 } }
+  const trio = { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio') }
+
+  it('logs one run row per source, a failure included, with the answer it got', async () => {
+    const { store, runs } = memoryStore([source('broken', 'https://broken.example.com/e'), source('club', club)])
+    await runCollection(store, sites({ 'https://broken.example.com/robots.txt': { status: 404 }, 'https://broken.example.com/e': { status: 500 }, ...open, [club]: trio }).fetcher, NOW)
+    expect(runs).toEqual([
+      { sourceId: 'broken', ranAt: NOW.toISOString(), succeeded: false, httpStatus: 500, outcome: 'the page answered 500: nothing read', found: 0, landed: 0, queued: 0, acceptedByRule: 0 },
+      { sourceId: 'club', ranAt: NOW.toISOString(), succeeded: true, httpStatus: 200, outcome: 'read: 1 event(s) found, 1 new for review', found: 1, landed: 1, queued: 1, acceptedByRule: 0 },
+    ])
+  })
+
+  it("accepts a high confidence new night from a partner's own verified feed, and says so", async () => {
+    const { store, landed, runs } = memoryStore([source('club', club, { partner: true })])
+    const r = await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(landed[0]).toMatchObject({ kind: 'new', confidence: 'high', reasons: [], decidedBy: 'partner_rule' })
+    expect(r).toMatchObject({ landed: 1, acceptedByRule: 1, queued: 0 })
+    expect(runs[0]).toMatchObject({ acceptedByRule: 1, queued: 0, outcome: 'read: 1 event(s) found, 1 new: 1 accepted by the partner rule, 0 for review' })
+  })
+
+  it('queues a partner row that is low confidence, and every row from a source that is not a partner or not verified', async () => {
+    const noAddress = { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio').replace('"address":"509 Moorabool St, Geelong"', '"address":""') }
+    const low = memoryStore([source('club', club, { partner: true })])
+    await runCollection(low.store, sites({ ...open, [club]: noAddress }).fetcher, NOW)
+    expect(low.landed[0]).toMatchObject({ confidence: 'low', reasons: ['no_venue_address'], decidedBy: 'person' })
+
+    const stranger = memoryStore([source('club', club, { partner: false })])
+    await runCollection(stranger.store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(stranger.landed[0]).toMatchObject({ confidence: 'high', decidedBy: 'person' })
+
+    const unverified = memoryStore([source('club', club, { partner: true, verified: false })])
+    await runCollection(unverified.store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(unverified.landed[0]).toMatchObject({ confidence: 'low', reasons: ['source_unverified'], decidedBy: 'person' })
+  })
+
+  it("writes a partner's new link on a listed night before it lands the accepted row", async () => {
+    const known: KnownEvent[] = [
+      { eventId: 'ev-1', venueId: null, venueName: 'The Barwon Club', venueAddress: '509 Moorabool St, Geelong', title: 'Bp Proof Trio', startsAt: '2026-11-14T09:00:00.000Z' },
+    ]
+    const { store, landed, added } = memoryStore([source('club', club, { partner: true })], known)
+    await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(added).toEqual([{ eventId: 'ev-1', urls: ['https://events.humanitix.com/bp-trio'] }])
+    expect(landed[0]).toMatchObject({ kind: 'adds_links', eventId: 'ev-1', decidedBy: 'partner_rule' })
+  })
+
+  it('never accepts a changed time by rule, even from a partner: it waits for a person, naming the event', async () => {
+    const known: KnownEvent[] = [
+      { eventId: 'ev-1', venueId: null, venueName: 'The Barwon Club', venueAddress: '509 Moorabool St, Geelong', title: 'Bp Proof Trio', startsAt: '2026-11-14T05:00:00.000Z' },
+    ]
+    const { store, landed, added } = memoryStore([source('club', club, { partner: true })], known)
+    await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(added).toEqual([])
+    expect(landed[0]).toMatchObject({ kind: 'changes_facts', eventId: 'ev-1', change: 'time_changed', confidence: 'low', reasons: ['time_changed'], decidedBy: 'person' })
   })
 })
