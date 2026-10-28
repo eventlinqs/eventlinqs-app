@@ -5241,6 +5241,7 @@ export type Database = {
           relevance: string | null
           role: string
           seen_on: string | null
+          unsubscribe_token: string
         }
         Insert: {
           address: string
@@ -5261,6 +5262,7 @@ export type Database = {
           relevance?: string | null
           role: string
           seen_on?: string | null
+          unsubscribe_token?: string
         }
         Update: {
           address?: string
@@ -5281,6 +5283,7 @@ export type Database = {
           relevance?: string | null
           role?: string
           seen_on?: string | null
+          unsubscribe_token?: string
         }
         Relationships: [
           {
@@ -10282,6 +10285,10 @@ export type Database = {
           over: string
           sends: number
         }[]
+      }
+      outreach_unsubscribe_by_token: {
+        Args: { p_comment?: string; p_reason?: string; p_token: string }
+        Returns: string
       }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
