@@ -93,6 +93,7 @@ const organisers = await sql(`select o.id, o.name, o.website_url, o.found_on, o.
     coalesce(json_agg(json_build_object('id', c.id, 'address', c.address, 'basis', c.basis)) filter (where c.channel = 'email'), '[]') as emails,
     coalesce(json_agg(json_build_object('id', c.id, 'address', c.address, 'basis', c.basis)) filter (where c.channel = 'instagram'), '[]') as instagram
   from public.organisers o left join public.organiser_contacts c on c.organiser_id = o.id and c.channel in ('email', 'instagram')
+ ${arg('--organiser') ? `where o.name_key = lower(btrim(${q(arg('--organiser'))}))` : ''}
  group by o.id order by o.name`)
 
 const report = []
@@ -191,9 +192,11 @@ async function worker() {
 }
 await Promise.all([worker(), worker(), worker(), worker()])
 
-writeFileSync(join(evidence, `basis-report-${today}.json`), JSON.stringify(report, null, 1))
+// One report per run, never overwritten: a one-organiser run once replaced the full run's report of the same day.
+const reportFile = join(evidence, `basis-report-${new Date().toISOString().replace(/[:.]/g, '-')}${arg('--organiser') ? '-one-organiser' : ''}.json`)
+writeFileSync(reportFile, JSON.stringify(report, null, 1))
 const read = (await sql(`select (select count(*) from public.organiser_contacts where channel = 'email')::int as email_contacts,
   (select count(*) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as with_a_whole_basis,
   (select count(distinct organiser_id) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as organisers_writable,
   (select count(*) from public.organiser_contacts where channel = 'instagram' and basis <> 'none')::int as instagram_with_a_whole_basis`))[0]
-console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${join(evidence, `basis-report-${today}.json`)}`)
+console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${reportFile}`)
