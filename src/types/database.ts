@@ -5308,6 +5308,60 @@ export type Database = {
           },
         ]
       }
+      organiser_permissions: {
+        Row: {
+          channel: string
+          event_id: string | null
+          evidence_file: string | null
+          granted_at: string
+          host_name: string
+          id: string
+          logged_at: string
+          logged_by: string
+          scope: string
+          wording: string
+        }
+        Insert: {
+          channel: string
+          event_id?: string | null
+          evidence_file?: string | null
+          granted_at: string
+          host_name: string
+          id?: string
+          logged_at?: string
+          logged_by: string
+          scope: string
+          wording: string
+        }
+        Update: {
+          channel?: string
+          event_id?: string | null
+          evidence_file?: string | null
+          granted_at?: string
+          host_name?: string
+          id?: string
+          logged_at?: string
+          logged_by?: string
+          scope?: string
+          wording?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_permissions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_permissions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organiser_sales_digest_sends: {
         Row: {
           currency: string
@@ -7268,12 +7322,24 @@ export type Database = {
           event_id: string | null
           evidence_file: string | null
           expires_at: string | null
+          focal_x: number | null
+          focal_y: number | null
           id: string
+          original_file: string | null
           permission_evidence: string | null
+          permission_id: string | null
+          permitted_uses: string | null
+          received_on: string | null
+          replaced_by: string | null
           restrictions: string | null
           rights_holder: string
           scope: string
+          source_height: number | null
           source_url: string
+          source_width: number | null
+          withdrawal_reason: string | null
+          withdrawal_status: string
+          withdrawn_at: string | null
         }
         Insert: {
           approval_status?: string
@@ -7289,12 +7355,24 @@ export type Database = {
           event_id?: string | null
           evidence_file?: string | null
           expires_at?: string | null
+          focal_x?: number | null
+          focal_y?: number | null
           id?: string
+          original_file?: string | null
           permission_evidence?: string | null
+          permission_id?: string | null
+          permitted_uses?: string | null
+          received_on?: string | null
+          replaced_by?: string | null
           restrictions?: string | null
           rights_holder: string
           scope: string
+          source_height?: number | null
           source_url: string
+          source_width?: number | null
+          withdrawal_reason?: string | null
+          withdrawal_status?: string
+          withdrawn_at?: string | null
         }
         Update: {
           approval_status?: string
@@ -7310,12 +7388,24 @@ export type Database = {
           event_id?: string | null
           evidence_file?: string | null
           expires_at?: string | null
+          focal_x?: number | null
+          focal_y?: number | null
           id?: string
+          original_file?: string | null
           permission_evidence?: string | null
+          permission_id?: string | null
+          permitted_uses?: string | null
+          received_on?: string | null
+          replaced_by?: string | null
           restrictions?: string | null
           rights_holder?: string
           scope?: string
+          source_height?: number | null
           source_url?: string
+          source_width?: number | null
+          withdrawal_reason?: string | null
+          withdrawal_status?: string
+          withdrawn_at?: string | null
         }
         Relationships: [
           {
@@ -7330,6 +7420,20 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_assets_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_assets_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "social_assets"
             referencedColumns: ["id"]
           },
         ]
@@ -7577,7 +7681,7 @@ export type Database = {
       social_piece_decisions: {
         Row: {
           decided_at: string
-          decided_by: string
+          decided_by: string | null
           decision: string
           id: string
           piece_id: string
@@ -7586,7 +7690,7 @@ export type Database = {
         }
         Insert: {
           decided_at?: string
-          decided_by: string
+          decided_by?: string | null
           decision: string
           id?: string
           piece_id: string
@@ -7595,7 +7699,7 @@ export type Database = {
         }
         Update: {
           decided_at?: string
-          decided_by?: string
+          decided_by?: string | null
           decision?: string
           id?: string
           piece_id?: string
@@ -7706,6 +7810,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "social_piece_revisions_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_schedules: {
+        Row: {
+          approval_id: string
+          created_at: string
+          go_at: string
+          held_reason: string | null
+          id: string
+          piece_id: string
+          platform: string
+          published_at: string | null
+          published_ref: string | null
+          state: string
+        }
+        Insert: {
+          approval_id: string
+          created_at?: string
+          go_at: string
+          held_reason?: string | null
+          id?: string
+          piece_id: string
+          platform: string
+          published_at?: string | null
+          published_ref?: string | null
+          state?: string
+        }
+        Update: {
+          approval_id?: string
+          created_at?: string
+          go_at?: string
+          held_reason?: string | null
+          id?: string
+          piece_id?: string
+          platform?: string
+          published_at?: string | null
+          published_ref?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_schedules_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "social_piece_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_piece_schedules_piece_id_fkey"
             columns: ["piece_id"]
             isOneToOne: false
             referencedRelation: "social_pieces"
@@ -10120,6 +10278,33 @@ export type Database = {
         Returns: number
       }
       platform_notification_guards: { Args: never; Returns: Json }
+      organiser_permission_evidence: {
+        Args: {
+          p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
+        }
+        Returns: string
+      }
+      organiser_permission_for: {
+        Args: { p_event: string }
+        Returns: {
+          channel: string
+          event_id: string | null
+          evidence_file: string | null
+          granted_at: string
+          host_name: string
+          id: string
+          logged_at: string
+          logged_by: string
+          scope: string
+          wording: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organiser_permissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
         Returns: boolean
@@ -10288,6 +10473,26 @@ export type Database = {
         Args: { p_at: string; p_event: string; p_url: string }
         Returns: boolean
       }
+      social_asset_usable_row: {
+        Args: {
+          a: Database["public"]["Tables"]["social_assets"]["Row"]
+          p_at: string
+          p_event: string
+        }
+        Returns: boolean
+      }
+      social_brand_images: {
+        Args: { p_at: string }
+        Returns: {
+          asset_id: string
+          asset_url: string
+          attribution_text: string
+          focal_x: number
+          focal_y: number
+          source_height: number
+          source_width: number
+        }[]
+      }
       social_cadence_at: {
         Args: { p_at: string; p_format: string; p_platform: string }
         Returns: {
@@ -10314,6 +10519,32 @@ export type Database = {
         }
       }
       social_event_sold_out: { Args: { p_event: string }; Returns: boolean }
+      social_log_organiser_yes: {
+        Args: {
+          p_channel: string
+          p_event: string
+          p_evidence_file?: string
+          p_granted_at: string
+          p_host: string
+          p_logged_by: string
+          p_scope: string
+          p_wording: string
+        }
+        Returns: string
+      }
+      social_usable_images: {
+        Args: { p_at: string; p_events: string[] }
+        Returns: {
+          asset_id: string
+          asset_url: string
+          attribution_text: string
+          event_id: string
+          focal_x: number
+          focal_y: number
+          source_height: number
+          source_width: number
+        }[]
+      }
       sync_offline_scans: {
         Args: { p_event_id: string; p_scans: Json }
         Returns: Json
