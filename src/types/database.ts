@@ -3090,6 +3090,87 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_submissions: {
+        Row: {
+          authority_confirmed: boolean
+          booking_url: string
+          city_slug: string
+          created_at: string
+          description: string | null
+          email: string
+          ends_at: string | null
+          entry: string
+          id: string
+          name: string
+          permission_given_at: string
+          permission_words: string
+          photo_owned: boolean
+          photo_path: string | null
+          price_from_cents: number | null
+          refused_because: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role: string
+          starts_at: string
+          status: string
+          title: string
+          venue_address: string
+          venue_name: string
+        }
+        Insert: {
+          authority_confirmed: boolean
+          booking_url: string
+          city_slug: string
+          created_at?: string
+          description?: string | null
+          email: string
+          ends_at?: string | null
+          entry: string
+          id?: string
+          name: string
+          permission_given_at: string
+          permission_words: string
+          photo_owned?: boolean
+          photo_path?: string | null
+          price_from_cents?: number | null
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role: string
+          starts_at: string
+          status?: string
+          title: string
+          venue_address: string
+          venue_name: string
+        }
+        Update: {
+          authority_confirmed?: boolean
+          booking_url?: string
+          city_slug?: string
+          created_at?: string
+          description?: string | null
+          email?: string
+          ends_at?: string | null
+          entry?: string
+          id?: string
+          name?: string
+          permission_given_at?: string
+          permission_words?: string
+          photo_owned?: boolean
+          photo_path?: string | null
+          price_from_cents?: number | null
+          refused_because?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          venue_address?: string
+          venue_name?: string
+        }
+        Relationships: []
+      }
       marketing_attribution: {
         Row: {
           billable: boolean

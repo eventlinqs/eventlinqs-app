@@ -781,6 +781,13 @@ export async function OrganisersLandingPage() {
                 Start selling tickets
               </Button>
             </div>
+            {/* Release checklist H1: an organiser selling on another site sends the event for a free listing. */}
+            <p className="mt-6 text-sm text-white/85">
+              Selling on another site?{' '}
+              <Link href="/submit-event" className="inline-flex min-h-[44px] items-center font-semibold text-white underline underline-offset-2 hover:text-[var(--brand-accent)]">
+                List your event free
+              </Link>
+            </p>
           </div>
         </div>
       </section>
