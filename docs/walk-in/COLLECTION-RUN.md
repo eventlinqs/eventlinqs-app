@@ -134,5 +134,15 @@ Venue partnership asks (D7), drafts for Lawal only: C:\dev\EVIDENCE\COLLECT-28OC
   any such content may be reproduced, modified, adapted, published or used in any way for any commercial purpose
   whatsoever") forbid it; Ballarat, Bendigo and the tourism boards are silent, and silence is never read as yes. None
   publishes an events feed or dataset.
-- Proved: `horizon.test.ts`, `judge.test.ts`, the run tests (drilled red with the rule off and the partner check off),
-  `supply-horizon-proof.sql` on TEST rolled back (run 1 found a NULL hole in a CHECK, fixed; run 2 PASSED, 21 checks).
+- The partner publish: `public.listing_publish_partner_night` turns a night the partner rule accepted into a dated
+  series ('once') at the partner's venue, held by its organisation, with an `organiser_submission` listing check; the
+  hourly listings run makes the event. Idempotent; the run asks on every pass, and one night that cannot be published
+  never stops the rest of a feed. A partner source names its venue (in a city) and its category.
+- Registering a partner's feed: the form on `/admin/collected` (`partner-feed.ts`) writes the register row from the
+  organiser's own words: read daily, facts and links only (photos come through the media vault, part D).
+- Passed nights: each run first takes every waiting row whose night has passed out of the queue ("the night passed
+  before review").
+- Proved: `horizon.test.ts`, `judge.test.ts`, `partner-feed.test.ts`, the run tests (each new rule drilled red),
+  `supply-horizon-proof.sql` on TEST rolled back (run 1 found a NULL hole in a CHECK, fixed; run 2 PASSED, 21 checks),
+  `partner-publish-proof.sql` (PASSED, 9 checks), `horizon-twin-on-test.mjs` (200 nights agree) and
+  `supply-run-drive.mts`, the real store on TEST with an injected feed (DRIVE PASSED, 15 checks, 0 rows left).
