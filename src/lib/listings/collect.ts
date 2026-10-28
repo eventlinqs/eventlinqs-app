@@ -119,7 +119,17 @@ export type FoundEvent = {
   venueAddress: string | null
   pageUrl: string
   imageUrl: string | null
+  /** The source's own words about the event, as it states them; kept only where the source permits descriptions. */
+  description: string | null
   links: FoundLink[]
+}
+
+/** Longest description a candidate carries (listing_candidates_description, 20261028140001), cut on a whole character. */
+const DESCRIPTION_MAX = 2000
+
+function descriptionOf(v: string | null): string | null {
+  const t = (v ?? '').trim()
+  return t ? Array.from(t).slice(0, DESCRIPTION_MAX).join('').trim() : null
 }
 
 type Json = null | boolean | number | string | Json[] | { [k: string]: Json }
@@ -217,6 +227,7 @@ export function eventsFromHtml(html: string, pageUrl: string): FoundEvent[] {
         venueAddress: place ? addressOf(place['address']) : null,
         pageUrl: absolute(text(node['url']), pageUrl) ?? pageUrl,
         imageUrl: absolute(text(node['image']), pageUrl),
+        description: descriptionOf(typeof node['description'] === 'string' ? node['description'] : null),
         links,
       })
     }
@@ -296,9 +307,19 @@ function icsInstant(prop: IcsProp | undefined): string | null {
 }
 
 /**
+ * The venue a LOCATION names: its first part, before a comma, and of that the part before a spaced hyphen. Geelong
+ * Regional Libraries' feed (28 October 2026) writes the venue, a spaced hyphen and a room, the room often empty:
+ * "Geelong Library and Heritage Centre (The Dome) - ". A hyphen inside a name ("Biyal-a Armstrong Creek Library") stays.
+ */
+export function venueOfLocation(location: string): string {
+  const first = location.split(',')[0] ?? ''
+  return (first.split(/\s+-(?:\s|$)/)[0] ?? '').trim()
+}
+
+/**
  * Every event a calendar feed publishes (RFC 5545 VEVENTs), read as the feed states it; anything it does not state stays
  * empty. A cancelled event is not taken, and neither is one with no LOCATION, since EventLinqs lists events people go
- * to. The LOCATION's first part, before a comma, is the venue's name and the whole line its address. A repeating event
+ * to. The LOCATION's venue is venueOfLocation's and the whole line, where it has a comma, its address. A repeating event
  * (RRULE) is read at its first date only; the next run reads the feed again.
  */
 export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
@@ -318,9 +339,12 @@ export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
       const title = e.get('SUMMARY') ? unescapeText(e.get('SUMMARY')!.value) : ''
       const startsAt = icsInstant(e.get('DTSTART'))
       const location = e.get('LOCATION') ? unescapeText(e.get('LOCATION')!.value).replace(/\s*\n\s*/g, ', ') : ''
-      const venueName = location.split(',')[0]?.trim() ?? ''
+      const venueName = venueOfLocation(location)
       if (!title || !startsAt || !venueName) continue
       const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : null
+      /* No address of its own: the feed's, told apart by the event's UID, so two events at one instant stay two. */
+      const uid = e.get('UID')?.value.trim()
+      const fallback = uid ? `${pageUrl.split('#')[0]}#${encodeURIComponent(uid)}` : pageUrl
       const image = e.get('ATTACH') && /^image\//i.test(e.get('ATTACH')!.params['FMTTYPE'] ?? '') ? absolute(e.get('ATTACH')!.value.trim(), pageUrl) : null
       found.push({
         title: title.slice(0, 200),
@@ -328,8 +352,9 @@ export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
         endsAt: icsInstant(e.get('DTEND')),
         venueName,
         venueAddress: location.includes(',') ? location : null,
-        pageUrl: own ?? pageUrl,
+        pageUrl: own ?? fallback,
         imageUrl: image,
+        description: descriptionOf(e.get('DESCRIPTION') ? unescapeText(e.get('DESCRIPTION')!.value) : null),
         links: [],
       })
       continue
@@ -351,6 +376,17 @@ export function eventsFromBody(body: string, pageUrl: string): FoundEvent[] {
 export type CollectionPermission = 'read' | 'ask' | 'never'
 export type SourceChanges = 'weekly' | 'monthly' | 'rarely'
 
+/**
+ * What a source permits EventLinqs to use (the checklist's D4; listing_sources.permits_*, 20261028140001): its facts
+ * (title, date, venue), its descriptions, its images and its links. The database allows descriptions and images only
+ * where reuse of photos, posters and descriptions is answered yes, and refuses a candidate carrying what its source does
+ * not permit.
+ */
+export type PermittedContent = { facts: boolean; descriptions: boolean; images: boolean; links: boolean }
+
+/** The register's default, and what a source gives when nothing more is permitted. */
+export const FACTS_ONLY: PermittedContent = Object.freeze({ facts: true, descriptions: false, images: false, links: false })
+
 export type RegisteredSource = {
   id: string
   name: string
@@ -358,10 +394,60 @@ export type RegisteredSource = {
   collection: CollectionPermission
   changes: SourceChanges
   lastCheckedAt: string | null
+  /** The last moment a read of this source succeeded (listing_sources.last_success_at). */
+  lastSuccessAt: string | null
+  permits: PermittedContent
+}
+
+/**
+ * A found event with only what its source permits: the image blank unless images are permitted, the description blank
+ * unless descriptions are, no links unless links are. Null when the source permits no facts, so nothing lands.
+ */
+export function withPermittedContent(e: FoundEvent, permits: PermittedContent): FoundEvent | null {
+  if (!permits.facts) return null
+  return {
+    ...e,
+    imageUrl: permits.images ? e.imageUrl : null,
+    description: permits.descriptions ? e.description : null,
+    links: permits.links ? [...e.links] : [],
+  }
 }
 
 const RECHECK_DAYS: Readonly<Record<SourceChanges, number>> = { weekly: 6, monthly: 27, rarely: 89 }
 const DAY_MS = 24 * 60 * 60 * 1000
+
+/** A source's pace, in days: how often its own page changes. */
+export const PACE_DAYS: Readonly<Record<SourceChanges, number>> = { weekly: 7, monthly: 30, rarely: 90 }
+
+/**
+ * Whether a source's last successful collection is current (the checklist's D3): stale once it is more than twice its
+ * pace old, 'never' when no read has succeeded yet.
+ */
+export function sourceFreshness(s: Pick<RegisteredSource, 'changes' | 'lastSuccessAt'>, now: Date): 'never' | 'fresh' | 'stale' {
+  if (!s.lastSuccessAt) return 'never'
+  return now.getTime() - new Date(s.lastSuccessAt).getTime() > 2 * PACE_DAYS[s.changes] * DAY_MS ? 'stale' : 'fresh'
+}
+
+/**
+ * The acquisition order (the checklist's D5), as listing_sources.acquisition_order computes it from source_type:
+ * 1 organiser submissions, 2 licensed datasets and feeds, 3 venue partnerships, 4 manual editorial discovery.
+ */
+export type SourceType = 'organiser_submission' | 'licensed_dataset' | 'subscription_feed' | 'venue_partnership' | 'manual_research'
+
+export const ACQUISITION_PATHS: readonly { order: 1 | 2 | 3 | 4; label: string; types: readonly SourceType[] }[] = [
+  { order: 1, label: 'Organiser submissions', types: ['organiser_submission'] },
+  { order: 2, label: 'Licensed datasets and feeds', types: ['licensed_dataset', 'subscription_feed'] },
+  { order: 3, label: 'Venue partnerships', types: ['venue_partnership'] },
+  { order: 4, label: 'Manual editorial discovery', types: ['manual_research'] },
+]
+
+export const SOURCE_TYPE_LABELS: Readonly<Record<SourceType, string>> = {
+  organiser_submission: 'Organiser submission',
+  licensed_dataset: 'Licensed dataset',
+  subscription_feed: 'Subscription feed',
+  venue_partnership: 'Venue partnership',
+  manual_research: 'Manual research',
+}
 
 /** The sources this run reads: only those whose terms allow it, each when its own pace says it is due. */
 export function dueSources(sources: readonly RegisteredSource[], now: Date): RegisteredSource[] {

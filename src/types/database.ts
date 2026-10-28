@@ -2835,6 +2835,7 @@ export type Database = {
       }
       listing_candidates: {
         Row: {
+          description: string | null
           ends_at: string | null
           event_id: string | null
           found_at: string
@@ -2854,6 +2855,7 @@ export type Database = {
           venue_name: string
         }
         Insert: {
+          description?: string | null
           ends_at?: string | null
           event_id?: string | null
           found_at?: string
@@ -2873,6 +2875,7 @@ export type Database = {
           venue_name: string
         }
         Update: {
+          description?: string | null
           ends_at?: string | null
           event_id?: string | null
           found_at?: string
@@ -3038,55 +3041,148 @@ export type Database = {
       }
       listing_sources: {
         Row: {
+          acquisition_order: number | null
           changes: string
           city_slug: string | null
           collection: string
+          contact: string | null
           created_at: string
           id: string
           kind: string
           last_checked_at: string | null
           last_outcome: string | null
+          last_success_at: string | null
+          licence_owner: string | null
+          may_redistribute_facts: string
+          may_redistribute_facts_quote: string | null
+          may_redistribute_facts_read_on: string | null
+          may_redistribute_facts_url: string | null
+          may_reuse_media: string
+          may_reuse_media_quote: string | null
+          may_reuse_media_read_on: string | null
+          may_reuse_media_url: string | null
+          may_scrape: string
+          may_scrape_quote: string | null
+          may_scrape_read_on: string | null
+          may_scrape_url: string | null
+          may_subscribe: string
+          may_subscribe_quote: string | null
+          may_subscribe_read_on: string | null
+          may_subscribe_url: string | null
+          may_use_dataset: string
+          may_use_dataset_quote: string | null
+          may_use_dataset_read_on: string | null
+          may_use_dataset_url: string | null
           name: string
           notes: string | null
           page_url: string
+          permits_descriptions: boolean
+          permits_facts: boolean
+          permits_images: boolean
+          permits_links: boolean
+          source_type: string
           terms_quote: string | null
           terms_read_on: string | null
           terms_url: string | null
           updated_at: string
+          verification: string
+          verified_on: string | null
         }
         Insert: {
+          acquisition_order?: number | null
           changes?: string
           city_slug?: string | null
           collection: string
+          contact?: string | null
           created_at?: string
           id?: string
           kind: string
           last_checked_at?: string | null
           last_outcome?: string | null
+          last_success_at?: string | null
+          licence_owner?: string | null
+          may_redistribute_facts?: string
+          may_redistribute_facts_quote?: string | null
+          may_redistribute_facts_read_on?: string | null
+          may_redistribute_facts_url?: string | null
+          may_reuse_media?: string
+          may_reuse_media_quote?: string | null
+          may_reuse_media_read_on?: string | null
+          may_reuse_media_url?: string | null
+          may_scrape?: string
+          may_scrape_quote?: string | null
+          may_scrape_read_on?: string | null
+          may_scrape_url?: string | null
+          may_subscribe?: string
+          may_subscribe_quote?: string | null
+          may_subscribe_read_on?: string | null
+          may_subscribe_url?: string | null
+          may_use_dataset?: string
+          may_use_dataset_quote?: string | null
+          may_use_dataset_read_on?: string | null
+          may_use_dataset_url?: string | null
           name: string
           notes?: string | null
           page_url: string
+          permits_descriptions?: boolean
+          permits_facts?: boolean
+          permits_images?: boolean
+          permits_links?: boolean
+          source_type?: string
           terms_quote?: string | null
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          verification?: string
+          verified_on?: string | null
         }
         Update: {
+          acquisition_order?: number | null
           changes?: string
           city_slug?: string | null
           collection?: string
+          contact?: string | null
           created_at?: string
           id?: string
           kind?: string
           last_checked_at?: string | null
           last_outcome?: string | null
+          last_success_at?: string | null
+          licence_owner?: string | null
+          may_redistribute_facts?: string
+          may_redistribute_facts_quote?: string | null
+          may_redistribute_facts_read_on?: string | null
+          may_redistribute_facts_url?: string | null
+          may_reuse_media?: string
+          may_reuse_media_quote?: string | null
+          may_reuse_media_read_on?: string | null
+          may_reuse_media_url?: string | null
+          may_scrape?: string
+          may_scrape_quote?: string | null
+          may_scrape_read_on?: string | null
+          may_scrape_url?: string | null
+          may_subscribe?: string
+          may_subscribe_quote?: string | null
+          may_subscribe_read_on?: string | null
+          may_subscribe_url?: string | null
+          may_use_dataset?: string
+          may_use_dataset_quote?: string | null
+          may_use_dataset_read_on?: string | null
+          may_use_dataset_url?: string | null
           name?: string
           notes?: string | null
           page_url?: string
+          permits_descriptions?: boolean
+          permits_facts?: boolean
+          permits_images?: boolean
+          permits_links?: boolean
+          source_type?: string
           terms_quote?: string | null
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          verification?: string
+          verified_on?: string | null
         }
         Relationships: []
       }

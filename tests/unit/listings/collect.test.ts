@@ -114,7 +114,7 @@ describe("the page's own Event data", () => {
 describe('the register', () => {
   const now = new Date('2026-10-27T03:00:00Z')
   const src = (id: string, over: Partial<RegisteredSource>): RegisteredSource => ({
-    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, ...over,
+    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, ...over,
   })
 
   it('reads only sources whose terms allow it, each at its own pace', () => {
@@ -143,6 +143,7 @@ describe('what lands for review', () => {
     venueAddress: '509 Moorabool St, Geelong',
     pageUrl: 'https://barwonclub.example.com.au/gigs',
     imageUrl: null,
+    description: null,
     links: [{ url: `https://events.humanitix.com/${title.length}`, availability: 'on_sale', priceFromCents: null }],
     ...over,
   })
