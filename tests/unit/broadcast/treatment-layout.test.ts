@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { contrast, FitError, GEOMETRY, layoutBrand, layoutCover, layoutEnd, layoutFaults, layoutNight, layoutOffer, layoutProgramme, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
+import { contrast, FitError, GEOMETRY, INK_CLEAR_LEADING, layoutBrand, layoutCover, layoutEnd, layoutFaults, layoutNight, layoutOffer, layoutProgramme, leadingFor, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
 import { enlargement, formatsOf, MAX_ENLARGEMENT } from '@/lib/broadcast/campaign-slides'
 import { treatmentMeasurers } from '@/lib/broadcast/treatments'
 
@@ -114,6 +114,28 @@ describe('every night, every format', () => {
   it('draws a label, never a pretend link: the domain, and the action as words', () => {
     const l = layoutNight('portrait', base, m)
     expect(l.runs.find((r) => r.role === 'label')?.lines).toEqual(['eventlinqs.com.au'])
+  })
+})
+
+describe("a title's lines never draw into each other", () => {
+  /* Found by eye on demonstration D (29 October 2026): "Biggest" over "Treat" and "Lounge" over "Music", at 0.86. */
+  const titled = (title: string) => ({ ...base, title, eyebrow: 'At The District Docklands', city: 'Melbourne' })
+  for (const f of FORMATS) {
+    it(`a descender above another line clears the measured ink, ${f}`, () => {
+      for (const title of ["Melbourne's Biggest Trick or Treat Trail", 'Lounge Bar Live Music']) {
+        const run = layoutNight(f, titled(title), m).runs.find((r) => r.role === 'title')
+        expect(run && run.lines.length > 1, `${title} breaks over lines at ${f}`).toBe(true)
+        const above = run!.lines.slice(0, -1).some((l) => /[gjpqy]/.test(l))
+        if (above) expect(run!.lineHeight, `${title} at ${f}: ${run!.lines.join(' / ')}`).toBeGreaterThanOrEqual(0.947)
+        expectClean(layoutNight(f, titled(title), m))
+      }
+    })
+  }
+
+  it('keeps the tight leading of the reference where nothing descends above a line', () => {
+    expect(leadingFor(['KATE', 'CEBERANO'], 0.86)).toBe(0.86)
+    expect(leadingFor(['Big Night', 'Out'], 0.86)).toBe(INK_CLEAR_LEADING)
+    expect(leadingFor(['Out', 'Big Night'], 0.86)).toBe(0.86)
   })
 })
 

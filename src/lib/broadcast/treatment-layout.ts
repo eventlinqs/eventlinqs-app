@@ -238,17 +238,34 @@ export function breakLines(text: string, measure: Measure, size: number, width: 
   return lines
 }
 
-/** The largest size from max down to min (by 2) at which the words take at most maxLines lines and fit `height`. */
+/**
+ * The leading at which one line's descenders clear the next line's ascenders. Measured from the title faces' own
+ * glyphs with fontkit (29 October 2026): Archivo Compressed Black's ink runs from 737 above the baseline (b, d, l) to
+ * 210 below it (g, j, p, q, y) per 1000 units, 0.947 em together; Archivo Condensed Heavy 736 and 206, 0.942 em. The
+ * titles were set at 0.86 to 0.9, so "Biggest" over "Treat" and "Lounge" over "Music" drew one into the other.
+ */
+export const INK_CLEAR_LEADING = 1
+
+/** The leading a set of lines is drawn at: the tight one asked for, unless a line above another holds a descender. */
+export function leadingFor(lines: readonly string[], asked: number): number {
+  return lines.slice(0, -1).some((l) => /[gjpqyQJ,;]/.test(l)) ? Math.max(asked, INK_CLEAR_LEADING) : asked
+}
+
+/**
+ * The largest size from max down to min (by 2) at which the words take at most maxLines lines and fit `height`, with
+ * the leading those lines are drawn at (leadingFor).
+ */
 export function fit(
   text: string,
   measure: Measure,
   o: { max: number; min: number; width: number; maxLines: number; lineHeight: number; spacing: number; height?: number },
-): { size: number; lines: string[] } {
+): { size: number; lines: string[]; lineHeight: number } {
   for (let size = o.max; size >= o.min; size -= 2) {
     const lines = breakLines(text, measure, size, o.width, o.spacing)
     if (!lines || lines.length > o.maxLines) continue
-    if (o.height !== undefined && lines.length * size * o.lineHeight > o.height) continue
-    return { size, lines }
+    const lineHeight = leadingFor(lines, o.lineHeight)
+    if (o.height !== undefined && lines.length * size * lineHeight > o.height) continue
+    return { size, lines, lineHeight }
   }
   throw new FitError(`"${text}" does not fit ${o.maxLines} line(s) of ${o.width} at ${o.min}px or more`)
 }
@@ -380,13 +397,13 @@ export function layoutNight(format: TreatmentFormat, w: NightWords, m: Measurers
     spacing,
     height: titleBottom - lineH - topLimit - eyebrowH,
   })
-  const titleH = title.lines.length * title.size * lineHeight
+  const titleH = title.lines.length * title.size * title.lineHeight
   // A type-led title stands from the top of its space, as the reference sets it; a photo-led one sits on its details.
   const titleY = t === 'photo' ? titleBottom - lineH - titleH : topLimit + eyebrowH
   const eb = eyebrow(g, w.eyebrow, m, titleY - eyebrowH, groundAt(titleY - eyebrowH))
   runs.push(...eb.runs)
   blocks.push(...eb.blocks)
-  runs.push({ role: 'title', lines: title.lines, face, size: title.size, lineHeight, letterSpacing: spacing, color: INK, ground: groundAt(titleY), x: g.pad, y: titleY, w: widthIn(g) })
+  runs.push({ role: 'title', lines: title.lines, face, size: title.size, lineHeight: title.lineHeight, letterSpacing: spacing, color: INK, ground: groundAt(titleY), x: g.pad, y: titleY, w: widthIn(g) })
   if (lineRun) {
     const ly = t === 'photo' ? titleBottom - lineH + 34 : titleY + titleH + 34
     runs.push({ ...lineRun, y: ly, ground: groundAt(ly) })
@@ -445,9 +462,9 @@ export function layoutBrand(format: TreatmentFormat, w: BrandWords, m: Measurers
   const lineY = row.top - 56 - lineH
   const topLimit = t === 'photo' ? g.solidFrom - 80 : g.typeTop
   const head = fit(w.headline, m.condensed, { max: format === 'square' ? 120 : 150, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.88, spacing: -0.01, height: lineY - 24 - topLimit })
-  const headH = head.lines.length * head.size * 0.88
+  const headH = head.lines.length * head.size * head.lineHeight
   const headY = lineY - 24 - headH
-  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.88, letterSpacing: -0.01, color: INK, ground: groundAt(headY), x: g.pad, y: headY, w: widthIn(g) })
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.01, color: INK, ground: groundAt(headY), x: g.pad, y: headY, w: widthIn(g) })
   runs.push({ role: 'line', lines: lf.lines, face: 'manrope600', size: lf.size, lineHeight: 1.35, letterSpacing: 0, color: INK, ground: groundAt(lineY), x: g.pad, y: lineY, w: widthIn(g) })
   return {
     treatment: t,
@@ -523,9 +540,9 @@ export function layoutCover(format: TreatmentFormat, w: CoverWords, m: Measurers
   y -= 26 + runHeight(line)
   runs.push({ ...line, y })
   const head = fit(w.headline, m.condensed, { max: format === 'square' ? 104 : format === 'story' ? 140 : 128, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: y - 24 - (g.typeTop + 70) })
-  const headH = head.lines.length * head.size * 0.9
+  const headH = head.lines.length * head.size * head.lineHeight
   y -= 24 + headH
-  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.9, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y, w: widthIn(g) })
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y, w: widthIn(g) })
   const chipText = w.chip.toUpperCase()
   const chip = fit(chipText, m.manrope800, { max: 24, min: 20, width: widthIn(g) - 48, maxLines: 1, lineHeight: 1.2, spacing: 0 })
   const chipW = Math.ceil(m.manrope800(chip.lines[0], chip.size)) + 44
@@ -588,8 +605,8 @@ export function layoutEnd(format: TreatmentFormat, w: EndWords, m: Measurers): L
   y -= 22 + runHeight(line)
   runs.push({ ...line, y })
   const head = fit(w.headline, m.condensed, { max: format === 'square' ? 112 : 140, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: y - 26 - g.typeTop })
-  y -= 26 + head.lines.length * head.size * 0.9
-  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.9, letterSpacing: -0.005, color: NAVY, ground: GOLD, x: g.pad, y, w: widthIn(g) })
+  y -= 26 + head.lines.length * head.size * head.lineHeight
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.005, color: NAVY, ground: GOLD, x: g.pad, y, w: widthIn(g) })
   return { treatment: 'graphic', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground: null, background: GOLD, art: [], blocks: [], runs }
 }
 
@@ -624,8 +641,8 @@ export function layoutOffer(format: TreatmentFormat, w: OfferWords, m: Measurers
   }
   const headBottom = y - 26
   const head = fit(w.headline, m.condensed, { max: format === 'square' ? 104 : 132, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: headBottom - g.typeTop - 56 })
-  const headY = headBottom - head.lines.length * head.size * 0.9
-  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.9, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y: headY, w: widthIn(g) })
+  const headY = headBottom - head.lines.length * head.size * head.lineHeight
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y: headY, w: widthIn(g) })
   const eb = eyebrow(g, w.eyebrow, m, headY - 56, NAVY)
   runs.push(...eb.runs)
   blocks.push(...eb.blocks)
