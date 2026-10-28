@@ -181,14 +181,20 @@ export function selectNights(candidates: readonly CampaignNight[], max: number):
   const venues = new Map<string, number>()
   const categories = new Map<string, number>()
   const kept: { n: CampaignNight; reasons: string[] }[] = []
+  // One night per title in a set: a market on Saturday and Sunday is one pick, its sooner date (the directive's
+  // section 5: no repetitive layouts).
+  const titles = new Set<string>()
   for (const s of scored) {
     if (kept.length >= max) break
+    const title = s.n.title.trim().toLowerCase()
+    if (titles.has(title)) continue
     const venue = (s.n.venueName ?? '').toLowerCase()
     const category = (s.n.categorySlug ?? '').toLowerCase()
     if (venue && (venues.get(venue) ?? 0) >= MAX_PER_VENUE) continue
     if (category && (categories.get(category) ?? 0) >= MAX_PER_CATEGORY) continue
     if (venue) venues.set(venue, (venues.get(venue) ?? 0) + 1)
     if (category) categories.set(category, (categories.get(category) ?? 0) + 1)
+    titles.add(title)
     kept.push(s)
   }
   kept.sort((a, b) => Date.parse(a.n.startDate) - Date.parse(b.n.startDate))

@@ -118,3 +118,15 @@ describe('the sweep takes a withdrawn image out of the words', () => {
     expect(out).toContain('Photo: The Barwon Club')
   })
 })
+
+describe('one night per title in a set', () => {
+  it('a market on Saturday and Sunday is picked once, its sooner date', async () => {
+    const { selectNights } = await import('@/lib/social/campaign')
+    const sat = night({ at: '2026-10-31T00:00:00Z', title: 'The Melbourne Book Market', venueName: 'Queen Victoria Market' })
+    const sun = night({ at: '2026-11-01T00:00:00Z', title: 'The Melbourne Book Market', venueName: 'Queen Victoria Market' })
+    const other = night({ at: '2026-11-01T03:00:00Z', title: 'Run the Tan', venueName: 'Run the Tan' })
+    const { nights } = selectNights([sat, sun, other], 5)
+    expect(nights.map((n) => n.title)).toEqual(['The Melbourne Book Market', 'Run the Tan'])
+    expect(nights[0].eventId).toBe(sat.eventId)
+  })
+})
