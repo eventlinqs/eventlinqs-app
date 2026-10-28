@@ -1,4 +1,5 @@
 import { fromZonedInputValue } from '@/lib/dates/event-time'
+import { FREE_REGISTRATION_REQUIRED } from '@/lib/events/cta'
 
 /**
  * AN ORGANISER'S SUBMISSION OF AN OUTSIDE EVENT (release checklist H1, the project manager's 13:10 of 28 October
@@ -33,7 +34,7 @@ export const SUBMISSION_ENTRIES = ['free', 'free_registration', 'paid'] as const
 export type SubmissionEntry = (typeof SUBMISSION_ENTRIES)[number]
 export const SUBMISSION_ENTRY_WORDS: Readonly<Record<SubmissionEntry, string>> = {
   free: 'Free, no registration',
-  free_registration: 'Free, registration required',
+  free_registration: FREE_REGISTRATION_REQUIRED,
   paid: 'Paid tickets',
 }
 
