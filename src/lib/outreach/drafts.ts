@@ -17,7 +17,9 @@ type Admin = SupabaseClient<Database>
 
 export type DraftRequest = {
   contactId: string
+  /** The newest version of this key, unless templateId pins the exact version (a play's approved version). */
   templateKey: string
+  templateId?: string | null
   purpose: MessagePurpose
   step?: 1 | 2 | 3 | null
   playId?: string | null
@@ -33,13 +35,15 @@ export type DraftRequest = {
 export type DraftResult = Done<{ id: string; state: 'queued' | 'held'; heldBecause: string[] }>
 
 export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<DraftResult> {
-  const template = await db
-    .from('outreach_templates')
-    .select('id, channel, purpose, step, subject, body')
-    .eq('key', r.templateKey)
-    .order('version', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const template = r.templateId
+    ? await db.from('outreach_templates').select('id, channel, purpose, step, subject, body').eq('id', r.templateId).maybeSingle()
+    : await db
+        .from('outreach_templates')
+        .select('id, channel, purpose, step, subject, body')
+        .eq('key', r.templateKey)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle()
   if (template.error || !template.data) return { state: 'refused', reason: `no template ${r.templateKey}` }
   const contact = await db.from('organiser_contacts').select('channel, unsubscribe_token').eq('id', r.contactId).single()
   if (contact.error) return { state: 'refused', reason: refusalFromError(contact.error) }
