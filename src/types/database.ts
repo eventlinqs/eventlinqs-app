@@ -2847,6 +2847,7 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          published_series_id: string | null
           reasons: string[]
           refused_because: string | null
           reviewed_at: string | null
@@ -2871,6 +2872,7 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
@@ -2895,6 +2897,7 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
@@ -2919,6 +2922,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_candidates_published_series_id_fkey"
+            columns: ["published_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
             referencedColumns: ["id"]
           },
           {
@@ -3104,6 +3114,7 @@ export type Database = {
       listing_sources: {
         Row: {
           acquisition_order: number | null
+          category_id: string | null
           changes: string
           city_slug: string | null
           collection: string
@@ -3154,6 +3165,7 @@ export type Database = {
         }
         Insert: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection: string
@@ -3204,6 +3216,7 @@ export type Database = {
         }
         Update: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection?: string
@@ -3253,6 +3266,13 @@ export type Database = {
           verified_on?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "listing_sources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "listing_sources_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -9823,6 +9843,10 @@ export type Database = {
       marketing_attribution_default_window: { Args: never; Returns: number }
       listing_horizon: {
         Args: { p_now?: string; p_starts_at: string }
+        Returns: string
+      }
+      listing_publish_partner_night: {
+        Args: { p_candidate: string }
         Returns: string
       }
       marketing_attribution_is_billable: {
