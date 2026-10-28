@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ARTEFACT_CHANNELS } from '@/lib/broadcast/artefact-channels'
-import { priceLabel } from '@/lib/events/price-label'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { isExternallyTicketed } from '@/lib/payments/sale-status'
 import { buildShortUrl, getOrCreateShareLink, type ShareChannel } from '@/lib/broadcast/share-links'
 import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
 import type { SocialCardInput } from '@/lib/broadcast/social-cards'
@@ -30,6 +31,11 @@ export type ArtefactContext = {
   city: string | null
   placeLabel: string
   priceLabel: string
+  /**
+   * Sold on another site (WI3: external_ticket_url), so not ticketed here: its card says "Listed on EVENTLINQS" and
+   * "Scan for details", never "Ticketing by" or "Scan to buy". Absent where a context is built by hand.
+   */
+  listing?: boolean
   summary: string | null
   categorySlug: string | null
   categoryName: string | null
@@ -90,6 +96,7 @@ type EventRow = {
   ticket_tiers: { price: number; currency: string | null }[] | null
   organisation: { name: string | null; logo_url: string | null } | null
   listing_source: string | null
+  external_ticket_url: string | null
 }
 
 /**
@@ -114,7 +121,7 @@ export async function loadArtefactContext(
     admin
       .from('events')
       .select(
-        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
+        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, external_ticket_url, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
       )
       .eq('id', eventId)
       .maybeSingle(),
@@ -171,7 +178,8 @@ export async function loadArtefactContext(
     venueName: event.venue_name ?? null,
     city,
     placeLabel: [event.venue_name, city].filter(Boolean).join(', '),
-    priceLabel: priceLabel(event.ticket_tiers ?? [], 'Free entry'),
+    priceLabel: broadcastPriceLabel(event.ticket_tiers, event.external_ticket_url),
+    listing: isExternallyTicketed(event),
     // Composed onto a printed poster and a story card, so markdown here is
     // asterisks in ink. Law 6 renders what the organiser supplies; it does not
     // render their syntax (UX1.1).
@@ -201,6 +209,7 @@ export function toCardInput(
     shortUrl: context.links[channel] ?? context.links.fallback,
     eyebrow: context.eyebrow,
     organiserName: context.organiserName,
+    ...(context.listing ? { listing: true } : {}),
   }
 }
 

@@ -1,6 +1,7 @@
 import { enforceCopyLaws } from '@/lib/ai/sanitise'
 import { findCopyTells } from '@/lib/ai/copy-tells'
 import { ARTEFACT_CHANNELS, type ArtefactChannel } from '@/lib/broadcast/artefact-channels'
+import { isSoldElsewhereLabel } from '@/lib/broadcast/sold-elsewhere'
 
 /**
  * THE CAPTION ENGINE.
@@ -145,7 +146,8 @@ function closingLine(family: EventFamily, priceLabel: string): string {
   const free = /free/i.test(priceLabel)
   switch (family) {
     case 'music':
-      return free
+      /* Sold on another site: we know of no presale and no door, so neither is claimed. */
+      return free || isSoldElsewhereLabel(priceLabel)
         ? 'Bring whoever you were going to text about it.'
         : 'Presale now, on the door if any are left.'
     case 'workshop':

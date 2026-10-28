@@ -2,9 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
-import { priceLabel } from '@/lib/events/price-label'
-import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
-import { TICKETS_SOLD_ELSEWHERE_HEADING, isExternallyTicketed } from '@/lib/payments/sale-status'
+import { broadcastPriceLabel } from './price-line'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
 import { buildShortUrl, getOrCreateShareLink } from './share-links'
@@ -272,11 +270,7 @@ export function digestPriceLabel(
   tiers: { price: number; currency: string | null }[] | null | undefined,
   externalTicketUrl: string | null,
 ): string {
-  if (isExternallyTicketed({ external_ticket_url: externalTicketUrl })) {
-    const name = PROVIDER_NAMES[providerOf(externalTicketUrl!.trim())]
-    return name ? `Tickets on ${name}` : TICKETS_SOLD_ELSEWHERE_HEADING
-  }
-  return priceLabel(tiers ?? [], 'Free entry')
+  return broadcastPriceLabel(tiers, externalTicketUrl)
 }
 
 export function digestVenueLabel(
