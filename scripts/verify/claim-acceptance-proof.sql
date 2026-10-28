@@ -1,7 +1,7 @@
--- THE CLAIM AS ACCEPTANCE PROOF (supabase/migrations/20261028203201_claim_acceptance.sql), on TEST, which holds the
+-- THE CLAIM AS ACCEPTANCE PROOF (supabase/migrations/20261028220201_claim_acceptance.sql), on TEST, which holds the
 -- asset register (20261028141001). One transaction that ends by RAISING its verdict, so TEST is left as found.
---   RED:   153001 and 201001 followed by this file (the claim acceptance migration not there): the checks fail.
---   GREEN: 153001, 201001, 203201 and this file, joined, in one transaction:
+--   RED:   153001 and 205501 (where TEST lacks them) followed by this file, the claim acceptance migration not there.
+--   GREEN: the same with 220201 before this file, joined, in one transaction:
 --          scripts\ops\with-supabase-token.ps1 node scripts/verify/run-proof-on-test.mjs <the four, joined>
 -- Every check runs in its own block, so a missing column or function is reported as that check failing.
 DO $proof$
@@ -153,7 +153,7 @@ BEGIN
     v_asset := public.organiser_media_add(v_user, v_night2, v_bucket || 'p/one.webp', 'Night one.JPG', 'photo', NULL, 'No cropping of the band');
     SELECT * INTO v_row FROM public.social_assets WHERE id = v_asset;
     IF v_row.asset_state = 'organiser_authorised' AND v_row.approval_status = 'pending' AND v_row.permission_id = v_yes
-       AND position(v_line in v_row.permission_evidence) > 0 AND v_row.original_file = 'Night one.JPG' AND v_row.received_at IS NOT NULL
+       AND position(v_line in v_row.permission_evidence) > 0 AND v_row.original_file = 'Night one.JPG' AND v_row.received_on IS NOT NULL AND position('future events' in v_row.permitted_uses) > 0
        AND v_row.attribution_text = 'Photo: ' || v_host AND v_row.restrictions = 'No cropping of the band' AND v_row.withdrawal_status = 'current'
        AND NOT public.social_asset_usable(v_bucket || 'p/one.webp', v_night2, now()) THEN
       UPDATE public.social_assets SET approval_status = 'approved', approved_by = v_user, approved_at = now() WHERE id = v_asset;

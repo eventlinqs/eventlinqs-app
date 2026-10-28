@@ -58,10 +58,10 @@ export default async function OrganisationMediaPage({
     ? await readOrThrow('organisation images', () =>
         admin
           .from('social_assets')
-          .select('id, event_id, asset_type, asset_url, original_file, attribution_text, restrictions, approval_status, withdrawal_status, received_at')
+          .select('id, event_id, asset_type, asset_url, original_file, attribution_text, restrictions, approval_status, withdrawal_status, received_on')
           .eq('asset_state', 'organiser_authorised')
           .in('event_id', nightIds)
-          .order('received_at', { ascending: false }),
+          .order('created_at', { ascending: false }),
       )
     : []
   const titleOf = new Map((nights ?? []).map((n) => [n.id, n.title]))
@@ -147,7 +147,7 @@ export default async function OrganisationMediaPage({
                   <p className="font-semibold text-ink-900">{titleOf.get(a.event_id ?? '') ?? 'Your night'}</p>
                   <p className="mt-1">
                     {a.original_file ?? 'Image'}, {a.attribution_text}
-                    {a.received_at ? `, added ${formatPlatformDate(a.received_at)}` : ''}
+                    {a.received_on ? `, added ${formatPlatformDate(a.received_on)}` : ''}
                   </p>
                   {a.restrictions ? <p className="mt-1">Restrictions: {a.restrictions}</p> : null}
                   <p className="mt-1 font-medium text-ink-900">

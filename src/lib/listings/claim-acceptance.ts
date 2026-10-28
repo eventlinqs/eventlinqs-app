@@ -6,7 +6,7 @@ import type { ClaimTarget } from './claim'
  * page asks, beside the code, the two ticks of the project manager's claim page words (C:\dev\START-16OCT\
  * EVENTLINQS-ORGANISER-MESSAGES-28OCT.md, section 6): Lawal's one permission line, and that the claimant can give it.
  * The database writes the yes into organiser_permissions in the same transaction as the move, only when the code is
- * right (listing_claim_check, 20261028203201_claim_acceptance.sql). Unticked, the listing is still claimed and carries
+ * right (listing_claim_check, 20261028220201_claim_acceptance.sql). Unticked, the listing is still claimed and carries
  * no yes: a factual listing never waits for a permission (the checklist's section K, core rule).
  *
  * The words kept are always the constant, never the form's text, so a row says exactly what its sender agreed to.

@@ -9,7 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * withdraw"; the final directive's media-rights record). Once a listing is claimed with a yes, its organiser adds a
  * photo or artwork for one of their nights, replaces it, withdraws it, or withdraws the yes itself.
  *
- * The database decides every one of these (20261028203201_claim_acceptance.sql): organiser_media_add,
+ * The database decides every one of these (20261028220201_claim_acceptance.sql): organiser_media_add,
  * organiser_media_replace, organiser_media_withdraw and organiser_permission_withdraw, each a definer function the
  * service role alone may call, each checking that the user belongs to the night's organisation and that a yes covers
  * it. An added image goes into the asset register (social_assets) as organiser authorised and PENDING: a person
@@ -160,7 +160,7 @@ export function mediaDeps(): MediaDeps {
       if (error) throw new Error(`the image files were not removed: ${error.message}`)
     },
     async rpc(name, args) {
-      // The four functions are added by 20261028203201; until the generated types carry them, the call is by name.
+      // The four functions are added by 20261028220201; until the generated types carry them, the call is by name.
       const { data, error } = await (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args)
       return { data, error: error ? { code: error.code, message: error.message } : null }
     },

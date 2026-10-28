@@ -3,8 +3,9 @@
 -- withdraw".
 --
 -- Follows 20261028153001_organiser_permissions.sql (window 6: the organiser's yes, kept as given) and
--- 20261028201001_social_media_rights.sql (window 3: the media-rights record on social_assets, withdrawal_status,
--- replaced_by, withdrawn_at, original_file, received_at, permitted_uses). Changes neither file.
+-- 20261028205501_social_media_rights.sql (window 3: the media-rights record on social_assets, original_file,
+-- received_on, permitted_uses, withdrawal_status, withdrawn_at, withdrawal_reason, replaced_by, and the rule that
+-- nothing withdrawn or replaced is usable). Changes neither file; stamped after window 6's 20261028213001 too.
 --
 -- 1. THE CLAIM CARRIES THE YES. listing_claims keeps the claimant's two ticks, set beside the code (the project
 --    manager's claim page words): the permission line's exact words (PERMISSION_WORDS, a constant), its scope, when it
@@ -24,7 +25,9 @@
 --      organiser_permission_withdraw  the yes withdrawn and every current image under it with it.
 --    A withdrawn or replaced image is never usable again (social_asset_usable, 201001), and window 3's hourly sweep
 --    takes it out of every unposted piece; posted pieces are not touched. Each answers the storage paths of the files
---    in the organiser-media bucket it took out of use, so the caller removes them.
+--    in the organiser-media bucket it took out of use, so the caller removes them. Their media-rights record is
+--    whole: the original file as uploaded, received today, and the uses the yes gives (window 3's trigger
+--    social_assets_whole_from_the_yes writes those words from the yes).
 -- 4. The organiser's regular nights: organiser_series_keep keeps a series listing itself or pauses it (the claim
 --    page's "Keep listing these automatically", on by default).
 -- 5. A public bucket, organiser-media: an approved image must be readable by the slide renderer at a stable address,
@@ -194,11 +197,6 @@ grant execute on function public.listing_claim_check(uuid, text, uuid, timestamp
 -- ---------------------------------------------------------------------------
 -- 3. The organiser's own images
 -- ---------------------------------------------------------------------------
-alter table public.social_assets
-  add column if not exists withdrawal_reason text;
-alter table public.social_assets drop constraint if exists social_assets_withdrawal_says_why;
-alter table public.social_assets add constraint social_assets_withdrawal_says_why
-  check (withdrawal_reason is null or length(btrim(withdrawal_reason)) between 3 and 500);
 
 -- True when the user belongs to the organisation the night is run by now.
 create or replace function public.organiser_runs_night(p_user uuid, p_event uuid)
@@ -261,12 +259,12 @@ begin
 
   insert into public.social_assets
     (asset_state, asset_type, event_id, asset_url, source_url, rights_holder, permission_evidence, permission_id,
-     attribution_text, scope, restrictions, created_by, original_file, received_at)
+     attribution_text, scope, restrictions, created_by, original_file, received_on)
   values
     ('organiser_authorised', p_kind, p_event, p_asset_url, p_asset_url, v_holder,
      public.organiser_permission_evidence(v_perm), v_perm.id,
      coalesce(nullif(btrim(p_attribution), ''), case p_kind when 'photo' then 'Photo: ' else 'Artwork: ' end || v_holder),
-     'both', nullif(btrim(p_restrictions), ''), p_user, nullif(btrim(p_original_name), ''), now())
+     'both', nullif(btrim(p_restrictions), ''), p_user, nullif(btrim(p_original_name), ''), (now() at time zone 'Australia/Melbourne')::date)
   returning id into v_id;
   return v_id;
 end
@@ -300,11 +298,11 @@ begin
 
   insert into public.social_assets
     (asset_state, asset_type, event_id, asset_url, source_url, rights_holder, permission_evidence, permission_id,
-     attribution_text, scope, restrictions, expires_at, created_by, original_file, received_at)
+     attribution_text, scope, restrictions, expires_at, created_by, original_file, received_on)
   values
     ('organiser_authorised', v_old.asset_type, v_old.event_id, p_asset_url, p_asset_url, v_old.rights_holder,
      public.organiser_permission_evidence(v_perm), v_perm.id, v_old.attribution_text, v_old.scope, v_old.restrictions,
-     v_old.expires_at, p_user, nullif(btrim(p_original_name), ''), now())
+     v_old.expires_at, p_user, nullif(btrim(p_original_name), ''), (now() at time zone 'Australia/Melbourne')::date)
   returning id into v_id;
 
   update public.social_assets
