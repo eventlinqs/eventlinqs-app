@@ -9,6 +9,7 @@ import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import {
   addAssetAction,
+  withdrawAssetAction,
   approveAction,
   approvePieceAction,
   decideAssetAction,
@@ -140,10 +141,15 @@ const KIND_NAME: Record<PieceRow['kind'], string> = {
   venue_spotlight: 'Friday · Venue spotlight',
   organiser_campaign: 'Organiser campaign',
   partner_kit: 'Partner kit',
+  brand_campaign: 'The weekend brand piece',
 }
 const AUDIENCE_NAME: Record<PieceRow['audience'], string> = { attendees: 'Attendees', organisers: 'Organisers and promoters', venues: 'Venues', partners: 'Community partners' }
 const OBJECTIVE_NAME: Record<PieceRow['objective'], string> = { audience_growth: 'Audience growth', organiser_growth: 'Organiser growth' }
-const MODE_NAME: Record<PieceRow['revision']['mode'], string> = { photo_led: 'Photo led, with an approved image', graphic_led: 'Graphic led, original EventLinqs design', type_led: 'Type led, original EventLinqs design' }
+const MODE_NAME: Record<PieceRow['revision']['mode'], string> = {
+  photo_led: "Treatment A, the owner's own photograph through an approved row",
+  graphic_led: "Treatment C, EventLinqs' own art",
+  type_led: 'Treatment B, editorial type, no image needed',
+}
 const STATE_NAME: Record<PieceRow['state'], string> = { drafted: 'Drafted', rejected: 'Rejected', approved: 'Approved', gone: 'Gone' }
 const ASSET_STATE_NAME: Record<string, string> = {
   organiser_authorised: 'Organiser authorised',
@@ -166,6 +172,18 @@ function Piece({ p }: { p: PieceRow }) {
           {STATE_NAME[p.state]} · version {r.version}
         </span>
       </div>
+      {p.schedule.length > 0 && p.state !== 'gone' ? (
+        <p data-schedule className="mt-2 text-sm text-white/70">
+          {p.schedule
+            .map((s) =>
+              s.state === 'held'
+                ? `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: held, ${s.heldReason}`
+                : `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${s.state === 'published' ? 'published' : 'scheduled for'} ${formatPlatformDateTime(s.goAt)}`,
+            )
+            .join('. ')}
+          . It goes by itself only once Meta approves our app and publishing is switched on; until then post it by hand and record it below.
+        </p>
+      ) : null}
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-[150px_minmax(0,1fr)]">
         <dt className="text-white/50">Audience</dt>
         <dd data-audience className="text-white">{AUDIENCE_NAME[p.audience]}</dd>
@@ -212,6 +230,11 @@ function Piece({ p }: { p: PieceRow }) {
               <img src={`/admin/social/piece/${p.id}/${i + 1}?v=${r.version}`} alt={`Slide ${i + 1} of ${r.slides.length}`} loading="lazy" className="w-[120px] rounded-lg border border-white/[0.08]" />
               <span className="mt-1 block text-center text-xs text-white/60">Download {i + 1}</span>
             </a>
+            {p.format === 'feed' ? (
+              <a href={`/admin/social/piece/${p.id}/${i + 1}?format=square&download=1`} data-press="slide-square" className="mt-1 flex min-h-[44px] items-center justify-center text-xs text-white/60 underline">
+                Square
+              </a>
+            ) : null}
           </li>
         ))}
       </ol>
@@ -417,6 +440,12 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
           ['evidenceFile', 'Where the evidence is kept', 'text', false],
           ['expiresAt', 'Expires on (optional)', 'date', false],
           ['restrictions', 'Restrictions (optional)', 'text', false],
+          ['originalFile', 'The original file as they sent it (its name or where it is kept)', 'text', false],
+          ['receivedOn', 'The day they sent it', 'date', false],
+          ['permittedUses', 'What they allowed it to be used for, in plain words', 'text', false],
+          ['focalX', 'Where the subject is across, 0 to 100 (optional)', 'number', false],
+          ['focalY', 'Where the subject is down, 0 to 100 (optional)', 'number', false],
+          ['leadRank', 'Which leads for its night, 1 first (optional)', 'number', false],
         ] as const).map(([name, label, type, required]) => (
           <label key={name} className="text-sm text-white/70">
             {label}
@@ -461,6 +490,41 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
                 {a.restrictions ? `. Restrictions: ${a.restrictions}` : ''}.
               </p>
               {a.permissionEvidence ? <p className="mt-1 text-white/60">&ldquo;{a.permissionEvidence}&rdquo;</p> : null}
+              <p className="mt-1 text-white/60">
+                {a.originalFile ? `Original: ${a.originalFile}. ` : ''}
+                {a.receivedOn ? `Received ${a.receivedOn}. ` : ''}
+                {a.permittedUses ? `Allowed: ${a.permittedUses} ` : ''}
+                {a.size ? `${a.size.width} by ${a.size.height} pixels.` : ''}
+              </p>
+              {a.withdrawalStatus !== 'current' ? (
+                <p className="mt-1 text-white" data-withdrawn={a.withdrawalStatus}>
+                  {a.withdrawalStatus === 'withdrawn' ? 'Withdrawn' : 'Replaced'}: {a.withdrawalReason}. Used for nothing.
+                </p>
+              ) : (
+                <form action={withdrawAssetAction} className="mt-3 flex flex-wrap items-end gap-2">
+                  <input type="hidden" name="asset" value={a.id} />
+                  <label className="text-xs text-white/60">
+                    Why it is withdrawn
+                    <input name="reason" required minLength={3} className={`mt-1 ${FIELD}`} />
+                  </label>
+                  <label className="text-xs text-white/60">
+                    Replaced by (optional)
+                    <select name="replacement" defaultValue="" className={`mt-1 ${FIELD}`}>
+                      <option value="">Not replaced</option>
+                      {assets
+                        .filter((o) => o.id !== a.id && o.eventId === a.eventId && o.withdrawalStatus === 'current')
+                        .map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.attributionText}, {o.assetUrl.split('/').pop()}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <button type="submit" data-press="asset-withdraw" className={QUIET}>
+                    Withdraw
+                  </button>
+                </form>
+              )}
               {a.approvalStatus === 'pending' ? (
                 <div className="mt-3 flex gap-2">
                   {(['approved', 'refused'] as const).map((d) => (
