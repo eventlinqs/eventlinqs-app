@@ -20,7 +20,7 @@
  * claim-acceptance-drive-cleanup.sql and the account, and reads them back gone. TEST only: it refuses any other database.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync, existsSync, statfsSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync, existsSync, statfsSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import sharp from 'sharp'
@@ -320,6 +320,9 @@ try {
 } finally {
   if (browser) await browser.close().catch(() => {})
   if (server?.pid) spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' })
+  // The dev server's build output is this drive's own, and the disk is shared: it goes when the drive ends, pass or
+  // fail (the project manager's 01:19 (3)). The browser's temp profile goes with browser.close() above.
+  if (server) rmSync('.next', { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 })
   if (existsSync(capture)) console.log(`CAPTURED ${readFileSync(capture, 'utf8').trim().split('\n').filter(Boolean).length} email(s), none sent`)
   /* ---- everything put back and removed, read back ---- */
   if (storedPath) await db.storage.from('organiser-media').remove([storedPath])
