@@ -297,3 +297,33 @@ describe('the one button that leaves, on a curated listing (WI3)', () => {
     expect(container.querySelector('[data-outbound]')).toBeNull()
   })
 })
+
+describe('the day by day section says more than the hours, or is not drawn (finish pass, 27 October 2026)', () => {
+  const hoursOnly = parseGuide({ days: [{ date: '2026-11-20', opens: '18:00', closes: '22:00', items: [], closer: null }] })
+  const draw = (g: ReturnType<typeof parseGuide>) =>
+    render(
+      <WalkInEventView
+        event={event}
+        guide={g.ok ? g.guide : (null as never)}
+        remindMeOn={false}
+        now={Date.now()}
+        baseUrl="https://www.eventlinqs.com.au"
+        hero={{ image: 'https://cdn.example.com/amcf.avif', alt: '' }}
+      />,
+    )
+  const headings = (c: HTMLElement) => Array.from(c.querySelectorAll('h2')).map((h) => (h.textContent ?? '').trim())
+
+  it('a night with its hours alone draws no program, since the hours are already shown above it', () => {
+    expect(headings(draw(hoursOnly).container)).not.toContain('The program')
+  })
+
+  it('a night with something on its program still draws it', () => {
+    const withItem = parseGuide({ days: [{ date: '2026-11-20', opens: '18:00', closes: '22:00', items: [{ when: '7pm', what: 'Trivia' }], closer: null }] })
+    expect(headings(draw(withItem).container)).toContain('The program')
+  })
+
+  it('a program note alone is enough to draw it', () => {
+    const withNote = parseGuide({ days: [{ date: '2026-11-20', opens: '18:00', closes: '22:00', items: [], closer: null }], program_note: 'The full timetable is still to come.' })
+    expect(headings(draw(withNote).container)).toContain('The program')
+  })
+})
