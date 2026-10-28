@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { compositionFor, creativeRefusals, dayInWeek, pieceRefusal, planCampaign, selectNights, weekStartOf, type CampaignCity, type CampaignNight, type PiecePlan } from '@/lib/social/campaign'
+import { compositionFor, creativeRefusals, dayInWeek, hostOf, pieceRefusal, planCampaign, selectNights, weekStartOf, type CampaignCity, type CampaignNight, type PiecePlan } from '@/lib/social/campaign'
 
 /*
  * THE WEEKLY CAMPAIGN (the release checklist of 28 October 2026: A1, B2, C1 to C9, J1 to J5, J10, J11, J13; Lawal's
@@ -233,5 +233,15 @@ describe('the creative checks before approval (K10, K12)', () => {
     expect(said).toMatch(/over 2200/)
     expect(said).toMatch(/exclamation mark/)
     expect(said).toMatch(/not the night's venue/)
+  })
+})
+
+describe('the host a night is shown under (ruling A of 23 October 2026)', () => {
+  it("an EventLinqs listing is its venue's, and the listings organisation is named nowhere", () => {
+    expect(hostOf({ listingSource: 'eventlinqs', organisationName: 'EventLinqs listings', organisationSlug: 'eventlinqs-listings', venueName: 'The Barwon Club' })).toBe('The Barwon Club')
+    expect(hostOf({ listingSource: 'organiser', organisationName: 'EventLinqs listings', organisationSlug: 'eventlinqs-listings', venueName: 'Fed Square' })).toBe('Fed Square')
+  })
+  it("an organiser's own night is its organisation's", () => {
+    expect(hostOf({ listingSource: 'organiser', organisationName: 'Harbour Lights Collective', organisationSlug: 'harbour-lights', venueName: 'The Wharf' })).toBe('Harbour Lights Collective')
   })
 })
