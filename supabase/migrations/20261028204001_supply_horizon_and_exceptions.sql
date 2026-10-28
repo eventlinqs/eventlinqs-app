@@ -110,10 +110,11 @@ alter table public.listing_candidates add constraint listing_candidates_new_name
   check (kind <> 'new' or event_id is null);
 
 -- A changed fact names its kind of change; nothing else carries one. Its event may be deleted later (set null), as an
--- adds_links candidate's may.
+-- adds_links candidate's may. "change is not null" is written out because a CHECK whose answer is NULL passes: without
+-- it a changed fact with no change named was taken (scripts/verify/supply-horizon-proof.sql, run 1, 28 October 2026).
 alter table public.listing_candidates drop constraint if exists listing_candidates_change;
 alter table public.listing_candidates add constraint listing_candidates_change check (
-  (kind = 'changes_facts' and change in ('time_changed', 'venue_changed'))
+  (kind = 'changes_facts' and change is not null and change in ('time_changed', 'venue_changed'))
   or (kind <> 'changes_facts' and change is null)
 );
 
