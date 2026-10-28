@@ -109,6 +109,8 @@ export type Layout = {
   /** Treatment A: the fall to navy; the words sit only where it is at least `solid` opaque. */
   scrim: { solidFrom: number; topShade: number } | null
   ground: Ground | null
+  /** A flat ground instead (the closing slide's gold). */
+  background?: string
   art: Art[]
   blocks: Block[]
   runs: Run[]
@@ -461,6 +463,139 @@ export function layoutBrand(format: TreatmentFormat, w: BrandWords, m: Measurers
     blocks,
     runs,
   }
+}
+
+/** A one-line run fitted down to `min`, else two lines: the words a row or a label carries. */
+function rowRun(role: string, text: string, face: Face, m: Measurers, o: { x: number; y: number; w: number; max: number; min: number; color: string; ground: string; lineHeight?: number; lines?: number }): Run {
+  const lineHeight = o.lineHeight ?? 1.25
+  let f: { size: number; lines: string[] }
+  try {
+    f = fit(text, m[face], { max: o.max, min: o.min, width: o.w, maxLines: 1, lineHeight, spacing: 0 })
+  } catch (error) {
+    if (!(error instanceof FitError)) throw error
+    f = fit(text, m[face], { max: o.max, min: o.min, width: o.w, maxLines: o.lines ?? 2, lineHeight, spacing: 0 })
+  }
+  return { role, lines: f.lines, face, size: f.size, lineHeight, letterSpacing: 0, color: o.color, ground: o.ground, x: o.x, y: o.y, w: o.w }
+}
+
+const runHeight = (r: Run) => r.lines.length * r.size * r.lineHeight
+
+/** The mast with a count ("1/7") or a label at the right instead of the city. */
+function mastWithLabel(g: Geometry, label: string | null, m: Measurers, ground: string, dark = true): Run[] {
+  const runs = mast(g, null, m, ground, dark)
+  if (label) {
+    const size = 26
+    const w = Math.ceil(m.manrope700(label, size)) + 4
+    runs.push({ role: 'count', lines: [label], face: 'manrope700', size, lineHeight: 1.15, letterSpacing: 0, color: dark ? INK : NAVY, ground, x: g.w - g.pad - w, y: g.mastY + 2, w, align: 'right' })
+  }
+  return runs
+}
+
+export type CoverWords = { chip: string; headline: string; line: string; contents: string[]; label: string | null }
+
+/**
+ * A set's contents cover (the week ahead, the weekend guide, the Reel's first frame), in editorial type: the chip, the
+ * headline, the split line and one row a night, the day in gold and the title fitted to its row.
+ */
+export function layoutCover(format: TreatmentFormat, w: CoverWords, m: Measurers): Layout {
+  const g = GEOMETRY[format]
+  // Flat navy: the gold day labels fell under 3:1 on a gold-tinted glow (the QA's own finding, 28 October).
+  const runs: Run[] = [...mastWithLabel(g, w.label, m, NAVY)]
+  const blocks: Block[] = []
+  const bottom = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 60) - g.stickerZone
+  const dayW = 96
+  const rowSize = format === 'square' ? 26 : 30
+  let y = bottom
+  const rows: Run[][] = []
+  for (const [i, c] of [...w.contents].entries()) {
+    const [day, ...rest] = c.split(' ')
+    const title = rowRun(`content-${i}`, rest.join(' '), 'manrope700', m, { x: g.pad + dayW, y: 0, w: widthIn(g) - dayW, max: rowSize, min: 22, color: INK, ground: NAVY })
+    rows.push([{ role: `content-day-${i}`, lines: [day], face: 'manrope800', size: title.size, lineHeight: 1.25, letterSpacing: 0, color: GOLD, ground: NAVY, x: g.pad, y: 0, w: dayW - 12 }, title])
+  }
+  const placed: Run[][] = []
+  for (const row of [...rows].reverse()) {
+    const h = runHeight(row[1]) + 10
+    y -= h
+    placed.unshift(row.map((r) => ({ ...r, y })))
+  }
+  runs.push(...placed.flat())
+  const line = rowRun('line', w.line, 'manrope600', m, { x: g.pad, y: 0, w: widthIn(g), max: format === 'square' ? 28 : 32, min: 22, color: INK, ground: NAVY })
+  y -= 26 + runHeight(line)
+  runs.push({ ...line, y })
+  const head = fit(w.headline, m.condensed, { max: format === 'square' ? 104 : format === 'story' ? 140 : 128, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: y - 24 - (g.typeTop + 70) })
+  const headH = head.lines.length * head.size * 0.9
+  y -= 24 + headH
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.9, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y, w: widthIn(g) })
+  const chipText = w.chip.toUpperCase()
+  const chip = fit(chipText, m.manrope800, { max: 24, min: 20, width: widthIn(g) - 48, maxLines: 1, lineHeight: 1.2, spacing: 0 })
+  const chipW = Math.ceil(m.manrope800(chip.lines[0], chip.size)) + 44
+  const chipH = Math.round(chip.size * 1.2) + 20
+  y -= 28 + chipH
+  blocks.push({ role: 'pill', x: g.pad, y, w: chipW, h: chipH, color: GOLD })
+  runs.push({ role: 'chip', lines: chip.lines, face: 'manrope800', size: chip.size, lineHeight: 1.2, letterSpacing: 0, color: NAVY, ground: GOLD, x: g.pad + 22, y: y + 10, w: chipW - 44 })
+  return { treatment: 'type', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground: null, art: [], blocks, runs }
+}
+
+export type ProgrammeWords = { heading: string; address: string; rows: { day: string; title: string; meta: string }[]; label: string | null }
+
+/** The venue spotlight's programme: the week's nights at one place, a row each. */
+export function layoutProgramme(format: TreatmentFormat, w: ProgrammeWords, m: Measurers): Layout {
+  const g = GEOMETRY[format]
+  const ground = groundFor('#F3A43B', 'venue_spotlight')
+  const accent = '#F3A43B'
+  const runs: Run[] = [...mastWithLabel(g, w.label, m, ground.deep)]
+  const blocks: Block[] = []
+  let y = g.typeTop - (format === 'square' ? 70 : 40)
+  const head = rowRun('heading', w.heading.toUpperCase(), 'manrope800', m, { x: g.pad, y, w: widthIn(g), max: 28, min: 22, color: accent, ground: NAVY })
+  runs.push(head)
+  y += runHeight(head) + 18
+  const dayW = format === 'square' ? 150 : 180
+  const titleMax = format === 'square' ? 40 : 48
+  for (const [i, r] of w.rows.entries()) {
+    blocks.push({ role: 'divider', x: g.pad, y, w: widthIn(g), h: 2, color: 'rgba(246,241,230,0.22)' })
+    y += 22
+    const day = rowRun(`row-day-${i}`, r.day, 'condensed', m, { x: g.pad, y, w: dayW - 20, max: format === 'square' ? 56 : 68, min: 40, color: accent, ground: NAVY, lineHeight: 1, lines: 1 })
+    const title = rowRun(`row-title-${i}`, r.title, 'condensed', m, { x: g.pad + dayW, y, w: widthIn(g) - dayW, max: titleMax, min: 30, color: INK, ground: NAVY, lineHeight: 1 })
+    const meta = rowRun(`row-meta-${i}`, r.meta, 'manrope600', m, { x: g.pad + dayW, y: y + runHeight(title) + 8, w: widthIn(g) - dayW, max: 28, min: 22, color: '#DCD7CC', ground: NAVY, lines: 1 })
+    runs.push(day, title, meta)
+    y = Math.max(y + runHeight(day), meta.y + runHeight(meta)) + 22
+  }
+  const address = rowRun('address', w.address, 'manrope700', m, { x: g.pad, y: y + 16, w: widthIn(g), max: 30, min: 22, color: INK, ground: NAVY })
+  runs.push(address)
+  const limit = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 50) - g.stickerZone
+  if (address.y + runHeight(address) > limit) throw new FitError(`the programme's ${w.rows.length} rows do not fit the ${format}`)
+  return { treatment: 'type', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground, art: [], blocks, runs: onGround(runs, ground, g) }
+}
+
+export type EndWords = { headline: string; line: string; url: string; foot: string | null; label: string | null }
+
+/** The closing slide: gold, the one next step, the page it sends people to. */
+export function layoutEnd(format: TreatmentFormat, w: EndWords, m: Measurers): Layout {
+  const g = GEOMETRY[format]
+  const runs: Run[] = [...mastWithLabel(g, w.label, m, GOLD, false)]
+  const bottom = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 60) - g.stickerZone
+  let y = bottom
+  if (w.foot) {
+    const foot = rowRun('foot', w.foot, 'manrope600', m, { x: g.pad, y: 0, w: widthIn(g), max: 28, min: 22, color: NAVY, ground: GOLD })
+    y -= runHeight(foot)
+    runs.push({ ...foot, y })
+    y -= 18
+  }
+  const url = rowRun('url', w.url, 'archivo', m, { x: g.pad, y: 0, w: widthIn(g), max: 40, min: 24, color: NAVY, ground: GOLD, lines: 1 })
+  y -= runHeight(url)
+  runs.push({ ...url, y })
+  const line = rowRun('line', w.line, 'manrope700', m, { x: g.pad, y: 0, w: widthIn(g), max: 34, min: 24, color: NAVY, ground: GOLD, lines: 3 })
+  y -= 22 + runHeight(line)
+  runs.push({ ...line, y })
+  const head = fit(w.headline, m.condensed, { max: format === 'square' ? 112 : 140, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: y - 26 - g.typeTop })
+  y -= 26 + head.lines.length * head.size * 0.9
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: 0.9, letterSpacing: -0.005, color: NAVY, ground: GOLD, x: g.pad, y, w: widthIn(g) })
+  return { treatment: 'graphic', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground: null, background: GOLD, art: [], blocks: [], runs }
+}
+
+/** Each run's ground read where it sits on a type-led ground (the chip keeps its own gold). */
+function onGround(runs: Run[], ground: Ground, g: Geometry): Run[] {
+  return runs.map((r) => (r.ground === GOLD ? r : { ...r, ground: typeGroundAt(ground, g, r.y + runHeight(r)) }))
 }
 
 /** The organiser campaign (treatment C): its eyebrow, headline, numbered points and the page it sends people to. */
