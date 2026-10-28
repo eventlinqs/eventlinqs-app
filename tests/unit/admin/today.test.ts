@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { queueOf, reportsOverdue, REPORT_GRACE_HOURS, type QueueItem, type Source } from '@/lib/admin/today-math'
+import { failuresInARow, queueOf, reportsOverdue, REPORT_GRACE_HOURS, SOURCE_FAILING_AFTER, type QueueItem, type Source } from '@/lib/admin/today-math'
 
 /**
  * /admin/today, Lawal's one queue (the engine plan of 28 October 2026, part H; the project manager's 20:17): only what
@@ -56,5 +56,16 @@ describe('reportsOverdue', () => {
     expect(items.map((i) => i.id)).toEqual(['report:late'])
     expect(items[0].what).toBe('The after-the-night report for Late night')
     expect(items[0].since).toBe(ended(REPORT_GRACE_HOURS))
+  })
+})
+
+describe('failuresInARow', () => {
+  it('counts only the newest unbroken run of failures', () => {
+    const f = { succeeded: false }
+    const ok = { succeeded: true }
+    expect(failuresInARow([f, f, f, ok, f])).toBe(SOURCE_FAILING_AFTER)
+    expect(failuresInARow([f, ok, f, f, f])).toBe(1)
+    expect(failuresInARow([ok, f, f, f])).toBe(0)
+    expect(failuresInARow([])).toBe(0)
   })
 })

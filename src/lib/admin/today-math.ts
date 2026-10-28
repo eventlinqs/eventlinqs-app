@@ -105,3 +105,16 @@ export function reportsOverdue(due: readonly { id: string; endDate: string; titl
       href: null,
     }))
 }
+
+/** Window 4's rule for a collection source in trouble (/admin/collected): its newest runs failed this many times in a row. */
+export const SOURCE_FAILING_AFTER = 3
+
+/** The newest unbroken run of failures, the runs given newest first. */
+export function failuresInARow(runs: readonly { succeeded: boolean }[]): number {
+  let n = 0
+  for (const r of runs) {
+    if (r.succeeded) break
+    n += 1
+  }
+  return n
+}

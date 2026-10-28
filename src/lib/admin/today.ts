@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { queueOf, reportsOverdue, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
+import { failuresInARow, queueOf, reportsOverdue, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
 
 /**
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
@@ -16,8 +16,13 @@ import { queueOf, reportsOverdue, type Queue, type QueueItem, type Source, type 
  * until then these four reads go through OutreachDb, the client untyped for those tables only. A table not on the
  * database answers not landed, never an empty queue.
  *
- * NOT LANDED YET, by the car timetable of window 1's 20:12: the low-confidence rows are window 4's exception queue
- * (car 4), and a failed J15 or K10 check or a swept image window 3's (car 3).
+ * WINDOW 4's EXCEPTION QUEUE (20261028204001, its 21:18) is the collected rows waiting for a person, now with their
+ * confidence and reasons, read here as one item; and a source whose daily run has failed SOURCE_FAILING_AFTER times in
+ * a row (listing_source_runs), window 4's own rule on /admin/collected (FAILING_AFTER_RUNS and failuresInARow, on its
+ * branch until car 4, when this reads them from there).
+ *
+ * NOT LANDED YET, by the car timetable of window 1's 20:12: a failed J15 or K10 check or a swept image, window 3's
+ * (car 3).
  */
 
 const LIST_CAP = 50
@@ -44,6 +49,7 @@ function fail(error: { code?: string; message?: string }): never {
   throw new Error(error.message ?? 'unknown')
 }
 
+/** The client untyped for the tables of cars that have not reached this branch: window 6's outreach and window 4's runs. */
 type OutreachDb = SupabaseClient
 const OUTREACH = "window 6's outreach CRM, car 3"
 
@@ -123,11 +129,40 @@ async function collectedWaiting(admin: Admin): Promise<QueueItem[]> {
     {
       id: 'collected:waiting',
       what: `${n} collected ${n === 1 ? 'event' : 'events'} waiting for review`,
-      why: 'A collected night is published only once a person has checked it against its source.',
+      why: 'Each waits with its confidence and the reasons it was not accepted by itself; a person checks it against its source.',
       since: data[0].found_at,
       href: '/admin/collected',
     },
   ]
+}
+
+const RUNS_READ = 500
+
+/** Sources whose daily collection has failed SOURCE_FAILING_AFTER runs in a row. */
+async function sourcesFailing(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db.from('listing_source_runs').select('source_id, ran_at, succeeded, outcome').order('ran_at', { ascending: false }).limit(RUNS_READ)
+  if (error) fail(error)
+  const bySource = new Map<string, { ran_at: string; succeeded: boolean; outcome: string }[]>()
+  for (const r of (data ?? []) as { source_id: string; ran_at: string; succeeded: boolean; outcome: string }[]) {
+    const list = bySource.get(r.source_id) ?? []
+    list.push(r)
+    bySource.set(r.source_id, list)
+  }
+  const failing = [...bySource.entries()].filter(([, runs]) => failuresInARow(runs) >= SOURCE_FAILING_AFTER)
+  if (failing.length === 0) return []
+  const { data: names, error: nerr } = await db.from('listing_sources').select('id, name').in('id', failing.map(([id]) => id))
+  if (nerr) fail(nerr)
+  const nameOf = new Map(((names ?? []) as { id: string; name: string }[]).map((n) => [n.id, n.name]))
+  return failing.map(([id, runs]) => {
+    const n = failuresInARow(runs)
+    return {
+      id: `source:${id}`,
+      what: `${nameOf.get(id) ?? 'A source'} has failed ${n} runs in a row`,
+      why: `Its last run said: ${runs[0].outcome}. Nothing new comes from it until it reads again.`,
+      since: runs[n - 1].ran_at,
+      href: '/admin/collected',
+    }
+  })
 }
 
 /** Claims a person must decide: the claimant could not be sent a code and asked by hand. */
@@ -178,12 +213,13 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const crm = admin as unknown as OutreachDb
-  const [plays, paused, replies, held, collected, claims, removals, reports] = await Promise.all([
+  const [plays, paused, replies, held, collected, failingSources, claims, removals, reports] = await Promise.all([
     attempt(() => playsToApprove(crm), OUTREACH),
     attempt(() => pausedPlays(crm), OUTREACH),
     attempt(() => repliesToRead(crm), OUTREACH),
     attempt(() => draftsHeld(crm), OUTREACH),
     attempt(() => collectedWaiting(admin)),
+    attempt(() => sourcesFailing(crm), "window 4's supply horizon, car 4"),
     attempt(() => claimsToDecide(admin)),
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
@@ -194,7 +230,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: replies },
     { key: 'held', section: 'exceptions', name: 'Drafts held by a rule', read: held },
     { key: 'collected', section: 'exceptions', name: 'Collected events waiting', read: collected },
-    { key: 'low_confidence', section: 'exceptions', name: 'Low-confidence rows', read: { state: 'not_landed', owner: "window 4's exception queue, car 4" } },
+    { key: 'failing_sources', section: 'exceptions', name: 'Sources failing their daily run', read: failingSources },
     { key: 'checks', section: 'exceptions', name: 'Failed post checks and swept images', read: { state: 'not_landed', owner: "window 3's treatments, car 3" } },
     { key: 'claims', section: 'exceptions', name: 'Claims to decide by hand', read: claims },
     { key: 'removals', section: 'exceptions', name: 'Requests to take a listing down', read: removals },
