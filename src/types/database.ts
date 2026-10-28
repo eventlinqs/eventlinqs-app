@@ -5794,6 +5794,7 @@ export type Database = {
           provider: string | null
           purpose: string
           scheduled_for: string | null
+          sending_at: string | null
           sent_at: string | null
           sent_by: string | null
           state: string
@@ -5818,6 +5819,7 @@ export type Database = {
           provider?: string | null
           purpose?: string
           scheduled_for?: string | null
+          sending_at?: string | null
           sent_at?: string | null
           sent_by?: string | null
           state?: string
@@ -5842,6 +5844,7 @@ export type Database = {
           provider?: string | null
           purpose?: string
           scheduled_for?: string | null
+          sending_at?: string | null
           sent_at?: string | null
           sent_by?: string | null
           state?: string
@@ -10268,6 +10271,10 @@ export type Database = {
           p_event_id: string
           p_organisation_id: string
         }
+        Returns: number
+      }
+      outreach_close_stuck_sends: {
+        Args: { p_minutes?: number }
         Returns: number
       }
       outreach_contact_refusal: { Args: { p_contact: string }; Returns: string }
