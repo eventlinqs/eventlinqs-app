@@ -143,8 +143,21 @@ async function main() {
   if (serr) throw new Error(`the drive's sources could not be planted: ${serr.message}`)
   const idOf = (page: string) => srcs.find((s) => s.page_url === page)!.id as string
 
+  /* A night that passed while it waited: the run takes it out of the queue, saying why. */
+  const { error: oerr } = await db.from('listing_candidates').insert({
+    source_id: idOf(STRANGER), kind: 'new', title: 'bp-drive passed night', starts_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    venue_name: 'bp-drive stranger hall', page_url: 'https://bp-drive-stranger.example.com/e/old', confidence: 'low', reasons: ['no_venue_address'],
+  })
+  if (oerr) throw new Error(`the passed night could not be planted: ${oerr.message}`)
+
   const real = collectionStore(db)
-  const store = { ...real, sources: async () => (await real.sources()).filter((s) => made.sources.includes(s.id)) }
+  /* The real store, narrowed to the drive's own sources: the register read and the passed-night sweep alike, so no row
+     the drive did not plant is touched (its run 5 swept 54 other TEST rows before this narrowing; all were restored). */
+  const store = {
+    ...real,
+    sources: async () => (await real.sources()).filter((s) => made.sources.includes(s.id)),
+    expirePassed: (now: Date) => real.expirePassed(now, made.sources),
+  }
   const result = await runCollection(store, fetcher, new Date())
   for (const s of result.sources) console.log(`  outcome ${s.name}: ${s.outcome}`)
   check(result.read === 2 && result.skipped === 1, `read 2 sources, 1 not read (got read ${result.read}, skipped ${result.skipped})`)
@@ -160,6 +173,11 @@ async function main() {
     `the partner's night at its own venue is accepted by the rule and published (${JSON.stringify(home && { status: home.status, decided_by: home.decided_by, series: !!home.published_series_id })})`)
   const away = byTitle('bp-drive partner night away')
   check(away?.status === 'waiting' && away.decided_by === 'person', `its night at another venue waits for a person (${away?.status}, ${away?.decided_by})`)
+  const passed = (cands ?? []).find((c) => c.title === 'bp-drive passed night') as { status: string } | undefined
+  const { data: passedRow } = await db.from('listing_candidates').select('status, refused_because, reviewed_at, reviewed_by').eq('page_url', 'https://bp-drive-stranger.example.com/e/old').single()
+  check(passed?.status === 'refused' && passedRow?.refused_because === 'the night passed before review' && !!passedRow.reviewed_at && passedRow.reviewed_by === null,
+    `a night that passed while waiting left the queue on its own, saying why (${JSON.stringify(passedRow)})`)
+  check(result.expired === 1, `the run counts it, and only it (${result.expired} taken out)`)
   const stranger = byTitle('bp-drive stranger night')
   check(stranger?.status === 'waiting' && stranger.decided_by === 'person' && (stranger.reasons as string[]).includes('no_venue_address'),
     `the stranger's night waits, saying why (${JSON.stringify(stranger?.reasons)})`)

@@ -99,6 +99,7 @@ if (dry) {
     addLinks: async () => undefined,
     logRun: async () => undefined,
     publishPartnerNight: async () => undefined,
+      expirePassed: async () => 0,
   }
 } else {
   const { data, error } = await db.from('listing_sources').upsert(rows, { onConflict: 'page_url' }).select('id, name')

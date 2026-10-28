@@ -80,6 +80,11 @@ export type CollectionStore = {
    * partner's venue, which the hourly listings run makes into the event. Idempotent.
    */
   publishPartnerNight(row: CandidateRow): Promise<void>
+  /**
+   * Takes every waiting row whose night has passed out of the queue, saying so; returns how many. onlySources narrows
+   * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
+   */
+  expirePassed(now: Date, onlySources?: readonly string[]): Promise<number>
 }
 
 export type SourceOutcome = { sourceId: string; name: string; outcome: string; landed: number; queued: number; acceptedByRule: number }
@@ -90,6 +95,8 @@ export type CollectionResult = {
   queued: number
   acceptedByRule: number
   notReached: number
+  /** Waiting rows whose night passed before anyone reviewed them, taken out of the queue by this run. */
+  expired: number
   sources: SourceOutcome[]
 }
 
@@ -134,7 +141,14 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
   const due = dueSources(await store.sources(), now)
   const known = due.length > 0 ? await store.known(now) : []
   const robotsByOrigin = new Map<string, { status: number | null; body: string }>()
-  const result: CollectionResult = { read: 0, skipped: 0, landed: 0, queued: 0, acceptedByRule: 0, notReached: 0, sources: [] }
+  const result: CollectionResult = { read: 0, skipped: 0, landed: 0, queued: 0, acceptedByRule: 0, notReached: 0, expired: 0, sources: [] }
+  /* The queue never holds a night that has already happened (the directive's section 21: no checking expired events
+     one by one). A failure here never stops the read. */
+  try {
+    result.expired = await store.expirePassed(now)
+  } catch (err) {
+    console.error('[collection] passed nights could not be taken out of the queue:', err)
+  }
 
   for (const [i, source] of due.entries()) {
     if (Date.now() >= deadline) {

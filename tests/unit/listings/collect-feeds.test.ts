@@ -77,6 +77,7 @@ describe('the weekly run over a calendar feed', () => {
       addLinks: async () => undefined,
       logRun: async () => undefined,
       publishPartnerNight: async () => undefined,
+      expirePassed: async () => 0,
       record: async (id, outcome) => {
         recorded[id] = outcome
       },
@@ -154,6 +155,7 @@ function feedRun(permits: Permits, body: string, robots = { status: 200, body: '
     addLinks: async () => undefined,
     logRun: async () => undefined,
     publishPartnerNight: async () => undefined,
+      expirePassed: async () => 0,
     record: async (id, outcome, _at, succeeded) => {
       recorded.push({ id, outcome, succeeded })
     },

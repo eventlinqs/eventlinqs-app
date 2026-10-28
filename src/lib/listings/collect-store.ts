@@ -14,6 +14,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 /** EventLinqs' own listings organisation (scripts/ops/import-city-listings.mjs): a source naming it is not a partner. */
 export const LISTINGS_ORG_SLUG = 'eventlinqs-listings'
 
+/** Why a row left the queue on its own: its night came before anyone reviewed it. */
+export const PASSED_BEFORE_REVIEW = 'the night passed before review'
+
 /** The source types a partner's own feed comes in by (D5's paths 1 and 3). */
 const PARTNER_TYPES = new Set(['organiser_submission', 'venue_partnership'])
 
@@ -135,6 +138,19 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
       const { error: perr } = await db.rpc('listing_publish_partner_night', { p_candidate: c.id })
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
+    },
+
+    async expirePassed(now: Date, onlySources?: readonly string[]): Promise<number> {
+      const at = now.toISOString()
+      let q = db
+        .from('listing_candidates')
+        .update({ status: 'refused', refused_because: PASSED_BEFORE_REVIEW, reviewed_at: at })
+        .eq('status', 'waiting')
+        .lt('starts_at', at)
+      if (onlySources) q = q.in('source_id', [...onlySources])
+      const { data, error } = await q.select('id')
+      if (error) throw new Error(error.message)
+      return (data ?? []).length
     },
 
     async logRun(row): Promise<void> {

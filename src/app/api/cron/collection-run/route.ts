@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const result = await runCollection(collectionStore(createAdminClient()), fetch, new Date(started), started + RUN_BUDGET_MS)
     console.log(
       `[cron/collection-run] ${result.read} source(s) read, ${result.skipped} not read, ${result.landed} event(s) new: ` +
-        `${result.acceptedByRule} accepted by the partner rule, ${result.queued} for review` +
+        `${result.acceptedByRule} accepted by the partner rule, ${result.queued} for review; ${result.expired} passed night(s) taken out of the queue` +
         (result.notReached > 0 ? `; ${result.notReached} source(s) not reached inside the budget, still due` : ''),
     )
     for (const s of result.sources) console.log(`[cron/collection-run] ${s.name}: ${s.outcome}`)

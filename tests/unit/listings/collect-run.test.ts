@@ -33,6 +33,7 @@ function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held
     publishPartnerNight: async (row) => {
       published.push(row.pageUrl)
     },
+    expirePassed: async () => 0,
   }
   return { store, landed, recorded, added, runs, published }
 }
@@ -235,5 +236,27 @@ describe('the run log and the partner rule', () => {
     await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
     expect(added).toEqual([])
     expect(landed[0]).toMatchObject({ kind: 'changes_facts', eventId: 'ev-1', change: 'time_changed', confidence: 'low', reasons: ['time_changed'], decidedBy: 'person' })
+  })
+})
+
+describe('passed nights leave the queue on their own', () => {
+  it('asks the store once per run, counts what left, and a failure there never stops the read', async () => {
+    const m = memoryStore([source('club', 'https://club.example.com.au/gigs')])
+    let asked = 0
+    m.store.expirePassed = async (now) => {
+      asked += 1
+      expect(now).toEqual(NOW)
+      return 3
+    }
+    const r = await runCollection(m.store, sites({ 'https://club.example.com.au/robots.txt': { status: 404 }, 'https://club.example.com.au/gigs': { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio') } }).fetcher, NOW)
+    expect(asked).toBe(1)
+    expect(r.expired).toBe(3)
+
+    const broken = memoryStore([source('club', 'https://club.example.com.au/gigs')])
+    broken.store.expirePassed = async () => {
+      throw new Error('the database is away')
+    }
+    const r2 = await runCollection(broken.store, sites({ 'https://club.example.com.au/robots.txt': { status: 404 }, 'https://club.example.com.au/gigs': { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio') } }).fetcher, NOW)
+    expect(r2).toMatchObject({ expired: 0, landed: 1 })
   })
 })
