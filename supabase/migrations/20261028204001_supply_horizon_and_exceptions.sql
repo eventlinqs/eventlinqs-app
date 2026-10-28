@@ -27,6 +27,15 @@
 --    relationships 46 to 90, past and beyond outside, in Melbourne calendar
 --    days. Computed, never stored, so it is right every morning; the TS twin is
 --    src/lib/listings/horizon.ts.
+-- 6. The partner publish: listing_sources.category_id (the category a
+--    partner's nights take), listing_candidates.published_series_id, and
+--    public.listing_publish_partner_night(candidate): an accepted partner rule
+--    night becomes a dated series ('once') at the partner's venue, held by the
+--    partner's organisation, with a listing check whose basis is
+--    organiser_submission (20261028133001's column, which rides with this file).
+--    The hourly listings run (/api/cron/listing-occurrences) then makes the
+--    event through its publish gate, as it does for every listing. Nothing else
+--    publishes, and only a row the partner rule accepted can be published here.
 --
 -- EXISTING ROWS. Candidates landed before this file were never judged: they
 -- take confidence 'low' with the reason 'judged_before_the_queue', so the
@@ -177,6 +186,105 @@ revoke all on function public.listing_horizon(timestamptz, timestamptz) from pub
 grant execute on function public.listing_horizon(timestamptz, timestamptz) to service_role;
 
 -- ---------------------------------------------------------------------------
+-- 6. The partner publish.
+-- ---------------------------------------------------------------------------
+alter table public.listing_sources
+  add column if not exists category_id uuid references public.event_categories(id) on delete set null;
+comment on column public.listing_sources.category_id is
+  'The category a partner''s own nights are listed under (a partner feed names no category per night).';
+
+alter table public.listing_candidates
+  add column if not exists published_series_id uuid references public.event_series(id) on delete set null;
+comment on column public.listing_candidates.published_series_id is
+  'The series listing_publish_partner_night made from this accepted partner night; the hourly listings run makes its event.';
+
+alter table public.listing_candidates drop constraint if exists listing_candidates_published_by_rule;
+alter table public.listing_candidates add constraint listing_candidates_published_by_rule check (
+  published_series_id is null or (decided_by = 'partner_rule' and kind = 'new' and status = 'accepted')
+);
+
+create or replace function public.listing_publish_partner_night(p_candidate uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_c record;
+  v_org uuid;
+  v_tz text;
+  v_local timestamp;
+  v_end_local timestamp;
+  v_series uuid;
+  v_name text;
+  v_summary text;
+begin
+  select c.id, c.kind, c.status, c.decided_by, c.published_series_id, c.title, c.starts_at, c.ends_at, c.page_url,
+         c.description, c.links, c.found_at, s.id as source_id, s.organisation_id, s.venue_id, s.category_id,
+         v.organisation_id as venue_org, v.name as venue_name, v.city_slug
+    into v_c
+    from public.listing_candidates c
+    join public.listing_sources s on s.id = c.source_id
+    left join public.venues v on v.id = s.venue_id
+   where c.id = p_candidate
+     for update of c;
+  if not found then
+    raise exception 'listing_publish_partner_night: no candidate %', p_candidate using errcode = 'P0002';
+  end if;
+  if v_c.published_series_id is not null then
+    return v_c.published_series_id;  -- published before: the same series, nothing written twice
+  end if;
+  if v_c.decided_by <> 'partner_rule' or v_c.status <> 'accepted' or v_c.kind <> 'new' then
+    raise exception 'listing_publish_partner_night: only a new night the partner rule accepted is published here' using errcode = '23514';
+  end if;
+  if v_c.venue_id is null or v_c.category_id is null then
+    raise exception 'listing_publish_partner_night: the partner source names no venue or no category' using errcode = '23514';
+  end if;
+  v_org := coalesce(v_c.organisation_id, v_c.venue_org);
+  select c.timezone into v_tz from public.cities c where c.slug = v_c.city_slug;
+  if v_tz is null then
+    raise exception 'listing_publish_partner_night: the venue''s city % has no timezone', v_c.city_slug using errcode = '23514';
+  end if;
+
+  v_local := v_c.starts_at at time zone v_tz;
+  v_end_local := case when v_c.ends_at is null then null else v_c.ends_at at time zone v_tz end;
+  v_name := left(btrim(v_c.title), 80);
+  -- The partner's own words where they gave them, else the facts alone; never a sentence nobody stated.
+  v_summary := coalesce(nullif(btrim(v_c.description), ''), v_name || ' at ' || v_c.venue_name || '.');
+
+  insert into public.event_series (venue_id, organisation_id, name, category_id, rule, anchor_date, day, starts_at, ends_at,
+                                   timezone, summary, booking_links, listing_source, status)
+  values (v_c.venue_id, v_org, v_name, v_c.category_id, 'once', v_local::date, extract(dow from v_local::date)::smallint,
+          v_local::time, v_end_local::time, v_tz, v_summary,
+          coalesce((select jsonb_agg(jsonb_build_object(
+                      'url', l->>'url',
+                      'kind', 'tickets',
+                      'price_from_cents', case when l->>'priceFromCents' is null then null else (l->>'priceFromCents')::int end,
+                      'price_checked_on', case when l->>'priceFromCents' is null then null else (v_c.found_at at time zone v_tz)::date end))
+                      from jsonb_array_elements(v_c.links) l), '[]'::jsonb),
+          'organiser', 'active')
+  on conflict (venue_id, name, rule, anchor_date) do nothing
+  returning id into v_series;
+  if v_series is null then
+    select id into v_series from public.event_series
+     where venue_id = v_c.venue_id and name = v_name and rule = 'once' and anchor_date = v_local::date;
+  end if;
+
+  insert into public.listing_checks (series_id, source_url, source_date, import_file, outcome, reuse_basis)
+  values (v_series, v_c.page_url, (now() at time zone v_tz)::date, 'partner-feed:' || v_c.source_id, 'confirmed', 'organiser_submission');
+
+  update public.listing_candidates set published_series_id = v_series where id = p_candidate;
+  return v_series;
+end
+$fn$;
+
+comment on function public.listing_publish_partner_night(uuid) is
+  'An accepted partner rule night becomes a dated series at the partner''s venue with an organiser_submission listing check; the hourly listings run makes the event. Idempotent.';
+
+revoke all on function public.listing_publish_partner_night(uuid) from public, anon, authenticated;
+grant execute on function public.listing_publish_partner_night(uuid) to service_role;
+
+-- ---------------------------------------------------------------------------
 -- POST-CONDITIONS
 -- ---------------------------------------------------------------------------
 do $post$
@@ -231,6 +339,17 @@ begin
      or has_function_privilege('authenticated', 'public.listing_horizon(timestamptz, timestamptz)', 'EXECUTE')
      or not has_function_privilege('service_role', 'public.listing_horizon(timestamptz, timestamptz)', 'EXECUTE') then
     v_missing := v_missing || ' listing_horizon.execute';
+  end if;
+  if not exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'listing_sources' and column_name = 'category_id')
+     or not exists (select 1 from information_schema.columns
+                     where table_schema = 'public' and table_name = 'listing_candidates' and column_name = 'published_series_id') then
+    v_missing := v_missing || ' partner_publish.columns';
+  end if;
+  if has_function_privilege('anon', 'public.listing_publish_partner_night(uuid)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.listing_publish_partner_night(uuid)', 'EXECUTE')
+     or not has_function_privilege('service_role', 'public.listing_publish_partner_night(uuid)', 'EXECUTE') then
+    v_missing := v_missing || ' listing_publish_partner_night.execute';
   end if;
   if public.listing_horizon(timestamptz '2026-11-11 12:00+11', timestamptz '2026-10-28 20:00+11') <> 'publish'
      or public.listing_horizon(timestamptz '2026-11-12 12:00+11', timestamptz '2026-10-28 20:00+11') <> 'acquire'

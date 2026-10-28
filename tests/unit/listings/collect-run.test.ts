@@ -11,6 +11,7 @@ function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held
   const recorded: Record<string, string> = {}
   const added: { eventId: string; urls: string[] }[] = []
   const runs: RunRow[] = []
+  const published: string[] = []
   const store: CollectionStore = {
     sources: async () => sources,
     known: async () => known,
@@ -29,8 +30,11 @@ function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held
     logRun: async (row) => {
       runs.push(row)
     },
+    publishPartnerNight: async (row) => {
+      published.push(row.pageUrl)
+    },
   }
-  return { store, landed, recorded, added, runs }
+  return { store, landed, recorded, added, runs, published }
 }
 
 function sites(pages: Record<string, { status: number; body?: string } | 'down'>): { fetcher: Fetcher; asked: string[] } {
@@ -45,7 +49,7 @@ function sites(pages: Record<string, { status: number; body?: string } | 'down'>
 }
 
 const source = (id: string, pageUrl: string, over: Partial<RegisteredSource> = {}): RegisteredSource => ({
-  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, ...over,
+  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, partnerVenue: null, ...over,
 })
 
 const gig = (name: string, ticket: string) =>
@@ -141,6 +145,7 @@ describe('the run log and the partner rule', () => {
   const club = 'https://club.example.com.au/gigs'
   const open = { 'https://club.example.com.au/robots.txt': { status: 404 } }
   const trio = { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio') }
+  const barwon = { name: 'The Barwon Club', address: '509 Moorabool St, Geelong' }
 
   it('logs one run row per source, a failure included, with the answer it got', async () => {
     const { store, runs } = memoryStore([source('broken', 'https://broken.example.com/e'), source('club', club)])
@@ -151,17 +156,35 @@ describe('the run log and the partner rule', () => {
     ])
   })
 
-  it("accepts a high confidence new night from a partner's own verified feed, and says so", async () => {
-    const { store, landed, runs } = memoryStore([source('club', club, { partner: true })])
+  it("accepts and publishes a high confidence new night at a partner's own venue, from its verified feed", async () => {
+    const { store, landed, runs, published } = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
     const r = await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
     expect(landed[0]).toMatchObject({ kind: 'new', confidence: 'high', reasons: [], decidedBy: 'partner_rule' })
+    expect(published).toEqual([landed[0].pageUrl])
     expect(r).toMatchObject({ landed: 1, acceptedByRule: 1, queued: 0 })
     expect(runs[0]).toMatchObject({ acceptedByRule: 1, queued: 0, outcome: 'read: 1 event(s) found, 1 new: 1 accepted by the partner rule, 0 for review' })
   })
 
+  it("asks the store to finish a publish on the next run, when the night landed before", async () => {
+    const { store, published } = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
+    await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    await runCollection(store, sites({ ...open, [club]: trio }).fetcher, new Date(NOW.getTime() + 24 * 60 * 60 * 1000))
+    expect(published).toHaveLength(2)
+  })
+
+  it("queues a partner's night held at another venue, and a partner with no venue named", async () => {
+    const elsewhere = memoryStore([source('club', club, { partner: true, partnerVenue: { name: 'Costa Hall', address: '1 Gheringhap St, Geelong' } })])
+    await runCollection(elsewhere.store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(elsewhere.landed[0]).toMatchObject({ confidence: 'high', decidedBy: 'person' })
+    expect(elsewhere.published).toEqual([])
+    const noVenue = memoryStore([source('club', club, { partner: true, partnerVenue: null })])
+    await runCollection(noVenue.store, sites({ ...open, [club]: trio }).fetcher, NOW)
+    expect(noVenue.landed[0]).toMatchObject({ decidedBy: 'person' })
+  })
+
   it('queues a partner row that is low confidence, and every row from a source that is not a partner or not verified', async () => {
     const noAddress = { status: 200, body: gig('Bp Proof Trio', 'https://events.humanitix.com/bp-trio').replace('"address":"509 Moorabool St, Geelong"', '"address":""') }
-    const low = memoryStore([source('club', club, { partner: true })])
+    const low = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
     await runCollection(low.store, sites({ ...open, [club]: noAddress }).fetcher, NOW)
     expect(low.landed[0]).toMatchObject({ confidence: 'low', reasons: ['no_venue_address'], decidedBy: 'person' })
 
@@ -169,7 +192,7 @@ describe('the run log and the partner rule', () => {
     await runCollection(stranger.store, sites({ ...open, [club]: trio }).fetcher, NOW)
     expect(stranger.landed[0]).toMatchObject({ confidence: 'high', decidedBy: 'person' })
 
-    const unverified = memoryStore([source('club', club, { partner: true, verified: false })])
+    const unverified = memoryStore([source('club', club, { partner: true, partnerVenue: barwon, verified: false })])
     await runCollection(unverified.store, sites({ ...open, [club]: trio }).fetcher, NOW)
     expect(unverified.landed[0]).toMatchObject({ confidence: 'low', reasons: ['source_unverified'], decidedBy: 'person' })
   })

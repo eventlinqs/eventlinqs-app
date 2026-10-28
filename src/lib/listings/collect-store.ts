@@ -23,12 +23,12 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const { data, error } = await db
         .from('listing_sources')
         .select(
-          'id, name, page_url, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, organisation:organisations(slug), venue:venues(claimed_at)',
+          'id, name, page_url, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at)',
         )
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       return (data ?? []).map((s) => {
         const org = (Array.isArray(s.organisation) ? s.organisation[0] : s.organisation) as { slug: string } | null
-        const venue = (Array.isArray(s.venue) ? s.venue[0] : s.venue) as { claimed_at: string | null } | null
+        const venue = (Array.isArray(s.venue) ? s.venue[0] : s.venue) as { name: string; address: string | null; claimed_at: string | null } | null
         const owned = (org !== null && org.slug !== LISTINGS_ORG_SLUG) || (venue !== null && venue.claimed_at !== null)
         return {
           id: s.id as string,
@@ -45,7 +45,9 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
             links: s.permits_links === true,
           },
           verified: s.verification === 'verified',
-          partner: PARTNER_TYPES.has(s.source_type as string) && owned,
+          /* A partner names its venue and category too, or a night it gives could not be published. */
+          partner: PARTNER_TYPES.has(s.source_type as string) && owned && venue !== null && s.category_id !== null,
+          partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
         }
       })
     },
@@ -117,6 +119,21 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         .update({ last_checked_at: when, last_outcome: outcome, updated_at: when, ...(succeeded ? { last_success_at: when } : {}) })
         .eq('id', sourceId)
       if (error) throw new Error(error.message)
+    },
+
+    async publishPartnerNight(row): Promise<void> {
+      const { data: c, error } = await db
+        .from('listing_candidates')
+        .select('id, decided_by, published_series_id')
+        .eq('source_id', row.sourceId)
+        .eq('page_url', row.pageUrl)
+        .eq('starts_at', row.startsAt)
+        .maybeSingle()
+      if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
+      /* A row a person decides, or one already published, is not the rule's to publish. */
+      if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
+      const { error: perr } = await db.rpc('listing_publish_partner_night', { p_candidate: c.id })
+      if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
     },
 
     async logRun(row): Promise<void> {

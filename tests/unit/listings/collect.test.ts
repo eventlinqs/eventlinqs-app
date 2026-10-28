@@ -116,7 +116,7 @@ describe("the page's own Event data", () => {
 describe('the register', () => {
   const now = new Date('2026-10-27T03:00:00Z')
   const src = (id: string, over: Partial<RegisteredSource>): RegisteredSource => ({
-    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, ...over,
+    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, partnerVenue: null, ...over,
   })
 
   it('reads only sources whose terms allow it, each at its own pace', () => {

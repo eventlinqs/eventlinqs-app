@@ -91,13 +91,14 @@ if (dry) {
   ids = new Map(rows.map((r, i) => [`dry-${i}`, r.name]))
   store = {
     sources: async () =>
-      rows.map((r, i) => ({ id: `dry-${i}`, name: r.name, pageUrl: r.page_url, collection: 'read', changes: r.changes, lastCheckedAt: null, lastSuccessAt: null, permits: permitsOf(r), verified: true, partner: false })),
+      rows.map((r, i) => ({ id: `dry-${i}`, name: r.name, pageUrl: r.page_url, collection: 'read', changes: r.changes, lastCheckedAt: null, lastSuccessAt: null, permits: permitsOf(r), verified: true, partner: false, partnerVenue: null })),
     known: (now) => real.known(now),
     heldLinks: (id) => real.heldLinks(id),
     land: async (row) => (wouldLand.push(row), true),
     record: async () => undefined,
     addLinks: async () => undefined,
     logRun: async () => undefined,
+    publishPartnerNight: async () => undefined,
   }
 } else {
   const { data, error } = await db.from('listing_sources').upsert(rows, { onConflict: 'page_url' }).select('id, name')

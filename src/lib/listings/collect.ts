@@ -403,10 +403,13 @@ export type RegisteredSource = {
   verified: boolean
   /**
    * A partner's own feed: an organiser submission or venue partnership source that names a real organiser
-   * (listing_sources.organisation_id, not EventLinqs' own listings organisation) or a claimed venue (venue_id). Only a
-   * partner's high confidence finds are accepted without a person (./collect-run.ts).
+   * (listing_sources.organisation_id, not EventLinqs' own listings organisation) or a claimed venue (venue_id), and
+   * names its venue and its category, so a night it gives can be published. Only a partner's high confidence finds are
+   * accepted without a person (./collect-run.ts).
    */
   partner: boolean
+  /** A partner source's own venue (listing_sources.venue_id): its nights publish there, and only nights held there. */
+  partnerVenue: { name: string; address: string | null } | null
 }
 
 /**

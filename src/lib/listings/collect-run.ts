@@ -10,6 +10,7 @@ import {
   type KnownEvent,
   type RegisteredSource,
 } from './collect'
+import { sameVenue } from '@/lib/events/booking-links'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 
 /**
@@ -74,6 +75,11 @@ export type CollectionStore = {
   record(sourceId: string, outcome: string, at: Date, succeeded: boolean): Promise<void>
   /** Appends the run's row to the source's run log. */
   logRun(row: RunRow): Promise<void>
+  /**
+   * Publishes a new night the partner rule accepted (public.listing_publish_partner_night): a dated series at the
+   * partner's venue, which the hourly listings run makes into the event. Idempotent.
+   */
+  publishPartnerNight(row: CandidateRow): Promise<void>
 }
 
 export type SourceOutcome = { sourceId: string; name: string; outcome: string; landed: number; queued: number; acceptedByRule: number }
@@ -112,11 +118,15 @@ async function stillNew(store: CollectionStore, plan: CandidatePlan): Promise<Ca
 
 /**
  * The partner rule: only a partner's own verified feed (listing_sources.organisation_id or venue_id on a claimed
- * organiser, ./collect-store.ts), only high confidence, only a new night or an added link. The database holds the same
- * rule (listing_candidates_decided_by, 20261028204001).
+ * organiser, ./collect-store.ts), only high confidence, only a new night held at the partner's own venue or an added
+ * link on a listed night. The database holds the same rule (listing_candidates_decided_by, 20261028204001).
  */
-export function acceptedByRule(source: Pick<RegisteredSource, 'partner' | 'verified'>, plan: CandidatePlan, confidence: Confidence): boolean {
-  return source.partner && source.verified && confidence === 'high' && (plan.kind === 'new' || plan.kind === 'adds_links')
+export function acceptedByRule(source: Pick<RegisteredSource, 'partner' | 'verified' | 'partnerVenue'>, plan: CandidatePlan, confidence: Confidence): boolean {
+  if (!source.partner || !source.verified || confidence !== 'high') return false
+  if (plan.kind === 'adds_links') return true
+  if (plan.kind !== 'new' || !source.partnerVenue) return false
+  const at = (name: string, address: string | null) => ({ venueId: null, venueName: name, venueAddress: address, title: '', startsAt: plan.event.startsAt })
+  return sameVenue(at(source.partnerVenue.name, source.partnerVenue.address), at(plan.event.venueName, plan.event.venueAddress))
 }
 
 /** deadline: no source is started after it; one not reached stays due and the next run reads it first. */
@@ -175,7 +185,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
               const foundAt = now.toISOString()
               /* The links first, so an accepted row never names links the event does not carry. */
               if (byRule && plan.kind === 'adds_links') await store.addLinks(plan.eventId, plan.event.links, foundAt)
-              const isNew = await store.land({
+              const row: CandidateRow = {
                 sourceId: source.id,
                 foundAt,
                 kind: plan.kind,
@@ -193,7 +203,11 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
                 confidence,
                 reasons,
                 decidedBy: byRule ? 'partner_rule' : 'person',
-              })
+              }
+              const isNew = await store.land(row)
+              /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a
+                 publish an earlier run could not finish is finished by the next, and nothing is published twice. */
+              if (byRule && plan.kind === 'new') await store.publishPartnerNight(row)
               if (!isNew) continue
               landed += 1
               if (byRule) ruled += 1

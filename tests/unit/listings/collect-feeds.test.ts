@@ -68,7 +68,7 @@ describe('the weekly run over a calendar feed', () => {
   it('reads robots.txt first, then the feed, and lands its events for review', async () => {
     const landed: CandidateRow[] = []
     const recorded: Record<string, string> = {}
-    const src: RegisteredSource = { id: 'lib', name: 'lib', pageUrl: FEED, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, verified: true, partner: false, permits: FACTS_ONLY }
+    const src: RegisteredSource = { id: 'lib', name: 'lib', pageUrl: FEED, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, verified: true, partner: false, partnerVenue: null, permits: FACTS_ONLY }
     const store: CollectionStore = {
       sources: async () => [src],
       known: async () => [],
@@ -76,6 +76,7 @@ describe('the weekly run over a calendar feed', () => {
       land: async (row) => (landed.push(row), true),
       addLinks: async () => undefined,
       logRun: async () => undefined,
+      publishPartnerNight: async () => undefined,
       record: async (id, outcome) => {
         recorded[id] = outcome
       },
@@ -144,7 +145,7 @@ const FACTS_ONLY: Permits = { facts: true, descriptions: false, images: false, l
 function feedRun(permits: Permits, body: string, robots = { status: 200, body: 'User-agent: *\nAllow: /' }) {
   const landed: CandidateRow[] = []
   const recorded: { id: string; outcome: string; succeeded: unknown }[] = []
-  const src: RegisteredSource = { id: 'lib', name: 'lib', pageUrl: FEED, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, verified: true, partner: false, permits }
+  const src: RegisteredSource = { id: 'lib', name: 'lib', pageUrl: FEED, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, verified: true, partner: false, partnerVenue: null, permits }
   const store: CollectionStore = {
     sources: async () => [src],
     known: async () => [],
@@ -152,6 +153,7 @@ function feedRun(permits: Permits, body: string, robots = { status: 200, body: '
     land: async (row) => (landed.push(row), true),
     addLinks: async () => undefined,
     logRun: async () => undefined,
+    publishPartnerNight: async () => undefined,
     record: async (id, outcome, _at, succeeded) => {
       recorded.push({ id, outcome, succeeded })
     },
