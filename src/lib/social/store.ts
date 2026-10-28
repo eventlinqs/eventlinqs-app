@@ -13,7 +13,7 @@ import { wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
-import { creativeRefusals, hostOf, nightWords, planCampaign, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -649,7 +649,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       timezone: (e.timezone as string | null) ?? null,
       citySlug: city.slug,
       cityName: city.name,
-      venueName: (e.venue_name as string | null) ?? null,
+      venueName: venueOf(e.venue_name as string | null),
       host: hostOf({ listingSource: (e.listing_source as string | null) ?? null, organisationName: organisation?.name ?? null, organisationSlug: organisation?.slug ?? null, venueName: (e.venue_name as string | null) ?? null }),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
       summary: (e.summary as string | null) ?? null,
