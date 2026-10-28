@@ -69,6 +69,23 @@ export async function bodyTextMeasurer(): Promise<Measurer> {
  * the renderer draws exactly those. The fallback ratio is higher than the body
  * one because Archivo ExtraBold is a wider face than Hanken Grotesk SemiBold.
  */
+const cachedFaces = new Map<string, Promise<Measurer>>()
+
+/**
+ * A width measurer for one vendored face by its file name, for the campaign treatments, whose headline and details
+ * are fitted to their boxes before they are drawn (the same reason as the two above). No estimate on failure: a
+ * treatment that cannot measure its words cannot promise they fit, so the error is the caller's to answer.
+ */
+export function faceMeasurer(file: string): Promise<Measurer> {
+  let face = cachedFaces.get(file)
+  if (!face) {
+    face = build(join(FONT_DIR, file))
+    face.catch(() => cachedFaces.delete(file))
+    cachedFaces.set(file, face)
+  }
+  return face
+}
+
 export async function displayTextMeasurer(): Promise<Measurer> {
   cachedDisplay ??= build(DISPLAY_PATH).catch(error => {
     cachedDisplay = null

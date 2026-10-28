@@ -21,7 +21,7 @@ import type { Cta } from '@/lib/events/cta'
 
 export type Audience = 'attendees' | 'organisers' | 'venues' | 'partners'
 export type Objective = 'audience_growth' | 'organiser_growth'
-export type PieceKind = 'week_ahead' | 'discovery_reel' | 'weekend_carousel' | 'venue_spotlight' | 'organiser_campaign' | 'partner_kit'
+export type PieceKind = 'week_ahead' | 'discovery_reel' | 'weekend_carousel' | 'venue_spotlight' | 'organiser_campaign' | 'partner_kit' | 'brand_campaign'
 
 /** The revised samples' compositions (14:08), as slots; the looks wait for Lawal's approval. */
 export type Composition =
@@ -42,6 +42,8 @@ export type CampaignNight = {
   slug: string
   title: string
   startDate: string
+  /** When it ends; a night that runs over several days says so (AMCF's three). */
+  endDate?: string | null
   timezone: string | null
   citySlug: string
   cityName: string
@@ -59,14 +61,23 @@ export type CampaignNight = {
   priceLine: string | null
 }
 
+/**
+ * What a night's slide says in the approved treatments (Lawal, 28 October 19:52): the eyebrow, the date and time, the
+ * entry line section E allows, its call to action, and the city. Absent on revisions planned before the treatments,
+ * which the renderer reads from their older slots.
+ */
+export type NightSlideWords = { eyebrow: string; date: string; time: string; entry: string | null; action: string; city: string }
+
 /** A slide as data: its composition and the words in each slot; /admin/social/piece/<id>/<n> draws it. */
 export type Slide =
   | { t: 'cover'; composition: 'contents_cover'; chip: string; headline: string; line: string; contents: string[] }
-  | { t: 'night'; composition: Composition; eventId: string; chip: string | null; when: string; day: string; title: string; meta: string; why: string | null; photo: string | null; credit: string | null }
+  | { t: 'night'; composition: Composition; eventId: string; chip: string | null; when: string; day: string; title: string; meta: string; why: string | null; photo: string | null; credit: string | null; words?: NightSlideWords }
   | { t: 'programme'; composition: 'venue_spotlight'; heading: string; address: string; rows: { day: string; title: string; meta: string }[] }
   | { t: 'offer'; composition: 'organiser_campaign'; eyebrow: string; headline: string; points: string[]; url: string }
   | { t: 'end'; composition: 'close'; headline: string; line: string; url: string; foot: string | null }
-  | { t: 'story'; composition: Composition; eventId: string; chip: string; when: string; title: string; meta: string; photo: string | null; credit: string | null; sticker: string }
+  | { t: 'story'; composition: Composition; eventId: string; chip: string; when: string; title: string; meta: string; photo: string | null; credit: string | null; sticker: string; words?: NightSlideWords; line?: string | null }
+  /** A brand piece naming no night: a photograph licensed for EventLinqs' own promotion (treatment A) or its own art (C). */
+  | { t: 'brand'; composition: 'close'; headline: string; line: string; action: string; photo: string | null; credit: string | null }
 
 export type PlatformVersion = {
   /** The first line a person sees in the feed. */
@@ -231,8 +242,47 @@ function whyOf(n: CampaignNight): string | null {
   return first.length <= 140 ? first : `${first.slice(0, 137).replace(/\s+\S*$/, '')}.`
 }
 
+/** "Fri 20 to Sun 22 Nov" for a night over several days, else "Sat 31 Oct". */
+export function dateOf(n: CampaignNight): string {
+  const day = (iso: string) => local(iso, n.timezone, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/,/g, '')
+  const start = day(n.startDate)
+  if (!n.endDate) return start
+  const sameDay = local(n.startDate, n.timezone, { year: 'numeric', month: 'numeric', day: 'numeric' }) === local(n.endDate, n.timezone, { year: 'numeric', month: 'numeric', day: 'numeric' })
+  if (sameDay || Date.parse(n.endDate) - Date.parse(n.startDate) < 20 * 60 * 60 * 1000) return start
+  const [sw, sd, sm] = start.split(' ')
+  const [ew, ed, em] = day(n.endDate).split(' ')
+  return sm === em ? `${sw} ${sd} to ${ew} ${ed} ${em}` : `${sw} ${sd} ${sm} to ${ew} ${ed} ${em}`
+}
+
+/**
+ * The treatments' words for a night, every one from its stored facts: the entry line only where section E lets it be
+ * said (a stated price, or free that is verified free), and the action as the five states word it.
+ */
+export function nightWords(n: CampaignNight): NightSlideWords {
+  const time = whenOf(n).split(' · ')[1] ?? ''
+  const span = dateOf(n).includes(' to ')
+  const live = compositionFor(n) === 'concert' ? 'Live at' : 'At'
+  const entry =
+    n.priceLine && !/^free/i.test(n.priceLine)
+      ? n.priceLine
+      : n.cta.state === 'free_open'
+        ? 'Free, no ticket needed'
+        : n.cta.state === 'free_registration'
+          ? 'Free, register first'
+          : null
+  return {
+    eyebrow: n.venueName ? `${live} ${n.venueName}` : n.cityName,
+    date: dateOf(n),
+    time: time ? (span ? `From ${time}` : time) : '',
+    entry,
+    action: n.cta.action,
+    city: n.cityName,
+  }
+}
+
 function nightSlide(n: CampaignNight): Slide {
   return {
+    words: nightWords(n),
     t: 'night',
     composition: compositionFor(n),
     eventId: n.eventId,
@@ -320,6 +370,7 @@ export function pieceRefusal(p: PiecePlan): string | null {
   }
   if ((p.kind === 'partner_kit') !== (p.partnerName !== null)) return 'A partner kit names its partner, and only a partner kit does.'
   if (p.kind === 'organiser_campaign' && p.eventIds.length > 0) return 'The organiser campaign advertises no night: it is its own asset (J11).'
+  if (p.kind === 'brand_campaign' && (p.eventIds.length > 0 || p.picks.length > 0)) return 'A brand piece names no night, so no photograph on it is taken for one.'
   return null
 }
 
@@ -334,6 +385,11 @@ export function planCampaign(input: {
   origin: string
   /** K6: the nights the founder left out of this week's campaign. */
   excluded?: ReadonlySet<string>
+  /**
+   * The newest photograph licensed for EventLinqs' own promotion and tied to no night (the store's social_brand_images),
+   * or none: the brand piece is then drawn in EventLinqs' own art (treatment C), never a stand-in photo.
+   */
+  brandPhoto?: { url: string; credit: string } | null
 }): CampaignPlan {
   const { origin, weekStart } = input
   const site = siteOf(origin)
@@ -524,6 +580,35 @@ export function planCampaign(input: {
     })
   }
 
+  /* The weekend brand piece (the approved "Say yes to this weekend"): names no night, so no photograph on it can be
+     taken for one; to the browse page, every night in one place. */
+  if (inWeek.length > 0) {
+    const hook = 'Say yes to this weekend.'
+    const line = `Gigs, festivals, markets and free nights across ${input.cities.map((c) => c.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, in one place.`
+    const photo = input.brandPhoto ?? null
+    const body = [line, ...(photo ? ['', `Photo: ${photo.credit}`] : [])]
+    pieces.push({
+      kind: 'brand_campaign',
+      city: 'victoria',
+      audience: 'attendees',
+      objective: 'audience_growth',
+      purpose: 'Bring people to EventLinqs to find their weekend',
+      nextStep: `See what's on at ${site}/events`,
+      outcome: outcomeOf('/events'),
+      link: `${origin}/events`,
+      format: 'feed',
+      eventIds: [],
+      picks: [],
+      mode: photo ? 'photo_led' : 'graphic_led',
+      slides: [{ t: 'brand', composition: 'close', headline: hook, line, action: "See what's on", photo: photo?.url ?? null, credit: photo?.credit ?? null }],
+      caption: join([hook, '', ...body, '', `${site}/events`]),
+      versions: versionsOf(hook, body, `${origin}/events`, "What's on is at the link in our bio.", "What's on:", '4:5', '#victoriaevents'),
+      partnerName: null,
+      partnerEventId: null,
+      message: null,
+    })
+  }
+
   /* Partner kits: every organiser and venue featured, a 9:16 story for their own account and the message that ASKS
      (never assumes a Collab: J14). */
   for (const [name, n] of [...featured.entries()].slice(0, MAX_PARTNERS)) {
@@ -543,7 +628,7 @@ export function planCampaign(input: {
       eventIds: [n.eventId],
       picks: [{ eventId: n.eventId, reason: `Picked: ${name} is featured in this week's campaign.` }],
       mode: modeOf([n]),
-      slides: [{ t: 'story', composition: compositionFor(n), eventId: n.eventId, chip: 'Featured on EventLinqs', when: [whenOf(n), n.priceLine].filter(Boolean).join(' · '), title: n.title, meta: metaOf(n), photo: n.approvedPhotoUrl, credit: n.approvedPhotoUrl ? n.photoCredit : null, sticker: "Link sticker here: this night's own link on EventLinqs" }],
+      slides: [{ t: 'story', composition: compositionFor(n), eventId: n.eventId, chip: 'Featured on EventLinqs', when: [whenOf(n), n.priceLine].filter(Boolean).join(' · '), title: n.title, meta: metaOf(n), photo: n.approvedPhotoUrl, credit: n.approvedPhotoUrl ? n.photoCredit : null, sticker: "Link sticker here: this night's own link on EventLinqs", words: nightWords(n), line: whyOf(n) }],
       caption: join([hook, '', ...body]),
       versions: versionsOf(hook, body, `${origin}/events/${n.slug}`, 'Link sticker: this night on EventLinqs.', 'The night:', '9:16', ''),
       partnerName: name,

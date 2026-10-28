@@ -29,3 +29,27 @@ Retrieved 8 August 2026 through the Google Fonts CSS API
 (`https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@500;600`)
 with a user agent that resolves to `format('truetype')`, because satori reads
 TTF and OTF and cannot read woff2.
+
+## The campaign treatments' faces (28 October 2026)
+
+Lawal approved the three creative treatments on 28 October 2026 (the reference
+designs in `C:\dev\EVIDENCE\CREATIVE-APPROVED-28OCT`). They set the headline in
+Archivo at condensed widths and every detail in Manrope, the two families the
+site itself loads (`src/app/layout.tsx`). satori draws only static faces and
+cannot set a variable font's width axis, so the widths the references use are
+cut as static instances of the variable files and vendored here.
+
+| File | Family as registered | Weight | Instance |
+|---|---|---|---|
+| `ArchivoCompressed-Black.ttf` | Archivo Compressed | 900 | Archivo `wdth=62 wght=900` |
+| `ArchivoCondensed-Heavy.ttf` | Archivo Condensed | 800 | Archivo `wdth=72 wght=850` (registered at 800, the nearest weight satori names) |
+| `Archivo-SemiBold.ttf` | Archivo | 600 | Archivo `wdth=100 wght=600` |
+| `Manrope-Medium.ttf` to `Manrope-ExtraBold.ttf` | Manrope | 500, 600, 700, 800 | Manrope `wght=500` to `800` |
+
+Sources, fetched 28 October 2026 from the Google Fonts repository:
+`https://github.com/google/fonts/raw/main/ofl/archivo/Archivo%5Bwdth%2Cwght%5D.ttf`
+(sha256 0e094a7d3c7c4c25cf1310c4b30014f1dae9332220b1c2c88f4fa996f0b05053) and
+`https://github.com/google/fonts/raw/main/ofl/manrope/Manrope%5Bwght%5D.ttf`
+(sha256 3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6),
+instanced with fontTools `varLib.instancer`. Both are SIL Open Font License 1.1;
+the licence texts travel with the files as `OFL-Archivo.txt` and `OFL-Manrope.txt`.
