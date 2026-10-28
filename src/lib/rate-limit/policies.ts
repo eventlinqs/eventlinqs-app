@@ -32,6 +32,7 @@ export type PolicyName =
   | 'forecast-run'
   | 'newsletter-subscribe'
   | 'partner-enquiry'
+  | 'listing-submission'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -238,6 +239,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The partner enquiry form on /partners per IP per 10 min (Train C, row 14). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone correcting a message twice; a scripted flood is bounded.',
+  },
+  'listing-submission': {
+    keyPrefix: 'listing-sub',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',
