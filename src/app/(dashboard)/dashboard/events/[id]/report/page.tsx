@@ -54,7 +54,16 @@ export default async function AfterEventReportPage({ params }: Props) {
       shareOn ? fetchReachSummary(id) : Promise.resolve({ totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }),
       event.endDate ? readNightRows({ id, endDate: event.endDate }) : null,
     ])
-    figures = nightFigures({ numbers, reach, presses: rows?.presses ?? [], orders: rows?.orders ?? null, posts: rows?.posts ?? [] })
+    figures = nightFigures({
+      numbers,
+      reach,
+      viewers: rows?.viewers ?? 0,
+      ownLinkArrivals: rows?.ownLinkArrivals ?? null,
+      instagramReach: rows?.instagramReach ?? null,
+      presses: rows?.presses ?? [],
+      orders: rows?.orders ?? null,
+      posts: rows?.posts ?? [],
+    })
   }
   const report = afterEventReport(figures.numbers, figures.reach)
   const added = addedLines(figures, {

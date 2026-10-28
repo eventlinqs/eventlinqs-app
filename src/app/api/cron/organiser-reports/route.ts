@@ -6,8 +6,9 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Cron route: the organiser's report after each night (the engine plan of 28 October 2026, part H;
- * src/lib/growth/organiser-report-math.ts). Hourly: every public night that ended at least twelve hours ago gets one
- * report of what EventLinqs counted for it, written once and held for Lawal. It sends nothing. Protected by
+ * src/lib/growth/organiser-report-math.ts). Hourly: every public night that ended at least two days ago gets one report
+ * of what EventLinqs counted for it, written once (message 8 of the organiser messages is filled from it). It sends
+ * nothing itself. Protected by
  * CRON_SECRET, as every cron route is.
  */
 export async function GET(request: NextRequest) {

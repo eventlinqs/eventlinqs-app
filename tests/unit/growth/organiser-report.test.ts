@@ -48,6 +48,9 @@ describe('nightsDue', () => {
 
 const ROWS: NightRows = {
   numbers: { views: 140, reminders: 6, calendarAdds: 2, shares: 3, follows: 1, actionsPerView: 12 / 140 },
+  viewers: 96,
+  ownLinkArrivals: null,
+  instagramReach: null,
   reach: { totals: { views: 20, clicks: 15 }, byChannel: [{ channel: 'instagram', views: 20, clicks: 15 }] },
   presses: [
     { visitor: 'v1', rowId: 'r1', provider: 'humanitix' },
@@ -97,7 +100,14 @@ describe('addedLines', () => {
 
   it('says nobody pressed on when nobody did, and leaves out EventLinqs orders for a night we do not sell', () => {
     const lines = addedLines(nightFigures({ ...ROWS, presses: [], posts: [] }), words)
-    expect(lines).toEqual(['Nobody pressed on from your listing to your booking page.'])
+    expect(lines).toEqual(['96 people viewed your listing.', 'Nobody pressed on from your listing to your booking page.'])
+  })
+
+  it('says the organiser own link only when one was made, and Instagram reach only as entered, apart from the counts', () => {
+    const lines = addedLines(nightFigures({ ...ROWS, ownLinkArrivals: 4, instagramReach: { value: 1200, readAt: '2026-10-30T01:00:00Z' } }), words)
+    expect(lines).toContain('4 people came through your own share link.')
+    expect(lines[lines.length - 1]).toBe("Instagram reported our post reached 1,200 accounts (Instagram's own figure, read on Thu 29 Oct; not counted by EventLinqs).")
+    expect(addedLines(nightFigures(ROWS), words).some((l) => /share link|Instagram reported/.test(l))).toBe(false)
   })
 
   it('carries no long dash and no exclamation mark', () => {

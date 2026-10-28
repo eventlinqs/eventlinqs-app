@@ -68,12 +68,46 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
     orders = rows.map((o) => ({ status: o.status, tickets: Array.isArray(o.tickets) ? o.tickets.length : 0 }))
   }
 
+  // Distinct people who opened the listing: the page view rows' visitor, one row per person per day (the demand route).
+  const slots = await readOrThrow('the night ledger slots', () => admin.from('ledger_slots').select('id').eq('source_ref', night.id).limit(20))
+  const slotIds = (slots ?? []).map((sl) => sl.id)
+  const viewRows =
+    slotIds.length === 0
+      ? []
+      : await readEveryRow<{ occurrence_key: string }>('the night page views', (f, t) =>
+          admin.from('ledger_entries').select('occurrence_key').in('slot_id', slotIds).eq('kind', 'demand').eq('demand_action', 'page_view').order('id', { ascending: true }).range(f, t),
+        )
+  const viewers = new Set(viewRows.map((r) => r.occurrence_key.split(':')[1]).filter((v) => v !== undefined && v !== '')).size
+
+  // The organiser's own link: a partner kit's link minted for this night (social_pieces.share_link_id), its arrivals.
+  const kits = linkIds.length === 0 ? [] : await readOrThrow('the night partner kit links', () => admin.from('social_pieces').select('share_link_id').in('share_link_id', linkIds))
+  const kitLinkIds = (kits ?? []).flatMap((k) => (k.share_link_id ? [k.share_link_id] : []))
+  let ownLinkArrivals: number | null = null
+  if (kitLinkIds.length > 0) {
+    const clicks = await readEveryRow<{ id: string; visitor_hash: string | null }>('the own link arrivals', (f, t) =>
+      admin.from('share_link_events').select('id, visitor_hash').in('link_id', kitLinkIds).eq('kind', 'click').order('id', { ascending: true }).range(f, t),
+    )
+    ownLinkArrivals = new Set(clicks.map((c) => c.visitor_hash ?? `row:${c.id}`)).size
+  }
+
+  const posts = await postsNaming(admin, night)
+  const reachRows =
+    posts.length === 0
+      ? []
+      : await readOrThrow('the entered Instagram reach', () =>
+          admin.from('social_piece_figures').select('value, read_at').in('piece_id', posts.map((p) => p.pieceId)).eq('platform', 'instagram').eq('metric', 'reach').order('read_at', { ascending: false }).limit(1),
+        )
+  const newestReach = (reachRows ?? [])[0]
+
   return {
     numbers,
+    viewers,
+    ownLinkArrivals,
+    instagramReach: newestReach ? { value: Number(newestReach.value), readAt: newestReach.read_at } : null,
     reach: { totals: { views: reach.totals.views, clicks: reach.totals.clicks }, byChannel: reach.byChannel.map((c) => ({ channel: c.channel, views: c.views, clicks: c.clicks })) },
     presses: pressRows.map((p) => ({ visitor: p.visitor_hash, rowId: p.id, provider: p.provider })),
     orders,
-    posts: await postsNaming(admin, night),
+    posts,
   }
 }
 
