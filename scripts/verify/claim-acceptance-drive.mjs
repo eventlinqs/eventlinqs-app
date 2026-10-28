@@ -165,13 +165,31 @@ try {
   server.stderr.on('data', (d) => (serverLog += d))
   const handle = slugify(venue.name)
   const claimPath = `/venues/${handle}/claim`
-  let up = false
-  for (let i = 0; i < 180 && !up; i++) {
-    await new Promise((r) => setTimeout(r, 2000))
-    up = await fetch(`${BASE}${claimPath}`).then((r) => r.status === 200, () => false)
+  /*
+   * The server caches listing_claims for FEATURE_FLAG_CACHE_TTL_SECONDS (src/lib/flags/broadcast.ts) and this process
+   * cannot invalidate that cache, so the drive asks the server instead of guessing: the claim page answers notFound()
+   * while the switch it reads is off, so it is waited on until it answers 200 (the server's first compile counts in
+   * the same budget). The start and check actions read the same cached key through the same resolver.
+   */
+  async function waitForFlagToLand() {
+    const deadline = Date.now() + 360_000
+    for (;;) {
+      const status = await fetch(`${BASE}${claimPath}`, { redirect: 'manual' }).then((r) => r.status, () => null)
+      if (status === 200) {
+        console.log(`listing_claims has landed: ${claimPath} answers 200`)
+        return
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`after 360s ${claimPath} answers ${status ?? 'nothing'}: the server is not up, or its cached listing_claims still reads off`)
+      }
+      await new Promise((r) => setTimeout(r, 2000))
+    }
   }
-  writeFileSync(join(out, 'server.log'), serverLog)
-  if (!up) throw new Error(`the claim page did not answer 200 at ${claimPath}`)
+  try {
+    await waitForFlagToLand()
+  } finally {
+    writeFileSync(join(out, 'server.log'), serverLog)
+  }
 
   browser = await chromium.launch()
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-AU' })
