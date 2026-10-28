@@ -140,6 +140,27 @@ async function postsNaming(admin: Admin, night: { id: string; endDate: string })
   return posts
 }
 
+/** The nights the report rule owes now, with their titles, read as the sweep reads them (for /admin/today). */
+export async function readNightsOwed(now: Date = new Date()): Promise<{ id: string; endDate: string; title: string }[]> {
+  const admin = createAdminClient()
+  const nights = await endedNights(admin, now)
+  const owed = nightsDue(nights, await reportedOf(admin, nights.map((n) => n.id)), now)
+  if (owed.length === 0) return []
+  const titles = await readOrThrow('the titles of the nights owed a report', () => admin.from('events').select('id, title').in('id', owed.map((o) => o.id)).limit(owed.length))
+  const titleOf = new Map((titles ?? []).map((t) => [t.id, t.title]))
+  return owed.map((o) => ({ id: o.id, endDate: o.endDate, title: titleOf.get(o.id) ?? 'a night' }))
+}
+
+/** Which of these nights already have a kept report. */
+async function reportedOf(admin: Admin, ids: readonly string[]): Promise<Set<string>> {
+  const reported = new Set<string>()
+  for (let i = 0; i < ids.length; i += 200) {
+    const rows = await readOrThrow('the nights already reported', () => admin.from('organiser_night_reports').select('event_id').in('event_id', ids.slice(i, i + 200)))
+    for (const r of rows ?? []) reported.add(r.event_id)
+  }
+  return reported
+}
+
 export interface SweepSummary {
   readonly due: number
   readonly written: number
@@ -150,13 +171,7 @@ export interface SweepSummary {
 export async function runOrganiserReports(now: Date = new Date()): Promise<SweepSummary> {
   const admin = createAdminClient()
   const nights = await endedNights(admin, now)
-  const ids = nights.map((n) => n.id)
-  const reported = new Set<string>()
-  for (let i = 0; i < ids.length; i += 200) {
-    const rows = await readOrThrow('the nights already reported', () => admin.from('organiser_night_reports').select('event_id').in('event_id', ids.slice(i, i + 200)))
-    for (const r of rows ?? []) reported.add(r.event_id)
-  }
-  const due = nightsDue(nights, reported, now)
+  const due = nightsDue(nights, await reportedOf(admin, nights.map((n) => n.id)), now)
   let written = 0
   let failed = 0
   for (const night of due.slice(0, NIGHTS_PER_RUN)) {

@@ -12,6 +12,7 @@ export interface AdminNavItem {
 }
 
 export const ADMIN_NAV: AdminNavItem[] = [
+  { label: 'Today',            href: '/admin/today',      capability: 'admin.dashboard.view' },
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
   { label: 'Growth',           href: '/admin/growth',     capability: 'admin.pricing.manage' },
   { label: 'Weekly roundup',   href: '/admin/roundup',    capability: 'admin.network.manage' },
