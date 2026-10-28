@@ -149,3 +149,16 @@ export function nextAllowed(rule: CadenceRule, lastPostedAt: Date | null, now: D
   const at = new Date(lastPostedAt.getTime() + rule.gapHours * 3_600_000)
   return at.getTime() > now.getTime() ? at : now
 }
+
+/** Each format's name, one and many, written out: "Stories", never a plural built by adding an s. */
+export const FORMAT_NAME: Readonly<Record<SocialFormat, { readonly one: string; readonly many: string }>> = {
+  feed: { one: 'Feed card', many: 'Feed cards' },
+  story: { one: 'Story', many: 'Stories' },
+}
+
+/** The rule a format posts by, as /admin/social says it; `when` is the page's own "one may go now" or the next time. */
+export function cadenceLine(format: SocialFormat, rule: CadenceRule, when: string): string {
+  return rule.basis === 'starting'
+    ? `${FORMAT_NAME[format].many} go at least ${rule.gapHours} hours apart, ${when}. No baseline yet: the hours are learned once ${rule.floorPosts} have each gone ${rule.settleHours} hours.`
+    : `${FORMAT_NAME[format].many} go at least ${rule.gapHours} hours apart, ${when}. Learned from our own ${rule.learnedFrom} posts, ranked by tickets sold.`
+}
