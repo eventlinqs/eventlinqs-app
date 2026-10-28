@@ -160,7 +160,7 @@ export function mediaDeps(): MediaDeps {
       if (error) throw new Error(`the image files were not removed: ${error.message}`)
     },
     async rpc(name, args) {
-      // The four functions are added by 20261028220201; until the generated types carry them, the call is by name.
+      // MediaDeps names the function as a string (so a test can fake it); the typed client takes only a literal name.
       const { data, error } = await (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args)
       return { data, error: error ? { code: error.code, message: error.message } : null }
     },
