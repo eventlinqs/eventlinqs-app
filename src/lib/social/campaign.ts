@@ -1,4 +1,5 @@
 import type { Cta } from '@/lib/events/cta'
+import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -36,6 +37,27 @@ export type Composition =
   | 'close'
 
 export type CampaignCity = { slug: string; name: string }
+
+/**
+ * A night's venue as a slide may name it and a partner kit may be addressed to it, or null. Some imported listings
+ * carry a research note where the venue belongs ("Organiser not named on listing", found on TEST by demonstration D,
+ * 28 October 2026); a note is never drawn on a slide as a place, nor sent a partner kit.
+ */
+export function venueOf(name: string | null | undefined): string | null {
+  const v = name?.trim() || null
+  return v && /\bnot named\b|\bto be confirmed\b|\btbc\b/i.test(v) ? null : v
+}
+
+/**
+ * The host a night is shown under and its partner kit is for (ruling A of 23 October 2026, src/lib/listings/shown-
+ * organiser.ts): an EventLinqs listing, or any night the listings organisation holds, is its VENUE's, and that
+ * organisation is named nowhere; an organiser's own night is its organisation's.
+ */
+export function hostOf(e: { listingSource: string | null; organisationName: string | null; organisationSlug: string | null; venueName: string | null }): string | null {
+  const venue = venueOf(e.venueName)
+  if (isEventLinqsListing({ listing_source: e.listingSource }) || isListingsOrganisation(e.organisationSlug)) return venue
+  return e.organisationName?.trim() || venue
+}
 
 export type CampaignNight = {
   eventId: string
