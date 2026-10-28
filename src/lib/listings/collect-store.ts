@@ -13,7 +13,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export function collectionStore(db: SupabaseClient): CollectionStore {
   return {
     async sources(): Promise<RegisteredSource[]> {
-      const { data, error } = await db.from('listing_sources').select('id, name, page_url, collection, changes, last_checked_at')
+      const { data, error } = await db
+        .from('listing_sources')
+        .select('id, name, page_url, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links')
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       return (data ?? []).map((s) => ({
         id: s.id as string,
@@ -22,6 +24,13 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         collection: s.collection as RegisteredSource['collection'],
         changes: s.changes as RegisteredSource['changes'],
         lastCheckedAt: (s.last_checked_at as string | null) ?? null,
+        lastSuccessAt: (s.last_success_at as string | null) ?? null,
+        permits: {
+          facts: s.permits_facts === true,
+          descriptions: s.permits_descriptions === true,
+          images: s.permits_images === true,
+          links: s.permits_links === true,
+        },
       }))
     },
 
@@ -65,6 +74,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
             venue_address: row.venueAddress,
             page_url: row.pageUrl,
             image_url: row.imageUrl,
+            description: row.description,
             links: row.links,
           },
           { onConflict: 'source_id,page_url,starts_at', ignoreDuplicates: true },
@@ -74,10 +84,12 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       return (data ?? []).length > 0
     },
 
-    async record(sourceId: string, outcome: string, at: Date): Promise<void> {
+    async record(sourceId: string, outcome: string, at: Date, succeeded: boolean): Promise<void> {
+      /* last_success_at moves only when the read succeeded (the checklist's D3). */
+      const when = at.toISOString()
       const { error } = await db
         .from('listing_sources')
-        .update({ last_checked_at: at.toISOString(), last_outcome: outcome, updated_at: at.toISOString() })
+        .update({ last_checked_at: when, last_outcome: outcome, updated_at: when, ...(succeeded ? { last_success_at: when } : {}) })
         .eq('id', sourceId)
       if (error) throw new Error(error.message)
     },

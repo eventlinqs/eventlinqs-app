@@ -37,7 +37,7 @@ function sites(pages: Record<string, { status: number; body?: string } | 'down'>
 }
 
 const source = (id: string, pageUrl: string, over: Partial<RegisteredSource> = {}): RegisteredSource => ({
-  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, ...over,
+  id, name: id, pageUrl, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, ...over,
 })
 
 const gig = (name: string, ticket: string) =>

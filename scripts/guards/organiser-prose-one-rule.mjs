@@ -123,6 +123,10 @@ const REVIEWED = [
     file: 'src/lib/walk-in/list-draft.ts',
     reason: "the walk-in listing script's writer: copies the organiser's checked words from the data file into the event row and hands them to the words judge; renders nothing itself (the walk-in page renders the summary through stripMarkdown and the description through OrganiserProse)",
   },
+  {
+    file: 'src/lib/listings/collect-run.ts',
+    reason: "the collection run's writer: hands a source's own description, only where its register row permits descriptions, to the candidate row for a person's review; renders nothing itself (no surface shows a candidate's description yet; one that does goes through OrganiserProse)",
+  },
 ]
 const reviewedHits = new Map(REVIEWED.map(r => [r.file, 0]))
 
