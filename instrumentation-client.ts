@@ -57,6 +57,19 @@
 // and environment tags it would have carried if thrown a second later. What the
 // defer does cost is Session Replay context for the first moments of a page,
 // which is measured and recorded in docs/roast/sentry-client-surface-2026-08-05.md.
+//
+// WHAT CHANGED A THIRD TIME AND WHY (2026-10-28, #193's Lighthouse gate)
+//
+// The timer counted from load alone. On a slower CI runner the hero of
+// /events/artist-layer-launch-night-geelong painted at about 5.1 s, well after
+// load, and the timer fetched the SDK's chunks inside that paint on 4 of 5
+// traces: script 671,241 bytes against the 491,520 budget, LCP 5,167 ms
+// against 4,500 (run 40616777528). So the timer now waits until
+// BOOT_AFTER_LOAD_MS after the LATEST largest-paint candidate as well as after
+// load, re-armed by each new candidate, and never past
+// BOOT_LATEST_AFTER_LOAD_MS after load, so a page that keeps painting is still
+// reported. An error and a first interaction still boot at once. Held by
+// tests/unit/observability/sentry-boot-after-paint.test.ts.
 
 import { shouldInitSentry } from '@/lib/observability/sentry-env'
 import type { PendingError, SentryBootReason } from '@/lib/observability/sentry-client-boot'
@@ -90,6 +103,14 @@ const MAX_PENDING = 20
 const BOOT_AFTER_LOAD_MS = 3000
 
 /**
+ * The latest the timer may boot, counted from load, however long the page keeps
+ * reporting larger paints (a hero carousel, a late font swap). Past it the
+ * visitor's errors matter more than the paint: fifteen seconds is longer than
+ * any largest paint the gate accepts (4.5 s) by more than three times.
+ */
+const BOOT_LATEST_AFTER_LOAD_MS = 15000
+
+/**
  * What counts as the visitor interacting with the page.
  *
  * Deliberately the coarse, early signals rather than `click`: a pointer going
@@ -114,6 +135,9 @@ const MAX_BOOT_ATTEMPTS = 3
 let booted = false
 let bootAttempts = 0
 let bootTimer: ReturnType<typeof setTimeout> | undefined
+let loadedAt: number | undefined
+let lastPaintAt = 0
+let paintObserver: PerformanceObserver | undefined
 
 function hold(error: unknown, kind: PendingError['kind']) {
   if (pending.length >= MAX_PENDING) return
@@ -169,7 +193,26 @@ function attachInteractionSchedulers() {
  * arming block can reach cannot be brought back.
  */
 function armTimer() {
-  bootTimer = setTimeout(() => boot('timer'), BOOT_AFTER_LOAD_MS)
+  const t = performance.now()
+  if (loadedAt === undefined) loadedAt = t
+  // The later of load and the latest largest paint, plus BOOT_AFTER_LOAD_MS,
+  // never past the ceiling. A re-arm after a failed chunk load still waits the
+  // full BOOT_AFTER_LOAD_MS from now, as it always has.
+  const due = Math.min(Math.max(loadedAt, lastPaintAt) + BOOT_AFTER_LOAD_MS, loadedAt + BOOT_LATEST_AFTER_LOAD_MS)
+  const wait = Math.max(due - t, bootAttempts > 0 ? BOOT_AFTER_LOAD_MS : 0)
+  bootTimer = setTimeout(() => boot('timer'), wait)
+}
+
+/**
+ * Each new largest-paint candidate moves an armed timer to BOOT_AFTER_LOAD_MS
+ * after it. Before load nothing is armed, and the candidate is only recorded.
+ */
+function onPaint(list: PerformanceObserverEntryList) {
+  for (const entry of list.getEntries()) lastPaintAt = Math.max(lastPaintAt, entry.startTime)
+  if (bootTimer !== undefined && !booted) {
+    clearTimeout(bootTimer)
+    armTimer()
+  }
 }
 
 function detachSchedulers() {
@@ -180,6 +223,8 @@ function detachSchedulers() {
     clearTimeout(bootTimer)
     bootTimer = undefined
   }
+  paintObserver?.disconnect()
+  paintObserver = undefined
 }
 
 function boot(reason: SentryBootReason) {
@@ -253,6 +298,15 @@ if (typeof window !== 'undefined' && dsn && shouldInitSentry()) {
   // path. Interaction listeners are attached now rather than at load, because a
   // visitor who taps at 400ms has, by tapping, told us the page is painted.
   attachInteractionSchedulers()
+
+  // Watch the largest paint, so the timer never lands inside it. A browser
+  // without the entry type simply keeps the load based timer.
+  try {
+    paintObserver = new PerformanceObserver(onPaint)
+    paintObserver.observe({ type: 'largest-contentful-paint', buffered: true })
+  } catch {
+    paintObserver = undefined
+  }
 
   if (document.readyState === 'complete') armTimer()
   else window.addEventListener('load', armTimer, { once: true })
