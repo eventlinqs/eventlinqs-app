@@ -1,7 +1,7 @@
 -- THE CLAIM AS ACCEPTANCE PROOF (supabase/migrations/20261028220201_claim_acceptance.sql), on TEST, which holds the
 -- asset register (20261028141001). One transaction that ends by RAISING its verdict, so TEST is left as found.
 --   RED:   153001 and 205501 (where TEST lacks them) followed by this file, the claim acceptance migration not there.
---   GREEN: the same with 220201 and 221201 before this file, joined, in one transaction:
+--   GREEN: the same with 220201, 221201 and 222201 before this file, joined, in one transaction:
 --          scripts\ops\with-supabase-token.ps1 node scripts/verify/run-proof-on-test.mjs <the four, joined>
 -- Every check runs in its own block, so a missing column or function is reported as that check failing.
 DO $proof$
@@ -261,6 +261,19 @@ BEGIN
       END;
     ELSE v_out := v_out || format(' | A13 new yes %s: FAIL', v_row.channel); v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A13 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;
+  END;
+
+  -- A14: an image entered under a yes after that yes was withdrawn (by a person, not the organiser's own withdrawal,
+  -- which takes its images with it) is not carried by the withdrawn yes to the host's other nights (222201).
+  BEGIN
+    INSERT INTO public.social_assets (asset_state, asset_type, event_id, asset_url, source_url, rights_holder, permission_evidence, permission_id,
+                                      attribution_text, scope, approval_status, approved_by, approved_at)
+    VALUES ('organiser_authorised', 'photo', v_night1, v_bucket || 'p/late.webp', v_bucket || 'p/late.webp', v_host,
+            'Entered after the yes was withdrawn, for the proof', v_yes, 'Photo: the host', 'social', 'approved', v_user, now());
+    IF NOT public.social_asset_usable(v_bucket || 'p/late.webp', v_night2, now()) THEN
+      v_out := v_out || ' | A14 a withdrawn yes carries no image to the host''s other nights: PASS';
+    ELSE v_out := v_out || ' | A14 a withdrawn yes still carried an image to another night: FAIL'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A14 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;
   END;
 
   -- A11: nobody but the service role may call the claim's check or the four organiser functions.
