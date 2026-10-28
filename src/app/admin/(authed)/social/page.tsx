@@ -5,7 +5,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { cadenceFor, lastPosted, readPosts, type PostRow } from '@/lib/social/store'
-import { nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
+import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import { approveAction, planWeekAction, recordPostedAction, writeWordsAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -32,13 +32,10 @@ const QUIET =
 const FIELD = 'block w-full rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[13px] text-white'
 
 const money = (cents: number): string => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100)
-const FORMAT_NAME: Record<SocialFormat, string> = { feed: 'Feed card', story: 'Story' }
 
 function ruleLine(format: SocialFormat, rule: CadenceRule, next: Date, now: Date): string {
   const when = next.getTime() <= now.getTime() ? 'one may go now' : `the next may go ${formatPlatformDateTime(next.toISOString())}`
-  return rule.basis === 'starting'
-    ? `${FORMAT_NAME[format]}s go at least ${rule.gapHours} hours apart, ${when}. No baseline yet: the hours are learned once ${rule.floorPosts} have each gone ${rule.settleHours} hours.`
-    : `${FORMAT_NAME[format]}s go at least ${rule.gapHours} hours apart, ${when}. Learned from our own ${rule.learnedFrom} posts, ranked by tickets sold.`
+  return cadenceLine(format, rule, when)
 }
 
 function Results({ r }: { r: PostRow['result'] }) {
@@ -54,10 +51,10 @@ function Post({ p }: { p: PostRow }) {
   return (
     <li data-post={p.id} data-format={p.format} className="grid grid-cols-1 gap-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-[180px_minmax(0,1fr)]">
       {/* eslint-disable-next-line @next/next/no-img-element -- a staff preview of a rendered card, never a public image */}
-      <img src={card} alt={`${FORMAT_NAME[p.format]} for ${p.eventTitle}`} loading="lazy" className="w-full max-w-[180px] rounded-lg border border-white/[0.08]" />
+      <img src={card} alt={`${FORMAT_NAME[p.format].one} for ${p.eventTitle}`} loading="lazy" className="w-full max-w-[180px] rounded-lg border border-white/[0.08]" />
       <div className="min-w-0">
         <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
-          Instagram {FORMAT_NAME[p.format].toLowerCase()}, {formatPlatformDateTime(p.eventStart)}
+          Instagram {FORMAT_NAME[p.format].one.toLowerCase()}, {formatPlatformDateTime(p.eventStart)}
         </p>
         <h3 className="mt-1 font-display text-base font-semibold text-white">{p.eventTitle}</h3>
         {p.draft === null ? (
