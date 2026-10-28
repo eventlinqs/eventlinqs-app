@@ -538,7 +538,7 @@ export const ENV_MANIFEST = [
   },
   {
     name: 'OUTREACH_GRAPH_CLIENT_ID',
-    describe: 'The Entra application id the outreach sender signs in as (Mail.Send and Mail.ReadWrite, limited to hello@eventlinqs.com)',
+    describe: 'The Entra application id the outreach sender signs in as (application permissions Mail.Send and Mail.Read, limited to hello@eventlinqs.com)',
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
