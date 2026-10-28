@@ -105,6 +105,7 @@ import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 import { isWalkIn } from '@/lib/events/entry-mode'
 import { ctaFor } from '@/lib/events/cta'
+import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -1526,7 +1527,10 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
 
-                {event.organisation && (
+                {/* An EventLinqs listing names its host, never the listings organisation (ruling A of 23 October 2026,
+                    src/lib/listings/shown-organiser.ts): this card linked /organisers/eventlinqs-listings, a 404, on every
+                    curated night this page draws (window 5's finish pass, 29 October 2026, Law 5). */}
+                {event.organisation && shownOrganiser(event, event.organisation).slug !== null && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <CollaboratorsLine collaborators={collaborators} className="mt-2" />
