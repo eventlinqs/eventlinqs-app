@@ -483,11 +483,12 @@ export function layoutBrand(format: TreatmentFormat, w: BrandWords, m: Measurers
 }
 
 /** A one-line run fitted down to `min`, else two lines: the words a row or a label carries. */
-function rowRun(role: string, text: string, face: Face, m: Measurers, o: { x: number; y: number; w: number; max: number; min: number; color: string; ground: string; lineHeight?: number; lines?: number }): Run {
+function rowRun(role: string, text: string, face: Face, m: Measurers, o: { x: number; y: number; w: number; max: number; min: number; color: string; ground: string; lineHeight?: number; lines?: number; oneLineFloor?: number }): Run {
   const lineHeight = o.lineHeight ?? 1.25
   let f: { size: number; lines: string[] }
   try {
-    f = fit(text, m[face], { max: o.max, min: o.min, width: o.w, maxLines: 1, lineHeight, spacing: 0 })
+    /* One line is preferred, down to oneLineFloor of the size (a programme row) or to the minimum (everything else). */
+    f = fit(text, m[face], { max: o.max, min: Math.max(o.min, Math.round(o.max * (o.oneLineFloor ?? 0))), width: o.w, maxLines: 1, lineHeight, spacing: 0 })
   } catch (error) {
     if (!(error instanceof FitError)) throw error
     f = fit(text, m[face], { max: o.max, min: o.min, width: o.w, maxLines: o.lines ?? 2, lineHeight, spacing: 0 })
@@ -566,22 +567,54 @@ export function layoutProgramme(format: TreatmentFormat, w: ProgrammeWords, m: M
   const head = rowRun('heading', w.heading.toUpperCase(), 'manrope800', m, { x: g.pad, y, w: widthIn(g), max: 28, min: 22, color: accent, ground: NAVY })
   runs.push(head)
   y += runHeight(head) + 18
-  const dayW = format === 'square' ? 150 : 180
-  const titleMax = format === 'square' ? 40 : 48
-  for (const [i, r] of w.rows.entries()) {
-    blocks.push({ role: 'divider', x: g.pad, y, w: widthIn(g), h: 2, color: 'rgba(246,241,230,0.22)' })
-    y += 22
-    const day = rowRun(`row-day-${i}`, r.day, 'condensed', m, { x: g.pad, y, w: dayW - 20, max: format === 'square' ? 56 : 68, min: 40, color: accent, ground: NAVY, lineHeight: 1, lines: 1 })
-    const title = rowRun(`row-title-${i}`, r.title, 'condensed', m, { x: g.pad + dayW, y, w: widthIn(g) - dayW, max: titleMax, min: 30, color: INK, ground: NAVY, lineHeight: 1 })
-    const meta = rowRun(`row-meta-${i}`, r.meta, 'manrope600', m, { x: g.pad + dayW, y: y + runHeight(title) + 8, w: widthIn(g) - dayW, max: 28, min: 22, color: '#DCD7CC', ground: NAVY, lines: 1 })
-    runs.push(day, title, meta)
-    y = Math.max(y + runHeight(day), meta.y + runHeight(meta)) + 22
-  }
-  const address = rowRun('address', w.address, 'manrope700', m, { x: g.pad, y: y + 16, w: widthIn(g), max: 30, min: 22, color: INK, ground: NAVY })
-  runs.push(address)
   const limit = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 50) - g.stickerZone
-  if (address.y + runHeight(address) > limit) throw new FitError(`the programme's ${w.rows.length} rows do not fit the ${format}`)
-  return { treatment: 'type', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground, art: [], blocks, runs: onGround(runs, ground, g) }
+  /*
+   * The rows at a scale: 1 is the reference size, the floor. A short week (three nights at one library) left the lower
+   * half of the slide empty at that size (found by eye on demonstration D, 29 October 2026), so the rows take the
+   * largest scale, by steps, at which they and the address still end above the limit.
+   */
+  const rowsAt = (scale: number, top: number, air = 0): { runs: Run[]; blocks: Block[]; bottom: number } => {
+    const out: Run[] = []
+    const lines: Block[] = []
+    let ry = top
+    const dayW = Math.round((format === 'square' ? 150 : 180) * scale)
+    const titleMax = Math.round((format === 'square' ? 40 : 48) * scale)
+    const gap = Math.round(22 * scale) + air
+    for (const [i, r] of w.rows.entries()) {
+      lines.push({ role: 'divider', x: g.pad, y: ry, w: widthIn(g), h: 2, color: 'rgba(246,241,230,0.22)' })
+      ry += gap
+      const day = rowRun(`row-day-${i}`, r.day, 'condensed', m, { x: g.pad, y: ry, w: dayW - 20, max: Math.round((format === 'square' ? 56 : 68) * scale), min: 40, color: accent, ground: NAVY, lineHeight: 1, lines: 1 })
+      const title = rowRun(`row-title-${i}`, r.title, 'condensed', m, { x: g.pad + dayW, y: ry, w: widthIn(g) - dayW, max: titleMax, min: 30, color: INK, ground: NAVY, lineHeight: 1, oneLineFloor: 0.8 })
+      const meta = rowRun(`row-meta-${i}`, r.meta, 'manrope600', m, { x: g.pad + dayW, y: ry + runHeight(title) + 8, w: widthIn(g) - dayW, max: Math.min(36, Math.round(28 * scale)), min: 22, color: '#DCD7CC', ground: NAVY, lines: 1 })
+      out.push(day, title, meta)
+      ry = Math.max(ry + runHeight(day), meta.y + runHeight(meta)) + gap
+    }
+    const address = rowRun('address', w.address, 'manrope700', m, { x: g.pad, y: ry + 16, w: widthIn(g), max: 30, min: 22, color: INK, ground: NAVY })
+    out.push(address)
+    return { runs: out, blocks: lines, bottom: address.y + runHeight(address) }
+  }
+  const layoutAt = (scale: number, air: number): Layout | null => {
+    const rows = rowsAt(scale, y, air)
+    if (rows.bottom > limit) return null
+    return { treatment: 'type', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground, art: [], blocks: [...blocks, ...rows.blocks], runs: onGround([...runs, ...rows.runs], ground, g) }
+  }
+  /*
+   * The largest scale, then the most air between the rows (at most 40 px a gap), at which the slide still passes its
+   * own checks: lower down the warm ground is lighter, so rows pushed too far lose their contrast (the QA said so,
+   * "row-day-3: contrast 2.98 on its ground, under 3"). The reference size with no air is the floor.
+   */
+  for (const scale of [1.6, 1.45, 1.3, 1.15, 1]) {
+    const room = limit - rowsAt(scale, y).bottom
+    if (room < 0) continue
+    const most = Math.min(40, Math.floor(room / (2 * w.rows.length + 1)))
+    for (let air = most; air >= 0; air -= 8) {
+      const l = layoutAt(scale, air)
+      if (l && layoutFaults(l, m).length === 0) return l
+    }
+  }
+  const floor = layoutAt(1, 0)
+  if (!floor) throw new FitError(`the programme's ${w.rows.length} rows do not fit the ${format}`)
+  return floor
 }
 
 export type EndWords = { headline: string; line: string; url: string; foot: string | null; label: string | null }

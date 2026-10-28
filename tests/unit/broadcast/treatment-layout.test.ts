@@ -232,6 +232,20 @@ describe('the cover, the programme and the close are measured too', () => {
         ] }, m),
       )
     })
+    it(`a short programme fills its slide, not its top half (${f})`, () => {
+      const rows = [
+        { day: 'THU', title: 'Toddler Time', meta: '10.30am · Free entry' },
+        { day: 'FRI', title: 'Baby Rhyme Time', meta: '10.30am · Free entry' },
+        { day: 'FRI', title: 'Beyond the Books: Board Games, Roll and Relax', meta: '5pm · Free entry' },
+      ]
+      const l = layoutProgramme(f, { heading: 'This week at Goldfields Libraries (Bendigo Library)', address: 'Goldfields Libraries (Bendigo Library), Bendigo', label: '2/2', rows }, m)
+      expectClean(l)
+      const g = GEOMETRY[f]
+      const address = l.runs.find((r) => r.role === 'address')!
+      const bottom = address.y + address.lines.length * address.size * address.lineHeight
+      const limit = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 50) - g.stickerZone
+      expect(bottom, `the rows end at ${Math.round(bottom)} of ${limit}`).toBeGreaterThan(limit * 0.7)
+    })
     it(`the close fits on its gold (${f})`, () => {
       const l = layoutEnd(f, { headline: 'Plan the weekend.', line: 'Every free thing on in Melbourne this week, by day, with times and maps:', url: 'eventlinqs.com.au/free/melbourne/this-week', foot: 'Save this for Saturday.', label: '7/7' }, m)
       expectClean(l)
