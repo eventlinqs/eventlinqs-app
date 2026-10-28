@@ -5,7 +5,8 @@
  * The organiser's seven photographs, one social_assets row each, organiser authorised for the AMCF 2026 night only,
  * with the whole record from scripts/ops/amcf-media-rights.manifest.json: rights holder, the original file, the day it
  * came, the evidence, the permitted uses, restrictions, the archival credit (J6: they are from a past festival), the
- * licence's end with the festival, a focal point, and each file's own pixel size read from the file.
+ * licence's end with the festival, a focal point, each file's own pixel size read from the file, and which leads (the
+ * manifest's order: the strongest photograph first, the directive's section 2).
  *
  *   node --env-file=<env> scripts/ops/amcf-media-rights.mjs              a dry run: reads, prints every row, writes nothing
  *   node --env-file=<a TEST env> scripts/ops/amcf-media-rights.mjs --apply --approve-as <staff user id>
@@ -56,7 +57,7 @@ console.log(`${apply ? 'APPLY' : 'DRY RUN'} on ${target}: ${ev.title} (${ev.slug
 const publicUrl = (path) => db.storage.from('event-images').getPublicUrl(path).data.publicUrl
 let written = 0
 let present = 0
-for (const p of m.photos) {
+for (const [index, p] of m.photos.entries()) {
   const bytes = readFileSync(join(PHOTOS, p.file))
   const meta = await sharp(bytes).metadata()
   const path = `${m.storagePrefix}/${p.file}`
@@ -82,12 +83,15 @@ for (const p of m.photos) {
     focal_y: p.focal[1],
     source_width: meta.width,
     source_height: meta.height,
+    lead_rank: index + 1,
   }
   const { data: have } = await db.from('social_assets').select('id, approval_status').eq('asset_url', assetUrl).eq('event_id', ev.id).maybeSingle()
   console.log(`${p.file}: ${meta.width} x ${meta.height}, focal ${p.focal.join(', ')}, ${p.subject}; ${have ? `in the register already (${have.approval_status})` : 'new'}`)
   if (!apply) continue
   if (have) {
     present += 1
+    const lead = await db.from('social_assets').update({ lead_rank: index + 1 }).eq('id', have.id)
+    if (lead.error) throw new Error(`lead ${p.file}: ${lead.error.message}`)
     continue
   }
   const up = await db.storage.from('event-images').upload(path, bytes, { contentType: 'image/jpeg', upsert: false })

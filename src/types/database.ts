@@ -5454,7 +5454,7 @@ export type Database = {
           {
             foreignKeyName: "organiser_permissions_claim_id_fkey"
             columns: ["claim_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "listing_claims"
             referencedColumns: ["id"]
           },
@@ -7803,7 +7803,7 @@ export type Database = {
       social_piece_decisions: {
         Row: {
           decided_at: string
-          decided_by: string
+          decided_by: string | null
           decision: string
           id: string
           piece_id: string
@@ -7812,7 +7812,7 @@ export type Database = {
         }
         Insert: {
           decided_at?: string
-          decided_by: string
+          decided_by?: string | null
           decision: string
           id?: string
           piece_id: string
@@ -7821,7 +7821,7 @@ export type Database = {
         }
         Update: {
           decided_at?: string
-          decided_by?: string
+          decided_by?: string | null
           decision?: string
           id?: string
           piece_id?: string
@@ -7932,6 +7932,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "social_piece_revisions_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_schedules: {
+        Row: {
+          approval_id: string
+          created_at: string
+          go_at: string
+          held_reason: string | null
+          id: string
+          piece_id: string
+          platform: string
+          published_at: string | null
+          published_ref: string | null
+          state: string
+        }
+        Insert: {
+          approval_id: string
+          created_at?: string
+          go_at: string
+          held_reason?: string | null
+          id?: string
+          piece_id: string
+          platform: string
+          published_at?: string | null
+          published_ref?: string | null
+          state?: string
+        }
+        Update: {
+          approval_id?: string
+          created_at?: string
+          go_at?: string
+          held_reason?: string | null
+          id?: string
+          piece_id?: string
+          platform?: string
+          published_at?: string | null
+          published_ref?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_schedules_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "social_piece_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_piece_schedules_piece_id_fkey"
             columns: ["piece_id"]
             isOneToOne: false
             referencedRelation: "social_pieces"
@@ -10371,6 +10425,7 @@ export type Database = {
         Args: { p_asset: string; p_reason: string; p_user: string }
         Returns: string[]
       }
+      platform_notification_guards: { Args: never; Returns: Json }
       organiser_permission_evidence: {
         Args: {
           p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
@@ -10424,7 +10479,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
         Returns: boolean

@@ -172,6 +172,18 @@ function Piece({ p }: { p: PieceRow }) {
           {STATE_NAME[p.state]} · version {r.version}
         </span>
       </div>
+      {p.schedule.length > 0 && p.state !== 'gone' ? (
+        <p data-schedule className="mt-2 text-sm text-white/70">
+          {p.schedule
+            .map((s) =>
+              s.state === 'held'
+                ? `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: held, ${s.heldReason}`
+                : `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${s.state === 'published' ? 'published' : 'scheduled for'} ${formatPlatformDateTime(s.goAt)}`,
+            )
+            .join('. ')}
+          . It goes by itself only once Meta approves our app and publishing is switched on; until then post it by hand and record it below.
+        </p>
+      ) : null}
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-[150px_minmax(0,1fr)]">
         <dt className="text-white/50">Audience</dt>
         <dd data-audience className="text-white">{AUDIENCE_NAME[p.audience]}</dd>
@@ -433,6 +445,7 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
           ['permittedUses', 'What they allowed it to be used for, in plain words', 'text', false],
           ['focalX', 'Where the subject is across, 0 to 100 (optional)', 'number', false],
           ['focalY', 'Where the subject is down, 0 to 100 (optional)', 'number', false],
+          ['leadRank', 'Which leads for its night, 1 first (optional)', 'number', false],
         ] as const).map(([name, label, type, required]) => (
           <label key={name} className="text-sm text-white/70">
             {label}

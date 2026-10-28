@@ -215,6 +215,7 @@ const AssetSchema = z.object({
   permittedUses: z.string().min(5).max(1000).optional(),
   focalX: z.coerce.number().min(0).max(100).optional(),
   focalY: z.coerce.number().min(0).max(100).optional(),
+  leadRank: z.coerce.number().int().min(1).max(99).optional(),
 })
 
 /** A photograph's own pixel size, read from the stored file so nobody types it (Law 10); null when it cannot be read. */
@@ -259,6 +260,7 @@ export async function addAssetAction(formData: FormData): Promise<void> {
     focal: a.focalX !== undefined && a.focalY !== undefined ? { x: a.focalX / 100, y: a.focalY / 100 } : null,
     sourceWidth: size?.width ?? null,
     sourceHeight: size?.height ?? null,
+    leadRank: a.leadRank ?? null,
     by: session.userId,
   })
   if (done.state === 'refused') back(done.reason)

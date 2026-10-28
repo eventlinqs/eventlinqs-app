@@ -162,3 +162,27 @@ export function cadenceLine(format: SocialFormat, rule: CadenceRule, when: strin
     ? `${FORMAT_NAME[format].many} go at least ${rule.gapHours} hours apart, ${when}. No baseline yet: the hours are learned once ${rule.floorPosts} have each gone ${rule.settleHours} hours.`
     : `${FORMAT_NAME[format].many} go at least ${rule.gapHours} hours apart, ${when}. Learned from our own ${rule.learnedFrom} posts, ranked by tickets sold.`
 }
+
+/**
+ * B5: the moments approved pieces go, from the cadence each format posts by. Pieces of one format go in the order
+ * given, the first at the next band open after the gap since the last post, each later one a gap after the one before
+ * and in a band. A feed piece and a story run on their own rules. Pure, so the schedule is driven by its own test.
+ */
+export function scheduleMoments(
+  pieces: readonly { readonly id: string; readonly format: SocialFormat; readonly approvedAt: Date }[],
+  rules: Readonly<Record<SocialFormat, CadenceRule>>,
+  lastPosted: Readonly<Record<SocialFormat, Date | null>>,
+  now: Date,
+  zone: string = SOCIAL_ZONE,
+): Map<string, Date> {
+  const out = new Map<string, Date>()
+  const cursor: Record<SocialFormat, Date | null> = { feed: lastPosted.feed, story: lastPosted.story }
+  for (const p of pieces) {
+    const rule = rules[p.format]
+    const after = new Date(Math.max(now.getTime(), p.approvedAt.getTime()))
+    const at = nextSlot(rule, nextAllowed(rule, cursor[p.format], after), zone)
+    out.set(p.id, at)
+    cursor[p.format] = at
+  }
+  return out
+}

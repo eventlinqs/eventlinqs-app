@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { contrast, FitError, GEOMETRY, layoutBrand, layoutFaults, layoutNight, layoutOffer, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
+import { contrast, FitError, GEOMETRY, layoutBrand, layoutCover, layoutEnd, layoutFaults, layoutNight, layoutOffer, layoutProgramme, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
 import { enlargement, formatsOf, MAX_ENLARGEMENT } from '@/lib/broadcast/campaign-slides'
 import { treatmentMeasurers } from '@/lib/broadcast/treatments'
 
@@ -184,4 +184,36 @@ describe('resolution', () => {
     expect(formatsOf('story')).toEqual(['story'])
     expect(GEOMETRY.story.safeTop).toBe(250)
   })
+})
+
+describe('the cover, the programme and the close are measured too', () => {
+  const cover = {
+    chip: 'This weekend · Melbourne',
+    headline: 'Five things on in Melbourne this weekend.',
+    line: 'All are free. Times and places in each.',
+    contents: ['SAT Run the Tan: Run Club', 'SAT The Geelong Folk and Acoustic Songwriters Night at the Wool Exchange Ballroom', 'SAT The Street Social: Halloween', "SAT Melbourne's Biggest Trick or Treat Trail", 'SUN The Melbourne Book Market'],
+    label: '1/7',
+  }
+  for (const f of FORMATS) {
+    it(`a contents cover with a long night title fits (${f})`, () => {
+      const l = layoutCover(f, cover, m)
+      expectClean(l)
+      expect(l.runs.filter((r) => r.role.startsWith('content-') && !r.role.startsWith('content-day')).map((r) => r.lines.join(' '))).toEqual(cover.contents.map((c) => c.split(' ').slice(1).join(' ')))
+    })
+    it(`a programme of four nights fits (${f})`, () => {
+      expectClean(
+        layoutProgramme(f, { heading: 'This week at Queen Victoria Market', address: 'Queen Victoria Market, Melbourne', label: '2/2', rows: [
+          { day: 'WED', title: 'The Night Market', meta: '5pm · Free entry' },
+          { day: 'SAT', title: 'The Melbourne Book Market', meta: '9am · Free entry' },
+          { day: 'SAT', title: 'Run the Tan: Run Club, the long Saturday loop', meta: '8am · Free entry' },
+          { day: 'SUN', title: 'Sunday Makers', meta: '10am · Free entry' },
+        ] }, m),
+      )
+    })
+    it(`the close fits on its gold (${f})`, () => {
+      const l = layoutEnd(f, { headline: 'Plan the weekend.', line: 'Every free thing on in Melbourne this week, by day, with times and maps:', url: 'eventlinqs.com.au/free/melbourne/this-week', foot: 'Save this for Saturday.', label: '7/7' }, m)
+      expectClean(l)
+      expect(l.background).toBe('#E8B738')
+    })
+  }
 })

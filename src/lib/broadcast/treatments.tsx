@@ -81,7 +81,7 @@ export async function drawLayout(l: Layout): Promise<React.ReactElement> {
     : null
 
   return (
-    <div style={{ display: 'flex', position: 'relative', width: spec.width, height: spec.height, overflow: 'hidden', backgroundColor: NAVY, ...(background ? { backgroundImage: background } : {}) }}>
+    <div style={{ display: 'flex', position: 'relative', width: spec.width, height: spec.height, overflow: 'hidden', backgroundColor: l.background ?? NAVY, ...(background ? { backgroundImage: background } : {}) }}>
       {photo && l.photo ? (
         <img src={photo} alt="" width={z(l.photo.w)} height={z(l.photo.h)} style={{ position: 'absolute', left: z(l.photo.x), top: z(l.photo.y) }} />
       ) : null}

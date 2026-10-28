@@ -6,14 +6,14 @@ import { readBookingLinks } from '@/lib/events/booking-links-read'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
-import { creativeRefusals, nightWords, planCampaign, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -450,7 +450,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_city, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_city, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -638,8 +638,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
     if (!city) continue
     if (soldOut((e.ticket_tiers as TierRow[] | null) ?? [], (e.event_booking_links as { availability: string }[] | null) ?? [])) continue
     const { cta, priceLine } = await admissionOf(e, now)
-    const listing = (e.listing_source as string | null) === 'curated'
-    const organisation = (e.organisation as { name: string | null } | null)?.name ?? null
+    const organisation = (e.organisation as { name: string | null; slug: string | null } | null) ?? null
     const image = images.get(e.id as string) ?? null
     nights.push({
       eventId: e.id as string,
@@ -650,8 +649,8 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       timezone: (e.timezone as string | null) ?? null,
       citySlug: city.slug,
       cityName: city.name,
-      venueName: (e.venue_name as string | null) ?? null,
-      host: listing ? ((e.venue_name as string | null) ?? null) : (organisation ?? (e.venue_name as string | null) ?? null),
+      venueName: venueOf(e.venue_name as string | null),
+      host: hostOf({ listingSource: (e.listing_source as string | null) ?? null, organisationName: organisation?.name ?? null, organisationSlug: organisation?.slug ?? null, venueName: (e.venue_name as string | null) ?? null }),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
       summary: (e.summary as string | null) ?? null,
       approvedPhotoUrl: image?.url ?? null,
@@ -802,6 +801,8 @@ export type PieceRow = {
   decisions: { revision: number; decision: string; reason: string; at: string }[]
   state: PieceState
   postUrl: string | null
+  /** B5: its moment on each network once approved, and whether it went or was held. */
+  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]
 }
 
 /** The week's campaign as /admin/social shows it: each piece's newest revision, its history and its state (K7). */
@@ -847,9 +848,12 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
       decisions,
       state,
       postUrl,
+      schedule: [],
     })
   }
   pieces.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind) || a.city.localeCompare(b.city))
+  const schedules = await readSchedules(db, pieces.map((x) => x.id))
+  for (const x of pieces) x.schedule = schedules.get(x.id) ?? []
   return { weekStart, campaignId, pieces, excluded: [...(await excludedFor(db, campaignId))] }
 }
 
@@ -971,6 +975,8 @@ export type AssetInput = {
   readonly focal: { readonly x: number; readonly y: number } | null
   readonly sourceWidth: number | null
   readonly sourceHeight: number | null
+  /** Which of the night's photographs leads, 1 first (the directive: the strongest photograph is the hero). */
+  readonly leadRank: number | null
 }
 
 export type AssetRow = {
@@ -1033,6 +1039,7 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     focal_y: input.focal?.y ?? null,
     source_width: input.sourceWidth,
     source_height: input.sourceHeight,
+    lead_rank: input.leadRank,
     created_by: input.by,
   })
   if (error) {
@@ -1201,4 +1208,128 @@ export async function readImageRequests(db: Db, now: Date): Promise<{ eventTitle
   const { data, error } = await db.from('social_image_requests').select('host_name, message, events(title)').eq('campaign_id', campaignId).order('drafted_at').limit(200)
   if (error) throw new Error(`the image requests could not be read: ${error.message}`)
   return (data ?? []).map((r) => ({ eventTitle: (r.events as unknown as { title: string } | null)?.title ?? '', hostName: r.host_name as string, message: (r.message as string | null) ?? null }))
+}
+
+/* ------------------------------------------------------------------ B5: approved pieces schedule themselves */
+
+/** The last moment anything of this format went on the account: an item 11 post or a campaign piece. */
+async function lastGone(db: Db, format: SocialFormat): Promise<Date | null> {
+  const post = await lastPosted(db, 'instagram', format)
+  const { data } = await db.from('social_piece_postings').select('posted_at, social_pieces!inner(format)').eq('social_pieces.format', format).order('posted_at', { ascending: false }).limit(1)
+  const piece = (data ?? [])[0]?.posted_at as string | undefined
+  const times = [post?.getTime() ?? null, piece ? Date.parse(piece) : null].filter((t): t is number => t !== null)
+  return times.length === 0 ? null : new Date(Math.max(...times))
+}
+
+export type Scheduled = { readonly scheduled: readonly { readonly pieceId: string; readonly goAt: string }[]; readonly held: readonly string[] }
+
+/**
+ * B5: every piece whose NEWEST revision a person approved, not gone and not yet given its moment for that approval,
+ * gets one on Instagram and Facebook at the cadence's next slot. Writes schedules only; publishes nothing (F9). A
+ * second run finds them scheduled already (the database keeps one per piece, network and approval).
+ */
+export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Scheduled> {
+  const { data: approvals, error } = await db.from('social_piece_approvals').select('id, piece_id, revision, approved_at').order('approved_at', { ascending: true }).limit(2000)
+  if (error) throw new Error(`the approvals could not be read: ${error.message}`)
+  const { data: gone } = await db.from('social_piece_postings').select('piece_id').limit(5000)
+  const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
+  const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
+  const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
+  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date }[] = []
+  for (const a of approvals ?? []) {
+    const pieceId = a.piece_id as string
+    if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
+    const rev = await newestRevision(db, pieceId)
+    if (!rev || rev.version !== (a.revision as number)) continue
+    const { data: piece } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
+    if (!piece) continue
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string) })
+  }
+  if (due.length === 0) return { scheduled: [], held: [] }
+  const rules = { feed: await cadenceFor(db, 'instagram', 'feed', now), story: await cadenceFor(db, 'instagram', 'story', now) }
+  const moments = scheduleMoments(due, rules, { feed: await lastGone(db, 'feed'), story: await lastGone(db, 'story') }, now)
+  const scheduled: { pieceId: string; goAt: string }[] = []
+  const held: string[] = []
+  for (const d of due) {
+    const goAt = (moments.get(d.id) as Date).toISOString()
+    const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt }))
+    const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
+    if (ierr) held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
+    else scheduled.push({ pieceId: d.id, goAt })
+  }
+  return { scheduled, held }
+}
+
+/** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string }>
+
+export type Published = {
+  readonly switchOn: boolean
+  readonly due: number
+  readonly published: readonly string[]
+  readonly held: readonly string[]
+  /** Switched off: what would have gone, and when, and nothing written. */
+  readonly wouldPublish: readonly string[]
+}
+
+/**
+ * B5: every schedule whose moment has come. With the switch off (until Meta approves the app) this is a dry run: it
+ * says what would go and writes nothing. With it on, each piece is checked again as approval checks it (its words, its
+ * nights, its page, its images: pieceDependencies) and then published through the publisher; the database refuses the
+ * published state if the approval is no longer of the newest revision or an image has gone. A refusal holds the
+ * schedule with its reason; nothing is retried silently.
+ */
+export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly publisher: Publisher | null; readonly fetcher?: Fetcher }): Promise<Published> {
+  const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
+  const switchOn = flag?.enabled === true
+  const { data: rows, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, platform, go_at').eq('state', 'scheduled').lte('go_at', now.toISOString()).order('go_at').limit(50)
+  if (error) throw new Error(`the schedules could not be read: ${error.message}`)
+  const published: string[] = []
+  const held: string[] = []
+  const wouldPublish: string[] = []
+  const hold = async (id: string, reason: string) => {
+    await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('id', id).eq('state', 'scheduled')
+    held.push(`${id}: ${reason}`)
+  }
+  for (const r of rows ?? []) {
+    const id = r.id as string
+    const pieceId = r.piece_id as string
+    const platform = r.platform as SocialPlatform
+    if (!switchOn) {
+      wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
+      continue
+    }
+    const issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
+    if (issues.length > 0) {
+      await hold(id, `Not published: ${issues.join(' ')}`)
+      continue
+    }
+    if (opts.publisher === null) {
+      await hold(id, 'Not published: no Meta publisher is connected.')
+      continue
+    }
+    const rev = await newestRevision(db, pieceId)
+    try {
+      const { ref } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: rev?.versions[platform].caption ?? '' })
+      const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: ref, published_at: now.toISOString() }).eq('id', id).eq('state', 'scheduled')
+      if (uerr) await hold(id, refusalOf(uerr.message) ?? uerr.message)
+      else published.push(`${pieceId} on ${platform}: ${ref}`)
+    } catch (e) {
+      await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish }
+}
+
+/** Each piece's schedules, for /admin/social. */
+export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>> {
+  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>()
+  if (pieceIds.length === 0) return out
+  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
+  for (const r of data ?? []) {
+    const list = out.get(r.piece_id as string) ?? []
+    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null })
+    out.set(r.piece_id as string, list)
+  }
+  return out
 }

@@ -16,12 +16,67 @@
   "expiresNote": "The permitted use is the promotion of AMCF 2026, which ends with the festival on Sunday 22 November; a later use is asked for.",
   "storagePrefix": "social/amcf-2026",
   "photos": [
-    { "file": "amcf-hero.jpg", "focal": [0.43, 0.32], "subject": "a festival goer in sunglasses dancing, two others beside her" },
-    { "file": "amcf-drummer.jpg", "focal": [0.5, 0.33], "subject": "a drummer singing at the congas" },
-    { "file": "amcf-family-drums.jpg", "focal": [0.5, 0.35], "subject": "a family at the djembe workshop" },
-    { "file": "amcf-dancing.jpg", "focal": [0.43, 0.35], "subject": "two dancers in the square" },
-    { "file": "amcf-fashion.jpg", "focal": [0.48, 0.45], "subject": "six models in the fashion parade" },
-    { "file": "amcf-crowd.jpg", "focal": [0.58, 0.4], "subject": "the crowd, a child on a man's shoulders" },
-    { "file": "amcf-food.jpg", "focal": [0.5, 0.55], "subject": "a plate of grilled meat and salad" }
-  ]
+    {
+      "file": "amcf-hero.jpg",
+      "focal": [
+        0.43,
+        0.32
+      ],
+      "subject": "a festival goer in sunglasses dancing, two others beside her",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997332580-534762ba.jpg"
+    },
+    {
+      "file": "amcf-drummer.jpg",
+      "focal": [
+        0.5,
+        0.33
+      ],
+      "subject": "a drummer singing at the congas",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333745-461a7f89.jpg"
+    },
+    {
+      "file": "amcf-family-drums.jpg",
+      "focal": [
+        0.5,
+        0.35
+      ],
+      "subject": "a family at the djembe workshop",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333306-8bd75faa.jpg"
+    },
+    {
+      "file": "amcf-dancing.jpg",
+      "focal": [
+        0.43,
+        0.35
+      ],
+      "subject": "two dancers in the square"
+    },
+    {
+      "file": "amcf-fashion.jpg",
+      "focal": [
+        0.48,
+        0.45
+      ],
+      "subject": "six models in the fashion parade",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997334097-a2decd0b.jpg"
+    },
+    {
+      "file": "amcf-crowd.jpg",
+      "focal": [
+        0.58,
+        0.4
+      ],
+      "subject": "the crowd, a child on a man's shoulders"
+    },
+    {
+      "file": "amcf-food.jpg",
+      "focal": [
+        0.5,
+        0.55
+      ],
+      "subject": "a plate of grilled meat and salad",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333023-a25930a3.jpg"
+    }
+  ],
+  "productionNote": "On production the AMCF event page already stores five of the seven (the same 1100 x 733 copies, matched to these files by picture on 28 October 2026); the crowd and dancing photographs are not on production, so they get no production row."
 }
