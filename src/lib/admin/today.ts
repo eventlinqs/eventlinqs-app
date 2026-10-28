@@ -1,4 +1,5 @@
 import 'server-only'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
@@ -8,21 +9,103 @@ import { queueOf, reportsOverdue, type Queue, type QueueItem, type Source, type 
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
  * answers read, failed or not landed; nothing here writes.
  *
- * NOT LANDED YET, by the car timetable of window 1's 20:12: the plays, paused sends and unclear replies are window 6's
- * outreach CRM (car 3), the low-confidence rows window 4's exception queue (car 4), and a failed J15 or K10 check or a
- * swept image window 3's (car 3). Each is read here by its owner's names the day its car lands, before this car.
+ * WINDOW 6's OUTREACH (20261028201001 and 20261028213001, car 3), by the names window 6 gave on 28 October at 20:46: a
+ * play to approve is outreach_plays in state draft; a paused one is state paused with its paused_reason; a reply the
+ * classifier could not act on is outreach_replies.needs_lawal; a draft held by a messages-file rule is an
+ * outreach_touches row whose held_because names the rules. Their generated types reach this branch with car 3, so
+ * until then these four reads go through OutreachDb, the client untyped for those tables only. A table not on the
+ * database answers not landed, never an empty queue.
+ *
+ * NOT LANDED YET, by the car timetable of window 1's 20:12: the low-confidence rows are window 4's exception queue
+ * (car 4), and a failed J15 or K10 check or a swept image window 3's (car 3).
  */
 
 const LIST_CAP = 50
 
 type Admin = ReturnType<typeof createAdminClient>
 
-async function attempt(read: () => Promise<QueueItem[]>): Promise<SourceRead> {
+/** PostgREST's answer for a table it does not know: the source's car has not landed on this database. */
+class NotLanded extends Error {}
+const isNotLanded = (error: { code?: string; message?: string }) =>
+  error.code === 'PGRST205' || error.code === '42P01' || /Could not find the table/i.test(error.message ?? '')
+
+async function attempt(read: () => Promise<QueueItem[]>, owner: string | null = null): Promise<SourceRead> {
   try {
     return { state: 'read', items: await read() }
   } catch (err) {
+    if (err instanceof NotLanded && owner !== null) return { state: 'not_landed', owner }
     return { state: 'failed', reason: err instanceof Error ? err.message : String(err) }
   }
+}
+
+/** Throws NotLanded for a missing table, the message otherwise. */
+function fail(error: { code?: string; message?: string }): never {
+  if (isNotLanded(error)) throw new NotLanded(error.message ?? 'not landed')
+  throw new Error(error.message ?? 'unknown')
+}
+
+type OutreachDb = SupabaseClient
+const OUTREACH = "window 6's outreach CRM, car 3"
+
+/** Plays written and waiting for Lawal's one approval. */
+async function playsToApprove(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db.from('outreach_plays').select('id, name, cap_start, created_at').eq('state', 'draft').order('created_at', { ascending: true }).limit(LIST_CAP)
+  if (error) fail(error)
+  return ((data ?? []) as { id: string; name: string; cap_start: number; created_at: string }[]).map((p) => ({
+    id: `play:${p.id}`,
+    what: `The play "${p.name}", starting at ${p.cap_start} emails a day`,
+    why: 'A play sends only once you approve it; after that every email inside it goes on its own.',
+    since: p.created_at,
+    href: null,
+  }))
+}
+
+/** Plays the ramp paused, with the reason the database wrote. */
+async function pausedPlays(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db.from('outreach_plays').select('id, name, paused_at, paused_reason').eq('state', 'paused').order('paused_at', { ascending: true }).limit(LIST_CAP)
+  if (error) fail(error)
+  return ((data ?? []) as { id: string; name: string; paused_at: string; paused_reason: string }[]).map((p) => ({
+    id: `paused:${p.id}`,
+    what: `The play "${p.name}" is paused`,
+    why: p.paused_reason,
+    since: p.paused_at,
+    href: null,
+  }))
+}
+
+/** Replies the classifier could not act on by itself. */
+async function repliesToRead(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db.from('outreach_replies').select('id, received_at, wording, confidence').eq('needs_lawal', true).order('received_at', { ascending: true }).limit(LIST_CAP)
+  if (error) fail(error)
+  return ((data ?? []) as { id: string; received_at: string; wording: string; confidence: number | null }[]).map((r) => ({
+    id: `reply:${r.id}`,
+    what: `A reply: "${r.wording.length > 140 ? `${r.wording.slice(0, 137)}...` : r.wording}"`,
+    why:
+      r.confidence === null
+        ? 'It did not clearly say yes, stop, take it down, or ask a question with a stored answer.'
+        : `It did not clearly say yes, stop, take it down, or ask a question with a stored answer (confidence ${Math.round(Number(r.confidence) * 100)} percent).`,
+    since: r.received_at,
+    href: null,
+  }))
+}
+
+/** Drafts held because they break a rule of the messages file. */
+async function draftsHeld(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db
+    .from('outreach_touches')
+    .select('id, step, drafted_at, held_because')
+    .not('held_because', 'eq', '{}')
+    .is('sent_at', null)
+    .order('drafted_at', { ascending: true })
+    .limit(LIST_CAP)
+  if (error) fail(error)
+  return ((data ?? []) as { id: string; step: number; drafted_at: string; held_because: string[] }[]).map((t) => ({
+    id: `held:${t.id}`,
+    what: `A message ${t.step} draft held`,
+    why: `It breaks: ${t.held_because.join('; ')}.`,
+    since: t.drafted_at,
+    href: null,
+  }))
 }
 
 /** Collected events waiting for a person's review, as one item: the count, from the oldest. */
@@ -94,16 +177,22 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
 /** Lawal's queue, read now. */
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
-  const [collected, claims, removals, reports] = await Promise.all([
+  const crm = admin as unknown as OutreachDb
+  const [plays, paused, replies, held, collected, claims, removals, reports] = await Promise.all([
+    attempt(() => playsToApprove(crm), OUTREACH),
+    attempt(() => pausedPlays(crm), OUTREACH),
+    attempt(() => repliesToRead(crm), OUTREACH),
+    attempt(() => draftsHeld(crm), OUTREACH),
     attempt(() => collectedWaiting(admin)),
     attempt(() => claimsToDecide(admin)),
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
   ])
   const sources: Source[] = [
-    { key: 'plays', section: 'plays', name: 'Outreach plays', read: { state: 'not_landed', owner: "window 6's outreach CRM, car 3" } },
-    { key: 'paused', section: 'paused_sends', name: 'Paused sends', read: { state: 'not_landed', owner: "window 6's outreach CRM, car 3" } },
-    { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: { state: 'not_landed', owner: "window 6's outreach CRM, car 3" } },
+    { key: 'plays', section: 'plays', name: 'Outreach plays', read: plays },
+    { key: 'paused', section: 'paused_sends', name: 'Paused plays', read: paused },
+    { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: replies },
+    { key: 'held', section: 'exceptions', name: 'Drafts held by a rule', read: held },
     { key: 'collected', section: 'exceptions', name: 'Collected events waiting', read: collected },
     { key: 'low_confidence', section: 'exceptions', name: 'Low-confidence rows', read: { state: 'not_landed', owner: "window 4's exception queue, car 4" } },
     { key: 'checks', section: 'exceptions', name: 'Failed post checks and swept images', read: { state: 'not_landed', owner: "window 3's treatments, car 3" } },

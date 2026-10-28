@@ -199,7 +199,17 @@ try {
   const exceptions = q.sections.find((s) => s.key === 'exceptions')
   check('the open removal request waits in Exceptions, in words', (exceptions?.items ?? []).some((i) => i.id === `removal:${rr.id}` && i.what === `bp drive ${stamp} asks for ${venue?.name} to be taken down`), exceptions?.items.map((i) => i.id))
   check('the night just reported is not raised as a report not kept', !(exceptions?.items ?? []).some((i) => i.id === `report:${ended?.id}`), exceptions?.items.map((i) => i.id))
-  check('the queue is never called clear while a source has not landed', q.allClear === false && q.sections[0].unread.length === 1, q.sections.map((s) => s.unread))
+  check(
+    "window 6's plays, paused plays, unclear replies and held drafts are read by their real names",
+    ['plays', 'paused_sends', 'unclear_replies'].every((k) => q.sections.find((s) => s.key === k)?.unread.length === 0) &&
+      !(exceptions?.unread ?? []).some((u) => u.startsWith('Drafts held by a rule')),
+    q.sections.map((s) => s.unread),
+  )
+  check(
+    'the queue is never called clear while a source has not landed',
+    q.allClear === false && (exceptions?.unread ?? []).some((u) => /not on this database yet/.test(u)),
+    q.sections.map((s) => s.unread),
+  )
   check('every source that exists was read, none failed', !q.sections.some((s) => s.unread.some((u) => /could not be read/.test(u))), q.sections.map((s) => s.unread))
 } catch (err) {
   fails += 1
