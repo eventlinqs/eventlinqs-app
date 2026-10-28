@@ -22,8 +22,18 @@
 -- (production on 28 October: 51 from "import 2026-10-26 checked by the project
 -- manager.csv" and 25 from "import-2026-10-27-wi3-free-25.csv", nothing else), so
 -- the column is added with that value as its default, which fills those rows
--- without an UPDATE (the table is append-only), and the default is then dropped:
--- from here every writer states its basis or the insert fails.
+-- without an UPDATE (the table is append-only).
+--
+-- THE DEFAULT STAYS, ON PURPOSE. Production runs main's code between this file
+-- and the deploy that carries the writer below, and main's import does not name
+-- the column; dropping the default would make that import fail in the gap, and
+-- any TEST drive on an older tree with it. The only writer today is that manual
+-- import, so the default is true of every row it writes. That every writer
+-- STATES its basis is held in code instead: the import writes it by name
+-- (src/lib/listings/import-write.ts, MANUAL_RESEARCH_BASIS), and
+-- tests/unit/listings/checks-state-their-basis.test.ts fails when any insert
+-- into listing_checks in src or scripts does not name reuse_basis, so a
+-- collection run or a submission cannot fall through to the manual default.
 --
 -- No new table, so no grant: listing_checks keeps select and insert for
 -- service_role only.
@@ -43,7 +53,9 @@ alter table public.listing_checks
   add constraint listing_checks_reuse_basis_known
   check (reuse_basis in ('manual_research_facts_only', 'licensed_source', 'organiser_submission', 'venue_permission'));
 
-alter table public.listing_checks alter column reuse_basis drop default;
+-- Idempotent on a database that already has the column (TEST had it applied
+-- once without the default): the default is set here explicitly as well.
+alter table public.listing_checks alter column reuse_basis set default 'manual_research_facts_only';
 
 comment on column public.listing_checks.reuse_basis is
   'Why EventLinqs may show this night: manual_research_facts_only (facts from the host''s own page, our words, nothing of theirs copied), licensed_source, organiser_submission or venue_permission. Release checklist A4 and D8, 28 October 2026.';
