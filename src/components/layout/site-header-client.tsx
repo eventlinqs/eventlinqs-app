@@ -376,6 +376,10 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }:
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
+        /* Closed, the sheet is only translated off the screen, so without these its links stay in the Tab order and
+         * its Tab wrap holds a keyboard user inside a menu they cannot see (found at 390 and 768, 28 October 2026). */
+        aria-hidden={isOpen ? undefined : true}
+        inert={!isOpen}
         onKeyDown={handleSheetKeyDown}
         className={[
           'pointer-events-auto absolute inset-y-0 right-0 w-full max-w-sm bg-white shadow-[var(--shadow-modal)]',
