@@ -1,4 +1,5 @@
 import type { Cta } from '@/lib/events/cta'
+import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -36,6 +37,17 @@ export type Composition =
   | 'close'
 
 export type CampaignCity = { slug: string; name: string }
+
+/**
+ * The host a night is shown under and its partner kit is for (ruling A of 23 October 2026, src/lib/listings/shown-
+ * organiser.ts): an EventLinqs listing, or any night the listings organisation holds, is its VENUE's, and that
+ * organisation is named nowhere; an organiser's own night is its organisation's.
+ */
+export function hostOf(e: { listingSource: string | null; organisationName: string | null; organisationSlug: string | null; venueName: string | null }): string | null {
+  const venue = e.venueName?.trim() || null
+  if (isEventLinqsListing({ listing_source: e.listingSource }) || isListingsOrganisation(e.organisationSlug)) return venue
+  return e.organisationName?.trim() || venue
+}
 
 export type CampaignNight = {
   eventId: string

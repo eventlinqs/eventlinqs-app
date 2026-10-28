@@ -12,7 +12,7 @@ import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from '.
 import { wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
-import { creativeRefusals, planCampaign, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, planCampaign, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -414,7 +414,7 @@ export async function usableImages(db: Db, eventIds: readonly string[], now: Dat
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_city, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_city, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -568,8 +568,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
     if (!city) continue
     if (soldOut((e.ticket_tiers as TierRow[] | null) ?? [], (e.event_booking_links as { availability: string }[] | null) ?? [])) continue
     const { cta, priceLine } = await admissionOf(e, now)
-    const listing = (e.listing_source as string | null) === 'curated'
-    const organisation = (e.organisation as { name: string | null } | null)?.name ?? null
+    const organisation = (e.organisation as { name: string | null; slug: string | null } | null) ?? null
     const image = images.get(e.id as string) ?? null
     nights.push({
       eventId: e.id as string,
@@ -580,7 +579,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       citySlug: city.slug,
       cityName: city.name,
       venueName: (e.venue_name as string | null) ?? null,
-      host: listing ? ((e.venue_name as string | null) ?? null) : (organisation ?? (e.venue_name as string | null) ?? null),
+      host: hostOf({ listingSource: (e.listing_source as string | null) ?? null, organisationName: organisation?.name ?? null, organisationSlug: organisation?.slug ?? null, venueName: (e.venue_name as string | null) ?? null }),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
       summary: (e.summary as string | null) ?? null,
       approvedPhotoUrl: image?.url ?? null,
