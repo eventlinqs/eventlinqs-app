@@ -609,7 +609,7 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     if (v.caption.length > CAPTION_LIMIT[platform]) issues.push(`The ${name} words run to ${v.caption.length} characters, over ${CAPTION_LIMIT[platform]}.`)
     const tags = v.caption.match(/#[\p{L}\p{N}_]+/gu) ?? []
     if (tags.length > MAX_TAGS) issues.push(`The ${name} words carry ${tags.length} tags, over ${MAX_TAGS}.`)
-    if (/[!–—]/.test(v.caption)) issues.push(`The ${name} words carry an exclamation mark or a long dash.`)
+    if (/[!\u2013\u2014]/.test(v.caption)) issues.push(`The ${name} words carry an exclamation mark or a long dash.`)
     if (!v.cta?.trim()) issues.push(`The ${name} version has no call to action.`)
   }
   for (const s of rev.slides) {

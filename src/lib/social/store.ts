@@ -834,7 +834,7 @@ export async function editPiece(db: Db, input: { readonly pieceId: string; reado
   const rev = await newestRevision(db, input.pieceId)
   if (!rev) return { state: 'refused', reason: 'The piece has no version to edit.' }
   const caption = input.caption.trim()
-  if (/[!–—]/.test(caption)) return { state: 'refused', reason: 'The words carry an exclamation mark or a long dash.' }
+  if (/[!\u2013\u2014]/.test(caption)) return { state: 'refused', reason: 'The words carry an exclamation mark or a long dash.' }
   const versions = { ...rev.versions, [input.platform]: { ...rev.versions[input.platform], caption } }
   const plan = { eventIds: rev.eventIds, picks: rev.picks, mode: rev.mode, slides: rev.slides, caption: input.platform === 'instagram' ? caption : rev.caption, versions } as PiecePlan
   const { error } = await db.from('social_piece_revisions').insert(revisionRow(input.pieceId, rev.version + 1, plan, rev.message, 'edit', input.by, input.now))
