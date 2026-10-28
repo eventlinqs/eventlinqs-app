@@ -15,6 +15,8 @@ export interface FeaturedHeroSlide {
   detailLine: string
   /** Event detail href. */
   href: string
+  /** The button's words, from the one call to action (src/lib/events/cta.ts): never "Get tickets" on a free night. */
+  action: string
   /** Real raster cover URL. */
   image: string
   alt: string
@@ -213,7 +215,7 @@ export function FeaturedHeroClient({ slides }: Props) {
                     className="plausible-event-name=hero_get_tickets_click inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-[var(--shadow-card)] hover:scale-[1.02] hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
                     style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
                   >
-                    Get tickets
+                    {slide.action}
                   </Link>
                 </div>
               </HeroCaption>

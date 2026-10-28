@@ -8,6 +8,7 @@ import { getFeaturedHeroBackground, isComposedCover } from '@/lib/images/event-m
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
+import { ctaFor } from '@/lib/events/cta'
 
 /**
  * FeaturedHero - the homepage hero. ONE strong, real featured event at a
@@ -60,6 +61,13 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
     title: event.title ?? 'Featured event',
     detailLine: detailLine(event),
     href: `/events/${event.slug}`,
+    /*
+     * The one call to action (the release checklist's section E). This button said "Get tickets" on every slide, and on
+     * 28 October 2026 production led with a free walk-in trivia night whose own page says "Free entry, no ticket needed"
+     * (C:\dev\EVIDENCE\LIVE-28OCT\home-390.png). The home rails carry no outside link, so a night sold elsewhere reads
+     * as an unknown price here and says "View event details", never a ticket of ours.
+     */
+    action: ctaFor({ entryMode: event.entry_mode ?? null, tiers: event.ticket_tiers ?? null, isFree: event.is_free ?? null }).action,
     image: media.image,
     alt: media.alt,
     // UX1.4: an organiser's poster anchors to the top so its title survives

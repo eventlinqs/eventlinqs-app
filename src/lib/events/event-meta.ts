@@ -11,6 +11,7 @@
  * meta description and the SEO category scores 1.0.
  */
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { ctaPriceLine, type Cta } from './cta'
 
 export function buildEventMetaDescription(input: {
   title: string
@@ -22,6 +23,12 @@ export function buildEventMetaDescription(input: {
   categoryName?: string | null
   /** WI1. A walk-in event's snippet names free entry, never a ticket. */
   walkIn?: boolean
+  /**
+   * The event's call to action (src/lib/events/cta.ts). Only our own paid tickets lead with its action; every other
+   * state, and a caller that passes none, gets a plain sentence that claims no ticket (the project manager's 22:02 of
+   * 28 October 2026: this fallback said "Get tickets to ..." for every event that was not a walk-in).
+   */
+  cta?: Cta | null
 }): string {
   // A search snippet is plain text. HTML tags were already stripped here;
   // MARKDOWN was not, so an organiser who bolded their name put asterisks in
@@ -44,5 +51,9 @@ export function buildEventMetaDescription(input: {
   const when = input.dateLabel ? ` on ${input.dateLabel}` : ''
   const lead = input.categoryName ? `${input.categoryName}. ` : ''
   if (input.walkIn) return `${lead}Free entry to ${input.title}${where}${when}. No ticket needed.`.slice(0, 155)
-  return `${lead}Get tickets to ${input.title}${where}${when}. All-in pricing, no surprise fees.`.slice(0, 155)
+  if (input.cta?.state === 'paid_native') {
+    return `${lead}${input.cta.action} to ${input.title}${where}${when}. All-in pricing, no surprise fees.`.slice(0, 155)
+  }
+  const priceLine = input.cta ? ctaPriceLine(input.cta) : null
+  return `${lead}${input.title}${where}${when}.${priceLine ? ` ${priceLine}.` : ''}`.slice(0, 155)
 }
