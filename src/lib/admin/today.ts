@@ -21,8 +21,12 @@ import { failuresInARow, queueOf, reportsOverdue, SOURCE_FAILING_AFTER, type Que
  * a row (listing_source_runs), window 4's own rule on /admin/collected (FAILING_AFTER_RUNS and failuresInARow, on its
  * branch until car 4, when this reads them from there).
  *
- * NOT LANDED YET, by the car timetable of window 1's 20:12: a failed J15 or K10 check or a swept image, window 3's
- * (car 3).
+ * WINDOW 3's IMAGE SWEEP (20261028205501, car 3): when an organiser's image is withdrawn or expires, the hourly sweep
+ * draws the unposted piece again in type and writes a social_piece_decisions row 'image_withdrawn' with no person; the
+ * piece then waits for Lawal's approval of its new revision, so it is listed until that approval or its posting.
+ *
+ * NOT LANDED YET: a failed J15 or K10 check, which window 3's code judges at approval and does not keep as a row; it
+ * is read through window 3's own function once car 3 is on this branch, never restated here.
  */
 
 const LIST_CAP = 50
@@ -165,6 +169,37 @@ async function sourcesFailing(db: OutreachDb): Promise<QueueItem[]> {
   })
 }
 
+/** Pieces the image sweep drew again in type, not yet approved again or posted. */
+async function piecesSwept(db: OutreachDb): Promise<QueueItem[]> {
+  const { data, error } = await db
+    .from('social_piece_decisions')
+    .select('piece_id, revision, reason, decided_at')
+    .eq('decision', 'image_withdrawn')
+    .order('decided_at', { ascending: true })
+    .limit(LIST_CAP)
+  if (error) fail(error)
+  const swept = (data ?? []) as { piece_id: string; revision: number; reason: string; decided_at: string }[]
+  if (swept.length === 0) return []
+  const ids = [...new Set(swept.map((d) => d.piece_id))]
+  const [{ data: posted, error: perr }, { data: approved, error: aerr }] = await Promise.all([
+    db.from('social_piece_postings').select('piece_id').in('piece_id', ids),
+    db.from('social_piece_approvals').select('piece_id, revision').in('piece_id', ids),
+  ])
+  if (perr) fail(perr)
+  if (aerr) fail(aerr)
+  const gone = new Set(((posted ?? []) as { piece_id: string }[]).map((p) => p.piece_id))
+  const approvals = (approved ?? []) as { piece_id: string; revision: number }[]
+  return swept
+    .filter((d) => !gone.has(d.piece_id) && !approvals.some((a) => a.piece_id === d.piece_id && a.revision > d.revision))
+    .map((d) => ({
+      id: `swept:${d.piece_id}:${d.revision}`,
+      what: 'A post drawn again in type after its image was withdrawn',
+      why: `${d.reason} It goes only once you approve the new version.`,
+      since: d.decided_at,
+      href: '/admin/social',
+    }))
+}
+
 /** Claims a person must decide: the claimant could not be sent a code and asked by hand. */
 async function claimsToDecide(admin: Admin): Promise<QueueItem[]> {
   const { data, error } = await admin
@@ -213,13 +248,14 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const crm = admin as unknown as OutreachDb
-  const [plays, paused, replies, held, collected, failingSources, claims, removals, reports] = await Promise.all([
+  const [plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports] = await Promise.all([
     attempt(() => playsToApprove(crm), OUTREACH),
     attempt(() => pausedPlays(crm), OUTREACH),
     attempt(() => repliesToRead(crm), OUTREACH),
     attempt(() => draftsHeld(crm), OUTREACH),
     attempt(() => collectedWaiting(admin)),
     attempt(() => sourcesFailing(crm), "window 4's supply horizon, car 4"),
+    attempt(() => piecesSwept(crm), "window 3's image sweep, car 3"),
     attempt(() => claimsToDecide(admin)),
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
@@ -231,7 +267,8 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'held', section: 'exceptions', name: 'Drafts held by a rule', read: held },
     { key: 'collected', section: 'exceptions', name: 'Collected events waiting', read: collected },
     { key: 'failing_sources', section: 'exceptions', name: 'Sources failing their daily run', read: failingSources },
-    { key: 'checks', section: 'exceptions', name: 'Failed post checks and swept images', read: { state: 'not_landed', owner: "window 3's treatments, car 3" } },
+    { key: 'swept', section: 'exceptions', name: 'Posts drawn again after an image was withdrawn', read: swept },
+    { key: 'checks', section: 'exceptions', name: 'Posts failing their J15 or K10 checks', read: { state: 'not_landed', owner: "window 3's treatments, car 3" } },
     { key: 'claims', section: 'exceptions', name: 'Claims to decide by hand', read: claims },
     { key: 'removals', section: 'exceptions', name: 'Requests to take a listing down', read: removals },
     { key: 'reports', section: 'exceptions', name: 'After-the-night reports not kept', read: reports },
