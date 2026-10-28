@@ -5221,6 +5221,84 @@ export type Database = {
           },
         ]
       }
+      organiser_contacts: {
+        Row: {
+          address: string
+          basis: string
+          basis_recorded_at: string | null
+          basis_recorded_by: string | null
+          channel: string
+          consent_wording: string | null
+          created_at: string
+          created_by: string
+          evidence_file: string | null
+          hubspot_contact_id: string | null
+          id: string
+          no_marketing_statement_checked: boolean
+          organiser_id: string
+          person_name: string | null
+          published_on_url: string | null
+          relevance: string | null
+          role: string
+          seen_on: string | null
+        }
+        Insert: {
+          address: string
+          basis?: string
+          basis_recorded_at?: string | null
+          basis_recorded_by?: string | null
+          channel: string
+          consent_wording?: string | null
+          created_at?: string
+          created_by: string
+          evidence_file?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          no_marketing_statement_checked?: boolean
+          organiser_id: string
+          person_name?: string | null
+          published_on_url?: string | null
+          relevance?: string | null
+          role: string
+          seen_on?: string | null
+        }
+        Update: {
+          address?: string
+          basis?: string
+          basis_recorded_at?: string | null
+          basis_recorded_by?: string | null
+          channel?: string
+          consent_wording?: string | null
+          created_at?: string
+          created_by?: string
+          evidence_file?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          no_marketing_statement_checked?: boolean
+          organiser_id?: string
+          person_name?: string | null
+          published_on_url?: string | null
+          relevance?: string | null
+          role?: string
+          seen_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_contacts_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_contacts_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+        ]
+      }
       organiser_marketing_consents: {
         Row: {
           consent_text: string
@@ -5339,6 +5417,203 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organiser_venues: {
+        Row: {
+          linked_at: string
+          linked_by: string
+          organiser_id: string
+          venue_id: string
+        }
+        Insert: {
+          linked_at?: string
+          linked_by: string
+          organiser_id: string
+          venue_id: string
+        }
+        Update: {
+          linked_at?: string
+          linked_by?: string
+          organiser_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_venues_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_venues_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+          {
+            foreignKeyName: "organiser_venues_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisers: {
+        Row: {
+          created_at: string
+          created_by: string
+          found_on: string | null
+          id: string
+          instagram_handle: string | null
+          name: string
+          name_key: string | null
+          notes: string | null
+          organisation_id: string | null
+          website_key: string | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          found_on?: string | null
+          id?: string
+          instagram_handle?: string | null
+          name: string
+          name_key?: string | null
+          notes?: string | null
+          organisation_id?: string | null
+          website_key?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          found_on?: string | null
+          id?: string
+          instagram_handle?: string | null
+          name?: string
+          name_key?: string | null
+          notes?: string | null
+          organisation_id?: string | null
+          website_key?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisers_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_replies: {
+        Row: {
+          contact_id: string
+          id: string
+          logged_at: string
+          logged_by: string
+          outcome: string
+          received_at: string
+          touch_id: string | null
+          wording: string
+        }
+        Insert: {
+          contact_id: string
+          id?: string
+          logged_at?: string
+          logged_by: string
+          outcome: string
+          received_at: string
+          touch_id?: string | null
+          wording: string
+        }
+        Update: {
+          contact_id?: string
+          id?: string
+          logged_at?: string
+          logged_by?: string
+          outcome?: string
+          received_at?: string
+          touch_id?: string | null
+          wording?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_replies_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_replies_touch_id_fkey"
+            columns: ["touch_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_touches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_touches: {
+        Row: {
+          basis_at_send: Json | null
+          body: string
+          contact_id: string
+          drafted_at: string
+          drafted_by: string
+          id: string
+          sent_at: string | null
+          sent_by: string | null
+          state: string
+          step: number
+          subject: string | null
+          tracked_link: string | null
+          void_reason: string | null
+        }
+        Insert: {
+          basis_at_send?: Json | null
+          body: string
+          contact_id: string
+          drafted_at?: string
+          drafted_by: string
+          id?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          state?: string
+          step: number
+          subject?: string | null
+          tracked_link?: string | null
+          void_reason?: string | null
+        }
+        Update: {
+          basis_at_send?: Json | null
+          body?: string
+          contact_id?: string
+          drafted_at?: string
+          drafted_by?: string
+          id?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          state?: string
+          step?: number
+          subject?: string | null
+          tracked_link?: string | null
+          void_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_touches_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -8424,6 +8699,51 @@ export type Database = {
           },
         ]
       }
+      venue_merges: {
+        Row: {
+          dropped_venue_id: string
+          id: string
+          kept_venue_id: string
+          merged_at: string
+          merged_by: string
+          moved: Json
+          reason: string
+        }
+        Insert: {
+          dropped_venue_id: string
+          id?: string
+          kept_venue_id: string
+          merged_at?: string
+          merged_by: string
+          moved: Json
+          reason: string
+        }
+        Update: {
+          dropped_venue_id?: string
+          id?: string
+          kept_venue_id?: string
+          merged_at?: string
+          merged_by?: string
+          moved?: Json
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_merges_dropped_venue_id_fkey"
+            columns: ["dropped_venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_merges_kept_venue_id_fkey"
+            columns: ["kept_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_payouts: {
         Row: {
           amount_cents: number
@@ -9246,6 +9566,32 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_pipeline: {
+        Row: {
+          contacts: number | null
+          first_sent_at: string | null
+          last_outcome: string | null
+          last_reply_at: string | null
+          last_sent_at: string | null
+          name: string | null
+          next_due_on: string | null
+          organisation_id: string | null
+          organiser_id: string | null
+          qualified_contacts: number | null
+          stage: string | null
+          steps_sent: number | null
+          venues: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisers_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stored_aggregate_drift: {
         Row: {
           column_name: string | null
@@ -9667,6 +10013,7 @@ export type Database = {
         }
         Returns: number
       }
+      outreach_contact_refusal: { Args: { p_contact: string }; Returns: string }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
@@ -9894,6 +10241,10 @@ export type Database = {
       venue_event_share_balance: {
         Args: { p_currency: string; p_event_id: string; p_venue_id: string }
         Returns: number
+      }
+      venue_merge: {
+        Args: { p_by: string; p_drop: string; p_keep: string; p_reason: string }
+        Returns: string
       }
       void_payout: {
         Args: { p_payout_id: string; p_reason?: string; p_status?: string }
