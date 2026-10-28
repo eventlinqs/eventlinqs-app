@@ -259,6 +259,9 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
 }
 
 /** The composition a night's slide takes, by its category and admission (the 14:08's list). */
+/** The categories that are a performance on a stage, so a slide may say "Live at" the venue. */
+const LIVE_CATEGORIES: readonly string[] = ['music', 'concert', 'concerts', 'gig', 'gigs', 'comedy', 'theatre', 'performing-arts']
+
 export function compositionFor(n: Pick<CampaignNight, 'categorySlug' | 'cta'>): Composition {
   const c = (n.categorySlug ?? '').toLowerCase()
   if (['music', 'concert', 'concerts', 'gig', 'gigs', 'nightlife', 'comedy', 'theatre', 'performing-arts'].includes(c)) return 'concert'
@@ -298,7 +301,8 @@ export function dateOf(n: CampaignNight): string {
 export function nightWords(n: CampaignNight): NightSlideWords {
   const time = whenOf(n).split(' · ')[1] ?? ''
   const span = dateOf(n).includes(' to ')
-  const live = compositionFor(n) === 'concert' ? 'Live at' : 'At'
+  /* "Live at" is a performance's word; a trivia or club night (nightlife) shares the concert look but is only "At". */
+  const live = LIVE_CATEGORIES.includes((n.categorySlug ?? '').toLowerCase()) ? 'Live at' : 'At'
   const entry =
     n.priceLine && /\$\s?\d/.test(n.priceLine)
       ? n.priceLine

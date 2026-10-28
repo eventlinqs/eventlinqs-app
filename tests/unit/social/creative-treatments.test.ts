@@ -48,6 +48,12 @@ describe("a night's words, from its facts alone", () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z' }))
     expect(w).toMatchObject({ entry: 'Free, no ticket needed', action: 'View event details', eyebrow: 'Live at The Barwon Club', city: 'Geelong' })
   })
+  it('says "Live at" only for a performance: a trivia night is "At" its venue (found by eye on demonstration D)', () => {
+    const at = (categorySlug: string) => nightWords(night({ at: '2026-10-29T07:00:00Z', categorySlug, venueName: 'Bonnibel' })).eyebrow
+    expect(at('nightlife')).toBe('At Bonnibel')
+    expect(at('music')).toBe('Live at Bonnibel')
+    expect(at('comedy')).toBe('Live at Bonnibel')
+  })
   it('an outside ticketed night names its provider and never claims EventLinqs ticketing (E4, E7)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { externalTicketUrl: 'https://www.geelongartscentre.org.au/x', providerName: 'Geelong Arts Centre' } }))
     expect(w.action).toBe('View tickets at Geelong Arts Centre')
