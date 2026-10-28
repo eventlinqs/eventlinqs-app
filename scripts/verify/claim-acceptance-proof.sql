@@ -225,9 +225,12 @@ BEGIN
       v_out := v_out || ' | A12 an outsider paused the nights: FAIL'; v_fail := v_fail + 1;
     EXCEPTION WHEN check_violation THEN NULL;
     END;
+    -- Each call is its own statement: a read in the same statement as the call sees the statement's starting snapshot.
     v_answer := public.organiser_series_keep(v_user, v_new, false);
-    IF v_answer = 'paused' AND (SELECT status FROM public.event_series WHERE id = v_new) = 'paused'
-       AND public.organiser_series_keep(v_user, v_new, true) = 'active' AND (SELECT status FROM public.event_series WHERE id = v_new) = 'active' THEN
+    v_answer := v_answer || ',' || (SELECT status FROM public.event_series WHERE id = v_new);
+    v_answer := v_answer || ',' || public.organiser_series_keep(v_user, v_new, true);
+    v_answer := v_answer || ',' || (SELECT status FROM public.event_series WHERE id = v_new);
+    IF v_answer = 'paused,paused,active,active' THEN
       v_out := v_out || ' | A12 outsider refused; the organiser pauses their nights and keeps them listing again: PASS';
     ELSE v_out := v_out || format(' | A12 answered %s: FAIL', v_answer); v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A12 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;
