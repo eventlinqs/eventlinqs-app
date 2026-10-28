@@ -1,7 +1,9 @@
 'use client'
 
 import { useActionState, useState, type ReactNode } from 'react'
-import { addMedia, keepSeries, replaceMedia, withdrawMedia, withdrawYes, type MediaState } from '@/app/actions/organiser-media'
+import { addMedia, giveYes, keepSeries, replaceMedia, withdrawMedia, withdrawYes, type MediaState } from '@/app/actions/organiser-media'
+import { claimAuthorityWords } from '@/lib/listings/claim-acceptance'
+import { PERMISSION_WORDS } from '@/lib/listings/submission'
 
 /**
  * The organiser's own image forms, on /dashboard/organisation/media and the claim page's upload step, each showing the
@@ -205,5 +207,29 @@ export function RegularNightsForm(props: {
         </button>
       </div>
     </div>
+  )
+}
+
+/** The yes given from the organiser's page, with the claim page's two ticks (221201: one current yes per claim). */
+export function GiveYesForm({ claimId, kind }: { claimId: string; kind: 'venue' | 'event' }) {
+  const [state, action, pending] = useActionState<MediaState, FormData>(giveYes, null)
+  return (
+    <form action={action} className="text-left">
+      <input type="hidden" name="claimId" value={claimId} />
+      <label className="flex min-h-[44px] items-start gap-3 text-sm text-ink-600">
+        <input type="checkbox" name="permission" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
+        <span data-permission-words>{PERMISSION_WORDS}</span>
+      </label>
+      <label className="flex min-h-[44px] items-start gap-3 text-sm text-ink-600">
+        <input type="checkbox" name="authority" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
+        <span data-authority-words>{claimAuthorityWords(kind)}</span>
+      </label>
+      <Answer state={state} done="Thank you. Your permission is on record, and you can add your photos and artwork below." />
+      <div className="mt-3">
+        <button type="submit" disabled={pending} className={button}>
+          Give permission
+        </button>
+      </div>
+    </form>
   )
 }

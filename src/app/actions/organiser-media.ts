@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import {
   addOrganiserMedia,
+  giveOrganiserYes,
   keepOrganiserSeries,
   mediaDeps,
   replaceOrganiserMedia,
@@ -86,4 +87,15 @@ export async function withdrawYes(_prev: MediaState, formData: FormData): Promis
 
 export async function keepSeries(_prev: MediaState, formData: FormData): Promise<MediaState> {
   return guarded((userId) => keepOrganiserSeries({ userId, seriesId: String(formData.get('seriesId') ?? ''), keep: formData.get('keep') === 'yes' }, mediaDeps()), false)
+}
+
+export async function giveYes(_prev: MediaState, formData: FormData): Promise<MediaState> {
+  return guarded(
+    (userId) =>
+      giveOrganiserYes(
+        { userId, claimId: String(formData.get('claimId') ?? ''), ticked: formData.get('permission') === 'yes', authority: formData.get('authority') === 'yes' },
+        mediaDeps(),
+      ),
+    false,
+  )
 }

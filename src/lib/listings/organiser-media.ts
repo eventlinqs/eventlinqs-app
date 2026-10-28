@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { claimYes } from './claim-acceptance'
 
 /**
  * THE ORGANISER'S OWN IMAGES (the engine plan of 28 October 2026, part D: "organiser self-service add, replace,
@@ -175,4 +176,21 @@ export async function keepOrganiserSeries(input: { userId: string; seriesId: str
   const answer = await deps.rpc('organiser_series_keep', { p_user: input.userId, p_series: input.seriesId, p_keep: input.keep })
   if (answer.error) return refusalOf(answer.error)
   return { state: 'done', id: input.seriesId }
+}
+
+/**
+ * The yes given from the organiser's own page, after a claim made without it or after withdrawing it (221201): the
+ * same two ticks as the claim page, the constant's words, and the database's organiser_permission_give, which checks
+ * the claim is theirs and holds one current yes per claim.
+ */
+export async function giveOrganiserYes(
+  input: { userId: string; claimId: string; ticked: boolean; authority: boolean },
+  deps: Pick<MediaDeps, 'rpc'>,
+): Promise<MediaAnswer> {
+  if (!input.ticked) return { state: 'refused', reason: 'Tick the permission to give it.' }
+  const yes = claimYes({ ticked: true, authority: input.authority }, new Date())
+  if (yes.state !== 'given') return yes.state === 'refused' ? yes : { state: 'refused', reason: 'Tick the permission to give it.' }
+  const answer = await deps.rpc('organiser_permission_give', { p_user: input.userId, p_claim: input.claimId, p_words: yes.words })
+  if (answer.error) return refusalOf(answer.error)
+  return { state: 'done', id: String(answer.data) }
 }

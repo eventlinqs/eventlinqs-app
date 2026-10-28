@@ -1,7 +1,7 @@
 -- THE CLAIM AS ACCEPTANCE PROOF (supabase/migrations/20261028220201_claim_acceptance.sql), on TEST, which holds the
 -- asset register (20261028141001). One transaction that ends by RAISING its verdict, so TEST is left as found.
 --   RED:   153001 and 205501 (where TEST lacks them) followed by this file, the claim acceptance migration not there.
---   GREEN: the same with 220201 before this file, joined, in one transaction:
+--   GREEN: the same with 220201 and 221201 before this file, joined, in one transaction:
 --          scripts\ops\with-supabase-token.ps1 node scripts/verify/run-proof-on-test.mjs <the four, joined>
 -- Every check runs in its own block, so a missing column or function is reported as that check failing.
 DO $proof$
@@ -20,6 +20,8 @@ DECLARE
   v_night2 uuid;
   v_event uuid;
   v_claim uuid;
+  v_venue_claim uuid;
+  v_yes2 uuid;
   v_yes uuid;
   v_asset uuid;
   v_new uuid;
@@ -94,6 +96,7 @@ BEGIN
                                        permission_words, permission_scope, permission_given_at, permission_authority)
     VALUES (v_venue, v_user, 'Proof', 'Manager', 'proof@eventlinqs.test', 'published_email', v_hash, now() + interval '15 minutes', v_line, 'current_and_future', now() - interval '2 minutes', true)
     RETURNING id INTO v_claim;
+    v_venue_claim := v_claim;
     v_answer := public.listing_claim_check(v_claim, repeat('b', 64), v_org, now());
     EXECUTE 'SELECT count(*) FROM public.organiser_permissions WHERE claim_id = $1' INTO v_n USING v_claim;
     IF v_answer = 'wrong' AND v_n = 0 THEN v_out := v_out || ' | A3a a wrong code wrote no yes: PASS';
@@ -236,12 +239,37 @@ BEGIN
   EXCEPTION WHEN others THEN v_out := v_out || ' | A12 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;
   END;
 
+  -- A13: the yes given again from the organiser's own page (221201), after it was withdrawn in A10: an outsider is
+  -- refused; the organiser's new yes cites the same claim and covers their next night again; a second current yes for
+  -- the claim is refused.
+  BEGIN
+    BEGIN
+      PERFORM public.organiser_permission_give(v_outsider, v_venue_claim, v_line);
+      v_out := v_out || ' | A13 an outsider gave the yes: FAIL'; v_fail := v_fail + 1;
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+    v_yes2 := public.organiser_permission_give(v_user, v_venue_claim, v_line);
+    SELECT wording, scope, channel, claim_id, organisation_id, withdrawn_at INTO v_row FROM public.organiser_permissions WHERE id = v_yes2;
+    IF v_yes2 <> v_yes AND v_row.wording = v_line AND v_row.scope = 'current_and_future' AND v_row.channel = 'claim'
+       AND v_row.claim_id = v_venue_claim AND v_row.organisation_id = v_org AND v_row.withdrawn_at IS NULL
+       AND (public.organiser_permission_for(v_night2)).id = v_yes2 THEN
+      BEGIN
+        PERFORM public.organiser_permission_give(v_user, v_venue_claim, v_line);
+        v_out := v_out || ' | A13 a second current yes kept: FAIL'; v_fail := v_fail + 1;
+      EXCEPTION WHEN check_violation THEN
+        v_out := v_out || ' | A13 outsider refused; the yes given again cites the claim and covers the next night; one current yes per claim: PASS';
+      END;
+    ELSE v_out := v_out || format(' | A13 new yes %s: FAIL', v_row.channel); v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A13 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;
+  END;
+
   -- A11: nobody but the service role may call the claim's check or the four organiser functions.
   BEGIN
   IF NOT has_function_privilege('authenticated', 'public.organiser_media_add(uuid, uuid, text, text, text, text, text)', 'EXECUTE')
      AND NOT has_function_privilege('anon', 'public.organiser_permission_withdraw(uuid, uuid, text)', 'EXECUTE')
      AND NOT has_function_privilege('authenticated', 'public.listing_claim_check(uuid, text, uuid, timestamptz)', 'EXECUTE')
-     AND NOT has_function_privilege('authenticated', 'public.organiser_series_keep(uuid, uuid, boolean)', 'EXECUTE') THEN
+     AND NOT has_function_privilege('authenticated', 'public.organiser_series_keep(uuid, uuid, boolean)', 'EXECUTE')
+     AND NOT has_function_privilege('authenticated', 'public.organiser_permission_give(uuid, uuid, text)', 'EXECUTE') THEN
     v_out := v_out || ' | A11 the functions are the service role''s alone: PASS';
   ELSE v_out := v_out || ' | A11 a signed in or signed out role may call them: FAIL'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A11 ' || replace(SQLERRM, '"', '') || ': FAIL'; v_fail := v_fail + 1;

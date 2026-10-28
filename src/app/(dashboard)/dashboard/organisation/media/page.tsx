@@ -5,7 +5,7 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { formatEventDateTimeCompact, formatPlatformDate } from '@/lib/dates/event-time'
 import { GalleryImage } from '@/components/media/GalleryImage'
-import { AddMediaForm, RegularNightsForm, ReplaceMediaForm, WithdrawMediaForm, WithdrawYesForm } from '@/components/listings/organiser-media-forms'
+import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, WithdrawMediaForm, WithdrawYesForm } from '@/components/listings/organiser-media-forms'
 
 /**
  * YOUR PHOTOS AND ARTWORK (the engine plan of 28 October 2026, part D; the final directive, section 15: "Upload artwork
@@ -32,11 +32,11 @@ export default async function OrganisationMediaPage({
   const orgId = scope.active.id
   const admin = createAdminClient()
 
-  const [yeses, nights, series] = await Promise.all([
+  const [yeses, nights, series, claims] = await Promise.all([
     readOrThrow('organisation permissions', () =>
       admin
         .from('organiser_permissions')
-        .select('id, host_name, wording, scope, granted_at, withdrawn_at, withdrawn_reason')
+        .select('id, claim_id, host_name, wording, scope, granted_at, withdrawn_at, withdrawn_reason')
         .eq('organisation_id', orgId)
         .order('granted_at', { ascending: false }),
     ),
@@ -52,6 +52,14 @@ export default async function OrganisationMediaPage({
     readOrThrow('organisation series', () =>
       admin.from('event_series').select('id, name, status').eq('organisation_id', orgId).neq('status', 'removed').order('name'),
     ),
+    readOrThrow('organisation claims', () =>
+      admin
+        .from('listing_claims')
+        .select('id, venue_id, event_id')
+        .eq('target_organisation_id', orgId)
+        .in('status', ['verified', 'manual_approved'])
+        .order('verified_at', { ascending: false }),
+    ),
   ])
   const nightIds = (nights ?? []).map((n) => n.id)
   const assets = nightIds.length
@@ -66,6 +74,18 @@ export default async function OrganisationMediaPage({
     : []
   const titleOf = new Map((nights ?? []).map((n) => [n.id, n.title]))
   const current = (yeses ?? []).filter((y) => !y.withdrawn_at)
+  // A claim with no current yes: made without the tick, or its yes withdrawn. Its organiser may give it here (221201).
+  const unanswered = (claims ?? []).filter((c) => !current.some((y) => y.claim_id === c.id))
+  const venueIds = unanswered.flatMap((c) => (c.venue_id ? [c.venue_id] : []))
+  const eventIds = unanswered.flatMap((c) => (c.event_id ? [c.event_id] : []))
+  const [claimedVenues, claimedEvents] = await Promise.all([
+    venueIds.length ? readOrThrow('claimed venue names', () => admin.from('venues').select('id, name').in('id', venueIds)) : [],
+    eventIds.length ? readOrThrow('claimed event titles', () => admin.from('events').select('id, title').in('id', eventIds)) : [],
+  ])
+  const claimName = new Map<string, string>([
+    ...(claimedVenues ?? []).map((v) => [v.id, v.name] as [string, string]),
+    ...(claimedEvents ?? []).map((e) => [e.id, e.title] as [string, string]),
+  ])
 
   return (
     <div className="max-w-3xl">
@@ -106,6 +126,24 @@ export default async function OrganisationMediaPage({
           </ul>
         )}
       </section>
+
+      {unanswered.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="give-heading">
+          <h2 id="give-heading" className="text-lg font-semibold text-ink-900">
+            Give your permission
+          </h2>
+          <ul className="mt-3 space-y-6">
+            {unanswered.map((c) => (
+              <li key={c.id} data-claim={c.id}>
+                <p className="text-sm font-semibold text-ink-900">{claimName.get(c.venue_id ?? c.event_id ?? '') ?? 'Your listing'}</p>
+                <div className="mt-2">
+                  <GiveYesForm claimId={c.id} kind={c.venue_id ? 'venue' : 'event'} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {current.length > 0 && nightIds.length > 0 ? (
         <section className="mt-6 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="add-heading">

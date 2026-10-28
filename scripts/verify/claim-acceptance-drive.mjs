@@ -14,7 +14,8 @@
  * word for word and channel claim, the venue moved; uploads a photo it makes and reads the asset register's row
  * (organiser authorised, pending, the yes as its permission, its original file); skips on, pauses one regular night,
  * finishes and reads the series paused and the done line; then on /dashboard/organisation/media at 1440, 768 and 390
- * sees the image drawn, withdraws it (row withdrawn, file gone from the bucket) and withdraws the yes (row withdrawn).
+ * sees the image drawn, withdraws it (row withdrawn, file gone from the bucket), withdraws the yes (row withdrawn) and
+ * gives it again with the same two ticks (a new current yes citing the claim).
  * In its finally it puts the venue, its series and nights back, removes every row it made through
  * claim-acceptance-drive-cleanup.sql and the account, and reads them back gone. TEST only: it refuses any other database.
  */
@@ -285,6 +286,16 @@ try {
   await page.getByText('Withdrawn. Every image under it').waitFor({ timeout: 120000 })
   const yesAfter = (await db.from('organiser_permissions').select('withdrawn_at, withdrawn_reason').eq('id', yeses[0]?.id).single()).data
   check('the yes is withdrawn with its reason', Boolean(yesAfter?.withdrawn_at) && yesAfter?.withdrawn_reason === 'The drive takes the permission back', yesAfter)
+
+  /* ---- given again from the same page (221201): the claim page's two ticks, one current yes per claim ---- */
+  await page.goto(`${BASE}/dashboard/organisation/media`, { waitUntil: 'load', timeout: 300000 })
+  const give = page.locator(`[data-claim="${claim?.id}"]`)
+  await give.locator('input[name="permission"]').check()
+  await give.locator('input[name="authority"]').check()
+  await give.getByRole('button', { name: 'Give permission' }).click()
+  await page.getByText('Thank you. Your permission is on record').waitFor({ timeout: 120000 })
+  const current = (await db.from('organiser_permissions').select('id, wording, claim_id').eq('logged_by', userId).is('withdrawn_at', null)).data ?? []
+  check('the yes given again is current, word for word, citing the same claim', current.length === 1 && current[0].wording === PERMISSION_WORDS && current[0].claim_id === claim?.id, current)
 } catch (e) {
   fails += 1
   console.log(`FAIL the drive stopped: ${e instanceof Error ? e.message : String(e)}`)

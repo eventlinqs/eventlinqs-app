@@ -240,3 +240,20 @@ describe('the address the code goes to, as the claim page shows it', () => {
     expect(maskAddress('not an address')).toBeNull()
   })
 })
+
+describe('the yes given again from the organiser’s page', () => {
+  test('needs both ticks, then sends the constant words with their claim to the database, its refusal in its own words', async () => {
+    const { giveOrganiserYes } = await import('@/lib/listings/organiser-media')
+    const { d, calls } = mediaFake(() => ({ data: 'yes-2', error: null }))
+    expect(await giveOrganiserYes({ userId: 'u1', claimId: 'c1', ticked: false, authority: true }, d)).toEqual({ state: 'refused', reason: 'Tick the permission to give it.' })
+    expect(await giveOrganiserYes({ userId: 'u1', claimId: 'c1', ticked: true, authority: false }, d)).toEqual({
+      state: 'refused',
+      reason: 'Confirm you can give this permission, or untick it and claim the listing without it.',
+    })
+    expect(calls).toEqual([])
+    expect(await giveOrganiserYes({ userId: 'u1', claimId: 'c1', ticked: true, authority: true }, d)).toEqual({ state: 'done', id: 'yes-2' })
+    expect(calls).toEqual([{ name: 'organiser_permission_give', args: { p_user: 'u1', p_claim: 'c1', p_words: PERMISSION_WORDS } }])
+    const no = mediaFake(() => ({ data: null, error: { code: '23514', message: 'refused: your permission is already on record.' } }))
+    expect(await giveOrganiserYes({ userId: 'u1', claimId: 'c1', ticked: true, authority: true }, no.d)).toEqual({ state: 'refused', reason: 'Your permission is already on record.' })
+  })
+})

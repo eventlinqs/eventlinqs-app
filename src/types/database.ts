@@ -10402,6 +10402,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      organiser_permission_give: {
+        Args: { p_claim: string; p_user: string; p_words: string }
+        Returns: string
+      }
       organiser_permission_withdraw: {
         Args: { p_permission: string; p_reason: string; p_user: string }
         Returns: string[]
@@ -10413,6 +10417,12 @@ export type Database = {
       organiser_series_keep: {
         Args: { p_keep: boolean; p_series: string; p_user: string }
         Returns: string
+      }
+      organiser_yes_takes_native_shares: {
+        Args: {
+          v_perm: Database["public"]["Tables"]["organiser_permissions"]["Row"]
+        }
+        Returns: undefined
       }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
