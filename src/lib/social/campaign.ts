@@ -263,7 +263,7 @@ export function nightWords(n: CampaignNight): NightSlideWords {
   const span = dateOf(n).includes(' to ')
   const live = compositionFor(n) === 'concert' ? 'Live at' : 'At'
   const entry =
-    n.priceLine && !/^free/i.test(n.priceLine)
+    n.priceLine && /\$\s?\d/.test(n.priceLine)
       ? n.priceLine
       : n.cta.state === 'free_open'
         ? 'Free, no ticket needed'

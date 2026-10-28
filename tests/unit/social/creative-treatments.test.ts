@@ -53,6 +53,10 @@ describe("a night's words, from its facts alone", () => {
     expect(w.action).toBe('View tickets at Geelong Arts Centre')
     expect(w.entry ?? '').not.toMatch(/free|eventlinqs/i)
   })
+  it('an outside night with no checked price says no price, never repeats where tickets are (E5)', () => {
+    const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { externalTicketUrl: 'https://www.geelongartscentre.org.au/x', providerName: 'Geelong Arts Centre' } }))
+    expect(w.entry).toBeNull()
+  })
   it('a price nobody stated is never said, and free is never inferred (E5, E6)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { tiers: [], isFree: false }, categorySlug: 'festival' }))
     expect(w.entry).toBeNull()
