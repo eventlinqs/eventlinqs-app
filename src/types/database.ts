@@ -7253,6 +7253,87 @@ export type Database = {
           },
         ]
       }
+      social_assets: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          archival: boolean
+          asset_state: string
+          asset_type: string
+          asset_url: string
+          attribution_text: string
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          evidence_file: string | null
+          expires_at: string | null
+          id: string
+          permission_evidence: string | null
+          restrictions: string | null
+          rights_holder: string
+          scope: string
+          source_url: string
+        }
+        Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          archival?: boolean
+          asset_state: string
+          asset_type: string
+          asset_url: string
+          attribution_text: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          evidence_file?: string | null
+          expires_at?: string | null
+          id?: string
+          permission_evidence?: string | null
+          restrictions?: string | null
+          rights_holder: string
+          scope: string
+          source_url: string
+        }
+        Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          archival?: boolean
+          asset_state?: string
+          asset_type?: string
+          asset_url?: string
+          attribution_text?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          evidence_file?: string | null
+          expires_at?: string | null
+          id?: string
+          permission_evidence?: string | null
+          restrictions?: string | null
+          rights_holder?: string
+          scope?: string
+          source_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_assets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_assets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_cadence_rules: {
         Row: {
           basis: string
@@ -7304,6 +7385,76 @@ export type Database = {
         }
         Relationships: []
       }
+      social_campaign_exclusions: {
+        Row: {
+          campaign_id: string
+          event_id: string
+          excluded_at: string
+          excluded_by: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          campaign_id: string
+          event_id: string
+          excluded_at?: string
+          excluded_by: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          campaign_id?: string
+          event_id?: string
+          excluded_at?: string
+          excluded_by?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_campaign_exclusions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaign_exclusions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaign_exclusions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_campaigns: {
+        Row: {
+          id: string
+          planned_at: string
+          planned_by: string | null
+          week_start: string
+        }
+        Insert: {
+          id?: string
+          planned_at?: string
+          planned_by?: string | null
+          week_start: string
+        }
+        Update: {
+          id?: string
+          planned_at?: string
+          planned_by?: string | null
+          week_start?: string
+        }
+        Relationships: []
+      }
       social_drafts: {
         Row: {
           caption: string
@@ -7338,6 +7489,333 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_image_requests: {
+        Row: {
+          campaign_id: string
+          drafted_at: string
+          event_id: string
+          host_name: string
+          id: string
+          message: string | null
+        }
+        Insert: {
+          campaign_id: string
+          drafted_at?: string
+          event_id: string
+          host_name: string
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          drafted_at?: string
+          event_id?: string
+          host_name?: string
+          id?: string
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_image_requests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_image_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_image_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          id: string
+          piece_id: string
+          revision: number
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          id?: string
+          piece_id: string
+          revision: number
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          id?: string
+          piece_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_approvals_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_decisions: {
+        Row: {
+          decided_at: string
+          decided_by: string
+          decision: string
+          id: string
+          piece_id: string
+          reason: string
+          revision: number
+        }
+        Insert: {
+          decided_at?: string
+          decided_by: string
+          decision: string
+          id?: string
+          piece_id: string
+          reason: string
+          revision: number
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          id?: string
+          piece_id?: string
+          reason?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_decisions_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_figures: {
+        Row: {
+          entered_at: string
+          entered_by: string
+          id: string
+          metric: string
+          piece_id: string
+          platform: string
+          read_at: string
+          value: number
+        }
+        Insert: {
+          entered_at?: string
+          entered_by: string
+          id?: string
+          metric: string
+          piece_id: string
+          platform: string
+          read_at: string
+          value: number
+        }
+        Update: {
+          entered_at?: string
+          entered_by?: string
+          id?: string
+          metric?: string
+          piece_id?: string
+          platform?: string
+          read_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_figures_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_postings: {
+        Row: {
+          approval_id: string
+          id: string
+          piece_id: string
+          post_url: string
+          posted_at: string
+          recorded_at: string
+          recorded_by: string
+        }
+        Insert: {
+          approval_id: string
+          id?: string
+          piece_id: string
+          post_url: string
+          posted_at: string
+          recorded_at?: string
+          recorded_by: string
+        }
+        Update: {
+          approval_id?: string
+          id?: string
+          piece_id?: string
+          post_url?: string
+          posted_at?: string
+          recorded_at?: string
+          recorded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_postings_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: true
+            referencedRelation: "social_piece_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_piece_postings_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: true
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_piece_revisions: {
+        Row: {
+          caption: string
+          event_ids: string[]
+          id: string
+          made_at: string
+          made_by: string
+          made_by_user: string | null
+          message: string | null
+          mode: string
+          picks: Json
+          piece_id: string
+          slides: Json
+          version: number
+          versions: Json
+        }
+        Insert: {
+          caption: string
+          event_ids?: string[]
+          id?: string
+          made_at?: string
+          made_by: string
+          made_by_user?: string | null
+          message?: string | null
+          mode: string
+          picks: Json
+          piece_id: string
+          slides: Json
+          version: number
+          versions: Json
+        }
+        Update: {
+          caption?: string
+          event_ids?: string[]
+          id?: string
+          made_at?: string
+          made_by?: string
+          made_by_user?: string | null
+          message?: string | null
+          mode?: string
+          picks?: Json
+          piece_id?: string
+          slides?: Json
+          version?: number
+          versions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_piece_revisions_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_pieces: {
+        Row: {
+          audience: string
+          campaign_id: string
+          city: string
+          format: string
+          id: string
+          kind: string
+          link: string
+          next_step: string
+          objective: string
+          outcome: string
+          partner_name: string | null
+          planned_at: string
+          purpose: string
+          share_link_id: string | null
+        }
+        Insert: {
+          audience: string
+          campaign_id: string
+          city: string
+          format: string
+          id?: string
+          kind: string
+          link: string
+          next_step: string
+          objective: string
+          outcome: string
+          partner_name?: string | null
+          planned_at?: string
+          purpose: string
+          share_link_id?: string | null
+        }
+        Update: {
+          audience?: string
+          campaign_id?: string
+          city?: string
+          format?: string
+          id?: string
+          kind?: string
+          link?: string
+          next_step?: string
+          objective?: string
+          outcome?: string
+          partner_name?: string | null
+          planned_at?: string
+          purpose?: string
+          share_link_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_pieces_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_pieces_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: true
+            referencedRelation: "share_links"
             referencedColumns: ["id"]
           },
         ]
@@ -7389,36 +7867,51 @@ export type Database = {
       }
       social_posts: {
         Row: {
+          audience: string
           event_id: string
           facts: string[]
           format: string
           id: string
           link: string
+          next_step: string
+          objective: string
+          outcome: string
           planned_at: string
           planned_by: string | null
           platform: string
+          purpose: string
           share_link_id: string
         }
         Insert: {
+          audience?: string
           event_id: string
           facts: string[]
           format: string
           id?: string
           link: string
+          next_step?: string
+          objective?: string
+          outcome?: string
           planned_at?: string
           planned_by?: string | null
           platform: string
+          purpose?: string
           share_link_id: string
         }
         Update: {
+          audience?: string
           event_id?: string
           facts?: string[]
           format?: string
           id?: string
           link?: string
+          next_step?: string
+          objective?: string
+          outcome?: string
           planned_at?: string
           planned_by?: string | null
           platform?: string
+          purpose?: string
           share_link_id?: string
         }
         Relationships: [
@@ -7441,6 +7934,47 @@ export type Database = {
             columns: ["share_link_id"]
             isOneToOne: true
             referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_report_decisions: {
+        Row: {
+          campaign_id: string
+          decided_at: string
+          decided_by: string
+          decision: string
+          evidence: Json
+          id: string
+          recommendation: string
+          rule: string
+        }
+        Insert: {
+          campaign_id: string
+          decided_at?: string
+          decided_by: string
+          decision: string
+          evidence: Json
+          id?: string
+          recommendation: string
+          rule: string
+        }
+        Update: {
+          campaign_id?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          evidence?: Json
+          id?: string
+          recommendation?: string
+          rule?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_report_decisions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -9831,6 +10365,10 @@ export type Database = {
           result: string
           seat_label: string
         }[]
+      }
+      social_asset_usable: {
+        Args: { p_at: string; p_event: string; p_url: string }
+        Returns: boolean
       }
       social_cadence_at: {
         Args: { p_at: string; p_format: string; p_platform: string }

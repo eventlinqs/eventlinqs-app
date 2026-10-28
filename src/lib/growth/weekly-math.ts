@@ -59,6 +59,13 @@ export function lastWeeks(now: Date, zone: string = PLATFORM_TIME_ZONE): { reado
   return { last: week(thisMonday - 7), before: week(thisMonday - 14) }
 }
 
+/** The week that starts on the Monday `monday` (YYYY-MM-DD) on the platform's clock, as lastWeeks gives its weeks. */
+export function weekOf(monday: string, zone: string = PLATFORM_TIME_ZONE): Week {
+  const n = dayNumber(Number(monday.slice(0, 4)), Number(monday.slice(5, 7)), Number(monday.slice(8, 10)))
+  const from = calendarDay(n)
+  return { from: fromZonedInputValue(`${from}T00:00`, zone), to: fromZonedInputValue(`${calendarDay(n + 7)}T00:00`, zone), monday: from }
+}
+
 /**
  * Whole days on the proleptic Gregorian calendar, day 0 being 1 January 1970, and back again. lastWeeks reads the zoned
  * date's own digits and counts on these numbers, so no instant is ever read in UTC and called a day on the platform's
