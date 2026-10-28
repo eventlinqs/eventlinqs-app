@@ -171,6 +171,7 @@ async function makeFixtures() {
       source_date: checkedOn,
       import_file: 'wi2-free-week-drive (a proof fixture)',
       outcome: 'confirmed',
+      reuse_basis: 'manual_research_facts_only',
     }))
     fixtures.push({ kind, name, seriesId: series.id, checkedOn })
   }
@@ -201,6 +202,7 @@ async function makeFixtures() {
       source_date: day(-1),
       import_file: 'wi2-free-week-drive (a proof fixture)',
       outcome: 'confirmed',
+      reuse_basis: 'manual_research_facts_only',
     }))
     budgetNights.push(series.id)
   }

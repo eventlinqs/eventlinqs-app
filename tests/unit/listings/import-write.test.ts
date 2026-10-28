@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ListingRow } from '@/lib/listings/listing-rows'
 import { planImport, type ImportState } from '@/lib/listings/import-plan'
-import { buildImportWrite, sqlLiteral, WriteRefusal } from '@/lib/listings/import-write'
+import { buildImportWrite, MANUAL_RESEARCH_BASIS, sqlLiteral, WriteRefusal } from '@/lib/listings/import-write'
 
 /**
  * WI2 Part 1: the import's write as one statement. The names and places below
@@ -89,8 +89,13 @@ describe('the write for a new host and its night', () => {
     expect(sql).toMatch(/insert into public\.event_series \(venue_id, organisation_id, [^)]*\) values \(v_venue_1, '[0-9a-f-]+'::uuid, /)
     expect(sql).toContain('returning id into v_series_1;')
     expect(sql).toContain(
-      "values (v_series_1, 'https://example.com/pats', '2026-10-20', 'geelong.csv sha256:abc', 'confirmed');",
+      "values (v_series_1, 'https://example.com/pats', '2026-10-20', 'geelong.csv sha256:abc', 'confirmed', 'manual_research_facts_only');",
     )
+  })
+
+  it('records the check with its reuse basis, the manual research one, by name (release checklist A4 and D8)', () => {
+    expect(MANUAL_RESEARCH_BASIS).toBe('manual_research_facts_only')
+    expect(sql).toContain('insert into public.listing_checks (series_id, source_url, source_date, import_file, outcome, reuse_basis)')
   })
 
   it('writes the night as the row gave it', () => {
@@ -147,7 +152,7 @@ describe('updates re-check the database before they count', () => {
       `update public.event_series set ends_at = '23:00', updated_at = now() where id = '${series.id}'::uuid and listing_source = 'eventlinqs' and status <> 'removed';`,
     )
     expect(sql.match(/if v_n <> 1 then raise exception/g)).toHaveLength(2)
-    expect(sql).toContain(`values ('${series.id}'::uuid, 'https://example.com/pats', '2026-10-27', 'geelong.csv sha256:abc', 'changed');`)
+    expect(sql).toContain(`values ('${series.id}'::uuid, 'https://example.com/pats', '2026-10-27', 'geelong.csv sha256:abc', 'changed', 'manual_research_facts_only');`)
     expect(sql).not.toContain('insert into public.venues')
     expect(sql).not.toContain('insert into public.event_series')
   })
