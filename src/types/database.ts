@@ -2921,6 +2921,7 @@ export type Database = {
           id: string
           import_file: string
           outcome: string
+          reuse_basis: string
           series_id: string
           source_date: string
           source_url: string
@@ -2930,6 +2931,7 @@ export type Database = {
           id?: string
           import_file: string
           outcome: string
+          reuse_basis: string
           series_id: string
           source_date: string
           source_url: string
@@ -2939,6 +2941,7 @@ export type Database = {
           id?: string
           import_file?: string
           outcome?: string
+          reuse_basis?: string
           series_id?: string
           source_date?: string
           source_url?: string
