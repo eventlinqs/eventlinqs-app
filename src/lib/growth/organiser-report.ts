@@ -5,6 +5,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { readWalkInNumbers } from '@/lib/walk-in/organiser-numbers'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
+import { newestEnteredReach } from './social-report'
 import {
   nightFigures,
   nightsDue,
@@ -91,19 +92,13 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
   }
 
   const posts = await postsNaming(admin, night)
-  const reachRows =
-    posts.length === 0
-      ? []
-      : await readOrThrow('the entered Instagram reach', () =>
-          admin.from('social_piece_figures').select('value, read_at').in('piece_id', posts.map((p) => p.pieceId)).eq('platform', 'instagram').eq('metric', 'reach').order('read_at', { ascending: false }).limit(1),
-        )
-  const newestReach = (reachRows ?? [])[0]
+  const instagramReach = await newestEnteredReach(admin, posts.map((p) => p.pieceId))
 
   return {
     numbers,
     viewers,
     ownLinkArrivals,
-    instagramReach: newestReach ? { value: Number(newestReach.value), readAt: newestReach.read_at } : null,
+    instagramReach,
     reach: { totals: { views: reach.totals.views, clicks: reach.totals.clicks }, byChannel: reach.byChannel.map((c) => ({ channel: c.channel, views: c.views, clicks: c.clicks })) },
     presses: pressRows.map((p) => ({ visitor: p.visitor_hash, rowId: p.id, provider: p.provider })),
     orders,

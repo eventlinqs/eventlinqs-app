@@ -28,12 +28,14 @@ const MATH = 'src/lib/growth/social-report-math.ts'
 const READER = 'src/lib/growth/social-report.ts'
 const VIEW = 'src/app/admin/(authed)/growth/social-report/report-view.tsx'
 const REPORT_FILES = [MATH, READER, VIEW, 'src/app/admin/(authed)/growth/social-report/page.tsx', 'src/app/admin/(authed)/growth/social-report/actions.ts']
+/* The organiser's report after each night (engine plan part H) shows Instagram's reach beside its counts: rule 1 holds there too. */
+const ORGANISER_REPORT_FILES = ['src/lib/growth/organiser-report-math.ts', 'src/lib/growth/organiser-report.ts', 'src/app/(dashboard)/dashboard/events/[id]/report/page.tsx']
 const OWN_TABLES = ['social_piece_figures', 'social_report_decisions']
 
 const failures = []
 let lines = 0
 
-for (const rel of REPORT_FILES) {
+for (const rel of [...REPORT_FILES, ...ORGANISER_REPORT_FILES]) {
   if (!existsSync(join(ROOT, rel))) {
     failures.push(`${rel} is missing; the report is held in these files`)
   }
@@ -44,9 +46,9 @@ for (const rel of REPORT_FILES) {
  * "entered", the platforms or their four metrics; a counted one by "counted" or one of WeekCounted's and PostResult's
  * own fields. A line naming one of each with an arithmetic operator between figures fails.
  */
-const ENTERED_NAMES = /\b(entered\w*|instagram|facebook|reach\w*|saves|shares|watch_time_seconds)\b/i
-const COUNTED_NAMES = /\b(counted\w*|visitors\w*|eventViews|externalBookingClicks|nativeOrder\w*|subscriptions|organiserEnquiries|arrived|pressedOut|tickets|social(?:Visitors\w*)?)\b/
-for (const rel of REPORT_FILES) {
+const ENTERED_NAMES = /\b(entered\w*|instagram\w*|facebook|reach\w*|saves|shares|watch_time_seconds)\b/i
+const COUNTED_NAMES = /\b(counted\w*|visitors\w*|viewers|eventViews|externalBookingClicks|nativeOrder\w*|subscriptions|organiserEnquiries|arrived|arrivals|pressedOut|pressesOut|goPresses|tickets|social(?:Visitors\w*)?)\b/
+for (const rel of [...REPORT_FILES, ...ORGANISER_REPORT_FILES]) {
   if (!existsSync(join(ROOT, rel))) continue
   const { code } = readSource(join(ROOT, rel))
   code.split('\n').forEach((line, i) => {
@@ -108,7 +110,7 @@ for (const file of sourceFiles(ROOT)) {
   }
 }
 
-declareWork('social-measured-apart', { did: { 'report file': REPORT_FILES.length, 'code line': lines, 'source file': sources }, found: { failure: failures.length } })
+declareWork('social-measured-apart', { did: { 'report file': REPORT_FILES.length + ORGANISER_REPORT_FILES.length, 'code line': lines, 'source file': sources }, found: { failure: failures.length } })
 if (failures.length > 0) {
   for (const f of failures) console.error(`${TAG} FAIL: ${f}`)
   process.exit(1)
