@@ -224,6 +224,128 @@ export function eventsFromHtml(html: string, pageUrl: string): FoundEvent[] {
   return found
 }
 
+/* ------------------------------------------------------------------ calendar feeds, RFC 5545 */
+
+/**
+ * The zone a calendar's floating times are read in: every source in the register is Victorian (the four cities), so a
+ * time with no zone of its own is Melbourne's wall clock, never the server's.
+ */
+const FEED_ZONE = 'Australia/Melbourne'
+
+/** RFC 5545 3.1: "Unfolding is accomplished by removing the CRLF and the linear white-space character that immediately follows." */
+function unfold(ics: string): string[] {
+  return ics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n[ \t]/g, '').split('\n')
+}
+
+/** RFC 5545 3.3.11: ESCAPED-CHAR = ("\\" / "\;" / "\," / "\N" / "\n"). */
+function unescapeText(v: string): string {
+  return v.replace(/\\([\\;,nN])/g,(_, c: string) => (c === 'n' || c === 'N' ? '\n' : c)).trim()
+}
+
+type IcsProp = { value: string; params: Record<string, string> }
+
+function propOf(line: string): { name: string; prop: IcsProp } | null {
+  /* The name and its parameters end at the first colon outside a quoted parameter value (RFC 5545 3.1). */
+  let colon = -1
+  for (let i = 0, quoted = false; i < line.length && colon < 0; i++) {
+    if (line[i] === '"') quoted = !quoted
+    else if (line[i] === ':' && !quoted) colon = i
+  }
+  if (colon <= 0) return null
+  const [name, ...rawParams] = line.slice(0, colon).split(';')
+  const params: Record<string, string> = {}
+  for (const p of rawParams) {
+    const eq = p.indexOf('=')
+    if (eq > 0) params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1).replace(/^"|"$/g, '')
+  }
+  return { name: name.toUpperCase(), prop: { value: line.slice(colon + 1), params } }
+}
+
+/** A wall clock in a zone to its instant: two passes, as the offset depends on the instant being solved for. */
+function wallClockToIso(y: number, mo: number, d: number, h: number, mi: number, s: number, zone: string): string | null {
+  const offsetAt = (instant: number): number | null => {
+    try {
+      const at: Record<string, number> = {}
+      for (const p of new Intl.DateTimeFormat('en-US', { timeZone: zone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(instant))) {
+        if (p.type !== 'literal') at[p.type] = Number(p.value)
+      }
+      return Date.UTC(at.year, at.month - 1, at.day, at.hour % 24, at.minute, at.second) - instant
+    } catch {
+      return null
+    }
+  }
+  const asIfUtc = Date.UTC(y, mo - 1, d, h, mi, s)
+  const first = offsetAt(asIfUtc)
+  if (first === null) return null
+  const second = offsetAt(asIfUtc - first)
+  if (second === null) return null
+  return new Date(asIfUtc - second).toISOString()
+}
+
+/**
+ * RFC 5545 3.3.5's three forms (FORM #2 "DATE WITH UTC TIME" ends in Z; FORM #3 names a TZID; FORM #1 is floating) and
+ * 3.3.4's DATE, an all day event, read as the start of that day in the feed's zone.
+ */
+function icsInstant(prop: IcsProp | undefined): string | null {
+  if (!prop) return null
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(prop.value.trim())
+  if (!m) return null
+  const [, y, mo, d, h = '00', mi = '00', s = '00', z] = m
+  if (z) return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString()
+  return wallClockToIso(+y, +mo, +d, +h, +mi, +s, prop.params['TZID'] || FEED_ZONE)
+}
+
+/**
+ * Every event a calendar feed publishes (RFC 5545 VEVENTs), read as the feed states it; anything it does not state stays
+ * empty. A cancelled event is not taken, and neither is one with no LOCATION, since EventLinqs lists events people go
+ * to. The LOCATION's first part, before a comma, is the venue's name and the whole line its address. A repeating event
+ * (RRULE) is read at its first date only; the next run reads the feed again.
+ */
+export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
+  const found: FoundEvent[] = []
+  let event: Map<string, IcsProp> | null = null
+  for (const line of unfold(ics)) {
+    const upper = line.trim().toUpperCase()
+    if (upper === 'BEGIN:VEVENT') {
+      event = new Map()
+      continue
+    }
+    if (upper === 'END:VEVENT') {
+      const e = event
+      event = null
+      if (!e) continue
+      if ((e.get('STATUS')?.value ?? '').trim().toUpperCase() === 'CANCELLED') continue
+      const title = e.get('SUMMARY') ? unescapeText(e.get('SUMMARY')!.value) : ''
+      const startsAt = icsInstant(e.get('DTSTART'))
+      const location = e.get('LOCATION') ? unescapeText(e.get('LOCATION')!.value).replace(/\s*\n\s*/g, ', ') : ''
+      const venueName = location.split(',')[0]?.trim() ?? ''
+      if (!title || !startsAt || !venueName) continue
+      const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : null
+      const image = e.get('ATTACH') && /^image\//i.test(e.get('ATTACH')!.params['FMTTYPE'] ?? '') ? absolute(e.get('ATTACH')!.value.trim(), pageUrl) : null
+      found.push({
+        title: title.slice(0, 200),
+        startsAt,
+        endsAt: icsInstant(e.get('DTEND')),
+        venueName,
+        venueAddress: location.includes(',') ? location : null,
+        pageUrl: own ?? pageUrl,
+        imageUrl: image,
+        links: [],
+      })
+      continue
+    }
+    if (!event) continue
+    const p = propOf(line)
+    if (p && !event.has(p.name)) event.set(p.name, p.prop)
+  }
+  return found
+}
+
+/** What a source's answer holds: a calendar feed (RFC 5545) or a page with its own Event data. */
+export function eventsFromBody(body: string, pageUrl: string): FoundEvent[] {
+  return /^\s*BEGIN:VCALENDAR/i.test(body) ? eventsFromIcs(body, pageUrl) : eventsFromHtml(body, pageUrl)
+}
+
 /* ------------------------------------------------------------------ the register and the plan */
 
 export type CollectionPermission = 'read' | 'ask' | 'never'

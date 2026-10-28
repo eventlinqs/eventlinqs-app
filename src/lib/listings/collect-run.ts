@@ -1,7 +1,7 @@
 import {
   COLLECTOR_AGENT,
   dueSources,
-  eventsFromHtml,
+  eventsFromBody,
   planCandidates,
   robotsVerdict,
   type CandidatePlan,
@@ -54,7 +54,7 @@ const FETCH_TIMEOUT_MS = 15_000
 
 async function get(fetcher: Fetcher, url: string): Promise<{ status: number | null; body: string }> {
   try {
-    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/plain' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/calendar,text/plain' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     return { status: res.status, body: res.status >= 200 && res.status < 300 ? await res.text() : '' }
   } catch {
     return { status: null, body: '' }
@@ -100,7 +100,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
           result.skipped += 1
         } else {
           result.read += 1
-          const plans = planCandidates(eventsFromHtml(res.body, source.pageUrl), known, now)
+          const plans = planCandidates(eventsFromBody(res.body, source.pageUrl), known, now)
           for (const p of plans) {
             const plan = await stillNew(store, p)
             if (!plan) continue
