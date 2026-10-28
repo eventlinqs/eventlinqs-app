@@ -523,7 +523,7 @@ export const ENV_MANIFEST = [
   // ── Organiser outreach through Microsoft Graph (engine part C, 28 October 2026) ──
   {
     name: 'OUTREACH_GRAPH_TENANT_ID',
-    describe: 'The Microsoft Entra tenant that holds hello@eventlinqs.com, for the outreach sender',
+    describe: 'The Microsoft Entra tenant that holds the hello mailbox, for the outreach sender',
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
@@ -538,7 +538,7 @@ export const ENV_MANIFEST = [
   },
   {
     name: 'OUTREACH_GRAPH_CLIENT_ID',
-    describe: 'The Entra application id the outreach sender signs in as (application permissions Mail.Send and Mail.Read, limited to hello@eventlinqs.com)',
+    describe: 'The Entra application id the outreach sender signs in as (application permissions Mail.Send and Mail.Read, limited to the hello mailbox)',
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],

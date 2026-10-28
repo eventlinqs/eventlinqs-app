@@ -21,11 +21,19 @@
  * PURE: no database, no network. The template's text comes from its row (outreach_templates), never from here.
  */
 
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+
 export type MessageChannel = 'email' | 'dm'
 export type MessagePurpose = 'cadence' | 'relationship' | 'reply'
 
-/** Lawal's signature, word for word from the messages file. */
-export const LAWAL_SIGNATURE = ['Lawal Adams', 'Founder, EventLinqs', 'eventlinqs.com.au', 'ABN 30 837 447 587', 'Geelong, VIC, Australia'].join('\n')
+/** Lawal's signature, word for word from the messages file; the name and the ABN read from the one platform entity. */
+export const LAWAL_SIGNATURE = [
+  PLATFORM_ENTITY.legalName,
+  `Founder, ${PLATFORM_ENTITY.tradingName}`,
+  'eventlinqs.com.au',
+  `ABN ${PLATFORM_ENTITY.abnFormatted}`,
+  'Geelong, VIC, Australia',
+].join('\n')
 
 /** How every DM ends, word for word. */
 export const DM_SIGN_OFF = "Lawal, EventLinqs (reply stop and I won't message again)"

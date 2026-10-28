@@ -21,6 +21,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { LIST_UNSUBSCRIBE_HEADER, LIST_UNSUBSCRIBE_POST_HEADER, LIST_UNSUBSCRIBE_POST_VALUE } from '@/lib/consent/one-click'
+import { getSenderDomain } from '@/lib/email/sender'
 
 /** The route the List-Unsubscribe header points at (src/app/api/outreach/one-click-unsubscribe/[token]/route.ts). */
 export const OUTREACH_ONE_CLICK_ROUTE = '/api/outreach/one-click-unsubscribe'
@@ -40,8 +41,8 @@ export type OutreachMime = {
   unsubscribeToken: string
 }
 
-/** A Message-ID at our own domain: angle brackets included, as the header and the row carry it. */
-export function newMessageId(domain = 'eventlinqs.com'): string {
+/** A Message-ID at our own sending domain (src/lib/email/sender.ts), angle brackets included, as the header and the row carry it. */
+export function newMessageId(domain = getSenderDomain()): string {
   return `<${randomUUID()}@${domain}>`
 }
 
