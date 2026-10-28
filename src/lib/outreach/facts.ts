@@ -29,10 +29,16 @@ export function whenItRuns(rule: string, day: number): string | null {
   return null
 }
 
-/** "Open Mic Comedy" names one night; the nights are "Open Mic Comedy nights" unless the name already says so. */
-export function nightsOf(seriesName: string): string {
+/**
+ * "Open Mic Comedy" names one night; the nights are "Open Mic Comedy nights" unless the name already says so. A series
+ * that starts before 5 pm is not a night (the drive's Friday morning library session read as "nights"), so it is
+ * "sessions": the word follows the listing's own start time, never the template's habit.
+ */
+export function nightsOf(seriesName: string, startsAt?: string | null): string {
   const name = seriesName.trim()
-  return /\bnights?$/i.test(name) ? name.replace(/\b(night)$/i, '$1s') : `${name} nights`
+  if (/\bnights?$/i.test(name)) return name.replace(/\b(night)$/i, '$1s')
+  const hour = startsAt ? Number(startsAt.slice(0, 2)) : NaN
+  return Number.isFinite(hour) && hour < 17 ? `${name} sessions` : `${name} nights`
 }
 
 export function trueLine(seriesName: string, venueName: string, rule: string, day: number): string | null {
@@ -69,11 +75,15 @@ export async function factsForContact(db: Admin, contactId: string, origin: stri
     facts.city = city.data?.name ?? null
   }
 
-  const series = await db.from('event_series').select('name, rule, day').eq('venue_id', venue.id).eq('status', 'active').order('name').limit(1)
-  const s = series.data?.[0]
+  // A recurring series speaks for the venue before a one-off: only a rhythm gives a true line (the drive found a venue
+  // whose alphabetically first series was a one-off while a weekly one ran beside it).
+  const series = await db.from('event_series').select('name, rule, day, starts_at').eq('venue_id', venue.id).eq('status', 'active').order('name').limit(20)
+  const s = (series.data ?? []).find((x) => x.rule !== 'once') ?? series.data?.[0]
   if (s) {
     facts.night = s.name
-    facts.nights = nightsOf(s.name)
+    facts.nights = nightsOf(s.name, s.starts_at)
+    // Message 4 closes "All the best with the [gigs]": the listing's own words for them are its nights or sessions.
+    facts.gigs = facts.nights
     facts['night type'] = s.name
     facts['true line'] = trueLine(s.name, venue.name, s.rule, s.day)
     facts['short true line'] = facts['true line'] ? facts['true line'].replace(/\.$/, '') : null

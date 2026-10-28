@@ -20,7 +20,8 @@ import { draftFromTemplate } from './drafts'
 
 type Admin = SupabaseClient<Database>
 
-export type CohortRule = { cities?: string[] }
+/** Who a play writes to: organisers at a venue in these cities, and, when named, only these organisers. */
+export type CohortRule = { cities?: string[]; organisers?: string[] }
 
 /**
  * Which of an organiser's published addresses to write to first: the one meant for events, bookings or music, then a
@@ -53,6 +54,68 @@ function melbourneDayStart(now: Date): Date {
 /** Days between two instants, counted on Melbourne's calendar, as the database counts the cadence. */
 export function melbourneDaysBetween(from: Date, to: Date): number {
   return Math.round((melbourneDayStart(to).getTime() - melbourneDayStart(from).getTime()) / DAY_MS)
+}
+
+/** How many new first DMs are drafted for Lawal each day: EventLinqs' own choice (UNSOURCED), a list he clears by hand. */
+export const DM_DRAFTS_PER_DAY = 10
+
+export type DmReport = { drafted: number; followUps: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[] }
+
+/**
+ * DMs ARE SENT BY LAWAL BY HAND, never by the system (Meta forbids automated messaging; the engine plan). The planner
+ * holds them for him: message 2 (first_dm) to organisers reachable only on Instagram, whose handle has a whole basis and
+ * who have never been written to, at most DM_DRAFTS_PER_DAY new ones a day; and the day 4 DM (day4_dm, "the only DM
+ * follow-up") once he has marked the first one sent. He sends each with one tap and marks it sent (markSent).
+ */
+export async function planDms(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<DmReport> {
+  const report: DmReport = { drafted: 0, followUps: 0, held: [], refused: [] }
+  const record = (contactId: string, r: Awaited<ReturnType<typeof draftFromTemplate>>, followUp: boolean) => {
+    if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+    else {
+      if (r.value.heldBecause.length) report.held.push({ contactId, why: r.value.heldBecause })
+      if (followUp) report.followUps++
+      else report.drafted++
+    }
+  }
+
+  const firsts = await db.from('outreach_touches').select('contact_id, sent_at, organiser_contacts!inner(channel)').eq('step', 1).eq('state', 'sent').eq('organiser_contacts.channel', 'instagram')
+  for (const first of firsts.data ?? []) {
+    if (melbourneDaysBetween(new Date(first.sent_at as string), deps.now) < 4) continue
+    const later = await db.from('outreach_touches').select('id').eq('contact_id', first.contact_id).eq('step', 2).neq('state', 'void').limit(1)
+    if ((later.data ?? []).length) continue
+    record(first.contact_id, await draftFromTemplate(db, { contactId: first.contact_id, templateKey: 'day4_dm', purpose: 'cadence', step: 2, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), true)
+  }
+
+  const today = await db
+    .from('outreach_touches')
+    .select('id, organiser_contacts!inner(channel)', { count: 'exact', head: true })
+    .eq('step', 1)
+    .eq('organiser_contacts.channel', 'instagram')
+    .gte('drafted_at', melbourneDayStart(deps.now).toISOString())
+  let room = DM_DRAFTS_PER_DAY - (today.count ?? 0)
+  if (room <= 0) return report
+
+  const handles = await db.from('organiser_contacts').select('id, organiser_id').eq('channel', 'instagram').neq('basis', 'none').order('created_at').limit(500)
+  const organiserIds = [...new Set((handles.data ?? []).map((h) => h.organiser_id))]
+  const reachable = organiserIds.length ? await db.from('organiser_contacts').select('organiser_id, id').in('organiser_id', organiserIds) : { data: [] as { organiser_id: string; id: string }[] }
+  const contactsOf = new Map<string, string[]>()
+  for (const c of reachable.data ?? []) contactsOf.set(c.organiser_id, [...(contactsOf.get(c.organiser_id) ?? []), c.id])
+  const allIds = [...contactsOf.values()].flat()
+  const touched = allIds.length ? await db.from('outreach_touches').select('contact_id').in('contact_id', allIds) : { data: [] as { contact_id: string }[] }
+  const written = new Set((touched.data ?? []).map((t) => t.contact_id))
+  const emailable = organiserIds.length ? await db.from('organiser_contacts').select('organiser_id').in('organiser_id', organiserIds).eq('channel', 'email').neq('basis', 'none') : { data: [] as { organiser_id: string }[] }
+  const byEmail = new Set((emailable.data ?? []).map((e) => e.organiser_id))
+
+  for (const h of handles.data ?? []) {
+    if (room <= 0) break
+    // Email is the automatic channel; a DM is drafted only where no email can go, and never to an organiser already written to.
+    if (byEmail.has(h.organiser_id) || (contactsOf.get(h.organiser_id) ?? []).some((id) => written.has(id))) continue
+    if (deps.organisers && !deps.organisers.includes(h.organiser_id)) continue
+    record(h.id, await draftFromTemplate(db, { contactId: h.id, templateKey: 'first_dm', purpose: 'cadence', step: 1, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), false)
+    written.add(h.id)
+    room--
+  }
+  return report
 }
 
 export async function planPlays(db: Admin, deps: { now: Date; origin: string; actingUser: string }): Promise<PlayReport[]> {
@@ -125,6 +188,7 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         if (room <= 0) break
         if (written.has(c.id) || seenOrganiser.has(c.organiser_id)) continue
         if (allowed && !allowed.has(c.organiser_id)) continue
+        if (rule.organisers && rule.organisers.length > 0 && !rule.organisers.includes(c.organiser_id)) continue
         seenOrganiser.add(c.organiser_id)
         await draft(c.id, 1, play.step1_template_id)
       }

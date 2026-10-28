@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CLEAR, classifyInbound, stripQuoted } from '@/lib/outreach/replies'
+import { CLEAR, classifyInbound, providerNamed, stripQuoted } from '@/lib/outreach/replies'
 import { nightsOf, trueLine, whenItRuns } from '@/lib/outreach/facts'
 import { addressRank } from '@/lib/outreach/planner'
 
@@ -76,6 +76,14 @@ describe('clear answers act; anything else waits for Lawal', () => {
   })
 })
 
+describe('the provider their reply names', () => {
+  test('named in their words, else none (the answer is then held)', () => {
+    expect(providerNamed('We already use Humanitix for tickets.')).toBe('Humanitix')
+    expect(providerNamed('we sell on trybooking')).toBe('TryBooking')
+    expect(providerNamed('We have our own system.')).toBeNull()
+  })
+})
+
 describe('bounces and automatic replies are not replies', () => {
   test('a hard bounce', () => {
     expect(classifyInbound({ subject: 'Undeliverable: Your nights', fromAddress: 'postmaster@outlook.com', text: '550 5.1.1 The email account does not exist', headers: {} })).toEqual({ kind: 'bounce', hard: true })
@@ -113,5 +121,9 @@ describe('the true line holds only the listing facts', () => {
   test('the nights', () => {
     expect(nightsOf('Open Mic Comedy')).toBe('Open Mic Comedy nights')
     expect(nightsOf('Trivia Night')).toBe('Trivia Nights')
+  })
+  test('a series before 5 pm is sessions, not nights', () => {
+    expect(nightsOf('Baby Rhyme Time', '10:30:00')).toBe('Baby Rhyme Time sessions')
+    expect(nightsOf('Saturday Live Music', '20:00:00')).toBe('Saturday Live Music nights')
   })
 })

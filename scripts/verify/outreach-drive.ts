@@ -16,7 +16,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { planPlays } from '@/lib/outreach/planner'
+import { planDms, planPlays } from '@/lib/outreach/planner'
 import { clearRecordedOutreachMail, recordedOutreachMail, runOutreachSender } from '@/lib/outreach/sender'
 import { handleInbox } from '@/lib/outreach/replies'
 
@@ -60,22 +60,24 @@ function nextBusinessMorning(): Date {
   throw new Error('no weekday in seven days')
 }
 
-const made: { organiser?: string; contact?: string; play?: string } = {}
+const made: { organiser?: string; contact?: string; play?: string; dmOrganiser?: string; dmContact?: string } = {}
 let senderBefore: Record<string, unknown> | null = null
 
 async function drive() {
   senderBefore = (await sql('select mode, changed_by, changed_at, dns_ok, dns_checked_at, dns_result from public.outreach_sender where id') as Record<string, unknown>[])[0]
   const user = (await sql('select id from auth.users order by created_at limit 1') as { id: string }[])[0].id
   const venueRow = (await sql(`select v.id, v.name, v.city_slug from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active' and s.rule = 'weekly'
-                                where v.listing_source = 'eventlinqs' and v.removed_at is null and v.city_slug is not null order by v.name limit 1`) as { id: string; name: string; city_slug: string }[])[0]
-  check('a curated venue with a weekly series on TEST', Boolean(venueRow), venueRow ? `${venueRow.name} (${venueRow.city_slug})` : 'none')
+                                where v.listing_source = 'eventlinqs' and v.removed_at is null and v.city_slug is not null
+                                  and not exists (select 1 from public.organiser_venues ov where ov.venue_id = v.id) order by v.name limit 1`) as { id: string; name: string; city_slug: string }[])[0]
+  check('a curated venue with a weekly series and no organiser yet on TEST', Boolean(venueRow), venueRow ? `${venueRow.name} (${venueRow.city_slug})` : 'none')
   const templates = (await sql(`select key, id from public.outreach_templates where version = 1 and key in ('first_invitation', 'day4_follow_up', 'day10_close')`) as { key: string; id: string }[])
   const t = Object.fromEntries(templates.map((r) => [r.key, r.id]))
   check('the stored templates are on TEST', templates.length === 3)
 
   const org = await db.from('organisers').insert({ name: 'W6 Drive Organiser', created_by: user }).select('id').single()
   made.organiser = org.data?.id
-  await db.from('organiser_venues').insert({ venue_id: venueRow.id, organiser_id: made.organiser!, linked_by: user })
+  const linked = await db.from('organiser_venues').insert({ venue_id: venueRow.id, organiser_id: made.organiser!, linked_by: user })
+  check('the drive organiser runs that venue', !linked.error, linked.error?.message ?? '')
   const contact = await db
     .from('organiser_contacts')
     .insert({
@@ -90,7 +92,7 @@ async function drive() {
 
   const play = await db
     .from('outreach_plays')
-    .insert({ name: 'W6 drive play', cohort_rule: { cities: [venueRow.city_slug] }, step1_template_id: t.first_invitation, step2_template_id: t.day4_follow_up, step3_template_id: t.day10_close, created_by: user })
+    .insert({ name: 'W6 drive play', cohort_rule: { cities: [venueRow.city_slug], organisers: [made.organiser!] }, step1_template_id: t.first_invitation, step2_template_id: t.day4_follow_up, step3_template_id: t.day10_close, created_by: user })
     .select('id')
     .single()
   made.play = play.data?.id
@@ -144,10 +146,38 @@ async function drive() {
   check('the one-click link finds it already done', oneClick.data === 'already')
   const replan = await planPlays(db, { now, origin: ORIGIN, actingUser: user })
   check('the planner drafts nothing more for them', (replan.find((p) => p.playId === made.play)?.queued ?? 1) === 0)
+
+  // DMs: drafted and held for Lawal, never queued; his send by hand is recorded.
+  const dmOrg = await db.from('organisers').insert({ name: 'W6 Drive DM Organiser', created_by: user }).select('id').single()
+  made.dmOrganiser = dmOrg.data?.id
+  const otherVenue = (await sql(`select v.id from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active' and s.rule = 'weekly'
+                                  where v.listing_source = 'eventlinqs' and v.removed_at is null and v.id <> '${venueRow.id}'
+                                    and not exists (select 1 from public.organiser_venues ov where ov.venue_id = v.id) order by v.name limit 1`) as { id: string }[])[0]
+  const dmLinked = await db.from('organiser_venues').insert({ venue_id: otherVenue.id, organiser_id: made.dmOrganiser!, linked_by: user })
+  check('the DM organiser runs another venue', !dmLinked.error, dmLinked.error?.message ?? '')
+  const dm = await db
+    .from('organiser_contacts')
+    .insert({
+      organiser_id: made.dmOrganiser!, person_name: 'Dee Drive', role: 'Instagram account', channel: 'instagram', address: 'w6.drive.dm',
+      basis: 'conspicuous_publication', published_on_url: 'https://www.eventlinqs.com.au/about', seen_on: new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10),
+      no_marketing_statement_checked: true, relevance: 'Runs the weekly night named on the venue page.', basis_recorded_by: user, basis_recorded_at: new Date().toISOString(), created_by: user,
+    })
+    .select('id')
+    .single()
+  made.dmContact = dm.data?.id
+  const dms = await planDms(db, { now, origin: ORIGIN, actingUser: user, organisers: [made.dmOrganiser!] })
+  const dmRow = await db.from('outreach_touches').select('id, state, body, provider').eq('contact_id', made.dmContact!).eq('step', 1).single()
+  check('a first DM is drafted and HELD for Lawal, never queued', dms.drafted >= 1 && dmRow.data?.state === 'held' && dmRow.data?.provider === null && (dmRow.data?.body ?? '').includes("reply stop and I won't message again"), JSON.stringify({ drafted: dms.drafted, held: dms.held, refused: dms.refused, state: dmRow.data?.state }))
+  const handSent = await db.from('outreach_touches').update({ state: 'sent', sent_at: new Date().toISOString(), sent_by: user, provider: 'by_hand' }).eq('id', dmRow.data!.id).eq('state', 'held').select('id').single()
+  check('his send by hand is recorded, with the basis kept', !handSent.error, handSent.error?.message ?? '')
+  const after = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  check('the sender never touches a DM', !after.sent.includes(dmRow.data!.id))
 }
 
 async function cleanup() {
   const c = made.contact ? `'${made.contact}'` : 'null'
+  const d = made.dmContact ? `'${made.dmContact}'` : 'null'
+  const dmo = made.dmOrganiser ? `'${made.dmOrganiser}'` : 'null'
   await sql(`begin;
     alter table public.outreach_touches disable trigger user;
     alter table public.outreach_replies disable trigger user;
@@ -156,12 +186,15 @@ async function cleanup() {
     delete from public.outreach_delivery_events where touch_id in (select id from public.outreach_touches where contact_id = ${c});
     delete from public.outreach_replies where contact_id = ${c};
     delete from public.outreach_touches where contact_id = ${c};
+    delete from public.outreach_touches where contact_id = ${d};
     delete from public.outreach_unsubscribes where email = '${ADDRESS}';
     alter table public.outreach_touches enable trigger user;
     alter table public.outreach_replies enable trigger user;
     alter table public.outreach_unsubscribes enable trigger user;
     alter table public.outreach_delivery_events enable trigger user;
-    delete from public.organiser_contacts where id = ${c};
+    delete from public.organiser_contacts where id in (${c}, ${d});
+    delete from public.organiser_venues where organiser_id = ${dmo};
+    delete from public.organisers where id = ${dmo};
     delete from public.organiser_venues where organiser_id = ${made.organiser ? `'${made.organiser}'` : 'null'};
     delete from public.organisers where id = ${made.organiser ? `'${made.organiser}'` : 'null'};
     delete from public.outreach_plays where id = ${made.play ? `'${made.play}'` : 'null'};
@@ -176,9 +209,9 @@ async function cleanup() {
       commit;`)
   }
   const left = (await sql(`select
-      (select count(*) from public.organisers where name = 'W6 Drive Organiser')::int as organisers,
-      (select count(*) from public.organiser_contacts where address = '${ADDRESS}')::int as contacts,
-      (select count(*) from public.outreach_touches where contact_id = ${c})::int as touches,
+      (select count(*) from public.organisers where name like 'W6 Drive%')::int as organisers,
+      (select count(*) from public.organiser_contacts where address in ('${ADDRESS}', 'w6.drive.dm'))::int as contacts,
+      (select count(*) from public.outreach_touches where contact_id in (${c}, ${d}))::int as touches,
       (select count(*) from public.outreach_unsubscribes where email = '${ADDRESS}')::int as unsubscribes,
       (select count(*) from public.outreach_plays where name = 'W6 drive play')::int as plays,
       (select mode from public.outreach_sender where id) as mode,

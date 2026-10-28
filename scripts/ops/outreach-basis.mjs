@@ -50,7 +50,7 @@ const AGAINST = [
   /\b(we\s+do\s+not|we\s+don'?t)\s+(accept|want|welcome)\s+(solicitations|marketing|sales)\b/i,
 ]
 
-const PATHS = ['', '/contact', '/contact-us', '/contact/', '/about', '/about-us']
+const PATHS = ['', '/contact', '/contact-us', '/about', '/about-us']
 const today = new Date().toISOString().slice(0, 10)
 
 function text(html) {
@@ -90,20 +90,21 @@ async function get(url) {
 }
 
 const organisers = await sql(`select o.id, o.name, o.website_url, o.found_on, o.notes,
-    coalesce(json_agg(json_build_object('id', c.id, 'address', c.address, 'basis', c.basis)) filter (where c.id is not null), '[]') as emails
-  from public.organisers o left join public.organiser_contacts c on c.organiser_id = o.id and c.channel = 'email'
+    coalesce(json_agg(json_build_object('id', c.id, 'address', c.address, 'basis', c.basis)) filter (where c.channel = 'email'), '[]') as emails,
+    coalesce(json_agg(json_build_object('id', c.id, 'address', c.address, 'basis', c.basis)) filter (where c.channel = 'instagram'), '[]') as instagram
+  from public.organisers o left join public.organiser_contacts c on c.organiser_id = o.id and c.channel in ('email', 'instagram')
  group by o.id order by o.name`)
 
 const report = []
 let recorded = 0
-let n = 0
-for (const o of organisers) {
-  console.log(`[${++n}/${organisers.length}] ${o.name}`)
+// Four organisers at a time: the pages are slow to answer, not heavy to read.
+async function check(o, n) {
+  console.log(`[${n}/${organisers.length}] ${o.name}`)
   const known = o.emails.map((e) => e.address)
   const site = o.website_url ?? (known[0] ? `https://${known[0].split('@')[1]}` : null)
   if (!site) {
     report.push({ organiser: o.name, outcome: 'no website and no address: nothing to check' })
-    continue
+    return
   }
   const siteDomain = domainOf(site)
   const pages = []
@@ -117,7 +118,7 @@ for (const o of organisers) {
   }
   if (pages.length === 0) {
     report.push({ organiser: o.name, outcome: `${site} could not be read: no basis recorded` })
-    continue
+    return
   }
   // Their own addresses on their own pages: at their domain, or one the cohort files already named for them.
   const candidates = new Map()
@@ -127,10 +128,33 @@ for (const o of organisers) {
       if (d === siteDomain || d.endsWith(`.${siteDomain}`) || known.includes(a)) if (!candidates.has(a)) candidates.set(a, page)
     }
   }
+  // Their Instagram handle, published by a link from their own site to the profile: the same reading as an address.
+  for (const ig of o.instagram ?? []) {
+    if (ig.basis !== 'none') continue
+    const page = pages.find((p) => new RegExp(`instagram\\.com/${ig.address.replace(/\./g, '\\.')}(?![a-z0-9._])`, 'i').test(p.html))
+    if (!page) {
+      report.push({ organiser: o.name, instagram: ig.address, outcome: 'their site does not link to this profile: no basis recorded' })
+      continue
+    }
+    const words = text(page.html)
+    const against = AGAINST.find((re) => re.test(words))
+    if (against) {
+      report.push({ organiser: o.name, instagram: ig.address, page: page.url, outcome: `a statement against messages on the page (${words.match(against)[0]}): no basis recorded` })
+      continue
+    }
+    const file = join(evidence, `instagram-${ig.address}-${today}.html`)
+    writeFileSync(file, `<!-- ${page.url}, read ${new Date().toISOString()} by scripts/ops/outreach-basis.mjs for instagram.com/${ig.address} -->\n${page.html}`)
+    const runs = (o.notes ?? '').match(/Runs: ([^.]*)\./)?.[1]
+    const relevance = `${o.name} runs ${runs && runs !== 'not stated' ? runs : 'nights'} that EventLinqs lists; an invitation to list and feature them free relates to their role as organiser.`.slice(0, 500)
+    await sql(`update public.organiser_contacts set basis = 'conspicuous_publication', published_on_url = ${q(page.url)}, seen_on = ${q(today)}, no_marketing_statement_checked = true,
+      relevance = ${q(relevance)}, evidence_file = ${q(file)}, basis_recorded_by = ${q(by)}, basis_recorded_at = now() where id = ${q(ig.id)} and basis = 'none'`)
+    recorded++
+    report.push({ organiser: o.name, instagram: ig.address, page: page.url, outcome: 'basis recorded whole (their site links to the profile)', evidence: file })
+  }
   for (const k of known) if (!candidates.has(k)) report.push({ organiser: o.name, address: k, outcome: `not found on ${pages.map((p) => p.url).join(', ')}: no basis recorded` })
   if (candidates.size === 0) {
     report.push({ organiser: o.name, outcome: `no address of theirs published on ${pages.length} page(s) of ${site}` })
-    continue
+    return
   }
   for (const [address, page] of candidates) {
     const words = text(page.html)
@@ -158,9 +182,18 @@ for (const o of organisers) {
     report.push({ organiser: o.name, address, page: page.url, outcome: 'basis recorded whole', evidence: file })
   }
 }
+const queue = organisers.map((o, i) => [o, i + 1])
+async function worker() {
+  while (queue.length) {
+    const [o, n] = queue.shift()
+    await check(o, n)
+  }
+}
+await Promise.all([worker(), worker(), worker(), worker()])
 
 writeFileSync(join(evidence, `basis-report-${today}.json`), JSON.stringify(report, null, 1))
 const read = (await sql(`select (select count(*) from public.organiser_contacts where channel = 'email')::int as email_contacts,
   (select count(*) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as with_a_whole_basis,
-  (select count(distinct organiser_id) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as organisers_writable`))[0]
+  (select count(distinct organiser_id) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as organisers_writable,
+  (select count(*) from public.organiser_contacts where channel = 'instagram' and basis <> 'none')::int as instagram_with_a_whole_basis`))[0]
 console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${join(evidence, `basis-report-${today}.json`)}`)

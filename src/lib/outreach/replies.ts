@@ -78,6 +78,13 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   return { kind: 'reply', outcome: 'unclear', confidence: distinct.length === 0 ? 0.3 : 0.5, answerKey: null }
 }
 
+const PROVIDERS = ['Humanitix', 'Eventbrite', 'TryBooking', 'Moshtix', 'Oztix', 'Ticketmaster', 'Ticketek', 'Megatix', 'Ticket Tailor', 'DICE']
+
+/** The ticketing provider their own reply names, in its own spelling, or null: the answer is then held for Lawal. */
+export function providerNamed(text: string): string | null {
+  return PROVIDERS.find((p) => new RegExp(`\\b${p}\\b`, 'i').test(text)) ?? null
+}
+
 export type InboxReport = { read: number; matched: number; unmatched: number; autoReplies: number; bounces: number; replies: { id: string; outcome: string; confidence: number; action: string }[] }
 
 const OUR_ID = /<[^<>\s]+@eventlinqs\.com>/gi
@@ -179,7 +186,7 @@ export async function handleInbox(
         contactId,
         templateKey: kind.answerKey,
         purpose,
-        extraFields: { 'thread subject': m.subject.replace(/^(re|fw|fwd):\s*/i, '') },
+        extraFields: { 'thread subject': m.subject.replace(/^(re|fw|fwd):\s*/i, ''), provider: providerNamed(stripQuoted(m.text)) },
         inReplyTo: m.internetMessageId || null,
         scheduledFor: deps.now,
         origin: deps.origin,
