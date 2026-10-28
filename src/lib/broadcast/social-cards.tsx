@@ -976,7 +976,7 @@ export async function renderSocialCard(
  * every card on this renderer takes (the event cards above, the city guide's
  * week card below), so the two can never be rasterised differently.
  */
-async function rasteriseCard(format: SocialCardFormat, element: React.ReactElement): Promise<Uint8Array> {
+export async function rasteriseCard(format: SocialCardFormat, element: React.ReactElement): Promise<Uint8Array> {
   const spec = SOCIAL_CARD_FORMATS[format]
   const fonts = await loadCardFonts()
 
