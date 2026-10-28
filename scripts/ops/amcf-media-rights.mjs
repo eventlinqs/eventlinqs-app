@@ -1,6 +1,6 @@
 /**
  * THE AMCF MEDIA-RIGHTS ROWS (the engine plan's directive, 28 October 2026 19:52: "AMCF IS THE REAL PILOT"; the
- * directive's section 8; migration 20261028201001).
+ * directive's section 8; migration 20261028205501).
  *
  * The organiser's seven photographs, one social_assets row each, organiser authorised for the AMCF 2026 night only,
  * with the whole record from scripts/ops/amcf-media-rights.manifest.json: rights holder, the original file, the day it

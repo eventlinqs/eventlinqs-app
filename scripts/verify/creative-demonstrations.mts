@@ -7,7 +7,7 @@
  *   node --env-file=<a TEST env file> node_modules/tsx/dist/cli.mjs scripts/verify/creative-demonstrations.mts <out dir>
  *
  * A  AMCF 2026: the organiser's own photographs. The night is read from TEST. Its image is the register's row when
- *    20261028201001 and the AMCF rows are on TEST; until then the same file from C:\dev\design\amcf-21oct\photos,
+ *    20261028205501 and the AMCF rows are on TEST; until then the same file from C:\dev\design\amcf-21oct\photos,
  *    served on this machine, with the manifest's focal point, and the report says so.
  * B  Kate Ceberano at Costa Hall: no authorised artist photograph exists, so editorial type; from window 4's research
  *    row (design\listings, 27 October), as the night has no listing yet, which the report names as the exception.
@@ -130,7 +130,7 @@ const demos: Demo[] = []
     const hero = manifest.photos[0]
     const meta = await sharp(readFileSync(join(PHOTOS, hero.file))).metadata()
     image = { url: `http://localhost:47124/${hero.file}`, focal: { x: hero.focal[0], y: hero.focal[1] }, width: meta.width ?? null, height: meta.height ?? null }
-    exceptions.push(`The register rows are not on TEST yet (${uerr ? `social_usable_images: ${uerr.code}` : 'no usable row'}): drawn from the same file, ${hero.file}, served on this machine with the manifest's focal point. scripts/ops/amcf-media-rights.mjs --apply enters them once 20261028201001 is on TEST.`)
+    exceptions.push(`The register rows are not on TEST yet (${uerr ? `social_usable_images: ${uerr.code}` : 'no usable row'}): drawn from the same file, ${hero.file}, served on this machine with the manifest's focal point. scripts/ops/amcf-media-rights.mjs --apply enters them once 20261028205501 is on TEST.`)
   }
   const slide: CampaignModule.Slide = {
     t: 'night',

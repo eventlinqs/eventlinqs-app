@@ -1,8 +1,8 @@
--- THE MEDIA-RIGHTS RECORD AND THE PHOTOGRAPHY-LED RULE, PROVED ON TEST AND ROLLED BACK (20261028201001).
+-- THE MEDIA-RIGHTS RECORD AND THE PHOTOGRAPHY-LED RULE, PROVED ON TEST AND ROLLED BACK (20261028205501).
 --
 -- Run red, then green, through scripts\ops\with-supabase-token.ps1 node scripts/verify/run-proof-on-test.mjs <file>:
 --   red   = 20261028153001 (the organiser's yes, which TEST does not hold yet) + this proof
---   green = 20261028153001 + 20261028201001 + this proof
+--   green = 20261028153001 + 20261028205501 + this proof
 -- The block ends by raising its verdict, so the whole transaction rolls back and TEST is left as found.
 
 DO $proof$

@@ -119,7 +119,7 @@ try {
   const { data: exp } = await db.from('social_assets').select('id').eq('asset_url', expiring).maybeSingle()
   console.log(`MADE asset ${exp?.id}`)
   await store.decideAsset(db, { id: exp?.id as string, decision: 'approved', by, now: new Date() })
-  /* A licensed photograph names no night (the photography-led rule, 20261028201001): usable on a brand piece only. */
+  /* A licensed photograph names no night (the photography-led rule, 20261028205501): usable on a brand piece only. */
   const { data: usableNow } = await db.rpc('social_asset_usable', { p_url: expiring, p_event: null, p_at: new Date().toISOString() })
   const { data: onANight } = await db.rpc('social_asset_usable', { p_url: expiring, p_event: night, p_at: new Date().toISOString() })
   const { data: usableLater } = await db.rpc('social_asset_usable', { p_url: expiring, p_event: null, p_at: new Date(Date.now() + 2 * 86_400_000).toISOString() })

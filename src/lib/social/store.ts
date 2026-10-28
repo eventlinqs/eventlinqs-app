@@ -403,7 +403,7 @@ function usableOf(r: Record<string, unknown>): UsableImage {
  * The newest image each night may carry on social now (J1 to J4, K2, K3, and the photography-led rule of 28 October):
  * its organiser's own, authorised for that night or under their logged yes for current and future events, approved,
  * in scope, unexpired and never withdrawn or replaced. The rule is the database's (social_usable_images, migration
- * 20261028201001), asked here and never restated, so the planner, the slide route and the sweep cannot disagree with
+ * 20261028205501), asked here and never restated, so the planner, the slide route and the sweep cannot disagree with
  * the approval and posting triggers. No row means the night is drawn in type (treatment B), which needs no licence (K1).
  */
 export async function usableImages(db: Db, eventIds: readonly string[], now: Date): Promise<Map<string, UsableImage>> {
