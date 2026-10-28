@@ -160,7 +160,7 @@ describe('the brand piece and the organiser campaign', () => {
     })
     it(`the organiser campaign fits (${f})`, () => {
       expectClean(
-        layoutOffer(f, { eyebrow: 'For venues and organisers', headline: 'Run regular nights in Victoria?', points: ['List them on EventLinqs for free.', 'We put them in front of people looking for something to do this week.', 'Each week we send you a post of your own to share, with a link that counts who it sends.'], url: 'eventlinqs.com.au/for-organisers' }, m),
+        layoutOffer(f, { eyebrow: 'For venues and organisers', headline: 'Run regular nights in Victoria?', points: ['List them on EventLinqs for free.', 'We put them in front of people looking for something to do this week.', 'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.'], url: 'eventlinqs.com.au/for-organisers' }, m),
       )
     })
   }

@@ -106,6 +106,14 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(o).toMatchObject({ audience: 'organisers', objective: 'organiser_growth', link: `${ORIGIN}/for-organisers`, eventIds: [] })
   })
 
+  it('the organiser campaign promises only what the planner does: a kit when a night is featured, never every week', () => {
+    const [o] = of(pieces, 'organiser_campaign')
+    expect(o.caption).not.toMatch(/each week we send|every week we send/i)
+    expect(o.caption).toContain('When we feature your night, we send you a post of your own to share')
+    /* And the planner does send it: every host featured this week has its own kit. */
+    expect(of(pieces, 'partner_kit').length).toBeGreaterThan(0)
+  })
+
   it("a partner kit for every host featured, with no message drafted until the project manager's text lands (Lawal, 14:59)", () => {
     const kits = of(pieces, 'partner_kit')
     expect(kits.map((k) => k.partnerName).sort()).toEqual(['Costa Hall', 'Geelong City Market', 'Sailors Rest', 'The Barwon Club'])

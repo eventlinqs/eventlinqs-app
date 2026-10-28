@@ -595,7 +595,7 @@ export function planCampaign(input: {
     const body = [
       'List them on EventLinqs for free.',
       'We put them in front of people looking for something to do this week.',
-      'Each week we send you a post of your own to share, with a link that counts who it sends.',
+      'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.',
     ]
     pieces.push({
       kind: 'organiser_campaign',
