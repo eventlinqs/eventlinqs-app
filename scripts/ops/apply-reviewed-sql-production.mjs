@@ -21,6 +21,22 @@ import { pathToFileURL } from 'node:url'
 const REF = 'gndnldyfudbytbboxesk'
 const LOG = 'C:/dev/PRODUCTION-WRITES.txt'
 
+/** The statements of a body, split at each semicolon outside a single-quoted value ('' is a quote inside one). */
+function splitStatements(body) {
+  const out = []
+  let cur = ''
+  let quoted = false
+  for (const ch of body) {
+    if (ch === "'") quoted = !quoted
+    if (ch === ';' && !quoted) {
+      if (cur.trim()) out.push(cur.trim())
+      cur = ''
+    } else cur += ch
+  }
+  if (cur.trim()) out.push(cur.trim())
+  return out
+}
+
 /** The statements of a reviewed file, or why it is refused. Pure. */
 export function reviewedBody(text) {
   const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => !/^\s*--/.test(l))
@@ -32,8 +48,9 @@ export function reviewedBody(text) {
   }
   const body = sql.replace(/^begin\s*;/i, '').replace(/\nrollback\s*;$/i, '').trim()
   if (body.includes('$apply$')) return { refused: 'a statement holds $apply$, which would end the DO block it runs in' }
-  // Judged statement by statement, not line by line: an insert's own select often starts a line of its own.
-  const parts = body.split(/;\s*(?:\n|$)/).filter((s) => s.trim().length > 0)
+  // Judged statement by statement, not line by line: an insert's own select often starts a line of its own, and
+  // outreach-basis writes two statements on one line. A semicolon inside a quoted value ends nothing.
+  const parts = splitStatements(body)
   if (parts.some((s) => /^select\b/i.test(s.trim()))) return { refused: 'a bare select cannot run inside a DO block; take it out of the file' }
   if (parts.length === 0) return { refused: 'there is no statement between begin and rollback' }
   return { body, statements: parts.length }

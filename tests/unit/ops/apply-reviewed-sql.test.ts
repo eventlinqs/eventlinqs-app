@@ -30,6 +30,11 @@ describe('reviewedBody', () => {
     expect(r.statements).toBe(1)
   })
 
+  test('counts two statements on one line as two, and a semicolon inside a quoted value as none, as outreach-basis writes them', () => {
+    const basis = `begin;\ninsert into t (a) values ('x; y')\n   on conflict do nothing; update t set a = 'z; w' where a = 'x';\nrollback;\n`
+    expect(reviewedBody(basis).statements).toBe(2)
+  })
+
   test('refuses a bare select, which a DO block cannot run, and an empty file', () => {
     expect(reviewedBody(ok.replace('update public', 'select count(*) from public.organisers;\nupdate public')).refused).toMatch(/select/)
     expect(reviewedBody('begin;\nrollback;\n').refused).toMatch(/no statement/)
