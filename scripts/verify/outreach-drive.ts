@@ -16,7 +16,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { planDms, planPlays } from '@/lib/outreach/planner'
+import { planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { clearRecordedOutreachMail, recordedOutreachMail, runOutreachSender } from '@/lib/outreach/sender'
 import { handleInbox } from '@/lib/outreach/replies'
 
@@ -127,6 +127,34 @@ async function drive() {
   const mime2 = mail2 ? Buffer.from(mail2.base64Mime, 'base64').toString('utf8') : ''
   check('message 5 sent in their thread', second.sent.length === 1 && mime2.includes('In-Reply-To: <w6-drive-yes@venue.example>'), JSON.stringify({ sent: second.sent.length, failed: second.failed, refused: second.refused }))
 
+  // Message 9 on its trigger (29 October): not while a night is listed in the next 30 days; drafted once when none is.
+  const in30 = new Date(now.getTime() + 30 * 86_400_000).toISOString()
+  const ahead = (await sql(`select count(*)::int as n from public.events where venue_id = '${venueRow.id}' and status = 'published' and visibility = 'public'
+                              and start_date >= '${now.toISOString()}' and start_date < '${in30}'`) as { n: number }[])[0].n
+  const partners = { organisers: [made.organiser!] }
+  const first9 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  if (ahead > 0) {
+    check(`message 9 waits while the venue has ${ahead} night(s) listed in the next 30 days`, first9.queued === 0 && first9.notDue.some((n) => n.why.includes('night listed')), JSON.stringify(first9))
+    const quiet = (await sql(`select v.id, v.name from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active' and s.rule = 'weekly'
+                                where v.listing_source = 'eventlinqs' and v.removed_at is null and v.id <> '${venueRow.id}'
+                                  and not exists (select 1 from public.organiser_venues ov where ov.venue_id = v.id)
+                                  and not exists (select 1 from public.events e where e.venue_id = v.id and e.status = 'published' and e.start_date >= '${now.toISOString()}' and e.start_date < '${in30}')
+                                order by v.name limit 1`) as { id: string; name: string }[])[0]
+    check('a weekly venue with nothing listed in the next 30 days on TEST', Boolean(quiet), quiet?.name ?? 'none')
+    await db.from('organiser_venues').delete().eq('organiser_id', made.organiser!)
+    const moved = await db.from('organiser_venues').insert({ venue_id: quiet.id, organiser_id: made.organiser!, linked_by: user })
+    check('the partner now runs only that venue', !moved.error, moved.error?.message ?? '')
+  }
+  const due9 = ahead > 0 ? await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners }) : first9
+  check('with nothing listed in the next 30 days, message 9 is drafted and queued after their yes', due9.queued === 1 && due9.held.length === 0 && due9.refused.length === 0, JSON.stringify(due9))
+  const fourth = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  const mail9 = recordedOutreachMail()[2]
+  const mime9 = mail9 ? Buffer.from(mail9.base64Mime, 'base64').toString('utf8') : ''
+  const body9 = mime9 ? Buffer.from(mime9.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : ''
+  check('message 9 goes: Hi Sam, anything coming up at the venue, with the one-click pair', fourth.sent.length === 1 && body9.startsWith('Hi Sam,') && /Subject: Anything coming up at /.test(mime9) && mime9.includes('List-Unsubscribe-Post: List-Unsubscribe=One-Click'), body9.split('\n').slice(0, 3).join(' / '))
+  const again9 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 9 is not asked again within 30 days', again9.queued === 0 && again9.notDue.some((n) => n.why.startsWith('asked on')), JSON.stringify(again9))
+
   const stop = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],
@@ -135,7 +163,7 @@ async function drive() {
   const suppressed = await db.from('outreach_unsubscribes').select('id').eq('email', ADDRESS)
   check('their stop is suppressed at once', stop.replies[0]?.outcome === 'stop' && (suppressed.data?.length ?? 0) === 1, JSON.stringify(stop.replies))
   const third = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
-  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 3, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
+  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 4, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
   const again = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],

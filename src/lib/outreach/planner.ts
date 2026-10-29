@@ -197,3 +197,101 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
   }
   return reports
 }
+
+/* ------------------------------------------------------------------ partner messages on their triggers */
+
+/**
+ * MESSAGE 9, ANYTHING COMING UP, ON ITS TRIGGER (window 6, 29 October 2026; the PM's messages file: "partner, nothing
+ * listed in the next 30 days"; the engine plan's FULL AUTOMATION: it sends without Lawal).
+ *
+ * A partner is an organiser one of whose email contacts said yes (outreach_replies yes or interested) or gave their own
+ * words of consent. Each run, a partner who runs a venue, has no published public night at any of its venues in the
+ * next 30 days, and was not asked in the last 30 days, gets message 9 drafted to the contact who said yes. It is filled
+ * and judged like every message (draftFromTemplate) and the database lets it go only after their yes; nothing here
+ * sends, and nothing sends while the sender is on hold.
+ */
+export const ANYTHING_COMING_UP_DAYS = 30
+
+export type PartnerState = { organiserId: string; contactId: string; venueIds: string[]; upcomingNights: number; lastAskedAt: Date | null }
+
+/** Why message 9 is not due for this partner now, or null when it is. */
+export function anythingComingUpRefusal(p: PartnerState, now: Date): string | null {
+  if (p.venueIds.length === 0) return 'no venue is linked to this organiser, and the message names one'
+  if (p.upcomingNights > 0) return `${p.upcomingNights} night listed in the next ${ANYTHING_COMING_UP_DAYS} days`
+  if (p.lastAskedAt && now.getTime() - p.lastAskedAt.getTime() < ANYTHING_COMING_UP_DAYS * 86_400_000) {
+    return `asked on ${p.lastAskedAt.toISOString().slice(0, 10)}, under ${ANYTHING_COMING_UP_DAYS} days ago`
+  }
+  return null
+}
+
+export type RelationshipReport = { partners: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
+
+/** organisers, when named, limits the run to them (the TEST drive's own), as planDms does. */
+export async function planRelationship(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<RelationshipReport> {
+  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [] }
+  const yes = await db.from('outreach_replies').select('contact_id, received_at').in('outcome', ['yes', 'interested']).order('received_at', { ascending: false })
+  if (yes.error) throw new Error(`outreach_replies: ${yes.error.message}`)
+  const consent = await db.from('organiser_contacts').select('id').eq('basis', 'express_consent').eq('channel', 'email')
+  if (consent.error) throw new Error(`organiser_contacts: ${consent.error.message}`)
+  const ids = [...new Set([...(yes.data ?? []).map((r) => r.contact_id), ...(consent.data ?? []).map((c) => c.id)])]
+  if (ids.length === 0) return report
+  const contacts = await db.from('organiser_contacts').select('id, organiser_id').in('id', ids).eq('channel', 'email')
+  if (contacts.error) throw new Error(`organiser_contacts: ${contacts.error.message}`)
+  // One contact per partner: the most recent yes first, in the order the replies were read.
+  const order = new Map(ids.map((id, i) => [id, i]))
+  const byOrganiser = new Map<string, string>()
+  for (const c of [...(contacts.data ?? [])].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))) {
+    if (!byOrganiser.has(c.organiser_id)) byOrganiser.set(c.organiser_id, c.id)
+  }
+  report.partners = byOrganiser.size
+
+  const template = await db.from('outreach_templates').select('id').eq('key', 'anything_coming_up')
+  if (template.error) throw new Error(`outreach_templates: ${template.error.message}`)
+  const templateIds = (template.data ?? []).map((t) => t.id)
+  const until = new Date(deps.now.getTime() + ANYTHING_COMING_UP_DAYS * 86_400_000)
+
+  for (const [organiserId, contactId] of byOrganiser) {
+    if (deps.organisers && !deps.organisers.includes(organiserId)) continue
+    const links = await db.from('organiser_venues').select('venue_id').eq('organiser_id', organiserId)
+    if (links.error) throw new Error(`organiser_venues: ${links.error.message}`)
+    const venueIds = (links.data ?? []).map((l) => l.venue_id)
+    let upcomingNights = 0
+    if (venueIds.length > 0) {
+      const nights = await db
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .in('venue_id', venueIds)
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .gte('start_date', deps.now.toISOString())
+        .lt('start_date', until.toISOString())
+      if (nights.error) throw new Error(`events: ${nights.error.message}`)
+      upcomingNights = nights.count ?? 0
+    }
+    let lastAskedAt: Date | null = null
+    if (templateIds.length > 0) {
+      const partnerContacts = await db.from('organiser_contacts').select('id').eq('organiser_id', organiserId)
+      if (partnerContacts.error) throw new Error(`organiser_contacts: ${partnerContacts.error.message}`)
+      const asked = await db
+        .from('outreach_touches')
+        .select('drafted_at')
+        .in('contact_id', (partnerContacts.data ?? []).map((c) => c.id))
+        .in('template_id', templateIds)
+        .neq('state', 'void')
+        .order('drafted_at', { ascending: false })
+        .limit(1)
+      if (asked.error) throw new Error(`outreach_touches: ${asked.error.message}`)
+      lastAskedAt = asked.data?.[0] ? new Date(asked.data[0].drafted_at as string) : null
+    }
+    const why = anythingComingUpRefusal({ organiserId, contactId, venueIds, upcomingNights, lastAskedAt }, deps.now)
+    if (why) {
+      report.notDue.push({ organiserId, why })
+      continue
+    }
+    const r = await draftFromTemplate(db, { contactId, templateKey: 'anything_coming_up', purpose: 'relationship', scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
+    if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
+    else report.queued++
+  }
+  return report
+}
