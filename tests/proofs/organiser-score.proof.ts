@@ -62,21 +62,35 @@ it('scores every organiser on TEST from its real rows, and the numbers hold from
     if (a.state === 'scored' && b.state === 'scored') expect(a.score).toBeGreaterThanOrEqual(b.score)
   }
 
-  const top = scored[0]
-  if (top && top.state === 'scored') {
-    const nightsSaid = Number(/^(\d+) night/.exec(top.why.frequency)?.[1])
-    const [{ nights }] = await query(`
-      select count(distinct e.id)::int as nights
-        from public.events e
-        left join public.organiser_venues ov on ov.venue_id = e.venue_id and ov.organiser_id = '${top.id}'
-        left join public.venues v on v.id = ov.venue_id and v.removed_at is null
-        left join public.organisers o on o.id = '${top.id}'
-       where e.status = 'published' and e.visibility = 'public'
-         and e.start_date >= '${now.toISOString()}' and e.start_date <= '${new Date(now.getTime() + HORIZON_DAYS * 86_400_000).toISOString()}'
-         and (v.id is not null or (o.organisation_id is not null and e.organisation_id = o.organisation_id))`)
-    console.log(`independent SQL count for the top organiser: ${nights} night(s) ahead; the reader said ${nightsSaid}`)
-    expect(nightsSaid).toBeLessThanOrEqual(nights)
+  // Every organiser's nights ahead, counted independently in SQL (outside-ticket nights included, as a listing shows
+  // them), against what the reader said. The listing window and the 21-day freshness are applied as the app applies
+  // them, so the two must agree exactly, not merely bound each other.
+  const fromIso = now.toISOString()
+  const untilIso = new Date(now.getTime() + HORIZON_DAYS * 86_400_000).toISOString()
+  const counted = await query(`
+    select o.id, count(distinct e.id)::int as nights,
+           count(distinct e.id) filter (where coalesce(btrim(e.external_ticket_url), '') <> '')::int as outside
+      from public.organisers o
+      left join public.organiser_venues ov on ov.organiser_id = o.id
+      left join public.venues v on v.id = ov.venue_id and v.removed_at is null
+      left join public.events e on (e.venue_id = v.id or (o.organisation_id is not null and e.organisation_id = o.organisation_id))
+           and e.status = 'published' and e.visibility = 'public'
+           and e.start_date >= '${fromIso}' and e.start_date <= '${untilIso}'
+           and (e.listing_fresh_until is null or e.listing_fresh_until >= '${fromIso}')
+     group by o.id`)
+  const sqlNights = new Map(counted.map((r: { id: string; nights: number }) => [r.id, r.nights]))
+  const outside = counted.reduce((n: number, r: { outside: number }) => n + r.outside, 0)
+  let agree = 0
+  const differ: string[] = []
+  for (const r of scored) {
+    if (r.state !== 'scored') continue
+    const said = Number(/^(\d+) night/.exec(r.why.frequency)?.[1])
+    if (said === sqlNights.get(r.id)) agree++
+    else differ.push(`${r.name}: reader ${said}, SQL ${sqlNights.get(r.id)}`)
   }
+  console.log(`independent SQL count: ${agree} of ${scored.length} organisers agree on nights ahead; ${outside} outside-ticket night(s) among them`)
+  for (const d of differ.slice(0, 10)) console.log(`  DIFFERS ${d}`)
+  expect(differ).toEqual([])
 
   console.log(`TEST: ${rows.length} organisers read, ${scored.length} scored, ${stopped.length} stopped (never ranked)`)
   for (const r of scored.slice(0, 5)) {

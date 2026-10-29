@@ -66,7 +66,10 @@ export async function readOrganiserScores(db: Admin, now: Date = new Date()): Pr
       const rows = await readEveryRow<NightRow>(`the nights ahead by ${column}`, (a, b) =>
         applyPublicEventVisibility(
           db.from('events').select(NIGHT_COLUMNS).in(column, chunk).gte('start_date', fromIso).lte('start_date', untilIso).order('id', { ascending: true }),
-          { now },
+          // The score lists an organiser's nights, it does not promote a sale, so a night sold on an outside site
+          // counts (public-visibility.ts clause 4); without this every outside-ticket night was dropped and value
+          // could only ever count EventLinqs tickets and registration.
+          { now, includeExternal: true },
         ).range(a, b),
       )
       for (const r of rows) nightsById.set(r.id, r)
