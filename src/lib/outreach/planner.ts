@@ -224,11 +224,13 @@ export function anythingComingUpRefusal(p: PartnerState, now: Date): string | nu
   return null
 }
 
-export type RelationshipReport = { partners: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
+type DraftTally = { queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
+/** Message 9's tally at the top level; message 8's in afterNight. */
+export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally }
 
 /** organisers, when named, limits the run to them (the TEST drive's own), as planDms does. */
 export async function planRelationship(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<RelationshipReport> {
-  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [] }
+  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] } }
   const yes = await db.from('outreach_replies').select('contact_id, received_at').in('outcome', ['yes', 'interested']).order('received_at', { ascending: false })
   if (yes.error) throw new Error(`outreach_replies: ${yes.error.message}`)
   const consent = await db.from('organiser_contacts').select('id').eq('basis', 'express_consent').eq('channel', 'email')
@@ -293,5 +295,78 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
     else report.queued++
   }
+
+  // Message 8: each night report from two to seven days old, not sent by hand, to the partner whose venue held the night.
+  const reports = await db
+    .from('organiser_night_reports')
+    .select('id, event_id, figures, night_ended_at')
+    .is('sent_at', null)
+    .lte('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_DUE_DAYS * 86_400_000).toISOString())
+    .gt('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_STALE_DAYS * 86_400_000).toISOString())
+    .order('night_ended_at')
+    .limit(200)
+  if (reports.error) throw new Error(`organiser_night_reports: ${reports.error.message}`)
+  for (const night of reports.data ?? []) {
+    const already = await db.from('outreach_touches').select('id').eq('night_report_id', night.id).neq('state', 'void').limit(1)
+    if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
+    if ((already.data ?? []).length > 0) continue
+    const event = await db.from('events').select('title, venue_id').eq('id', night.event_id).maybeSingle()
+    if (event.error) throw new Error(`events: ${event.error.message}`)
+    if (!event.data?.venue_id) continue
+    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
+    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
+    if (!organiserId) continue
+    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now)
+    if (why) {
+      report.afterNight.notDue.push({ organiserId, why })
+      continue
+    }
+    const contactId = byOrganiser.get(organiserId)!
+    const r = await draftFromTemplate(db, {
+      contactId,
+      templateKey: 'after_your_night',
+      purpose: 'relationship',
+      extraFields: afterYourNightFields(night.figures, event.data.title),
+      nightReportId: night.id,
+      scheduledFor: deps.now,
+      origin: deps.origin,
+      draftedBy: deps.actingUser,
+    })
+    if (r.state === 'refused') report.afterNight.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.afterNight.held.push({ contactId, why: r.value.heldBecause })
+    else report.afterNight.queued++
+  }
   return report
+}
+
+/**
+ * MESSAGE 8, AFTER YOUR NIGHT (the PM's messages file: "2 days after; counted figures only ... clicks never called
+ * sales"; the PM's ruling of 29 October, 16:28; window 5's 16:33: the send is recorded once, on this message's row).
+ * Its figures are window 5's organiser_night_reports, read as they were counted; a field the report does not hold stays
+ * empty, so the message is held for Lawal rather than saying a number nobody counted.
+ */
+export const AFTER_YOUR_NIGHT_DUE_DAYS = 2
+export const AFTER_YOUR_NIGHT_STALE_DAYS = 7
+
+/** Why message 8 is not due for a night that ended at endedAt, or null when it is. */
+export function afterYourNightRefusal(endedAt: Date, now: Date): string | null {
+  const days = (now.getTime() - endedAt.getTime()) / 86_400_000
+  if (days < AFTER_YOUR_NIGHT_DUE_DAYS) return 'the night ended under two days ago'
+  if (days >= AFTER_YOUR_NIGHT_STALE_DAYS) return `the night ended ${Math.floor(days)} days ago, too late to report`
+  return null
+}
+
+const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
+
+/** The message's fields from a report's figures (window 5's NightFigures), each a counted number or empty. */
+export function afterYourNightFields(figures: unknown, title: string): Record<string, string | null> {
+  const f = (figures && typeof figures === 'object' ? figures : {}) as { viewers?: unknown; pressesOut?: { people?: unknown }; ownLink?: { arrivals?: unknown } | null }
+  return {
+    night: title,
+    gig: 'night',
+    views: countOf(f.viewers),
+    clicks: countOf(f.pressesOut?.people),
+    'share clicks': f.ownLink ? countOf(f.ownLink.arrivals) : null,
+  }
 }

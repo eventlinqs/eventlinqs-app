@@ -27,6 +27,8 @@ export type DraftRequest = {
   extraFields?: Record<string, string | null>
   /** The inbound message this answers, so it sits in their thread. */
   inReplyTo?: string | null
+  /** Message 8: the night report it was drafted from; the database holds one live message per report. */
+  nightReportId?: string | null
   scheduledFor: Date
   origin: string
   draftedBy: string
@@ -79,6 +81,7 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
       provider: state === 'queued' ? 'graph' : null,
       scheduled_for: state === 'queued' ? r.scheduledFor.toISOString() : null,
       in_reply_to: r.inReplyTo ?? null,
+      night_report_id: r.nightReportId ?? null,
       drafted_by: r.draftedBy,
     })
     .select('id')

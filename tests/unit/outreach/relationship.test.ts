@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest'
-import { ANYTHING_COMING_UP_DAYS, anythingComingUpRefusal, type PartnerState } from '@/lib/outreach/planner'
+import {
+  AFTER_YOUR_NIGHT_DUE_DAYS,
+  AFTER_YOUR_NIGHT_STALE_DAYS,
+  ANYTHING_COMING_UP_DAYS,
+  afterYourNightFields,
+  afterYourNightRefusal,
+  anythingComingUpRefusal,
+  type PartnerState,
+} from '@/lib/outreach/planner'
 
 /* Message 9, ANYTHING COMING UP (the PM's messages file: "partner, nothing listed in the next 30 days"; the engine plan's
    FULL AUTOMATION: it sends on its trigger without Lawal). Window 6, 29 October 2026. */
@@ -34,5 +42,35 @@ describe('message 9, anything coming up', () => {
 
   test('the window is the plan\'s 30 days', () => {
     expect(ANYTHING_COMING_UP_DAYS).toBe(30)
+  })
+})
+
+/* Message 8, AFTER YOUR NIGHT (the PM's messages file: "2 days after; counted figures only ... clicks never called
+   sales"; the PM's 16:28: each once, held on a missing field). Its figures are window 5's organiser_night_reports. */
+
+const ended = new Date('2026-10-25T12:00:00Z')
+const figures = { viewers: 42, pressesOut: { people: 9, bySite: [] }, ownLink: { arrivals: 3 } }
+
+describe('message 8, after your night', () => {
+  test('due two days after the night ended, and not before', () => {
+    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + 2 * day))).toBeNull()
+    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + 2 * day - 60_000))).toMatch(/two days/)
+  })
+
+  test('a report a week old or more is not sent late', () => {
+    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + AFTER_YOUR_NIGHT_STALE_DAYS * day))).toMatch(/late/)
+    expect([AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS]).toEqual([2, 7])
+  })
+
+  test('the counted figures fill the message: views, people sent on, own-link arrivals', () => {
+    expect(afterYourNightFields(figures, 'Trivia at Bonnibel')).toEqual({ night: 'Trivia at Bonnibel', gig: 'night', views: '42', clicks: '9', 'share clicks': '3' })
+  })
+
+  test('no own link is a missing field, so the message is held, never a false zero', () => {
+    expect(afterYourNightFields({ ...figures, ownLink: null }, 'Trivia at Bonnibel')['share clicks']).toBeNull()
+  })
+
+  test('figures that are not the shape window 5 writes fill nothing', () => {
+    expect(afterYourNightFields({}, 'Trivia at Bonnibel')).toMatchObject({ views: null, clicks: null, 'share clicks': null })
   })
 })
