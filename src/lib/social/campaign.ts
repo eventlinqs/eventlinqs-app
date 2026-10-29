@@ -1,5 +1,6 @@
 import type { Cta } from '@/lib/events/cta'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
+import { carriesBannedWord, quotableSummary } from './words'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -134,6 +135,8 @@ export type PiecePlan = {
   /** The partner's night, whose own tracked link the kit carries (minted by the store). */
   partnerEventId: string | null
   message: string | null
+  /** The organisers' own names it quotes exactly (its nights' titles and hosts, its partner), set by planCampaign. */
+  names?: string[]
 }
 
 /** A night to ask its organiser an image for (J5); the words wait for the project manager's text (Lawal, 14:59). */
@@ -276,7 +279,7 @@ function metaOf(n: CampaignNight): string {
 }
 
 function whyOf(n: CampaignNight): string | null {
-  const s = (n.summary ?? '').replace(/\s+/g, ' ').trim()
+  const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
   if (!s) return null
   const first = s.match(/^.*?[.?](\s|$)/)?.[0]?.trim() ?? s
   return first.length <= 140 ? first : `${first.slice(0, 137).replace(/\s+\S*$/, '')}.`
@@ -409,6 +412,9 @@ export function pieceRefusal(p: PiecePlan): string | null {
   for (const text of [p.caption, p.versions.instagram.caption, p.versions.facebook.caption]) {
     if (/[!\u2013\u2014]/.test(text)) return 'A caption carries an exclamation mark or a long dash.'
   }
+  /* The one rule of a post's words (words.ts carriesBannedWord): every word the piece says, its names taken out. */
+  const said = [p.caption, p.versions.instagram.caption, p.versions.facebook.caption, p.message ?? '', p.nextStep, p.purpose, JSON.stringify(p.slides)]
+  if (said.some((text) => carriesBannedWord(text, p.names ?? []))) return 'The words carry a banned word. Say community.'
   if ((p.kind === 'partner_kit') !== (p.partnerName !== null)) return 'A partner kit names its partner, and only a partner kit does.'
   if (p.kind === 'organiser_campaign' && p.eventIds.length > 0) return 'The organiser campaign advertises no night: it is its own asset (J11).'
   if (p.kind === 'brand_campaign' && (p.eventIds.length > 0 || p.picks.length > 0)) return 'A brand piece names no night, so no photograph on it is taken for one.'
@@ -687,6 +693,13 @@ export function planCampaign(input: {
   for (const n of shown.values()) {
     if (n.approvedPhotoUrl || !n.host) continue
     imageRequests.push({ eventId: n.eventId, hostName: n.host })
+  }
+
+  /* The names each piece quotes exactly: its nights' own titles and hosts, and its partner's (pieceRefusal). */
+  const byId = new Map(input.nights.map((n) => [n.eventId, n]))
+  for (const p of pieces) {
+    const nights = p.eventIds.map((id) => byId.get(id)).filter((n): n is CampaignNight => n !== undefined)
+    p.names = [...new Set([...nights.flatMap((n) => [n.title, n.host ?? '']), p.partnerName ?? ''].filter((s) => s.trim() !== ''))]
   }
 
   return { pieces, imageRequests }

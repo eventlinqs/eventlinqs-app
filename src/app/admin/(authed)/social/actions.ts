@@ -13,6 +13,8 @@ import {
   addAsset,
   approveDraft,
   approvePieceChecked,
+  approveWeekChecked,
+  type WeekApproved,
   decideAsset,
   editPiece,
   excludeNight,
@@ -135,6 +137,18 @@ export async function approvePieceAction(formData: FormData): Promise<void> {
   await recordAuditEvent({ action: 'admin.social.piece.approve', targetType: 'social_piece', targetId: piece, session })
   revalidatePath('/admin/social')
   back('Approved. Post it, then record where it went.')
+}
+
+/** The week in one press (B3): every piece still waiting through the same checks; each held one said with its reason. */
+export async function approveWeekAction(): Promise<void> {
+  const session = await staff()
+  const done = await approveWeekChecked(createAdminClient(), { by: session.userId, now: new Date(), siteOrigin: await siteOrigin() })
+  if (done === null) back('Plan this week first.')
+  const { approved, held } = done as WeekApproved
+  for (const piece of approved) await recordAuditEvent({ action: 'admin.social.piece.approve', targetType: 'social_piece', targetId: piece, session, metadata: { by: 'approve-week' } })
+  revalidatePath('/admin/social')
+  const said = approved.length === 0 && held.length === 0 ? 'Nothing is waiting: every piece is approved, rejected or gone already.' : `${approved.length} piece${approved.length === 1 ? '' : 's'} approved.`
+  back(`${said}${held.length === 0 ? '' : ` Held: ${held.map((h) => `${h.label}: ${h.reason}`).join(' ')}`}`)
 }
 
 export async function rejectPieceAction(formData: FormData): Promise<void> {

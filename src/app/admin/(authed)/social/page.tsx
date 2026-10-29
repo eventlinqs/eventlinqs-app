@@ -12,6 +12,7 @@ import {
   withdrawAssetAction,
   approveAction,
   approvePieceAction,
+  approveWeekAction,
   decideAssetAction,
   editPieceAction,
   excludeNightAction,
@@ -353,11 +354,20 @@ function CampaignSection({ campaign, requests }: { campaign: { weekStart: string
     <section data-section="campaign" className="mb-8">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-display text-lg font-semibold text-white">This week&apos;s campaign</h2>
-        <form action={planWeekAction}>
-          <button type="submit" data-press="plan-campaign" className={QUIET}>
-            Plan this week
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={planWeekAction}>
+            <button type="submit" data-press="plan-campaign" className={QUIET}>
+              Plan this week
+            </button>
+          </form>
+          {campaign !== null && campaign.pieces.some((p) => p.state === 'drafted') ? (
+            <form action={approveWeekAction}>
+              <button type="submit" data-press="approve-week" className={BUTTON}>
+                Check and approve every piece waiting
+              </button>
+            </form>
+          ) : null}
+        </div>
       </div>
       <p className="mb-4 max-w-2xl text-sm text-white/60">
         One campaign a week: the week ahead and the weekend guide for each city, a Discovery Reel, a venue spotlight, the organiser campaign, and a

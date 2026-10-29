@@ -126,6 +126,11 @@ export type SocialCardInput = {
    * foot, in the words the night's page uses.
    */
   libraryPhoto?: boolean
+  /**
+   * The approved register row's own credit for the cover (src/lib/social/store.ts cardOf): printed "Photo: <credit>" at
+   * the foot, so an archival photograph says so wherever it is drawn (the project manager's ruling, 29 October 2026).
+   */
+  photoCredit?: string | null
 }
 
 /** One set of numbers, scaled to the format width. */
@@ -522,6 +527,20 @@ function Wordmark({ input, px, size }: { input: SocialCardInput; px: Px; size: n
           }}
         >
           <span>Photo from the EventLinqs library. It is not this venue.</span>
+        </div>
+      ) : null}
+      {input.photoCredit ? (
+        <div
+          style={{
+            display: 'flex',
+            color: 'rgba(255,255,255,0.42)',
+            fontFamily: BODY_FAMILY,
+            fontWeight: 600,
+            fontSize: Math.round(size * 0.72),
+            letterSpacing: px(0.4),
+          }}
+        >
+          <span>{`Photo: ${input.photoCredit}`}</span>
         </div>
       ) : null}
     </div>
