@@ -19,7 +19,9 @@ import { pathToFileURL } from 'node:url'
 const PRODUCTION_REF = 'gndnldyfudbytbboxesk'
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const LOG = 'C:/dev/PRODUCTION-WRITES.txt'
-const LEFT_BEHIND = new Set(['id', 'created_at', 'updated_at', 'last_checked_at', 'last_outcome', 'last_success_at'])
+// acquisition_order is generated from source_type (20261028140001:54) and production refuses a typed value, quoted
+// 'cannot insert a non-DEFAULT value into column "acquisition_order"' (the first APPLY, 29 October 2026, nothing written).
+const LEFT_BEHIND = new Set(['id', 'created_at', 'updated_at', 'last_checked_at', 'last_outcome', 'last_success_at', 'acquisition_order'])
 const TEST_IDS = ['organisation_id', 'venue_id', 'category_id']
 const READ_BY = ['may_scrape', 'may_subscribe', 'may_use_dataset']
 
@@ -105,6 +107,25 @@ async function main() {
   if (plan.rows.length === 0) {
     console.log('Nothing to write.')
     return 0
+  }
+  // Production's own generated columns, read before anything is written: a column the database computes is never typed.
+  const gen = await fetch(`https://api.supabase.com/v1/projects/${PRODUCTION_REF}/database/query`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      query: "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'listing_sources' and is_generated = 'ALWAYS'",
+      read_only: true,
+    }),
+  })
+  if (!gen.ok) {
+    console.log(`REFUSED: production's generated columns could not be read (HTTP ${gen.status}); nothing written`)
+    return 1
+  }
+  const generated = (await gen.json()).map((r) => r.column_name)
+  const typed = generated.filter((c) => plan.rows.some((r) => c in r))
+  if (typed.length > 0) {
+    console.log(`REFUSED: the plan types ${typed.join(', ')}, which production generates; nothing written`)
+    return 1
   }
   if (askLine(`Type APPLY to register ${plan.rows.length} source(s) on PRODUCTION: `) !== 'APPLY') {
     console.log('NOT APPLIED: the confirmation was not APPLY; nothing was written')

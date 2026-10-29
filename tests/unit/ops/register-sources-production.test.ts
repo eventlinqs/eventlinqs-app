@@ -53,6 +53,12 @@ describe('planRegister', () => {
     expect(tied.refused[0]).toMatch(/organisation_id/)
   })
 
+  test('a generated column stays behind: production computes acquisition_order from source_type and refuses a typed one', () => {
+    const plan = planRegister([{ ...feed, acquisition_order: 2 }], TODAY)
+    expect(plan.rows[0]).not.toHaveProperty('acquisition_order')
+    expect(plan.sql).not.toContain('acquisition_order')
+  })
+
   test('quotes are escaped, so a quote holding an apostrophe cannot end its string', () => {
     const plan = planRegister([{ ...feed, may_subscribe_quote: "Subscribe to the library's calendar." }], TODAY)
     expect(plan.sql).toContain("'Subscribe to the library''s calendar.'")
