@@ -192,7 +192,7 @@ export default async function OrganisationMediaPage({
                     {a.withdrawal_status === 'current' ? (STATE_WORDS[a.approval_status] ?? a.approval_status) : a.withdrawal_status === 'replaced' ? 'Replaced' : 'Withdrawn'}
                   </p>
                   {a.withdrawal_status === 'current' ? (
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <ReplaceMediaForm assetId={a.id} />
                       <WithdrawMediaForm assetId={a.id} />
                     </div>
