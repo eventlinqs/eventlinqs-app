@@ -19,7 +19,8 @@
  *
  * TWO MODES. --test writes on TEST. --production --organiser "<name>" READS production through the SELECT-only reader
  * (scripts/lib/production-select.mjs) and writes NOTHING there: every write it would make goes into one file ending in
- * ROLLBACK, for Lawal's APPLY or window 4's logged apply (operating rule 4). It runs for one named organiser only.
+ * ROLLBACK, for Lawal's APPLY or window 4's logged apply (operating rule 4). It runs for one named organiser, or with
+ * --every-organiser for all of them (the first cohort, 29 October 2026), and refuses to run naming neither or both.
  * (Until 29 October this header promised that dry run while the code refused anything but --test; window 6.)
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -33,9 +34,12 @@ const by = arg('--by')
 const evidence = arg('--evidence') ?? 'C:/dev/EVIDENCE/CRM-28OCT/basis'
 const token = process.env.SUPABASE_ACCESS_TOKEN
 const production = args.includes('--production')
-const modeOk = production ? !args.includes('--test') && Boolean(arg('--organiser')) : args.includes('--test')
+// Production names its reach out loud: one organiser (--organiser), or every organiser (--every-organiser, the first
+// cohort's step 2 under the project manager's R4 of 29 October 2026); never the two together, never neither.
+const every = args.includes('--every-organiser')
+const modeOk = production ? !args.includes('--test') && (Boolean(arg('--organiser')) !== every) : args.includes('--test')
 if (!by || !/^[0-9a-f-]{36}$/i.test(by) || !modeOk || !token) {
-  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> (--test | --production --organiser "<name>") [--evidence <dir>]')
+  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> (--test | --production (--organiser "<name>" | --every-organiser)) [--evidence <dir>]')
   process.exit(2)
 }
 mkdirSync(evidence, { recursive: true })
@@ -219,6 +223,6 @@ const read = (await sql(`select (select count(*) from public.organiser_contacts 
   (select count(*) from public.organiser_contacts where channel = 'instagram' and basis <> 'none')::int as instagram_with_a_whole_basis`))[0]
 if (production) {
   const dry = join(evidence, `outreach-basis-PRODUCTION-DRY-RUN-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`)
-  writeFileSync(dry, `-- Bases for ${arg('--organiser')} on production, from scripts/ops/outreach-basis.mjs --production. Dry run: ends in ROLLBACK.\n-- Each statement only fills a contact whose basis is still 'none'. Report: ${reportFile}\nbegin;\n${held.map((s) => `${s};`).join('\n')}\nrollback;\n`)
+  writeFileSync(dry, `-- Bases for ${every ? 'every organiser' : arg('--organiser')} on production, from scripts/ops/outreach-basis.mjs --production. Dry run: ends in ROLLBACK.\n-- Each statement only fills a contact whose basis is still 'none'. Report: ${reportFile}\nbegin;\n${held.map((s) => `${s};`).join('\n')}\nrollback;\n`)
   console.log(`organisers checked ${organisers.length}; bases this run would record ${recorded}, NOTHING WRITTEN on production; dry run ${dry}; production now ${JSON.stringify(read)}; report ${reportFile}`)
 } else console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${reportFile}`)
