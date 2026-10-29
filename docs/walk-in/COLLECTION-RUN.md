@@ -48,7 +48,8 @@ C. Candidates as draft events. Loses on 5 and on the lifecycle: drafts are the o
   (WI3's `sameEvent`: a second source adds a link).
 - `src/lib/listings/collect-run.ts` and `collect-store.ts`: one run, robots.txt before the page, one page per source,
   each outcome on the source's row, a budget inside Vercel's 300 seconds.
-- `src/app/api/cron/collection-run`: weekly, Sunday 19:00 UTC (Monday 6 am in Melbourne).
+- `src/app/api/cron/collection-run`: daily from the engine plan of 28 October 2026, 19:00 UTC (6 am in Melbourne in
+  daylight time); each source is still read only on its own pace (daily, weekly, monthly or rarely).
 - `/admin/collected`: what waits, each Accept or Refuse with a reason, and the register with each source's last
   outcome. Accepting an `adds_links` find writes its links to the event as curated links (WI3); accepting a new
   listing marks it for the import, which publishes every listing.
@@ -110,3 +111,38 @@ The checklist (START-16OCT/EVENTLINQS-RELEASE-CHECKLIST-28OCT.md): D2 "Five sepa
   `--production`). The database's rules on TEST: `scripts/verify/listing-sources-register-proof.sql`, rolled back.
 
 Venue partnership asks (D7), drafts for Lawal only: C:\dev\EVIDENCE\COLLECT-28OCT\venue-asks.md.
+
+## The horizon, the run log and the exception queue (engine plan parts A and E, window 4, 28 October 2026)
+
+- `supabase/migrations/20261028204001_supply_horizon_and_exceptions.sql`: a daily pace; `listing_source_runs` (one
+  row per source per run, insert only); `organisation_id` and `venue_id` on a source (a partner's own feed);
+  `changes_facts`, `confidence`, `reasons` and `decided_by` on a candidate, the partner rule held by the database;
+  `public.listing_horizon`.
+- `src/lib/listings/horizon.ts`: publish 0 to 14 days, acquire 15 to 45, relationships 46 to 90, in Melbourne
+  calendar days, computed and never stored. `horizon-twin-on-test.mjs` holds the SQL copy to it on 200 nights.
+- `src/lib/listings/judge.ts`: high confidence only when nothing needs a person; every reason stated. A changed time
+  or venue on a listed night is `changes_facts`, never a second card and never accepted by rule.
+- The partner rule (`collect-run.ts`): a high confidence new night or added link from a partner's own verified feed
+  (an organiser submission or venue partnership source naming a real organiser or a claimed venue) is accepted
+  without a person; everything else waits on `/admin/collected`, which shows the horizon, why each row waits, and
+  each source's last five runs, flagged after three failures in a row. `collect-accept.ts` is the one link writer.
+- Councils (`council-sources-28oct.json`, read 28 October 2026, research in `C:\dev\EVIDENCE\SUPPLY-28OCT`): every
+  council and regional tourism what's on page is registered as ASK, never read. Melbourne
+  (https://whatson.melbourne.vic.gov.au/disclaimer: "no part may be reproduced or reused for any commercial purposes
+  whatsoever") and Geelong
+  (https://www.geelongcity.vic.gov.au/council/council-and-organisation/using-website/terms-and-conditions: "No part of
+  any such content may be reproduced, modified, adapted, published or used in any way for any commercial purpose
+  whatsoever") forbid it; Ballarat, Bendigo and the tourism boards are silent, and silence is never read as yes. None
+  publishes an events feed or dataset.
+- The partner publish: `public.listing_publish_partner_night` turns a night the partner rule accepted into a dated
+  series ('once') at the partner's venue, held by its organisation, with an `organiser_submission` listing check; the
+  hourly listings run makes the event. Idempotent; the run asks on every pass, and one night that cannot be published
+  never stops the rest of a feed. A partner source names its venue (in a city) and its category.
+- Registering a partner's feed: the form on `/admin/collected` (`partner-feed.ts`) writes the register row from the
+  organiser's own words: read daily, facts and links only (photos come through the media vault, part D).
+- Passed nights: each run first takes every waiting row whose night has passed out of the queue ("the night passed
+  before review").
+- Proved: `horizon.test.ts`, `judge.test.ts`, `partner-feed.test.ts`, the run tests (each new rule drilled red),
+  `supply-horizon-proof.sql` on TEST rolled back (run 1 found a NULL hole in a CHECK, fixed; run 2 PASSED, 21 checks),
+  `partner-publish-proof.sql` (PASSED, 9 checks), `horizon-twin-on-test.mjs` (200 nights agree) and
+  `supply-run-drive.mts`, the real store on TEST with an injected feed (DRIVE PASSED, 15 checks, 0 rows left).

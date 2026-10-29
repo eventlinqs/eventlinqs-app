@@ -180,7 +180,7 @@ export function titleShare(a: string, b: string): number {
   return shared / fewer
 }
 
-function sameVenue(a: ListingKey, b: ListingKey): boolean {
+export function sameVenue(a: ListingKey, b: ListingKey): boolean {
   if (a.venueId !== null && b.venueId !== null) return a.venueId === b.venueId
   const name = (k: ListingKey) => venueSlugify(k.venueName)
   const address = (k: ListingKey) => (k.venueAddress === null ? null : venueSlugify(k.venueAddress))

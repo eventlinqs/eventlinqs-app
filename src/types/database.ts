@@ -2870,6 +2870,9 @@ export type Database = {
       }
       listing_candidates: {
         Row: {
+          change: string | null
+          confidence: string
+          decided_by: string
           description: string | null
           ends_at: string | null
           event_id: string | null
@@ -2879,6 +2882,8 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          published_series_id: string | null
+          reasons: string[]
           refused_because: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2890,6 +2895,9 @@ export type Database = {
           venue_name: string
         }
         Insert: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2899,6 +2907,8 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          published_series_id?: string | null
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2910,6 +2920,9 @@ export type Database = {
           venue_name: string
         }
         Update: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2919,6 +2932,8 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          published_series_id?: string | null
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2945,6 +2960,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "listing_candidates_published_series_id_fkey"
+            columns: ["published_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listing_candidates_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
@@ -2959,6 +2981,7 @@ export type Database = {
           id: string
           import_file: string
           outcome: string
+          reuse_basis: string
           series_id: string
           source_date: string
           source_url: string
@@ -2968,6 +2991,7 @@ export type Database = {
           id?: string
           import_file: string
           outcome: string
+          reuse_basis: string
           series_id: string
           source_date: string
           source_url: string
@@ -2977,6 +3001,7 @@ export type Database = {
           id?: string
           import_file?: string
           outcome?: string
+          reuse_basis?: string
           series_id?: string
           source_date?: string
           source_url?: string
@@ -3086,9 +3111,57 @@ export type Database = {
           },
         ]
       }
+      listing_source_runs: {
+        Row: {
+          accepted_by_rule: number
+          found: number
+          http_status: number | null
+          id: string
+          landed: number
+          outcome: string
+          queued: number
+          ran_at: string
+          source_id: string
+          succeeded: boolean
+        }
+        Insert: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome: string
+          queued?: number
+          ran_at?: string
+          source_id: string
+          succeeded: boolean
+        }
+        Update: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome?: string
+          queued?: number
+          ran_at?: string
+          source_id?: string
+          succeeded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_source_runs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_sources: {
         Row: {
           acquisition_order: number | null
+          category_id: string | null
           changes: string
           city_slug: string | null
           collection: string
@@ -3122,6 +3195,7 @@ export type Database = {
           may_use_dataset_url: string | null
           name: string
           notes: string | null
+          organisation_id: string | null
           page_url: string
           permits_descriptions: boolean
           permits_facts: boolean
@@ -3132,11 +3206,13 @@ export type Database = {
           terms_read_on: string | null
           terms_url: string | null
           updated_at: string
+          venue_id: string | null
           verification: string
           verified_on: string | null
         }
         Insert: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection: string
@@ -3170,6 +3246,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name: string
           notes?: string | null
+          organisation_id?: string | null
           page_url: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3180,11 +3257,13 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
         Update: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection?: string
@@ -3218,6 +3297,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name?: string
           notes?: string | null
+          organisation_id?: string | null
           page_url?: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3228,10 +3308,33 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listing_sources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_sources_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_sources_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listing_submissions: {
         Row: {
@@ -11245,6 +11348,14 @@ export type Database = {
       }
       listing_fresh_until_for: {
         Args: { p_checked_on: string; p_timezone: string }
+        Returns: string
+      }
+      listing_horizon: {
+        Args: { p_now?: string; p_starts_at: string }
+        Returns: string
+      }
+      listing_publish_partner_night: {
+        Args: { p_candidate: string }
         Returns: string
       }
       marketing_attribution_default_window: { Args: never; Returns: number }

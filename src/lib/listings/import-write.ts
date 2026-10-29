@@ -18,6 +18,16 @@ import type { ImportPlan } from './import-plan'
 
 export class WriteRefusal extends Error {}
 
+/**
+ * The reuse basis of every check this writer makes (release checklist A4 and D8,
+ * 28 October 2026; supabase/migrations/20261028133001_listing_checks_reuse_basis.sql).
+ * The row file is manual research: the night's facts read from the host's own
+ * public page and written in EventLinqs' own words. It has no image column, so
+ * nothing of theirs is copied. A collection run or an organiser submission writes
+ * its own basis, never this one.
+ */
+export const MANUAL_RESEARCH_BASIS = 'manual_research_facts_only'
+
 export function sqlLiteral(v: string | number | boolean | null | undefined): string {
   if (v === null || v === undefined) return 'null'
   if (typeof v === 'number') {
@@ -99,8 +109,8 @@ export function buildImportWrite(
       }
     }
     body.push(
-      `insert into public.listing_checks (series_id, source_url, source_date, import_file, outcome)` +
-        ` values (${series}, ${lit(r.check.source_url)}, ${lit(r.check.source_date)}, ${lit(importFile)}, ${lit(r.check.outcome)});`,
+      `insert into public.listing_checks (series_id, source_url, source_date, import_file, outcome, reuse_basis)` +
+        ` values (${series}, ${lit(r.check.source_url)}, ${lit(r.check.source_date)}, ${lit(importFile)}, ${lit(r.check.outcome)}, ${lit(MANUAL_RESEARCH_BASIS)});`,
     )
   }
 
