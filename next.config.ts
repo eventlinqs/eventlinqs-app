@@ -286,6 +286,12 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // The founder dashboard under /admin/today runs the same platform health checks, card render included
+    // (src/lib/admin/founder-dashboard.ts, the master mandate of 29 October 2026, section 14).
+    '/admin/today': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     /*
      * WHAT THESE PINS ARE, measured on 6 September 2026 (close-out C3) rather
      * than believed. The comment above says that without the pin "the lambda
