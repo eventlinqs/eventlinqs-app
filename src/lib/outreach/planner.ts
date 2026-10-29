@@ -227,11 +227,11 @@ export function anythingComingUpRefusal(p: PartnerState, now: Date): string | nu
 
 type DraftTally = { queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
 /** Message 9's tally at the top level; message 8's in afterNight; message 7's in featured. */
-export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally; featured: DraftTally }
+export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally; featured: DraftTally; withdrawal: DraftTally }
 
 /** organisers, when named, limits the run to them (the TEST drive's own), as planDms does. */
 export async function planRelationship(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<RelationshipReport> {
-  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] }, featured: { queued: 0, held: [], refused: [], notDue: [] } }
+  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] }, featured: { queued: 0, held: [], refused: [], notDue: [] }, withdrawal: { queued: 0, held: [], refused: [], notDue: [] } }
   const yes = await db.from('outreach_replies').select('contact_id, received_at').in('outcome', ['yes', 'interested']).order('received_at', { ascending: false })
   if (yes.error) throw new Error(`outreach_replies: ${yes.error.message}`)
   const consent = await db.from('organiser_contacts').select('id').eq('basis', 'express_consent').eq('channel', 'email')
@@ -386,8 +386,99 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     else if (r.value.state === 'held') report.featured.held.push({ contactId, why: r.value.heldBecause })
     else report.featured.queued++
   }
+  // Message 10: each withdrawal of the last fortnight, once its two promises are true, to the partner who said yes.
+  const withdrawals = await db
+    .from('organiser_permissions')
+    .select('id, organisation_id, withdrawn_at')
+    .not('withdrawn_at', 'is', null)
+    .not('organisation_id', 'is', null)
+    .gte('withdrawn_at', new Date(deps.now.getTime() - WITHDRAWAL_LOOKBACK_DAYS * 86_400_000).toISOString())
+    .order('withdrawn_at')
+    .limit(200)
+  if (withdrawals.error) throw new Error(`organiser_permissions: ${withdrawals.error.message}`)
+  const templateTen = await db.from('outreach_templates').select('id').eq('key', 'withdrawal_confirmed')
+  if (templateTen.error) throw new Error(`outreach_templates: ${templateTen.error.message}`)
+  const tenIds = (templateTen.data ?? []).map((x) => x.id)
+  for (const w of withdrawals.data ?? []) {
+    const nights = await db.from('events').select('venue_id').eq('organisation_id', w.organisation_id as string).not('venue_id', 'is', null).limit(500)
+    if (nights.error) throw new Error(`events: ${nights.error.message}`)
+    const venueIds = [...new Set((nights.data ?? []).map((e) => e.venue_id as string))]
+    if (venueIds.length === 0) continue
+    const owners = await db.from('organiser_venues').select('organiser_id').in('venue_id', venueIds)
+    if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
+    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
+    if (!organiserId) continue
+    const contactId = byOrganiser.get(organiserId)!
+    const partnerContacts = await db.from('organiser_contacts').select('id').eq('organiser_id', organiserId)
+    if (partnerContacts.error) throw new Error(`organiser_contacts: ${partnerContacts.error.message}`)
+    const contactIds = (partnerContacts.data ?? []).map((c) => c.id)
+    if (tenIds.length > 0) {
+      const told = await db.from('outreach_touches').select('id').in('contact_id', contactIds).in('template_id', tenIds).neq('state', 'void').gte('drafted_at', w.withdrawn_at as string).limit(1)
+      if (told.error) throw new Error(`outreach_touches: ${told.error.message}`)
+      if ((told.data ?? []).length > 0) continue
+    }
+    const assets = await db.from('social_assets').select('asset_url').eq('permission_id', w.id)
+    if (assets.error) throw new Error(`social_assets: ${assets.error.message}`)
+    const urls = (assets.data ?? []).map((a) => a.asset_url as string).filter(Boolean)
+    const why = withdrawalConfirmationRefusal({ unpostedShowing: await unpostedPiecesShowing(db, urls), coversShowing: await coversShowing(db, urls) })
+    if (why) {
+      report.withdrawal.notDue.push({ organiserId, why })
+      continue
+    }
+    const thread = await db.from('outreach_touches').select('subject').eq('contact_id', contactId).not('subject', 'is', null).order('drafted_at', { ascending: false }).limit(1)
+    if (thread.error) throw new Error(`outreach_touches: ${thread.error.message}`)
+    const subject = thread.data?.[0]?.subject ? String(thread.data[0].subject).replace(/^(re|fw|fwd):\s*/i, '') : null
+    const r = await draftFromTemplate(db, { contactId, templateKey: 'withdrawal_confirmed', purpose: 'relationship', extraFields: { 'thread subject': subject }, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
+    if (r.state === 'refused') report.withdrawal.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.withdrawal.held.push({ contactId, why: r.value.heldBecause })
+    else report.withdrawal.queued++
+  }
   return report
 }
+
+/**
+ * MESSAGE 10, WITHDRAWAL CONFIRMED (the PM's messages file; the project manager's 21:42, 29 October 2026). Its words
+ * promise two facts: "Your images are off every post that hasn't gone out yet" and "your listing now uses our standard
+ * design". So it is drafted only when no unposted piece's newest version and no listing cover still shows any image the
+ * withdrawal covered (window 2's withdraw marks them, window 3's hourly sweep regenerates the pieces); until then the
+ * next run asks again. It goes to the partner who said yes, in their own thread (no earlier message: held for Lawal, a
+ * missing field); an organisation with no such contact gets no message 10 from here, said plainly.
+ */
+export const WITHDRAWAL_LOOKBACK_DAYS = 14
+
+export function withdrawalConfirmationRefusal(s: { unpostedShowing: number; coversShowing: number }): string | null {
+  if (s.unpostedShowing > 0) return `${s.unpostedShowing} unposted piece${s.unpostedShowing === 1 ? '' : 's'} still show a withdrawn image`
+  if (s.coversShowing > 0) return `${s.coversShowing} listing cover${s.coversShowing === 1 ? '' : 's'} still show a withdrawn image`
+  return null
+}
+
+/** How many pieces not yet posted still show one of these images in their newest version. */
+async function unpostedPiecesShowing(db: Admin, urls: readonly string[]): Promise<number> {
+  if (urls.length === 0) return 0
+  const posted = await db.from('social_piece_postings').select('piece_id').limit(5000)
+  if (posted.error) throw new Error(`social_piece_postings: ${posted.error.message}`)
+  const gone = new Set((posted.data ?? []).map((g) => g.piece_id))
+  const revs = await db.from('social_piece_revisions').select('piece_id, version, slides').order('version', { ascending: false }).limit(5000)
+  if (revs.error) throw new Error(`social_piece_revisions: ${revs.error.message}`)
+  const seen = new Set<string>()
+  let showing = 0
+  for (const r of revs.data ?? []) {
+    if (gone.has(r.piece_id) || seen.has(r.piece_id)) continue
+    seen.add(r.piece_id)
+    const slides = JSON.stringify(r.slides ?? [])
+    if (urls.some((u) => slides.includes(u))) showing++
+  }
+  return showing
+}
+
+/** How many listings still use one of these images as their cover. */
+async function coversShowing(db: Admin, urls: readonly string[]): Promise<number> {
+  if (urls.length === 0) return 0
+  const covers = await db.from('events').select('id', { count: 'exact', head: true }).in('cover_image_url', [...urls])
+  if (covers.error) throw new Error(`events: ${covers.error.message}`)
+  return covers.count ?? 0
+}
+
 
 /** When a post naming the night, other than the partner's own kit, first went out: recorded posted, or published. */
 async function postNamingNightWentOut(db: Admin, eventId: string, kitId: string): Promise<Date | null> {
