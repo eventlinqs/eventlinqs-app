@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { contactAddress } from '@/lib/email/sender'
 
 /**
  * REPORT OR REMOVE THIS LISTING (the release checklist's I5; the project manager's ruling of 29 October 2026, 14:20).
@@ -51,7 +52,7 @@ export async function recordRemovalRequest(
   })
   if (error) {
     console.warn('[removal-request] not written', error.message)
-    return { state: 'refused', reason: 'We could not take your report just now. Try again in a minute, or email hello@eventlinqs.com.' }
+    return { state: 'refused', reason: `We could not take your report just now. Try again in a minute, or email ${contactAddress('hello')}.` }
   }
   return { state: 'done' }
 }
