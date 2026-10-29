@@ -29,6 +29,14 @@ const pick = <T,>(mod: T & { default?: T }) => (mod.default ?? mod) as T
 const slides = pick((await import('@/lib/broadcast/campaign-slides')) as typeof SlidesModule & { default?: typeof SlidesModule })
 const store = pick((await import('@/lib/social/store')) as typeof StoreModule & { default?: typeof StoreModule })
 
+/*
+ * --now <ISO time>: plan the week holding that moment instead of today's (the project manager's 21:48 of 29 October
+ * 2026, (7): AMCF's campaign ready in TEST's planner for its own week, 20 to 22 November). The week is planned exactly
+ * as "Plan this week" would plan it on that day; nothing is posted.
+ */
+const nowAt = process.argv.indexOf('--now')
+const nowArg = nowAt > -1 ? process.argv.splice(nowAt, 2)[1] : null
+if (nowAt > -1 && (!nowArg || Number.isNaN(Date.parse(nowArg)))) throw new Error('--now takes an ISO time, e.g. 2026-11-16T01:00:00Z')
 const out = process.argv[2] ?? 'planner-demonstration'
 mkdirSync(out, { recursive: true })
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -36,7 +44,7 @@ if (!url.includes('vkapkibzokmfaxqogypq')) throw new Error('TEST only: pass a TE
 const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '', { auth: { persistSession: false } })
 const { data: admin } = await db.from('admin_users').select('id').limit(1).maybeSingle()
 const by = admin?.id as string
-const now = new Date()
+const now = nowArg ? new Date(nowArg) : new Date()
 
 const planned = await store.planCampaignWeek(db, { plannedBy: by, now })
 console.log(`PLANNED ${planned.weekStart}: ${planned.created} piece(s) new, ${planned.existing} found, ${planned.requests} image request(s), held: ${planned.held.length ? planned.held.join('; ') : 'none'}`)
