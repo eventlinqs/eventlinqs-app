@@ -1,0 +1,189 @@
+{
+  "source": "The release checklist's D7 and the requirement register's D7 row ('Twelve venue drafts in the play queue on production'; 'Venue asks as a play in the outreach engine (no send until Graph consent)'), assigned to window 6 by the project manager's 08:16 of 30 October 2026.",
+  "research": "Who each venue is, what it is asked and every fact in its true line: window 3's research of 28 October 2026 (C:\\dev\\EVIDENCE\\COLLECT-28OCT\\venue-asks.md, from licensed-sources.md, real-sources-probe.md and docs/walk-in/COLLECTION-RUN.md). Its texts were held by Lawal's 14:59 ruling of 28 October for their voice ('I'm Lawal, and I run EventLinqs'); these are rewritten in his format by the messages file's rules. No new claim is added.",
+  "addresses": "Where each draft may lawfully go: C:\\dev\\EVIDENCE\\W6-30OCT\\d7-venue-addresses.md, every address read on the venue's own site on 30 October 2026, or already on production with its basis (R4, 29 October).",
+  "seenOn": "2026-10-30",
+  "asks": [
+    {
+      "venue": "Ballaarat Mechanics' Institute",
+      "organiser": "Ballaarat Mechanics' Institute",
+      "city": "ballarat",
+      "website": "https://ballaratmi.org.au",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "venue@ballaratmi.org.au",
+        "publishedOn": "https://ballaratmi.org.au/",
+        "role": "Venue Manager",
+        "relevance": "Published as the venue manager's address; the ask is the venue's own events calendar feed.",
+        "existing": false
+      },
+      "subject": "Your events calendar and EventLinqs",
+      "trueLine": "Your events page offers \"Subscribe to calendar\", and your programme runs to 29 events from Dead Man's Cell Phone on 28 October.",
+      "askLine": "Your robots.txt closes that feed path to every reader, so none of them is on EventLinqs yet. Would you be happy for EventLinqs to read your calendar feed once a week, each event listed with a button to your own booking page?"
+    },
+    {
+      "venue": "Malthouse Theatre",
+      "organiser": "Malthouse Theatre",
+      "city": "melbourne",
+      "website": "https://www.malthousetheatre.com.au",
+      "ask": "permission",
+      "contact": {
+        "channel": "email",
+        "address": "marketing@malthousetheatre.com.au",
+        "publishedOn": "https://www.malthousetheatre.com.au/about/contact",
+        "role": "Marketing",
+        "relevance": "Published as the marketing team's address; the ask is permission to list the season.",
+        "existing": false
+      },
+      "subject": "Your season on EventLinqs, could I ask you something?",
+      "trueLine": "Your show pages already publish their dates for search engines, All About Eve among them.",
+      "askLine": "Your terms cover ticket sales only, so none of your shows is on EventLinqs yet. May EventLinqs list your season from those pages, each show with its date and a button to your own booking page?"
+    },
+    {
+      "venue": "City of Greater Bendigo events",
+      "organiser": "City of Greater Bendigo events",
+      "city": "bendigo",
+      "website": "https://www.bendigo.vic.gov.au/events",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "requests@bendigo.vic.gov.au",
+        "publishedOn": "https://www.bendigo.vic.gov.au/contact-us",
+        "role": "Council contact",
+        "relevance": "The council's one published contact address; the ask is the council publishing its own events calendar as a feed.",
+        "existing": false
+      },
+      "subject": "Bendigo's events calendar as a feed",
+      "trueLine": "Your events page lists Bendigo's calendar well, though each event can only be added to a calendar one at a time.",
+      "askLine": "Could the council publish the whole calendar as an iCal or RSS feed, so EventLinqs can list each event once a week with a link back to your page?"
+    },
+    {
+      "venue": "The University of Melbourne events",
+      "organiser": "The University of Melbourne events",
+      "city": "melbourne",
+      "website": "https://events.unimelb.edu.au",
+      "ask": "permission",
+      "contact": null,
+      "noDraftBecause": "No address was read on the University's own pages today: its website terms and copyright pages answered 403 to our reader on 30 October 2026. Window 3 recorded copyright-office@unimelb.edu.au on 28 October, but a basis needs the page read and dated, so no draft is written until it is."
+    },
+    {
+      "venue": "The Capital, Bendigo",
+      "organiser": "The Capital, Bendigo",
+      "city": "bendigo",
+      "website": "https://www.bendigoregion.com.au/the-capital",
+      "ask": "submission",
+      "contact": null,
+      "noDraftBecause": "No email address is published on The Capital's page (read 30 October 2026), and no Instagram account was researched, so there is no lawful address to draft to."
+    },
+    {
+      "venue": "Geelong Arts Centre",
+      "organiser": "Geelong Arts Centre",
+      "city": "geelong",
+      "website": "https://geelongartscentre.org.au",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "boxoffice@geelongartscentre.org.au",
+        "existing": true
+      },
+      "subject": "Your programme on EventLinqs' Geelong guide",
+      "trueLine": "When your site was checked on 27 October its robots.txt did not answer, so EventLinqs has read nothing of your programme there.",
+      "askLine": "Do you publish a calendar feed of your programme that EventLinqs could read once a week, each show listed with a button to your own booking page?"
+    },
+    {
+      "venue": "Barwon Club",
+      "organiser": "Barwon Club Hotel",
+      "city": "geelong",
+      "website": "https://barwonclub.com.au",
+      "ask": "submission",
+      "contact": {
+        "channel": "instagram",
+        "address": "barwon_club",
+        "existing": true
+      },
+      "trueLine": "Your gig pages don't carry their dates in a form EventLinqs can read, so your gigs aren't on the Geelong guide yet.",
+      "askLine": "Could you send your gig calendar, or say where to read it?"
+    },
+    {
+      "venue": "Corner Hotel",
+      "organiser": "Corner Hotel",
+      "city": "melbourne",
+      "website": "https://www.cornerhotel.com",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "bookings@cglive.com.au",
+        "publishedOn": "https://www.cornerhotel.com/contact-us/",
+        "role": "Venue hire and band bookings",
+        "relevance": "Published on the Corner's own contact page for its band bookings; the ask is a feed of its gigs.",
+        "existing": false
+      },
+      "subject": "The Corner's gigs on EventLinqs",
+      "trueLine": "Your gig pages don't publish their dates in a form EventLinqs can read, so no Corner gig is listed yet.",
+      "askLine": "Do you have a calendar feed of your gigs that EventLinqs could read once a week, each gig listed with a button to your own ticket page?"
+    },
+    {
+      "venue": "Northcote Social Club",
+      "organiser": "Northcote Social Club (Social Sanctuary)",
+      "city": "melbourne",
+      "website": "https://northcotesocialclub.com",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "bar@northcotesocialclub.com",
+        "existing": true
+      },
+      "subject": "Your gigs on EventLinqs' Melbourne guide",
+      "trueLine": "Your gig pages don't publish their dates in a form EventLinqs can read, so none of your gigs is listed yet.",
+      "askLine": "Do you have a calendar feed of your gigs that EventLinqs could read once a week, each gig listed with a button to your own ticket page?"
+    },
+    {
+      "venue": "Forum Melbourne",
+      "organiser": "Forum Melbourne",
+      "city": "melbourne",
+      "website": "https://forummelbourne.com.au",
+      "ask": "feed",
+      "contact": {
+        "channel": "instagram",
+        "address": "forummelbourne",
+        "existing": true
+      },
+      "trueLine": "Your show pages don't publish their dates in a form EventLinqs can read, so your shows aren't listed yet.",
+      "askLine": "Do you have a calendar feed of your shows EventLinqs could read once a week?"
+    },
+    {
+      "venue": "The Toff in Town",
+      "organiser": "The Toff in Town",
+      "city": "melbourne",
+      "website": "https://www.thetoff.com.au",
+      "ask": "submission",
+      "contact": {
+        "channel": "email",
+        "address": "hello@thetoff.com.au",
+        "publishedOn": "https://www.thetoff.com.au/contact",
+        "role": "General and band booking enquiries",
+        "relevance": "Published for general and band booking enquiries; the ask is the gig calendar.",
+        "existing": false
+      },
+      "subject": "Your gigs on EventLinqs' Melbourne guide",
+      "trueLine": "When your site was checked on 27 October its robots.txt did not answer, so EventLinqs has read nothing of your gigs there.",
+      "askLine": "Could you send your gig calendar, or a feed of it, so each gig can go on the Melbourne guide with a button to your own ticket page?"
+    },
+    {
+      "venue": "Her Majesty's",
+      "organiser": "Her Majesty's Theatre Ballarat",
+      "city": "ballarat",
+      "website": "https://www.hermaj.com",
+      "ask": "feed",
+      "contact": {
+        "channel": "email",
+        "address": "hermaj@hermaj.com",
+        "existing": true
+      },
+      "subject": "Your season on EventLinqs' Ballarat guide",
+      "trueLine": "When your site was checked on 27 October its robots.txt did not answer, so EventLinqs has read nothing of your season there.",
+      "askLine": "Do you publish a calendar feed of your season that EventLinqs could read once a week, each show listed with a button to your own booking page?"
+    }
+  ]
+}
