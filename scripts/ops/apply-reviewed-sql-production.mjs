@@ -51,9 +51,11 @@ export function reviewedBody(text) {
   // Judged statement by statement, not line by line: an insert's own select often starts a line of its own, and
   // outreach-basis writes two statements on one line. A semicolon inside a quoted value ends nothing.
   const parts = splitStatements(body)
+  // A closing select is the file's own read back (outreach-templates writes one): it runs read only after the commit.
+  const readBack = parts.length > 1 && /^select\b/i.test(parts[parts.length - 1]) ? parts.pop() : null
   if (parts.some((s) => /^select\b/i.test(s.trim()))) return { refused: 'a bare select cannot run inside a DO block; take it out of the file' }
   if (parts.length === 0) return { refused: 'there is no statement between begin and rollback' }
-  return { body, statements: parts.length }
+  return { body: parts.map((s) => `${s};`).join('\n'), statements: parts.length, readBack }
 }
 
 function askLine(prompt) {
@@ -89,7 +91,7 @@ async function main() {
     return 1
   }
   const apply = args.includes('--apply')
-  console.log(`${apply ? 'APPLY' : 'DRY RUN'} on PRODUCTION (${REF}): ${file} (sha256 ${sha}), ${r.statements} statement(s), as one DO block:\n\n${r.body}\n`)
+  console.log(`${apply ? 'APPLY' : 'DRY RUN'} on PRODUCTION (${REF}): ${file} (sha256 ${sha}), ${r.statements} statement(s), as one DO block:\n\n${r.body}\n${r.readBack ? `\nThen, read only after the commit, the file's own read back:\n${r.readBack}\n` : ''}`)
   if (!apply) {
     console.log('DRY RUN: nothing written. Add --apply to be asked for APPLY.')
     return 0
@@ -109,7 +111,15 @@ async function main() {
     return 1
   }
   appendFileSync(LOG, `${new Date().toISOString()}  APPLY typed: APPLIED: ${file} (sha256 ${sha}, ${r.statements} statement(s), one DO block) under: ${why}\n`)
-  console.log(`APPLIED: ${r.statements} statement(s) committed together; logged in ${LOG}. Read the result back by direct query.`)
+  console.log(`APPLIED: ${r.statements} statement(s) committed together; logged in ${LOG}.`)
+  if (r.readBack) {
+    const back = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ query: r.readBack, read_only: true }),
+    })
+    console.log(`READ BACK, the file's own select, read only (HTTP ${back.status}):\n${await back.text()}`)
+  } else console.log('Read the result back by direct query.')
   return 0
 }
 

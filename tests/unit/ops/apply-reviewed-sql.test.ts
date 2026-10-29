@@ -35,6 +35,15 @@ describe('reviewedBody', () => {
     expect(reviewedBody(basis).statements).toBe(2)
   })
 
+  test('takes a closing select as the file\'s own read back, run after the commit, as outreach-templates writes it', () => {
+    const tpl = `begin;\ninsert into t (k, v) values ('featured', 2) on conflict (k, v) do nothing;\nselect k, v from t where v = 2 order by k;\nrollback;\n`
+    const r = reviewedBody(tpl)
+    expect(r.refused).toBeUndefined()
+    expect(r.statements).toBe(1)
+    expect(r.readBack).toBe('select k, v from t where v = 2 order by k')
+    expect(r.body).not.toMatch(/select k, v/)
+  })
+
   test('refuses a bare select, which a DO block cannot run, and an empty file', () => {
     expect(reviewedBody(ok.replace('update public', 'select count(*) from public.organisers;\nupdate public')).refused).toMatch(/select/)
     expect(reviewedBody('begin;\nrollback;\n').refused).toMatch(/no statement/)
