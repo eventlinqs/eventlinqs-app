@@ -258,6 +258,11 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // An approved partner kit's slide at its public address (window 6's message 7), the same renderer as the admin's.
+    '/kit/[pieceId]/[n]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/api/launch/[code]/card/[format]': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',

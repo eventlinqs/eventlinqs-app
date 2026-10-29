@@ -879,6 +879,34 @@ export async function readPiece(db: Db, pieceId: string): Promise<{ slides: Slid
   return { slides: rev.slides, format: data.format as 'feed' | 'story', kind: data.kind as PiecePlan['kind'], city: data.city as string }
 }
 
+/**
+ * Whether a piece is drawn at its public address, /kit/<piece>/<n> (window 6's message 7 names the kit's images): only a
+ * partner kit whose newest version is approved and not rejected; a kit already sent stays drawn.
+ */
+export function publicKitServes(p: { kind: PiecePlan['kind']; newestVersion: number; approvedVersions: readonly number[]; rejectedVersions: readonly number[] }): boolean {
+  return p.kind === 'partner_kit' && p.approvedVersions.includes(p.newestVersion) && !p.rejectedVersions.includes(p.newestVersion)
+}
+
+/** An approved partner kit's slides for its public address, or null for anything publicKitServes refuses. */
+export async function readPublicKit(db: Db, pieceId: string): Promise<{ slides: Slide[]; format: 'feed' | 'story'; city: string; partnerName: string | null } | null> {
+  const { data } = await db.from('social_pieces').select('format, kind, city, partner_name').eq('id', pieceId).maybeSingle()
+  if (!data) return null
+  const rev = await newestRevision(db, pieceId)
+  if (!rev) return null
+  const [{ data: approvals }, { data: decisions }] = await Promise.all([
+    db.from('social_piece_approvals').select('revision').eq('piece_id', pieceId),
+    db.from('social_piece_decisions').select('revision, decision').eq('piece_id', pieceId).eq('decision', 'rejected'),
+  ])
+  const serves = publicKitServes({
+    kind: data.kind as PiecePlan['kind'],
+    newestVersion: rev.version,
+    approvedVersions: (approvals ?? []).map((a) => a.revision as number),
+    rejectedVersions: (decisions ?? []).map((d) => d.revision as number),
+  })
+  if (!serves) return null
+  return { slides: rev.slides, format: data.format as 'feed' | 'story', city: data.city as string, partnerName: (data.partner_name as string | null) ?? null }
+}
+
 /** A person approves a piece's newest revision (B3, F8): its own state, before anything goes. */
 export async function approvePiece(db: Db, input: { readonly pieceId: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
