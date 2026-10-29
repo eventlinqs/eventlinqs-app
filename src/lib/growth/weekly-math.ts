@@ -161,6 +161,8 @@ export interface WeekFigures {
     readonly organisersSold: number
     readonly organisersSoldBefore: number
     /** The fee kept less Stripe's processing estimate, over the orders that record both. */
+    /** Stripe's processing estimate over the same orders, the payment cost. */
+    readonly processingCents: number
     readonly marginCents: number
     /** Sold orders in the week that do not record both, left out of the margin and shown. */
     readonly marginUnrecorded: number
@@ -214,6 +216,7 @@ export function figuresFor(rows: Rows, w: Week): WeekFigures {
       organisersSoldBefore: [...organisers].filter((o) => before.has(o)).length,
       marginCents,
       marginUnrecorded: weekOrders.length - recorded.length,
+      processingCents: recorded.reduce((n, o) => n + (o.processingCents ?? 0), 0),
     },
   }
 }

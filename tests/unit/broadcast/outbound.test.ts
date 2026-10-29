@@ -105,6 +105,23 @@ describe('a press out of a listing', () => {
     expect(recorded).toEqual([])
   })
 
+  test('a QA press is counted as a test even from a crawler agent; an unverified marker is counted as neither (20261029220001)', async () => {
+    const seen: { linkId: string; isTest: boolean | undefined }[] = []
+    const record: OutboundDeps['record'] = async (linkId, _visitor, _pressed, isTest) => {
+      seen.push({ linkId, isTest })
+    }
+    const crawler = { ...PERSON, userAgent: 'EventLinqs-QA crawler' }
+    expect(await followOutbound({ slug: EVENT.slug, ...crawler, qa: 'test' }, deps({ record }).d)).toMatchObject({ kind: 'out', counted: true })
+    expect(seen).toEqual([{ linkId: `own-${EVENT.id}`, isTest: true }])
+
+    seen.length = 0
+    expect(await followOutbound({ slug: EVENT.slug, ...PERSON, qa: 'refused' }, deps({ record }).d)).toMatchObject({ kind: 'out', counted: false })
+    expect(seen).toEqual([])
+
+    expect(await followOutbound({ slug: EVENT.slug, ...PERSON, qa: 'none' }, deps({ record }).d)).toMatchObject({ kind: 'out', counted: true })
+    expect(seen).toEqual([{ linkId: `own-${EVENT.id}`, isTest: false }])
+  })
+
   test('sends the visitor to the event page where nothing it holds passes the hop\'s own rule', async () => {
     for (const links of [[], [link('bl-x', 'other', 'https://example.com/x', { availability: 'dead' })], [link('bl-own', 'other', 'https://www.eventlinqs.com.au/events/x')]]) {
       const { d, recorded } = deps({ links })

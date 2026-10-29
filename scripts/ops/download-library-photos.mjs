@@ -116,6 +116,36 @@ const WANTED = [
   { slug: 'city-accra', pick: 'city', before: true, query: 'accra ghana city' },
   // city-hero-accra: its old pick was a polluted beach; replaced by a fitting one.
   { slug: 'city-hero-accra', pick: 'city-hero', before: false, query: 'accra ghana city skyline' },
+  // The suburb tiles and heroes: suburb-photo.ts getSuburbHeroPhoto, kept once (the project manager's 03:09 class).
+  { slug: 'suburb-sydney-inner-west', pick: 'suburb', before: true, query: 'newtown sydney street art cafe community people' },
+  { slug: 'suburb-sydney-north-shore', pick: 'suburb', before: true, query: 'north sydney harbour bridge skyline elegant' },
+  { slug: 'suburb-sydney-eastern-suburbs', pick: 'suburb', before: true, query: 'bondi beach sydney sunset surfers' },
+  // suburb-sydney-western-sydney keeps the photograph it showed before (a Sydney street market, inner Sydney rather
+  // than the west): three Parramatta queries gave a harbour at night, a dark bookshop and an unnamed stadium.
+  { slug: 'suburb-sydney-western-sydney', pick: 'suburb', before: true, query: 'parramatta sydney diverse community' },
+  { slug: 'suburb-sydney-northern-beaches', pick: 'suburb', before: true, query: 'manly beach sydney boardwalk lifestyle' },
+  { slug: 'suburb-sydney-sutherland-shire', pick: 'suburb', before: true, query: 'cronulla beach sydney wave surfers' },
+  { slug: 'suburb-melbourne-inner-melbourne', pick: 'suburb', before: true, query: 'melbourne laneway street art cafe community' },
+  { slug: 'suburb-melbourne-eastern-suburbs', pick: 'suburb', before: true, query: 'melbourne suburbs leafy residential lifestyle' },
+  { slug: 'suburb-melbourne-western-suburbs', pick: 'suburb', before: true, query: 'footscray melbourne diverse' },
+  { slug: 'suburb-melbourne-northern-suburbs', pick: 'suburb', before: true, query: 'brunswick melbourne street community creative' },
+  { slug: 'suburb-melbourne-southern-suburbs', pick: 'suburb', before: true, query: 'south yarra melbourne cafe lifestyle' },
+  { slug: 'suburb-melbourne-bayside', pick: 'suburb', before: true, query: 'st kilda melbourne beach palm trees lifestyle' },
+  { slug: 'suburb-brisbane-inner-city', pick: 'suburb', before: true, query: 'south bank brisbane river lifestyle people' },
+  { slug: 'suburb-brisbane-north-side', pick: 'suburb', before: true, query: 'brisbane suburbs queensland sunny residential' },
+  { slug: 'suburb-brisbane-south-side', pick: 'suburb', before: true, query: 'brisbane south side queensland lifestyle' },
+  { slug: 'suburb-brisbane-west-end', pick: 'suburb', before: true, query: 'fortitude valley brisbane street community nightlife' },
+  // suburb-perth-inner-perth: its old pick looked like Melbourne's Shrine of Remembrance and named no place; replaced by a fitting one.
+  { slug: 'suburb-perth-inner-perth', pick: 'suburb', before: false, query: 'perth city skyline elizabeth quay' },
+  { slug: 'suburb-perth-northern-suburbs', pick: 'suburb', before: true, query: 'perth coastal beach scarborough sunset' },
+  { slug: 'suburb-perth-southern-suburbs', pick: 'suburb', before: true, query: 'fremantle perth markets street community people' },
+  { slug: 'suburb-perth-coastal', pick: 'suburb', before: true, query: 'perth scarborough beach sunset surfers' },
+  { slug: 'suburb-gold-coast-surfers-paradise', pick: 'suburb', before: true, query: 'surfers paradise beach gold coast people lifestyle' },
+  // suburb-gold-coast-broadbeach: its old pick was the same photograph as Surfers Paradise's; replaced by a fitting one.
+  { slug: 'suburb-gold-coast-broadbeach', pick: 'suburb', before: false, query: 'broadbeach gold coast pacific fair kurrawa' },
+  // suburb-canberra-civic: its old pick was a New York street; replaced by a fitting one.
+  { slug: 'suburb-canberra-civic', pick: 'suburb', before: false, query: 'canberra city centre lake burley griffin' },
+  { slug: 'suburb-hobart-inner-city', pick: 'suburb', before: true, query: 'hobart salamanca markets people lifestyle' },
 ]
 
 const kept = existsSync(ATTRIBUTION) ? JSON.parse(readFileSync(ATTRIBUTION, 'utf8')) : { licence: 'Pexels License, https://www.pexels.com/license/', photos: {} }
@@ -132,8 +162,9 @@ for (const w of WANTED) {
   // pick 'sub': sub-community-photo.ts (per_page 15, at least 1200 x 700, the top 5, hash(query + ':sub-community')).
   // pick 'city': city-photo.ts getCityPhoto (portrait, per_page 15, at least 800 x 1200, the top 5, hash(query)).
   // pick 'city-hero': getCityHeroPhoto (landscape, per_page 15, at least 1600 x 900, the top 5, hash(query + ':landscape')).
+  // pick 'suburb': getSuburbHeroPhoto (landscape, per_page 15, at least 1600 x 900, the top 5, hash(query + ':suburb-hero')).
   const [minW, minH, top, seed] =
-    w.pick === 'community' ? [1600, 900, 5, `${w.query}:community-hero`] : w.pick === 'sub' ? [1200, 700, 5, `${w.query}:sub-community`] : w.pick === 'city' ? [800, 1200, 5, w.query] : w.pick === 'city-hero' ? [1600, 900, 5, `${w.query}:landscape`] : [1200, 800, 10, w.query]
+    w.pick === 'community' ? [1600, 900, 5, `${w.query}:community-hero`] : w.pick === 'sub' ? [1200, 700, 5, `${w.query}:sub-community`] : w.pick === 'city' ? [800, 1200, 5, w.query] : w.pick === 'city-hero' ? [1600, 900, 5, `${w.query}:landscape`] : w.pick === 'suburb' ? [1600, 900, 5, `${w.query}:suburb-hero`] : [1200, 800, 10, w.query]
   const usable = photos.filter((p) => (p.width ?? 0) >= minW && (p.height ?? 0) >= minH)
   const pool = (usable.length > 0 ? usable : photos).slice(0, top)
   const photo = pool[hash(seed) % pool.length]
@@ -148,7 +179,7 @@ for (const w of WANTED) {
     alt: photo.alt || w.slug,
     query: w.query,
     shown_before_tonight: w.before,
-    downloaded_on: '2026-10-29',
+    downloaded_on: new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date()),
   }
   // Recorded as each one is kept, so a run cut short (a 429 at 23:28 on 29 October 2026) never leaves a file without
   // its photographer and licence on record.

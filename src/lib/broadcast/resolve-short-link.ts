@@ -5,6 +5,7 @@ import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import { isValidShareCode } from '@/lib/broadcast/share-codes'
 import { isValidReadableCode } from '@/lib/broadcast/short-links'
 import { recordShareLinkEvent, resolveShareLink, visitorHash } from '@/lib/broadcast/share-links'
+import { qaPressOf } from '@/lib/broadcast/qa-marker'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
@@ -118,15 +119,19 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
  */
 export async function recordShortLinkClick(
   link: ResolvedShortLink,
-  headers: { userAgent: string | null; ip: string | null },
+  headers: { userAgent: string | null; ip: string | null; qa?: string | null },
 ): Promise<void> {
   try {
     if (!(await isFeatureEnabled('broadcast_share'))) return
-    if (isPreviewCrawler(headers.userAgent)) return
+    // A QA press is recorded as a test even from a crawler agent; an unverified marker is recorded as neither.
+    const qa = await qaPressOf(headers.qa ?? null)
+    if (qa === 'refused') return
+    if (qa === 'none' && isPreviewCrawler(headers.userAgent)) return
     await recordShareLinkEvent({
       linkId: link.linkId,
       kind: 'click',
       visitorHash: visitorHash(headers.ip, headers.userAgent),
+      isTest: qa === 'test',
     })
   } catch {
     // Never surface an attribution failure to a person trying to buy a ticket.

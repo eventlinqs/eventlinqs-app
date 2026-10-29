@@ -58,7 +58,7 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
     linkIds.length === 0
       ? []
       : await readEveryRow<{ id: string; visitor_hash: string | null; provider: string | null }>('the night presses out', (f, t) =>
-          admin.from('share_link_events').select('id, visitor_hash, provider').in('link_id', linkIds).eq('kind', 'outbound').order('id', { ascending: true }).range(f, t),
+          admin.from('share_link_events').select('id, visitor_hash, provider').eq('is_test', false).in('link_id', linkIds).eq('kind', 'outbound').order('id', { ascending: true }).range(f, t),
         )
 
   const tiers = await readOrThrow('the night ticket types', () => admin.from('ticket_tiers').select('id').eq('event_id', night.id).limit(1))
@@ -92,7 +92,7 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
   let ownLinkArrivals: number | null = null
   if (kitLinkIds.length > 0) {
     const clicks = await readEveryRow<{ id: string; visitor_hash: string | null }>('the own link arrivals', (f, t) =>
-      admin.from('share_link_events').select('id, visitor_hash').in('link_id', kitLinkIds).eq('kind', 'click').order('id', { ascending: true }).range(f, t),
+      admin.from('share_link_events').select('id, visitor_hash').eq('is_test', false).in('link_id', kitLinkIds).eq('kind', 'click').order('id', { ascending: true }).range(f, t),
     )
     ownLinkArrivals = new Set(clicks.map((c) => c.visitor_hash ?? `row:${c.id}`)).size
   }
@@ -134,7 +134,7 @@ async function postsNaming(admin: Admin, night: { id: string; endDate: string })
     const approval = Array.isArray(p.social_piece_approvals) ? p.social_piece_approvals[0] : p.social_piece_approvals
     const rev = (revisions ?? []).find((r) => r.piece_id === p.piece_id && r.version === approval?.revision)
     if (!rev) continue
-    const { count, error } = await admin.from('go_presses').select('id', { count: 'exact', head: true }).eq('piece_id', p.piece_id).lte('pressed_at', night.endDate)
+    const { count, error } = await admin.from('go_presses').select('id', { count: 'exact', head: true }).eq('is_test', false).eq('piece_id', p.piece_id).lte('pressed_at', night.endDate)
     if (error) throw new Error(`the posts /go presses: ${error.message}`)
     posts.push({
       pieceId: p.piece_id,

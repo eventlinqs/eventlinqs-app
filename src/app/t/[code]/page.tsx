@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatSeatLabel } from '@/lib/seating/format'
+import { admitsEntry, notValidSentence } from '@/lib/tickets/entry-state'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 
 export const runtime = 'nodejs'
@@ -114,7 +115,9 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   )
 
   const status = STATUS_COPY[ticket.status] ?? STATUS_COPY.valid
-  const isVoided = ticket.status === 'void' || ticket.status === 'refunded'
+  // Only a valid or scanned ticket gets its holder in (scan_ticket refuses the rest). This used to
+  // test refunded and void alone, so a transferred ticket kept its QR and a void one read "Refunded".
+  const admits = admitsEntry(ticket.status)
   const ev = ticket.event
 
   /*
@@ -124,8 +127,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
    * then the viewer's country, and only then reads the link from the vault.
    */
   const admitsToStream =
-    !isVoided &&
-    (ticket.status === 'valid' || ticket.status === 'scanned') &&
+    admits &&
     (ev?.event_type === 'virtual' || ticket.tier?.access_mode === 'virtual')
   const watchHref = `/t/${encodeURIComponent(code)}/watch?k=${encodeURIComponent(secret)}`
 
@@ -147,15 +149,16 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
           </p>
         )}
 
-        {isVoided ? (
-          // Step 6: a refunded/void ticket must never present a scannable
-          // QR. Show an unambiguous not-valid state instead.
+        {!admits ? (
+          // Step 6: a ticket that does not admit must never present a
+          // scannable QR. Show an unambiguous not-valid state instead, in the
+          // confirmation email's own words for its status.
           <div className="mt-6 rounded-xl border border-error/30 bg-error/10 p-6 text-center">
             <p className="font-display text-lg font-extrabold text-error">
-              Refunded
+              {status.label}
             </p>
             <p className="mt-1 text-sm text-ink-600">
-              This ticket has been refunded and is not valid for entry.
+              {notValidSentence(ticket.status)}
             </p>
           </div>
         ) : (
@@ -248,8 +251,12 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
         event's referral coefficient; a bearer link opened without a session
         still mints a tracked link, and the coefficient says plainly that it
         cannot prove who shared it.
+
+        Only on a ticket that admits: on a refunded, cancelled or transferred
+        one, "You will both be there" and "I have my ticket to" are untrue
+        (found on TEST by the E3 journey, 30 October 2026).
       */}
-      {ticket.event && (
+      {admits && ticket.event && (
         <section className="rounded-2xl border border-ink-200 bg-white p-6">
           <p className="font-display text-base font-semibold text-ink-900">Bring someone with you</p>
           <p className="mt-2 text-sm text-ink-600">

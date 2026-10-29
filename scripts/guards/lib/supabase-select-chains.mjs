@@ -132,6 +132,9 @@ export function selectChainsIn(path) {
       line: lineAt(raw, start),
       text: whole.replace(/\s+/g, ' ').slice(0, 220),
       orderColumns: [...whole.matchAll(/\.order\(\s*(['"])([A-Za-z0-9_]+)\1/g)].map((m) => m[2]),
+      // The WHOLE chain, whitespace collapsed (29 October 2026): `text` stops at 220 characters, and a filter late in
+      // a long read (counted-rows-exclude-tests.mjs looks for its is_test filter) would be invisible there.
+      fullText: whole.replace(/\s+/g, ' '),
     })
   }
 

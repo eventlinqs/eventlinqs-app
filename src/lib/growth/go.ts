@@ -92,14 +92,15 @@ export async function readGoPieceLink(pieceId: string): Promise<string | null> {
 }
 
 /** One press per visitor per piece per Melbourne day, never a crawler; a lost count never strands the visitor. */
-export async function recordGoPress(input: { pieceId: string; via: GoVia; ip: string | null; userAgent: string | null; now?: Date }): Promise<boolean> {
-  if (isPreviewCrawler(input.userAgent)) return false
+export async function recordGoPress(input: { pieceId: string; via: GoVia; ip: string | null; userAgent: string | null; now?: Date; isTest?: boolean }): Promise<boolean> {
+  // A QA press (qa-marker.ts) is recorded as a test even from a crawler agent; every other crawler is not recorded.
+  if (input.isTest !== true && isPreviewCrawler(input.userAgent)) return false
   try {
     const now = input.now ?? new Date()
     const { error } = await createAdminClient()
       .from('go_presses')
       .upsert(
-        { piece_id: input.pieceId, via: input.via, visitor: visitorHash(input.ip, input.userAgent), day: pressDay(now, PLATFORM_TIME_ZONE), pressed_at: now.toISOString() },
+        { piece_id: input.pieceId, via: input.via, visitor: visitorHash(input.ip, input.userAgent), day: pressDay(now, PLATFORM_TIME_ZONE), pressed_at: now.toISOString(), is_test: input.isTest === true },
         { onConflict: 'piece_id,visitor,day', ignoreDuplicates: true },
       )
     if (error) throw new Error(error.message)

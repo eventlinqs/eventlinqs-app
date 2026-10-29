@@ -432,7 +432,9 @@ try {
   await shot(tp, '12-buyer-ticket-page')
   const status = resp?.status() ?? 0
   const saysRefunded = /refunded/i.test(bodyText)
-  const notValidForEntry = /not valid for entry/i.test(bodyText)
+  // The page says it in the confirmation email's words since 30 October 2026
+  // (src/lib/tickets/entry-state.ts): "This ticket was refunded and is no longer valid."
+  const notValidForEntry = /not valid for entry|no longer valid/i.test(bodyText)
   const hasQr = await tp.locator('[role="img"][aria-label*="Entry QR"]').count()
   console.log(`  GET /t/${code}?k=<bearer secret> -> HTTP ${status}`)
   console.log(`  says "refunded": ${saysRefunded}   says "not valid for entry": ${notValidForEntry}   scannable QR present: ${hasQr > 0}`)

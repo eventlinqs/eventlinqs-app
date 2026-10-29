@@ -495,6 +495,8 @@ export async function recordShareLinkEvent(
     visitorHash?: string | null
     /** An 'outbound' press only: the booking link pressed and its platform (20261027140002). */
     outbound?: { bookingLinkId: string | null; provider: string } | null
+    /** A QA press carrying a verified marker (src/lib/broadcast/qa-marker.ts, 20261029220001): recorded, counted nowhere. */
+    isTest?: boolean
   },
   opts?: { client?: BroadcastClient },
 ): Promise<boolean> {
@@ -527,6 +529,7 @@ export async function recordShareLinkEvent(
           .eq('kind', input.kind)
           .eq('visitor_hash', input.visitorHash)
           .eq('booking_link_id', pressedLink)
+          .eq('is_test', input.isTest === true)
           .gte('occurred_at', dayStart.toISOString())
           .limit(1)
           .maybeSingle()
@@ -536,6 +539,7 @@ export async function recordShareLinkEvent(
           .eq('link_id', input.linkId)
           .eq('kind', input.kind)
           .eq('visitor_hash', input.visitorHash)
+          .eq('is_test', input.isTest === true)
           .gte('occurred_at', dayStart.toISOString())
           .limit(1)
           .maybeSingle()
@@ -562,6 +566,7 @@ export async function recordShareLinkEvent(
       .eq('link_id', input.linkId)
       .eq('kind', 'click')
       .eq('visitor_hash', input.visitorHash)
+      .eq('is_test', input.isTest === true)
       .gte('occurred_at', since.toISOString())
       .limit(1)
       .maybeSingle()
@@ -581,6 +586,7 @@ export async function recordShareLinkEvent(
     visitor_hash: input.visitorHash ?? null,
     booking_link_id: input.outbound?.bookingLinkId ?? null,
     provider: input.outbound?.provider ?? null,
+    is_test: input.isTest === true,
   })
   // The partial unique index rejects a duplicate conversion; that is a
   // success from the caller's perspective (the sale is already counted).

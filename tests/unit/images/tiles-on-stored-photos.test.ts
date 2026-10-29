@@ -96,17 +96,36 @@ describe('city tiles and heroes', () => {
   })
 })
 
-describe('a refused Pexels answer', () => {
-  test('is never kept: the next call asks again, and is served once it answers', async () => {
-    fetchSpy.mockResolvedValueOnce(new Response('rate limited', { status: 429 }))
-    const first = await category.getCategoryPhoto('a-slug-no-table-names')
-    expect(category.isBrandedFallbackPhoto(first)).toBe(true)
+describe('every slug a page hands getCategoryPhoto', () => {
+  test.each([
+    ['concert', /\/event-images\/stock\/categories\/music\//],
+    ['dj-set', /\/event-images\/stock\/scenes\/electronic-dance\//],
+    ['theatre', /\/event-images\/stock\/categories\/arts-community\//],
+    ['workshop', /^\/images\/library\/education\.jpg$/],
+    ['sport', /\/event-images\/stock\/categories\/sports\//],
+    ['country', /\/event-images\/stock\/scenes\/country\//],
+    ['electronic', /\/event-images\/stock\/scenes\/electronic-dance\//],
+    ['indie-rock', /\/event-images\/stock\/scenes\/indie-rock\//],
+    ['gospel', /^\/images\/hero\/gospel\.jpg$/],
+  ])('%s, from a city page or the organisers strip, is a stored photograph with no network call', async (slug, src) => {
+    expect((await category.getCategoryPhoto(slug)).src).toMatch(src)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
 
-    fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ photos: [{ src: { large: 'https://images.pexels.com/x.jpg', medium: 'https://images.pexels.com/x-m.jpg' }, width: 2000, height: 1300, alt: 'x', photographer: 'p' }] }), { status: 200 }),
-    )
-    const second = await category.getCategoryPhoto('a-slug-no-table-names')
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
-    expect(category.isBrandedFallbackPhoto(second)).toBe(false)
+  test('a slug no table names gets the stored other photograph, never the placeholder and never Pexels', async () => {
+    const photo = await category.getCategoryPhoto('a-slug-no-table-names')
+    expect(category.isBrandedFallbackPhoto(photo)).toBe(false)
+    expect(photo.src).toBe((await category.getCategoryPhoto('other')).src)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('suburb tiles and heroes', () => {
+  test('every suburb is its kept photograph with no network call; one never kept answers null', async () => {
+    const suburb = await import('@/lib/images/suburb-photo')
+    expect(await suburb.getSuburbHeroPhoto('sydney-inner-west')).toBe('/images/library/suburb-sydney-inner-west.jpg')
+    expect(await suburb.getSuburbHeroPhoto('hobart-inner-city')).toBe('/images/library/suburb-hobart-inner-city.jpg')
+    expect(await suburb.getSuburbHeroPhoto('nowhere-at-all')).toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

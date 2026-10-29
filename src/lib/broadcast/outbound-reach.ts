@@ -64,7 +64,7 @@ export async function fetchOutboundWeek(eventId: string, now: Date): Promise<Out
       ...(await readEveryRow<OutboundRow>('the outbound presses on those links this week', (from, to) =>
         admin
           .from('share_link_events')
-          .select('id, provider, visitor_hash, occurred_at')
+          .select('id, provider, visitor_hash, occurred_at').eq('is_test', false)
           .in('link_id', chunk)
           .eq('kind', 'outbound')
           .gte('occurred_at', since)

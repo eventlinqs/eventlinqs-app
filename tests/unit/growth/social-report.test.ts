@@ -138,6 +138,49 @@ describe('J16: entered figures', () => {
   })
 })
 
+describe('attribution per poster (the daily poster directive of 30 October 2026, step 9)', () => {
+  it('counts its /go taps and the claims of its nights for 30 days from when it went, and nothing before it went', () => {
+    const went = '2026-10-27T08:00:00.000Z'
+    const poster = piece('c2', { kind: 'daily_poster', postedAt: went, nightIds: ['ev-1'] })
+    const waiting = piece('c2', { kind: 'daily_poster', nightIds: ['ev-2'] })
+    const r = buildSocialReport({
+      campaignId: 'c2',
+      campaigns: [C2],
+      pieces: [poster, waiting],
+      figures: [],
+      linkEvents: [],
+      orders: new Map(),
+      counted: new Map(),
+      now: NOW,
+      goPresses: [
+        { pieceId: poster.id, pressedAt: '2026-10-27T09:00:00.000Z' },
+        { pieceId: poster.id, pressedAt: '2026-10-28T09:00:00.000Z' },
+        { pieceId: poster.id, pressedAt: '2026-10-26T09:00:00.000Z' }, // before it went
+        { pieceId: poster.id, pressedAt: '2026-11-28T09:00:00.000Z' }, // past 30 days
+        { pieceId: waiting.id, pressedAt: '2026-10-28T09:00:00.000Z' },
+      ],
+      claims: [
+        { eventId: 'ev-1', createdAt: '2026-10-29T09:00:00.000Z' },
+        { eventId: 'ev-1', createdAt: '2026-10-20T09:00:00.000Z' }, // before it went
+        { eventId: 'ev-9', createdAt: '2026-10-29T09:00:00.000Z' }, // another night
+      ],
+    })
+    expect(r.pieces[0].goTaps).toBe(2)
+    expect(r.pieces[0].claimsAfter).toBe(1)
+    expect(r.pieces[0].claimsWords).toMatch(/after it went, not proof it caused them/)
+    // A piece that has not gone is not counted, never 0.
+    expect(r.pieces[1].goTaps).toBeNull()
+    expect(r.pieces[1].claimsAfter).toBeNull()
+  })
+
+  it('reads every existing report the same when the poster inputs are absent', () => {
+    const p = piece('c2', { postedAt: '2026-10-27T08:00:00.000Z' })
+    const r = buildSocialReport({ campaignId: 'c2', campaigns: [C2], pieces: [p], figures: [], linkEvents: [], orders: new Map(), counted: new Map(), now: NOW })
+    expect(r.pieces[0].goTaps).toBe(0)
+    expect(r.pieces[0].claimsAfter).toBe(0)
+  })
+})
+
 describe('K14: entered and counted never mix', () => {
   it('changing every entered figure changes no counted figure', () => {
     const p = piece('c2', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'L9' })

@@ -13,6 +13,7 @@ import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import { admitsEntry, notValidSentence } from '@/lib/tickets/entry-state'
 import { entityFooterLine } from '@/lib/legal/platform-entity'
 import { LOOP_SOURCES, RUN_YOUR_EVENT_LINE, organiserLoopUrl } from '@/lib/growth/loops'
 
@@ -95,9 +96,6 @@ type EmailEvent = {
   refund_policy_self_service?: boolean | null
 }
 
-// Statuses that still admit entry and therefore carry a QR.
-const QR_STATUSES = new Set(['valid', 'scanned'])
-
 /**
  * THE LIVESTREAM LINK IN THE EMAIL (Scope v5 3.11) is the WATCH PAGE, never the
  * stream address itself. The watch page verifies the same bearer pair as the
@@ -106,7 +104,7 @@ const QR_STATUSES = new Set(['valid', 'scanned'])
  * restricted, and a refunded ticket stops watching the moment it is refunded.
  */
 function admitsToStream(event: EmailEvent, ticket: EmailTicket): boolean {
-  if (!QR_STATUSES.has(ticket.status)) return false
+  if (!admitsEntry(ticket.status)) return false
   return event.event_type === 'virtual' || ticket.tier?.access_mode === 'virtual'
 }
 
@@ -163,16 +161,6 @@ function venueLines(event: EmailEvent): string[] {
   const locality = formatVenueAddress({ city: event.venue_city, country: event.venue_country }) ?? ''
   if (locality) lines.push(locality)
   return lines
-}
-
-// Plain-language sentence for a ticket that no longer admits entry. Returns
-// null for statuses that still carry a QR.
-function invalidTicketSentence(status: string): string | null {
-  if (status === 'refunded') return 'This ticket was refunded and is no longer valid.'
-  if (status === 'void') return 'This ticket was cancelled and is no longer valid.'
-  if (status === 'transferred') return 'This ticket was transferred and is no longer valid.'
-  if (QR_STATUSES.has(status)) return null
-  return 'This ticket is no longer valid.'
 }
 
 export async function sendConfirmationEmail(
@@ -233,7 +221,7 @@ export async function sendConfirmationEmail(
   // identical to GET /api/tickets/[code]/qr.
   const attachments: { filename: string; content: Buffer; contentId: string }[] = []
   for (const ticket of tickets) {
-    if (!QR_STATUSES.has(ticket.status)) continue
+    if (!admitsEntry(ticket.status)) continue
     const payload = `${getSiteUrl()}/t/${encodeURIComponent(ticket.ticket_code)}?k=${encodeURIComponent(ticket.secret)}`
     const png = await QRCode.toBuffer(payload, {
       type: 'png',
@@ -352,7 +340,7 @@ export function buildConfirmationEmailHtml(
     .map(ticket => {
       const holder = escapeHtml(ticket.holder_name ?? 'Ticket holder')
       const code = escapeHtml(ticket.ticket_code)
-      const invalid = invalidTicketSentence(ticket.status)
+      const invalid = notValidSentence(ticket.status)
 
       if (invalid) {
         return `
@@ -505,7 +493,7 @@ export function buildConfirmationEmailText(
   for (const ticket of tickets) {
     lines.push('')
     lines.push(ticket.holder_name ?? 'Ticket holder')
-    const invalid = invalidTicketSentence(ticket.status)
+    const invalid = notValidSentence(ticket.status)
     if (invalid) {
       lines.push(invalid)
       continue

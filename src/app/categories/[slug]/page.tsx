@@ -170,7 +170,7 @@ export default async function CategoryPage({ params }: Props) {
   const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
 
   const [photo, all] = await Promise.all([
-    getCategoryPhoto(real!.slug, real!.slug),
+    getCategoryPhoto(real!.slug),
     getPublishableCategories(),
   ])
 

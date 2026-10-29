@@ -301,7 +301,7 @@ export async function readPosts(db: Db, now: Date): Promise<PostRow[]> {
   if (linkIds.length > 0) {
     const { data: ev, error: eerr } = await db
       .from('share_link_events')
-      .select('link_id, kind, order_id, occurred_at')
+      .select('link_id, kind, order_id, occurred_at').eq('is_test', false)
       .in('link_id', linkIds)
       .in('kind', ['click', 'outbound', 'conversion'])
       .limit(20000)
