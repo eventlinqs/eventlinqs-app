@@ -16,15 +16,6 @@ function isRealCover(url: string | null | undefined): url is string {
 
 /**
  * A night's OWN photograph: an organiser's upload or an authorised one, never our typographic cover, a library shot or
- * a placeholder. The home hero leads only with these (the PM's 18:38 of 29 October 2026: authorised photographs, else
- * premium typography; contextual photography only for brand pieces that name no night).
- */
-export function isOwnPhoto(url: string | null | undefined): url is string {
-  return isRealCover(url) && !isComposedCover(url)
-}
-
-/**
- * A night's OWN photograph: an organiser's upload or an authorised one, never our typographic cover, a library shot or
  * a placeholder. The home hero leads only with these (the project manager's 18:38 and 19:14 of 29 October 2026: a
  * library photograph never stands under a night's name in the hero, which carries no 'It is not this venue' line;
  * true under both of Lawal's rulings on covers, so it rides alone while the cover question waits for him).
