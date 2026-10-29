@@ -1041,6 +1041,8 @@ export default async function EventDetailPage({ params }: Props) {
    * platform cannot deliver: the waitlist exists to convert into a sale, and
    * there is no sale to convert into while the organiser cannot be paid.
    */
+  /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket and names no price. */
+  const nightIsOver = eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled'
   // An event sold on another site names the panel's one button (WI3, heroSaleWords).
   const heroSale = heroSaleWords({
     externalUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
@@ -1051,8 +1053,7 @@ export default async function EventDetailPage({ params }: Props) {
     priceLabel,
     /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
     cta: ctaFor({
-      /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket in the hero or bar. */
-      over: eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled',
+      over: nightIsOver,
       entryMode: event.entry_mode ?? null,
       tiers: priceTiersForDisplay,
       isFree: event.is_free ?? null,
@@ -1139,7 +1140,7 @@ export default async function EventDetailPage({ params }: Props) {
         title={event.title}
         dateLabel={shortDate}
         venueLabel={venueLabelShort}
-        priceLabel={externallyTicketed ? heroPriceLabel : priceLabel}
+        priceLabel={externallyTicketed || nightIsOver ? heroPriceLabel : priceLabel}
         shareUrl={`/events/${event.slug}`}
         ctaLabel={ticketCtaLabel}
       />
