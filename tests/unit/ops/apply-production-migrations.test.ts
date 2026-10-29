@@ -10,6 +10,7 @@ import {
   VERCEL_LINK_FILE,
   askLine,
   decide,
+  outOfOrder,
   proofOneCanLook,
   readLinkedRef,
   supabaseCommands,
@@ -68,6 +69,39 @@ describe('supabaseCommands', () => {
   })
 })
 
+describe("a pending file older than production's newest (29 October: car 4 behind car 3)", () => {
+  // The CLI's own rule, quoted from supabase/cli apps/cli-go/pkg/migration/apply.go (develop, read 29 October 2026):
+  // a local file older than the newest remote version is refused with "Found local migration files to be inserted
+  // before the last migration on remote database." unless db push is given --include-all ("Include all migrations
+  // not found on remote history table.", supabase db push --help, 2.121.0).
+  const applied = new Set(['20261028151001', '20261028201001', '20261028231001'])
+
+  test('names every pending file whose version sorts before the newest applied, and only those', () => {
+    const late = [
+      { file: '20261028133001_listing_checks_reuse_basis.sql', version: '20261028133001' },
+      { file: '20261028204001_supply_horizon_and_exceptions.sql', version: '20261028204001' },
+    ]
+    const after = [{ file: '20261029100001_later.sql', version: '20261029100001' }]
+    expect(outOfOrder([...late, ...after], applied)).toEqual(late)
+    expect(outOfOrder(after, applied)).toEqual([])
+    expect(outOfOrder(late, new Set())).toEqual([])
+    expect(outOfOrder([], applied)).toEqual([])
+  })
+
+  test('the push carries --include-all only when asked, after --linked, and still no credential', () => {
+    expect(supabaseCommands()[1].args).toEqual(['supabase', 'db', 'push', '--linked'])
+    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: false })[1].args).toEqual(['supabase', 'db', 'push', '--linked'])
+    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: true })[1].args).toEqual(['supabase', 'db', 'push', '--linked', '--include-all'])
+    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: true })[2].args).toEqual(['supabase', 'link', '--project-ref', TEST_PROJECT_REF])
+  })
+
+  test('the run decides --include-all from the pending set it listed, never always', () => {
+    const source = readFileSync(join(process.cwd(), 'scripts', 'ops', 'apply-production-migrations.mjs'), 'utf8')
+    expect(source).toContain('const late = outOfOrder(pending, listed.applied)')
+    expect(source).toContain('supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: late.length > 0 })')
+  })
+})
+
 describe('readLinkedRef', () => {
   const dirs: string[] = []
   afterEach(() => {
@@ -109,7 +143,7 @@ describe('proof 1 can look, judged before anything is linked or pushed', () => {
     const source = readFileSync(join(process.cwd(), 'scripts', 'ops', 'apply-production-migrations.mjs'), 'utf8')
     const refusal = source.indexOf('if (!proofOneCanLook())')
     expect(refusal).toBeGreaterThan(0)
-    expect(refusal).toBeLessThan(source.indexOf('const [link, push] = supabaseCommands()'))
+    expect(refusal).toBeLessThan(source.indexOf('const [link, push] = supabaseCommands('))
     expect(refusal).toBeLessThan(source.indexOf('typed = askLine('))
     expect(source).not.toContain("'schema object the code names still absent'")
   })

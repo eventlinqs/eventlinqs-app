@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   addAsset,
@@ -40,11 +41,16 @@ const back = (said: string): never => redirect(`/admin/social?said=${encodeURICo
 async function staff() {
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) back('Your role cannot plan or approve posts.')
+  /* The release checklist F4: every press is limited by the admin's own id (policies.ts admin-social-press). */
+  const limited = await actionRateLimit('admin-social-press', session.userId)
+  if (!limited.ok) back(`Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
   return session
 }
 
 export async function planWeekAction(): Promise<void> {
   const session = await staff()
+  const limited = await actionRateLimit('admin-social-plan', session.userId)
+  if (!limited.ok) back(`The week was planned a few times just now. Plan again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
   const now = new Date()
   const done = await planWeek(createAdminClient(), { plannedBy: session.userId, now })
   /* The week's campaign (the release checklist, A1 and F7): found again on a second press, never doubled; nothing is

@@ -50,6 +50,7 @@ import { readListingPages } from '@/lib/listings/listing-pages-read'
 import { readJoinedCollaborators, type JoinedCollaborator } from '@/lib/events/collaborators'
 import { CollaboratorsLine } from '@/components/events/collaborators-line'
 import { HoursList } from './hours-list'
+import { ReportListingLink } from '@/components/events/report-listing-link'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -210,6 +211,10 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
     const labels = dayLabels(d.date)
     return { date: d.date, tab: labels.tab, phoneTab: labels.short, long: labels.long, hours: dayHours(d), items: d.items, closer: d.closer }
   })
+  // The day by day section only where it says more than the hours already shown above it: a program item, a closer
+  // or the program's own note. A curated night carries its hours alone, and drew "The program" with nothing in it
+  // but those hours (window 5's finish pass, 27 October 2026).
+  const programSaysMore = days.some((d) => d.items.length > 0 || d.closer !== null) || Boolean(guide.program_note)
 
   const crumbs = [
     { name: 'Events', href: '/events' },
@@ -378,7 +383,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               )}
 
               {/* Day by day */}
-              {days.length > 0 && (
+              {days.length > 0 && programSaysMore && (
                 <Reveal as="section" className="flex flex-col gap-3.5 lg:gap-5">
                   <div>
                     <p className="type-eyebrow mb-1.5 hidden font-display text-[var(--brand-accent-strong)] lg:block">
@@ -565,6 +570,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             </aside>
           </div>
         </div>
+        <ReportListingLink slug={event.slug} />
       </main>
 
       <WalkInBottomBar

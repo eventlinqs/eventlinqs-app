@@ -79,7 +79,7 @@ export const RESERVED_CODES: readonly string[] = [
   'about', 'account', 'actions', 'admin', 'api', 'artist', 'artists', 'auth',
   'careers', 'categories', 'checkout', 'cities', 'city', 'communities',
   'community', 'contact', 'dashboard', 'design', 'dev', 'e', 'events', 'faith',
-  'feed', 'for-organisers', 'forecast', 'forgot-password', 'free', 'gigs', 'guides', 'help', 'join',
+  'feed', 'for-organisers', 'forecast', 'forgot-password', 'free', 'gigs', 'go', 'guides', 'help', 'join',
   'launch', 'partners',
   // The GA3 tracked link, the /m route. A share code that shadowed it would
   // take over the address the attribution spine mints links on, which is the
@@ -94,7 +94,7 @@ export const RESERVED_CODES: readonly string[] = [
   // first two versions of this line failed.
   'm',
   'legal', 'login', 'marketing', 'offline', 'orders', 'organisers', 'out', 'press', 'pricing', 'queue', 'remind', 's',
-  'scan', 'signup', 'squad', 't', 'this-weekend', 'tickets', 'unsubscribe', 'venues',
+  'scan', 'signup', 'squad', 'submit-event', 't', 'this-weekend', 'tickets', 'unsubscribe', 'venues',
   'verify-email-sent', 'waitlist',
   // Held back on purpose: the permanent redirects from the community rename,
   // and the obvious next routes. Cheap to reserve, expensive to reclaim.

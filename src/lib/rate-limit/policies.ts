@@ -32,9 +32,15 @@ export type PolicyName =
   | 'forecast-run'
   | 'newsletter-subscribe'
   | 'partner-enquiry'
+  | 'listing-submission'
+  | 'listing-report'
+  | 'organiser-media'
+  | 'admin-social-press'
+  | 'admin-social-plan'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
+  | 'outreach-one-click'
   | 'outreach-unsubscribe'
   | 'ai-chat'
   | 'ai-chat-daily'
@@ -211,6 +217,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'The RFC 8058 one-click unsubscribe endpoint, POST /api/marketing/one-click-unsubscribe/[token]. KEYED BY THE TOKEN, passed explicitly, NEVER by the IP, and that is the whole point of this entry rather than a detail of it. The caller is a mailbox provider: Google or Yahoo infrastructure posting on a recipient behalf, so every recipient of one campaign arrives from a handful of egress addresses. An IP-keyed bucket of any size would start refusing real unsubscribes the moment a campaign went out at volume, which is the carrier-NAT bucket this platform has already met twice (launch-artefact, launch-compose-daily) and which payouts-read and stream-message were both re-keyed to escape. One token is one subscriber, which is the unit of abuse worth bounding, and the token is an unguessable uuid rather than something a stranger enumerates. Twenty per token per ten minutes covers a provider retrying a delivery and a person pressing the button in every copy of every message they hold, and is useless for anything else, because the only thing the endpoint can do with a valid token is stop mail to that one address. FAIL-OPEN, the same posture and the same reason as marketing-rights: this surface can only ever STOP mail, the write is idempotent so a flood of valid requests produces one ledger row, and a Redis blip that refused a one-click unsubscribe would be the platform failing the exact facility the headers promise a mailbox provider works. That is a deliverability failure, which is the cost launch-email prices in domains rather than in requests, and it is incurred by refusing rather than by allowing.',
   },
+  'outreach-one-click': {
+    keyPrefix: 'out-1click',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'The RFC 8058 one-click unsubscribe for the organiser CRM emails, POST /api/outreach/one-click-unsubscribe/[token] (window 6, 28 October 2026). The same shape and the same reasons as marketing-one-click, in its own bucket so a campaign on one cannot spend the other: KEYED BY THE TOKEN alone (organiser_contacts.unsubscribe_token, an unguessable uuid), never by the caller address, because the caller is a mailbox provider posting for every recipient of a send from a few egress addresses. Twenty per token per ten minutes covers retries and repeated presses. FAIL-OPEN: the endpoint can only stop mail, the write happens once for each address (outreach_unsubscribe_by_token), and refusing it during a Redis blip would fail the facility the headers promise.',
+  },
   'outreach-unsubscribe': {
     keyPrefix: 'out-unsub',
     limit: 10,
@@ -239,6 +252,34 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'The partner enquiry form on /partners per IP per 10 min (Train C, row 14). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone correcting a message twice; a scripted flood is bounded.',
   },
+  'listing-submission': {
+    keyPrefix: 'listing-sub',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
+  },
+  'listing-report': {
+    keyPrefix: 'listing-rep',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The Report or remove this listing form on /events/[slug]/report per IP per 10 min (release checklist I5, 29 October 2026). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone reporting a few nights of one series; a scripted flood is bounded.',
+  },
+  'admin-social-press': {
+    keyPrefix: 'adm-social',
+    limit: 120,
+    windowSec: 600,
+    rationale:
+      'Every press on /admin/social per admin per 10 min (the release checklist F4), KEYED BY THE ADMIN USER ID, passed explicitly, never the IP: one admin is one bucket, and Lawal pressing from his phone on a carrier network shares an address with strangers. Sized from the work it serves: a week is 12 pieces and 12 partner kits, each approved and recorded on two platforms, about 72 presses in one sitting, so 120 in ten minutes covers a whole week with edits and leaves a scripted loop on a stolen session bounded. FAIL-OPEN: every press already needs an enabled admin row and a 2FA proof, and a Redis blip that locked the founder out of his own approvals is the worse failure.',
+  },
+  'admin-social-plan': {
+    keyPrefix: 'adm-plan',
+    limit: 6,
+    windowSec: 600,
+    rationale:
+      'The Plan press on /admin/social per admin per 10 min (F4), keyed by the admin user id as admin-social-press. Planning is idempotent (F7: a second press finds the week and makes nothing new) but each press reads the whole week of listings and writes or finds its posts and pieces, so it is the costly press. Six in ten minutes covers a plan, a re-plan after excluding a night and a few presses to check; more is a loop. FAIL-OPEN, the same reason as admin-social-press.',
+  },
   'waitlist-join': {
     keyPrefix: 'wl-join',
     limit: 5,
@@ -246,6 +287,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'organiser-media': {
+    keyPrefix: 'org-media',
+    limit: 20,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      "The organiser's own photos and artwork on /dashboard/organisation/media (the engine plan of 28 October 2026, part D), per signed in user per hour: add and replace. Twenty covers an organiser adding a night's set of photos and correcting a few; each add or replace stores a file of up to 10MB in a public bucket, so it is a storage flooding target. FAIL-CLOSED: an outage of the limiter must not open unbounded uploads. Withdrawals are never limited: taking an image or a permission back is the organiser's right and stores nothing.",
   },
   'listing-claim': {
     keyPrefix: 'listing-claim',

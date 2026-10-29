@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { recordDemand, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/ledger/adapter'
 import { afterResponse } from '@/lib/after-response'
 import { visitorHash } from '@/lib/broadcast/share-links'
+import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import { deviceFromUserAgent, decodeFirstTouch, FIRST_TOUCH_COOKIE } from '@/lib/growth/visit-attribution'
 
 export const runtime = 'nodejs'
@@ -74,6 +75,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
   const userAgent = request.headers.get('user-agent')
+  // A crawler or a headless browser is not a person who viewed the listing (window 5, 29 October 2026): the finish
+  // pass of 28 October was counted here as people opening event pages, which reach the after-event report, the
+  // organiser's report after the night and the growth page. The same test the press out route uses
+  // (src/lib/broadcast/crawler.ts), and the same answer, so nothing is learned by a crawler from a refusal.
+  if (isPreviewCrawler(userAgent)) {
+    return NextResponse.json({ ok: true })
+  }
   const visitor = visitorHash(ip, userAgent)
   const day = new Date().toISOString().slice(0, 10)
   const firstTouch = decodeFirstTouch(request.cookies.get(FIRST_TOUCH_COOKIE)?.value ?? null)

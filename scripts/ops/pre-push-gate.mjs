@@ -1008,6 +1008,14 @@ export const STEPS = [
     run: (env) => exec(NODE, ['scripts/check-disk-space.mjs'], env),
   },
   {
+    id: 'reach',
+    ci: 'local only: one request each to TEST, the Management API and GitHub (scripts/ops/reach-check.mjs; release checklist J3)',
+    title: 'the network reaches what the gate reads, before anything reads it',
+    mirrors: [],
+    env: 'local',
+    run: (env) => exec(NODE, ['scripts/ops/reach-check.mjs'], env),
+  },
+  {
     id: 'typecheck',
     ci: 'CI > verify > Typecheck',
     title: 'tsc --noEmit over the whole tree, tests included',

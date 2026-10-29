@@ -10691,6 +10691,51 @@ const DRILLS = [
     expect: 'no longer asks the one call to action',
   },
   /*
+   * social-measured-apart (the release checklist of 28 October 2026, K14 and J16). Five
+   * ways the weekly social report could mix what EventLinqs counted with what a
+   * platform reported, call a press out a sale, or grow a second reader of its tables.
+   */
+  {
+    name: 'social report: an entered figure summed with a counted one',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/growth/social-report-math.ts',
+    find: '    enteredTotals: totalsOf(pieces),',
+    replace: '    enteredTotals: totalsOf(pieces),\n    drillMixed: (counted?.visitors ?? 0) + (totalsOf(pieces).instagram.reach?.value ?? 0),',
+    expect: 'puts an entered figure and a counted one in one calculation',
+  },
+  {
+    name: 'social report: the counted week carries reach',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/growth/social-report-math.ts',
+    find: '  readonly eventViews: number',
+    replace: '  readonly eventViews: number\n  readonly reach: number',
+    expect: 'a platform figure; it belongs in the entered figures',
+  },
+  {
+    name: 'social report: the counted section shows an entered total',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/app/admin/(authed)/growth/social-report/report-view.tsx',
+    find: "Not counted: this campaign&apos;s week has not begun.",
+    replace: "Not counted: this campaign&apos;s week has not begun. {String(r.enteredTotals.instagram.reach)}",
+    expect: 'the counted section names',
+  },
+  {
+    name: 'social report: a press out labelled a sale',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/app/admin/(authed)/growth/social-report/report-view.tsx',
+    find: "label: 'Presses out to booking sites'",
+    replace: "label: 'Ticket sales on booking sites'",
+    expect: 'a press to another site is never a sale',
+  },
+  {
+    name: 'social report: a second reader of the decisions',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/social/results.ts',
+    find: 'export const CREDIT_DAYS = 30',
+    replace: "export const CREDIT_DAYS = 30\nexport const drillPeek = (db: { from: (t: string) => unknown }) => db.from('social_report_decisions')",
+    expect: 'reads or writes social_report_decisions',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the
@@ -10772,9 +10817,17 @@ const DRILLS = [
     name: 'listed hosts: the structured data links an organiser page that does not exist',
     guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
     file: 'src/lib/seo/event-schema.ts',
-    find: '      ...(organisation.slug ? { url: `${baseUrl}/organisers/${organisation.slug}` } : {}),',
-    replace: '      url: `${baseUrl}/organisers/${organisation.slug}`,',
+    find: '        ...(shown.slug ? { url: `${baseUrl}/organisers/${shown.slug}` } : {}),',
+    replace: '        url: `${baseUrl}/organisers/${shown.slug}`,',
     expect: 'carries a url whether or not there is an organiser page',
+  },
+  {
+    name: 'listed hosts: the structured data names the organisation it was handed, unasked',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '      const shown = shownOrganiser(event, organisation)',
+    replace: '      const shown = { name: organisation.name, slug: organisation.slug }',
+    expect: 'it must ask shownOrganiser',
   },
   /*
    * the-daily-run-finishes-what-it-starts (window 4, 24 October 2026, WI2 Part

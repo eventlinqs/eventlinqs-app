@@ -49,6 +49,7 @@ export async function unsubscribeFromOutreachAction(
 ): Promise<OutreachUnsubscribeState> {
   const parsed = parseOutreachUnsubscribe({
     id: formData.get('id'),
+    token: formData.get('t'),
     email: formData.get('email'),
     reason: formData.get('reason'),
     comment: formData.get('comment'),
@@ -66,6 +67,23 @@ export async function unsubscribeFromOutreachAction(
   }
 
   const admin = createAdminClient()
+
+  // The CRM's own link names the contact by its token: the database records it against the contact's own address,
+  // once (outreach_unsubscribe_by_token, migration 20261028221001), and voids what was held or queued for them. A
+  // failed call throws to the error boundary, as a failed insert does. A token matching nobody asks for the address.
+  if (parsed.value.contactToken) {
+    const byToken = await admin.rpc('outreach_unsubscribe_by_token', {
+      p_token: parsed.value.contactToken,
+      ...(parsed.value.reason ? { p_reason: parsed.value.reason } : {}),
+      ...(parsed.value.comment ? { p_comment: parsed.value.comment } : {}),
+    })
+    if (byToken.error) throw new Error(`[outreach-unsubscribe] the unsubscribe could not be recorded: ${byToken.error.message}`)
+    if (byToken.data === 'unknown') {
+      return { status: 'invalid', field: 'email', message: "We couldn't match that link. Enter the email address you'd like to unsubscribe." }
+    }
+    return { status: 'done' }
+  }
+
   const recorded = await recordOutreachUnsubscribe(
     (row) => admin.from('outreach_unsubscribes').insert(row).select('id, created_at').single(),
     parsed.value,

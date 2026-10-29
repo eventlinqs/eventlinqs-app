@@ -12,6 +12,7 @@ export interface AdminNavItem {
 }
 
 export const ADMIN_NAV: AdminNavItem[] = [
+  { label: 'Today',            href: '/admin/today',      capability: 'admin.dashboard.view' },
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
   { label: 'Growth',           href: '/admin/growth',     capability: 'admin.pricing.manage' },
   { label: 'Weekly roundup',   href: '/admin/roundup',    capability: 'admin.network.manage' },
@@ -30,6 +31,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Collected events', href: '/admin/collected',  capability: 'admin.events.manage' },
+  { label: 'Submitted events', href: '/admin/submissions', capability: 'admin.events.manage' },
   { label: 'Social posts',     href: '/admin/social',     capability: 'admin.network.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
   { label: 'Money taken, no ticket', href: '/admin/orders/unfulfilled', capability: 'admin.refunds.process' },

@@ -11,6 +11,9 @@
  *    tickets on" nowhere (E4: "View tickets at <provider>").
  * 3. Never free because no price is stored (E6): no display surface falls back to "Free entry" when a price is
  *    missing (a `?? 'Free entry'`).
+ * 4. "Get tickets" is written only in src/lib/events/cta.ts (the project manager's 22:02 of 28 October 2026). The home
+ *    hero said it on every slide, a free walk-in night among them, and the event page's hero and sticky bar said it on
+ *    a night that had ended, because each wrote the words itself; a surface takes them from ctaFor or not at all.
  *
  * It reads the tree, never the database.
  */
@@ -32,8 +35,10 @@ const SURFACES = [
   ['src/lib/listings/ticket-panel.ts', /from '@\/lib\/events\/cta'/],
   ['src/lib/listings/outbound.ts', /from '@\/lib\/events\/cta'/],
   ['src/app/events/[slug]/page.tsx', /from '@\/lib\/events\/cta'/],
+  ['src/components/features/home/FeaturedHero.tsx', /from '@\/lib\/events\/cta'/],
+  ['src/lib/events/event-meta.ts', /from '\.\/cta'/],
 ]
-const OWN_WORDS = ['View tickets at', 'Free · just turn up', 'Free · register first', 'Free, registration required']
+const OWN_WORDS = ['Get tickets', 'View tickets at', 'Free · just turn up', 'Free · register first', 'Free, registration required']
 const RETIRED = ['Get tickets on']
 const FREE_FALLBACK = /\?\?\s*['"`]Free entry['"`]/
 

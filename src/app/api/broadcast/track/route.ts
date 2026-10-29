@@ -8,6 +8,7 @@ import {
   resolveShareLink,
   visitorHash,
 } from '@/lib/broadcast/share-links'
+import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,6 +55,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const link = await resolveShareLink(parsed.data.code)
   if (!link) {
+    return NextResponse.json({ ok: true })
+  }
+
+  // A crawler or a headless browser is not a person who viewed (window 5, 29 October 2026; the same class as the page
+  // view beacon in src/app/api/ledger/demand/route.ts): the same test the press out route uses, the same answer.
+  if (isPreviewCrawler(request.headers.get('user-agent'))) {
     return NextResponse.json({ ok: true })
   }
 

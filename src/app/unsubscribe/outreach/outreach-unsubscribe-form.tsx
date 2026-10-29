@@ -27,7 +27,7 @@ const DONE_TEXT = "You won't receive any more emails from us. Thank you for lett
  * returned, so it reaches the error boundary beside this file rather than
  * being shown here as a success.
  */
-export function OutreachUnsubscribeForm({ contactId }: { contactId: string | null }) {
+export function OutreachUnsubscribeForm({ contactId, contactToken = null }: { contactId: string | null; contactToken?: string | null }) {
   const [state, action, pending] = useActionState(unsubscribeFromOutreachAction, INITIAL)
   const doneHeading = useRef<HTMLHeadingElement>(null)
   const done = state.status === 'done'
@@ -73,8 +73,10 @@ export function OutreachUnsubscribeForm({ contactId }: { contactId: string | nul
 
       <form action={action} className="mt-6 space-y-6">
         {contactId !== null ? <input type="hidden" name="id" value={contactId} /> : null}
+        {/* A token that matched no contact comes back as an address error: then the address is asked for instead. */}
+        {contactToken !== null && !emailError ? <input type="hidden" name="t" value={contactToken} /> : null}
 
-        {contactId === null ? (
+        {contactId === null && (contactToken === null || emailError) ? (
           <div>
             <label htmlFor="outreach-unsubscribe-email" className="block text-sm font-medium text-ink-900">
               Your email address
