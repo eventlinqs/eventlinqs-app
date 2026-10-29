@@ -654,3 +654,27 @@ describe('an event sold on several sites (WI3, the 12:30 point 8)', () => {
     expect(validate(payload).errors).toEqual([])
   })
 })
+
+describe('an EventLinqs listing names its host, never the listings organisation (ruling A)', () => {
+  // Car 2's read back on production, 29 October 2026: the event page handed the
+  // raw organisation to the builder, so two listings described their organiser
+  // as "EventLinqs listings" with a url to /organisers/eventlinqs-listings, a 404.
+  const LISTINGS = { name: 'EventLinqs listings', slug: 'eventlinqs-listings', description: null }
+
+  it('a listing handed the listings organisation names its venue, with no organiser url', () => {
+    const payload = build({ listing_source: 'eventlinqs' }, { organisation: LISTINGS }) as Record<string, unknown>
+    expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'The Night Cat' })
+    expect(JSON.stringify(payload)).not.toContain('eventlinqs-listings')
+    expect(validate(payload).errors).toEqual([])
+  })
+
+  it('the listings organisation is never linked, whatever the row says of its source', () => {
+    const payload = build({}, { organisation: LISTINGS }) as Record<string, unknown>
+    expect(JSON.stringify(payload)).not.toContain('/organisers/eventlinqs-listings')
+  })
+
+  it("an organiser's own event still names and links its organisation", () => {
+    const payload = build() as Record<string, unknown>
+    expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney', url: `${BASE}/organisers/owambe-sydney` })
+  })
+})
