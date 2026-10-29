@@ -8971,6 +8971,7 @@ export type Database = {
           outcome: string
           partner_name: string | null
           planned_at: string
+          poster_day: string | null
           purpose: string
           share_link_id: string | null
         }
@@ -8987,6 +8988,7 @@ export type Database = {
           outcome: string
           partner_name?: string | null
           planned_at?: string
+          poster_day?: string | null
           purpose: string
           share_link_id?: string | null
         }
@@ -9003,6 +9005,7 @@ export type Database = {
           outcome?: string
           partner_name?: string | null
           planned_at?: string
+          poster_day?: string | null
           purpose?: string
           share_link_id?: string | null
         }
