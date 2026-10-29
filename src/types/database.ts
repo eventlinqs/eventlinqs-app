@@ -6020,6 +6020,59 @@ export type Database = {
           },
         ]
       }
+      outreach_play_judgements: {
+        Row: {
+          alpha: number
+          claims_a: number
+          claims_b: number
+          critical: number
+          id: string
+          judged_at: string
+          outcome: string
+          play_id: string
+          sent_a: number
+          sent_b: number
+          why: string
+          z: number | null
+        }
+        Insert: {
+          alpha: number
+          claims_a: number
+          claims_b: number
+          critical: number
+          id?: string
+          judged_at?: string
+          outcome: string
+          play_id: string
+          sent_a: number
+          sent_b: number
+          why: string
+          z?: number | null
+        }
+        Update: {
+          alpha?: number
+          claims_a?: number
+          claims_b?: number
+          critical?: number
+          id?: string
+          judged_at?: string
+          outcome?: string
+          play_id?: string
+          sent_a?: number
+          sent_b?: number
+          why?: string
+          z?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_play_judgements_play_id_fkey"
+            columns: ["play_id"]
+            isOneToOne: true
+            referencedRelation: "outreach_plays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outreach_plays: {
         Row: {
           approved_at: string | null
@@ -6038,6 +6091,9 @@ export type Database = {
           step1_template_id: string
           step2_template_id: string | null
           step3_template_id: string | null
+          test_per_half: number | null
+          variant_change: string | null
+          variant_template_id: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -6056,6 +6112,9 @@ export type Database = {
           step1_template_id: string
           step2_template_id?: string | null
           step3_template_id?: string | null
+          test_per_half?: number | null
+          variant_change?: string | null
+          variant_template_id?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -6074,6 +6133,9 @@ export type Database = {
           step1_template_id?: string
           step2_template_id?: string | null
           step3_template_id?: string | null
+          test_per_half?: number | null
+          variant_change?: string | null
+          variant_template_id?: string | null
         }
         Relationships: [
           {
@@ -6093,6 +6155,13 @@ export type Database = {
           {
             foreignKeyName: "outreach_plays_step3_template_id_fkey"
             columns: ["step3_template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_plays_variant_template_id_fkey"
+            columns: ["variant_template_id"]
             isOneToOne: false
             referencedRelation: "outreach_templates"
             referencedColumns: ["id"]
@@ -6248,6 +6317,7 @@ export type Database = {
           drafted_at: string
           drafted_by: string
           failed_reason: string | null
+          half: string | null
           held_because: string[]
           id: string
           in_reply_to: string | null
@@ -6274,6 +6344,7 @@ export type Database = {
           drafted_at?: string
           drafted_by: string
           failed_reason?: string | null
+          half?: string | null
           held_because?: string[]
           id?: string
           in_reply_to?: string | null
@@ -6300,6 +6371,7 @@ export type Database = {
           drafted_at?: string
           drafted_by?: string
           failed_reason?: string | null
+          half?: string | null
           held_because?: string[]
           id?: string
           in_reply_to?: string | null
