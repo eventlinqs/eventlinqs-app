@@ -107,6 +107,7 @@ import { isWalkIn } from '@/lib/events/entry-mode'
 import { ctaFor } from '@/lib/events/cta'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
+import { ReportListingLink } from '@/components/events/report-listing-link'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -1802,6 +1803,7 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
             No cross-promotion of any other event renders here; discovery
             lives on the city and browse pages only. */}
+        <ReportListingLink slug={event.slug} />
       </main>
 
       <SiteFooter />

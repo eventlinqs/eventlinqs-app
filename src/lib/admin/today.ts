@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { failuresInARow, queueOf, reportsOverdue, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
+import { failuresInARow, queueOf, removalItem, reportsOverdue, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
 
 /**
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
@@ -225,22 +225,12 @@ async function claimsToDecide(admin: Admin): Promise<QueueItem[]> {
 async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
   const { data, error } = await admin
     .from('removal_requests')
-    .select('id, requester_name, reason, created_at, venues(name), event_series(name)')
+    .select('id, requester_name, requester_email, reason, created_at, venues(name), event_series(name), events(title, slug)')
     .eq('status', 'open')
     .order('created_at', { ascending: true })
     .limit(LIST_CAP)
   if (error) throw new Error(error.message)
-  return (data ?? []).map((r) => {
-    const venue = Array.isArray(r.venues) ? r.venues[0] : r.venues
-    const series = Array.isArray(r.event_series) ? r.event_series[0] : r.event_series
-    return {
-      id: `removal:${r.id}`,
-      what: `${r.requester_name} asks for ${venue?.name ?? series?.name ?? 'a listing'} to be taken down`,
-      why: `Their reason: ${r.reason.length > 160 ? `${r.reason.slice(0, 157)}...` : r.reason}. No admin page acts on a removal yet.`,
-      since: r.created_at,
-      href: null,
-    }
-  })
+  return (data ?? []).map(removalItem)
 }
 
 /** Lawal's queue, read now. */

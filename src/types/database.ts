@@ -7586,11 +7586,12 @@ export type Database = {
         Row: {
           actioned_at: string | null
           created_at: string
+          event_id: string | null
           id: string
           note: string | null
           reason: string
-          requester_email: string
-          requester_name: string
+          requester_email: string | null
+          requester_name: string | null
           series_id: string | null
           status: string
           venue_id: string | null
@@ -7598,11 +7599,12 @@ export type Database = {
         Insert: {
           actioned_at?: string | null
           created_at?: string
+          event_id?: string | null
           id?: string
           note?: string | null
           reason: string
-          requester_email: string
-          requester_name: string
+          requester_email?: string | null
+          requester_name?: string | null
           series_id?: string | null
           status?: string
           venue_id?: string | null
@@ -7610,16 +7612,31 @@ export type Database = {
         Update: {
           actioned_at?: string | null
           created_at?: string
+          event_id?: string | null
           id?: string
           note?: string | null
           reason?: string
-          requester_email?: string
-          requester_name?: string
+          requester_email?: string | null
+          requester_name?: string | null
           series_id?: string | null
           status?: string
           venue_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "removal_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "removal_requests_series_id_fkey"
             columns: ["series_id"]
