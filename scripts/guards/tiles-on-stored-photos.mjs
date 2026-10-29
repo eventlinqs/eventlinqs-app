@@ -18,8 +18,8 @@
  *      inside the cached function (a failure is thrown there, so it is not kept).
  *   6  sub-community-photo.ts makes no request-time call, and every sub-community photograph it keeps exists with its
  *      photographer on record.
- *   7  city-photo.ts never returns null from inside a cached Pexels fetch (the 13 spine cities answer first; the
- *      others still ask Pexels until their photographs are kept, and a refusal there must not be kept for a week).
+ *   7  city-photo.ts makes no request-time call (Lawal's 13 spine cities answer first, every other city is kept once
+ *      in public/images/library), and every kept city has its tile and its hero with a photographer on record.
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -111,14 +111,20 @@ for (const m of sub.matchAll(/^\s+'([a-z0-9-]+):([a-z0-9-]+)',$/gm)) {
 if (sub && subFilesChecked === 0) fail('6', 'no kept sub-community photograph found in sub-community-photo.ts; the scan cannot be trusted')
 
 const city = code(read('src/lib/images/city-photo.ts'))
-for (const name of ['fetchCityPhotoRaw', 'fetchCityHeroPhotoRaw']) {
-  const at = city.indexOf(`async function ${name}`)
-  const body = at < 0 ? '' : city.slice(at, city.indexOf('unstable_cache(', at))
-  if (!body) fail('7', `src/lib/images/city-photo.ts has no ${name} to judge`)
-  else if (/return null\b/.test(body)) fail('7', `${name} returns null inside the cached function, so a refused city lookup is kept for a week`)
+if (!city) fail('7', 'src/lib/images/city-photo.ts is missing')
+else if (/\bfetch\s*\(|api\.pexels\.com|unstable_cache/.test(city)) fail('7', 'city-photo.ts makes a request-time call (fetch, Pexels or a cache of one)')
+const keptCities = [...(/const KEPT_CITIES = new Set\(\[([\s\S]*?)\]\)/.exec(city)?.[1] ?? '').matchAll(/'([a-z-]+)'/g)].map((m) => m[1])
+if (city && keptCities.length === 0) fail('7', 'no kept city found in city-photo.ts; the scan cannot be trusted')
+let cityFilesChecked = 0
+for (const slug of keptCities) {
+  for (const name of [`city-${slug}`, `city-hero-${slug}`]) {
+    cityFilesChecked += 1
+    if (!existsSync(join('public/images/library', `${name}.jpg`))) fail('7', `public/images/library/${name}.jpg is kept by city-photo.ts and does not exist`)
+    else if (!attribution[name]?.photographer) fail('7', `public/images/library/${name}.jpg has no photographer on record in attribution.json`)
+  }
 }
 
-console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} categories, ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), and the three photo resolvers`)
+console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} categories, ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), ${cityFilesChecked} city file(s), and the four photo resolvers`)
 if (FAILURES.length) {
   console.error(`${TAG} FAILED`)
   for (const f of FAILURES) console.error(`  clause ${f}`)

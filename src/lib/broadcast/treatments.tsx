@@ -102,7 +102,19 @@ export async function drawLayout(l: Layout): Promise<React.ReactElement> {
         />
       ))}
       {l.blocks.map((b, i) => (
-        <div key={`b${i}`} style={{ position: 'absolute', left: z(b.x), top: z(b.y), width: z(b.w), height: z(b.h), display: 'flex', backgroundColor: b.color, borderRadius: b.role === 'pill' ? 9999 : b.role === 'bar' ? z(22) : 0 }} />
+        <div
+          key={`b${i}`}
+          style={{
+            position: 'absolute',
+            left: z(b.x),
+            top: z(b.y),
+            width: z(b.w),
+            height: z(b.h),
+            display: 'flex',
+            ...(b.outline ? { border: `${z(b.outline)}px solid ${b.color}` } : { backgroundColor: b.color }),
+            borderRadius: b.radius !== undefined ? z(b.radius) : b.role === 'pill' ? 9999 : b.role === 'bar' ? z(22) : 0,
+          }}
+        />
       ))}
       {l.runs.map((r) => {
         const face = FACES[r.face]

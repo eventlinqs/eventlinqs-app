@@ -10,6 +10,7 @@ import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type Social
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { quotableSummary, wordsRefusal } from './words'
+import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -442,11 +443,12 @@ export async function brandImage(db: Db, now: Date): Promise<UsableImage | null>
  */
 export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date): Promise<Map<number, UsableImage | null>> {
   const out = new Map<number, UsableImage | null>()
-  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story') && sl.photo ? [sl.eventId] : []))
+  /* A night's photograph on a night, a story or a daily poster (family F): the register's row for that night now. */
+  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo ? [sl.eventId] : []))
   const byNight = await usableImages(db, nights, now)
   const brand = slides.some((sl) => sl.t === 'brand' && sl.photo) ? await brandImage(db, now) : null
   slides.forEach((sl, i) => {
-    if ((sl.t === 'night' || sl.t === 'story') && sl.photo) {
+    if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo) {
       const u = byNight.get(sl.eventId)
       out.set(i, u && u.url === sl.photo ? u : null)
     } else if (sl.t === 'brand' && sl.photo) {
@@ -459,7 +461,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_city, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -546,7 +548,24 @@ export async function pieceDependencies(
 
   for (const id of ids) {
     const e = byId.get(id)
-    const slide = rev.slides.find((s) => 'eventId' in s && s.eventId === id) as Extract<Slide, { t: 'night' | 'story' }> | undefined
+    const found = rev.slides.find((s) => 'eventId' in s && s.eventId === id)
+    /* Family F: a daily poster prints the night's facts from its own record, so each is read again from the night. */
+    if (found?.t === 'poster') {
+      const facts = found.night
+      const name = facts.title
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      const { cta, priceLine } = await admissionOf(e, now)
+      issues.push(...posterDrift(facts, e as unknown as NightNow, { state: cta.state, priceLine }, now))
+      if (found.photo) {
+        const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+        if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      }
+      continue
+    }
+    const slide = found as Extract<Slide, { t: 'night' | 'story' }> | undefined
     const name = slide?.title ?? id
     if (!e) {
       issues.push(`${name}: the night no longer exists.`)
@@ -611,7 +630,8 @@ export async function pieceDependencies(
   const path = new URL(String(piece.link)).pathname
   const page = await answers(fetcher, `${opts.siteOrigin.replace(/\/$/, '')}${path}`)
   if (!page.ok) issues.push(`Its page ${path} answers ${page.status ?? 'nothing'}.`)
-  else if (String(piece.kind) !== 'partner_kit') {
+  // A partner kit's and a daily poster's link is the night's own /e/ link, which opens that night's page itself.
+  else if (String(piece.kind) !== 'partner_kit' && String(piece.kind) !== 'daily_poster') {
     for (const id of ids) {
       const e = byId.get(id)
       if (e && !page.body.includes(`/events/${String(e.slug)}`)) issues.push(`${String(e.title)}: ${path} does not list it, so the post would send people to a page without it.`)
@@ -623,7 +643,7 @@ export async function pieceDependencies(
 /* ------------------------------------------------------------------ the weekly campaign (the release checklist, B, C, J, K) */
 
 /** The guide cities a campaign is planned for: the cities table's own rows, as /free/<city>/this-week reads them. */
-async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
+export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
   const { data, error } = await db.from('cities').select('slug, name').eq('free_guide', true).eq('is_active', true).order('display_order', { ascending: true })
   if (error) throw new Error(`the guide cities could not be read: ${error.message}`)
   return (data ?? []).map((c) => ({ slug: c.slug as string, name: c.name as string }))
@@ -666,6 +686,9 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       photoCredit: image?.credit ?? null,
       cta,
       priceLine,
+      venueAddress: (e.venue_address as string | null) ?? null,
+      isAgeRestricted: (e.is_age_restricted as boolean | null) === true,
+      ageMin: (e.age_restriction_min as number | null) ?? null,
     })
   }
   return nights
@@ -686,7 +709,10 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   const cities = await readCampaignCities(db)
   const nights = await readCampaignNights(db, cities, weekStart, now)
   const brand = await brandImage(db, now)
-  return planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded: await excludedFor(db, campaignId), brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
+  const excluded = await excludedFor(db, campaignId)
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
+  /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
+  return { ...week, pieces: [...week.pieces, ...dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded })] }
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */
@@ -734,15 +760,16 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
   if (campaignId === null) throw new Error("the week's campaign could not be read")
 
   const { pieces: plans, imageRequests } = await planNow(db, campaignId, weekStart, input.now)
-  const { data: have, error: herr } = await db.from('social_pieces').select('kind, city, partner_name').eq('campaign_id', campaignId).limit(500)
+  const { data: have, error: herr } = await db.from('social_pieces').select('kind, city, partner_name, poster_day').eq('campaign_id', campaignId).limit(500)
   if (herr) throw new Error(`the week's pieces could not be read: ${herr.message}`)
-  const kept = new Set((have ?? []).map((p) => `${p.kind}|${p.city}|${p.partner_name ?? ''}`))
+  const keyOf = (kind: string, city: string, partner: string | null, day: string | null) => `${kind}|${city}|${partner ?? ''}|${day ?? ''}`
+  const kept = new Set((have ?? []).map((p) => keyOf(p.kind as string, p.city as string, (p.partner_name as string | null) ?? null, (p.poster_day as string | null) ?? null)))
 
   let created = 0
   let existing = 0
   const held: string[] = []
   for (const p of plans) {
-    if (kept.has(`${p.kind}|${p.city}|${p.partnerName ?? ''}`)) {
+    if (kept.has(keyOf(p.kind, p.city, p.partnerName, p.posterDay ?? null))) {
       existing += 1
       continue
     }
@@ -763,9 +790,21 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
       link = own.url
       shareLinkId = own.id
     }
+    /* A daily poster's own /e/ link: its piece's link, and the footer its story and square print (correction 3). */
+    if (p.kind === 'daily_poster' && p.eventIds[0]) {
+      const own = await partnerLink(db, p.eventIds[0], input.plannedBy)
+      if (own === null) {
+        held.push(`${p.kind} ${p.city} ${p.posterDay}: no link of its own could be made`)
+        continue
+      }
+      link = own.url
+      shareLinkId = own.id
+      const printed = own.url.replace(/^https?:\/\//, '').replace(/^www\./, '')
+      p.slides = p.slides.map((s) => (s.t === 'poster' ? { ...s, night: { ...s.night, shortLink: printed } } : s))
+    }
     const { data: piece, error: perr } = await db
       .from('social_pieces')
-      .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, planned_at: input.now.toISOString() })
+      .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, poster_day: p.posterDay ?? null, planned_at: input.now.toISOString() })
       .select('id')
       .single()
     if (perr || !piece) {
@@ -884,7 +923,9 @@ export async function readPiece(db: Db, pieceId: string): Promise<{ slides: Slid
  * partner kit whose newest version is approved and not rejected; a kit already sent stays drawn.
  */
 export function publicKitServes(p: { kind: PiecePlan['kind']; newestVersion: number; approvedVersions: readonly number[]; rejectedVersions: readonly number[] }): boolean {
-  return p.kind === 'partner_kit' && p.approvedVersions.includes(p.newestVersion) && !p.rejectedVersions.includes(p.newestVersion)
+  // A daily poster too (family F): its approved square is the preview in an organiser's first invitation (the
+  // directive's correction 4), read by the outreach engine from /kit/<piece>/1?format=square.
+  return (p.kind === 'partner_kit' || p.kind === 'daily_poster') && p.approvedVersions.includes(p.newestVersion) && !p.rejectedVersions.includes(p.newestVersion)
 }
 
 /** An approved partner kit's slides for its public address, or null for anything publicKitServes refuses. */

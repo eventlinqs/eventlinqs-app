@@ -16,6 +16,7 @@ import {
   type TreatmentFormat,
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
+import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import type { Composition, Slide } from '@/lib/social/campaign'
 
 /**
@@ -98,6 +99,12 @@ export function layoutOfSlide(f: Format, slide: Slide, image: SlideImage | null,
     case 'end':
       layout = layoutEnd(tf, { headline: slide.headline, line: slide.line, url: slide.url, foot: slide.foot, label: count }, m)
       break
+    case 'poster': {
+      /* Family F: the photograph only as the register holds it now for this night, else the same poster in type. */
+      const facts = { ...slide.night, photo: photo && slide.credit ? { url: photo, credit: slide.credit, archival: false } : null }
+      layout = layoutDailyPoster(tf, posterWords(facts, tf), m, facts.photo ? { url: facts.photo.url } : null)
+      break
+    }
   }
   if (layout.photo && image?.focal) layout = { ...layout, photo: { ...layout.photo, focal: image.focal } }
   return layout

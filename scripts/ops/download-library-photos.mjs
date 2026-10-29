@@ -72,7 +72,8 @@ const WANTED = [
   { slug: 'city-townsville', pick: 'city', before: true, query: 'townsville magnetic island tropical' },
   { slug: 'city-hero-townsville', pick: 'city-hero', before: true, query: 'townsville magnetic island tropical' },
   { slug: 'city-sunshine-coast', pick: 'city', before: true, query: 'sunshine coast beach hinterland' },
-  { slug: 'city-hero-sunshine-coast', pick: 'city-hero', before: true, query: 'sunshine coast beach hinterland' },
+  // city-hero-sunshine-coast: its old pick looked like the Gold Coast's high-rise skyline; replaced by a fitting one.
+  { slug: 'city-hero-sunshine-coast', pick: 'city-hero', before: false, query: 'sunshine coast mooloolaba beach queensland' },
   { slug: 'city-bendigo', pick: 'city', before: true, query: 'bendigo heritage architecture city' },
   { slug: 'city-hero-bendigo', pick: 'city-hero', before: true, query: 'bendigo heritage architecture city' },
   { slug: 'city-ballarat', pick: 'city', before: true, query: 'ballarat heritage gold rush architecture' },
@@ -80,7 +81,8 @@ const WANTED = [
   { slug: 'city-albury', pick: 'city', before: true, query: 'albury murray river city' },
   { slug: 'city-hero-albury', pick: 'city-hero', before: true, query: 'albury murray river city' },
   { slug: 'city-launceston', pick: 'city', before: true, query: 'launceston tasmania heritage city' },
-  { slug: 'city-hero-launceston', pick: 'city-hero', before: true, query: 'launceston tasmania heritage city' },
+  // city-hero-launceston: its old pick was Mawson's Huts, a Hobart landmark; replaced by a fitting one.
+  { slug: 'city-hero-launceston', pick: 'city-hero', before: false, query: 'launceston cataract gorge tasmania' },
   { slug: 'city-toowoomba', pick: 'city', before: true, query: 'toowoomba garden city heritage' },
   { slug: 'city-hero-toowoomba', pick: 'city-hero', before: true, query: 'toowoomba garden city heritage' },
   { slug: 'city-auckland', pick: 'city', before: true, query: 'auckland new zealand harbour skyline' },
@@ -112,7 +114,8 @@ const WANTED = [
   { slug: 'city-lagos', pick: 'city', before: true, query: 'lagos nigeria victoria island skyline' },
   { slug: 'city-hero-lagos', pick: 'city-hero', before: true, query: 'lagos nigeria victoria island skyline' },
   { slug: 'city-accra', pick: 'city', before: true, query: 'accra ghana city' },
-  { slug: 'city-hero-accra', pick: 'city-hero', before: true, query: 'accra ghana city' },
+  // city-hero-accra: its old pick was a polluted beach; replaced by a fitting one.
+  { slug: 'city-hero-accra', pick: 'city-hero', before: false, query: 'accra ghana city skyline' },
 ]
 
 const kept = existsSync(ATTRIBUTION) ? JSON.parse(readFileSync(ATTRIBUTION, 'utf8')) : { licence: 'Pexels License, https://www.pexels.com/license/', photos: {} }
