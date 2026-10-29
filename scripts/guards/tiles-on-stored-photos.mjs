@@ -9,17 +9,23 @@
  * CLAUSES
  *   1  Every community route (src/lib/communities/data.ts) has a stored photograph: Lawal's own through the spine's
  *      COMMUNITY_TO_SCENE, or an entry in src/lib/images/stored-photos.ts COMMUNITY_STORED.
- *   2  Every category on production (read 29 October 2026, below) and every curated homepage category has one: the
- *      spine's CATEGORY_TILE_SLOTS or stored-photos.ts CATEGORY_STORED.
+ *   2  Every slug a page hands getCategoryPhoto has one: every category on production (read 29 October 2026, below),
+ *      every curated homepage category, every city page event type (src/lib/cities/data.ts CITY_EVENT_TYPES) and
+ *      every category tile on the organisers page strip; from the spine's CATEGORY_TILE_SLOTS, stored-photos.ts
+ *      CATEGORY_STORED, or Lawal's scene for a sound (the spine's SOUND_TO_SCENE). Widened on 30 October 2026 after
+ *      the city pages' Concerts, DJ Sets, Theatre, Workshops and Sports tiles, and four on /organisers, were found
+ *      still asking Pexels on production: the clause had judged only production categories and the homepage's.
  *   3  Every stored file a table names exists under public/, and every kept library photograph has its photographer
  *      and page on record in public/images/library/attribution.json.
  *   4  community-photo.ts makes no request-time call (no fetch, no Pexels).
- *   5  category-photo.ts asks the spine and the stored table before Pexels, and never returns the placeholder from
- *      inside the cached function (a failure is thrown there, so it is not kept).
+ *   5  category-photo.ts makes no request-time call (no fetch, no Pexels, no cache of one), and asks the spine and the
+ *      stored table first.
  *   6  sub-community-photo.ts makes no request-time call, and every sub-community photograph it keeps exists with its
  *      photographer on record.
  *   7  city-photo.ts makes no request-time call (Lawal's 13 spine cities answer first, every other city is kept once
  *      in public/images/library), and every kept city has its tile and its hero with a photographer on record.
+ *   8  suburb-photo.ts makes no request-time call, every suburb in src/lib/cities is kept, and every kept suburb's
+ *      photograph exists with its photographer on record.
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -70,10 +76,16 @@ for (const slug of communities) {
 }
 
 const curated = [...code(read('src/lib/categories/homepage-curation.ts')).matchAll(/^\s*'([a-z0-9-]+)',?\s*$/gm)].map((m) => m[1])
+const cityData = code(read('src/lib/cities/data.ts'))
+const eventTypes = [...(/CITY_EVENT_TYPES[^=]*=\s*\[([\s\S]*?)\n\]/.exec(cityData)?.[1] ?? '').matchAll(/slug:\s*'([a-z0-9-]+)'/g)].map((m) => m[1])
+if (eventTypes.length === 0) fail('2', 'no event type found in src/lib/cities/data.ts CITY_EVENT_TYPES; the scan cannot be trusted')
+const strip = [...read('src/components/features/organisers/community-strip.tsx').matchAll(/kind: 'category', slug: '([a-z0-9-]+)'/g)].map((m) => m[1])
+if (strip.length === 0) fail('2', 'no category tile found in the organisers page strip; the scan cannot be trusted')
+const soundScenes = keysOf(spine, 'SOUND_TO_SCENE')
 let categoriesChecked = 0
-for (const slug of new Set([...PRODUCTION_CATEGORIES, ...curated])) {
+for (const slug of new Set([...PRODUCTION_CATEGORIES, ...curated, ...eventTypes, ...strip])) {
   categoriesChecked += 1
-  if (!categoryTiles?.has(slug) && !categoryStored?.has(slug)) fail('2', `the category '${slug}' has no stored photograph (spine CATEGORY_TILE_SLOTS or CATEGORY_STORED)`)
+  if (!categoryTiles?.has(slug) && !categoryStored?.has(slug) && !soundScenes?.has(slug)) fail('2', `the category slug '${slug}' has no stored photograph (spine CATEGORY_TILE_SLOTS, CATEGORY_STORED or SOUND_TO_SCENE)`)
 }
 
 const attribution = existsSync('public/images/library/attribution.json') ? JSON.parse(read('public/images/library/attribution.json')).photos ?? {} : {}
@@ -93,10 +105,9 @@ else if (/\bfetch\s*\(|api\.pexels\.com|unstable_cache/.test(community)) fail('4
 const category = code(read('src/lib/images/category-photo.ts'))
 const getPhoto = category.slice(category.indexOf('export async function getCategoryPhoto'))
 const storedAt = getPhoto.search(/storedCategoryPhoto\(|getSpineCategoryTile\(/)
-const pexelsAt = getPhoto.indexOf('fetchPexelsPool(')
-if (storedAt < 0 || pexelsAt < 0 || storedAt > pexelsAt) fail('5', 'getCategoryPhoto does not ask the spine and the stored table before Pexels')
-const raw = category.slice(category.indexOf('async function fetchPexelsPoolRaw'), category.indexOf('unstable_cache(', category.indexOf('async function fetchPexelsPoolRaw')))
-if (/return \[FALLBACK\]|return FALLBACK/.test(raw)) fail('5', 'fetchPexelsPoolRaw returns the placeholder inside the cached function, so a refusal is kept for a week')
+if (storedAt < 0) fail('5', 'getCategoryPhoto does not ask the spine and the stored table')
+if (!category) fail('5', 'src/lib/images/category-photo.ts is missing')
+else if (/\bfetch\s*\(|api\.pexels\.com|unstable_cache/.test(category)) fail('5', 'category-photo.ts makes a request-time call (fetch, Pexels or a cache of one)')
 
 const sub = code(read('src/lib/images/sub-community-photo.ts'))
 if (!sub) fail('6', 'src/lib/images/sub-community-photo.ts is missing')
@@ -124,10 +135,25 @@ for (const slug of keptCities) {
   }
 }
 
-console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} categories, ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), ${cityFilesChecked} city file(s), and the four photo resolvers`)
+const suburb = code(read('src/lib/images/suburb-photo.ts'))
+if (!suburb) fail('8', 'src/lib/images/suburb-photo.ts is missing')
+else if (/\bfetch\s*\(|api\.pexels\.com|unstable_cache/.test(suburb)) fail('8', 'suburb-photo.ts makes a request-time call (fetch, Pexels or a cache of one)')
+const keptSuburbs = new Set([...(/const KEPT_SUBURBS = new Set\(\[([\s\S]*?)\]\)/.exec(suburb)?.[1] ?? '').matchAll(/'([a-z-]+)'/g)].map((m) => m[1]))
+if (suburb && keptSuburbs.size === 0) fail('8', 'no kept suburb found in suburb-photo.ts; the scan cannot be trusted')
+const suburbSlugs = new Set([...cityData.matchAll(/slug: '((?:sydney|melbourne|brisbane|perth|gold-coast|canberra|hobart|adelaide|darwin|geelong)-[a-z-]+)'/g)].map((m) => m[1]))
+let suburbFilesChecked = 0
+for (const slug of suburbSlugs) if (!keptSuburbs.has(slug)) fail('8', `the suburb '${slug}' in src/lib/cities/data.ts has no kept photograph in suburb-photo.ts`)
+for (const slug of keptSuburbs) {
+  suburbFilesChecked += 1
+  const name = `suburb-${slug}`
+  if (!existsSync(join('public/images/library', `${name}.jpg`))) fail('8', `public/images/library/${name}.jpg is kept by suburb-photo.ts and does not exist`)
+  else if (!attribution[name]?.photographer) fail('8', `public/images/library/${name}.jpg has no photographer on record in attribution.json`)
+}
+
+console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} category slugs (${eventTypes.length} city event types, ${strip.length} organiser strip tiles), ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), ${cityFilesChecked} city file(s), ${suburbFilesChecked} suburb file(s) (${suburbSlugs.size} in the city data), and the five photo resolvers`)
 if (FAILURES.length) {
   console.error(`${TAG} FAILED`)
   for (const f of FAILURES) console.error(`  clause ${f}`)
   process.exit(1)
 }
-console.log(`${TAG} PASS - every community and category tile is on a stored photograph, and no refused lookup is kept`)
+console.log(`${TAG} PASS - every community, category, city and suburb tile is on a stored photograph, and no resolver asks Pexels at request time`)

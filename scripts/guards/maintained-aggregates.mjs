@@ -106,14 +106,9 @@ const fail = m => failures.push(m)
  * invalidate FROM. Each entry names the reason; an entry that stops matching is
  * reported so the list cannot rot.
  */
-const TAG_EXEMPTIONS = [
-  {
-    tag: 'pexels',
-    reason:
-      'the licensed stock-photo pool, cached 7 days. Its source is the Pexels API, which this platform never writes to, so there is no mutation that could invalidate it. A 7 day window on a photograph is the whole design.',
-  },
-  { tag: 'pexels-suburb', reason: 'same pool, keyed per suburb. Same reason as pexels above.' },
-]
+// The last two, pexels and pexels-suburb, went on 30 October 2026: no photograph is fetched from Pexels at request
+// time any more (src/lib/images/category-photo.ts, suburb-photo.ts), so neither tag is declared.
+const TAG_EXEMPTIONS = []
 
 /**
  * THE REGISTRY MOVED, and this guard reads it rather than carrying a copy.

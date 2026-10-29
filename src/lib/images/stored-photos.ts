@@ -12,7 +12,7 @@
  * scripts/guards/tiles-on-stored-photos.mjs fails the build if a community or a real category has no stored
  * photograph, or if a tile resolver could reach Pexels before one.
  */
-import { getSpineHero, getSpineScene, type SpineImage } from './spine'
+import { getSpineCategoryTile, getSpineHero, getSpineScene, type SpineImage } from './spine'
 
 export type StoredPhoto = { readonly src: string; readonly objectPosition?: string }
 
@@ -21,12 +21,13 @@ const kept = (slug: string): StoredPhoto => ({ src: `/images/library/${slug}.jpg
 const spine = (image: SpineImage | null): StoredPhoto | null => (image ? { src: image.src, objectPosition: image.objectPosition } : null)
 
 /** Where a stored photograph comes from, for the tiles Lawal's spine does not already name per community. */
-type Source = { bundled: string } | { kept: string } | { scene: string } | { hero: Parameters<typeof getSpineHero>[0] }
+type Source = { bundled: string } | { kept: string } | { scene: string } | { tile: string } | { hero: Parameters<typeof getSpineHero>[0] }
 
 function resolve(source: Source): StoredPhoto | null {
   if ('bundled' in source) return bundled(source.bundled)
   if ('kept' in source) return kept(source.kept)
   if ('scene' in source) return spine(getSpineScene(source.scene))
+  if ('tile' in source) return spine(getSpineCategoryTile(source.tile))
   return spine(getSpineHero(source.hero))
 }
 
@@ -82,6 +83,15 @@ export const CATEGORY_STORED: Readonly<Record<string, Source>> = {
   education: { kept: 'education' },
   technology: { kept: 'technology' },
   'middle-eastern': { kept: 'middle-eastern' },
+  // The organisers page strip's faith tile (its sound tiles are Lawal's scenes, through getCategoryPhoto).
+  gospel: { bundled: 'gospel.jpg' },
+  // The event types on every /city/<slug> page (src/lib/cities/data.ts CITY_EVENT_TYPES; comedy, community and
+  // food-drink are above or in the spine). Lawal's own photographs where one fits; workshop takes the kept seminar.
+  concert: { tile: 'music' },
+  'dj-set': { scene: 'electronic-dance' },
+  theatre: { tile: 'arts-community' },
+  workshop: { kept: 'education' },
+  sport: { tile: 'sports' },
 }
 
 export function storedCommunityPhoto(slug: string): StoredPhoto | null {
