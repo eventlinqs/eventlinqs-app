@@ -26,6 +26,7 @@ import { verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { admitsEntry } from '@/lib/tickets/entry-state'
 
 export const runtime = 'nodejs'
 
@@ -36,10 +37,9 @@ type Props = {
 
 type FullOrder = Order & { order_items: OrderItem[] }
 
-// Statuses that still admit entry and therefore carry a scannable QR. Mirrors
-// QR_STATUSES in the confirmation email (src/app/api/webhooks/stripe/route.ts)
-// so the page and the email agree on what counts as an issued ticket.
-const QR_STATUSES = new Set(['valid', 'scanned'])
+// Only a ticket that admits entry carries a scannable QR: admitsEntry
+// (src/lib/tickets/entry-state.ts), the rule the email and the ticket page read
+// too, so all three agree on what counts as an issued ticket.
 
 type IssuedTicket = {
   id: string
@@ -230,7 +230,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const siteUrl = getSiteUrl()
   const issuedTickets = await Promise.all(
     allTickets
-      .filter(t => QR_STATUSES.has(t.status))
+      .filter(t => admitsEntry(t.status))
       .map(async t => {
         const href = `/t/${encodeURIComponent(t.ticket_code)}?k=${encodeURIComponent(t.secret)}`
         const qrSvg = await QRCode.toString(`${siteUrl}${href}`, {
