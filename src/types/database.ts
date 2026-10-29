@@ -5485,6 +5485,51 @@ export type Database = {
           },
         ]
       }
+      organiser_acquisition_transitions: {
+        Row: {
+          at: string
+          from_state: string | null
+          id: number
+          organiser_id: string
+          proof_id: string | null
+          proved_by: string
+          to_state: string
+        }
+        Insert: {
+          at?: string
+          from_state?: string | null
+          id?: never
+          organiser_id: string
+          proof_id?: string | null
+          proved_by: string
+          to_state: string
+        }
+        Update: {
+          at?: string
+          from_state?: string | null
+          id?: never
+          organiser_id?: string
+          proof_id?: string | null
+          proved_by?: string
+          to_state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_acquisition_transitions_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_acquisition_transitions_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+        ]
+      }
       organiser_api_keys: {
         Row: {
           created_at: string
@@ -5976,6 +6021,7 @@ export type Database = {
       }
       organisers: {
         Row: {
+          acquisition_state: string
           created_at: string
           created_by: string
           found_on: string | null
@@ -5989,6 +6035,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          acquisition_state?: string
           created_at?: string
           created_by: string
           found_on?: string | null
@@ -6002,6 +6049,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          acquisition_state?: string
           created_at?: string
           created_by?: string
           found_on?: string | null
@@ -11516,6 +11564,22 @@ export type Database = {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number
       }
+      organiser_acquisition_refresh: {
+        Args: { p_organiser: string; p_proof: string; p_proved_by: string }
+        Returns: string
+      }
+      organiser_acquisition_refresh_all: {
+        Args: { p_proved_by: string }
+        Returns: number
+      }
+      organiser_acquisition_refresh_quietly: {
+        Args: { p_organiser: string; p_proof: string; p_proved_by: string }
+        Returns: undefined
+      }
+      organiser_acquisition_state_of: {
+        Args: { p_organiser: string }
+        Returns: string
+      }
       organiser_available_balance: {
         Args: { p_currency: string; p_organisation_id: string }
         Returns: number
@@ -11606,6 +11670,10 @@ export type Database = {
           v_perm: Database["public"]["Tables"]["organiser_permissions"]["Row"]
         }
         Returns: undefined
+      }
+      organisers_of: {
+        Args: { p_event: string; p_organisation: string; p_venue: string }
+        Returns: string[]
       }
       outreach_close_stuck_sends: {
         Args: { p_minutes?: number }
