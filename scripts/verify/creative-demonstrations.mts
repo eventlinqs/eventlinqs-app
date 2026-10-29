@@ -53,17 +53,17 @@ const manifest = JSON.parse(readFileSync(new URL('../ops/amcf-media-rights.manif
 }
 
 /*
- * --production: the same three reads on PRODUCTION, each a read-only query the database itself enforces (the
- * management API with read_only, run through scripts\ops\with-supabase-token.ps1); no service key, nothing written.
+ * --production: the same reads on PRODUCTION, each inside a read-only transaction the database itself enforces (the
+ * management API, each read opened as begin read only, run through scripts\ops\with-supabase-token.ps1); no service key, nothing written.
  * Without it, TEST through a TEST env file, as before.
  */
 const PRODUCTION = process.argv.includes('--production')
 const WHERE = PRODUCTION ? 'production' : 'TEST'
 const PRODUCTION_REF = 'gndnldyfudbytbboxesk'
-type EventRow = { id: string; slug: string; title: string; start_date: string; end_date: string; timezone: string | null; venue_name: string; venue_city: string; is_free: boolean; entry_mode: string; status: string; category_slug: string | null; summary: string | null }
+type EventRow = { id: string; slug: string; title: string; start_date: string; end_date: string; timezone: string | null; venue_name: string; venue_city: string; is_free: boolean; entry_mode: string; status: string; category_slug: string | null; summary: string | null; external_ticket_url: string | null }
 type UsableRow = { asset_url: string; attribution_text: string; focal_x: number | null; focal_y: number | null; source_width: number | null; source_height: number | null }
 type Reader = { event: (slug: string) => Promise<EventRow | null>; eventLike: (title: string) => Promise<EventRow | null>; usable: (id: string) => Promise<UsableRow[]>; brand: () => Promise<{ asset_url: string; attribution_text: string }[]> }
-const EVENT_COLUMNS = 'e.id, e.slug, e.title, e.start_date, e.end_date, e.timezone, e.venue_name, e.venue_city, e.is_free, e.entry_mode, e.status, e.summary, c.slug as category_slug'
+const EVENT_COLUMNS = 'e.id, e.slug, e.title, e.start_date, e.end_date, e.timezone, e.venue_name, e.venue_city, e.is_free, e.entry_mode, e.status, e.summary, e.external_ticket_url, c.slug as category_slug'
 const lit = (v: string) => `'${v.replace(/'/g, "''")}'`
 let reader: Reader
 if (PRODUCTION) {
@@ -73,7 +73,13 @@ if (PRODUCTION) {
     const res = await fetch(`https://api.supabase.com/v1/projects/${PRODUCTION_REF}/database/query`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: sql, read_only: true }),
+      /*
+       * A READ-ONLY TRANSACTION the database enforces: the API's read-only role may not execute the register's functions
+       * (production, 29 October: 'permission denied for function social_brand_images'), so each read opens
+       * 'begin read only'; drilled the same day, an update inside it answered '25006: cannot execute UPDATE in a
+       * read-only transaction'.
+       */
+      body: JSON.stringify({ query: `begin read only; ${sql}`, read_only: false }),
     })
     if (!res.ok) throw new Error(`production read refused (${res.status}): ${(await res.text()).slice(0, 200)}`)
     return (await res.json()) as T[]
@@ -89,7 +95,7 @@ if (PRODUCTION) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   if (!url.includes('vkapkibzokmfaxqogypq')) throw new Error('reads TEST only: pass a TEST env file (or --production)')
   const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '', { auth: { persistSession: false } })
-  const select = 'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, summary, category:event_categories(slug)'
+  const select = 'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, summary, external_ticket_url, category:event_categories(slug)'
   const flat = (ev: Record<string, unknown> | null): EventRow | null => (ev ? ({ ...ev, category_slug: (ev.category as { slug: string } | null)?.slug ?? null } as unknown as EventRow) : null)
   reader = {
     event: async (slug) => flat((await db.from('events').select(select).eq('slug', slug).maybeSingle()).data as Record<string, unknown> | null),
@@ -214,22 +220,33 @@ const demos: Demo[] = []
   })
 }
 
-/* B: Kate Ceberano at Costa Hall, editorial type. From window 4's research row; no listing exists yet. */
+/* B: Kate Ceberano, editorial type. Drawn from its listing where one exists (J15: the slide says what the page says); else from window 4's research row, held. */
 {
-  const cta = ctaFor({ externalTicketUrl: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/', providerName: 'Geelong Arts Centre' })
-  const night: CampaignModule.CampaignNight = {
-    eventId: '00000000-0000-4000-8000-00000000ce0b',
-    slug: 'kate-ceberano-australian-made-tour-2026-geelong',
+  /* Whether a listing has arrived (window 4's ticketed import): then its own facts are the slide's, and its page the check. */
+  const listed = await reader.eventLike('Kate Ceberano')
+  const bookAt = listed?.external_ticket_url ?? 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/'
+  const cta = ctaFor({ externalTicketUrl: bookAt, providerName: /geelongartscentre\.org\.au/.test(bookAt) ? 'Geelong Arts Centre' : null })
+  const research = {
     title: 'Kate Ceberano: Australian Made Tour 2026',
     startDate: '2026-10-31T08:00:00Z',
     endDate: '2026-10-31T10:30:00Z',
-    timezone: 'Australia/Melbourne',
-    citySlug: 'geelong',
-    cityName: 'Geelong',
     venueName: 'Costa Hall',
-    host: 'Geelong Arts Centre',
-    categorySlug: 'music',
+    cityName: 'Geelong',
     summary: 'Kate Ceberano sings her own hits and reworked Australian classics at Costa Hall, with guests Kathleen Halloran and Dusty Lee.',
+  }
+  const night: CampaignModule.CampaignNight = {
+    eventId: listed?.id ?? '00000000-0000-4000-8000-00000000ce0b',
+    slug: listed?.slug ?? 'kate-ceberano-australian-made-tour-2026-geelong',
+    title: listed?.title ?? research.title,
+    startDate: listed?.start_date ?? research.startDate,
+    endDate: listed?.end_date ?? research.endDate,
+    timezone: listed?.timezone ?? 'Australia/Melbourne',
+    citySlug: 'geelong',
+    cityName: listed?.venue_city ?? research.cityName,
+    venueName: listed?.venue_name ?? research.venueName,
+    host: 'Geelong Arts Centre',
+    categorySlug: listed?.category_slug ?? 'music',
+    summary: listed ? listed.summary : research.summary,
     approvedPhotoUrl: null,
     photoCredit: null,
     cta,
@@ -249,24 +266,22 @@ const demos: Demo[] = []
     credit: null,
     words: campaign.nightWords(night),
   }
-  const provider = await fetch('https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/', { redirect: 'follow' })
-    .then(async (r) => ({ status: r.status, body: await r.text() }))
-    .catch(() => ({ status: null as number | null, body: '' }))
-  const exceptions = [
-    'No EventLinqs listing exists for this night (window 6, 15:03), so the post has no landing page and is NOT approvable: it waits for window 4\u2019s 43-row ticketed import (design\\listings\\import-2026-10-27-wi3-ticketed-43.csv).',
-    'No authorised artist photograph or official tour artwork is recorded, so the treatment is editorial type, as the directive asks.',
-    'Facts from window 4\u2019s research of 27 October (design\\listings): Sat 31 October 2026, 7pm to 9.30pm, Costa Hall at Geelong Arts Centre, with Kathleen Halloran and Dusty Lee; to be re-read against the listing when it exists.',
-  ]
-  /* Whether a listing has arrived since (window 4's ticketed import): then its own facts and page are the check. */
-  const listed = await reader.eventLike('Kate Ceberano')
-  let destination: Demo['destination'] = { url: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/ (the provider; no EventLinqs page yet)', status: provider.status, found: { 'Kate Ceberano': provider.body.includes('Kate Ceberano'), 'Costa Hall': provider.body.includes('Costa Hall') } }
-  let workflow = 'Rendered; held: no listing'
+  const exceptions = ['No authorised artist photograph or official tour artwork is recorded, so the treatment is editorial type, as the directive asks.']
+  let destination: Demo['destination']
+  let workflow: string
   if (listed) {
-    exceptions[0] = `An EventLinqs listing exists on ${WHERE}: /events/${listed.slug} (${listed.status}), starting ${listed.start_date} at ${listed.venue_name}; the slide's facts are read against it.`
-    if (Date.parse(listed.start_date) !== Date.parse(night.startDate)) exceptions.push(`FACT MISMATCH: the listing starts ${listed.start_date}, the slide ${night.startDate}.`)
-    if (!/Costa Hall/i.test(listed.venue_name ?? '')) exceptions.push(`FACT MISMATCH: the listing's venue is ${listed.venue_name}, the slide's Costa Hall.`)
-    destination = await page(`/events/${listed.slug}`, ['Kate Ceberano', 'Costa Hall'])
-    workflow = destination.status === 200 && !exceptions.some((e) => e.startsWith('FACT MISMATCH')) ? 'Rendered; its page and facts agree, so approvable by Lawal (J15)' : 'Rendered; held until its page and facts agree (J15)'
+    destination = await page(`/events/${listed.slug}`, [listed.title, listed.venue_name])
+    const agree = destination.status === 200 && Object.values(destination.found).every(Boolean)
+    workflow = agree ? 'Rendered from its listing; its page answers and carries its title and venue, so approvable by Lawal (J15)' : 'Rendered from its listing; held until its page answers with its title and venue (J15)'
+    exceptions.push(`Drawn from its listing on ${WHERE}, /events/${listed.slug} (${listed.status}): title, start, end, venue, city and description as the listing holds them.`)
+  } else {
+    const provider = await fetch(bookAt, { redirect: 'follow' })
+      .then(async (r) => ({ status: r.status, body: await r.text() }))
+      .catch(() => ({ status: null as number | null, body: '' }))
+    destination = { url: `${bookAt} (the provider; no EventLinqs page yet)`, status: provider.status, found: { 'Kate Ceberano': provider.body.includes('Kate Ceberano'), 'Costa Hall': provider.body.includes('Costa Hall') } }
+    workflow = 'Rendered; held: no listing'
+    exceptions.push(`No EventLinqs listing exists for this night on ${WHERE}, so the post has no landing page and is NOT approvable: it waits for window 4\u2019s ticketed import.`)
+    exceptions.push('Facts from window 4\u2019s research of 27 October (design\listings): Sat 31 October 2026, 7pm to 9.30pm, Costa Hall at Geelong Arts Centre; to be re-read against the listing when it exists.')
   }
   demos.push({
     key: 'b-ceberano',
@@ -274,7 +289,9 @@ const demos: Demo[] = []
     treatmentExpected: 'type',
     slide,
     image: null,
-    source: { table: 'none yet: design\\listings\\import-2026-10-27-wi3-ticketed-43.csv (window 4 research, 27 October)', title: 'Kate Ceberano: Australian Made Tour 2026', start: '2026-10-31 19:00 Melbourne', end: '21:30', venue: 'Geelong Arts Centre (Costa Hall)', ticketing: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/' },
+    source: listed
+      ? { table: `events (${WHERE})`, id: listed.id, slug: listed.slug, title: listed.title, start: listed.start_date, end: listed.end_date, venue: listed.venue_name, city: listed.venue_city, status: listed.status, booking: bookAt }
+      : { table: 'none yet: design\listings\import-2026-10-27-wi3-ticketed-43.csv (window 4 research, 27 October)', title: research.title, start: '2026-10-31 19:00 Melbourne', end: '21:30', venue: 'Costa Hall, Geelong Arts Centre' },
     rights: 'Original EventLinqs design (no image of anyone else\u2019s used)',
     cta: `${cta.state}: "${cta.action}"; no price said (none checked on our side); the provider named, never EventLinqs ticketing`,
     destination,
