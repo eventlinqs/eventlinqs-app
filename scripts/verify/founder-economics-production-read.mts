@@ -14,8 +14,15 @@
  * Prints each economics figure as the page shows it, the order count by status behind it, and the verdict: READ, or
  * FAILED with the error.
  */
-import { figuresFor, lastWeeks, type OrderRow, type RefundRow } from '../../src/lib/growth/weekly-math'
-import { economicsFigures } from '../../src/lib/admin/founder-dashboard-math'
+import type { OrderRow, RefundRow } from '../../src/lib/growth/weekly-math'
+import type * as WeeklyMath from '../../src/lib/growth/weekly-math'
+import type * as DashMath from '../../src/lib/admin/founder-dashboard-math'
+
+// tsx loads these TypeScript modules as CommonJS, so a static named import fails at run time ('does not provide an export
+// named economicsFigures', 30 October 09:42); the import is dynamic and unwrapped, as founder-dashboard-read.mts does.
+const unwrap = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
+const { figuresFor, lastWeeks } = unwrap((await import('../../src/lib/growth/weekly-math')) as typeof WeeklyMath & { default?: typeof WeeklyMath })
+const { economicsFigures } = unwrap((await import('../../src/lib/admin/founder-dashboard-math')) as typeof DashMath & { default?: typeof DashMath })
 
 const args = process.argv.slice(2)
 const refAt = args.indexOf('--ref')
