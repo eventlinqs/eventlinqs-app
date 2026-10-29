@@ -155,7 +155,8 @@ try {
       ...process.env,
       PORT: String(PORT),
       DRIVE_MAIL_CAPTURE: capture,
-      RESEND_API_KEY: process.env.RESEND_API_KEY || 're_drive_capture_only',
+      // Never the real key: every send is captured, and a placeholder cannot reach anyone if one slipped past.
+      RESEND_API_KEY: 're_capture_only',
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ./scripts/verify/lib/capture-resend.mjs`.trim(),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
