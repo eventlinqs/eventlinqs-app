@@ -637,10 +637,6 @@
  *                              Clause 4 recomputes the requirement from the colours the
  *                              CAPTIONS actually paint, and found a `text-gold-300` on
  *                              its first run naming a token globals.css does not declare
- *   no-library-photo-on-a-night  no event surface picks a library or category photograph
- *                              for a night, every cover rule refuses one, the home hero
- *                              leads only with a night with its own photograph, and the
- *                              city week card draws no backdrop (29 October 2026)
  *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
  *                              sr-only label is a containing block. sr-only is
  *                              position:absolute, and an absolute element is only
@@ -1990,12 +1986,6 @@ const GUARDS = [
   // so Tailwind emitted nothing and the label silently inherited. Drilled red
   // seven ways.
   'scripts/guards/tile-label-over-a-photograph.mjs',
-  // 29 October 2026, the project manager at 18:38, under the founder directive of 28 October 19:52: authorised
-  // photographs, else premium typography. On production all 334 public nights wore a library photograph and the
-  // home hero led with an art gallery shot. No event surface picks a library or category photograph for a night,
-  // every cover rule refuses one, the home hero leads only with a night with its own photograph, and the city week
-  // card draws no backdrop. Drilled red on three clauses.
-  'scripts/guards/no-library-photo-on-a-night.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   // 20 September 2026, close-out C8. REPLACES hero-preload-above-the-loading-
   // boundary, and the replacement is a STRONGER rule rather than a rename.

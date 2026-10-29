@@ -1,7 +1,6 @@
-import { BRANDED_FALLBACK_PHOTO } from './category-photo'
+import { getCategoryPhoto, BRANDED_FALLBACK_PHOTO, isBrandedFallbackPhoto } from './category-photo'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 import { jsonAsStringArray } from '@/lib/json-narrow'
-import { isLibraryPhoto } from '@/lib/media/library-photo'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts - no Pexels stock.
@@ -10,17 +9,7 @@ import { isLibraryPhoto } from '@/lib/media/library-photo'
 // "no cover" so the tile falls through to category Pexels / branded SVG.
 function isRealCover(url: string | null | undefined): url is string {
   if (!url) return false
-  // A library photograph is never a night's own cover (the PM's 18:38 of 29 October 2026; src/lib/media/library-photo.ts).
-  return !/^https:\/\/picsum\.photos\//i.test(url) && !isLibraryPhoto(url)
-}
-
-/**
- * A night's OWN photograph: an organiser's upload or an authorised one, never our typographic cover, a library shot or
- * a placeholder. The home hero leads only with these (the PM's 18:38 of 29 October 2026: authorised photographs, else
- * premium typography; contextual photography only for brand pieces that name no night).
- */
-export function isOwnPhoto(url: string | null | undefined): url is string {
-  return isRealCover(url) && !isComposedCover(url)
+  return !/^https:\/\/picsum\.photos\//i.test(url)
 }
 
 /**
@@ -89,7 +78,14 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  // No category or library photograph for a named night (the PM's 18:38 of 29 October 2026): the branded ground.
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
+  if (!isBrandedFallbackPhoto(photo)) {
+    return {
+      kind: 'still-kenburns',
+      src: photo.src,
+      alt: event.title ?? photo.alt,
+    }
+  }
 
   return {
     kind: 'branded-placeholder',
@@ -123,7 +119,14 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  // No category or library photograph for a named night (the PM's 18:38 of 29 October 2026): the branded ground.
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
+  if (!isBrandedFallbackPhoto(photo)) {
+    return {
+      kind: 'still-kenburns',
+      src: photo.src,
+      alt: event.title ?? photo.alt,
+    }
+  }
 
   return {
     kind: 'branded-placeholder',

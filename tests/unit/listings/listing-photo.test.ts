@@ -1,25 +1,52 @@
-import { describe, expect, it } from 'vitest'
-import * as listingPhoto from '@/lib/listings/listing-photo'
-import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cityWeekPhotoFor, isLibraryPhoto, listingPhotoFor, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 
 /**
- * The 27 October 2026 08:33 library shot for every listing night is retired (the project manager's 18:38 of
- * 29 October, under Lawal's 19:52 directive: authorised photographs, else premium typography). What stays is the test
- * for a library photograph and the line beside one; nothing here can pick one for a night any more.
+ * Lawal's ruling of 27 October 2026, 08:33: a listing night carries a real
+ * photograph, EventLinqs' licensed library shot for its category until its
+ * host's own shows, and says it is not the venue.
  */
 describe("a listing night's photograph", () => {
-  it('can no longer be picked from the library: the helpers that chose a category or city shot are gone', () => {
-    expect(Object.keys(listingPhoto).sort()).toEqual(['LIBRARY_PHOTO_CREDIT', 'isLibraryPhoto'])
+  // The library lives in the project's own store, so its URL needs one configured.
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL_PREVIEW', '')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://vkapkibzokmfaxqogypq.supabase.co')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('is a licensed library photograph for every category the import writes', () => {
+    for (const slug of ['family', 'community', 'music', 'nightlife', 'comedy']) {
+      const url = listingPhotoFor(slug)
+      expect(url, slug).toMatch(/\/storage\/v1\/object\/public\/event-images\/stock\/categories\/.+\.avif$/)
+      expect(isLibraryPhoto(url)).toBe(true)
+    }
+  })
+
+  it('still has a photograph for a category with none of its own', () => {
+    expect(listingPhotoFor('no-such-category')).toBe(listingPhotoFor('community'))
+    expect(listingPhotoFor(null)).toBe(listingPhotoFor('community'))
   })
 
   it('tells a library photograph from a composed cover or an organiser upload', () => {
-    expect(isLibraryPhoto('https://x.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-1440.avif')).toBe(true)
     expect(isLibraryPhoto('https://x.supabase.co/storage/v1/object/public/event-images/generated-covers/e1.png')).toBe(false)
     expect(isLibraryPhoto('https://x.supabase.co/storage/v1/object/public/event-images/org/e1/cover.avif')).toBe(false)
     expect(isLibraryPhoto(null)).toBe(false)
   })
 
-  it('says it is not the venue, in plain words, for a night still wearing one', () => {
+  it('pictures comedy with a stage, not the arts hero gallery', () => {
+    expect(listingPhotoFor('comedy')).toMatch(/theatre-interior-evening/)
+    expect(listingPhotoFor('health-wellness')).toBe(listingPhotoFor('family'))
+  })
+
+  it("puts the city's own licensed photo behind its week card, else the week's most common category", () => {
+    expect(cityWeekPhotoFor('geelong', ['music'])).toMatch(/\/stock\/cities\/geelong\//)
+    expect(cityWeekPhotoFor('bendigo', ['family', 'family', 'community'])).toBe(listingPhotoFor('family'))
+    expect(cityWeekPhotoFor('bendigo', [])).toBe(listingPhotoFor(null))
+  })
+
+  it('says it is not the venue, in plain words', () => {
     expect(LIBRARY_PHOTO_CREDIT).toMatch(/not this venue/)
   })
 })

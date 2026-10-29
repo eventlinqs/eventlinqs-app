@@ -4,7 +4,7 @@ import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { checkPublishGate } from '@/lib/events/publish-gate'
 import { attachGeneratedCover } from '@/lib/events/generated-cover'
 import { isComposedCover } from '@/lib/images/event-media'
-import { isLibraryPhoto } from '@/lib/media/library-photo'
+import { listingPhotoFor } from './listing-photo'
 import { providerOf } from '@/lib/events/booking-links'
 import type { SeriesBookingLink } from './listing-rows'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
@@ -124,19 +124,22 @@ export function occurrenceStore(): OccurrenceStore {
   }
 
   /*
-   * A LISTING NIGHT WITHOUT ITS HOST'S OWN PHOTOGRAPH WEARS THE TYPOGRAPHIC COVER
-   * (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52 directive
-   * of 28 October: authorised photographs, else premium typography). It replaces
-   * the 27 October 08:33 library photograph, which put an unrelated stock shot on
-   * every curated night (all 334 on production that evening). The cover is drawn
-   * from the night's own details (Law 6's no-artwork case), so it is made again
-   * whenever its title or date changes; an organiser's own artwork is never
-   * replaced (attachGeneratedCover re-mints only a cover it made itself, and a
-   * library photograph is not a real cover, src/lib/media/library-photo.ts).
+   * A LISTING NIGHT CARRIES A PHOTOGRAPH (Lawal's ruling of 27 October 2026,
+   * 08:33): EventLinqs' licensed library shot for its category, until its host's
+   * own shows. Only where no library URL can be made (no store configured) is
+   * the composed cover the fallback, so a night is never without a picture.
    */
-  const attachListingCover = async (eventId: string): Promise<{ ok: true; url: string } | { ok: false; reason: string }> => {
-    const cover = await attachGeneratedCover(eventId, { force: true })
-    return cover.ok ? { ok: true, url: cover.url } : { ok: false, reason: `${cover.reason}${cover.detail ? ` (${cover.detail})` : ''}` }
+  const attachListingPhoto = async (eventId: string, categoryId: string): Promise<{ ok: true; url: string } | { ok: false; reason: string }> => {
+    const { data: category, error } = await admin.from('event_categories').select('slug').eq('id', categoryId).maybeSingle()
+    if (error) return { ok: false, reason: `its category could not be read: ${error.message}` }
+    const url = listingPhotoFor((category?.slug as string | undefined) ?? null)
+    if (!url) {
+      const cover = await attachGeneratedCover(eventId)
+      return cover.ok ? { ok: true, url: cover.url } : { ok: false, reason: `${cover.reason}${cover.detail ? ` (${cover.detail})` : ''}` }
+    }
+    const { error: updateError } = await admin.from('events').update({ cover_image_url: url, thumbnail_url: url }).eq('id', eventId)
+    if (updateError) return { ok: false, reason: `its photograph could not be set: ${updateError.message}` }
+    return { ok: true, url }
   }
 
   return {
@@ -298,8 +301,8 @@ export function occurrenceStore(): OccurrenceStore {
       const { error: guideError } = await admin.from('event_guides').upsert({ event_id: eventId, days: [guideDay] }, { onConflict: 'event_id' })
       if (guideError) return takeAway(eventId, `its hours could not be written: ${guideError.message}`)
 
-      const cover = await attachListingCover(eventId)
-      if (!cover.ok) return takeAway(eventId, `its cover could not be made: ${cover.reason}`)
+      const cover = await attachListingPhoto(eventId, fields.category_id)
+      if (!cover.ok) return takeAway(eventId, `its photograph could not be set: ${cover.reason}`)
 
       if (soldElsewhere) {
         // Curated links, in the file's order; the database picks the one button and
@@ -359,17 +362,15 @@ export function occurrenceStore(): OccurrenceStore {
         const { error } = await admin.from('event_guides').upsert({ event_id: id, days: [guideDay] }, { onConflict: 'event_id' })
         if (error) return refused(`its hours could not be changed: ${error.message}`)
       }
-      // A night on our typographic cover, or on a library photograph from before the
-      // 29 October ruling, has its cover made again when its title or date changes,
-      // so the cover says what the night says. An organiser's own artwork is never
-      // replaced.
+      // A night still wearing a composed cover (made before the 27 October ruling)
+      // takes its library photograph the next time it changes. An organiser's own
+      // artwork, or a photograph already set, is never replaced.
       if ('title' in changes || 'start_date' in changes) {
-        const { data: current, error: readError } = await admin.from('events').select('cover_image_url').eq('id', id).maybeSingle()
+        const { data: current, error: readError } = await admin.from('events').select('cover_image_url, category_id').eq('id', id).maybeSingle()
         if (readError) return refused(`its cover could not be read: ${readError.message}`)
-        const url = (current?.cover_image_url as string | null) ?? null
-        if (current && (isComposedCover(url) || isLibraryPhoto(url))) {
-          const cover = await attachListingCover(id)
-          if (!cover.ok) return refused(`its cover could not be made: ${cover.reason}`)
+        if (current && isComposedCover(current.cover_image_url as string | null) && current.category_id) {
+          const cover = await attachListingPhoto(id, current.category_id as string)
+          if (!cover.ok) return refused(`its photograph could not be set: ${cover.reason}`)
         }
       }
       await revalidateEventSurfacesFromRouteHandlerById(admin, id)

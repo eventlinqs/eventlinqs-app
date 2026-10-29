@@ -4,7 +4,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { pickCuratedHomepageHero } from '@/lib/images/homepage-hero-curated'
 import { HeroCaption } from '@/components/media/hero-caption'
-import { getFeaturedHeroBackground, isComposedCover, isOwnPhoto } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground, isComposedCover } from '@/lib/images/event-media'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
@@ -78,11 +78,11 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
 }
 
 export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
-  // ONLY A NIGHT'S OWN PHOTOGRAPH LEADS (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52 directive:
-  // authorised photographs, else premium typography; contextual photography only for pieces that name no night). A night
-  // on a library photograph, our typographic cover or none is never a slide: its slide would set its name over a
-  // stock raster. With none of its own, the curated homepage hero below, which names no night, is drawn instead.
-  const featured = events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)
+  // Photographic covers lead the carousel; events on a composed cover or no
+  // cover follow in their own order, so a real photo is the first paint
+  // whenever the catalogue has one. Stable sort: soonest-first within a group.
+  const photographic = (e: BentoEvent) => Boolean(e.cover_image_url) && !isComposedCover(e.cover_image_url)
+  const featured = [...events].sort((a, b) => Number(photographic(b)) - Number(photographic(a))).slice(0, MAX_SLIDES)
 
   // NO FEATURED EVENT: THE HERO STILL WEARS A PHOTOGRAPH (close-out C17.2,
   // 7 September 2026). This branch used to render a flat navy banner, and on
