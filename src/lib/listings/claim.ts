@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { sendEmail } from '@/lib/email/send'
 import { escapeHtml } from '@/lib/email/escape'
+import type { ClaimYes } from './claim-acceptance'
 
 /**
  * CLAIM THIS VENUE, CLAIM THIS EVENT (window 6, 27 October 2026; the locked foundation's item 7; the design is
@@ -54,6 +55,18 @@ export function addressFor(host: HostAddresses, named: string | null): ClaimAddr
   const offered = named?.trim().toLowerCase() ?? ''
   if (domain && EMAIL.test(offered) && offered.split('@')[1] === domain) return { method: 'domain_email', email: offered }
   return { method: 'manual' }
+}
+
+/**
+ * The address the code goes to, as the claim page shows it before sending (the project manager's claim page words:
+ * "We'll send a 6-digit code to [masked address], the address on your website"): its first letter and its domain, so
+ * the claimant knows where to look and a passer-by learns nothing the venue's own website does not already say.
+ */
+export function maskAddress(email: string | null): string | null {
+  const e = email?.trim().toLowerCase() ?? ''
+  if (!EMAIL.test(e)) return null
+  const [local, domain] = e.split('@')
+  return `${local.charAt(0)}***@${domain}`
 }
 
 export function claimCode(): string {
@@ -111,6 +124,8 @@ export type ClaimDeps = {
   /** Makes the claimant an organisation named after the host, only once their code is known to be right. */
   makeOrganisation(userId: string, hostName: string): Promise<string>
   check(claimId: string, codeHash: string, organisationId: string | null, at: Date): Promise<string>
+  /** Sets (or clears) the organiser's yes on a claim still waiting for its code; the check writes it only if verified. */
+  keepYes(claimId: string, yes: ClaimYes | null): Promise<void>
   /** Who started a claim and what it claims; null where there is no such claim. */
   claimOf(claimId: string): Promise<{ userId: string; target: ClaimTarget } | null>
 }
@@ -154,12 +169,20 @@ export async function startClaim(
 
 export type Checked = 'verified' | 'wrong' | 'expired' | 'locked' | 'not_yours'
 
-/** Tries a code once, for the claimant who started the claim; the database counts the try and does the move. */
-export async function checkClaim(input: { claimId: string; code: string; userId: string; at: Date }, deps: ClaimDeps): Promise<Checked> {
+/**
+ * Tries a code once, for the claimant who started the claim; the database counts the try and does the move. The yes
+ * ticked beside the code is kept on the claim first, so the database writes it with the move and only on the right
+ * code (the engine plan's part D: the claim writes the permission); an untick clears it.
+ */
+export async function checkClaim(
+  input: { claimId: string; code: string; userId: string; at: Date; yes?: ClaimYes | null },
+  deps: ClaimDeps,
+): Promise<Checked> {
   const claim = await deps.claimOf(input.claimId)
   if (!claim || claim.userId !== input.userId) return 'not_yours'
   if (!/^\d{6}$/.test(input.code.trim())) return 'wrong'
   const codeHash = hashClaimCode(input.claimId, input.code)
+  await deps.keepYes(input.claimId, input.yes ?? null)
   let answer = await deps.check(input.claimId, codeHash, await deps.organisationOf(input.userId), input.at)
   if (answer === 'needs_organisation') {
     const host = await deps.hostOf(claim.target)
@@ -245,6 +268,20 @@ export function claimDeps(): ClaimDeps {
       })
       if (error) throw new Error(`the code was not checked: ${error.message}`)
       return String(data)
+    },
+    async keepYes(claimId, yes) {
+      const { error } = await admin
+        .from('listing_claims')
+        .update({
+          permission_words: yes?.words ?? null,
+          permission_scope: yes?.scope ?? null,
+          permission_given_at: yes?.at.toISOString() ?? null,
+          // claimYes gives a yes only beside the claimant's word that they can give it.
+          permission_authority: yes ? true : null,
+        })
+        .eq('id', claimId)
+        .eq('status', 'sent')
+      if (error) throw new Error(`the permission was not kept on the claim: ${error.message}`)
     },
     async claimOf(claimId) {
       const row = await readOrThrow('listing claim', () =>

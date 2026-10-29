@@ -33,6 +33,10 @@ export type PolicyName =
   | 'newsletter-subscribe'
   | 'partner-enquiry'
   | 'listing-submission'
+  | 'listing-report'
+  | 'organiser-media'
+  | 'admin-social-press'
+  | 'admin-social-plan'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -255,6 +259,27 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
   },
+  'listing-report': {
+    keyPrefix: 'listing-rep',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The Report or remove this listing form on /events/[slug]/report per IP per 10 min (release checklist I5, 29 October 2026). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone reporting a few nights of one series; a scripted flood is bounded.',
+  },
+  'admin-social-press': {
+    keyPrefix: 'adm-social',
+    limit: 120,
+    windowSec: 600,
+    rationale:
+      'Every press on /admin/social per admin per 10 min (the release checklist F4), KEYED BY THE ADMIN USER ID, passed explicitly, never the IP: one admin is one bucket, and Lawal pressing from his phone on a carrier network shares an address with strangers. Sized from the work it serves: a week is 12 pieces and 12 partner kits, each approved and recorded on two platforms, about 72 presses in one sitting, so 120 in ten minutes covers a whole week with edits and leaves a scripted loop on a stolen session bounded. FAIL-OPEN: every press already needs an enabled admin row and a 2FA proof, and a Redis blip that locked the founder out of his own approvals is the worse failure.',
+  },
+  'admin-social-plan': {
+    keyPrefix: 'adm-plan',
+    limit: 6,
+    windowSec: 600,
+    rationale:
+      'The Plan press on /admin/social per admin per 10 min (F4), keyed by the admin user id as admin-social-press. Planning is idempotent (F7: a second press finds the week and makes nothing new) but each press reads the whole week of listings and writes or finds its posts and pieces, so it is the costly press. Six in ten minutes covers a plan, a re-plan after excluding a night and a few presses to check; more is a loop. FAIL-OPEN, the same reason as admin-social-press.',
+  },
   'waitlist-join': {
     keyPrefix: 'wl-join',
     limit: 5,
@@ -262,6 +287,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'organiser-media': {
+    keyPrefix: 'org-media',
+    limit: 20,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      "The organiser's own photos and artwork on /dashboard/organisation/media (the engine plan of 28 October 2026, part D), per signed in user per hour: add and replace. Twenty covers an organiser adding a night's set of photos and correcting a few; each add or replace stores a file of up to 10MB in a public bucket, so it is a storage flooding target. FAIL-CLOSED: an outage of the limiter must not open unbounded uploads. Withdrawals are never limited: taking an image or a permission back is the organiser's right and stores nothing.",
   },
   'listing-claim': {
     keyPrefix: 'listing-claim',

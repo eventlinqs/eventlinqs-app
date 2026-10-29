@@ -38,6 +38,10 @@
       "schedule": "0 18 * * *"
     },
     {
+      "path": "/api/cron/organiser-reports",
+      "schedule": "17 * * * *"
+    },
+    {
       "path": "/api/cron/event-disbursement",
       "schedule": "0 * * * *"
     },
@@ -119,7 +123,7 @@
     },
     {
       "path": "/api/cron/collection-run",
-      "schedule": "0 19 * * 0"
+      "schedule": "0 19 * * *"
     },
     {
       "path": "/api/cron/outreach-run",

@@ -6,7 +6,10 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
 import { readWalkInNumbers } from '@/lib/walk-in/organiser-numbers'
 import { afterEventReport } from '@/lib/walk-in/after-event-report'
-import { formatEventDate } from '@/lib/dates/event-time'
+import { formatEventDate, formatPlatformDate, formatPlatformDateTime } from '@/lib/dates/event-time'
+import { readNightReport, readNightRows } from '@/lib/growth/organiser-report'
+import { addedLines, nightFigures, type NightFigures } from '@/lib/growth/organiser-report-math'
+import { PROVIDER_NAMES, type BookingProvider } from '@/lib/events/booking-links'
 
 export const metadata: Metadata = {
   title: 'After the event | EventLinqs',
@@ -26,6 +29,14 @@ type Props = { params: Promise<{ id: string }> }
  *
  * Behind the same ownership gate as Reach: getOrganiserEvent answers null for
  * anybody who may not act for the event, and the page is then not found.
+ *
+ * KEPT AFTER THE NIGHT (the engine plan of 28 October 2026, part H): once the
+ * night has ended, the hourly sweep keeps one copy of these figures as read
+ * (organiser_night_reports, src/lib/growth/organiser-report.ts), and this page
+ * shows that copy, dated, so the organiser and Lawal read the same numbers.
+ * Before then it reads live, as it always did. Either way it adds the people
+ * sent on to the organiser's booking page per site (never called a sale), our
+ * own orders where EventLinqs sells the night, and the posts that named it.
  */
 export default async function AfterEventReportPage({ params }: Props) {
   const { id } = await params
@@ -33,11 +44,32 @@ export default async function AfterEventReportPage({ params }: Props) {
   if (!event) notFound()
 
   const shareOn = await isFeatureEnabled('broadcast_share')
-  const [numbers, reach] = await Promise.all([
-    readWalkInNumbers(id),
-    shareOn ? fetchReachSummary(id) : Promise.resolve({ totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }),
-  ])
-  const report = afterEventReport(numbers, reach)
+  const kept = await readNightReport(id).catch(() => null)
+  let figures: NightFigures
+  if (kept) {
+    figures = kept.figures
+  } else {
+    const [numbers, reach, rows] = await Promise.all([
+      readWalkInNumbers(id),
+      shareOn ? fetchReachSummary(id) : Promise.resolve({ totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }),
+      event.endDate ? readNightRows({ id, endDate: event.endDate }) : null,
+    ])
+    figures = nightFigures({
+      numbers,
+      reach,
+      viewers: rows?.viewers ?? 0,
+      ownLinkArrivals: rows?.ownLinkArrivals ?? null,
+      instagramReach: rows?.instagramReach ?? null,
+      presses: rows?.presses ?? [],
+      orders: rows?.orders ?? null,
+      posts: rows?.posts ?? [],
+    })
+  }
+  const report = afterEventReport(figures.numbers, figures.reach)
+  const added = addedLines(figures, {
+    siteName: (p) => PROVIDER_NAMES[p as BookingProvider] ?? 'your own booking page',
+    dateOf: (iso) => formatPlatformDate(iso),
+  })
   const dates = [formatEventDate(event.startDate, event.timezone), event.endDate ? formatEventDate(event.endDate, event.timezone) : null]
     .filter((d, i, all): d is string => d !== null && all.indexOf(d) === i)
     .join(' to ')
@@ -88,8 +120,19 @@ export default async function AfterEventReportPage({ params }: Props) {
           </>
         )}
 
+        <section aria-label="What happened next" className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">What happened next</h2>
+          <ul className="mt-3 space-y-2">
+            {added.map((line) => (
+              <li key={line} className="text-sm leading-relaxed text-ink-800">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <p className="mt-8 text-xs leading-relaxed text-ink-500">
-          Counted by EventLinqs. Each visit is one visitor on one day; each other figure is a press or a sign-up
+          {kept ? `As counted on ${formatPlatformDateTime(kept.readAt)}, after the night. ` : ''}Counted by EventLinqs. Each visit is one visitor on one day; each other figure is a press or a sign-up
           recorded on the event&apos;s page. Nothing here is estimated.
         </p>
       </article>

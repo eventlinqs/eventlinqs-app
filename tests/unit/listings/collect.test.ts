@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FAILING_AFTER_RUNS,
+  failuresInARow,
   dueSources,
   eventsFromHtml,
   planCandidates,
@@ -114,7 +116,7 @@ describe("the page's own Event data", () => {
 describe('the register', () => {
   const now = new Date('2026-10-27T03:00:00Z')
   const src = (id: string, over: Partial<RegisteredSource>): RegisteredSource => ({
-    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, ...over,
+    id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, partnerVenue: null, ...over,
   })
 
   it('reads only sources whose terms allow it, each at its own pace', () => {
@@ -163,8 +165,20 @@ describe('what lands for review', () => {
     expect(plans[1].kind === 'adds_links' && plans[1].eventId).toBe('ev-1')
   })
 
-  it('nothing past, nothing more than 120 days ahead', () => {
+  it('nothing past, nothing past the 90 day horizon (the engine plan of 28 October 2026)', () => {
     const plans = planCandidates([found('Bp Past', { startsAt: '2026-10-01T09:00:00.000Z' }), found('Bp Far', { startsAt: '2027-06-01T09:00:00.000Z' })], [], now)
     expect(plans).toEqual([])
+    const at = (days: number) => new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
+    expect(planCandidates([found('Bp Edge', { startsAt: at(89) })], [], now)).toHaveLength(1)
+    expect(planCandidates([found('Bp Beyond', { startsAt: at(91) })], [], now)).toEqual([])
+  })
+})
+
+describe('a source failing run after run (the engine plan part A)', () => {
+  it('counts failures from the newest run back to the last success', () => {
+    expect(failuresInARow([])).toBe(0)
+    expect(failuresInARow([{ succeeded: true }, { succeeded: false }])).toBe(0)
+    expect(failuresInARow([{ succeeded: false }, { succeeded: false }, { succeeded: true }, { succeeded: false }])).toBe(2)
+    expect(failuresInARow([{ succeeded: false }, { succeeded: false }, { succeeded: false }])).toBe(FAILING_AFTER_RUNS)
   })
 })

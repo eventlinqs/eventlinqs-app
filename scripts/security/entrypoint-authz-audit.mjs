@@ -180,6 +180,8 @@ const PRIVILEGED = /createAdminClient\s*\(|\badmin(?:Client)?\s*\.\s*from\s*\(/
 const PUBLIC_BY_DESIGN = {
   'out/[slug]/GET':
     'a curated listing button out to the organiser own booking site, pressed by anyone signed out (27 October 2026, src/lib/broadcast/outbound.ts). It reads only a public listing through the public visibility rule, writes at most one de-duplicated outbound count per visitor per link per day, and answers a 302 to a destination the external ticket rule has validated; it changes nothing a person owns.',
+  'go/[piece]/GET':
+    'the link in bio (part H, 28 October 2026, src/app/go/[piece]/route.ts), pressed by anyone signed out from a social profile, so requiring a caller identity would defeat it. It reads only whether that piece was posted (social_piece_postings, never a kit marked sent) and its stored link; it writes at most one go_presses row per visitor per piece per Melbourne day and none for a crawler; it answers a 302 built by goDestination to a path on THIS origin only, never a host from the request or the stored link, and an unknown or unposted piece lands on /events. It changes nothing a person owns.',
   'api/auth/signup/POST': 'creates an account; abuse bounded by auth-signup rate limit',
   'api/auth/recover/POST': 'password reset request; generic response, rate limited',
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
@@ -202,6 +204,8 @@ const PUBLIC_BY_DESIGN = {
     'Train C row 14, the partner enquiry form on /partners. Public by design: a venue or a council asking to partner has no account. It only inserts one enquiry row for the admin queue, checked field by field (enquiryProblem and the table constraints), reads nothing back, and is held to the partner-enquiry rate limit by address before anything is written.',
   'submit-event/actions.ts::submitEvent':
     'Release checklist H1, the List your event form on /submit-event. Public by design: the organiser of an event sold on another site has no EventLinqs account. It reads nothing about anybody. It writes one photo, re-encoded by the image pipeline, to the private listing-submissions bucket under a random name, and one row to listing_submissions (row security on, service role only), checked field by field (judgeSubmission and the table constraints), and is held to the listing-submission rate limit by address before anything is read or written. Nothing is published from it: a person reviews every row in /admin/submissions.',
+  'events/[slug]/report/actions.ts::reportListing':
+    'Release checklist I5, the Report or remove this listing form on /events/[slug]/report. Public by design: the person reporting a night is most often its organiser or a visitor with no EventLinqs account. It reads only whether the night is one a visitor can see. It writes one removal_requests row (row security on, service role only) naming that night, with one of five fixed reasons and an optional email checked against the table constraint, and is held to the listing-report rate limit by address before anything is read or written; a filled hidden field writes nothing. Nothing is hidden or deleted from it: a person reads every row in /admin/today.',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',

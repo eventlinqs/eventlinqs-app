@@ -2611,6 +2611,41 @@ export type Database = {
           },
         ]
       }
+      go_presses: {
+        Row: {
+          day: string
+          id: string
+          piece_id: string
+          pressed_at: string
+          via: string
+          visitor: string
+        }
+        Insert: {
+          day: string
+          id?: string
+          piece_id: string
+          pressed_at?: string
+          via: string
+          visitor: string
+        }
+        Update: {
+          day?: string
+          id?: string
+          piece_id?: string
+          pressed_at?: string
+          via?: string
+          visitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "go_presses_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -2835,6 +2870,9 @@ export type Database = {
       }
       listing_candidates: {
         Row: {
+          change: string | null
+          confidence: string
+          decided_by: string
           description: string | null
           ends_at: string | null
           event_id: string | null
@@ -2844,6 +2882,8 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          published_series_id: string | null
+          reasons: string[]
           refused_because: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2855,6 +2895,9 @@ export type Database = {
           venue_name: string
         }
         Insert: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2864,6 +2907,8 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          published_series_id?: string | null
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2875,6 +2920,9 @@ export type Database = {
           venue_name: string
         }
         Update: {
+          change?: string | null
+          confidence?: string
+          decided_by?: string
           description?: string | null
           ends_at?: string | null
           event_id?: string | null
@@ -2884,6 +2932,8 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          published_series_id?: string | null
+          reasons?: string[]
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2910,6 +2960,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "listing_candidates_published_series_id_fkey"
+            columns: ["published_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listing_candidates_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
@@ -2924,6 +2981,7 @@ export type Database = {
           id: string
           import_file: string
           outcome: string
+          reuse_basis: string
           series_id: string
           source_date: string
           source_url: string
@@ -2933,6 +2991,7 @@ export type Database = {
           id?: string
           import_file: string
           outcome: string
+          reuse_basis?: string
           series_id: string
           source_date: string
           source_url: string
@@ -2942,6 +3001,7 @@ export type Database = {
           id?: string
           import_file?: string
           outcome?: string
+          reuse_basis?: string
           series_id?: string
           source_date?: string
           source_url?: string
@@ -2969,6 +3029,10 @@ export type Database = {
           expires_at: string | null
           id: string
           method: string
+          permission_authority: boolean | null
+          permission_given_at: string | null
+          permission_scope: string | null
+          permission_words: string | null
           status: string
           target_organisation_id: string | null
           venue_id: string | null
@@ -2986,6 +3050,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           method: string
+          permission_authority?: boolean | null
+          permission_given_at?: string | null
+          permission_scope?: string | null
+          permission_words?: string | null
           status?: string
           target_organisation_id?: string | null
           venue_id?: string | null
@@ -3003,6 +3071,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           method?: string
+          permission_authority?: boolean | null
+          permission_given_at?: string | null
+          permission_scope?: string | null
+          permission_words?: string | null
           status?: string
           target_organisation_id?: string | null
           venue_id?: string | null
@@ -3039,9 +3111,57 @@ export type Database = {
           },
         ]
       }
+      listing_source_runs: {
+        Row: {
+          accepted_by_rule: number
+          found: number
+          http_status: number | null
+          id: string
+          landed: number
+          outcome: string
+          queued: number
+          ran_at: string
+          source_id: string
+          succeeded: boolean
+        }
+        Insert: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome: string
+          queued?: number
+          ran_at?: string
+          source_id: string
+          succeeded: boolean
+        }
+        Update: {
+          accepted_by_rule?: number
+          found?: number
+          http_status?: number | null
+          id?: string
+          landed?: number
+          outcome?: string
+          queued?: number
+          ran_at?: string
+          source_id?: string
+          succeeded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_source_runs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_sources: {
         Row: {
           acquisition_order: number | null
+          category_id: string | null
           changes: string
           city_slug: string | null
           collection: string
@@ -3075,6 +3195,7 @@ export type Database = {
           may_use_dataset_url: string | null
           name: string
           notes: string | null
+          organisation_id: string | null
           page_url: string
           permits_descriptions: boolean
           permits_facts: boolean
@@ -3085,11 +3206,13 @@ export type Database = {
           terms_read_on: string | null
           terms_url: string | null
           updated_at: string
+          venue_id: string | null
           verification: string
           verified_on: string | null
         }
         Insert: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection: string
@@ -3123,6 +3246,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name: string
           notes?: string | null
+          organisation_id?: string | null
           page_url: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3133,11 +3257,13 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
         Update: {
           acquisition_order?: number | null
+          category_id?: string | null
           changes?: string
           city_slug?: string | null
           collection?: string
@@ -3171,6 +3297,7 @@ export type Database = {
           may_use_dataset_url?: string | null
           name?: string
           notes?: string | null
+          organisation_id?: string | null
           page_url?: string
           permits_descriptions?: boolean
           permits_facts?: boolean
@@ -3181,10 +3308,33 @@ export type Database = {
           terms_read_on?: string | null
           terms_url?: string | null
           updated_at?: string
+          venue_id?: string | null
           verification?: string
           verified_on?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listing_sources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_sources_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_sources_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listing_submissions: {
         Row: {
@@ -5566,9 +5716,65 @@ export type Database = {
           },
         ]
       }
+      organiser_night_reports: {
+        Row: {
+          event_id: string
+          figures: Json
+          id: string
+          night_ended_at: string
+          organisation_id: string
+          read_at: string
+          sent_at: string | null
+          sent_by: string | null
+        }
+        Insert: {
+          event_id: string
+          figures: Json
+          id?: string
+          night_ended_at: string
+          organisation_id: string
+          read_at?: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Update: {
+          event_id?: string
+          figures?: Json
+          id?: string
+          night_ended_at?: string
+          organisation_id?: string
+          read_at?: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_night_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_night_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_night_reports_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organiser_permissions: {
         Row: {
           channel: string
+          claim_id: string | null
           event_id: string | null
           evidence_file: string | null
           granted_at: string
@@ -5576,11 +5782,15 @@ export type Database = {
           id: string
           logged_at: string
           logged_by: string
+          organisation_id: string | null
           scope: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
           wording: string
         }
         Insert: {
           channel: string
+          claim_id?: string | null
           event_id?: string | null
           evidence_file?: string | null
           granted_at: string
@@ -5588,11 +5798,15 @@ export type Database = {
           id?: string
           logged_at?: string
           logged_by: string
+          organisation_id?: string | null
           scope: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
           wording: string
         }
         Update: {
           channel?: string
+          claim_id?: string | null
           event_id?: string | null
           evidence_file?: string | null
           granted_at?: string
@@ -5600,10 +5814,20 @@ export type Database = {
           id?: string
           logged_at?: string
           logged_by?: string
+          organisation_id?: string | null
           scope?: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
           wording?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organiser_permissions_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "listing_claims"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organiser_permissions_event_id_fkey"
             columns: ["event_id"]
@@ -5616,6 +5840,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_permissions_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -7355,11 +7586,12 @@ export type Database = {
         Row: {
           actioned_at: string | null
           created_at: string
+          event_id: string | null
           id: string
           note: string | null
           reason: string
-          requester_email: string
-          requester_name: string
+          requester_email: string | null
+          requester_name: string | null
           series_id: string | null
           status: string
           venue_id: string | null
@@ -7367,11 +7599,12 @@ export type Database = {
         Insert: {
           actioned_at?: string | null
           created_at?: string
+          event_id?: string | null
           id?: string
           note?: string | null
           reason: string
-          requester_email: string
-          requester_name: string
+          requester_email?: string | null
+          requester_name?: string | null
           series_id?: string | null
           status?: string
           venue_id?: string | null
@@ -7379,16 +7612,31 @@ export type Database = {
         Update: {
           actioned_at?: string | null
           created_at?: string
+          event_id?: string | null
           id?: string
           note?: string | null
           reason?: string
-          requester_email?: string
-          requester_name?: string
+          requester_email?: string | null
+          requester_name?: string | null
           series_id?: string | null
           status?: string
           venue_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "removal_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "removal_requests_series_id_fkey"
             columns: ["series_id"]
@@ -11119,6 +11367,14 @@ export type Database = {
         Args: { p_checked_on: string; p_timezone: string }
         Returns: string
       }
+      listing_horizon: {
+        Args: { p_now?: string; p_starts_at: string }
+        Returns: string
+      }
+      listing_publish_partner_night: {
+        Args: { p_candidate: string }
+        Returns: string
+      }
       marketing_attribution_default_window: { Args: never; Returns: number }
       marketing_attribution_is_billable: {
         Args: { p_decision: string; p_order_id: string; p_rung: number }
@@ -11145,6 +11401,32 @@ export type Database = {
         }
         Returns: number
       }
+      organiser_media_add: {
+        Args: {
+          p_asset_url: string
+          p_attribution: string
+          p_event: string
+          p_kind: string
+          p_original_name: string
+          p_restrictions: string
+          p_user: string
+        }
+        Returns: string
+      }
+      organiser_media_path: { Args: { p_url: string }; Returns: string }
+      organiser_media_replace: {
+        Args: {
+          p_asset: string
+          p_asset_url: string
+          p_original_name: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      organiser_media_withdraw: {
+        Args: { p_asset: string; p_reason: string; p_user: string }
+        Returns: string[]
+      }
       organiser_permission_evidence: {
         Args: {
           p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
@@ -11155,6 +11437,7 @@ export type Database = {
         Args: { p_event: string }
         Returns: {
           channel: string
+          claim_id: string | null
           event_id: string | null
           evidence_file: string | null
           granted_at: string
@@ -11162,7 +11445,10 @@ export type Database = {
           id: string
           logged_at: string
           logged_by: string
+          organisation_id: string | null
           scope: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
           wording: string
         }
         SetofOptions: {
@@ -11171,6 +11457,28 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      organiser_permission_give: {
+        Args: { p_claim: string; p_user: string; p_words: string }
+        Returns: string
+      }
+      organiser_permission_withdraw: {
+        Args: { p_permission: string; p_reason: string; p_user: string }
+        Returns: string[]
+      }
+      organiser_runs_night: {
+        Args: { p_event: string; p_user: string }
+        Returns: boolean
+      }
+      organiser_series_keep: {
+        Args: { p_keep: boolean; p_series: string; p_user: string }
+        Returns: string
+      }
+      organiser_yes_takes_native_shares: {
+        Args: {
+          v_perm: Database["public"]["Tables"]["organiser_permissions"]["Row"]
+        }
+        Returns: undefined
       }
       outreach_close_stuck_sends: {
         Args: { p_minutes?: number }

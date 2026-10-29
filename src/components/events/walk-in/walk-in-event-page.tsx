@@ -50,6 +50,7 @@ import { readListingPages } from '@/lib/listings/listing-pages-read'
 import { readJoinedCollaborators, type JoinedCollaborator } from '@/lib/events/collaborators'
 import { CollaboratorsLine } from '@/components/events/collaborators-line'
 import { HoursList } from './hours-list'
+import { ReportListingLink } from '@/components/events/report-listing-link'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -569,6 +570,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             </aside>
           </div>
         </div>
+        <ReportListingLink slug={event.slug} />
       </main>
 
       <WalkInBottomBar

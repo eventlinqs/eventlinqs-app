@@ -79,7 +79,7 @@ export const RESERVED_CODES: readonly string[] = [
   'about', 'account', 'actions', 'admin', 'api', 'artist', 'artists', 'auth',
   'careers', 'categories', 'checkout', 'cities', 'city', 'communities',
   'community', 'contact', 'dashboard', 'design', 'dev', 'e', 'events', 'faith',
-  'feed', 'for-organisers', 'forecast', 'forgot-password', 'free', 'gigs', 'guides', 'help', 'join',
+  'feed', 'for-organisers', 'forecast', 'forgot-password', 'free', 'gigs', 'go', 'guides', 'help', 'join',
   'launch', 'partners',
   // The GA3 tracked link, the /m route. A share code that shadowed it would
   // take over the address the attribution spine mints links on, which is the

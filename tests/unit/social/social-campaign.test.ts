@@ -103,7 +103,9 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(s).toMatchObject({ audience: 'attendees', objective: 'audience_growth', link: `${ORIGIN}/city/geelong` })
     expect(s.slides.map((x) => x.t)).toEqual(['night', 'programme'])
     const [o] = of(pieces, 'organiser_campaign')
-    expect(o).toMatchObject({ audience: 'organisers', objective: 'organiser_growth', link: `${ORIGIN}/for-organisers`, eventIds: [] })
+    /* The canonical page, never /for-organisers, which 308s to it (src/app/for-organisers/page.tsx; Law 5). */
+    expect(o).toMatchObject({ audience: 'organisers', objective: 'organiser_growth', link: `${ORIGIN}/organisers`, eventIds: [] })
+    expect([o.nextStep, o.caption, o.versions.instagram.caption, o.versions.facebook.caption, JSON.stringify(o.slides)].join(' ')).not.toContain('/for-organisers')
   })
 
   it('the organiser campaign promises only what the planner does: a kit when a night is featured, never every week', () => {

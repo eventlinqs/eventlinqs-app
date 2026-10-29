@@ -107,6 +107,7 @@ import { isWalkIn } from '@/lib/events/entry-mode'
 import { ctaFor } from '@/lib/events/cta'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
+import { ReportListingLink } from '@/components/events/report-listing-link'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -1041,6 +1042,8 @@ export default async function EventDetailPage({ params }: Props) {
    * platform cannot deliver: the waitlist exists to convert into a sale, and
    * there is no sale to convert into while the organiser cannot be paid.
    */
+  /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket and names no price. */
+  const nightIsOver = eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled'
   // An event sold on another site names the panel's one button (WI3, heroSaleWords).
   const heroSale = heroSaleWords({
     externalUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
@@ -1051,8 +1054,7 @@ export default async function EventDetailPage({ params }: Props) {
     priceLabel,
     /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
     cta: ctaFor({
-      /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket in the hero or bar. */
-      over: eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled',
+      over: nightIsOver,
       entryMode: event.entry_mode ?? null,
       tiers: priceTiersForDisplay,
       isFree: event.is_free ?? null,
@@ -1139,7 +1141,7 @@ export default async function EventDetailPage({ params }: Props) {
         title={event.title}
         dateLabel={shortDate}
         venueLabel={venueLabelShort}
-        priceLabel={externallyTicketed ? heroPriceLabel : priceLabel}
+        priceLabel={externallyTicketed || nightIsOver ? heroPriceLabel : priceLabel}
         shareUrl={`/events/${event.slug}`}
         ctaLabel={ticketCtaLabel}
       />
@@ -1801,6 +1803,7 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
             No cross-promotion of any other event renders here; discovery
             lives on the city and browse pages only. */}
+        <ReportListingLink slug={event.slug} />
       </main>
 
       <SiteFooter />
