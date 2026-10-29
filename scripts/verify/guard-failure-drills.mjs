@@ -10736,6 +10736,27 @@ const DRILLS = [
     expect: 'reads or writes social_report_decisions',
   },
   /*
+   * counted-rows-exclude-tests (the master mandate of 29 October 2026, the project manager's R3,
+   * 20261029220001). Two ways a QA press on a counted hop could reach a figure: the organiser
+   * report's /go read and the admin demand signal's click count each lose their is_test filter.
+   */
+  {
+    name: 'counted hops: the organiser report counts QA presses on /go',
+    guard: `${GUARDS}/counted-rows-exclude-tests.mjs`,
+    file: 'src/lib/growth/organiser-report.ts',
+    find: ".from('go_presses').select('id', { count: 'exact', head: true }).eq('is_test', false).eq('piece_id', p.piece_id)",
+    replace: ".from('go_presses').select('id', { count: 'exact', head: true }).eq('piece_id', p.piece_id)",
+    expect: 'reads go_presses with no is_test filter',
+  },
+  {
+    name: 'counted hops: the demand signal counts QA clicks',
+    guard: `${GUARDS}/counted-rows-exclude-tests.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find: ".eq('kind', 'click').eq('is_test', false),",
+    replace: ".eq('kind', 'click'),",
+    expect: 'reads share_link_events with no is_test filter',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the
