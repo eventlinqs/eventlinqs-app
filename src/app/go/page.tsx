@@ -81,8 +81,8 @@ export default async function GoPage({ searchParams }: Props) {
         ) : (
           <p className="mt-6 text-base text-ink-700">
             {unread
-              ? 'Our latest posts could not be loaded just now. Everything on is still one tap away below.'
-              : 'Nothing from our latest posts is still ahead. Everything on is one tap away below.'}
+              ? 'Our latest posts could not be loaded just now. Everything that is on is still one tap away below.'
+              : 'Nothing from our latest posts is still ahead. Everything that is on is one tap away below.'}
           </p>
         )}
 
