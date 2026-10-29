@@ -130,17 +130,18 @@ async function drive() {
   // Message 9 on its trigger (29 October): not while a night is listed in the next 30 days; drafted once when none is.
   const in30 = new Date(now.getTime() + 30 * 86_400_000).toISOString()
   const ahead = (await sql(`select count(*)::int as n from public.events where venue_id = '${venueRow.id}' and status = 'published' and visibility = 'public'
-                              and start_date >= '${now.toISOString()}' and start_date < '${in30}'`) as { n: number }[])[0].n
+                              and coalesce(end_date, start_date) >= '${now.toISOString()}' and start_date < '${in30}'`) as { n: number }[])[0].n
   const partners = { organisers: [made.organiser!] }
   const first9 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
   if (ahead > 0) {
-    check(`message 9 waits while the venue has ${ahead} night(s) listed in the next 30 days`, first9.queued === 0 && first9.notDue.some((n) => n.why.includes('night listed')), JSON.stringify(first9))
-    const quiet = (await sql(`select v.id, v.name from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active' and s.rule = 'weekly'
+    check(`message 9 waits while the venue has ${ahead} night(s) listed in the next 30 days`, first9.queued === 0 && first9.notDue.some((n) => /nights? listed/.test(n.why)), JSON.stringify(first9))
+    const quiet = (await sql(`select v.id, v.name from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active'
                                 where v.listing_source = 'eventlinqs' and v.removed_at is null and v.id <> '${venueRow.id}'
                                   and not exists (select 1 from public.organiser_venues ov where ov.venue_id = v.id)
-                                  and not exists (select 1 from public.events e where e.venue_id = v.id and e.status = 'published' and e.start_date >= '${now.toISOString()}' and e.start_date < '${in30}')
+                                  and not exists (select 1 from public.events e where e.venue_id = v.id and e.status = 'published' and e.visibility = 'public'
+                                                  and coalesce(e.end_date, e.start_date) >= '${now.toISOString()}' and e.start_date < '${in30}')
                                 order by v.name limit 1`) as { id: string; name: string }[])[0]
-    check('a weekly venue with nothing listed in the next 30 days on TEST', Boolean(quiet), quiet?.name ?? 'none')
+    check('a venue with an active series and nothing on the guide in the next 30 days on TEST', Boolean(quiet), quiet?.name ?? 'none')
     await db.from('organiser_venues').delete().eq('organiser_id', made.organiser!)
     const moved = await db.from('organiser_venues').insert({ venue_id: quiet.id, organiser_id: made.organiser!, linked_by: user })
     check('the partner now runs only that venue', !moved.error, moved.error?.message ?? '')

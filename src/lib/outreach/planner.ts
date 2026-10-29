@@ -16,6 +16,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 
 type Admin = SupabaseClient<Database>
@@ -217,7 +218,7 @@ export type PartnerState = { organiserId: string; contactId: string; venueIds: s
 /** Why message 9 is not due for this partner now, or null when it is. */
 export function anythingComingUpRefusal(p: PartnerState, now: Date): string | null {
   if (p.venueIds.length === 0) return 'no venue is linked to this organiser, and the message names one'
-  if (p.upcomingNights > 0) return `${p.upcomingNights} night listed in the next ${ANYTHING_COMING_UP_DAYS} days`
+  if (p.upcomingNights > 0) return `${p.upcomingNights} night${p.upcomingNights === 1 ? '' : 's'} listed in the next ${ANYTHING_COMING_UP_DAYS} days`
   if (p.lastAskedAt && now.getTime() - p.lastAskedAt.getTime() < ANYTHING_COMING_UP_DAYS * 86_400_000) {
     return `asked on ${p.lastAskedAt.toISOString().slice(0, 10)}, under ${ANYTHING_COMING_UP_DAYS} days ago`
   }
@@ -259,14 +260,12 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     const venueIds = (links.data ?? []).map((l) => l.venue_id)
     let upcomingNights = 0
     if (venueIds.length > 0) {
-      const nights = await db
-        .from('events')
-        .select('id', { count: 'exact', head: true })
-        .in('venue_id', venueIds)
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .gte('start_date', deps.now.toISOString())
-        .lt('start_date', until.toISOString())
+      // What the guide lists (the shared rule: published, public, until it has ENDED, fresh; outside tickets included,
+      // since the guide lists them too), starting before the month is out.
+      const nights = await applyPublicEventVisibility(
+        db.from('events').select('id', { count: 'exact', head: true }).in('venue_id', venueIds),
+        { now: deps.now, includeExternal: true },
+      ).lt('start_date', until.toISOString())
       if (nights.error) throw new Error(`events: ${nights.error.message}`)
       upcomingNights = nights.count ?? 0
     }
