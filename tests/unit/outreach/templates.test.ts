@@ -71,3 +71,32 @@ test('a contact with no first name cannot take message 1; the general inbox take
   expect(renderTemplate(first, facts, UNSUB).heldBecause[0]).toContain('[first name]')
   expect(renderTemplate(inbox, facts, UNSUB).heldBecause).toEqual([])
 })
+
+/* Message 7, version 2 (the project manager's ruling of 29 October 2026, 17:31): a partner kit is a story alone, so the
+   line names the story card only, exactly as ruled, and every other line of message 7 stands. */
+describe('message 7, version 2: the story card alone', () => {
+  const v2 = JSON.parse(readFileSync(join(process.cwd(), 'scripts/ops/data/outreach-templates-29oct-v2.json'), 'utf8')) as { source: string; templates: Row[] }
+  const v1 = data.templates.find((t) => t.key === 'featured')!
+  const t = v2.templates.find((x) => x.key === 'featured')!
+  const RULED = 'Here\'s your story card and a caption if you\'d like to share it: [story version] "[caption]"'
+
+  test('it is message 7 only, and names its ruling', () => {
+    expect(v2.templates.map((x) => x.key)).toEqual(['featured'])
+    expect(v2.source).toMatch(/29 October 2026, 17:31/)
+  })
+
+  test('the ruled line, exactly, and no feed image', () => {
+    expect(t.body).toContain(RULED)
+    expect(t.body).not.toContain('[feed image]')
+  })
+
+  test('every other line as it stands', () => {
+    expect(t.body.split('\n').filter((l) => !l.includes(RULED))).toEqual(v1.body.split('\n').filter((l) => !l.includes('[feed image]')).map((l) => l))
+    expect([t.subject, t.channel, t.purpose, t.step]).toEqual([v1.subject, v1.channel, v1.purpose, v1.step])
+  })
+
+  test('it passes every rule once filled from facts, with no feed image to hand', () => {
+    const facts = { ...FACTS, 'feed image': null as unknown as string }
+    expect(renderTemplate(t, facts, UNSUB).heldBecause).toEqual([])
+  })
+})

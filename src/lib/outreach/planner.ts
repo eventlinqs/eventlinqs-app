@@ -408,8 +408,9 @@ async function postNamingNightWentOut(db: Admin, eventId: string, kitId: string)
  * MESSAGE 7, YOU'RE FEATURED (the PM's messages file; the engine plan's part G: "kit sent to the organiser when their
  * post goes out"; the PM's ruling of 29 October, 16:28). The kit is window 3's partner_kit piece: its approved caption and
  * its own tracked link. Its story is window 3's public /kit/<piece>/<n> (approved kits only). A partner kit is made as a
- * story alone, so the feed image stays empty and the message is held for Lawal on that one field until the template
- * names the story only (the PM's words); everything else is filled.
+ * story alone, so the feed image stays empty; message 7's version 2 (the PM's ruling of 29 October, 17:31,
+ * scripts/ops/data/outreach-templates-29oct-v2.json) names the story card only, so it goes by itself once every field is
+ * filled. Under version 1, which names a feed image, it is held for Lawal on that field.
  */
 export const FEATURED_LOOKBACK_DAYS = 14
 
