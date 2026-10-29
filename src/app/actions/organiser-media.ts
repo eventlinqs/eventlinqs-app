@@ -33,7 +33,17 @@ async function signedIn(): Promise<string | null> {
   return user?.id ?? null
 }
 
-async function guarded(run: (userId: string) => Promise<MediaAnswer>, limit: boolean): Promise<MediaState> {
+/**
+ * True when the press came from the claim card's last steps (the form's 'flow' field). revalidatePath re-renders the
+ * page it was pressed on, and a claimed listing's claim page draws "already run by its owner" without the card, so a
+ * refresh there would take the rest of the claim away mid-step (the claim drive on TEST, 29 October 2026). Only the
+ * cache refresh hangs on it: who may change what is still the database's to say.
+ */
+function fromTheClaim(formData: FormData): boolean {
+  return formData.get('flow') === 'claim'
+}
+
+async function guarded(run: (userId: string) => Promise<MediaAnswer>, limit: boolean, refresh = true): Promise<MediaState> {
   const userId = await signedIn()
   if (!userId) return { state: 'refused', reason: 'Sign in to change your photos and artwork.' }
   if (limit) {
@@ -41,7 +51,7 @@ async function guarded(run: (userId: string) => Promise<MediaAnswer>, limit: boo
     if (!limited.ok) return TRY_LATER
   }
   const answer = await run(userId)
-  if (answer.state === 'done') revalidatePath('/dashboard/organisation/media')
+  if (answer.state === 'done' && refresh) revalidatePath('/dashboard/organisation/media')
   return answer
 }
 
@@ -64,6 +74,7 @@ export async function addMedia(_prev: MediaState, formData: FormData): Promise<M
       mediaDeps(),
     ),
     true,
+    !fromTheClaim(formData),
   )
 }
 
@@ -86,7 +97,11 @@ export async function withdrawYes(_prev: MediaState, formData: FormData): Promis
 }
 
 export async function keepSeries(_prev: MediaState, formData: FormData): Promise<MediaState> {
-  return guarded((userId) => keepOrganiserSeries({ userId, seriesId: String(formData.get('seriesId') ?? ''), keep: formData.get('keep') === 'yes' }, mediaDeps()), false)
+  return guarded(
+    (userId) => keepOrganiserSeries({ userId, seriesId: String(formData.get('seriesId') ?? ''), keep: formData.get('keep') === 'yes' }, mediaDeps()),
+    false,
+    !fromTheClaim(formData),
+  )
 }
 
 export async function giveYes(_prev: MediaState, formData: FormData): Promise<MediaState> {

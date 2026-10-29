@@ -85,6 +85,8 @@ let snapshot = null
 let flagWas = null
 let flagTouched = false
 let storedPath = null
+// Out here so the finally can save it whatever stopped the drive (drive-2: a ReferenceError there skipped the cleanup).
+let serverLog = ''
 try {
   /* ---- a curated venue to claim: published address, regular nights, nights to come ---- */
   const { data: venues } = await db
@@ -161,7 +163,7 @@ try {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  let serverLog = ''
+  serverLog = ''
   server.stdout.on('data', (d) => (serverLog += d))
   server.stderr.on('data', (d) => (serverLog += d))
   const handle = slugify(venue.name)
@@ -196,11 +198,16 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-AU' })
   const page = await context.newPage()
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 300000 })
+  // The form's fields are controlled and its button stays disabled until it hydrates: a value filled before then is
+  // put back to '' when React takes the inputs over, and the press sends an empty form (drive-1, 29 October).
+  await page.waitForSelector('form button[type="submit"]:not([disabled])', { timeout: 300000 })
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await page.locator('form button[type="submit"]').first().click()
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 180000 }).catch(() => {})
-  check('the TEST claimant signed in', !new URL(page.url()).pathname.startsWith('/login'), page.url())
+  const signedIn = !new URL(page.url()).pathname.startsWith('/login')
+  if (!signedIn) await page.screenshot({ path: join(out, 'login-failed-390.png'), fullPage: true })
+  check('the TEST claimant signed in', signedIn, signedIn ? page.url() : `${page.url()} ${await page.locator('[role="alert"]').allInnerTexts().then((t) => t.join(' | '), () => '')}`)
 
   /* ---- the claim page at three widths, in the project manager's words ---- */
   const masked = `${venue.published_email.trim().toLowerCase().charAt(0)}***@${venue.published_email.trim().toLowerCase().split('@')[1]}`
@@ -321,6 +328,12 @@ try {
 } finally {
   if (browser) await browser.close().catch(() => {})
   if (server?.pid) spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' })
+  // The whole server log, not only up to the switch landing, so a red after it is read from what the server said.
+  try {
+    writeFileSync(join(out, 'server.log'), serverLog)
+  } catch (e) {
+    console.warn('[claim-acceptance-drive] the server log was not saved', e instanceof Error ? e.message : e)
+  }
   // The dev server's build output is this drive's own, and the disk is shared: it goes when the drive ends, pass or
   // fail (the project manager's 01:19 (3)). The browser's temp profile goes with browser.close() above.
   if (server) rmSync('.next', { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 })

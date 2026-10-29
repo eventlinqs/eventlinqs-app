@@ -50,6 +50,7 @@ export function ClaimForm(props: {
             <AddMediaForm
               nights={checked.nights}
               submitLabel="Upload"
+              inClaim
               after={
                 <button type="button" onClick={() => setStep(nextAfterPhotos)} className={quiet}>
                   Skip for now
@@ -67,6 +68,7 @@ export function ClaimForm(props: {
           <RegularNightsForm
             series={checked.series}
             allOn
+            inClaim
             finishLabel="Finish"
             onFinish={(names) => {
               setKept(names)

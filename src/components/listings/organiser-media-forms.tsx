@@ -29,15 +29,19 @@ export function AddMediaForm({
   nights,
   submitLabel = 'Add image',
   after,
+  inClaim = false,
 }: {
   nights: { id: string; label: string }[]
   submitLabel?: string
   /** Beside the submit button, such as the claim page's "Skip for now". */
   after?: ReactNode
+  /** On the claim card: the action refreshes no page, so the card's next steps stay (src/app/actions/organiser-media.ts). */
+  inClaim?: boolean
 }) {
   const [state, action, pending] = useActionState<MediaState, FormData>(addMedia, null)
   return (
     <form action={action} className="text-left">
+      {inClaim ? <input type="hidden" name="flow" value="claim" /> : null}
       <label className="block text-sm font-medium text-ink-900">
         Night
         <select name="eventId" required className={input} defaultValue="">
@@ -153,6 +157,8 @@ export function RegularNightsForm(props: {
   allOn?: boolean
   finishLabel: string
   onFinish?: (kept: string[]) => void
+  /** On the claim card: the action refreshes no page, so the card's done step stays. */
+  inClaim?: boolean
 }) {
   const [saved, setSaved] = useState<Record<string, boolean>>(() => Object.fromEntries(props.series.map((s) => [s.id, s.keep])))
   const [keep, setKeep] = useState<Record<string, boolean>>(() => Object.fromEntries(props.series.map((s) => [s.id, props.allOn ? true : s.keep])))
@@ -168,6 +174,7 @@ export function RegularNightsForm(props: {
       const fd = new FormData()
       fd.set('seriesId', s.id)
       fd.set('keep', keep[s.id] ? 'yes' : 'no')
+      if (props.inClaim) fd.set('flow', 'claim')
       const answer = await keepSeries(null, fd)
       if (answer?.state === 'refused') {
         setSaved(now)
