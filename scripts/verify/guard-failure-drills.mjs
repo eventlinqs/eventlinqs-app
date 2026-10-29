@@ -266,6 +266,27 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for
+   * a night), two drills: the publish gate counting a library photograph as a cover again, and the home hero choosing
+   * its slides without asking whether the photograph is the night's own.
+   */
+  {
+    name: 'the publish gate counts a library photograph as a real cover',
+    guard: `${GUARDS}/no-library-photo-on-a-night.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: '  if (isLibraryPhoto(url)) return false',
+    replace: '  // a library photograph passes',
+    expect: 'does not refuse a library photograph',
+  },
+  {
+    name: 'the home hero leads with any cover, not only a night\'s own photograph',
+    guard: `${GUARDS}/no-library-photo-on-a-night.mjs`,
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    find: 'const featured = events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)',
+    replace: 'const featured = events.slice(0, MAX_SLIDES)',
+    expect: 'does not choose its slides by isOwnPhoto',
+  },
+  /*
    * preview-deployment-state (close-out C16, 7 September 2026), one drill: the
    * guard is run exactly as CI runs it on a push of a commit whose deployment
    * is in ERROR, and must refuse naming that deployment. This is the guard that
