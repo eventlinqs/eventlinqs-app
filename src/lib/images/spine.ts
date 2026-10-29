@@ -167,6 +167,11 @@ const COMMUNITY_TO_SCENE: Record<string, string> = {
   chinese: 'asian',                // lantern-festival shot
   italian: 'mediterranean',        // Mediterranean food festa
   'pacific-pasifika': 'pasifika-maori',
+  // Lawal's own photographs, wired by the project manager's 22:24 of 29 October 2026: these three communities asked
+  // Pexels at request time, and the African card and the Communities doorway went blank on production when it failed.
+  african: 'afrobeats-amapiano',   // crowd-hands-up-night
+  caribbean: 'caribbean-dancehall', // carnival-colour-day
+  'latin-american': 'latin',       // beachfront-social-dusk
 }
 
 // ── CATEGORIES ──────────────────────────────────────────────────────────────

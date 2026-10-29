@@ -266,6 +266,34 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
+   * blank on production), two drills: a community losing its stored photograph, and a refused Pexels lookup cached again.
+   */
+  {
+    name: 'the African community loses its stored photograph',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/lib/images/spine.ts',
+    find: "  african: 'afrobeats-amapiano',   // crowd-hands-up-night",
+    replace: '',
+    expect: "the community 'african' has no stored photograph",
+  },
+  {
+    name: 'a refused Pexels lookup is kept by the cache again',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/lib/images/category-photo.ts',
+    find: "  if (!res.ok) throw new Error(`Pexels answered ${res.status}`)",
+    replace: '  if (!res.ok) return [FALLBACK]',
+    expect: 'returns the placeholder inside the cached function',
+  },
+  {
+    name: 'a sub-community tile asks Pexels at request time again',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/lib/images/sub-community-photo.ts',
+    find: "  if (!KEPT.has(key)) return null",
+    replace: "  if (!KEPT.has(key)) return (await fetch('https://api.pexels.com/v1/search')).url",
+    expect: 'sub-community-photo.ts makes a request-time call',
+  },
+  /*
    * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for
    * a night), two drills: the publish gate counting a library photograph as a cover again, and the home hero choosing
    * its slides without asking whether the photograph is the night's own.
