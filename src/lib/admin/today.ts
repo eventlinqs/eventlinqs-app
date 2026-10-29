@@ -24,8 +24,9 @@ import { failuresInARow, queueOf, reportsOverdue, SOURCE_FAILING_AFTER, type Que
  * draws the unposted piece again in type and writes a social_piece_decisions row 'image_withdrawn' with no person; the
  * piece then waits for Lawal's approval of its new revision, so it is listed until that approval or its posting.
  *
- * NOT LANDED YET: a failed J15 or K10 check, which window 3's code judges at approval and does not keep as a row; it
- * is read through window 3's own function once car 3 is on this branch, never restated here.
+ * NOT LANDED: a failed J15 or K10 check. Window 3's pieceDependencies judges it when Approve is pressed and keeps no
+ * row; it fetches each night's pages and outside ticket pages, so it is not run on every read of this queue. Until a
+ * failed check is kept as a row, this source says where it is shown instead, never restating window 3's rules.
  */
 
 const LIST_CAP = 50
@@ -267,7 +268,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'collected', section: 'exceptions', name: 'Collected events waiting', read: collected },
     { key: 'failing_sources', section: 'exceptions', name: 'Sources failing their daily run', read: failingSources },
     { key: 'swept', section: 'exceptions', name: 'Posts drawn again after an image was withdrawn', read: swept },
-    { key: 'checks', section: 'exceptions', name: 'Posts failing their J15 or K10 checks', read: { state: 'not_landed', owner: "window 3's treatments, car 3" } },
+    { key: 'checks', section: 'exceptions', name: 'Posts failing their J15 or K10 checks', read: { state: 'not_landed', owner: 'window 3 keeps no row of a failed check; /admin/social shows each one when Approve is pressed' } },
     { key: 'claims', section: 'exceptions', name: 'Claims to decide by hand', read: claims },
     { key: 'removals', section: 'exceptions', name: 'Requests to take a listing down', read: removals },
     { key: 'reports', section: 'exceptions', name: 'After-the-night reports not kept', read: reports },
