@@ -12,9 +12,8 @@ import { failuresInARow, queueOf, reportsOverdue, SOURCE_FAILING_AFTER, type Que
  * WINDOW 6's OUTREACH (20261028201001 and 20261028213001, car 3), by the names window 6 gave on 28 October at 20:46: a
  * play to approve is outreach_plays in state draft; a paused one is state paused with its paused_reason; a reply the
  * classifier could not act on is outreach_replies.needs_lawal; a draft held by a messages-file rule is an
- * outreach_touches row whose held_because names the rules. Their generated types reach this branch with car 3, so
- * until then these four reads go through OutreachDb, the client untyped for those tables only. A table not on the
- * database answers not landed, never an empty queue.
+ * outreach_touches row whose held_because names the rules, read through their generated types (car 3). A table not
+ * on the database answers not landed, never an empty queue.
  *
  * WINDOW 4's EXCEPTION QUEUE (20261028204001, its 21:18) is the collected rows waiting for a person, now with their
  * confidence and reasons, read here as one item; and a source whose daily run has failed SOURCE_FAILING_AFTER times in
@@ -53,15 +52,15 @@ function fail(error: { code?: string; message?: string }): never {
   throw new Error(error.message ?? 'unknown')
 }
 
-/** The client untyped for the tables of cars that have not reached this branch: window 6's outreach and window 4's runs. */
-type OutreachDb = SupabaseClient
+/** The client untyped for the one table whose car has not reached this branch: window 4's listing_source_runs (car 4). */
+type RunsDb = SupabaseClient
 const OUTREACH = "window 6's outreach CRM, car 3"
 
 /** Plays written and waiting for Lawal's one approval. */
-async function playsToApprove(db: OutreachDb): Promise<QueueItem[]> {
+async function playsToApprove(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db.from('outreach_plays').select('id, name, cap_start, created_at').eq('state', 'draft').order('created_at', { ascending: true }).limit(LIST_CAP)
   if (error) fail(error)
-  return ((data ?? []) as { id: string; name: string; cap_start: number; created_at: string }[]).map((p) => ({
+  return (data ?? []).map((p) => ({
     id: `play:${p.id}`,
     what: `The play "${p.name}", starting at ${p.cap_start} emails a day`,
     why: 'A play sends only once you approve it; after that every email inside it goes on its own.',
@@ -71,10 +70,10 @@ async function playsToApprove(db: OutreachDb): Promise<QueueItem[]> {
 }
 
 /** Plays the ramp paused, with the reason the database wrote. */
-async function pausedPlays(db: OutreachDb): Promise<QueueItem[]> {
+async function pausedPlays(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db.from('outreach_plays').select('id, name, paused_at, paused_reason').eq('state', 'paused').order('paused_at', { ascending: true }).limit(LIST_CAP)
   if (error) fail(error)
-  return ((data ?? []) as { id: string; name: string; paused_at: string; paused_reason: string }[]).map((p) => ({
+  return (data ?? []).map((p) => ({
     id: `paused:${p.id}`,
     what: `The play "${p.name}" is paused`,
     why: p.paused_reason,
@@ -84,10 +83,10 @@ async function pausedPlays(db: OutreachDb): Promise<QueueItem[]> {
 }
 
 /** Replies the classifier could not act on by itself. */
-async function repliesToRead(db: OutreachDb): Promise<QueueItem[]> {
+async function repliesToRead(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db.from('outreach_replies').select('id, received_at, wording, confidence').eq('needs_lawal', true).order('received_at', { ascending: true }).limit(LIST_CAP)
   if (error) fail(error)
-  return ((data ?? []) as { id: string; received_at: string; wording: string; confidence: number | null }[]).map((r) => ({
+  return (data ?? []).map((r) => ({
     id: `reply:${r.id}`,
     what: `A reply: "${r.wording.length > 140 ? `${r.wording.slice(0, 137)}...` : r.wording}"`,
     why:
@@ -100,7 +99,7 @@ async function repliesToRead(db: OutreachDb): Promise<QueueItem[]> {
 }
 
 /** Drafts held because they break a rule of the messages file. */
-async function draftsHeld(db: OutreachDb): Promise<QueueItem[]> {
+async function draftsHeld(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db
     .from('outreach_touches')
     .select('id, step, drafted_at, held_because')
@@ -109,7 +108,7 @@ async function draftsHeld(db: OutreachDb): Promise<QueueItem[]> {
     .order('drafted_at', { ascending: true })
     .limit(LIST_CAP)
   if (error) fail(error)
-  return ((data ?? []) as { id: string; step: number; drafted_at: string; held_because: string[] }[]).map((t) => ({
+  return (data ?? []).map((t) => ({
     id: `held:${t.id}`,
     what: `A message ${t.step} draft held`,
     why: `It breaks: ${t.held_because.join('; ')}.`,
@@ -143,7 +142,7 @@ async function collectedWaiting(admin: Admin): Promise<QueueItem[]> {
 const RUNS_READ = 500
 
 /** Sources whose daily collection has failed SOURCE_FAILING_AFTER runs in a row. */
-async function sourcesFailing(db: OutreachDb): Promise<QueueItem[]> {
+async function sourcesFailing(db: RunsDb): Promise<QueueItem[]> {
   const { data, error } = await db.from('listing_source_runs').select('source_id, ran_at, succeeded, outcome').order('ran_at', { ascending: false }).limit(RUNS_READ)
   if (error) fail(error)
   const bySource = new Map<string, { ran_at: string; succeeded: boolean; outcome: string }[]>()
@@ -170,7 +169,7 @@ async function sourcesFailing(db: OutreachDb): Promise<QueueItem[]> {
 }
 
 /** Pieces the image sweep drew again in type, not yet approved again or posted. */
-async function piecesSwept(db: OutreachDb): Promise<QueueItem[]> {
+async function piecesSwept(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db
     .from('social_piece_decisions')
     .select('piece_id, revision, reason, decided_at')
@@ -178,7 +177,7 @@ async function piecesSwept(db: OutreachDb): Promise<QueueItem[]> {
     .order('decided_at', { ascending: true })
     .limit(LIST_CAP)
   if (error) fail(error)
-  const swept = (data ?? []) as { piece_id: string; revision: number; reason: string; decided_at: string }[]
+  const swept = data ?? []
   if (swept.length === 0) return []
   const ids = [...new Set(swept.map((d) => d.piece_id))]
   const [{ data: posted, error: perr }, { data: approved, error: aerr }] = await Promise.all([
@@ -187,8 +186,8 @@ async function piecesSwept(db: OutreachDb): Promise<QueueItem[]> {
   ])
   if (perr) fail(perr)
   if (aerr) fail(aerr)
-  const gone = new Set(((posted ?? []) as { piece_id: string }[]).map((p) => p.piece_id))
-  const approvals = (approved ?? []) as { piece_id: string; revision: number }[]
+  const gone = new Set((posted ?? []).map((p) => p.piece_id))
+  const approvals = approved ?? []
   return swept
     .filter((d) => !gone.has(d.piece_id) && !approvals.some((a) => a.piece_id === d.piece_id && a.revision > d.revision))
     .map((d) => ({
@@ -247,15 +246,15 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
 /** Lawal's queue, read now. */
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
-  const crm = admin as unknown as OutreachDb
+  const runs = admin as unknown as RunsDb
   const [plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports] = await Promise.all([
-    attempt(() => playsToApprove(crm), OUTREACH),
-    attempt(() => pausedPlays(crm), OUTREACH),
-    attempt(() => repliesToRead(crm), OUTREACH),
-    attempt(() => draftsHeld(crm), OUTREACH),
+    attempt(() => playsToApprove(admin), OUTREACH),
+    attempt(() => pausedPlays(admin), OUTREACH),
+    attempt(() => repliesToRead(admin), OUTREACH),
+    attempt(() => draftsHeld(admin), OUTREACH),
     attempt(() => collectedWaiting(admin)),
-    attempt(() => sourcesFailing(crm), "window 4's supply horizon, car 4"),
-    attempt(() => piecesSwept(crm), "window 3's image sweep, car 3"),
+    attempt(() => sourcesFailing(runs), "window 4's supply horizon, car 4"),
+    attempt(() => piecesSwept(admin), "window 3's image sweep, car 3"),
     attempt(() => claimsToDecide(admin)),
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
