@@ -3,6 +3,7 @@
 import { useActionState, useState, type ReactNode } from 'react'
 import { addMedia, giveYes, keepSeries, replaceMedia, withdrawMedia, withdrawYes, type MediaState } from '@/app/actions/organiser-media'
 import { claimAuthorityWords } from '@/lib/listings/claim-acceptance'
+import { IMAGE_REPLACED_WORDS, IMAGE_WITHDRAWN_WORDS, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
 import { PERMISSION_WORDS } from '@/lib/listings/submission'
 
 /**
@@ -99,7 +100,7 @@ export function ReplaceMediaForm({ assetId }: { assetId: string }) {
         Replace with
         <input type="file" name="file" accept="image/*" required className={file} />
       </label>
-      <Answer state={state} done="Replaced. The new image is checked before it is used." />
+      <Answer state={state} done={IMAGE_REPLACED_WORDS} />
       <div className="mt-3">
         <button type="submit" disabled={pending} className={quiet}>
           Replace
@@ -118,7 +119,7 @@ export function WithdrawMediaForm({ assetId }: { assetId: string }) {
         Why are you withdrawing it?
         <input name="reason" required minLength={3} maxLength={500} className={input} />
       </label>
-      <Answer state={state} done="Withdrawn. It comes out of every post not yet published within the hour." />
+      <Answer state={state} done={IMAGE_WITHDRAWN_WORDS} />
       <div className="mt-3">
         <button type="submit" disabled={pending} className={quiet}>
           Withdraw this image
@@ -137,7 +138,7 @@ export function WithdrawYesForm({ permissionId }: { permissionId: string }) {
         Why are you withdrawing your permission?
         <input name="reason" required minLength={3} maxLength={500} className={input} />
       </label>
-      <Answer state={state} done="Withdrawn. Every image under it comes out of every post not yet published within the hour. Your listings stay up." />
+      <Answer state={state} done={YES_WITHDRAWN_WORDS} />
       <div className="mt-3">
         <button type="submit" disabled={pending} className={quiet}>
           Withdraw my permission

@@ -6,6 +6,7 @@ import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organi
 import { formatEventDateTimeCompact, formatPlatformDate } from '@/lib/dates/event-time'
 import { GalleryImage } from '@/components/media/GalleryImage'
 import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, WithdrawMediaForm, WithdrawYesForm } from '@/components/listings/organiser-media-forms'
+import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
 
 /**
  * YOUR PHOTOS AND ARTWORK (the engine plan of 28 October 2026, part D; the final directive, section 15: "Upload artwork
@@ -19,7 +20,6 @@ import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, Withdra
  */
 
 const SCOPE_WORDS: Record<string, string> = { current_and_future: 'now and for future events', this_event: 'this event only' }
-const STATE_WORDS: Record<string, string> = { pending: 'Waiting for our team to check it', approved: 'In use', refused: 'Not used' }
 
 export default async function OrganisationMediaPage({
   searchParams,
@@ -116,6 +116,7 @@ export default async function OrganisationMediaPage({
                   {y.host_name}, given {formatPlatformDate(y.granted_at)}, {SCOPE_WORDS[y.scope] ?? y.scope}.
                   {y.withdrawn_at ? ` Withdrawn ${formatPlatformDate(y.withdrawn_at)}: ${y.withdrawn_reason}` : ''}
                 </p>
+                {y.withdrawn_at ? <p className="mt-1 font-medium text-ink-900">{YES_WITHDRAWN_WORDS}</p> : null}
                 {y.withdrawn_at ? null : (
                   <div className="mt-3">
                     <WithdrawYesForm permissionId={y.id} />
@@ -189,7 +190,7 @@ export default async function OrganisationMediaPage({
                   </p>
                   {a.restrictions ? <p className="mt-1">Restrictions: {a.restrictions}</p> : null}
                   <p className="mt-1 font-medium text-ink-900">
-                    {a.withdrawal_status === 'current' ? (STATE_WORDS[a.approval_status] ?? a.approval_status) : a.withdrawal_status === 'replaced' ? 'Replaced' : 'Withdrawn'}
+                    {assetStateWords(a)}
                   </p>
                   {a.withdrawal_status === 'current' ? (
                     <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
