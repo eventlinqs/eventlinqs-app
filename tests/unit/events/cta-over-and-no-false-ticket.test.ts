@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine } from '@/lib/events/cta'
 import { heroSaleWords } from '@/lib/listings/ticket-panel'
@@ -50,6 +51,22 @@ describe('a night that is over', () => {
     })
     expect(words.cta).toBe('View event details')
     expect(words.price).toBeNull()
+  })
+
+  /*
+   * Read on production after car 2 (29 October 2026, C:\dev\EVIDENCE\CTA-29OCT\after-car2\cta-live.txt): the same
+   * night's hero and button were right, but its sticky bar (the desktop card and the phone bar) still said "From AUD
+   * $18". The page handed the bar heroSaleWords' price only for a night sold elsewhere and the raw price for our own
+   * tickets, so the words above were never asked for an ended night of ours.
+   */
+  it("the event page's sticky bar takes the hero's price whenever the night is over, not only when it sells elsewhere", () => {
+    const page = readFileSync('src/app/events/[slug]/page.tsx', 'utf8')
+    const bar = /<StickyActionBar[\s\S]*?\/>/.exec(page)?.[0] ?? ''
+    const price = /priceLabel=\{([^}]*)\}/.exec(bar)?.[1] ?? ''
+    expect(price).toContain('heroPriceLabel')
+    expect(price).toMatch(/nightIsOver/)
+    expect(page).toMatch(/const nightIsOver = eventBannerState === 'past' \|\| eventBannerState === 'archived' \|\| eventBannerState === 'cancelled'/)
+    expect(page).toMatch(/over: nightIsOver,/)
   })
 
   it('an ended night sold elsewhere names no outside ticket either', () => {
