@@ -167,7 +167,7 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
   const orders = new Map<string, CreditedOrder>()
   if (linkIds.length > 0) {
     const ev = await readEveryRow<{ link_id: string; kind: LinkEvent['kind']; order_id: string | null; occurred_at: string }>('the pieces\' own counted rows', (from, to) =>
-      db.from('share_link_events').select('link_id, kind, order_id, occurred_at').in('link_id', linkIds).in('kind', ['click', 'outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
+      db.from('share_link_events').select('link_id, kind, order_id, occurred_at').eq('is_test', false).in('link_id', linkIds).in('kind', ['click', 'outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
     )
     for (const e of ev) linkEvents.push({ linkId: e.link_id, kind: e.kind, orderId: e.order_id, occurredAt: iso(e.occurred_at) })
     const orderIds = [...new Set(linkEvents.filter((e) => e.kind === 'conversion' && e.orderId !== null).map((e) => e.orderId as string))]
@@ -187,7 +187,7 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
     const [{ rows }, outbound, enquiries] = await Promise.all([
       readGrowthRows(spanFrom, spanTo),
       readEveryRow<{ occurred_at: string }>('the presses out for the social report', (from, to) =>
-        db.from('share_link_events').select('occurred_at').eq('kind', 'outbound').gte('occurred_at', spanFrom).lt('occurred_at', spanTo).order('id', { ascending: true }).range(from, to),
+        db.from('share_link_events').select('occurred_at').eq('is_test', false).eq('kind', 'outbound').gte('occurred_at', spanFrom).lt('occurred_at', spanTo).order('id', { ascending: true }).range(from, to),
       ),
       readEnquiries(db, spanFrom, spanTo),
     ])

@@ -11,6 +11,7 @@ import { formatPlatformDate } from '@/lib/dates/event-time'
 import { getCity } from '@/lib/cities/data'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
+import { readQaPresses } from '@/lib/growth/qa-presses'
 import { monthOf } from '@/lib/growth/organiser-funnel-math'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
@@ -69,7 +70,7 @@ export default async function AdminGrowthPage() {
   if (!can(session, 'admin.network.manage') || !can(session, 'admin.pricing.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.growth.view', session })
 
-  const [g, funnel] = await Promise.all([readGrowthWeek(), readOrganiserFunnel()])
+  const [g, funnel, qa] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses()])
   const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
@@ -246,6 +247,11 @@ export default async function AdminGrowthPage() {
           </table>
         </div>
       </section>
+
+      <p data-state="qa-presses" className="mb-4 text-sm text-white/50">
+        QA presses in the last 7 days, made by test drives with a verified marker and left out of every figure on this
+        page: {number(qa.shareEvents)} on share links and booking buttons, {number(qa.goPresses)} on /go.
+      </p>
 
       {g.unreadVisitRows > 0 ? (
         <p data-state="unread-rows" className="text-sm text-amber-300">

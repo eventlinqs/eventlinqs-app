@@ -6,6 +6,7 @@ import EventDetailPage, {
   generateMetadata as eventMetadata,
 } from '@/app/events/[slug]/page'
 import { recordShortLinkClick, resolveShortCode } from '@/lib/broadcast/resolve-short-link'
+import { QA_HEADER } from '@/lib/broadcast/qa-marker'
 import { validateExternalTicketUrl } from '@/lib/broadcast/external-destination'
 import { aliasMetadata } from '@/lib/seo/indexing-policy'
 
@@ -92,6 +93,7 @@ export default async function ShareLinkPage({ params }: Props) {
       requestHeaders.get('x-real-ip') ??
       requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() ??
       null,
+    qa: requestHeaders.get(QA_HEADER),
   })
 
   if (link.kind === 'external') {

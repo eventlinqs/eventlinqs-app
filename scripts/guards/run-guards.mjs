@@ -3271,6 +3271,11 @@ const GUARDS = [
   // have one reader, so an approved recommendation changes nothing by itself (G4).
   // Drilled red five ways (C:\dev\EVIDENCE\SOCIAL-REPORT-28OCT\guard-drills.txt).
   'scripts/guards/social-measured-apart.mjs',
+  // A QA press on a counted hop (/out, /go, /e, /s) is recorded with is_test true so production can be proved without
+  // counting a person (the master mandate of 29 October 2026, the project manager's R3, 20261029220001). That is safe
+  // only while every read of share_link_events and go_presses leaves is_test rows out: this fails the build on a read
+  // that does not, judged on each read's own chain. A read pinned to conversions passes, as no QA press is one.
+  'scripts/guards/counted-rows-exclude-tests.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

@@ -2615,6 +2615,7 @@ export type Database = {
         Row: {
           day: string
           id: string
+          is_test: boolean
           piece_id: string
           pressed_at: string
           via: string
@@ -2623,6 +2624,7 @@ export type Database = {
         Insert: {
           day: string
           id?: string
+          is_test?: boolean
           piece_id: string
           pressed_at?: string
           via: string
@@ -2631,6 +2633,7 @@ export type Database = {
         Update: {
           day?: string
           id?: string
+          is_test?: boolean
           piece_id?: string
           pressed_at?: string
           via?: string
@@ -7144,6 +7147,30 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_markers: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          label: string
+          sha256: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          label: string
+          sha256: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          label?: string
+          sha256?: string
+        }
+        Relationships: []
+      }
       recovery_contacts: {
         Row: {
           contact_email: string
@@ -8119,6 +8146,7 @@ export type Database = {
         Row: {
           booking_link_id: string | null
           id: string
+          is_test: boolean
           kind: string
           link_id: string
           occurred_at: string
@@ -8129,6 +8157,7 @@ export type Database = {
         Insert: {
           booking_link_id?: string | null
           id?: string
+          is_test?: boolean
           kind: string
           link_id: string
           occurred_at?: string
@@ -8139,6 +8168,7 @@ export type Database = {
         Update: {
           booking_link_id?: string | null
           id?: string
+          is_test?: boolean
           kind?: string
           link_id?: string
           occurred_at?: string
