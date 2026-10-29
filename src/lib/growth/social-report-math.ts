@@ -187,6 +187,8 @@ export const KIND_NAMES: Readonly<Record<string, string>> = {
   venue_spotlight: 'Venue spotlight',
   organiser_campaign: 'Organiser campaign',
   partner_kit: 'Partner kit',
+  // Family F, the daily event poster (window 3's 20261030010001, the founder's decision of 30 October 2026, 00:20).
+  daily_poster: 'Daily poster',
 }
 
 export const LIMITATIONS: readonly string[] = [
