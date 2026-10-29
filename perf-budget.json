@@ -69,6 +69,22 @@
       "delta": 113,
       "cause": "The route's own page.tsx moved 2 lines, so the move is NOT in the page. The cause is src/components/features/dashboard/event-lifecycle-actions.tsx, a shared client component this page mounts, changed by 0722108a to carry the publish gate's nextAction instead of dropping it. Smallest of the five at +49 measured, and consistent with one small shared module rather than page work.",
       "method": "Measured on a GATE-EQUIVALENT build, which is the only kind a mark may be taken from: NEXT_PUBLIC_SENTRY_DSN was set to pre-push-gate.mjs's PARITY_SENTRY_DSN, because .env.local carries it EMPTY and an empty DSN removes the error-reporting SDK from the build and emits a framework chunk about 124 bytes light on every route. Proven here rather than assumed: the same tree built with the empty DSN measured /dashboard/events at 235310 and with the parity DSN at 235438, a difference of 128, and the bare build reported only 3 of these 5 faults. Attribution of WHICH modules is derived from the route's client import graph crossed with git over 6cc36480..HEAD, the window since the marks were last written. It is NOT a differential production build at both commits: that needs a second full build of a 640 MB tree on a machine running three lanes, which was not proportionate here. So the module is named with evidence and the byte split between named modules is NOT claimed."
+    },
+    "/events/[slug]/claim": {
+      "date": "2026-10-29",
+      "from": 163725,
+      "to": 166719,
+      "delta": 2994,
+      "cause": "The claim became an acceptance (the engine plan of 28 October 2026, part D, window 2): after the code, the claim card now carries the permission tick, the photo upload and the regular nights (4582f17a, b2d18261, 043e682d). claim-form.tsx grew and imports the new client file src/components/listings/organiser-media-forms.tsx. Measured split of the route's +2930 (166655 against the 27 October mark, dc4cd0e4): +1862 is the claim card's own client graph (1154 to 3016 gzip -9: claim-form.tsx, organiser-media-forms.tsx, claim-acceptance.ts, submission.ts); about +380 is the drift every route shows between the 27 October marks and this build (median +380 over 167 routes, 103 of them between +350 and +450, e.g. / +371, /artists/claim/[token] +374); about 690 is NOT attributed: most likely Turbopack's chunking against esbuild's, said as a likelihood, not measured. The new mark is the measure plus the usual 64 bytes. Still under the 200 KB public budget. The project manager accepted it as named, not a stop, at 16:59.",
+      "method": "Route measure from window 1's GATE build of train/el-car4 a56c4346 (C:\\dev\\EVIDENCE\\WI1\\car4\\first-load.json, marks-build4.log: the gate's env and its parity DSN, win32 Node 24.14.0 against the marks' 24.19.0, so the ratchet reports here rather than fails). The split by an esbuild bundle of the claim card's client graph at dc4cd0e4 and at train/el-car4, minified, gzip -9, framework, vendor and server actions external (C:\\dev\\EVIDENCE\\CLAIM-29OCT\\claim-card-client-graph.txt). It is NOT a differential production build at both commits."
+    },
+    "/venues/[handle]/claim": {
+      "date": "2026-10-29",
+      "from": 157894,
+      "to": 160888,
+      "delta": 2994,
+      "cause": "The same claim card as /events/[slug]/claim, loaded through the same shared chunk (0qhv6ibzl11i_.js in that build), so the same +2930 measured (160824) and the same split: +1862 the claim card's own client graph (part D, window 2: the permission tick, the photo upload and the regular nights), about +380 the platform-wide drift since the 27 October marks, about 690 not attributed. The new mark is the measure plus 64. The project manager accepted it as named at 16:59.",
+      "method": "As /events/[slug]/claim: the route measure from window 1's gate build of train/el-car4 a56c4346 (first-load.json), the split from the esbuild bundle of the claim card's client graph at dc4cd0e4 and train/el-car4 (claim-card-client-graph.txt). Not a differential production build."
     }
   },
   "marks": {
@@ -179,7 +195,7 @@
     "/e/[code]": 199364,
     "/events": 186770,
     "/events/[slug]": 199412,
-    "/events/[slug]/claim": 163725,
+    "/events/[slug]/claim": 166719,
     "/events/[slug]/holder": 199412,
     "/events/[slug]/report": 170509,
     "/events/[slug]/with/[artist]": 162344,
@@ -235,7 +251,7 @@
     "/unsubscribe/outreach": 159083,
     "/unsubscribe/recovery/[token]": 156114,
     "/venues/[handle]": 179742,
-    "/venues/[handle]/claim": 157894,
+    "/venues/[handle]/claim": 160888,
     "/verify-email-sent": 166684,
     "/waitlist": 175942,
     "/waitlist/unsubscribe/[token]": 156114

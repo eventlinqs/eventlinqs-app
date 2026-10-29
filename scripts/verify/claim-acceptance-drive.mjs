@@ -303,13 +303,14 @@ try {
   }
   await page.locator(`[data-asset="${asset?.id}"] input[name="reason"]`).fill('The drive takes it back')
   await page.locator(`[data-asset="${asset?.id}"]`).getByRole('button', { name: 'Withdraw this image' }).click()
-  await page.getByText('Withdrawn. It comes out of every post not yet published within the hour.').waitFor({ timeout: 120000 })
+  // The page says it from the record once it refreshes (src/lib/listings/media-words.ts), where the form's own line goes.
+  await page.getByText('Withdrawn. It comes out of every post not yet published within the hour.').first().waitFor({ timeout: 120000 })
   const gone = (await db.from('social_assets').select('withdrawal_status').eq('id', asset?.id).single()).data
   const listed = storedPath ? (await db.storage.from('organiser-media').list(storedPath.split('/')[0])).data ?? [] : []
   check('the image is withdrawn in the register and its file is gone from the bucket', gone?.withdrawal_status === 'withdrawn' && !listed.some((f) => storedPath?.endsWith(f.name)), { gone, listed: listed.map((f) => f.name) })
   await page.locator(`[data-permission="${yeses[0]?.id}"] input[name="reason"]`).fill('The drive takes the permission back')
   await page.locator(`[data-permission="${yeses[0]?.id}"]`).getByRole('button', { name: 'Withdraw my permission' }).click()
-  await page.getByText('Withdrawn. Every image under it').waitFor({ timeout: 120000 })
+  await page.getByText('Withdrawn. Every image under it').first().waitFor({ timeout: 120000 })
   const yesAfter = (await db.from('organiser_permissions').select('withdrawn_at, withdrawn_reason').eq('id', yeses[0]?.id).single()).data
   check('the yes is withdrawn with its reason', Boolean(yesAfter?.withdrawn_at) && yesAfter?.withdrawn_reason === 'The drive takes the permission back', yesAfter)
 
@@ -319,7 +320,8 @@ try {
   await give.locator('input[name="permission"]').check()
   await give.locator('input[name="authority"]').check()
   await give.getByRole('button', { name: 'Give permission' }).click()
-  await page.getByText('Thank you. Your permission is on record').waitFor({ timeout: 120000 })
+  // Once given, the page refreshes: the claim leaves "Give your permission" and its yes stands in "Your permission".
+  await give.waitFor({ state: 'detached', timeout: 120000 })
   const current = (await db.from('organiser_permissions').select('id, wording, claim_id').eq('logged_by', userId).is('withdrawn_at', null)).data ?? []
   check('the yes given again is current, word for word, citing the same claim', current.length === 1 && current[0].wording === PERMISSION_WORDS && current[0].claim_id === claim?.id, current)
 } catch (e) {
