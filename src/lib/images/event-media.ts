@@ -209,6 +209,17 @@ export function isComposedCover(url: string | null | undefined): boolean {
   return typeof url === 'string' && url.includes(`/${GENERATED_COVER_PREFIX}/`)
 }
 
+/**
+ * A hero whose only image is our composed cover is TYPOGRAPHIC: the event page sets the title in type over the hero,
+ * so drawing the cover (whose artwork IS the title, laid out for a card) behind it shows the title twice, cropped and
+ * overlapping. Read on production on 29 October 2026 after the 358 cover re-mints ('Escape at the' / 'Old Melbourne' /
+ * 'Gaol' behind 'A Spooky Escape at the Old Melbourne Gaol'). Such a hero keeps the brand's navy surface and no
+ * raster; a night with a video keeps its poster, because the video paints over it.
+ */
+export function heroIsTypographic(media: { image: string; videoSrc?: string }): boolean {
+  return isComposedCover(media.image) && !media.videoSrc
+}
+
 const HERO_RASTER_DIR = '/images/hero'
 
 // Slugs we have on disk (see scripts/fetch-hero-rasters.mjs). Anything not in

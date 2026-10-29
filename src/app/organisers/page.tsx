@@ -22,8 +22,10 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: '/organisers',
     type: 'website',
+    // This block replaces the root's, so without its own image a share carried no picture (window 2's audit, 29 Oct).
+    images: ['/opengraph-image'],
   },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/opengraph-image'] },
 }
 
 export default function OrganisersPage() {

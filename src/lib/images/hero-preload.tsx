@@ -4,7 +4,7 @@ import { MEDIA_QUALITY } from '@/components/media/quality'
 import { MEDIA_SIZES } from '@/components/media/sizes'
 import { resolveImageSrc } from '@/components/media/safe-image-src'
 import { HeroPreloadLink } from '@/components/media/hero-preload-link'
-import { eventHeroMediaInput, getFeaturedHeroBackground, type EventHeroFields } from './event-media'
+import { eventHeroMediaInput, getFeaturedHeroBackground, heroIsTypographic, type EventHeroFields } from './event-media'
 
 /**
  * PUT THE HERO'S PRELOAD IN THE HEAD, WHERE THE PRELOAD SCANNER CAN SEE IT.
@@ -199,7 +199,10 @@ export const EVENT_HERO_SELECT =
  * that renders ABOVE this route's loading boundary; the module header says why
  * and records the two placements that do not work.
  */
-export async function eventHeroPreloadLink(event: EventHeroFields) {
+export async function eventHeroPreloadLink(event: EventHeroFields, opts: { typographicHasNoRaster?: boolean } = {}) {
   const media = await getFeaturedHeroBackground(eventHeroMediaInput(event))
+  // The event page draws no raster for a typographic hero (heroIsTypographic), so preloading one would be a download
+  // nobody paints. The walk-in page still shows its cover as a card, so its caller passes false.
+  if (opts.typographicHasNoRaster && heroIsTypographic(media)) return null
   return heroPreloadLink(media.image)
 }
