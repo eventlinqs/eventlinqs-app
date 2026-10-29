@@ -377,7 +377,7 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
       contactId,
       templateKey: 'featured',
       purpose: 'relationship',
-      extraFields: featuredFields({ title: event.data.title, cityName: city.data?.name ?? null, wentOutAt, caption: rev.data?.caption ?? null, link: kit.link, images: null }),
+      extraFields: featuredFields({ title: event.data.title, cityName: city.data?.name ?? null, wentOutAt, caption: rev.data?.caption ?? null, link: kit.link, images: kitImages(deps.origin, kit.id) }),
       trackedLink: kit.link,
       scheduledFor: deps.now,
       origin: deps.origin,
@@ -407,12 +407,18 @@ async function postNamingNightWentOut(db: Admin, eventId: string, kitId: string)
 /**
  * MESSAGE 7, YOU'RE FEATURED (the PM's messages file; the engine plan's part G: "kit sent to the organiser when their
  * post goes out"; the PM's ruling of 29 October, 16:28). The kit is window 3's partner_kit piece: its approved caption and
- * its own tracked link. Its images have no public address yet (they render behind /admin), so the image fields stay
- * empty and the message is held for Lawal until one exists; everything else is filled.
+ * its own tracked link. Its story is window 3's public /kit/<piece>/<n> (approved kits only). A partner kit is made as a
+ * story alone, so the feed image stays empty and the message is held for Lawal on that one field until the template
+ * names the story only (the PM's words); everything else is filled.
  */
 export const FEATURED_LOOKBACK_DAYS = 14
 
-export function featuredFields(k: { title: string; cityName: string | null; wentOutAt: Date; caption: string | null; link: string; images: { feed: string; story: string } | null }): Record<string, string | null> {
+/** A partner kit's public images (window 3's /kit route): its first slide as the story; no feed version is made. */
+export function kitImages(origin: string, pieceId: string): { feed: string | null; story: string | null } {
+  return { feed: null, story: `${origin.replace(/\/+$/, '')}/kit/${pieceId}/1` }
+}
+
+export function featuredFields(k: { title: string; cityName: string | null; wentOutAt: Date; caption: string | null; link: string; images: { feed: string | null; story: string | null } | null }): Record<string, string | null> {
   return {
     night: k.title,
     city: k.cityName,

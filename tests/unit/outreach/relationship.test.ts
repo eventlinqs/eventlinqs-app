@@ -6,6 +6,7 @@ import {
   afterYourNightFields,
   afterYourNightRefusal,
   featuredFields,
+  kitImages,
   anythingComingUpRefusal,
   type PartnerState,
 } from '@/lib/outreach/planner'
@@ -100,5 +101,15 @@ describe('message 7, you\'re featured', () => {
   test('with no public image address the image fields stay empty, so the message is held for Lawal', () => {
     const f = featuredFields({ ...kit, images: null })
     expect([f['feed image'], f['story version']]).toEqual([null, null])
+  })
+})
+
+describe('message 7 with window 3\'s public kit route (/kit/<piece>/<n>)', () => {
+  const kit = { title: 'Trivia at Bonnibel', cityName: 'Melbourne', wentOutAt: new Date('2026-10-29T08:00:00Z'), caption: 'c', link: 'https://www.eventlinqs.com.au/e/abc123' }
+
+  test('a partner kit is a story, so its story fills and the feed image stays empty: held on that one field, never a story passed off as a feed post', () => {
+    const f = featuredFields({ ...kit, images: kitImages('https://www.eventlinqs.com.au/', 'piece-1') })
+    expect(f['story version']).toBe('https://www.eventlinqs.com.au/kit/piece-1/1')
+    expect(f['feed image']).toBeNull()
   })
 })
