@@ -67,8 +67,12 @@ describe('the event page links to the organiser it names', () => {
     // pointed at it.
     const page = readFileSync(EVENT_PAGE, 'utf8')
     const jsonld = readFileSync(EVENT_JSONLD, 'utf8')
-    expect(jsonld).toMatch(/\/organisers\/\$\{organisation\.slug\}/)
+    // Both halves ask shownOrganiser (ruling A): the card renders only where it gives a slug, and the builder
+    // takes its slug, which for an organiser's own event is the organisation's (car 2's read back, 29 October 2026).
+    expect(jsonld).toMatch(/\/organisers\/\$\{shown\.slug\}/)
+    expect(jsonld).toContain('shownOrganiser(event, organisation)')
     expect(page).toContain('/organisers/${event.organisation.slug}')
+    expect(page).toContain('shownOrganiser(event, event.organisation).slug !== null')
   })
 
   test('the link has an accessible name that contains its visible label', () => {
