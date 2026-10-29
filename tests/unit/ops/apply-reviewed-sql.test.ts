@@ -1,0 +1,34 @@
+import { describe, expect, test } from 'vitest'
+import { reviewedBody } from '../../../scripts/ops/apply-reviewed-sql-production.mjs'
+
+/*
+ * A dry-run file that ends in ROLLBACK (operating rule 4: outreach-pilot-amcf.mjs, outreach-basis.mjs --production,
+ * outreach-cohort.mjs) is applied only as written: one begin, its statements, one rollback, nothing else.
+ */
+describe('reviewedBody', () => {
+  const ok = `-- AMCF as a CRM record. Dry run: ends in ROLLBACK.\nbegin;\ninsert into public.organisers (name) values ('a') on conflict do nothing;\n\nupdate public.organiser_contacts set basis = 'none' where false;\nrollback;\n`
+
+  test('takes the statements between one begin and one closing rollback', () => {
+    const r = reviewedBody(ok)
+    expect(r.refused).toBeUndefined()
+    expect(r.statements).toBe(2)
+    expect(r.body).toContain("insert into public.organisers (name) values ('a') on conflict do nothing;")
+    expect(r.body).not.toMatch(/\b(begin|rollback|commit)\b\s*;/i)
+  })
+
+  test('refuses a file that does not end in rollback, or that commits itself', () => {
+    expect(reviewedBody(ok.replace('rollback;', 'commit;')).refused).toMatch(/end in rollback/)
+    expect(reviewedBody(ok.replace('rollback;\n', 'rollback;\ninsert into x values (1);\n')).refused).toMatch(/end in rollback/)
+    expect(reviewedBody(ok.replace("where false;", "where false;\ncommit;\nbegin;")).refused).toMatch(/one begin/)
+    expect(reviewedBody(ok.replace('on conflict do nothing;', 'on conflict do nothing;\ncommit;')).refused).toMatch(/never commit itself/)
+  })
+
+  test('refuses a bare select, which a DO block cannot run, and an empty file', () => {
+    expect(reviewedBody(ok.replace('update public', 'select count(*) from public.organisers;\nupdate public')).refused).toMatch(/select/)
+    expect(reviewedBody('begin;\nrollback;\n').refused).toMatch(/no statement/)
+  })
+
+  test('refuses a statement that would end the DO block it is run inside', () => {
+    expect(reviewedBody(ok.replace("values ('a')", () => "values ('$apply$')")).refused).toMatch(/\$apply\$/)
+  })
+})
