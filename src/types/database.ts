@@ -10280,7 +10280,6 @@ export type Database = {
         }
         Returns: number
       }
-      platform_notification_guards: { Args: never; Returns: Json }
       organiser_permission_evidence: {
         Args: {
           p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
@@ -10308,6 +10307,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
         Returns: boolean
