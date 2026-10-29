@@ -80,6 +80,22 @@ export function monthOf(iso: string, zone: string): string {
   return `${get('year')}-${get('month')}`
 }
 
+/**
+ * The n months ending at the one given (YYYY-MM), oldest first, by arithmetic on the month itself, so no date is built
+ * in UTC and a year boundary is plain counting ('2026-01' with 2 is 2025-12 and 2026-01).
+ */
+export function monthsEndingAt(month: string, n: number): string[] {
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month)
+  if (!m) throw new Error(`monthsEndingAt: '${month}' is not a YYYY-MM month`)
+  const last = Number(m[1]) * 12 + (Number(m[2]) - 1)
+  const out: string[] = []
+  for (let i = n - 1; i >= 0; i -= 1) {
+    const index = last - i
+    out.push(`${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`)
+  }
+  return out
+}
+
 /** Events per active organiser for each month asked, oldest first; only public nights count. */
 export function eventsPerActiveOrganiser(nights: readonly OrganiserNight[], months: readonly string[], zone: string): MonthFigure[] {
   return [...months].sort().map((month) => {
