@@ -83,6 +83,7 @@ const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   partner_added: { tone: 'ok', text: "The partner's feed is in the register. The next daily run reads it; its nights at their venue publish by the partner rule." },
   partner_invalid: { tone: 'warn', text: 'That partner feed was not complete. Nothing was written.' },
   partner_refused: { tone: 'warn', text: 'The register refused that feed (it may be there already). Nothing was written.' },
+  partner_read_failed: { tone: 'warn', text: 'The venue or the organiser could not be read just now. Nothing was written; try again.' },
 }
 
 /**

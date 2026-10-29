@@ -106,10 +106,12 @@ export async function addPartnerFeedAction(formData: FormData): Promise<void> {
   if (!parsed.success) redirect('/admin/collected?status=partner_invalid')
 
   const db = createAdminClient()
-  const [{ data: venue }, { data: org }] = await Promise.all([
+  const [{ data: venue, error: venueError }, { data: org, error: orgError }] = await Promise.all([
     db.from('venues').select('id, name, city_slug').eq('id', parsed.data.venueId).maybeSingle(),
     db.from('organisations').select('id, name, slug').eq('id', parsed.data.organisationId).maybeSingle(),
   ])
+  // A failed read is not an absent venue or organiser: say the read failed, never that the form was incomplete.
+  if (venueError || orgError) redirect('/admin/collected?status=partner_read_failed')
   if (!venue || !org || org.slug === LISTINGS_ORG_SLUG) redirect('/admin/collected?status=partner_invalid')
 
   const built = partnerSourceRow(

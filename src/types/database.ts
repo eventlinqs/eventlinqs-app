@@ -9840,7 +9840,6 @@ export type Database = {
         Args: { p_checked_on: string; p_timezone: string }
         Returns: string
       }
-      marketing_attribution_default_window: { Args: never; Returns: number }
       listing_horizon: {
         Args: { p_now?: string; p_starts_at: string }
         Returns: string
@@ -9849,6 +9848,7 @@ export type Database = {
         Args: { p_candidate: string }
         Returns: string
       }
+      marketing_attribution_default_window: { Args: never; Returns: number }
       marketing_attribution_is_billable: {
         Args: { p_decision: string; p_order_id: string; p_rung: number }
         Returns: boolean
