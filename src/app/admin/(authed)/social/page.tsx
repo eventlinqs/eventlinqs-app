@@ -5,6 +5,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { cadenceFor, lastPosted, readAssets, readCampaign, readImageRequests, readPosts, type AssetRow, type PieceRow, type PostRow } from '@/lib/social/store'
+import { imageRightsLine, readImageRights, type ImageRightsReport } from '@/lib/media/image-rights'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import {
@@ -556,6 +557,46 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
   )
 }
 
+/*
+ * Every image a public night shows, with its rights (Lawal's master mandate of 29 October 2026, section 5). The
+ * database derives the rows; this says what needs the founder: an image whose rights are not on record, or a library
+ * photograph standing on a night it is not of.
+ */
+const RIGHTS_WORDS = { platform_library: 'Library photograph, not of this night', unrecorded: 'Rights not on record' } as const
+
+function ImageRightsSection({ report }: { report: ImageRightsReport }) {
+  return (
+    <section data-section="image-rights" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+      <h2 className="font-display text-lg font-semibold text-white">Images on public nights</h2>
+      <p data-image-rights-line className="mt-2 text-sm text-white">
+        {imageRightsLine(report.counts)}
+      </p>
+      {report.exceptionsTotal === 0 ? null : (
+        <>
+          <p className="mt-4 text-sm text-white/60">
+            {report.exceptions.length < report.exceptionsTotal
+              ? `The first ${report.exceptions.length} of ${report.exceptionsTotal}, soonest night first.`
+              : `All ${report.exceptionsTotal}, soonest night first.`}{' '}
+            Each one is replaced by its typographic cover, or kept once its owner&apos;s permission is recorded in the media register above.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {report.exceptions.map((e, i) => (
+              <li key={`${i}|${e.slug}|${e.role}`} data-image-exception={e.state} className="text-white/80">
+                <a href={`/events/${e.slug}`} className="font-semibold text-white underline-offset-2 hover:underline">
+                  {e.title}
+                </a>{' '}
+                <span className="text-white/60">
+                  ({e.role}): {RIGHTS_WORDS[e.state as keyof typeof RIGHTS_WORDS] ?? e.state}. {e.provenance}.
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
 export default async function AdminSocialPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
@@ -565,7 +606,7 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
   const db = createAdminClient()
   const now = new Date()
   const posts = await readPosts(db, now)
-  const [campaign, requests, assets] = await Promise.all([readCampaign(db, now), readImageRequests(db, now), readAssets(db)])
+  const [campaign, requests, assets, imageRights] = await Promise.all([readCampaign(db, now), readImageRequests(db, now), readAssets(db), readImageRights(db)])
   const rules = await Promise.all(
     (['feed', 'story'] as const).map(async (format) => {
       const rule = await cadenceFor(db, 'instagram', format, now)
@@ -599,6 +640,8 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
       )}
 
       <CampaignSection campaign={campaign} requests={requests} />
+
+      <ImageRightsSection report={imageRights} />
 
       <section data-section="brought" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
         <h2 className="font-display text-lg font-semibold text-white">What our posts brought</h2>
