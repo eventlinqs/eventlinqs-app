@@ -64,11 +64,18 @@ try {
   if (error) throw new Error(`the kits could not be read: ${error.message}`)
   const newest = (k) => Math.max(...k.social_piece_revisions.map((r) => r.version))
   const unapproved = kits.filter((k) => !k.social_piece_approvals.some((a) => a.revision === newest(k)))
-  if (unapproved.length < 2) throw new Error('TEST holds fewer than two unapproved partner kits')
-  const [toApprove, leftAlone] = unapproved
-  const { data: admin } = await db.from('admin_users').select('id').limit(1).single()
-  const approved = await db.from('social_piece_approvals').insert({ piece_id: toApprove.id, revision: newest(toApprove), approved_by: admin.id, approved_at: new Date().toISOString() })
-  check('one TEST partner kit approved for the drive (the row Lawal\u2019s press writes)', !approved.error, approved.error?.message ?? `${toApprove.id} (${toApprove.partner_name}), version ${newest(toApprove)}`)
+  const alreadyApproved = kits.find((k) => k.social_piece_approvals.some((a) => a.revision === newest(k))) ?? null
+  if (unapproved.length < (alreadyApproved ? 1 : 2)) throw new Error('TEST holds too few unapproved partner kits')
+  /* A kit an earlier run approved is used again, so a re-drive writes nothing new. */
+  const toApprove = alreadyApproved ?? unapproved[0]
+  const leftAlone = unapproved.find((k) => k.id !== toApprove.id)
+  if (alreadyApproved) {
+    check('a TEST partner kit already approved is used (nothing written)', true, `${toApprove.id} (${toApprove.partner_name}), version ${newest(toApprove)}`)
+  } else {
+    const { data: admin } = await db.from('admin_users').select('id').limit(1).single()
+    const approved = await db.from('social_piece_approvals').insert({ piece_id: toApprove.id, revision: newest(toApprove), approved_by: admin.id, approved_at: new Date().toISOString() })
+    check('one TEST partner kit approved for the drive (the row Lawal\u2019s press writes)', !approved.error, approved.error?.message ?? `${toApprove.id} (${toApprove.partner_name}), version ${newest(toApprove)}`)
+  }
   evidence.approved = { piece: toApprove.id, partner: toApprove.partner_name, version: newest(toApprove) }
   evidence.unapproved = { piece: leftAlone.id, partner: leftAlone.partner_name }
 
@@ -89,7 +96,7 @@ try {
   writeFileSync(join(OUT, 'kit-approved-1.jpg'), bytes)
   check('/kit: the approved kit\u2019s slide answers 200 as a JPEG', ok.status === 200 && ok.headers.get('content-type') === 'image/jpeg', `${ok.status} ${ok.headers.get('content-type')}`)
   check('/kit: it is the story slide at 1080 x 1920', size !== null && size[0] === 1080 && size[1] === 1920, JSON.stringify(size))
-  check('/kit: public, an hour at most, never indexed', /^public/.test(ok.headers.get('cache-control') ?? '') && /s-maxage=3600/.test(ok.headers.get('cache-control') ?? '') && /noindex/.test(ok.headers.get('x-robots-tag') ?? ''), `${ok.headers.get('cache-control')} | ${ok.headers.get('x-robots-tag')}`)
+  check("/kit: public, an hour at most, never indexed", /^public/.test(ok.headers.get('cache-control') ?? '') && /s-maxage=3600/.test(ok.headers.get('cache-control') ?? '') && /noindex/.test(ok.headers.get('x-robots-tag') ?? ''), `${ok.headers.get('cache-control')} | ${ok.headers.get('x-robots-tag')}`)
   for (const [label, path] of [['an unapproved kit', `/kit/${leftAlone.id}/1`], ['a slide past the kit', `/kit/${toApprove.id}/2`], ['a malformed address', '/kit/not-a-piece/1']]) {
     const res = await get(path)
     check(`/kit: ${label} answers 404`, res.status === 404, `${res.status} at ${path}`)
