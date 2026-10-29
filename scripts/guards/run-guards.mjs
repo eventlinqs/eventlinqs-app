@@ -266,6 +266,8 @@
  *   social-measured-apart      the weekly social report never mixes counted and entered
  *                              figures, never calls a press out a sale, and one file alone
  *                              reads its figures and decisions
+ *   counted-rows-exclude-tests  every read of share_link_events or go_presses names
+ *                              is_test, so a QA press is counted nowhere (R3)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
