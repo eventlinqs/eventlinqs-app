@@ -6,7 +6,8 @@
  * digest was never recorded. Resend signs each webhook and the route verifies it with the installed SDK on the raw body
  * (https://resend.com/docs/webhooks/verify-webhooks-requests, fetched 29 October 2026); this module is what a VERIFIED
  * event becomes. The payload shape is Resend's own (https://resend.com/docs/webhooks/emails/bounced, fetched the same
- * day): type, created_at, data.email_id, data.to an array, data.bounce.type (Permanent or Temporary) and subType.
+ * day): type, created_at, data.email_id, data.to an array, data.bounce.type and subType. Only a bounce.type of
+ * 'Permanent' marks an address undeliverable (deliveryFactsOf, below); Resend's other bounce type is a soft one.
  *
  * Two different facts, kept apart on purpose:
  *   - a PERMANENT BOUNCE says the address cannot receive mail. It is deliverability, not consent: it is recorded in

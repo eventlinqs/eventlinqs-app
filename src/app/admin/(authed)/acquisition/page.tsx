@@ -7,6 +7,7 @@ import { readOrganiserScores } from '@/lib/outreach/organiser-score-read'
 import { PARTS, WEIGHTS, type Part } from '@/lib/outreach/organiser-score'
 import { COHORT_SIZE, pickCohort } from '@/lib/outreach/cohort-pick'
 import { ACQUISITION_STATES, STATE_WORDS, isAcquisitionState, type AcquisitionState } from '@/lib/outreach/acquisition-states'
+import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
 /**
  * THE ORGANISER PIPELINE, IN ADMIN (window 6, 30 October 2026; the growth blueprint's rulings 3, 4 and 5). Every
@@ -63,7 +64,7 @@ export default async function AdminAcquisitionPage() {
         </p>
       </header>
 
-      <section className="mb-8 grid gap-4 sm:grid-cols-2">
+      <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
           <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">By state</h2>
           <ul className="mt-3 space-y-1 text-sm text-white/70">
@@ -92,9 +93,9 @@ export default async function AdminAcquisitionPage() {
         </div>
       </section>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+      <div className={ADMIN_TABLE_WRAP}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[720px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3">Organiser</th>
               <th className="px-4 py-3">State</th>
@@ -107,34 +108,44 @@ export default async function AdminAcquisitionPage() {
               <th className="px-4 py-3">Cohort</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {rows.map((r) => {
               const state = stateOf.get(r.id)
               return (
-                <tr key={r.id} className="border-t border-white/[0.06] align-top">
-                  <td className="px-4 py-3 text-white">
+                <tr key={r.id} className={`${ADMIN_ROW} align-top`}>
+                  <td className={`${ADMIN_CELL_NAME} text-white`}>
                     {r.name}
                     <span className="block text-xs text-white/50">
                       {r.city ? `${r.city.replace(/-/g, ' ')}${r.citySource === 'source_file' ? ' (from its source file)' : ''}` : 'No city on record'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{state ? STATE_WORDS[state] : 'Not yet read'}</td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>State</span>
+                    {state ? STATE_WORDS[state] : 'Not yet read'}
+                  </td>
                   {r.state === 'scored' ? (
                     <>
-                      <td className="px-4 py-3 font-semibold text-white">{r.score}</td>
+                      <td className={`${ADMIN_CELL} font-semibold text-white`}>
+                        <span className={ADMIN_CELL_LABEL}>Score</span>
+                        {r.score}
+                      </td>
                       {PARTS.map((p) => (
-                        <td key={p} className="px-4 py-3 text-white/70" title={r.why[p]}>
+                        <td key={p} className={`${ADMIN_CELL} text-white/70`} title={r.why[p]}>
+                          <span className={ADMIN_CELL_LABEL}>{PART_LABEL[p]}</span>
                           {r.parts[p]}
                           <span className="block text-xs text-white/50">{r.why[p]}</span>
                         </td>
                       ))}
                     </>
                   ) : (
-                    <td className="px-4 py-3 text-white/60" colSpan={PARTS.length + 1}>
+                    <td className={`${ADMIN_CELL} text-white/60`} colSpan={PARTS.length + 1}>
                       Not scored: they said no or stop.
                     </td>
                   )}
-                  <td className="px-4 py-3 text-white/70">{byEmail.has(r.id) ? 'By email' : byOther.has(r.id) ? 'Another route' : 'Not picked'}</td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Cohort</span>
+                    {byEmail.has(r.id) ? 'By email' : byOther.has(r.id) ? 'Another route' : 'Not picked'}
+                  </td>
                 </tr>
               )
             })}

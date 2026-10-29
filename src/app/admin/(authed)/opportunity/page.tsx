@@ -5,6 +5,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readOpportunity } from '@/lib/growth/opportunity'
 import { DIMENSIONS, WINDOW_DAYS, type Dimension } from '@/lib/growth/opportunity-math'
+import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_ROW_CONTROL, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
 /**
  * THE EVENT OPPORTUNITY SCORE, IN ADMIN (window 6, 27 October 2026; the locked foundation's item 16: "Shown in admin;
@@ -52,9 +53,9 @@ export default async function AdminOpportunityPage() {
       {scored.length === 0 ? (
         <p className="text-sm text-white/60">No event has two weeks of numbers yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+        <div className={ADMIN_TABLE_WRAP}>
+          <table className={`${ADMIN_TABLE} lg:min-w-[640px]`}>
+            <thead className={ADMIN_THEAD}>
               <tr>
                 <th className="px-4 py-3">Event</th>
                 <th className="px-4 py-3">Score</th>
@@ -65,17 +66,21 @@ export default async function AdminOpportunityPage() {
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className={ADMIN_TBODY}>
               {scored.map((r) => (
-                <tr key={r.id} className="border-t border-white/[0.06]">
-                  <td className="px-4 py-3">
-                    <Link href={`/events/${r.slug}`} className="text-white underline-offset-2 hover:underline">
+                <tr key={r.id} className={ADMIN_ROW}>
+                  <td className={ADMIN_CELL_NAME}>
+                    <Link href={`/events/${r.slug}`} className={`${ADMIN_ROW_CONTROL} text-white underline-offset-2 hover:underline`}>
                       {r.title}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-white">{r.score}</td>
+                  <td className={`${ADMIN_CELL} font-semibold text-white`}>
+                    <span className={ADMIN_CELL_LABEL}>Score</span>
+                    {r.score}
+                  </td>
                   {DIMENSIONS.map((d) => (
-                    <td key={d} className="px-4 py-3 text-white/70">
+                    <td key={d} className={`${ADMIN_CELL} text-white/70`}>
+                      <span className={ADMIN_CELL_LABEL}>{LABEL[d]}</span>
                       {r.parts[d]}
                     </td>
                   ))}
