@@ -84,19 +84,15 @@ describe('sub-community tiles', () => {
   })
 })
 
-describe('a refused city lookup', () => {
-  test('a spine city asks nothing; a refused answer for another city is not kept', async () => {
+describe('city tiles and heroes', () => {
+  test('every city resolves to a stored photograph with no network call: the spine first, else the one kept', async () => {
     const city = await import('@/lib/images/city-photo')
     expect(await city.getCityPhoto('melbourne')).toMatch(/\/event-images\/stock\/cities\/melbourne\//)
+    expect(await city.getCityPhoto('ballarat')).toBe('/images/library/city-ballarat.jpg')
+    expect(await city.getCityHeroPhoto('Sunshine-Coast')).toBe('/images/library/city-hero-sunshine-coast.jpg')
+    expect(await city.getCityPhoto('lagos')).toBe('/images/library/city-lagos.jpg')
+    expect(await city.getCityPhoto('nowhere-at-all')).toBeNull()
     expect(fetchSpy).not.toHaveBeenCalled()
-
-    fetchSpy.mockResolvedValueOnce(new Response('rate limited', { status: 429 }))
-    expect(await city.getCityPhoto('ballarat')).toBeNull()
-    fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ photos: [{ src: { large: 'https://images.pexels.com/b.jpg', medium: 'm', portrait: 'https://images.pexels.com/b-p.jpg' }, width: 900, height: 1300, alt: 'b', photographer: 'p' }] }), { status: 200 }),
-    )
-    expect(await city.getCityPhoto('ballarat')).toBe('https://images.pexels.com/b-p.jpg')
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 })
 
