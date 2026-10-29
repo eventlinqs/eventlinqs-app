@@ -28,7 +28,13 @@ import {
  * whether an insert was attempted.
  */
 function clientWithExisting(existing: boolean) {
-  const state = { inserted: false, insertedKind: null as string | null, lookedUpKind: null as string | null }
+  const state = {
+    inserted: false,
+    insertedKind: null as string | null,
+    lookedUpKind: null as string | null,
+    lookedUpIsTest: null as unknown,
+    insertedIsTest: null as unknown,
+  }
   const client = {
     from: () => ({
       select: () => ({
@@ -37,22 +43,29 @@ function clientWithExisting(existing: boolean) {
             state.lookedUpKind = kind
             return {
               eq: () => ({
-                gte: () => ({
-                  limit: () => ({
-                    maybeSingle: async () => ({
-                      data: existing ? { id: 'existing-row' } : null,
-                      error: null,
+                // The dedupe compares only presses of the same kind: a QA press against QA presses (20261029220001).
+                eq: (col: string, isTest: unknown) => {
+                  if (col === 'is_test') state.lookedUpIsTest = isTest
+                  return {
+                    gte: () => ({
+                      limit: () => ({
+                        maybeSingle: async () => ({
+                          data: existing ? { id: 'existing-row' } : null,
+                          error: null,
+                        }),
+                      }),
                     }),
-                  }),
-                }),
+                  }
+                },
               }),
             }
           },
         }),
       }),
-      insert: async (row: { kind: string }) => {
+      insert: async (row: { kind: string; is_test?: unknown }) => {
         state.inserted = true
         state.insertedKind = row.kind
+        state.insertedIsTest = row.is_test
         return { error: null }
       },
     }),
@@ -61,6 +74,18 @@ function clientWithExisting(existing: boolean) {
 }
 
 describe('click de-duplication', () => {
+  test('a QA press is written as a test and deduped only against QA presses; a real press against real ones', async () => {
+    const qa = clientWithExisting(false)
+    await recordShareLinkEvent({ linkId: 'link-1', kind: 'click', visitorHash: 'visitor-abc', isTest: true }, { client: qa.client })
+    expect(qa.state.lookedUpIsTest).toBe(true)
+    expect(qa.state.insertedIsTest).toBe(true)
+
+    const real = clientWithExisting(false)
+    await recordShareLinkEvent({ linkId: 'link-1', kind: 'click', visitorHash: 'visitor-abc' }, { client: real.client })
+    expect(real.state.lookedUpIsTest).toBe(false)
+    expect(real.state.insertedIsTest).toBe(false)
+  })
+
   test('a same-day repeat click by the same visitor writes no second row', async () => {
     const { client, state } = clientWithExisting(true)
     const ok = await recordShareLinkEvent(

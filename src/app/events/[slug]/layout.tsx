@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { readEventForRoute } from '@/lib/events/event-detail-read'
 import { eventHeroPreloadLink } from '@/lib/images/hero-preload'
+import { isWalkIn } from '@/lib/events/entry-mode'
 
 /**
  * Existence guard for /events/[slug].
@@ -97,7 +98,7 @@ export default async function EventSlugLayout({
    */
   return (
     <>
-      {await eventHeroPreloadLink(event)}
+      {await eventHeroPreloadLink(event, { typographicHasNoRaster: !isWalkIn(event) })}
       {children}
     </>
   )

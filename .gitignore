@@ -54,6 +54,9 @@ next-env.d.ts
 # See docs/MEDIA-ARCHITECTURE.md.
 !public/images/hero/*.jpg
 !public/images/hero/*.jpeg
+# The tile library (29 October 2026): every community, category and sub-community tile on a stored photograph, each
+# with its photographer and licence in public/images/library/attribution.json (scripts/ops/download-library-photos.mjs).
+!public/images/library/*.jpg
 !public/images/hero/*.webp
 !public/images/hero/*.png
 !public/**/*.svg

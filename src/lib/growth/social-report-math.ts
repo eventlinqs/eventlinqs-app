@@ -1,5 +1,5 @@
 import { getCity } from '@/lib/cities/data'
-import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from '@/lib/social/results'
+import { CREDIT_DAYS, resultOf, type CreditedOrder, type LinkEvent, type PostResult } from '@/lib/social/results'
 
 /**
  * THE WEEKLY CAMPAIGN'S REPORT: WHAT EACH PIECE DID, BESIDE THE CAMPAIGNS BEFORE IT, AND AT MOST THREE CHANGES.
@@ -65,6 +65,8 @@ export interface PieceRow {
   readonly postUrl: string | null
   /** The share link whose rows are this piece's own (the partner kit's /e/ link), or null for a page link. */
   readonly countedLinkId: string | null
+  /** The nights its newest version names (social_piece_revisions.event_ids), for the claims after it went. */
+  readonly nightIds?: readonly string[]
 }
 
 export interface FigureRow {
@@ -122,6 +124,11 @@ export interface PieceReport {
   /** Counted through this piece's own link, or null where it has none or has not gone. */
   readonly counted: PostResult | null
   readonly countedWords: string
+  /** Taps on its /go link within the credit window from when it went; null until it has gone. */
+  readonly goTaps: number | null
+  /** Claims of the nights it names made within the credit window after it went; null until it has gone. */
+  readonly claimsAfter: number | null
+  readonly claimsWords: string
 }
 
 export interface EnteredTotal {
@@ -167,6 +174,10 @@ export interface ReportInput {
   readonly orders: ReadonlyMap<string, CreditedOrder>
   readonly counted: ReadonlyMap<string, WeekCounted>
   readonly now: Date
+  /** Presses on /go, per piece, QA presses already left out (the daily poster directive of 30 October 2026, step 9). */
+  readonly goPresses?: readonly { readonly pieceId: string; readonly pressedAt: string }[]
+  /** Listing claims by night, with when each was made. */
+  readonly claims?: readonly { readonly eventId: string; readonly createdAt: string }[]
 }
 
 export const KIND_NAMES: Readonly<Record<string, string>> = {
@@ -176,6 +187,8 @@ export const KIND_NAMES: Readonly<Record<string, string>> = {
   venue_spotlight: 'Venue spotlight',
   organiser_campaign: 'Organiser campaign',
   partner_kit: 'Partner kit',
+  // Family F, the daily event poster (window 3's 20261030010001, the founder's decision of 30 October 2026, 00:20).
+  daily_poster: 'Daily poster',
 }
 
 export const LIMITATIONS: readonly string[] = [
@@ -252,6 +265,29 @@ function pieceReport(p: PieceRow, input: ReportInput): PieceReport {
     entered: enteredFor(p.id, input.figures),
     counted,
     countedWords,
+    ...posterFigures(p, input),
+  }
+}
+
+/**
+ * ATTRIBUTION PER POSTER (the daily poster directive of 30 October 2026, step 9: "taps through /go and /e, clicks out,
+ * and claims per poster, on the growth page. Never called sales."). /e taps and clicks out are its own link's rows
+ * above; this adds its /go taps and the claims of the nights it names, each within the same credit window from when it
+ * went. A claim carries no link, so a claim is said as made AFTER the poster went, never as caused by it.
+ */
+function posterFigures(p: PieceRow, input: ReportInput): Pick<PieceReport, 'goTaps' | 'claimsAfter' | 'claimsWords'> {
+  if (p.postedAt === null) return { goTaps: null, claimsAfter: null, claimsWords: 'Not gone yet.' }
+  const from = Date.parse(p.postedAt)
+  const until = from + CREDIT_DAYS * 86_400_000
+  const within = (iso: string) => {
+    const t = Date.parse(iso)
+    return t >= from && t < until
+  }
+  const nights = new Set(p.nightIds ?? [])
+  return {
+    goTaps: (input.goPresses ?? []).filter((g) => g.pieceId === p.id && within(g.pressedAt)).length,
+    claimsAfter: (input.claims ?? []).filter((c) => nights.has(c.eventId) && within(c.createdAt)).length,
+    claimsWords: `Claims of the nights it names made in the ${CREDIT_DAYS} days after it went, not proof it caused them.`,
   }
 }
 

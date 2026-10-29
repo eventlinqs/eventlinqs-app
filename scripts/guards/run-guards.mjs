@@ -266,6 +266,8 @@
  *   social-measured-apart      the weekly social report never mixes counted and entered
  *                              figures, never calls a press out a sale, and one file alone
  *                              reads its figures and decisions
+ *   counted-rows-exclude-tests  every read of share_link_events or go_presses names
+ *                              is_test, so a QA press is counted nowhere (R3)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
@@ -637,6 +639,8 @@
  *                              Clause 4 recomputes the requirement from the colours the
  *                              CAPTIONS actually paint, and found a `text-gold-300` on
  *                              its first run naming a token globals.css does not declare
+ *   tiles-on-stored-photos     every community and category tile is on a stored
+ *                              photograph, and a refused Pexels lookup is never cached
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -1996,6 +2000,10 @@ const GUARDS = [
   // every cover rule refuses one, the home hero leads only with a night with its own photograph, and the city week
   // card draws no backdrop. Drilled red on three clauses.
   'scripts/guards/no-library-photo-on-a-night.mjs',
+  // 29 October 2026, Lawal 22:17: every community and category tile on a stored photograph (the spine, a bundled
+  // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
+  // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.
+  'scripts/guards/tiles-on-stored-photos.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   // 20 September 2026, close-out C8. REPLACES hero-preload-above-the-loading-
   // boundary, and the replacement is a STRONGER rule rather than a rename.
@@ -3281,6 +3289,11 @@ const GUARDS = [
   // have one reader, so an approved recommendation changes nothing by itself (G4).
   // Drilled red five ways (C:\dev\EVIDENCE\SOCIAL-REPORT-28OCT\guard-drills.txt).
   'scripts/guards/social-measured-apart.mjs',
+  // A QA press on a counted hop (/out, /go, /e, /s) is recorded with is_test true so production can be proved without
+  // counting a person (the master mandate of 29 October 2026, the project manager's R3, 20261029220001). That is safe
+  // only while every read of share_link_events and go_presses leaves is_test rows out: this fails the build on a read
+  // that does not, judged on each read's own chain. A read pinned to conversions passes, as no QA press is one.
+  'scripts/guards/counted-rows-exclude-tests.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

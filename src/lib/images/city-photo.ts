@@ -1,174 +1,39 @@
-import { unstable_cache } from 'next/cache'
 import { getSpineCity } from './spine'
-import { captureException } from '@/lib/observability/sentry'
 
 /**
- * City-aware photo pipeline backed by Pexels.
+ * A city's photograph: its tile (portrait) and its hero band (landscape).
  *
- * Mirrors category-photo.ts but returns a portrait-oriented URL string.
- * Falls back to null when PEXELS_API_KEY is missing or the request fails -
- * callers are expected to substitute their own placeholder (e.g. /cities/<slug>.svg).
+ * STORED PHOTOGRAPHS ONLY, NEVER A REQUEST-TIME CALL (Lawal, 22:23 on 29 October 2026; the project manager's 22:24:
+ * every slot tile on a stored image). Lawal's own licensed photograph answers first for the thirteen cities his spine
+ * holds (src/lib/images/spine.ts). Every other city a page names is kept once in public/images/library:
+ * city-<slug>.jpg for the tile and city-hero-<slug>.jpg for the band. Each is the photograph the live tile showed
+ * before, fetched by scripts/ops/download-library-photos.mjs with its photographer, page and licence in
+ * attribution.json. Three heroes were replaced by fitting ones after a look by eye on 30 October: Sunshine Coast,
+ * Launceston and Accra showed another place or a poor face for the city.
  *
- * Query strategy (rebuilt batch 3 - landmark relevance):
- *   - Each city query includes the city name PLUS local landmarks so
- *     Pexels returns the visually-recognisable shot (Sydney harbour
- *     bridge, Melbourne laneway, Geelong waterfront pier).
- *   - Sample from the TOP 5 results to avoid stale repetition.
- *   - orientation=portrait + size=large for tile aspect ratios.
+ * This used to ask Pexels on every render and cache the answer for a week, a refusal included, which is how
+ * production's tiles went blank on 29 October. A city no table names answers null, and the caller draws its own
+ * placeholder.
  */
 
-const PEXELS_API_KEY = process.env.PEXELS_API_KEY
-const PEXELS_API = 'https://api.pexels.com/v1'
-
-// 20 launch AU cities + selected international markets.
-const CITY_QUERIES: Record<string, string> = {
-  // ---- 20 AU cities -------------------------------------------------
-  sydney:           'sydney harbour bridge opera house skyline',
-  melbourne:        'melbourne city laneway tram skyline',
-  brisbane:         'brisbane river skyline story bridge',
-  perth:            'perth swan river skyline sunset',
-  adelaide:         'adelaide city park architecture',
-  'gold-coast':     'gold coast beach surfers paradise skyline',
-  newcastle:        'newcastle beach harbour city',
-  canberra:         'canberra parliament lake architecture',
-  wollongong:       'wollongong beach lighthouse coastline',
-  hobart:           'hobart harbour mount wellington',
-  geelong:          'geelong waterfront cunningham pier',
-  townsville:       'townsville magnetic island tropical',
-  cairns:           'cairns tropical beach palm trees',
-  darwin:           'darwin tropical waterfront sunset',
-  'sunshine-coast': 'sunshine coast beach hinterland',
-  bendigo:          'bendigo heritage architecture city',
-  ballarat:         'ballarat heritage gold rush architecture',
-  albury:           'albury murray river city',
-  launceston:       'launceston tasmania heritage city',
-  toowoomba:        'toowoomba garden city heritage',
-
-  // ---- international launch markets --------------------------------
-  auckland:         'auckland new zealand harbour skyline',
-  london:           'london england skyline big ben',
-  manchester:       'manchester england city skyline',
-  birmingham:       'birmingham england city skyline',
-  dublin:           'dublin ireland city',
-  toronto:          'toronto canada skyline cn tower',
-  montreal:         'montreal canada skyline night',
-  'new-york':       'new york manhattan skyline',
-  'washington-dc':  'washington dc capitol skyline',
-  houston:          'houston texas skyline',
-  atlanta:          'atlanta georgia skyline',
-  miami:            'miami florida skyline beach',
-  'los-angeles':    'los angeles california skyline',
-  lagos:            'lagos nigeria victoria island skyline',
-  accra:            'accra ghana city',
-}
-
-function simpleHash(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
-
-interface PexelsApiPhoto {
-  src: { large: string; medium: string; portrait?: string }
-  width?: number
-  height?: number
-  alt: string | null
-  photographer: string
-}
-
-const TOP_N = 5
-
-async function fetchCityPhotoRaw(query: string): Promise<string | null> {
-  if (!PEXELS_API_KEY) return null
-
-  try {
-    const res = await fetch(
-      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=portrait&size=large`,
-      {
-        headers: { Authorization: PEXELS_API_KEY },
-        next: { revalidate: 60 * 60 * 24 * 7 },
-      }
-    )
-    if (!res.ok) return null
-
-    const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return null
-
-    // Filter to min 800x1200 portrait + sample from top 5.
-    const usable = data.photos.filter(p => (p.width ?? 0) >= 800 && (p.height ?? 0) >= 1200)
-    const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
-    const photo = pool[simpleHash(query) % pool.length]
-
-    return photo.src.portrait ?? photo.src.large
-  } catch (error) {
-    captureException(error, { where: 'lib/images/city-photo:104' })
-    return null
-  }
-}
-
-const fetchCityPhoto = unstable_cache(
-  fetchCityPhotoRaw,
-  ['pexels-city-photo-v2'],
-  { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-city'] }
-)
+/** The cities kept in public/images/library, as city-<slug>.jpg and city-hero-<slug>.jpg. */
+const KEPT_CITIES = new Set([
+  'townsville', 'sunshine-coast', 'bendigo', 'ballarat', 'albury', 'launceston', 'toowoomba',
+  'auckland', 'london', 'manchester', 'birmingham', 'dublin', 'toronto', 'montreal',
+  'new-york', 'washington-dc', 'houston', 'atlanta', 'miami', 'los-angeles', 'lagos', 'accra',
+])
 
 export async function getCityPhoto(slug: string): Promise<string | null> {
-  // Spine-first: the licensed city photo is the slot image platform-wide.
   const spine = getSpineCity(slug)
   if (spine) return spine.src
   const key = slug.toLowerCase()
-  const query = CITY_QUERIES[key]
-  if (!query) return null
-  return await fetchCityPhoto(query)
+  return KEPT_CITIES.has(key) ? `/images/library/city-${key}.jpg` : null
 }
 
-/**
- * Landscape city hero - Batch 4 /events/browse/[city] photographic hero band.
- *
- * Returns a horizontally-oriented Pexels photo so the hero crop reads
- * as a wide cinematic band, not a vertical portrait re-flowed against
- * a landscape container. The portrait helper above stays in place for
- * the city tile rail (CityTileImage) which is genuinely portrait.
- */
-async function fetchCityHeroPhotoRaw(query: string): Promise<string | null> {
-  if (!PEXELS_API_KEY) return null
-
-  try {
-    const res = await fetch(
-      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape&size=large`,
-      {
-        headers: { Authorization: PEXELS_API_KEY },
-        next: { revalidate: 60 * 60 * 24 * 7 },
-      }
-    )
-    if (!res.ok) return null
-
-    const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return null
-
-    const usable = data.photos.filter(p => (p.width ?? 0) >= 1600 && (p.height ?? 0) >= 900)
-    const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
-    const photo = pool[simpleHash(query + ':landscape') % pool.length]
-
-    return photo.src.large
-  } catch (error) {
-    captureException(error, { where: 'lib/images/city-photo:155' })
-    return null
-  }
-}
-
-const fetchCityHeroPhoto = unstable_cache(
-  fetchCityHeroPhotoRaw,
-  ['pexels-city-hero-photo-v1'],
-  { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-city'] }
-)
-
+/** The landscape band for a city's hero (the /events/browse/<city> band and the community city pages). */
 export async function getCityHeroPhoto(slug: string): Promise<string | null> {
-  // Spine-first: the licensed city photo also fronts the city hero band.
   const spine = getSpineCity(slug)
   if (spine) return spine.src
   const key = slug.toLowerCase()
-  const query = CITY_QUERIES[key]
-  if (!query) return null
-  return await fetchCityHeroPhoto(query)
+  return KEPT_CITIES.has(key) ? `/images/library/city-hero-${key}.jpg` : null
 }

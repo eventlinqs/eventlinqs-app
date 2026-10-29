@@ -167,7 +167,7 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
   const orders = new Map<string, CreditedOrder>()
   if (linkIds.length > 0) {
     const ev = await readEveryRow<{ link_id: string; kind: LinkEvent['kind']; order_id: string | null; occurred_at: string }>('the pieces\' own counted rows', (from, to) =>
-      db.from('share_link_events').select('link_id, kind, order_id, occurred_at').in('link_id', linkIds).in('kind', ['click', 'outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
+      db.from('share_link_events').select('link_id, kind, order_id, occurred_at').eq('is_test', false).in('link_id', linkIds).in('kind', ['click', 'outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
     )
     for (const e of ev) linkEvents.push({ linkId: e.link_id, kind: e.kind, orderId: e.order_id, occurredAt: iso(e.occurred_at) })
     const orderIds = [...new Set(linkEvents.filter((e) => e.kind === 'conversion' && e.orderId !== null).map((e) => e.orderId as string))]
@@ -187,7 +187,7 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
     const [{ rows }, outbound, enquiries] = await Promise.all([
       readGrowthRows(spanFrom, spanTo),
       readEveryRow<{ occurred_at: string }>('the presses out for the social report', (from, to) =>
-        db.from('share_link_events').select('occurred_at').eq('kind', 'outbound').gte('occurred_at', spanFrom).lt('occurred_at', spanTo).order('id', { ascending: true }).range(from, to),
+        db.from('share_link_events').select('occurred_at').eq('is_test', false).eq('kind', 'outbound').gte('occurred_at', spanFrom).lt('occurred_at', spanTo).order('id', { ascending: true }).range(from, to),
       ),
       readEnquiries(db, spanFrom, spanTo),
     ])
@@ -196,7 +196,41 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
     for (const { c, w } of begun) counted.set(c.id, countedFor(rows, w, out, enq))
   }
 
-  const report = buildSocialReport({ campaignId: chosen.id, campaigns, pieces, figures, linkEvents, orders, counted, now: input.now })
+  /*
+   * ATTRIBUTION PER POSTER (the daily poster directive of 30 October 2026, step 9): each piece's /go presses (QA presses
+   * left out), the nights its newest version names, and the claims of those nights. A claim carries no link, so the
+   * report says it was made after the piece went, never that the piece caused it.
+   */
+  const goPresses: { pieceId: string; pressedAt: string }[] = []
+  let nightsOf = new Map<string, { version: number; eventIds: string[] }>()
+  const claims: { eventId: string; createdAt: string }[] = []
+  if (pieceIds.length > 0) {
+    const presses = await readEveryRow<{ id: string; piece_id: string; pressed_at: string }>('the pieces\' /go presses', (from, to) =>
+      db.from('go_presses').select('id, piece_id, pressed_at').eq('is_test', false).in('piece_id', pieceIds).order('id', { ascending: true }).range(from, to),
+    )
+    for (const g of presses) goPresses.push({ pieceId: g.piece_id, pressedAt: iso(g.pressed_at) })
+
+    const revisions = await readEveryRow<{ piece_id: string; version: number; event_ids: string[] | null }>('the nights each piece names', (from, to) =>
+      db.from('social_piece_revisions').select('piece_id, version, event_ids').in('piece_id', pieceIds).order('piece_id', { ascending: true }).order('version', { ascending: true }).range(from, to),
+    )
+    const newest = new Map<string, { version: number; eventIds: string[] }>()
+    for (const v of revisions) {
+      const had = newest.get(v.piece_id)
+      if (!had || v.version > had.version) newest.set(v.piece_id, { version: v.version, eventIds: v.event_ids ?? [] })
+    }
+    nightsOf = newest
+
+    const nightIds = [...new Set([...newest.values()].flatMap((v) => v.eventIds))]
+    if (nightIds.length > 0) {
+      const claimed = await readEveryRow<{ id: string; event_id: string | null; created_at: string }>('the claims of the nights the pieces name', (from, to) =>
+        db.from('listing_claims').select('id, event_id, created_at').in('event_id', nightIds).order('id', { ascending: true }).range(from, to),
+      )
+      for (const c of claimed) if (c.event_id !== null) claims.push({ eventId: c.event_id, createdAt: iso(c.created_at) })
+    }
+  }
+
+  const withNights: PieceRow[] = pieces.map((p) => ({ ...p, nightIds: nightsOf.get(p.id)?.eventIds ?? [] }))
+  const report = buildSocialReport({ campaignId: chosen.id, campaigns, pieces: withNights, figures, linkEvents, orders, counted, now: input.now, goPresses, claims })
 
   const { data: ds, error: derr } = await db.from('social_report_decisions').select('rule, decision, recommendation, decided_at').eq('campaign_id', chosen.id).order('decided_at', { ascending: true }).limit(50)
   if (derr) throw new Error(`the decisions could not be read: ${derr.message}`)

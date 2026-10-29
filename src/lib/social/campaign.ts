@@ -1,5 +1,6 @@
 import type { Cta } from '@/lib/events/cta'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
+import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
 
 /**
@@ -23,7 +24,7 @@ import { carriesBannedWord, quotableSummary } from './words'
 
 export type Audience = 'attendees' | 'organisers' | 'venues' | 'partners'
 export type Objective = 'audience_growth' | 'organiser_growth'
-export type PieceKind = 'week_ahead' | 'discovery_reel' | 'weekend_carousel' | 'venue_spotlight' | 'organiser_campaign' | 'partner_kit' | 'brand_campaign'
+export type PieceKind = 'week_ahead' | 'discovery_reel' | 'weekend_carousel' | 'venue_spotlight' | 'organiser_campaign' | 'partner_kit' | 'brand_campaign' | 'daily_poster'
 
 /** The revised samples' compositions (14:08), as slots; the looks wait for Lawal's approval. */
 export type Composition =
@@ -82,6 +83,10 @@ export type CampaignNight = {
   cta: Cta
   /** The one price line (ctaPriceLine), or null where none may be said. */
   priceLine: string | null
+  /** events.venue_address, events.is_age_restricted and age_restriction_min: the daily poster prints the street and an 18+ only from these. */
+  venueAddress?: string | null
+  isAgeRestricted?: boolean
+  ageMin?: number | null
 }
 
 /**
@@ -101,6 +106,11 @@ export type Slide =
   | { t: 'story'; composition: Composition; eventId: string; chip: string; when: string; title: string; meta: string; photo: string | null; credit: string | null; sticker: string; words?: NightSlideWords; line?: string | null }
   /** A brand piece naming no night: a photograph licensed for EventLinqs' own promotion (treatment A) or its own art (C). */
   | { t: 'brand'; composition: 'close'; headline: string; line: string; action: string; photo: string | null; credit: string | null }
+  /** Family F, the daily poster: one night's verified facts, its photograph only from an approved row, and why (daily-posters.ts). */
+  | { t: 'poster'; composition: 'daily_poster'; eventId: string; photo: string | null; credit: string | null; rights: string; night: PosterFacts }
+
+/** The facts a daily poster prints, kept on its slide; the store sets shortLink to the piece's own /e/ link. */
+export type PosterFacts = Omit<PosterNight, 'photo'>
 
 export type PlatformVersion = {
   /** The first line a person sees in the feed. */
@@ -135,6 +145,8 @@ export type PiecePlan = {
   /** The partner's night, whose own tracked link the kit carries (minted by the store). */
   partnerEventId: string | null
   message: string | null
+  /** A daily poster's day (YYYY-MM-DD); no other kind has one. */
+  posterDay?: string | null
   /** The organisers' own names it quotes exactly (its nights' titles and hosts, its partner), set by planCampaign. */
   names?: string[]
 }
@@ -355,17 +367,17 @@ const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
 const countWord = (k: number): string => COUNT_WORDS[k] ?? String(k)
 
 /** One line a pick: the place pin for a free night, the ticket for a paid one (the 13:27 (6), kept by the 13:53). */
-function pickLine(n: CampaignNight): string {
+export function pickLine(n: CampaignNight): string {
   const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '🎟' : '📍'
   const price = n.priceLine ? ` ${n.priceLine}.` : ''
   return `${mark} ${whenOf(n)}, ${n.title}, ${metaOf(n)}.${price}`
 }
 
-function tagsFor(city: CampaignCity, extra: string | null): string {
+export function tagsFor(city: CampaignCity, extra: string | null): string {
   return [`#${city.slug}`, `#${city.slug}events`, extra].filter(Boolean).slice(0, 3).join(' ')
 }
 
-function creditsOf(nights: readonly CampaignNight[]): string {
+export function creditsOf(nights: readonly CampaignNight[]): string {
   const credits = [...new Set(nights.map((n) => (n.approvedPhotoUrl ? n.photoCredit : null)).filter((c): c is string => Boolean(c)))]
   return credits.length === 0 ? '' : credits.map((c) => `Photo: ${c}`).join('\n')
 }
@@ -379,12 +391,12 @@ export function destinationOf(nights: readonly CampaignNight[], city: CampaignCi
   return allFree ? { path: `/free/${city.slug}/this-week`, allFree } : { path: `/city/${city.slug}`, allFree }
 }
 
-function siteOf(origin: string): string {
+export function siteOf(origin: string): string {
   return origin.replace(/^https?:\/\//, '').replace(/\/$/, '').replace(/^www\./, '')
 }
 
 /** A caption with no two blank lines in a row and nothing trailing. */
-function join(lines: readonly string[]): string {
+export function join(lines: readonly string[]): string {
   return lines.filter((l, i, a) => l !== '' || (i > 0 && a[i - 1] !== '')).join('\n').trim()
 }
 
@@ -393,7 +405,7 @@ function join(lines: readonly string[]): string {
  * call to action points at the link in bio. Facebook: the same hook, the link written in full because it is tappable
  * and unfurls, at most one tag.
  */
-function versionsOf(hook: string, body: readonly string[], link: string, igCta: string, fbCta: string, crop: '4:5' | '9:16', tags: string): PiecePlan['versions'] {
+export function versionsOf(hook: string, body: readonly string[], link: string, igCta: string, fbCta: string, crop: '4:5' | '9:16', tags: string): PiecePlan['versions'] {
   return {
     instagram: { hook, caption: join([hook, '', ...body, '', igCta, '', tags]), crop, cta: igCta },
     facebook: { hook, caption: join([hook, '', ...body, '', `${fbCta} ${link}`]), crop, cta: `${fbCta} ${link}` },

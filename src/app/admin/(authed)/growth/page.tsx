@@ -11,6 +11,9 @@ import { formatPlatformDate } from '@/lib/dates/event-time'
 import { getCity } from '@/lib/cities/data'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
+import { readQaPresses } from '@/lib/growth/qa-presses'
+import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
+import { HORIZON_DAYS, WEEK_DAYS } from '@/lib/growth/supply-scorecard-math'
 import { monthOf } from '@/lib/growth/organiser-funnel-math'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
@@ -69,7 +72,7 @@ export default async function AdminGrowthPage() {
   if (!can(session, 'admin.network.manage') || !can(session, 'admin.pricing.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.growth.view', session })
 
-  const [g, funnel] = await Promise.all([readGrowthWeek(), readOrganiserFunnel()])
+  const [g, funnel, qa, supply] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard()])
   const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
@@ -180,6 +183,89 @@ export default async function AdminGrowthPage() {
         <AdminStatTile label="Margin" value={g.victoria.marginPositive ? 'Positive' : 'Not positive'} hint="last week" status={met(g.victoria.marginPositive)} />
       </Dimension>
 
+      <section data-section="supply-by-city" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+        <h2 className="font-display text-lg font-semibold text-white">Supply by city, this week</h2>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          Verified upcoming means published, still listed, starting in the next {HORIZON_DAYS} days and checked against its source recently enough to
+          stay listed. Expiring means that check lapses within {WEEK_DAYS} days. Images counted are the organiser&apos;s own, never a library
+          photograph or a cover EventLinqs set in type. Seed listings are never counted.
+        </p>
+        <div className={`mt-5 ${ADMIN_TABLE_WRAP}`}>
+          <table data-table="supply-by-city" className={ADMIN_TABLE}>
+            <thead className={ADMIN_THEAD}>
+              <tr>
+                <th scope="col" className="px-4 py-3 font-medium">City</th>
+                <th scope="col" className="px-4 py-3 font-medium">Verified upcoming</th>
+                <th scope="col" className="px-4 py-3 font-medium">New</th>
+                <th scope="col" className="px-4 py-3 font-medium">Expiring</th>
+                <th scope="col" className="px-4 py-3 font-medium">Cancelled</th>
+                <th scope="col" className="px-4 py-3 font-medium">Awaiting check</th>
+                <th scope="col" className="px-4 py-3 font-medium">Own images</th>
+                <th scope="col" className="px-4 py-3 font-medium">Organisers</th>
+                <th scope="col" className="px-4 py-3 font-medium">Recurring</th>
+              </tr>
+            </thead>
+            <tbody className={ADMIN_TBODY}>
+              {supply.cities.map((c) => (
+                <tr key={c.city} data-city={c.city} className={ADMIN_ROW}>
+                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-white`}>
+                    {cityName(c.city)}
+                  </th>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Verified upcoming</span>
+                    {number(c.verifiedUpcoming)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>New</span>
+                    {number(c.newThisWeek)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Expiring</span>
+                    {number(c.expiringSoon)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Cancelled</span>
+                    {number(c.cancelledThisWeek)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Awaiting check</span>
+                    {number(c.awaitingVerification)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Own images</span>
+                    {number(c.withApprovedImagery)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Organisers</span>
+                    {number(c.activeOrganisers)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Recurring</span>
+                    {number(c.recurringSuppliers)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {supply.waitingWithNoCity > 0 ? (
+          <p data-state="waiting-with-no-city" className="mt-3 text-sm text-amber-300">
+            {number(supply.waitingWithNoCity)} collected {supply.waitingWithNoCity === 1 ? 'event waits' : 'events wait'} from a source with no city, so{' '}
+            {supply.waitingWithNoCity === 1 ? 'it is' : 'they are'} not in any row above.
+          </p>
+        ) : null}
+
+        <h3 className="mt-8 font-display text-base font-semibold text-white">Gaps: categories with nothing verified upcoming</h3>
+        <ul className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          {supply.cities.map((c) => (
+            <li key={c.city} data-gaps={c.city} className="rounded-lg border border-white/[0.06] p-4">
+              <p className="font-medium text-white">{cityName(c.city)}</p>
+              <p className="mt-1 text-white/60">{c.gaps.length === 0 ? 'Every category has a verified upcoming night.' : c.gaps.join(', ')}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section data-section="organiser-funnel" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
         <h2 className="font-display text-lg font-semibold text-white">Organisers, from found to reported</h2>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
@@ -246,6 +332,11 @@ export default async function AdminGrowthPage() {
           </table>
         </div>
       </section>
+
+      <p data-state="qa-presses" className="mb-4 text-sm text-white/50">
+        QA presses in the last 7 days, made by test drives with a verified marker and left out of every figure on this
+        page: {number(qa.shareEvents)} on share links and booking buttons, {number(qa.goPresses)} on /go.
+      </p>
 
       {g.unreadVisitRows > 0 ? (
         <p data-state="unread-rows" className="text-sm text-amber-300">

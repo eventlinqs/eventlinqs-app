@@ -221,7 +221,7 @@ export async function readCollaboratorKit(
   }
   const counted = async (kind: 'view' | 'click') => {
     if (ids.length === 0) return 0
-    const { count, error: countError } = await admin.from('share_link_events').select('id', { count: 'exact', head: true }).in('link_id', ids).eq('kind', kind)
+    const { count, error: countError } = await admin.from('share_link_events').select('id', { count: 'exact', head: true }).eq('is_test', false).in('link_id', ids).eq('kind', kind)
     if (countError) throw new Error(`the ${kind} count could not be read: ${countError.message}`)
     return count ?? 0
   }

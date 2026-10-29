@@ -261,7 +261,7 @@ export async function fetchArtistAttribution(
         (from, to) =>
           admin
             .from('share_link_events')
-            .select('link_id, kind, order_id')
+            .select('link_id, kind, order_id').eq('is_test', false)
             .in('link_id', chunk)
             .order('id', { ascending: true })
             .range(from, to),
@@ -376,7 +376,7 @@ export async function fetchEventArtistAttribution(
         (from, to) =>
           admin
             .from('share_link_events')
-            .select('link_id, kind, order_id')
+            .select('link_id, kind, order_id').eq('is_test', false)
             .in('link_id', chunk)
             .order('id', { ascending: true })
             .range(from, to),
