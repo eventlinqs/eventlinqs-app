@@ -43,15 +43,16 @@ describe('reelArguments', () => {
     expect(args.at(-1)).toBe('out.mp4')
   })
 
-  test('no frames, or more than the cover and five nights, is refused', () => {
+  test('no frames, or more than the cover, five nights and the close, is refused', () => {
     expect(() => reelArguments([], 'out.mp4')).toThrow(/at least one frame/)
-    expect(() => reelArguments(frameNames(REEL.maxFrames + 1), 'out.mp4')).toThrow(/at most 6 frames/)
+    expect(() => reelArguments(frameNames(REEL.maxFrames + 1), 'out.mp4')).toThrow(/at most 7 frames/)
   })
 
   test('the reel length is every hold and the last fade', () => {
     expect(reelSeconds(0)).toBe(0)
     expect(reelSeconds(1)).toBe(3)
     expect(reelSeconds(6)).toBe(16)
+    expect(REEL.maxFrames).toBe(7)
   })
 })
 

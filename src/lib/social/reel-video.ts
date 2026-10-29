@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import ffmpegPath from 'ffmpeg-static'
+import { MAX_NIGHTS } from './campaign'
 
 /**
  * THE DISCOVERY REEL AS AN MP4, MADE ON THE SERVER (the register's row C5; Lawal's master mandate, section 7,
@@ -15,8 +16,8 @@ import ffmpegPath from 'ffmpeg-static'
  * frame the founder can already see on /admin/social (Law 6, render never generate).
  *
  * The encoder is ffmpeg, from the ffmpeg-static package (a static build for the platform it is installed on: Linux on
- * Vercel), run as a child process with its own arguments, never a shell, and the frames written to a fresh temporary
- * folder that is removed whatever happens. reelArguments is pure and tested exhaustively; encodeReel only runs it.
+ * Vercel), run as a child process with its own arguments, never a shell, and the frames written to a folder of its own
+ * under the system temp directory that is removed whatever happens. reelArguments is pure and tested exhaustively; encodeReel only runs it.
  */
 
 export const REEL = {
@@ -27,8 +28,8 @@ export const REEL = {
   hold: 2.6,
   /** Seconds of each crossfade. */
   fade: 0.4,
-  /** The most frames a Reel carries: the cover and five nights (campaign.ts MAX_NIGHTS is five). */
-  maxFrames: 6,
+  /** The most frames a Reel carries: its contents cover, its nights (campaign.ts MAX_NIGHTS) and its closing slide. */
+  maxFrames: MAX_NIGHTS + 2,
   /** The encode is stopped after this long; a Reel of six frames takes a few seconds. */
   timeoutMs: 50_000,
 } as const

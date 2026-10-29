@@ -235,7 +235,8 @@ const AUDIENCES: readonly Audience[] = ['attendees', 'organisers', 'venues', 'pa
 const OBJECTIVES: readonly Objective[] = ['audience_growth', 'organiser_growth']
 const DAY_MS = 24 * 60 * 60 * 1000
 const ZONE = 'Australia/Melbourne'
-const MAX_NIGHTS = 5
+/** The most nights a curated piece carries (the Discovery Reel's frames are these, its cover and its close). */
+export const MAX_NIGHTS = 5
 const MAX_PARTNERS = 12
 
 /** The Monday a week starts, in Melbourne, as YYYY-MM-DD. */
