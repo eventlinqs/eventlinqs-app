@@ -7,6 +7,7 @@ import {
 } from '@/lib/payments/sale-status'
 import { connectVerificationIsFresh } from './connect-verification-freshness'
 import { walkInHoursProblems, type GuideDay } from '@/lib/walk-in/guide'
+import { isLibraryPhoto } from '@/lib/media/library-photo'
 
 /**
  * Result of the publish-gate check.
@@ -52,6 +53,8 @@ export function hasRealCover(url: string | null | undefined): boolean {
   if (!url) return false
   if (typeof url !== 'string' || url.trim() === '') return false
   if (/^https:\/\/picsum\.photos\//i.test(url)) return false
+  // A library photograph is never a night's own cover (the PM's 18:38 of 29 October 2026; src/lib/media/library-photo.ts).
+  if (isLibraryPhoto(url)) return false
   return true
 }
 
