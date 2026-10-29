@@ -70,7 +70,7 @@ describe('the five dimensions, last week', () => {
   })
 
   it('business health: fee revenue, refunds completed, organisers who sold and how many had sold before', () => {
-    expect(f.health).toEqual({ feeRevenueCents: 300, refundedCents: 1000, organisersSold: 1, organisersSoldBefore: 1, marginCents: 208, marginUnrecorded: 0 })
+    expect(f.health).toEqual({ feeRevenueCents: 300, refundedCents: 1000, organisersSold: 1, organisersSoldBefore: 1, marginCents: 208, marginUnrecorded: 0, processingCents: 92 })
   })
 
   it('a week with no visitors gives no orders per 100 visitors rather than a zero', () => {
@@ -96,6 +96,6 @@ describe('the state scorecard', () => {
 
   it('leaves an order that does not record what was kept out of the margin, and counts it', () => {
     const unrecorded = { ...rows, orders: rows.orders.map((o) => ({ ...o, retainedCents: null })) }
-    expect(figuresFor(unrecorded, last).health).toMatchObject({ marginCents: 0, marginUnrecorded: 1 })
+    expect(figuresFor(unrecorded, last).health).toMatchObject({ marginCents: 0, marginUnrecorded: 1, processingCents: 0 })
   })
 })

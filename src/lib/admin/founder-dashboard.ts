@@ -6,7 +6,9 @@ import { readGrowthWeek } from '@/lib/growth/weekly'
 import { runAllChecks } from '@/lib/health/checks'
 import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
-import type { DashboardFigure, DashboardSection } from './founder-dashboard-math'
+import { CREDIT_DAYS } from '@/lib/social/results'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { economicsFigures, kitsSentAndUsed, type DashboardFigure, type DashboardSection } from './founder-dashboard-math'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
@@ -103,6 +105,26 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     }
   })
 
+  // Partner kits sent in the credit window, and the real taps on each kit's own link since (the blueprint's 4D).
+  const kits = await settle(async () => {
+    const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
+    const sent = await readEveryRow<{ id: string; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] }>('the partner kits sent', (from, to) =>
+      admin.from('social_pieces').select('id, share_link_id, social_piece_postings!inner(posted_at)').eq('kind', 'partner_kit').gte('social_piece_postings.posted_at', since).order('id', { ascending: true }).range(from, to),
+    )
+    const rows = sent.map((k) => {
+      const went = Array.isArray(k.social_piece_postings) ? k.social_piece_postings[0] : k.social_piece_postings
+      return { sentAt: went ? new Date(went.posted_at).toISOString() : null, linkId: k.share_link_id }
+    })
+    const linkIds = [...new Set(rows.map((k) => k.linkId).filter((v): v is string => v !== null))]
+    const taps =
+      linkIds.length === 0
+        ? []
+        : await readEveryRow<{ id: string; link_id: string; occurred_at: string }>("the taps on the kits' own links", (from, to) =>
+            admin.from('share_link_events').select('id, link_id, occurred_at').eq('kind', 'click').eq('is_test', false).in('link_id', linkIds).gte('occurred_at', since).order('id', { ascending: true }).range(from, to),
+          )
+    return kitsSentAndUsed(rows, taps.map((t) => ({ linkId: t.link_id, at: new Date(t.occurred_at).toISOString() })), now)
+  })
+
   const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
     supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
   const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
@@ -160,6 +182,16 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         fig('Pieces this week', m((v) => v.pieces), false, '/admin/social'),
         fig('Scheduled to post', m((v) => v.scheduled), false, '/admin/social'),
         fig('Partner kits this week', m((v) => v.kits), false, '/admin/social'),
+        fig(`Partner kits sent, ${CREDIT_DAYS} days`, kits.ok ? { value: kits.value.sent } : { value: null, note: kits.note }, false, '/admin/growth/social-report'),
+        fig(
+          'Of those, used',
+          kits.ok ? { value: kits.value.used } : { value: null, note: kits.note },
+          false,
+          '/admin/growth/social-report',
+          kits.ok && kits.value.withoutALink > 0
+            ? `its own link tapped at least once since it went; ${kits.value.withoutALink} sent without a link of its own cannot be judged`
+            : 'its own link tapped at least once since it went; a kit sent is not a kit used',
+        ),
       ],
       done: posted === null || posted === 0 ? [] : [`${count.format(posted)} ${posted === 1 ? 'piece' : 'pieces'} posted this week`],
     },
@@ -176,6 +208,14 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         fig('Claims verified, 7 days', claimsVerified, false, null),
         fig('New subscribers last week', g ? { value: g.engagement.subscribers } : { value: null }, false, '/admin/growth'),
       ],
+      done: [],
+    },
+    {
+      key: 'economics',
+      title: 'Economics',
+      figures: g
+        ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health })
+        : [fig('Gross ticket sales last week', { value: null, note: growth.ok ? undefined : growth.note }, false, '/admin/growth')],
       done: [],
     },
     {
