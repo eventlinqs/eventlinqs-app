@@ -1164,6 +1164,51 @@ export type Database = {
           },
         ]
       }
+      email_delivery_events: {
+        Row: {
+          address: string
+          bounce_subtype: string | null
+          bounce_type: string | null
+          detail: string | null
+          email_id: string | null
+          event_type: string
+          id: string
+          occurred_at: string
+          provider: string
+          provider_event_id: string
+          received_at: string
+          undeliverable: boolean
+        }
+        Insert: {
+          address: string
+          bounce_subtype?: string | null
+          bounce_type?: string | null
+          detail?: string | null
+          email_id?: string | null
+          event_type: string
+          id?: string
+          occurred_at: string
+          provider: string
+          provider_event_id: string
+          received_at?: string
+          undeliverable?: boolean
+        }
+        Update: {
+          address?: string
+          bounce_subtype?: string | null
+          bounce_type?: string | null
+          detail?: string | null
+          email_id?: string | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          provider?: string
+          provider_event_id?: string
+          received_at?: string
+          undeliverable?: boolean
+        }
+        Relationships: []
+      }
       email_subscribers: {
         Row: {
           confirmed: boolean
