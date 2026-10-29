@@ -1603,6 +1603,61 @@ export type Database = {
           },
         ]
       }
+      event_image_rights: {
+        Row: {
+          derived_at: string
+          event_id: string
+          image_role: string
+          image_url: string
+          provenance: string
+          rights_expire_at: string | null
+          rights_state: string
+          social_asset_id: string | null
+        }
+        Insert: {
+          derived_at?: string
+          event_id: string
+          image_role: string
+          image_url: string
+          provenance: string
+          rights_expire_at?: string | null
+          rights_state: string
+          social_asset_id?: string | null
+        }
+        Update: {
+          derived_at?: string
+          event_id?: string
+          image_role?: string
+          image_url?: string
+          provenance?: string
+          rights_expire_at?: string | null
+          rights_state?: string
+          social_asset_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_image_rights_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_image_rights_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_image_rights_social_asset_id_fkey"
+            columns: ["social_asset_id"]
+            isOneToOne: false
+            referencedRelation: "social_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminder_sends: {
         Row: {
           claimed_at: string
@@ -11101,6 +11156,10 @@ export type Database = {
         Args: { p_order_id: string; p_org_id: string }
         Returns: string
       }
+      derive_event_image_rights: {
+        Args: { p_event: string }
+        Returns: undefined
+      }
       directory_artists_ranked_by_draw: {
         Args: {
           p_available_only?: boolean
@@ -11173,6 +11232,15 @@ export type Database = {
       }
       event_booking_button: { Args: { p_event: string }; Returns: string }
       event_booking_provider_of: { Args: { p_url: string }; Returns: string }
+      event_image_right: {
+        Args: { p_at: string; p_event: string; p_org: string; p_url: string }
+        Returns: {
+          provenance: string
+          rights_expire_at: string
+          rights_state: string
+          social_asset_id: string
+        }[]
+      }
       event_lifecycle_guards: { Args: never; Returns: Json }
       event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
       event_money_record_counts_many: {
