@@ -183,7 +183,9 @@ async function drive() {
   check('the message names its report and is sent', row8.data?.state === 'sent', JSON.stringify(row8.data ?? row8.error))
   const again8 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
   check('message 8 is never drafted twice for one night', again8.afterNight.queued === 0 && again8.afterNight.held.length === 0, JSON.stringify(again8.afterNight))
-  const twice = await db.from('outreach_touches').insert({ contact_id: made.contact!, purpose: 'relationship', body: 'x', drafted_by: user, state: 'held', held_because: ['drive'], night_report_id: made.nightReport! })
+  // A second message for the same night, whole in every other way (the sent one's own words), so only the index can refuse it.
+  const sent8 = await db.from('outreach_touches').select('subject, body, template_id').eq('night_report_id', made.nightReport!).single()
+  const twice = await db.from('outreach_touches').insert({ contact_id: made.contact!, purpose: 'relationship', template_id: sent8.data?.template_id ?? null, subject: sent8.data?.subject ?? null, body: sent8.data?.body ?? '', drafted_by: user, state: 'held', held_because: ['drive: a second message for one night'], night_report_id: made.nightReport! })
   check('the database refuses a second live message for the same night', Boolean(twice.error) && /outreach_touches_one_per_night_report|duplicate/.test(twice.error?.message ?? ''), twice.error?.message ?? 'inserted')
 
   const stop = await handleInbox(
