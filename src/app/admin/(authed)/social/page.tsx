@@ -241,6 +241,11 @@ function Piece({ p }: { p: PieceRow }) {
           </li>
         ))}
       </ol>
+      {p.kind === 'discovery_reel' ? (
+        <a href={`/admin/social/piece/${p.id}/reel?download=1&v=${r.version}`} className={`${QUIET} mt-2`} data-press="reel-mp4">
+          Download the Reel (MP4)
+        </a>
+      ) : null}
       <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
         {(['instagram', 'facebook'] as const).map((platform) => (
           <form key={platform} action={editPieceAction} data-version={platform}>
