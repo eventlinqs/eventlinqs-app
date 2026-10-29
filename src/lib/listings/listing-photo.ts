@@ -55,9 +55,7 @@ export function cityWeekPhotoFor(citySlug: string, categorySlugs: Array<string |
 }
 
 /** A cover from EventLinqs' licensed library (the spine's own folder), not the organiser's or the host's. */
-export function isLibraryPhoto(url: string | null | undefined): boolean {
-  return typeof url === 'string' && url.includes('/storage/v1/object/public/event-images/stock/')
-}
+export { isLibraryPhoto } from '@/lib/media/library-photo'
 
 /** The line shown with a library photograph, so it is never read as the venue. */
 export const LIBRARY_PHOTO_CREDIT = 'Photo from the EventLinqs library, to give a feel for the night. It is not this venue.'

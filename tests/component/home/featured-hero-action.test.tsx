@@ -15,6 +15,8 @@ import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 
 afterEach(() => cleanup())
 
+const OWN_PHOTO = 'https://x.supabase.co/storage/v1/object/public/event-images/org/e1/cover.avif'
+
 const night = (over: Partial<BentoEvent>): BentoEvent =>
   ({
     id: 'e1',
@@ -24,7 +26,8 @@ const night = (over: Partial<BentoEvent>): BentoEvent =>
     timezone: 'Australia/Melbourne',
     venue_name: 'Aunty Jacks',
     venue_city: 'Ballarat',
-    cover_image_url: null,
+    // The night's own photograph: the hero leads only with one (no-library-photo-on-a-night).
+    cover_image_url: OWN_PHOTO,
     category: { name: 'Nightlife', slug: 'nightlife' },
     ...over,
   }) as BentoEvent
@@ -49,5 +52,30 @@ describe('the home hero button', () => {
   test('our own paid tickets still say "Get tickets"', async () => {
     const button = await heroButton(night({ entry_mode: null, is_free: false, ticket_tiers: [{ price: 2500, currency: 'AUD' }] }))
     expect(button.textContent).toBe('Get tickets')
+  })
+})
+
+/*
+ * THE HERO LEADS ONLY WITH A NIGHT'S OWN PHOTOGRAPH (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52
+ * directive: authorised photographs, else premium typography; contextual photography only for pieces that name no
+ * night). Production's hero led 'Bavarian Sunset Market' with an art-gallery library photograph. A night wearing a
+ * library photograph or our typographic cover is never a slide; with none of its own, the hero is the curated
+ * homepage hero, which names no night.
+ */
+describe('the home hero leads only with a night\u2019s own photograph', () => {
+  const LIBRARY = 'https://x.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-1440.avif'
+  const COMPOSED = 'https://x.supabase.co/storage/v1/object/public/event-images/generated-covers/e1.png'
+
+  test('a night on a library photograph or our typographic cover is never a hero slide', async () => {
+    for (const cover of [LIBRARY, COMPOSED, null]) {
+      cleanup()
+      render(await FeaturedHero({ events: [night({ title: 'Bavarian Sunset Market', cover_image_url: cover, entry_mode: 'walk_in', is_free: true })] }))
+      expect(screen.queryByText('Bavarian Sunset Market'), String(cover)).toBeNull()
+    }
+  })
+
+  test('a night with its own photograph leads', async () => {
+    render(await FeaturedHero({ events: [night({ title: 'Bavarian Sunset Market', cover_image_url: OWN_PHOTO, entry_mode: 'walk_in', is_free: true })] }))
+    expect(screen.getAllByText('Bavarian Sunset Market').length).toBeGreaterThan(0)
   })
 })
