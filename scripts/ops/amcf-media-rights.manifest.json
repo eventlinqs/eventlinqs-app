@@ -1,0 +1,82 @@
+{
+  "note": "The AMCF organiser's own photographs (the engine plan's directive of 28 October 2026, 19:52: AMCF IS THE REAL PILOT). One row each in social_assets, organiser authorised for the AMCF 2026 night only. Focal points set by window 3 from the pictures: the main subject's face or the dish.",
+  "eventSlug": "amcf-2026",
+  "rightsHolder": "AMCF (Fred Alale AM, chair)",
+  "sourceUrl": "mailto:chair@amcf.org.au",
+  "permissionEvidence": "Supplied by the organiser, Fred Alale AM (chair@amcf.org.au), after Lawal's outreach and approval, with a press release and promotional contacts: the Outlook thread \"AMCF 2026, could I ask your advice?\", 2, 23 and 26 October 2026 (Lawal holds the press release and forwards it to hello@eventlinqs.com if it is not in the thread).",
+  "evidenceFile": "Outlook thread \"AMCF 2026, could I ask your advice?\" (2, 23 and 26 October 2026), Lawal's mailbox",
+  "attribution": "AMCF, past festival",
+  "archival": true,
+  "scope": "both",
+  "receivedOn": "2026-10-21",
+  "receivedNote": "The files were saved to C:\\dev\\design\\amcf-21oct\\photos at 11:35 on 21 October 2026; the day the organiser sent them is in the thread.",
+  "permittedUses": "Listing and social promotion of AMCF 2026 on EventLinqs. Not assumed to cover future AMCF events or paid advertising: the ongoing yes is asked for in the normal way.",
+  "restrictions": "AMCF 2026 only. No paid advertising. People, performances and event details are never altered; crops and scaling only.",
+  "expiresAt": "2026-11-23T00:00:00+11:00",
+  "expiresNote": "The permitted use is the promotion of AMCF 2026, which ends with the festival on Sunday 22 November; a later use is asked for.",
+  "storagePrefix": "social/amcf-2026",
+  "photos": [
+    {
+      "file": "amcf-hero.jpg",
+      "focal": [
+        0.43,
+        0.32
+      ],
+      "subject": "a festival goer in sunglasses dancing, two others beside her",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997332580-534762ba.jpg"
+    },
+    {
+      "file": "amcf-drummer.jpg",
+      "focal": [
+        0.5,
+        0.33
+      ],
+      "subject": "a drummer singing at the congas",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333745-461a7f89.jpg"
+    },
+    {
+      "file": "amcf-family-drums.jpg",
+      "focal": [
+        0.5,
+        0.35
+      ],
+      "subject": "a family at the djembe workshop",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333306-8bd75faa.jpg"
+    },
+    {
+      "file": "amcf-dancing.jpg",
+      "focal": [
+        0.43,
+        0.35
+      ],
+      "subject": "two dancers in the square"
+    },
+    {
+      "file": "amcf-fashion.jpg",
+      "focal": [
+        0.48,
+        0.45
+      ],
+      "subject": "six models in the fashion parade",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997334097-a2decd0b.jpg"
+    },
+    {
+      "file": "amcf-crowd.jpg",
+      "focal": [
+        0.58,
+        0.4
+      ],
+      "subject": "the crowd, a child on a man's shoulders"
+    },
+    {
+      "file": "amcf-food.jpg",
+      "focal": [
+        0.5,
+        0.55
+      ],
+      "subject": "a plate of grilled meat and salad",
+      "production": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/3b753251-8986-4ac4-8a0e-db2e5cbf9998/5d664060-a175-4b07-9c07-5e3c4a934c69/1792997333023-a25930a3.jpg"
+    }
+  ],
+  "productionNote": "On production the AMCF event page already stores five of the seven (the same 1100 x 733 copies, matched to these files by picture on 28 October 2026); the crowd and dancing photographs are not on production, so they get no production row."
+}

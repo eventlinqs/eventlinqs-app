@@ -28,6 +28,7 @@ import { pruneJsonLd } from '@/lib/seo/structured-data'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import { isExternallyTicketed } from '@/lib/payments/sale-status'
 import { alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
+import { shownOrganiser } from '@/lib/listings/shown-organiser'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -453,11 +454,18 @@ export function buildEventSchemaPayload({
       (event.description
         ? stripMarkdown(event.description.replace(/<[^>]*>/g, '')).slice(0, 500)
         : undefined),
-    organizer: {
-      '@type': 'Organization',
-      name: organisation.name,
-      ...(organisation.slug ? { url: `${baseUrl}/organisers/${organisation.slug}` } : {}),
-    },
+    // Asked here, not left to each caller: the event page handed the raw
+    // organisation, so listings described "EventLinqs listings" with a url to a
+    // 404 (car 2's read back on production, 29 October 2026). An answer
+    // shownOrganiser already gave (the walk-in page's) passes through unchanged.
+    organizer: (() => {
+      const shown = shownOrganiser(event, organisation)
+      return {
+        '@type': 'Organization',
+        name: shown.name,
+        ...(shown.slug ? { url: `${baseUrl}/organisers/${shown.slug}` } : {}),
+      }
+    })(),
     // One node per performer, in billing order, each linking to its own artist
     // profile so the entity is resolvable rather than a bare string. Omitted
     // entirely when the lineup is empty: an empty array is a claim that nobody

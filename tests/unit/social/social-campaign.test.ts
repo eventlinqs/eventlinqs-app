@@ -106,6 +106,14 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(o).toMatchObject({ audience: 'organisers', objective: 'organiser_growth', link: `${ORIGIN}/for-organisers`, eventIds: [] })
   })
 
+  it('the organiser campaign promises only what the planner does: a kit when a night is featured, never every week', () => {
+    const [o] = of(pieces, 'organiser_campaign')
+    expect(o.caption).not.toMatch(/each week we send|every week we send/i)
+    expect(o.caption).toContain('When we feature your night, we send you a post of your own to share')
+    /* And the planner does send it: every host featured this week has its own kit. */
+    expect(of(pieces, 'partner_kit').length).toBeGreaterThan(0)
+  })
+
   it("a partner kit for every host featured, with no message drafted until the project manager's text lands (Lawal, 14:59)", () => {
     const kits = of(pieces, 'partner_kit')
     expect(kits.map((k) => k.partnerName).sort()).toEqual(['Costa Hall', 'Geelong City Market', 'Sailors Rest', 'The Barwon Club'])
@@ -122,6 +130,14 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
 
   it('every piece is whole: audience, objective, purpose, call to action, outcome, a real link (C1, C2, J10)', () => {
     for (const p of pieces) expect(pieceRefusal(p), `${p.kind} ${p.city}`).toBeNull()
+  })
+
+  it('a piece missing its one audience, its one purpose or its one next step is refused (C2)', () => {
+    const whole = pieces[0]
+    expect(pieceRefusal({ ...whole, audience: undefined as never })).toMatch(/one audience/)
+    expect(pieceRefusal({ ...whole, audience: 'everyone' as never })).toMatch(/one audience/)
+    expect(pieceRefusal({ ...whole, purpose: ' ' })).toMatch(/one purpose/)
+    expect(pieceRefusal({ ...whole, nextStep: '' })).toMatch(/one call to action/)
   })
 
   it('a photograph only with an approved rights row; otherwise the slide is typographic (J1 to J4)', () => {

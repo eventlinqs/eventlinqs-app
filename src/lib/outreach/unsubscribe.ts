@@ -46,6 +46,7 @@
  */
 
 import { escapeHtml } from '@/lib/email/escape'
+import { UNSUBSCRIBE_TOKEN_SHAPE } from '@/lib/consent/token'
 
 /**
  * The reasons offered on the page, in the order shown. `value` is what the
@@ -90,6 +91,12 @@ const EMAIL_MAX = 254
 
 export type OutreachUnsubscribeRecord = {
   hubspotContactId: string | null
+  /**
+   * The organiser contact's own unsubscribe token (organiser_contacts.unsubscribe_token, migration
+   * 20261028221001), carried by the links in the CRM's emails. When present the address is the contact's own and is
+   * never asked for.
+   */
+  contactToken?: string | null
   email: string | null
   reason: OutreachUnsubscribeReason | null
   comment: string | null
@@ -104,6 +111,7 @@ export type ParsedOutreachUnsubscribe =
 /** What a form submission carries, before anything is trusted. */
 export type OutreachUnsubscribeSubmission = {
   id?: unknown
+  token?: unknown
   email?: unknown
   reason?: unknown
   comment?: unknown
@@ -121,9 +129,11 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
 export function parseOutreachUnsubscribe(input: OutreachUnsubscribeSubmission): ParsedOutreachUnsubscribe {
   const rawId = text(input.id).trim()
   const hubspotContactId = isHubspotContactId(rawId) ? rawId : null
+  const rawToken = text(input.token).trim().toLowerCase()
+  const contactToken = UNSUBSCRIBE_TOKEN_SHAPE.test(rawToken) ? rawToken : null
 
   let email: string | null = null
-  if (hubspotContactId === null) {
+  if (hubspotContactId === null && contactToken === null) {
     const candidate = normaliseOutreachEmail(text(input.email))
     if (!EMAIL_SHAPE.test(candidate) || candidate.length > EMAIL_MAX) {
       return {
@@ -164,7 +174,8 @@ export function parseOutreachUnsubscribe(input: OutreachUnsubscribeSubmission): 
   }
   const comment = rawComment === '' ? null : rawComment
 
-  return { ok: true, value: { hubspotContactId, email, reason, comment } }
+  // contactToken appears only when the link carried one, so the HubSpot and address paths read exactly as before.
+  return { ok: true, value: { hubspotContactId, ...(contactToken ? { contactToken } : {}), email, reason, comment } }
 }
 
 /** The label shown on the page for a stored reason. */

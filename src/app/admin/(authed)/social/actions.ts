@@ -21,8 +21,12 @@ import {
   recordPosting,
   regeneratePiece,
   rejectPiece,
+  replaceAsset,
+  withdrawAsset,
   writeDraft,
 } from '@/lib/social/store'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * THE PRESSES ON /admin/social (item 11, the social engine; docs/SOCIAL-ENGINE.md): plan the week, change a post's
@@ -207,13 +211,37 @@ const AssetSchema = z.object({
   archival: z.enum(['yes']).optional(),
   expiresAt: z.string().max(40).optional(),
   restrictions: z.string().max(1000).optional(),
+  originalFile: z.string().min(2).max(500).optional(),
+  receivedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  permittedUses: z.string().min(5).max(1000).optional(),
+  focalX: z.coerce.number().min(0).max(100).optional(),
+  focalY: z.coerce.number().min(0).max(100).optional(),
+  leadRank: z.coerce.number().int().min(1).max(99).optional(),
 })
+
+/** A photograph's own pixel size, read from the stored file so nobody types it (Law 10); null when it cannot be read. */
+async function pixelSize(url: string): Promise<{ width: number; height: number } | null> {
+  const fetched = await fetchImageBytes(url)
+  if (!fetched) return null
+  try {
+    const { default: sharp } = await import('sharp')
+    const meta = await sharp(Buffer.from(fetched.bytes)).metadata()
+    const width = meta.autoOrient?.width ?? meta.width
+    const height = meta.autoOrient?.height ?? meta.height
+    return width && height ? { width, height } : null
+  } catch (error) {
+    captureException(error, { where: 'admin/social/actions:pixelSize' })
+    return null
+  }
+}
 
 export async function addAssetAction(formData: FormData): Promise<void> {
   const session = await staff()
   const parsed = AssetSchema.safeParse(Object.fromEntries([...formData.entries()].filter(([, v]) => v !== '')))
   if (!parsed.success) back('The asset needs its state, type, address, source, rights holder, credit and scope.')
   const a = parsed.data as z.infer<typeof AssetSchema>
+  if ((a.focalX === undefined) !== (a.focalY === undefined)) back('Give the subject both across and down, or neither.')
+  const size = a.assetType === 'photo' || a.assetType === 'artwork' ? await pixelSize(a.assetUrl) : null
   const done = await addAsset(createAdminClient(), {
     assetState: a.assetState,
     assetType: a.assetType,
@@ -228,6 +256,13 @@ export async function addAssetAction(formData: FormData): Promise<void> {
     archival: a.archival === 'yes',
     expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString() : null,
     restrictions: a.restrictions ?? null,
+    originalFile: a.originalFile ?? null,
+    receivedOn: a.receivedOn ?? null,
+    permittedUses: a.permittedUses ?? null,
+    focal: a.focalX !== undefined && a.focalY !== undefined ? { x: a.focalX / 100, y: a.focalY / 100 } : null,
+    sourceWidth: size?.width ?? null,
+    sourceHeight: size?.height ?? null,
+    leadRank: a.leadRank ?? null,
     by: session.userId,
   })
   if (done.state === 'refused') back(done.reason)
@@ -237,6 +272,30 @@ export async function addAssetAction(formData: FormData): Promise<void> {
 }
 
 const DecideSchema = z.object({ asset: z.string().uuid(), decision: z.enum(['approved', 'refused']) })
+
+const WithdrawSchema = z.object({
+  asset: z.string().uuid(),
+  reason: z.string().min(3).max(500),
+  replacement: z.string().uuid().optional(),
+})
+
+/**
+ * The rights holder withdraws an image, or replaces it with another of the same night (part D). It is never used again,
+ * and within the hour every piece that has not gone and carries it is drawn again in type (the image sweep).
+ */
+export async function withdrawAssetAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = WithdrawSchema.safeParse(Object.fromEntries([...formData.entries()].filter(([, v]) => v !== '')))
+  if (!parsed.success) back('Say why it is withdrawn, in a few words.')
+  const { asset, reason, replacement } = parsed.data as z.infer<typeof WithdrawSchema>
+  const db = createAdminClient()
+  const now = new Date()
+  const done = replacement ? await replaceAsset(db, { id: asset, replacementId: replacement, reason, now }) : await withdrawAsset(db, { id: asset, reason, now })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: replacement ? 'admin.social.asset.replaced' : 'admin.social.asset.withdrawn', targetType: 'social_asset', targetId: asset, session, metadata: { reason } })
+  revalidatePath('/admin/social')
+  back('Withdrawn. It is used for nothing from now, and any piece not yet gone that carries it is drawn again in type within the hour.')
+}
 
 export async function decideAssetAction(formData: FormData): Promise<void> {
   const session = await staff()

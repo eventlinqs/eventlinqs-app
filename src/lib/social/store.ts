@@ -6,13 +6,14 @@ import { readBookingLinks } from '@/lib/events/booking-links-read'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
-import { creativeRefusals, hostOf, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { visualFaults } from '@/lib/broadcast/campaign-slides'
+import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -382,33 +383,68 @@ export async function lastPosted(db: Db, platform: SocialPlatform, format: Socia
 
 /* ------------------------------------------------------------------ K2: which image a night may carry */
 
+/** A usable image as the register holds it: its address, its credit, the focal point a person set, its pixel size. */
+export type UsableImage = { url: string; credit: string; assetId: string; focal: { x: number; y: number } | null; width: number | null; height: number | null }
+
+function usableOf(r: Record<string, unknown>): UsableImage {
+  const fx = r.focal_x as number | string | null
+  const fy = r.focal_y as number | string | null
+  return {
+    url: r.asset_url as string,
+    credit: r.attribution_text as string,
+    assetId: r.asset_id as string,
+    focal: fx === null || fy === null ? null : { x: Number(fx), y: Number(fy) },
+    width: (r.source_width as number | null) ?? null,
+    height: (r.source_height as number | null) ?? null,
+  }
+}
+
 /**
- * The image a post may carry for each night now (K2, K3): an approved, unexpired asset that is organiser authorised or
- * separately licensed and in scope for social; never a library photograph. With none, the night is shown in original
- * EventLinqs design (path B), which needs no image licence (K1).
+ * The newest image each night may carry on social now (J1 to J4, K2, K3, and the photography-led rule of 28 October):
+ * its organiser's own, authorised for that night or under their logged yes for current and future events, approved,
+ * in scope, unexpired and never withdrawn or replaced. The rule is the database's (social_usable_images, migration
+ * 20261028205501), asked here and never restated, so the planner, the slide route and the sweep cannot disagree with
+ * the approval and posting triggers. No row means the night is drawn in type (treatment B), which needs no licence (K1).
  */
-export async function usableImages(db: Db, eventIds: readonly string[], now: Date): Promise<Map<string, { url: string; credit: string }>> {
-  const usable = new Map<string, { url: string; credit: string }>()
+export async function usableImages(db: Db, eventIds: readonly string[], now: Date): Promise<Map<string, UsableImage>> {
+  const usable = new Map<string, UsableImage>()
   if (eventIds.length === 0) return usable
-  const { data, error } = await db
-    .from('social_assets')
-    .select('event_id, asset_url, attribution_text, expires_at, approved_at')
-    .in('event_id', [...eventIds])
-    .in('asset_state', ['organiser_authorised', 'separately_licensed'])
-    .in('asset_type', ['photo', 'artwork'])
-    .eq('approval_status', 'approved')
-    .in('scope', ['social', 'both'])
-    .order('approved_at', { ascending: false })
-    .limit(2000)
+  const { data, error } = await db.rpc('social_usable_images', { p_events: [...new Set(eventIds)], p_at: now.toISOString() })
   if (error) throw new Error(`the asset register could not be read: ${error.message}`)
-  for (const a of data ?? []) {
-    const expires = a.expires_at as string | null
-    if (expires !== null && Date.parse(expires) <= now.getTime()) continue
-    const url = a.asset_url as string
-    if (isLibraryPhoto(url) || usable.has(a.event_id as string)) continue
-    usable.set(a.event_id as string, { url, credit: a.attribution_text as string })
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    if (isLibraryPhoto(r.asset_url as string)) continue
+    usable.set(r.event_id as string, usableOf(r))
   }
   return usable
+}
+
+/** The newest photograph licensed for EventLinqs' own promotion and tied to no night, for a brand piece; else none. */
+export async function brandImage(db: Db, now: Date): Promise<UsableImage | null> {
+  const { data, error } = await db.rpc('social_brand_images', { p_at: now.toISOString() })
+  if (error) throw new Error(`the brand photographs could not be read: ${error.message}`)
+  const first = ((data ?? []) as Record<string, unknown>[])[0]
+  return first ? usableOf(first) : null
+}
+
+/**
+ * Each slide's photograph as it may be drawn NOW: the register's own row (with its focal point and size) where the
+ * image is still usable for that slide's night, or for a brand slide for no night; null where it has gone, so the slide
+ * is drawn in type rather than with an image whose permission was withdrawn after it was planned.
+ */
+export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date): Promise<Map<number, UsableImage | null>> {
+  const out = new Map<number, UsableImage | null>()
+  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story') && sl.photo ? [sl.eventId] : []))
+  const byNight = await usableImages(db, nights, now)
+  const brand = slides.some((sl) => sl.t === 'brand' && sl.photo) ? await brandImage(db, now) : null
+  slides.forEach((sl, i) => {
+    if ((sl.t === 'night' || sl.t === 'story') && sl.photo) {
+      const u = byNight.get(sl.eventId)
+      out.set(i, u && u.url === sl.photo ? u : null)
+    } else if (sl.t === 'brand' && sl.photo) {
+      out.set(i, brand && brand.url === sl.photo ? brand : null)
+    }
+  })
+  return out
 }
 
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
@@ -448,7 +484,7 @@ type Revision = {
   caption: string
   versions: PiecePlan['versions']
   message: string | null
-  madeBy: 'planner' | 'edit' | 'regenerate'
+  madeBy: 'planner' | 'edit' | 'regenerate' | 'sweep'
   madeAt: string
 }
 
@@ -489,7 +525,7 @@ export async function pieceDependencies(
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
-  const { data: piece, error } = await db.from('social_pieces').select('kind, link').eq('id', pieceId).maybeSingle()
+  const { data: piece, error } = await db.from('social_pieces').select('kind, link, format').eq('id', pieceId).maybeSingle()
   if (error || !piece) return [`The piece could not be read${error ? `: ${error.message}` : ''}.`]
   const rev = await newestRevision(db, pieceId)
   if (rev === null) return ['The piece has no version to approve.']
@@ -523,7 +559,41 @@ export async function pieceDependencies(
       const { data: ok } = await db.rpc('social_asset_usable', { p_url: slide.photo, p_event: id, p_at: now.toISOString() })
       if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
     }
+    /* The treatment's words, as the night holds them now (J15 and the directive's section 12). */
+    if (slide.words) {
+      const fresh = nightWords({
+        eventId: id,
+        slug: String(e.slug),
+        title: String(e.title),
+        startDate: String(e.start_date),
+        endDate: (e.end_date as string | null) ?? null,
+        timezone: (e.timezone as string | null) ?? null,
+        citySlug: '',
+        cityName: slide.words.city,
+        venueName: (e.venue_name as string | null) ?? null,
+        host: null,
+        categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
+        summary: null,
+        approvedPhotoUrl: null,
+        photoCredit: null,
+        cta,
+        priceLine: (await admissionOf(e, now)).priceLine,
+      })
+      for (const k of ['date', 'time', 'entry', 'action', 'eyebrow'] as const) {
+        if ((fresh[k] ?? null) !== (slide.words[k] ?? null)) issues.push(`${name}: the slide says "${slide.words[k] ?? 'nothing'}" where the night now says "${fresh[k] ?? 'nothing'}".`)
+      }
+    }
   }
+
+  /* A brand slide's photograph: licensed for EventLinqs' own promotion and tied to no night, still usable now. */
+  for (const sl of rev.slides) {
+    if (sl.t !== 'brand' || !sl.photo) continue
+    const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: null, p_at: now.toISOString() })
+    if (ok !== true) issues.push("The brand photograph has no approved, current licence for EventLinqs' own promotion.")
+  }
+
+  /* The directive's section 7: every slide, at every format it is made for, fits, reads and holds its contrast. */
+  issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
 
   /* K10: the creative checks, each platform's words and each slide's place as its night holds it. */
   issues.push(...creativeRefusals(rev, new Map([...byId.values()].map((e) => [e.id as string, { venueName: (e.venue_name as string | null) ?? null, title: String(e.title) }]))))
@@ -575,6 +645,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       slug: e.slug as string,
       title: e.title as string,
       startDate: e.start_date as string,
+      endDate: (e.end_date as string | null) ?? null,
       timezone: (e.timezone as string | null) ?? null,
       citySlug: city.slug,
       cityName: city.name,
@@ -605,7 +676,8 @@ async function excludedFor(db: Db, campaignId: string): Promise<Set<string>> {
 async function planNow(db: Db, campaignId: string, weekStart: string, now: Date): Promise<ReturnType<typeof planCampaign>> {
   const cities = await readCampaignCities(db)
   const nights = await readCampaignNights(db, cities, weekStart, now)
-  return planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded: await excludedFor(db, campaignId) })
+  const brand = await brandImage(db, now)
+  return planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded: await excludedFor(db, campaignId), brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */
@@ -729,6 +801,8 @@ export type PieceRow = {
   decisions: { revision: number; decision: string; reason: string; at: string }[]
   state: PieceState
   postUrl: string | null
+  /** B5: its moment on each network once approved, and whether it went or was held. */
+  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]
 }
 
 /** The week's campaign as /admin/social shows it: each piece's newest revision, its history and its state (K7). */
@@ -743,7 +817,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     .order('planned_at', { ascending: true })
     .limit(500)
   if (error) throw new Error(`the week's pieces could not be read: ${error.message}`)
-  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'venue_spotlight', 'organiser_campaign', 'partner_kit']
+  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'venue_spotlight', 'organiser_campaign', 'brand_campaign', 'partner_kit']
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
     const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)
@@ -774,9 +848,12 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
       decisions,
       state,
       postUrl,
+      schedule: [],
     })
   }
   pieces.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind) || a.city.localeCompare(b.city))
+  const schedules = await readSchedules(db, pieces.map((x) => x.id))
+  for (const x of pieces) x.schedule = schedules.get(x.id) ?? []
   return { weekStart, campaignId, pieces, excluded: [...(await excludedFor(db, campaignId))] }
 }
 
@@ -890,6 +967,16 @@ export type AssetInput = {
   readonly archival: boolean
   readonly expiresAt: string | null
   readonly restrictions: string | null
+  /** The media-rights record (the directive's section 8): the file as supplied, the day it came, what it may be used for. */
+  readonly originalFile: string | null
+  readonly receivedOn: string | null
+  readonly permittedUses: string | null
+  /** Where the subject is, 0 to 1 across and down, so every format's crop keeps it; none means the busiest region. */
+  readonly focal: { readonly x: number; readonly y: number } | null
+  readonly sourceWidth: number | null
+  readonly sourceHeight: number | null
+  /** Which of the night's photographs leads, 1 first (the directive: the strongest photograph is the hero). */
+  readonly leadRank: number | null
 }
 
 export type AssetRow = {
@@ -907,6 +994,14 @@ export type AssetRow = {
   expiresAt: string | null
   restrictions: string | null
   approvalStatus: 'pending' | 'approved' | 'refused'
+  eventId: string | null
+  originalFile: string | null
+  receivedOn: string | null
+  permittedUses: string | null
+  withdrawalStatus: 'current' | 'withdrawn' | 'replaced'
+  withdrawalReason: string | null
+  focal: { x: number; y: number } | null
+  size: { width: number; height: number } | null
 }
 
 /** The event an asset belongs to, by its address. */
@@ -937,11 +1032,19 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     archival: input.archival,
     expires_at: input.expiresAt,
     restrictions: input.restrictions,
+    original_file: input.originalFile,
+    received_on: input.receivedOn,
+    permitted_uses: input.permittedUses,
+    focal_x: input.focal?.x ?? null,
+    focal_y: input.focal?.y ?? null,
+    source_width: input.sourceWidth,
+    source_height: input.sourceHeight,
+    lead_rank: input.leadRank,
     created_by: input.by,
   })
   if (error) {
     if (error.code === '23505') return { state: 'refused', reason: 'This asset is in the register for that night already.' }
-    if (error.code === '23514') return { state: 'refused', reason: 'Every field is needed, the addresses must be https, someone else\'s work needs their permission in their words, and an archival photograph says so in its credit.' }
+    if (error.code === '23514') return { state: 'refused', reason: 'Every field is needed, the addresses must be https, someone else\'s work needs their permission in their words, the original file, the day it came and what it may be used for, and an archival photograph says so in its credit.' }
     return { state: 'refused', reason: refusalOf(error.message) ?? error.message }
   }
   return { state: 'done' }
@@ -960,10 +1063,115 @@ export async function decideAsset(db: Db, input: { readonly id: string; readonly
   return { state: 'done' }
 }
 
+/**
+ * The rights holder withdraws an asset (part D): it is never usable again, and the hourly sweep regenerates every piece
+ * that has not gone and carries it, in type. Final: a withdrawn asset is never put back (the database refuses).
+ */
+export async function withdrawAsset(db: Db, input: { readonly id: string; readonly reason: string; readonly now: Date }): Promise<Done> {
+  const { data, error } = await db
+    .from('social_assets')
+    .update({ withdrawal_status: 'withdrawn', withdrawal_reason: input.reason, withdrawn_at: input.now.toISOString() })
+    .eq('id', input.id)
+    .eq('withdrawal_status', 'current')
+    .select('id')
+  if (error) return { state: 'refused', reason: refusalOf(error.message) ?? error.message }
+  if ((data ?? []).length === 0) return { state: 'refused', reason: 'That asset is withdrawn or replaced already, or does not exist.' }
+  return { state: 'done' }
+}
+
+/** The rights holder replaces an asset with another current one of the same night: the old is never usable again. */
+export async function replaceAsset(db: Db, input: { readonly id: string; readonly replacementId: string; readonly reason: string; readonly now: Date }): Promise<Done> {
+  const { data, error } = await db
+    .from('social_assets')
+    .update({ withdrawal_status: 'replaced', withdrawal_reason: input.reason, replaced_by: input.replacementId, withdrawn_at: input.now.toISOString() })
+    .eq('id', input.id)
+    .eq('withdrawal_status', 'current')
+    .select('id')
+  if (error) return { state: 'refused', reason: refusalOf(error.message) ?? error.message }
+  if ((data ?? []).length === 0) return { state: 'refused', reason: 'That asset is withdrawn or replaced already, or does not exist.' }
+  return { state: 'done' }
+}
+
+export type Swept = { readonly checked: number; readonly regenerated: readonly { readonly pieceId: string; readonly version: number; readonly removed: number }[]; readonly failed: readonly string[] }
+
+/** A caption with the credit lines of removed photographs taken out (a credit another slide still carries stays). */
+export function withoutCredits(text: string, removed: ReadonlySet<string>, kept: ReadonlySet<string>): string {
+  return text
+    .split('\n')
+    .filter((line) => !(line.startsWith('Photo: ') && removed.has(line.slice(7)) && !kept.has(line.slice(7))))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/**
+ * THE HOURLY SWEEP (part D: "withdrawal pulls images from every unposted post within the hour"). Every piece that has
+ * not gone, whose newest version carries an image no longer usable for its slide (withdrawn, replaced, expired or
+ * refused since it was planned), gets a new version with those images taken out and the slides drawn in type, and a
+ * decision saying so written by no person. Its earlier approval is then of an older version, so it can never post
+ * (the posting trigger refuses that, and re-checks the images itself). A piece that has gone is never touched.
+ * Idempotent: a second run finds nothing to take out.
+ */
+export async function sweepWithdrawnImages(db: Db, now: Date): Promise<Swept> {
+  const { data: gone, error: gerr } = await db.from('social_piece_postings').select('piece_id').limit(5000)
+  if (gerr) throw new Error(`the postings could not be read: ${gerr.message}`)
+  const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
+  const { data: revs, error: rerr } = await db
+    .from('social_piece_revisions')
+    .select(`piece_id, ${REVISION_COLUMNS}`)
+    .order('version', { ascending: false })
+    .limit(5000)
+  if (rerr) throw new Error(`the pieces could not be read: ${rerr.message}`)
+  const newest = new Map<string, Revision>()
+  for (const r of (revs ?? []) as Record<string, unknown>[]) {
+    const id = r.piece_id as string
+    if (!posted.has(id) && !newest.has(id)) newest.set(id, revisionOf(r))
+  }
+  const regenerated: { pieceId: string; version: number; removed: number }[] = []
+  const failed: string[] = []
+  let checked = 0
+  for (const [pieceId, rev] of newest) {
+    if (!rev.slides.some((sl) => 'photo' in sl && sl.photo)) continue
+    checked += 1
+    const images = await slideImagesNow(db, rev.slides, now)
+    const goneAt = [...images.entries()].filter(([, u]) => u === null).map(([i]) => i)
+    if (goneAt.length === 0) continue
+    const removed = new Set(goneAt.map((i) => (rev.slides[i] as { credit: string | null }).credit).filter((c): c is string => Boolean(c)))
+    const slides = rev.slides.map((sl, i) => (goneAt.includes(i) ? ({ ...sl, photo: null, credit: null } as Slide) : sl))
+    const kept = new Set(slides.map((sl) => ('credit' in sl ? sl.credit : null)).filter((c): c is string => Boolean(c)))
+    const versions = {
+      instagram: { ...rev.versions.instagram, caption: withoutCredits(rev.versions.instagram.caption, removed, kept) },
+      facebook: { ...rev.versions.facebook, caption: withoutCredits(rev.versions.facebook.caption, removed, kept) },
+    }
+    const stillPhoto = slides.some((sl) => 'photo' in sl && sl.photo)
+    const mode: PiecePlan['mode'] = stillPhoto ? 'photo_led' : rev.slides.some((sl) => sl.t === 'brand' || sl.t === 'offer') ? 'graphic_led' : 'type_led'
+    const plan = { eventIds: rev.eventIds, picks: rev.picks, mode, slides, caption: withoutCredits(rev.caption, removed, kept), versions } as PiecePlan
+    const version = rev.version + 1
+    const { error } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, version, plan, rev.message, 'sweep', null, now))
+    if (error) {
+      /* Another sweep wrote this version first: the database kept one, which is the rule. */
+      if (error.code !== '23505') failed.push(`${pieceId}: ${refusalOf(error.message) ?? error.message}`)
+      continue
+    }
+    const one = goneAt.length === 1
+    const { error: derr } = await db.from('social_piece_decisions').insert({
+      piece_id: pieceId,
+      revision: version,
+      decision: 'image_withdrawn',
+      reason: `The sweep: ${goneAt.length} image${one ? ' was' : 's were'} withdrawn, replaced or expired since this piece was planned, so ${one ? 'that slide is' : 'those slides are'} drawn in type. Approve this version again.`,
+      decided_by: null,
+      decided_at: now.toISOString(),
+    })
+    if (derr) failed.push(`${pieceId}: its decision was not kept: ${refusalOf(derr.message) ?? derr.message}`)
+    regenerated.push({ pieceId, version, removed: goneAt.length })
+  }
+  return { checked, regenerated, failed }
+}
+
 export async function readAssets(db: Db): Promise<AssetRow[]> {
   const { data, error } = await db
     .from('social_assets')
-    .select('id, asset_state, asset_type, asset_url, source_url, rights_holder, permission_evidence, attribution_text, scope, archival, expires_at, restrictions, approval_status, events(title)')
+    .select('id, asset_state, asset_type, asset_url, source_url, rights_holder, permission_evidence, attribution_text, scope, archival, expires_at, restrictions, approval_status, event_id, original_file, received_on, permitted_uses, withdrawal_status, withdrawal_reason, focal_x, focal_y, source_width, source_height, events(title)')
     .order('created_at', { ascending: false })
     .limit(300)
   if (error) throw new Error(`the asset register could not be read: ${error.message}`)
@@ -982,6 +1190,14 @@ export async function readAssets(db: Db): Promise<AssetRow[]> {
     expiresAt: (r.expires_at as string | null) ?? null,
     restrictions: (r.restrictions as string | null) ?? null,
     approvalStatus: r.approval_status as AssetRow['approvalStatus'],
+    eventId: (r.event_id as string | null) ?? null,
+    originalFile: (r.original_file as string | null) ?? null,
+    receivedOn: (r.received_on as string | null) ?? null,
+    permittedUses: (r.permitted_uses as string | null) ?? null,
+    withdrawalStatus: r.withdrawal_status as AssetRow['withdrawalStatus'],
+    withdrawalReason: (r.withdrawal_reason as string | null) ?? null,
+    focal: r.focal_x === null || r.focal_y === null ? null : { x: Number(r.focal_x), y: Number(r.focal_y) },
+    size: r.source_width && r.source_height ? { width: Number(r.source_width), height: Number(r.source_height) } : null,
   }))
 }
 
@@ -992,4 +1208,128 @@ export async function readImageRequests(db: Db, now: Date): Promise<{ eventTitle
   const { data, error } = await db.from('social_image_requests').select('host_name, message, events(title)').eq('campaign_id', campaignId).order('drafted_at').limit(200)
   if (error) throw new Error(`the image requests could not be read: ${error.message}`)
   return (data ?? []).map((r) => ({ eventTitle: (r.events as unknown as { title: string } | null)?.title ?? '', hostName: r.host_name as string, message: (r.message as string | null) ?? null }))
+}
+
+/* ------------------------------------------------------------------ B5: approved pieces schedule themselves */
+
+/** The last moment anything of this format went on the account: an item 11 post or a campaign piece. */
+async function lastGone(db: Db, format: SocialFormat): Promise<Date | null> {
+  const post = await lastPosted(db, 'instagram', format)
+  const { data } = await db.from('social_piece_postings').select('posted_at, social_pieces!inner(format)').eq('social_pieces.format', format).order('posted_at', { ascending: false }).limit(1)
+  const piece = (data ?? [])[0]?.posted_at as string | undefined
+  const times = [post?.getTime() ?? null, piece ? Date.parse(piece) : null].filter((t): t is number => t !== null)
+  return times.length === 0 ? null : new Date(Math.max(...times))
+}
+
+export type Scheduled = { readonly scheduled: readonly { readonly pieceId: string; readonly goAt: string }[]; readonly held: readonly string[] }
+
+/**
+ * B5: every piece whose NEWEST revision a person approved, not gone and not yet given its moment for that approval,
+ * gets one on Instagram and Facebook at the cadence's next slot. Writes schedules only; publishes nothing (F9). A
+ * second run finds them scheduled already (the database keeps one per piece, network and approval).
+ */
+export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Scheduled> {
+  const { data: approvals, error } = await db.from('social_piece_approvals').select('id, piece_id, revision, approved_at').order('approved_at', { ascending: true }).limit(2000)
+  if (error) throw new Error(`the approvals could not be read: ${error.message}`)
+  const { data: gone } = await db.from('social_piece_postings').select('piece_id').limit(5000)
+  const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
+  const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
+  const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
+  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date }[] = []
+  for (const a of approvals ?? []) {
+    const pieceId = a.piece_id as string
+    if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
+    const rev = await newestRevision(db, pieceId)
+    if (!rev || rev.version !== (a.revision as number)) continue
+    const { data: piece } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
+    if (!piece) continue
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string) })
+  }
+  if (due.length === 0) return { scheduled: [], held: [] }
+  const rules = { feed: await cadenceFor(db, 'instagram', 'feed', now), story: await cadenceFor(db, 'instagram', 'story', now) }
+  const moments = scheduleMoments(due, rules, { feed: await lastGone(db, 'feed'), story: await lastGone(db, 'story') }, now)
+  const scheduled: { pieceId: string; goAt: string }[] = []
+  const held: string[] = []
+  for (const d of due) {
+    const goAt = (moments.get(d.id) as Date).toISOString()
+    const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt }))
+    const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
+    if (ierr) held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
+    else scheduled.push({ pieceId: d.id, goAt })
+  }
+  return { scheduled, held }
+}
+
+/** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string }>
+
+export type Published = {
+  readonly switchOn: boolean
+  readonly due: number
+  readonly published: readonly string[]
+  readonly held: readonly string[]
+  /** Switched off: what would have gone, and when, and nothing written. */
+  readonly wouldPublish: readonly string[]
+}
+
+/**
+ * B5: every schedule whose moment has come. With the switch off (until Meta approves the app) this is a dry run: it
+ * says what would go and writes nothing. With it on, each piece is checked again as approval checks it (its words, its
+ * nights, its page, its images: pieceDependencies) and then published through the publisher; the database refuses the
+ * published state if the approval is no longer of the newest revision or an image has gone. A refusal holds the
+ * schedule with its reason; nothing is retried silently.
+ */
+export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly publisher: Publisher | null; readonly fetcher?: Fetcher }): Promise<Published> {
+  const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
+  const switchOn = flag?.enabled === true
+  const { data: rows, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, platform, go_at').eq('state', 'scheduled').lte('go_at', now.toISOString()).order('go_at').limit(50)
+  if (error) throw new Error(`the schedules could not be read: ${error.message}`)
+  const published: string[] = []
+  const held: string[] = []
+  const wouldPublish: string[] = []
+  const hold = async (id: string, reason: string) => {
+    await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('id', id).eq('state', 'scheduled')
+    held.push(`${id}: ${reason}`)
+  }
+  for (const r of rows ?? []) {
+    const id = r.id as string
+    const pieceId = r.piece_id as string
+    const platform = r.platform as SocialPlatform
+    if (!switchOn) {
+      wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
+      continue
+    }
+    const issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
+    if (issues.length > 0) {
+      await hold(id, `Not published: ${issues.join(' ')}`)
+      continue
+    }
+    if (opts.publisher === null) {
+      await hold(id, 'Not published: no Meta publisher is connected.')
+      continue
+    }
+    const rev = await newestRevision(db, pieceId)
+    try {
+      const { ref } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: rev?.versions[platform].caption ?? '' })
+      const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: ref, published_at: now.toISOString() }).eq('id', id).eq('state', 'scheduled')
+      if (uerr) await hold(id, refusalOf(uerr.message) ?? uerr.message)
+      else published.push(`${pieceId} on ${platform}: ${ref}`)
+    } catch (e) {
+      await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish }
+}
+
+/** Each piece's schedules, for /admin/social. */
+export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>> {
+  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>()
+  if (pieceIds.length === 0) return out
+  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
+  for (const r of data ?? []) {
+    const list = out.get(r.piece_id as string) ?? []
+    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null })
+    out.set(r.piece_id as string, list)
+  }
+  return out
 }

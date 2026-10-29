@@ -243,6 +243,21 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // The page itself, the image sweep and scheduled publishing reach the same rasteriser through the store, whose
+    // pre-approval check (visualFaults, src/lib/broadcast/campaign-slides) lays out a piece's slides; card-raster-traced
+    // named all three.
+    '/admin/social': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/api/cron/social-image-sweep': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/api/cron/social-publish': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/api/launch/[code]/card/[format]': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
