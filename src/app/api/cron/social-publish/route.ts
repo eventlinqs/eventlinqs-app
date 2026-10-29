@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { publishDuePieces, scheduleApprovedPieces } from '@/lib/social/store'
@@ -27,6 +28,15 @@ export async function GET(request: NextRequest) {
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
     )
     for (const h of [...scheduled.held, ...published.held]) console.log(`[cron/social-publish] held: ${h}`)
+    /* The release checklist F5: a publish by the machine is audited as a person's press is, one row per run that
+       published or held anything; a run that only says what would go writes nothing. */
+    if (published.published.length > 0 || published.held.length > 0) {
+      await recordAnonAuditEvent({
+        action: 'system.social.publish',
+        actorEmail: 'cron/social-publish',
+        metadata: { due: published.due, published: published.published, held: published.held },
+      })
+    }
     return NextResponse.json({ ok: true, scheduled, published })
   } catch (err) {
     console.error('[cron/social-publish] failed:', err)

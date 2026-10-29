@@ -34,6 +34,8 @@ export type PolicyName =
   | 'partner-enquiry'
   | 'listing-submission'
   | 'organiser-media'
+  | 'admin-social-press'
+  | 'admin-social-plan'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -255,6 +257,20 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
+  },
+  'admin-social-press': {
+    keyPrefix: 'adm-social',
+    limit: 120,
+    windowSec: 600,
+    rationale:
+      'Every press on /admin/social per admin per 10 min (the release checklist F4), KEYED BY THE ADMIN USER ID, passed explicitly, never the IP: one admin is one bucket, and Lawal pressing from his phone on a carrier network shares an address with strangers. Sized from the work it serves: a week is 12 pieces and 12 partner kits, each approved and recorded on two platforms, about 72 presses in one sitting, so 120 in ten minutes covers a whole week with edits and leaves a scripted loop on a stolen session bounded. FAIL-OPEN: every press already needs an enabled admin row and a 2FA proof, and a Redis blip that locked the founder out of his own approvals is the worse failure.',
+  },
+  'admin-social-plan': {
+    keyPrefix: 'adm-plan',
+    limit: 6,
+    windowSec: 600,
+    rationale:
+      'The Plan press on /admin/social per admin per 10 min (F4), keyed by the admin user id as admin-social-press. Planning is idempotent (F7: a second press finds the week and makes nothing new) but each press reads the whole week of listings and writes or finds its posts and pieces, so it is the costly press. Six in ten minutes covers a plan, a re-plan after excluding a night and a few presses to check; more is a loop. FAIL-OPEN, the same reason as admin-social-press.',
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',
