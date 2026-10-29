@@ -185,7 +185,7 @@ export async function planWeek(db: Db, input: { readonly plannedBy: string; read
     }
     planned += 1
     const words = kitCaption(caption, item.platform, url)
-    const why = wordsRefusal(words, url, facts)
+    const why = wordsRefusal(words, url, facts, [caption.title, caption.organiserName])
     if (why !== null) {
       held.push({ eventId: item.eventId, reason: `The Launch Kit's words were not kept: ${why}` })
       continue
@@ -200,9 +200,11 @@ export type Done = { readonly state: 'done' } | { readonly state: 'refused'; rea
 
 /** A person's own words for a post, as its next version. */
 export async function writeDraft(db: Db, input: { readonly postId: string; readonly caption: string; readonly by: string; readonly now: Date }): Promise<Done> {
-  const { data: post, error } = await db.from('social_posts').select('link, facts').eq('id', input.postId).maybeSingle()
+  const { data: post, error } = await db.from('social_posts').select('link, facts, event_id').eq('id', input.postId).maybeSingle()
   if (error || !post) return { state: 'refused', reason: 'That post could not be found.' }
-  const why = wordsRefusal(input.caption, post.link as string, post.facts as string[])
+  /* The names the words may quote exactly, read as the Launch Kit reads them (words.ts carriesBannedWord). */
+  const context = await contextFor(db, post.event_id as string, input.now)
+  const why = wordsRefusal(input.caption, post.link as string, post.facts as string[], context === null ? [] : [context.title, context.organiserName])
   if (why !== null) return { state: 'refused', reason: why }
   const { data: last } = await db.from('social_drafts').select('version').eq('post_id', input.postId).order('version', { ascending: false }).limit(1).maybeSingle()
   const { error: derr } = await db.from('social_drafts').insert({

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { bestBands, bestGap, GAP_BOUNDS, hourOfWeek, learn, nextAllowed, nextSlot, SOCIAL_ZONE, type CadenceRule, type PostOutcome } from '@/lib/social/cadence'
 import { factsOf, kitCaption, listingPriceLabel, plan, postKey, type PlanCandidate } from '@/lib/social/plan'
 import { resultOf, type CreditedOrder, type LinkEvent } from '@/lib/social/results'
-import { strayNumbers, wordsRefusal } from '@/lib/social/words'
+import { carriesBannedWord, strayNumbers, wordsRefusal } from '@/lib/social/words'
 import { soldOut } from '@/lib/social/store'
 import type { BookingLink } from '@/lib/events/booking-links'
 import type { CaptionInput } from '@/lib/broadcast/captions'
@@ -121,6 +121,42 @@ describe('a post states only what the listing holds', () => {
     expect(wordsRefusal('Friday night at Bar Humbug.', POST_LINK, factsOf(input))).toMatch(/own link/)
     expect(wordsRefusal(`Friday — Bar Humbug ${POST_LINK}`, POST_LINK, factsOf(input))).toMatch(/long dash/)
     expect(wordsRefusal(`Friday at Bar Humbug! ${POST_LINK}`, POST_LINK, factsOf(input))).toMatch(/exclamation/)
+  })
+})
+
+/*
+ * THE BANNED WORD, ONE RULE (the project manager's ruling, 29 October 2026 14:52): an organiser's event title and
+ * organisation name are their names, quoted exactly as the listing carries them; our words never use the word. The
+ * exact names and the links are taken out, then what is left is judged.
+ */
+describe('the banned word is judged in our words, never in an organiser own name', () => {
+  const TITLE = "Children's Week: Multicultural Board Games"
+  const HOST = 'Geelong Regional Libraries'
+  const LINK = 'https://www.eventlinqs.com.au/e/Zz9yX8wV7u'
+  const facts = [TITLE, 'Fri 30 Oct', 'Geelong', HOST]
+
+  test('a caption quoting the organiser own title exactly is kept', () => {
+    expect(carriesBannedWord(`${TITLE}, Friday at the library. ${LINK}`, [TITLE, HOST])).toBe(false)
+    expect(wordsRefusal(`${TITLE}, Friday at the library. ${LINK}`, LINK, facts, [TITLE, HOST])).toBeNull()
+    expect(carriesBannedWord('Fred brings African Music and Cultural Festival 2026 to Fed Square.', ['African Music and Cultural Festival 2026', 'AMCF'])).toBe(false)
+  })
+
+  test('our own use of the word is refused, beside the quoted name or without it', () => {
+    expect(wordsRefusal(`A cultural afternoon: ${TITLE}. ${LINK}`, LINK, facts, [TITLE, HOST])).toMatch(/banned word/)
+    expect(carriesBannedWord(`#multicultural ${TITLE}`, [TITLE])).toBe(true)
+    expect(carriesBannedWord('Board games for every culture.', [TITLE])).toBe(true)
+  })
+
+  test('only the exact name is taken out: a name written differently is judged as our words', () => {
+    expect(carriesBannedWord("Children's Week: multicultural board games", [TITLE])).toBe(true)
+  })
+
+  test('a link is not words: a slug carrying the word is not judged', () => {
+    expect(carriesBannedWord('Details: https://www.eventlinqs.com.au/events/childrens-week-multicultural-board-games', [])).toBe(false)
+  })
+
+  test('with no names given, every use of the word is refused, as before', () => {
+    expect(wordsRefusal(`${TITLE}. ${LINK}`, LINK, facts)).toMatch(/banned word/)
   })
 })
 

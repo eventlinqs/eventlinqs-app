@@ -29,14 +29,27 @@ export function strayNumbers(caption: string, link: string | null, facts: readon
   return [...new Set(said.match(DIGITS) ?? [])].filter((d) => !held.has(d))
 }
 
-/** Why these words cannot be kept, in the admin's own words, or null where they can. */
-export function wordsRefusal(caption: string, link: string | null, facts: readonly string[]): string | null {
+/**
+ * Whether OUR words carry the banned word. An organiser's event title and organisation name are their names, quoted
+ * exactly as the listing carries them (the project manager's ruling, 29 October 2026 14:52, made for AMCF's own
+ * title); those exact names and every link are taken out first, and what is left is judged. A name
+ * written any other way is our words. The one rule for a post's words and a campaign piece (campaign.ts pieceRefusal).
+ */
+export function carriesBannedWord(text: string, names: readonly (string | null | undefined)[]): boolean {
+  let ours = text.replace(/https?:\/\/\S+/g, ' ')
+  const exact = names.filter((n): n is string => typeof n === 'string' && n.trim() !== '').sort((a, b) => b.length - a.length)
+  for (const name of exact) ours = ours.split(name).join(' ')
+  return /cultur/i.test(ours)
+}
+
+/** Why these words cannot be kept, in the admin's own words, or null where they can. names: the exact names quoted (carriesBannedWord). */
+export function wordsRefusal(caption: string, link: string | null, facts: readonly string[], names: readonly (string | null | undefined)[] = []): string | null {
   const text = caption.trim()
   if (text.length === 0) return 'The words are empty.'
   if (text.length > 2200) return 'Instagram takes at most 2,200 characters in a caption.'
   if (LONG_DASH.test(text)) return 'The words carry a long dash. Use a comma, a colon or a full stop.'
   if (text.includes('!')) return 'The words carry an exclamation mark.'
-  if (/cultur/i.test(text)) return 'The words carry a banned word. Say community.'
+  if (carriesBannedWord(text, names)) return 'The words carry a banned word. Say community.'
   if (link !== null && link !== '' && !text.includes(link)) return 'The words must carry the post’s own link, so what it brings is counted.'
   const stray = strayNumbers(text, link, facts)
   if (stray.length > 0) return `The words state ${stray.join(', ')}, which the listing does not hold.`

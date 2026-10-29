@@ -142,6 +142,23 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(pieceRefusal({ ...whole, nextStep: '' })).toMatch(/one call to action/)
   })
 
+  /* The project manager's ruling of 29 October 2026, 14:52: the same one rule as a post's words (src/lib/social/words.ts). */
+  it('a night whose own title carries the banned word is quoted exactly, and our own words never carry it', () => {
+    const amcf = night({ at: '2026-10-31T00:00:00Z', title: 'African Music and Cultural Festival 2026', host: 'AMCF', venueName: 'Fed Square', categorySlug: 'festival' })
+    const { pieces: withAmcf } = planCampaign({ nights: [...geelongWeek, amcf], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
+    const quoting = withAmcf.filter((p) => p.eventIds.includes(amcf.eventId))
+    expect(quoting.length).toBeGreaterThan(0)
+    for (const p of quoting) {
+      expect(p.names).toContain('African Music and Cultural Festival 2026')
+      expect(pieceRefusal(p), `${p.kind} ${p.city}`).toBeNull()
+    }
+    const p = quoting[0]
+    expect(pieceRefusal({ ...p, caption: `${p.caption}\n\nA cultural weekend.` })).toMatch(/banned word/)
+    expect(pieceRefusal({ ...p, versions: { ...p.versions, instagram: { ...p.versions.instagram, caption: `${p.versions.instagram.caption} #culture` } } })).toMatch(/banned word/)
+    expect(pieceRefusal({ ...p, slides: [...p.slides, { ...p.slides[0], headline: 'Our cultural pick' } as never] })).toMatch(/banned word/)
+    expect(pieceRefusal({ ...p, names: [] })).toMatch(/banned word/)
+  })
+
   it('a photograph only with an approved rights row; otherwise the slide is typographic (J1 to J4)', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     const photos = ahead.slides.filter((s) => s.t === 'night').map((s) => (s as { photo: string | null }).photo)
