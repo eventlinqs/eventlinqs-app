@@ -153,16 +153,34 @@ export function decide({ pending, dryRun = false, typed = null, ref = PRODUCTION
 }
 
 /**
+ * The pending files whose version sorts before the newest one production has
+ * applied. The CLI refuses a push carrying any of them, quoted from its source
+ * (supabase/cli apps/cli-go/pkg/migration/apply.go, develop, read 29 October
+ * 2026): "Found local migration files to be inserted before the last migration
+ * on remote database." unless `db push` is given `--include-all` ("Include all
+ * migrations not found on remote history table.", `supabase db push --help`,
+ * 2.121.0). It happens whenever one car's migrations reach production ahead of
+ * an earlier-stamped car's (car 3's 231001 ahead of car 4's 133001 to 222201).
+ * @param {Array<{ file: string, version: string | null }>} pending
+ * @param {Set<string>} applied
+ */
+export function outOfOrder(pending, applied) {
+  let newest = ''
+  for (const v of applied) if (v > newest) newest = v
+  return pending.filter((p) => p.version && p.version < newest)
+}
+
+/**
  * The Supabase CLI commands of the apply path, in order. The push is `--linked`
  * and nothing else: no project ref, no password, no connection string on the
  * command line, so the CLI's own prompts and stored credentials are the only
  * way a password ever enters the process. The last command always rests the
  * CLI on TEST.
  */
-export function supabaseCommands(ref = PRODUCTION_PROJECT_REF) {
+export function supabaseCommands(ref = PRODUCTION_PROJECT_REF, { includeAll = false } = {}) {
   return [
     { step: 'link', args: ['supabase', 'link', '--project-ref', ref] },
-    { step: 'push', args: ['supabase', 'db', 'push', '--linked'] },
+    { step: 'push', args: ['supabase', 'db', 'push', '--linked', ...(includeAll ? ['--include-all'] : [])] },
     { step: 'rest', args: ['supabase', 'link', '--project-ref', TEST_PROJECT_REF] },
   ]
 }
@@ -265,7 +283,13 @@ async function main() {
     return 1
   }
 
-  const [link, push] = supabaseCommands()
+  const late = outOfOrder(pending, listed.applied)
+  if (late.length > 0) {
+    say(`${late.length} pending file(s) sort before the newest version production has applied, which the CLI refuses`)
+    say('  without --include-all, so this push carries it. It adds nothing to the set: the files it applies are the')
+    say(`  ${pending.length} listed above, which is what the ref was typed for.`)
+  }
+  const [link, push] = supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: late.length > 0 })
   if (runSupabase(link.args) !== 0) {
     fail('supabase link to production failed. Nothing pushed.')
     return 1
