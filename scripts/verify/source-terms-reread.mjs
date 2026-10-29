@@ -82,7 +82,8 @@ for (const s of sources) {
     r.verdict = r.checks.every((c) => c.ok) ? 'read' : 'ask'
   } else if (s.terms_url) {
     const terms = await get(s.terms_url)
-    const recorded = /"([^"]{20,})"/.exec(s.terms_quote ?? '')?.[1] ?? null
+    /* The longest quoted sentence the register recorded (a page title quoted beside it is not the clause). */
+    const recorded = [...(s.terms_quote ?? '').matchAll(/"([^"]{20,})"/g)].map((m) => m[1]).sort((a, b) => b.length - a.length)[0] ?? null
     const text = flat(terms.body)
     const stillSays = recorded === null ? null : text.includes(flat(recorded).replace(/ \.\.\. /g, ' ').split(' ... ')[0].slice(0, 60))
     r.checks.push({ what: 'the terms page read today', url: s.terms_url, status: terms.status, ok: terms.status === 200, saw: recorded === null ? 'no reuse clause was recorded; read again for any' : stillSays ? 'the recorded words are still there' : 'the recorded words were NOT found' })
