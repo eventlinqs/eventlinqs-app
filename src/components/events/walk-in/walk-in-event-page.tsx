@@ -277,7 +277,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {hero.image && <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />}
             </div>
             {guide.cover_credit && (
-              <figcaption data-text-source={source} className="mt-2 hidden text-xs font-semibold text-ink-600 lg:block">
+              <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
                 Photo: {guide.cover_credit}
               </figcaption>
             )}
@@ -421,11 +421,11 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {gallery.length > 0 && (
                 <Reveal as="section" className="flex flex-col gap-2 lg:gap-4">
                   {guide.photos_heading ? (
-                    <h2 data-text-source={source} className="type-rail-heading hidden font-headline text-ink-900 lg:block">
+                    <h2 data-text-source={source} className="type-rail-heading font-headline text-ink-900">
                       {guide.photos_heading}
                     </h2>
                   ) : (
-                    <h2 className="type-rail-heading hidden font-headline text-ink-900 lg:block">{FROM_PAST_EVENTS}</h2>
+                    <h2 className="type-rail-heading font-headline text-ink-900">{FROM_PAST_EVENTS}</h2>
                   )}
                   <EventGallery images={gallery} eventTitle={event.title} layout="walk-in" />
                   {guide.photo_credit && (
