@@ -5,8 +5,10 @@
  * QA, its workflow status and its exceptions.
  *
  *   node --env-file=<a TEST env file> node_modules/tsx/dist/cli.mjs scripts/verify/creative-demonstrations.mts <out dir>
+ *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/creative-demonstrations.mts <out dir> --production
+ *     (PRODUCTION, read only: SUPABASE_ACCESS_TOKEN from the wrapper, every read a read_only query; no photograph without an APPROVED row)
  *
- * A  AMCF 2026: the organiser's own photographs. The night is read from TEST. Its image is the register's row when
+ * A  AMCF 2026: the organiser's own photographs. The night is read from TEST (or production). Its image is the register's row when
  *    20261028205501 and the AMCF rows are on TEST; until then the same file from C:\dev\design\amcf-21oct\photos,
  *    served on this machine, with the manifest's focal point, and the report says so.
  * B  Kate Ceberano at Costa Hall: no authorised artist photograph exists, so editorial type; from window 4's research
@@ -50,9 +52,56 @@ const manifest = JSON.parse(readFileSync(new URL('../ops/amcf-media-rights.manif
   photos: { file: string; focal: [number, number] }[]
 }
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-if (!url.includes('vkapkibzokmfaxqogypq')) throw new Error('reads TEST only: pass a TEST env file')
-const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '', { auth: { persistSession: false } })
+/*
+ * --production: the same three reads on PRODUCTION, each a read-only query the database itself enforces (the
+ * management API with read_only, run through scripts\ops\with-supabase-token.ps1); no service key, nothing written.
+ * Without it, TEST through a TEST env file, as before.
+ */
+const PRODUCTION = process.argv.includes('--production')
+const WHERE = PRODUCTION ? 'production' : 'TEST'
+const PRODUCTION_REF = 'gndnldyfudbytbboxesk'
+type EventRow = { id: string; slug: string; title: string; start_date: string; end_date: string; timezone: string | null; venue_name: string; venue_city: string; is_free: boolean; entry_mode: string; status: string; category_slug: string | null; summary: string | null }
+type UsableRow = { asset_url: string; attribution_text: string; focal_x: number | null; focal_y: number | null; source_width: number | null; source_height: number | null }
+type Reader = { event: (slug: string) => Promise<EventRow | null>; eventLike: (title: string) => Promise<EventRow | null>; usable: (id: string) => Promise<UsableRow[]>; brand: () => Promise<{ asset_url: string; attribution_text: string }[]> }
+const EVENT_COLUMNS = 'e.id, e.slug, e.title, e.start_date, e.end_date, e.timezone, e.venue_name, e.venue_city, e.is_free, e.entry_mode, e.status, e.summary, c.slug as category_slug'
+const lit = (v: string) => `'${v.replace(/'/g, "''")}'`
+let reader: Reader
+if (PRODUCTION) {
+  const token = process.env.SUPABASE_ACCESS_TOKEN
+  if (!token) throw new Error('--production runs through scripts\\ops\\with-supabase-token.ps1')
+  const read = async <T,>(sql: string): Promise<T[]> => {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${PRODUCTION_REF}/database/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: sql, read_only: true }),
+    })
+    if (!res.ok) throw new Error(`production read refused (${res.status}): ${(await res.text()).slice(0, 200)}`)
+    return (await res.json()) as T[]
+  }
+  const one = (where: string) => read<EventRow>(`select ${EVENT_COLUMNS} from public.events e left join public.event_categories c on c.id = e.category_id where ${where} order by e.start_date limit 1`).then((r) => r[0] ?? null)
+  reader = {
+    event: (slug) => one(`e.slug = ${lit(slug)}`),
+    eventLike: (title) => one(`e.title ilike ${lit(`${title}%`)} and e.status = 'published'`),
+    usable: (id) => read<UsableRow>(`select * from public.social_usable_images(array[${lit(id)}]::uuid[], now())`),
+    brand: () => read<{ asset_url: string; attribution_text: string }>('select * from public.social_brand_images(now())'),
+  }
+} else {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  if (!url.includes('vkapkibzokmfaxqogypq')) throw new Error('reads TEST only: pass a TEST env file (or --production)')
+  const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '', { auth: { persistSession: false } })
+  const select = 'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, summary, category:event_categories(slug)'
+  const flat = (ev: Record<string, unknown> | null): EventRow | null => (ev ? ({ ...ev, category_slug: (ev.category as { slug: string } | null)?.slug ?? null } as unknown as EventRow) : null)
+  reader = {
+    event: async (slug) => flat((await db.from('events').select(select).eq('slug', slug).maybeSingle()).data as Record<string, unknown> | null),
+    eventLike: async (title) => flat((await db.from('events').select(select).ilike('title', `${title}%`).eq('status', 'published').order('start_date').limit(1).maybeSingle()).data as Record<string, unknown> | null),
+    usable: async (id) => {
+      const { data, error } = await db.rpc('social_usable_images', { p_events: [id], p_at: new Date().toISOString() })
+      if (error) throw new Error(`social_usable_images: ${error.code} ${error.message}`)
+      return (data ?? []) as UsableRow[]
+    },
+    brand: async () => ((await db.rpc('social_brand_images', { p_at: new Date().toISOString() })).data ?? []) as { asset_url: string; attribution_text: string }[],
+  }
+}
 
 const server = createServer((req, res) => {
   try {
@@ -66,7 +115,8 @@ const server = createServer((req, res) => {
 async function page(path: string, expect: string[]): Promise<{ url: string; status: number | null; found: Record<string, boolean> }> {
   const target = `${SITE}${path}`
   try {
-    const r = await fetch(target, { redirect: 'follow' })
+    /* A page view is never counted for a check: a crawler by name, and never /out, /e, /s or /go (only /events pages here). */
+    const r = await fetch(target, { redirect: 'follow', headers: { 'user-agent': 'EventLinqs-QA-crawler (creative-demonstrations)' } })
     const body = await r.text()
     return { url: target, status: r.status, found: Object.fromEntries(expect.map((e) => [e, body.includes(e)])) }
   } catch {
@@ -93,12 +143,8 @@ const demos: Demo[] = []
 
 /* A: AMCF 2026, the organiser's own photographs. */
 {
-  const { data: ev, error } = await db
-    .from('events')
-    .select('id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, category:event_categories(slug)')
-    .eq('slug', manifest.eventSlug)
-    .single()
-  if (error || !ev) throw new Error(`AMCF could not be read on TEST: ${error?.message}`)
+  const ev = await reader.event(manifest.eventSlug)
+  if (!ev) throw new Error(`AMCF could not be read on ${WHERE}`)
   const cta = ctaFor({ entryMode: ev.entry_mode as string, isFree: ev.is_free as boolean })
   const night: CampaignModule.CampaignNight = {
     eventId: ev.id as string,
@@ -111,7 +157,7 @@ const demos: Demo[] = []
     cityName: ev.venue_city as string,
     venueName: ev.venue_name as string,
     host: null,
-    categorySlug: (ev.category as unknown as { slug: string } | null)?.slug ?? null,
+    categorySlug: ev.category_slug,
     summary: null,
     approvedPhotoUrl: null,
     photoCredit: null,
@@ -119,18 +165,23 @@ const demos: Demo[] = []
     priceLine: ctaPriceLine(cta),
   }
   const exceptions: string[] = []
-  const { data: usable, error: uerr } = await db.rpc('social_usable_images', { p_events: [night.eventId], p_at: new Date().toISOString() })
-  let image: SlidesModule.SlideImage
-  let credit = manifest.attribution
-  if (!uerr && usable?.[0]) {
-    const u = usable[0] as { asset_url: string; attribution_text: string; focal_x: number | null; focal_y: number | null; source_width: number | null; source_height: number | null }
+  const usable = await reader.usable(night.eventId).catch((e: Error) => { exceptions.push(e.message); return [] as UsableRow[] })
+  let image: SlidesModule.SlideImage | null
+  let credit: string | null = manifest.attribution
+  if (usable[0]) {
+    const u = usable[0]
     image = { url: u.asset_url, focal: u.focal_x === null ? null : { x: Number(u.focal_x), y: Number(u.focal_y) }, width: u.source_width, height: u.source_height }
     credit = u.attribution_text
+  } else if (PRODUCTION) {
+    /* J1: a photograph with no APPROVED register row is never drawn on production; the night is told in type until Lawal approves. */
+    image = null
+    credit = null
+    exceptions.push('HELD FOR LAWAL: no AMCF photograph is approved on production yet (social_usable_images returns none: the five rows are pending, or not yet entered by window 4), so the night is drawn in editorial type; it is drawn photo-led from the register the moment he presses Approve in /admin/social.')
   } else {
     const hero = manifest.photos[0]
     const meta = await sharp(readFileSync(join(PHOTOS, hero.file))).metadata()
     image = { url: `http://localhost:47124/${hero.file}`, focal: { x: hero.focal[0], y: hero.focal[1] }, width: meta.width ?? null, height: meta.height ?? null }
-    exceptions.push(`The register rows are not on TEST yet (${uerr ? `social_usable_images: ${uerr.code}` : 'no usable row'}): drawn from the same file, ${hero.file}, served on this machine with the manifest's focal point. scripts/ops/amcf-media-rights.mjs --apply enters them once 20261028205501 is on TEST.`)
+    exceptions.push(`The register rows are not on TEST yet (no usable row): drawn from the same file, ${hero.file}, served on this machine with the manifest's focal point.`)
   }
   const slide: CampaignModule.Slide = {
     t: 'night',
@@ -142,7 +193,7 @@ const demos: Demo[] = []
     title: night.title,
     meta: `${night.venueName}, ${night.cityName}`,
     why: null,
-    photo: image.url,
+    photo: image?.url ?? null,
     credit,
     words: campaign.nightWords(night),
   }
@@ -151,11 +202,11 @@ const demos: Demo[] = []
   demos.push({
     key: 'a-amcf',
     name: 'A. AMCF 2026, the organiser\u2019s own photographs',
-    treatmentExpected: 'photo',
+    treatmentExpected: image ? 'photo' : 'type',
     slide,
     image,
-    source: { table: 'events (TEST)', id: night.eventId, slug: night.slug, title: night.title, start: night.startDate, end: night.endDate, venue: night.venueName, city: night.cityName, entry_mode: ev.entry_mode, is_free: ev.is_free, status: ev.status },
-    rights: `Organiser authorised (rights holder AMCF; evidence the Outlook thread of 2, 23 and 26 October 2026; uses: listing and social promotion of AMCF 2026 only; credit "${credit}", archival, a past festival)`,
+    source: { table: `events (${WHERE})`, id: night.eventId, slug: night.slug, title: night.title, start: night.startDate, end: night.endDate, venue: night.venueName, city: night.cityName, entry_mode: ev.entry_mode, is_free: ev.is_free, status: ev.status },
+    rights: `Organiser authorised (rights holder AMCF; evidence the Outlook thread of 2, 23 and 26 October 2026; uses: listing and social promotion of AMCF 2026 only; credit "${credit ?? 'none drawn: no photograph'}", archival, a past festival)`,
     cta: `${cta.state}: "${cta.action}", entry line "${slide.words?.entry}"; the image shows the domain as a label, never a button`,
     destination: dest,
     workflow: 'Drafted by the renderer; approval is Lawal\u2019s in /admin/social once the rows are on the register; not posted',
@@ -206,6 +257,17 @@ const demos: Demo[] = []
     'No authorised artist photograph or official tour artwork is recorded, so the treatment is editorial type, as the directive asks.',
     'Facts from window 4\u2019s research of 27 October (design\\listings): Sat 31 October 2026, 7pm to 9.30pm, Costa Hall at Geelong Arts Centre, with Kathleen Halloran and Dusty Lee; to be re-read against the listing when it exists.',
   ]
+  /* Whether a listing has arrived since (window 4's ticketed import): then its own facts and page are the check. */
+  const listed = await reader.eventLike('Kate Ceberano')
+  let destination: Demo['destination'] = { url: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/ (the provider; no EventLinqs page yet)', status: provider.status, found: { 'Kate Ceberano': provider.body.includes('Kate Ceberano'), 'Costa Hall': provider.body.includes('Costa Hall') } }
+  let workflow = 'Rendered; held: no listing'
+  if (listed) {
+    exceptions[0] = `An EventLinqs listing exists on ${WHERE}: /events/${listed.slug} (${listed.status}), starting ${listed.start_date} at ${listed.venue_name}; the slide's facts are read against it.`
+    if (Date.parse(listed.start_date) !== Date.parse(night.startDate)) exceptions.push(`FACT MISMATCH: the listing starts ${listed.start_date}, the slide ${night.startDate}.`)
+    if (!/Costa Hall/i.test(listed.venue_name ?? '')) exceptions.push(`FACT MISMATCH: the listing's venue is ${listed.venue_name}, the slide's Costa Hall.`)
+    destination = await page(`/events/${listed.slug}`, ['Kate Ceberano', 'Costa Hall'])
+    workflow = destination.status === 200 && !exceptions.some((e) => e.startsWith('FACT MISMATCH')) ? 'Rendered; its page and facts agree, so approvable by Lawal (J15)' : 'Rendered; held until its page and facts agree (J15)'
+  }
   demos.push({
     key: 'b-ceberano',
     name: 'B. Kate Ceberano, editorial type',
@@ -215,15 +277,15 @@ const demos: Demo[] = []
     source: { table: 'none yet: design\\listings\\import-2026-10-27-wi3-ticketed-43.csv (window 4 research, 27 October)', title: 'Kate Ceberano: Australian Made Tour 2026', start: '2026-10-31 19:00 Melbourne', end: '21:30', venue: 'Geelong Arts Centre (Costa Hall)', ticketing: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/' },
     rights: 'Original EventLinqs design (no image of anyone else\u2019s used)',
     cta: `${cta.state}: "${cta.action}"; no price said (none checked on our side); the provider named, never EventLinqs ticketing`,
-    destination: { url: 'https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/ (the provider; no EventLinqs page yet)', status: provider.status, found: { 'Kate Ceberano': provider.body.includes('Kate Ceberano'), 'Costa Hall': provider.body.includes('Costa Hall') } },
-    workflow: 'Rendered; held: no listing',
+    destination,
+    workflow,
     exceptions,
   })
 }
 
 /* C: the weekend brand piece, EventLinqs' own art (no licensed photograph is recorded). */
 {
-  const { data: brand } = await db.rpc('social_brand_images', { p_at: new Date().toISOString() })
+  const brand = await reader.brand()
   const photo = (brand?.[0] as { asset_url: string; attribution_text: string } | undefined) ?? null
   const slide: CampaignModule.Slide = {
     t: 'brand',
