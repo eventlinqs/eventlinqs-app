@@ -79,3 +79,20 @@ describe('the home hero leads only with a night\u2019s own photograph', () => {
     expect(screen.getAllByText('Bavarian Sunset Market').length).toBeGreaterThan(0)
   })
 })
+/*
+ * THE CURATED HERO SAYS WHAT IS TRUE OF THE CATALOGUE (found by eye at 390, 29 October 2026, C:\dev\EVIDENCE\
+ * LIBRARY-PHOTOS-29OCT\hero-390): it was written for an empty site, 'The first organisers are getting set up', and now
+ * shows whenever no night has its own photograph, which on production is every night of 334.
+ */
+describe('the curated hero line', () => {
+  test('with nights on but none with its own photograph, it never says the site is empty', async () => {
+    render(await FeaturedHero({ events: [night({ cover_image_url: null })] }))
+    expect(screen.queryByText(/first organisers are getting set up/i)).toBeNull()
+    expect(screen.getByText('Gigs, markets, festivals and free nights, all in one place.')).toBeTruthy()
+  })
+
+  test('with no nights at all, it still says the first organisers are getting set up', async () => {
+    render(await FeaturedHero({ events: [] }))
+    expect(screen.getByText(/first organisers are getting set up/i)).toBeTruthy()
+  })
+})

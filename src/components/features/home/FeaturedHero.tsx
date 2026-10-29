@@ -125,8 +125,12 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
               <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
                 {BRAND_TAGLINE_PHRASE_BOUND}
               </p>
+              {/* The line is true of the catalogue: empty, or full of nights none of which has its own photograph yet
+                  (so no night is drawn here under a stock raster, 29 October 2026). */}
               <p className="mt-2 text-sm text-white/85 sm:text-base">
-                The first organisers are getting set up. New events land here every week.
+                {events.length === 0
+                  ? 'The first organisers are getting set up. New events land here every week.'
+                  : 'Gigs, markets, festivals and free nights, all in one place.'}
               </p>
               <div className="mt-5">
                 <Link
