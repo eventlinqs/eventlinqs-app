@@ -11209,31 +11209,6 @@ export type Database = {
         Args: { p_asset: string; p_reason: string; p_user: string }
         Returns: string[]
       }
-      outreach_close_stuck_sends: {
-        Args: { p_minutes?: number }
-        Returns: number
-      }
-      outreach_contact_refusal: { Args: { p_contact: string }; Returns: string }
-      outreach_contact_refusal_for: {
-        Args: { p_contact: string; p_purpose: string; p_template_key: string }
-        Returns: string
-      }
-      outreach_play_cap_today: { Args: { p_play: string }; Returns: number }
-      outreach_play_health: {
-        Args: { p_play: string }
-        Returns: {
-          complaints: number
-          hard_bounces: number
-          healthy: boolean
-          over: string
-          sends: number
-        }[]
-      }
-      outreach_unsubscribe_by_token: {
-        Args: { p_comment?: string; p_reason?: string; p_token: string }
-        Returns: string
-      }
-      platform_notification_guards: { Args: never; Returns: Json }
       organiser_permission_evidence: {
         Args: {
           p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
@@ -11287,6 +11262,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      outreach_close_stuck_sends: {
+        Args: { p_minutes?: number }
+        Returns: number
+      }
+      outreach_contact_refusal: { Args: { p_contact: string }; Returns: string }
+      outreach_contact_refusal_for: {
+        Args: { p_contact: string; p_purpose: string; p_template_key: string }
+        Returns: string
+      }
+      outreach_play_cap_today: { Args: { p_play: string }; Returns: number }
+      outreach_play_health: {
+        Args: { p_play: string }
+        Returns: {
+          complaints: number
+          hard_bounces: number
+          healthy: boolean
+          over: string
+          sends: number
+        }[]
+      }
+      outreach_unsubscribe_by_token: {
+        Args: { p_comment?: string; p_reason?: string; p_token: string }
+        Returns: string
+      }
+      platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
         Returns: boolean

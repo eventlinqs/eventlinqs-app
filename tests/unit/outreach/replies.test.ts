@@ -81,6 +81,11 @@ describe('the provider their reply names', () => {
     expect(providerNamed('We already use Humanitix for tickets.')).toBe('Humanitix')
     expect(providerNamed('we sell on trybooking')).toBe('TryBooking')
     expect(providerNamed('We have our own system.')).toBeNull()
+    expect(providerNamed('Tickets are through dice')).toBe('DICE')
+  })
+
+  test('a platform the listing page does not name is none, so the answer is held', () => {
+    expect(providerNamed('We sell through Megatix.')).toBeNull()
   })
 })
 

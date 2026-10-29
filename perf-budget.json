@@ -94,6 +94,7 @@
     "/admin/events/[id]": 157771,
     "/admin/flags": 157771,
     "/admin/growth": 157450,
+    "/admin/growth/social-report": 157450,
     "/admin/health": 157306,
     "/admin/kyc": 157306,
     "/admin/login": 157800,

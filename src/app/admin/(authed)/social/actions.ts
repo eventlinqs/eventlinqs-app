@@ -26,6 +26,7 @@ import {
   writeDraft,
 } from '@/lib/social/store'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * THE PRESSES ON /admin/social (item 11, the social engine; docs/SOCIAL-ENGINE.md): plan the week, change a post's
@@ -228,7 +229,8 @@ async function pixelSize(url: string): Promise<{ width: number; height: number }
     const width = meta.autoOrient?.width ?? meta.width
     const height = meta.autoOrient?.height ?? meta.height
     return width && height ? { width, height } : null
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'admin/social/actions:pixelSize' })
     return null
   }
 }
