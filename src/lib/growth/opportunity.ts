@@ -124,6 +124,8 @@ export async function readOpportunity(now: Date = new Date()): Promise<Opportuni
           .select('id, link_id')
           .in('link_id', linkChunk)
           .eq('kind', 'outbound')
+          // A QA press is never a person (car 10's is_test, counted-rows-exclude-tests).
+          .eq('is_test', false)
           .gte('occurred_at', fromIso)
           .lt('occurred_at', nowIso)
           .order('id', { ascending: true })
