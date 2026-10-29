@@ -76,7 +76,7 @@ try {
     const approved = await db.from('social_piece_approvals').insert({ piece_id: toApprove.id, revision: newest(toApprove), approved_by: admin.id, approved_at: new Date().toISOString() })
     check('one TEST partner kit approved for the drive (the row Lawal\u2019s press writes)', !approved.error, approved.error?.message ?? `${toApprove.id} (${toApprove.partner_name}), version ${newest(toApprove)}`)
   }
-  evidence.approved = { piece: toApprove.id, partner: toApprove.partner_name, version: newest(toApprove) }
+  evidence.approved = { piece: toApprove.id, partner: toApprove.partner_name, version: newest(toApprove), writtenThisRun: !alreadyApproved }
   evidence.unapproved = { piece: leftAlone.id, partner: leftAlone.partner_name }
 
   if (SERVE) {
@@ -127,5 +127,5 @@ try {
 }
 evidence.results = results
 writeFileSync(join(OUT, 'drive.json'), JSON.stringify(evidence, null, 2))
-console.log(`${TAG} ${failures === 0 ? 'DRIVE PASSED' : `DRIVE FAILED, ${failures} of ${results.length}`}; TEST row written: an approval of ${evidence.approved?.piece ?? 'none'}`)
+console.log(`${TAG} ${failures === 0 ? 'DRIVE PASSED' : `DRIVE FAILED, ${failures} of ${results.length}`}; TEST row written: ${evidence.approved?.writtenThisRun ? `an approval of ${evidence.approved.piece}` : "none (an approval of an earlier run reused)"}`)
 process.exitCode = failures === 0 ? 0 : 1
