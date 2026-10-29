@@ -23,7 +23,23 @@ const TAG = '[social-one-writer]'
 const ROOT = process.cwd()
 const MIGRATIONS = join(ROOT, 'supabase', 'migrations')
 const WRITER = 'src/lib/social/store.ts'
-const TABLES = ['social_posts', 'social_drafts', 'social_approvals', 'social_postings', 'social_cadence_rules']
+const TABLES = [
+  'social_posts',
+  'social_drafts',
+  'social_approvals',
+  'social_postings',
+  'social_cadence_rules',
+  // The weekly campaign (20261028141001, the release checklist of 28 October 2026, sections B, C, J and K).
+  'social_campaigns',
+  'social_campaign_exclusions',
+  'social_pieces',
+  'social_piece_revisions',
+  'social_piece_decisions',
+  'social_piece_approvals',
+  'social_piece_postings',
+  'social_assets',
+  'social_image_requests',
+]
 const MUTATORS = ['insert', 'update', 'upsert', 'delete']
 const TRIGGERS = ['social_drafts_hold_their_facts', 'social_approvals_are_due', 'social_postings_are_approved']
 const VANITY = /\b(likes?|like_count|impressions?|reach|followers?|follows)\b/i

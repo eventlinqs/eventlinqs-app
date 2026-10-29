@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ARTEFACT_CHANNELS } from '@/lib/broadcast/artefact-channels'
-import { priceLabel } from '@/lib/events/price-label'
+import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import type { Cta } from '@/lib/events/cta'
 import { buildShortUrl, getOrCreateShareLink, type ShareChannel } from '@/lib/broadcast/share-links'
 import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
 import type { SocialCardInput } from '@/lib/broadcast/social-cards'
@@ -30,6 +31,13 @@ export type ArtefactContext = {
   city: string | null
   placeLabel: string
   priceLabel: string
+  /**
+   * Sold on another site (WI3: external_ticket_url), so not ticketed here: its card says "Listed on EVENTLINQS" and
+   * "Scan for details", never "Ticketing by" or "Scan to buy". Absent where a context is built by hand.
+   */
+  listing?: boolean
+  /** The call to action every artefact says (src/lib/events/cta.ts). Absent where a context is built by hand. */
+  cta?: Cta
   summary: string | null
   categorySlug: string | null
   categoryName: string | null
@@ -87,9 +95,12 @@ type EventRow = {
   summary: string | null
   organisation_id: string | null
   category: { name: string | null; slug: string | null } | null
-  ticket_tiers: { price: number; currency: string | null }[] | null
+  ticket_tiers: { price: number; currency: string | null; is_active?: boolean | null }[] | null
+  is_free: boolean | null
+  entry_mode: string | null
   organisation: { name: string | null; logo_url: string | null } | null
   listing_source: string | null
+  external_ticket_url: string | null
 }
 
 /**
@@ -114,7 +125,7 @@ export async function loadArtefactContext(
     admin
       .from('events')
       .select(
-        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
+        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, external_ticket_url, is_free, entry_mode, category:event_categories(name, slug), ticket_tiers(price, currency, is_active), organisation:organisations(name, logo_url)',
       )
       .eq('id', eventId)
       .maybeSingle(),
@@ -160,6 +171,7 @@ export async function loadArtefactContext(
   const organiser = artefactOrganiser(event, fallbackOrganiserName)
   const categoryName = event.category?.name ?? null
   const eyebrow = [categoryName, city].filter(Boolean).join(' · ') || 'Live event'
+  const cta = broadcastCta(event)
 
   return {
     eventId,
@@ -171,7 +183,9 @@ export async function loadArtefactContext(
     venueName: event.venue_name ?? null,
     city,
     placeLabel: [event.venue_name, city].filter(Boolean).join(', '),
-    priceLabel: priceLabel(event.ticket_tiers ?? [], 'Free entry'),
+    priceLabel: broadcastPriceLabel(event),
+    listing: !cta.ticketingByEventLinqs,
+    cta,
     // Composed onto a printed poster and a story card, so markdown here is
     // asterisks in ink. Law 6 renders what the organiser supplies; it does not
     // render their syntax (UX1.1).
@@ -201,6 +215,8 @@ export function toCardInput(
     shortUrl: context.links[channel] ?? context.links.fallback,
     eyebrow: context.eyebrow,
     organiserName: context.organiserName,
+    ...(context.listing ? { listing: true } : {}),
+    ...(context.cta ? { scanLabel: context.cta.scan } : {}),
   }
 }
 
@@ -218,5 +234,6 @@ export function toCaptionInput(context: ArtefactContext): CaptionInput {
     organiserName: context.organiserName,
     categorySlug: context.categorySlug,
     links: context.links,
+    ...(context.cta ? { cta: context.cta } : {}),
   }
 }

@@ -4,6 +4,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
+import { ctaFor } from '@/lib/events/cta'
 import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
 import { type HeroCarouselSlide } from './hero-carousel-client'
 import { HeroCarouselEnhancer } from './hero-carousel-enhancer'
@@ -196,7 +197,8 @@ export async function FeaturedEventHero({
       background: renderBackground(eventMedia[i], i === 0),
       card: renderEventCard(s.event, s.ticketsSoldToday),
       primaryHref: `/events/${s.event.slug}`,
-      primaryLabel: 'Get tickets',
+      // The one call to action (src/lib/events/cta.ts): no tiers here means no price known, so it offers details, never a ticket.
+      primaryLabel: ctaFor({ tiers: s.event.ticket_tiers ?? null }).action,
     })),
     ...highlightSlides.map((s, i) => ({
       key: `highlight-${s.key}`,

@@ -30,10 +30,16 @@ describe('the claim switch', () => {
     }
   })
 
-  /*
-   * The switch's row is not written by 20261027150001: that migration was applied to production and TEST at 21:40 of
-   * 27 October 2026 and runs nowhere again, so an insert added to it would land nowhere. With no row the switch reads
-   * OFF (tests/unit/flags/broadcast.test.ts). The row rides its own migration (the project manager's 01:13 (1) of
-   * 28 October 2026); turning claims on waits on that row and on Lawal's approval of the privacy version.
-   */
+  // The row rides its own migration, never 20261027150001: that one was applied to production and TEST at 21:40 of
+  // 27 October 2026 and runs nowhere again (the project manager's 01:13 (1) of 28 October 2026). Turning claims on
+  // waits on this row and on Lawal's approval of the privacy version.
+  test('is written into the database OFF by its own migration', () => {
+    const sql = read('supabase/migrations/20261028114501_listing_claims_switch.sql')
+    expect(sql).toMatch(/insert into public\.feature_flags \(flag, enabled, description\)\s+values \(\s+'listing_claims',\s+false,/)
+    expect(sql).toMatch(/on conflict \(flag\) do nothing;/)
+  })
+
+  test('leaves the claim migration exactly as production and TEST applied it', () => {
+    expect(read('supabase/migrations/20261027150001_listing_claims.sql')).not.toMatch(/'listing_claims'/)
+  })
 })

@@ -104,6 +104,8 @@ import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 import { isWalkIn } from '@/lib/events/entry-mode'
+import { ctaFor } from '@/lib/events/cta'
+import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -249,6 +251,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     dateLabel,
     categoryName: event.category?.name,
     walkIn,
+    /* The snippet asks the same call to action as the page, so a search result never offers a ticket the page does not. */
+    cta: ctaFor({
+      over: ['past', 'archived', 'cancelled'].includes(eventPageState(event, new Date()) ?? ''),
+      entryMode: event.entry_mode ?? null,
+      tiers: event.ticket_tiers ?? null,
+      isFree: event.is_free ?? null,
+      externalTicketUrl: event.external_ticket_url ?? null,
+    }),
   })
 
   const baseUrl = getSiteUrl()
@@ -1039,6 +1049,15 @@ export default async function EventDetailPage({ params }: Props) {
     saleBlocked,
     isSoldOut,
     priceLabel,
+    /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
+    cta: ctaFor({
+      /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket in the hero or bar. */
+      over: eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled',
+      entryMode: event.entry_mode ?? null,
+      tiers: priceTiersForDisplay,
+      isFree: event.is_free ?? null,
+      externalTicketUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
+    }),
   })
   const ticketCtaLabel = heroSale.cta
   const heroPriceLabel = heroSale.price
@@ -1508,7 +1527,10 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
 
-                {event.organisation && (
+                {/* An EventLinqs listing names its host, never the listings organisation (ruling A of 23 October 2026,
+                    src/lib/listings/shown-organiser.ts): this card linked /organisers/eventlinqs-listings, a 404, on every
+                    curated night this page draws (window 5's finish pass, 29 October 2026, Law 5). */}
+                {event.organisation && shownOrganiser(event, event.organisation).slug !== null && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <CollaboratorsLine collaborators={collaborators} className="mt-2" />
@@ -1634,7 +1656,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <ExternalTicketsPanel
                     destinationUrl={ticketPanel?.button?.href ?? outboundHref(event.slug, event.external_ticket_url)}
                     host={ticketPanel?.button ? ticketPanel.button.host : externalTicketHost}
-                    // WI3: "Get tickets on Humanitix", the site named where it can be.
+                    // The checklist's E4: "View tickets at Humanitix", the site named where it can be.
                     label={ticketPanel?.button?.label ?? ticketButtonLabel(event.external_ticket_url)}
                     price={ticketPanel?.button?.price ?? null}
                     also={ticketPanel?.also ?? []}

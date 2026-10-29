@@ -32,9 +32,11 @@ export type PolicyName =
   | 'forecast-run'
   | 'newsletter-subscribe'
   | 'partner-enquiry'
+  | 'listing-submission'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
+  | 'outreach-one-click'
   | 'outreach-unsubscribe'
   | 'ai-chat'
   | 'ai-chat-daily'
@@ -211,6 +213,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'The RFC 8058 one-click unsubscribe endpoint, POST /api/marketing/one-click-unsubscribe/[token]. KEYED BY THE TOKEN, passed explicitly, NEVER by the IP, and that is the whole point of this entry rather than a detail of it. The caller is a mailbox provider: Google or Yahoo infrastructure posting on a recipient behalf, so every recipient of one campaign arrives from a handful of egress addresses. An IP-keyed bucket of any size would start refusing real unsubscribes the moment a campaign went out at volume, which is the carrier-NAT bucket this platform has already met twice (launch-artefact, launch-compose-daily) and which payouts-read and stream-message were both re-keyed to escape. One token is one subscriber, which is the unit of abuse worth bounding, and the token is an unguessable uuid rather than something a stranger enumerates. Twenty per token per ten minutes covers a provider retrying a delivery and a person pressing the button in every copy of every message they hold, and is useless for anything else, because the only thing the endpoint can do with a valid token is stop mail to that one address. FAIL-OPEN, the same posture and the same reason as marketing-rights: this surface can only ever STOP mail, the write is idempotent so a flood of valid requests produces one ledger row, and a Redis blip that refused a one-click unsubscribe would be the platform failing the exact facility the headers promise a mailbox provider works. That is a deliverability failure, which is the cost launch-email prices in domains rather than in requests, and it is incurred by refusing rather than by allowing.',
   },
+  'outreach-one-click': {
+    keyPrefix: 'out-1click',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'The RFC 8058 one-click unsubscribe for the organiser CRM emails, POST /api/outreach/one-click-unsubscribe/[token] (window 6, 28 October 2026). The same shape and the same reasons as marketing-one-click, in its own bucket so a campaign on one cannot spend the other: KEYED BY THE TOKEN alone (organiser_contacts.unsubscribe_token, an unguessable uuid), never by the caller address, because the caller is a mailbox provider posting for every recipient of a send from a few egress addresses. Twenty per token per ten minutes covers retries and repeated presses. FAIL-OPEN: the endpoint can only stop mail, the write happens once for each address (outreach_unsubscribe_by_token), and refusing it during a Redis blip would fail the facility the headers promise.',
+  },
   'outreach-unsubscribe': {
     keyPrefix: 'out-unsub',
     limit: 10,
@@ -238,6 +247,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The partner enquiry form on /partners per IP per 10 min (Train C, row 14). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone correcting a message twice; a scripted flood is bounded.',
+  },
+  'listing-submission': {
+    keyPrefix: 'listing-sub',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',

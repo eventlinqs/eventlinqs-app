@@ -63,7 +63,7 @@ export type BookingLink = {
   createdAt: string
 }
 
-/** The platform's name as a visitor reads it on the button ("Get tickets on Humanitix"). */
+/** The platform's name as a visitor reads it on the button ("View tickets at Humanitix"). */
 export const PROVIDER_NAMES: Readonly<Record<BookingProvider, string | null>> = {
   humanitix: 'Humanitix',
   eventbrite: 'Eventbrite',

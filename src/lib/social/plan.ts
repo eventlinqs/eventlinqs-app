@@ -1,5 +1,7 @@
 import { buildCaptions, type CaptionInput } from '@/lib/broadcast/captions'
 import { buttonOf, priceToShow, PROVIDER_NAMES, type BookingLink } from '@/lib/events/booking-links'
+import { ctaFor, ctaPriceLine, type Cta } from '@/lib/events/cta'
+import { outboundHost } from '@/lib/listings/outbound'
 import type { SocialFormat, SocialPlatform } from './cadence'
 
 /**
@@ -59,20 +61,26 @@ export function plan(candidates: readonly PlanCandidate[], planned: ReadonlySet<
 
 const dollars = (cents: number): string => (cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`)
 
+/** A listing EventLinqs does not ticket: its call to action from the button WI3 chose (src/lib/events/cta.ts). */
+export function listingCta(links: readonly BookingLink[], isFree: boolean | null): Cta {
+  const button = buttonOf(links)
+  return ctaFor({
+    isFree,
+    externalTicketUrl: button?.url ?? null,
+    externalKind: button?.kind ?? null,
+    providerName: button ? (PROVIDER_NAMES[button.provider] ?? outboundHost(button.url)) : null,
+  })
+}
+
 /**
- * The price line for a listing EventLinqs does not ticket. The Launch Kit reads its price from EventLinqs' own ticket
- * tiers, so a curated listing with none would read "Free entry" even where it sells on Humanitix. Here: the button's
- * price where it was read within the day (WI3's priceToShow), else where it sells, else free where the listing is.
+ * The price line for a listing EventLinqs does not ticket, by the one call to action: the button's price where it was
+ * read within the day (WI3's priceToShow), else where it sells; free only where the listing says so; else no price.
  */
 export function listingPriceLabel(links: readonly BookingLink[], isFree: boolean | null, now: Date): string | null {
   const button = buttonOf(links)
-  if (button === null) return isFree === true ? 'Free entry' : null
-  if (button.availability === 'sold_out') return null
-  const where = PROVIDER_NAMES[button.provider]
-  if (button.kind === 'free_register') return where === null ? 'Free, registration needed' : `Free, register on ${where}`
-  const cents = priceToShow(button, now)
-  if (cents !== null && cents > 0) return `From ${dollars(cents)}`
-  return where === null ? 'Tickets on the organiser’s site' : `Tickets on ${where}`
+  if (button !== null && button.availability === 'sold_out') return null
+  const cents = button ? priceToShow(button, now) : null
+  return ctaPriceLine(listingCta(links, isFree), { outsideChecked: cents !== null && cents > 0 ? `From ${dollars(cents)}` : null })
 }
 
 /** The listing's own words a post may state. */

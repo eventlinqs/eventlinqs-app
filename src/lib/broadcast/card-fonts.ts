@@ -18,7 +18,7 @@ import { join } from 'node:path'
 export type LoadedFont = {
   name: string
   data: ArrayBuffer
-  weight: 500 | 600 | 700 | 800
+  weight: 500 | 600 | 700 | 800 | 900
   style: 'normal'
 }
 
@@ -29,6 +29,15 @@ const FONT_FILES: { file: string; name: string; weight: LoadedFont['weight'] }[]
   { file: 'Archivo-ExtraBold.ttf', name: 'Archivo', weight: 800 },
   { file: 'HankenGrotesk-Medium.ttf', name: 'Hanken Grotesk', weight: 500 },
   { file: 'HankenGrotesk-SemiBold.ttf', name: 'Hanken Grotesk', weight: 600 },
+  // The campaign treatments (Lawal's approval of 28 October 2026): Archivo at the references' condensed widths and
+  // Manrope, the site's own detail face. Static instances, as satori cannot set a width axis (README.md beside them).
+  { file: 'Archivo-SemiBold.ttf', name: 'Archivo', weight: 600 },
+  { file: 'ArchivoCondensed-Heavy.ttf', name: 'Archivo Condensed', weight: 800 },
+  { file: 'ArchivoCompressed-Black.ttf', name: 'Archivo Compressed', weight: 900 },
+  { file: 'Manrope-Medium.ttf', name: 'Manrope', weight: 500 },
+  { file: 'Manrope-SemiBold.ttf', name: 'Manrope', weight: 600 },
+  { file: 'Manrope-Bold.ttf', name: 'Manrope', weight: 700 },
+  { file: 'Manrope-ExtraBold.ttf', name: 'Manrope', weight: 800 },
 ]
 
 let cached: Promise<LoadedFont[]> | null = null
@@ -59,3 +68,7 @@ export function loadCardFonts(): Promise<LoadedFont[]> {
 /** Font family names as satori expects them in a fontFamily declaration. */
 export const DISPLAY_FAMILY = 'Archivo'
 export const BODY_FAMILY = 'Hanken Grotesk'
+/** The treatments' faces: the references' condensed headline cuts, and Manrope for every detail. */
+export const CONDENSED_FAMILY = 'Archivo Condensed'
+export const COMPRESSED_FAMILY = 'Archivo Compressed'
+export const DETAIL_FAMILY = 'Manrope'

@@ -260,6 +260,12 @@
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
+ *   cta-five-states            the release checklist's section E: every surface asks
+ *                              src/lib/events/cta.ts, the five states' words are written
+ *                              only there, and no display falls back to "Free entry"
+ *   social-measured-apart      the weekly social report never mixes counted and entered
+ *                              figures, never calls a press out a sale, and one file alone
+ *                              reads its figures and decisions
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
@@ -3254,6 +3260,17 @@ const GUARDS = [
   // The route sends a walk-in event to its own page before any ticket work, and
   // the structured data still carries offers.price 0. Drilled red five ways.
   'scripts/guards/walk-in-page-sells-nothing.mjs',
+  // The release checklist of 28 October 2026, section E, release blocking: the five
+  // event states say one thing on every surface. The guard holds the shape; the five
+  // states on every surface are driven by tests/unit/events/cta-five-states.test.ts
+  // in the suite. Drilled red three ways.
+  'scripts/guards/cta-five-states.mjs',
+  // The release checklist of 28 October 2026, K14 and J16: the weekly social report keeps
+  // what EventLinqs counted apart from what Instagram and Facebook reported (entered by
+  // a person), never calls a press out to a booking site a sale, and its two tables
+  // have one reader, so an approved recommendation changes nothing by itself (G4).
+  // Drilled red five ways (C:\dev\EVIDENCE\SOCIAL-REPORT-28OCT\guard-drills.txt).
+  'scripts/guards/social-measured-apart.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

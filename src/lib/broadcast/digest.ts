@@ -2,9 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
-import { priceLabel } from '@/lib/events/price-label'
-import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
-import { TICKETS_SOLD_ELSEWHERE_HEADING, isExternallyTicketed } from '@/lib/payments/sale-status'
+import { broadcastPriceLabel } from './price-line'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
 import { buildShortUrl, getOrCreateShareLink } from './share-links'
@@ -271,12 +269,9 @@ export function digestDateLabel(startDate: string, timezone: string | null): str
 export function digestPriceLabel(
   tiers: { price: number; currency: string | null }[] | null | undefined,
   externalTicketUrl: string | null,
+  checked: { isFree?: boolean | null; entryMode?: string | null } = {},
 ): string {
-  if (isExternallyTicketed({ external_ticket_url: externalTicketUrl })) {
-    const name = PROVIDER_NAMES[providerOf(externalTicketUrl!.trim())]
-    return name ? `Tickets on ${name}` : TICKETS_SOLD_ELSEWHERE_HEADING
-  }
-  return priceLabel(tiers ?? [], 'Free entry')
+  return broadcastPriceLabel({ ticket_tiers: tiers, external_ticket_url: externalTicketUrl, is_free: checked.isFree ?? null, entry_mode: checked.entryMode ?? null })
 }
 
 export function digestVenueLabel(
@@ -314,7 +309,7 @@ export async function fetchDigestEvents(
     admin
     .from('events')
     .select(
-      'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, external_ticket_url, ticket_tiers(price, currency)',
+      'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, external_ticket_url, is_free, entry_mode, ticket_tiers(price, currency, is_active)',
     )
     .eq('city_primary', citySlug)
     .eq('status', 'published')
@@ -341,6 +336,8 @@ export async function fetchDigestEvents(
     visibility: string | null
     is_seed_data: boolean | null
     external_ticket_url?: string | null
+    is_free?: boolean | null
+    entry_mode?: string | null
     ticket_tiers: { price: number; currency: string | null }[] | null
   }
 
@@ -356,7 +353,7 @@ export async function fetchDigestEvents(
       title: e.title,
       dateLabel: digestDateLabel(e.start_date, e.timezone),
       venueLabel: digestVenueLabel(e.venue_name, e.venue_city, cityName),
-      priceLabel: digestPriceLabel(e.ticket_tiers, e.external_ticket_url ?? null),
+      priceLabel: digestPriceLabel(e.ticket_tiers, e.external_ticket_url ?? null, { isFree: e.is_free ?? null, entryMode: e.entry_mode ?? null }),
       url: `${origin}/events/${e.slug}`,
     }))
 
@@ -428,7 +425,7 @@ export function buildDigestEmailHtml(input: {
           <p style="margin:4px 0 2px;font-size:16px;line-height:1.4;color:#0A1628;font-weight:700">
             <a href="${escapeAttr(e.url)}" style="color:#0A1628;text-decoration:none">${escapeHtml(e.title)}</a>
           </p>
-          <p style="margin:0;font-size:13px;color:#4A4A4A">${escapeHtml(e.venueLabel)}${e.venueLabel ? ' · ' : ''}${escapeHtml(e.priceLabel)}</p>
+          <p style="margin:0;font-size:13px;color:#4A4A4A">${escapeHtml(e.venueLabel)}${e.venueLabel && e.priceLabel ? ' · ' : ''}${escapeHtml(e.priceLabel)}</p>
         </td>
       </tr>`,
     )

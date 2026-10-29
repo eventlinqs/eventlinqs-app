@@ -83,7 +83,7 @@ describe('a curated listing says its own price line, never "Free entry" over a p
   test('a price read within the day', () => expect(listingPriceLabel([link()], false, NOW)).toBe('From $35.50'))
   test('a price older than a day names where it sells', () =>
     expect(listingPriceLabel([link({ priceCheckedAt: '2026-10-26T06:00:00+11:00' })], false, NOW)).toBe('Tickets on Humanitix'))
-  test('a free registration', () => expect(listingPriceLabel([link({ kind: 'free_register', priceFromCents: null })], true, NOW)).toBe('Free, register on Humanitix'))
+  test('a free registration says registration is required (E2)', () => expect(listingPriceLabel([link({ kind: 'free_register', priceFromCents: null })], true, NOW)).toBe('Free, registration required'))
   test('a free night with no link', () => expect(listingPriceLabel([], true, NOW)).toBe('Free entry'))
   test('no link and not free says nothing', () => expect(listingPriceLabel([], false, NOW)).toBeNull())
 })

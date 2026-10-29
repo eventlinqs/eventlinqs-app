@@ -1,0 +1,57 @@
+import { NextResponse } from 'next/server'
+import { getAdminSession } from '@/lib/admin/auth'
+import { can } from '@/lib/admin/rbac'
+import { captureException } from '@/lib/observability/sentry'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { formatsOf, renderCampaignSlide, type Format } from '@/lib/broadcast/campaign-slides'
+import { readPiece, slideImagesNow } from '@/lib/social/store'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+/**
+ * ONE SLIDE OF A WEEKLY CAMPAIGN PIECE (the release checklist of 28 October 2026, B4 and C3 to C8): the JPEG Instagram
+ * and Facebook take, drawn from the piece's own slide data at the format's published size, to download on the
+ * founder's phone. Staff only, checked here on the server as well as by the page (F1): a person with no admin session
+ * gets 401 and never a slide.
+ *
+ * ?format=feed (the 4:5 portrait), square or story, each laid out natively; a piece is made in the formats formatsOf
+ * gives it and no other. The slide's image is asked of the register AT THIS MOMENT: one withdrawn, replaced or expired
+ * since the piece was planned is not drawn, and the night is drawn in type instead (the engine plan's part D).
+ */
+export async function GET(request: Request, { params }: { params: Promise<{ pieceId: string; n: string }> }): Promise<NextResponse> {
+  const session = await getAdminSession()
+  if (!session) return NextResponse.json({ error: 'unauthorised' }, { status: 401 })
+  if (!can(session, 'admin.network.manage')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+
+  const { pieceId, n } = await params
+  const index = Number(n)
+  if (!/^[0-9a-f-]{36}$/i.test(pieceId) || !Number.isInteger(index) || index < 1) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  const db = createAdminClient()
+  const piece = await readPiece(db, pieceId)
+  if (piece === null || index > piece.slides.length) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  const asked = new URL(request.url).searchParams.get('format')
+  const allowed = formatsOf(piece.format)
+  const format = (asked ?? allowed[0]) as Format
+  if (!allowed.includes(format)) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+
+  try {
+    const image = (await slideImagesNow(db, piece.slides, new Date())).get(index - 1) ?? null
+    const bytes = await renderCampaignSlide(format, piece.slides[index - 1], index, piece.slides.length, null, image)
+    const download = new URL(request.url).searchParams.get('download') === '1'
+    const shape = format === 'feed' ? 'portrait' : format
+    const name = `eventlinqs-${piece.kind.replace(/_/g, '-')}-${piece.city}-${String(index).padStart(2, '0')}-${shape}.jpg`
+    return new NextResponse(Buffer.from(bytes) as unknown as BodyInit, {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/jpeg',
+        'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${name}"`,
+        'Content-Length': String(bytes.byteLength),
+        'Cache-Control': 'private, no-store',
+      },
+    })
+  } catch (error) {
+    captureException(error, { where: 'app/admin/(authed)/social/piece/[pieceId]/[n]/route:render' })
+    return NextResponse.json({ error: 'render_failed' }, { status: 500 })
+  }
+}

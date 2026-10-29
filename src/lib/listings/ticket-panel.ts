@@ -1,10 +1,11 @@
 import { PROVIDER_NAMES, alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
+import { ctaFor, FREE_REGISTRATION_REQUIRED, GET_TICKETS, type Cta } from '@/lib/events/cta'
 import { outboundHost, outboundHref, ticketButtonLabel } from './outbound'
 
 /**
  * WHAT THE TICKET COLUMN SAYS FOR AN EVENT SOLD ON OTHER SITES (WI3's page, the
  * project manager's 12:30 of 27 October 2026, point 4): ONE one-click button
- * ("Get tickets on Humanitix", "Register free on Humanitix"); under it one quiet
+ * ("View tickets at Humanitix", "Register free on Humanitix"); under it one quiet
  * line, "Also on Eventbrite · Moshtix", each one tap; a price only when it was
  * checked within the last day; all sold out, "Sold out on Humanitix" and never a
  * dead button. Which link gets the button is WI3's rule, buttonOf
@@ -37,7 +38,8 @@ export function ticketPanelOf(eventSlug: string, links: readonly BookingLink[], 
     return { button: null, also: [], soldOut: name ? `Sold out on ${name}` : 'Sold out' }
   }
   const name = nameOf(first)
-  const label = first.kind === 'free_register' ? (name ? `Register free on ${name}` : 'Register free') : name ? `Get tickets on ${name}` : 'Get tickets'
+  /* The one call to action (src/lib/events/cta.ts): "Register free on Humanitix" or "View tickets at Humanitix". */
+  const label = ctaFor({ externalTicketUrl: first.url, externalKind: first.kind, providerName: name ?? outboundHost(first.url) }).action
   const cents = priceToShow(first, now)
   const seen = new Set<string>([name ?? outboundHost(first.url) ?? first.url])
   const also: TicketPanel['also'] = []
@@ -75,7 +77,11 @@ export function heroSaleWords(input: {
   saleBlocked: boolean
   isSoldOut: boolean
   priceLabel: string | null
+  /** The event's call to action (src/lib/events/cta.ts); with it a free night says details or register, never buy. */
+  cta?: Cta
 }): HeroSaleWords {
+  /* A night that is over offers no ticket, here or elsewhere, and names no price (cta.ts's sixth state). */
+  if (input.cta?.state === 'over') return { cta: input.cta.action, price: null, trustSignals: false }
   if (input.externalUrl) {
     return {
       cta: input.panel?.soldOut ?? input.panel?.button?.label ?? ticketButtonLabel(input.externalUrl),
@@ -83,9 +89,20 @@ export function heroSaleWords(input: {
       trustSignals: false,
     }
   }
+  /* Nothing to sell here and no price anyone checked (the checklist's E5): details, never "Get tickets". */
+  if (input.cta?.state === 'unknown_price' || (!input.cta && input.priceLabel === null && !input.isFree)) {
+    return { cta: 'View event details', price: null, trustSignals: false }
+  }
+  /* E1, free with nothing to register: details and "Free entry". */
+  if (input.cta?.state === 'free_open') return { cta: 'View event details', price: 'Free entry', trustSignals: false }
+  /* E2, free with registration here: "Register", and it says registration is required. */
+  if (input.cta?.state === 'free_registration') {
+    return { cta: input.saleBlocked ? 'Not on sale yet' : input.isSoldOut ? 'Join the waitlist' : 'Register', price: FREE_REGISTRATION_REQUIRED, trustSignals: true }
+  }
   return {
-    cta: input.saleBlocked ? 'Not on sale yet' : input.isSoldOut ? 'Join the waitlist' : 'Get tickets',
-    price: input.priceLabel ?? 'Free entry',
+    cta: input.saleBlocked ? 'Not on sale yet' : input.isSoldOut ? 'Join the waitlist' : (input.cta?.action ?? GET_TICKETS),
+    /* Never free because no price is stored (the checklist's E6): free only when the event says it is. */
+    price: input.priceLabel ?? (input.isFree ? 'Free entry' : null),
     trustSignals: true,
   }
 }
