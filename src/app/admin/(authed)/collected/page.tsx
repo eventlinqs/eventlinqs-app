@@ -4,7 +4,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { ReadFailed, readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
 import {
   ACQUISITION_PATHS,
@@ -15,7 +15,7 @@ import {
   type SourceChanges,
   type SourceType,
 } from '@/lib/listings/collect'
-import { HORIZONS, HORIZON_LABELS, horizonOf } from '@/lib/listings/horizon'
+import { HORIZONS, HORIZON_LABELS, horizonBounds, horizonOf } from '@/lib/listings/horizon'
 import { REASON_LABELS, type CandidateReason } from '@/lib/listings/judge'
 import { acceptCandidateAction, addPartnerFeedAction, refuseCandidateAction } from './actions'
 import { LISTINGS_ORG_SLUG } from '@/lib/listings/collect-store'
@@ -99,6 +99,18 @@ const RUNS_READ = 500
 const RUNS_SHOWN = 5
 /* The pickers for a partner's feed; explicit limits, as a select stops at 1,000 rows on its own. */
 const PICK_LIMIT = 500
+/* The queue draws its soonest rows; every figure above it is counted by the database, never by what was drawn. */
+const QUEUE_DRAWN = 200
+
+/** A count the page states as a fact: a failed read answers 500 (ReadFailed), never a zero. */
+async function countOrThrow(label: string, run: () => PromiseLike<{ count: number | null; error: unknown }>): Promise<number> {
+  const { count, error } = await run()
+  if (error) {
+    console.error(`[${label}] count failed; answering 500 rather than a false figure:`, error)
+    throw new ReadFailed(label, error)
+  }
+  return count ?? 0
+}
 export default async function AdminCollectedPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.events.manage')) redirect('/admin')
@@ -106,14 +118,38 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
 
   const { status, why } = await searchParams
   const db = createAdminClient()
+  const now = new Date()
+  /*
+   * The queue starts at today in Melbourne. A night that has passed is refused by the next daily run (its passed-night
+   * sweep), so it is counted and named here but never offered for acceptance (29 October 2026: 35 such rows led the
+   * queue on TEST, sorted soonest first, each with an Accept button).
+   */
+  const bounds = horizonBounds(now)
+  const waitingCount = (label: string, from: Date | null, to: Date | null) =>
+    countOrThrow(label, () => {
+      let q = db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('status', 'waiting')
+      if (from) q = q.gte('starts_at', from.toISOString())
+      if (to) q = q.lt('starts_at', to.toISOString())
+      return q
+    })
+  const [publishN, acquireN, relationshipsN, beyondN, pastN] = await Promise.all([
+    waitingCount('admin-collected-count-publish', bounds.publish, bounds.acquire),
+    waitingCount('admin-collected-count-acquire', bounds.acquire, bounds.relationships),
+    waitingCount('admin-collected-count-relationships', bounds.relationships, bounds.beyond),
+    waitingCount('admin-collected-count-beyond', bounds.beyond, null),
+    waitingCount('admin-collected-count-past', null, bounds.publish),
+  ])
+  const counted = { publish: publishN, acquire: acquireN, relationships: relationshipsN }
+  const waitingTotal = publishN + acquireN + relationshipsN + beyondN
   const [waiting, sources, runs, partnerOrgs, partnerVenues, categories] = await Promise.all([
     readOrThrow('admin-collected', () =>
       db
         .from('listing_candidates')
         .select('id, kind, event_id, change, title, starts_at, venue_name, venue_address, page_url, links, confidence, reasons, source:listing_sources(name), event:events(title, slug)')
         .eq('status', 'waiting')
+        .gte('starts_at', bounds.publish.toISOString())
         .order('starts_at', { ascending: true })
-        .limit(200),
+        .limit(QUEUE_DRAWN),
     ),
     readOrThrow('admin-collected-register', () =>
       db.from('listing_sources').select(REGISTER_COLUMNS).order('acquisition_order').order('name'),
@@ -130,14 +166,14 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
     readOrThrow('admin-collected-categories', () => db.from('event_categories').select('id, name').order('name').limit(PICK_LIMIT)),
   ])
   const notice = status ? NOTICES[status] : undefined
-  const now = new Date()
   const runsBySource = new Map<string, { ran_at: string; succeeded: boolean; outcome: string }[]>()
   for (const run of runs ?? []) {
     const list = runsBySource.get(run.source_id as string) ?? []
     if (list.length < RUNS_SHOWN) list.push(run as { ran_at: string; succeeded: boolean; outcome: string })
     runsBySource.set(run.source_id as string, list)
   }
-  const byHorizon = HORIZONS.map((h) => ({ h, n: (waiting ?? []).filter((c) => horizonOf(new Date(c.starts_at as string), now) === h).length }))
+  const byHorizon = HORIZONS.map((h) => ({ h, n: counted[h] }))
+  const drawn = (waiting ?? []).length
 
   return (
     <div>
@@ -165,7 +201,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
         </div>
       )}
 
-      <h2 className="mb-3 font-display text-lg font-semibold">Waiting for review ({(waiting ?? []).length})</h2>
+      <h2 className="mb-3 font-display text-lg font-semibold">Waiting for review ({waitingTotal})</h2>
       <ul className="mb-4 grid grid-cols-1 gap-2 text-sm text-white/70 sm:grid-cols-3" data-horizons>
         {byHorizon.map(({ h, n }) => (
           <li key={h} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2" data-horizon={h}>
@@ -173,7 +209,14 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
           </li>
         ))}
       </ul>
-      {(waiting ?? []).length === 0 ? (
+      {(drawn < waitingTotal || beyondN > 0 || pastN > 0) && (
+        <p className="mb-4 text-sm text-white/60" data-queue-note>
+          {drawn < waitingTotal && <>Showing the first {drawn}, soonest first. </>}
+          {beyondN > 0 && <>{beyondN} more than 90 days ahead. </>}
+          {pastN > 0 && <>{pastN} whose night has passed {pastN === 1 ? 'is' : 'are'} not shown; the next daily run refuses them, saying so.</>}
+        </p>
+      )}
+      {drawn === 0 ? (
         <p className="mb-10 rounded-md border border-white/10 bg-white/[0.03] px-4 py-6 text-sm text-white/60">
           Nothing is waiting. The next run is tomorrow morning.
         </p>

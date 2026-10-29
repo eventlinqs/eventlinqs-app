@@ -53,3 +53,34 @@ export function horizonOf(startsAt: Date, now: Date): HorizonOrOutside {
   if (d <= HORIZON_DAYS.relationships) return 'relationships'
   return 'beyond'
 }
+
+const melbourneOffset = new Intl.DateTimeFormat('en-AU', { timeZone: HORIZON_ZONE, timeZoneName: 'longOffset' })
+
+/** Melbourne's offset from UTC at a moment, in minutes ("GMT+11:00" is 660), from the platform's time zone data. */
+function offsetMinutes(at: Date): number {
+  const name = melbourneOffset.formatToParts(at).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT'
+  const m = /GMT([+-])(\d{2}):(\d{2})/.exec(name)
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0
+}
+
+/**
+ * The instant the Melbourne calendar day `days` after today begins (0 is today's midnight). Midnight is never inside a
+ * daylight saving change in Melbourne (the clocks move at 2:00 and 3:00), so the offset read at a first guess and once
+ * more at the answer settles it.
+ */
+export function melbourneDayStart(now: Date, days: number): Date {
+  const utcMidnight = (dayIndex(now) + days) * DAY_MS
+  let at = new Date(utcMidnight - offsetMinutes(new Date(utcMidnight)) * 60_000)
+  at = new Date(utcMidnight - offsetMinutes(at) * 60_000)
+  return at
+}
+
+/** Where each horizon begins, as instants a database filter can use; each matches horizonOf at its bound. */
+export function horizonBounds(now: Date): Readonly<Record<Horizon | 'beyond', Date>> {
+  return {
+    publish: melbourneDayStart(now, 0),
+    acquire: melbourneDayStart(now, HORIZON_DAYS.publish + 1),
+    relationships: melbourneDayStart(now, HORIZON_DAYS.acquire + 1),
+    beyond: melbourneDayStart(now, HORIZON_DAYS.relationships + 1),
+  }
+}
