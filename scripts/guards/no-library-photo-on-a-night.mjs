@@ -19,6 +19,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const TAG = '[no-library-photo-on-a-night]'
 const FAILURES = []
@@ -80,6 +81,10 @@ const cityCard = read('src/app/free/[city]/this-week/card/[format]/route.ts')
 if (!cityCard || !/const backdrop = null\b/.test(code(cityCard))) fail('5', 'the city week card draws a backdrop photograph beside named nights')
 
 console.log(`${TAG} did ${judged} night source file(s) read, 3 cover rules, 2 resolvers, the home hero and the city week card judged`)
+declareWork('no-library-photo-on-a-night', {
+  did: { 'night source file read': judged, 'cover rule judged': 3, 'resolver judged': 2 },
+  found: { 'clause failed': FAILURES.length },
+})
 if (FAILURES.length) {
   console.error(`${TAG} FAILED`)
   for (const f of FAILURES) console.error(`  clause ${f}`)
