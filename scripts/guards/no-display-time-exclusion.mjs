@@ -78,6 +78,12 @@ const ALLOWANCES = [
     reason:
       'Exclusion audit item 11. A just-announced PUSH deliberately does not fire for an event already running; that is different semantics from a discovery surface and it hides nothing from anybody browsing.',
   },
+  {
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    rule: 3,
+    reason:
+      "Exclusion audit item 12. The home hero is a showcase of at most five slides, never a listing: it always sliced the catalogue to five. Only a night's own photograph may carry its name there (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52 directive), so a night on a library photograph, a typographic cover or none is not a slide; it stays on every rail, every listing and its own page, so published still means visible.",
+  },
 ]
 
 const files = []
