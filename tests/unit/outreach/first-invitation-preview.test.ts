@@ -42,3 +42,29 @@ describe('message 1, version 2, the poster preview', () => {
     expect(r.heldBecause).toEqual(['a field could not be filled from verified facts: [poster preview]'])
   })
 })
+
+/*
+ * Version 3 is variant B of the first learning-loop test (the growth blueprint's ruling 1): the recurring partnership,
+ * in Lawal's format. It changes the offer only; everything else is variant A's, so the test judges one change.
+ */
+const v3 = JSON.parse(readFileSync('scripts/ops/data/outreach-templates-30oct-v3.json', 'utf8')).templates.find((t: { key: string }) => t.key === 'first_invitation')
+
+describe('message 1, version 3, variant B, the recurring partnership', () => {
+  it('passes every rule of the messages file from the same verified facts, with no preview needed', () => {
+    const r = renderTemplate(row(v3), facts, unsubscribe)
+    expect(r.heldBecause).toEqual([])
+    expect(r.body).not.toContain('[poster preview]')
+  })
+
+  it('keeps variant A\'s subject, greeting, true line, listing link, free line and question, so only the offer changes', () => {
+    expect(v3.subject).toBe(v2.subject)
+    const lines = (t: { body: string }) => t.body.split('\n')
+    for (const shared of ['Hi [first name],', "I hope you're all well. [true line]", "It's free, and you keep your own booking setup.", 'Would that work for you?', 'Kind regards,', '[signature]', '[unsubscribe]'])
+      expect(lines(v3).some((l) => l.includes(shared)) && lines(v2).some((l) => l.includes(shared))).toBe(true)
+    expect(v3.body).toContain('Here\'s your listing: [claim link].')
+  })
+
+  it('never says EventLinqs Team, limited, by invitation or a small number', () => {
+    expect(v3.body).not.toMatch(/EventLinqs Team|limited|by invitation|invite only|small number/i)
+  })
+})
