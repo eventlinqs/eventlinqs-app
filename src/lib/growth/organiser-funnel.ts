@@ -6,7 +6,7 @@ import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { LISTINGS_ORGANISATION_SLUG } from '@/lib/listings/shown-organiser'
-import { eventsPerActiveOrganiser, funnelOf, monthOf, type FunnelStage, type FunnelStep, type MonthFigure, type OrganiserNight } from './organiser-funnel-math'
+import { eventsPerActiveOrganiser, funnelOf, monthOf, monthsEndingAt, type FunnelStage, type FunnelStep, type MonthFigure, type OrganiserNight } from './organiser-funnel-math'
 
 /**
  * The organiser funnel and events per active organiser, read from the tables each stage's owner keeps (the rules are in
@@ -144,13 +144,8 @@ export async function readOrganiserFunnel(now: Date = new Date()): Promise<Organ
   const counts = Object.fromEntries(Object.entries(reached).map(([k, v]) => [k, v === null ? null : v.size])) as Record<FunnelStage, number | null>
 
   // Events per active organiser: this month and the three before it, on the platform's clock.
-  // The months by YYYY-MM arithmetic on this month as the platform's clock reads it; no date is built in UTC.
-  const [year, month] = monthOf(nowIso, PLATFORM_TIME_ZONE).split('-').map(Number)
-  const months: string[] = []
-  for (let i = MONTHS_SHOWN - 1; i >= 0; i -= 1) {
-    const index = year * 12 + (month - 1) - i
-    months.push(`${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`)
-  }
+  // This month as the platform's clock reads it, and the ones before it (monthsEndingAt, no date built in UTC).
+  const months = monthsEndingAt(monthOf(nowIso, PLATFORM_TIME_ZONE), MONTHS_SHOWN)
   // Read from a day before the earliest month can begin in any zone; each night is then placed in its month.
   const from = new Date(now.getTime() - (MONTHS_SHOWN * 31 + 1) * DAY_MS)
   const listings = await readOrThrow('the listings account', () => admin.from('organisations').select('id').eq('slug', LISTINGS_ORGANISATION_SLUG).limit(1))

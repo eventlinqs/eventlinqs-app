@@ -1,7 +1,7 @@
 import { formatEventDateShort } from '@/lib/dates/event-time'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
-import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 import { priceLabel } from '@/lib/events/price-label'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
@@ -17,8 +17,10 @@ import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/r
  *   variant 'landscape' (default) - standard rails.
  *   variant 'square'              - genre and trending rails (compact tile).
  *
- * No branded placeholder: a missing cover falls back to a real category
- * stock photo (getCategoryPhoto), so the image is always real photography.
+ * A night with no photograph of its own draws the branded placeholder, never a
+ * category or library photograph (the project manager's 18:38 of 29 October
+ * 2026, under Lawal's 19:52 directive: authorised photographs, else premium
+ * typography). It used to fall back to a category stock photo (getCategoryPhoto).
  * The card itself never paints text on the image - details sit below it.
  */
 
@@ -51,9 +53,7 @@ export async function ThisWeekCard({
     imageAlt = media.alt ?? imageAlt
   }
   if (!imageSrc) {
-    const photo = await getCategoryPhoto(event.category?.slug ?? null, event.slug ?? event.title)
-    imageSrc = photo.src
-    imageAlt = photo.alt ?? imageAlt
+    imageSrc = BRANDED_FALLBACK_PHOTO.src
   }
 
   const card: HomeCardEvent = {

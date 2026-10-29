@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
+import { ALPHA, CLAIM_WINDOW_DAYS, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge, type Half, type JudgedOutcome } from './learning'
 
 type Admin = SupabaseClient<Database>
 
@@ -120,7 +121,7 @@ export async function planDms(db: Admin, deps: { now: Date; origin: string; acti
 }
 
 export async function planPlays(db: Admin, deps: { now: Date; origin: string; actingUser: string }): Promise<PlayReport[]> {
-  const plays = await db.from('outreach_plays').select('id, name, cohort_rule, step1_template_id, step2_template_id, step3_template_id').eq('state', 'approved')
+  const plays = await db.from('outreach_plays').select('id, name, cohort_rule, step1_template_id, step2_template_id, step3_template_id, variant_template_id, test_per_half').eq('state', 'approved')
   if (plays.error) throw new Error(`outreach_plays: ${plays.error.message}`)
   const reports: PlayReport[] = []
 
@@ -134,10 +135,13 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       .in('state', ['queued', 'sending', 'sent'])
       .gte('drafted_at', melbourneDayStart(deps.now).toISOString())
     const report: PlayReport = { playId: play.id, name: play.name, cap, usedToday: used.count ?? 0, queued: 0, held: [], refused: [] }
+    const judgement = play.variant_template_id ? await db.from('outreach_play_judgements').select('outcome').eq('play_id', play.id).maybeSingle() : null
+    if (judgement?.error) throw new Error(`outreach_play_judgements: ${judgement.error.message}`)
+    const judged = (judgement?.data?.outcome ?? null) as JudgedOutcome | null
     let room = cap - report.usedToday
     let slot = 0
 
-    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string) => {
+    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null) => {
       const r = await draftFromTemplate(db, {
         contactId,
         templateKey: `play ${play.name} step ${step}`,
@@ -145,6 +149,7 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         purpose: 'cadence',
         step,
         playId: play.id,
+        half,
         scheduledFor: new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
         origin: deps.origin,
         draftedBy: deps.actingUser,
@@ -191,7 +196,13 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         if (allowed && !allowed.has(c.organiser_id)) continue
         if (rule.organisers && rule.organisers.length > 0 && !rule.organisers.includes(c.organiser_id)) continue
         seenOrganiser.add(c.organiser_id)
-        await draft(c.id, 1, play.step1_template_id)
+        // The learning loop: while the play's test is open, the contact's half and its text (src/lib/outreach/learning.ts).
+        const half = halfOf(c.id)
+        const inHalf = play.variant_template_id && judged === null
+          ? ((await db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('play_id', play.id).eq('step', 1).eq('half', half).neq('state', 'void')).count ?? 0)
+          : 0
+        const choice = firstMessageChoice({ step1TemplateId: play.step1_template_id, variantTemplateId: play.variant_template_id, testPerHalf: play.test_per_half }, judged, half, inHalf)
+        await draft(c.id, 1, choice.templateId, choice.half)
       }
     }
     reports.push(report)
@@ -550,4 +561,69 @@ export function afterYourNightFields(figures: unknown, title: string): Record<st
     clicks: countOf(f.pressesOut?.people),
     'share clicks': f.ownLink ? countOf(f.ownLink.arrivals) : null,
   }
+}
+
+/* ------------------------------------------------------------------ the learning loop's judgement */
+
+export type JudgeReport = { judged: { playId: string; outcome: JudgedOutcome; z: number | null; a: { sent: number; claims: number }; b: { sent: number; claims: number } }[]; waiting: { playId: string; why: string }[] }
+
+/**
+ * THE ONE JUDGEMENT OF EACH PLAY's TEST (src/lib/outreach/learning.ts; the engine plan's FULL AUTOMATION). For each
+ * approved play with a variant and no judgement yet: once both halves have sent their size and the claim window has
+ * passed, each first message counts as a claim when its organiser's venue (or a night at it) was claimed and verified
+ * after that message went; the halves are compared by judgeVariant and the judgement is written once with its figures.
+ * Nothing is judged on opens, and nothing before the window has passed.
+ */
+export async function judgePlays(db: Admin, now: Date): Promise<JudgeReport> {
+  const report: JudgeReport = { judged: [], waiting: [] }
+  const plays = await db.from('outreach_plays').select('id, test_per_half').eq('state', 'approved').not('variant_template_id', 'is', null)
+  if (plays.error) throw new Error(`outreach_plays: ${plays.error.message}`)
+  for (const play of plays.data ?? []) {
+    const done = await db.from('outreach_play_judgements').select('id').eq('play_id', play.id).maybeSingle()
+    if (done.error) throw new Error(`outreach_play_judgements: ${done.error.message}`)
+    if (done.data) continue
+    const sent = await db.from('outreach_touches').select('contact_id, half, sent_at').eq('play_id', play.id).eq('step', 1).eq('state', 'sent').not('half', 'is', null).limit(5000)
+    if (sent.error) throw new Error(`outreach_touches: ${sent.error.message}`)
+    const rows = (sent.data ?? []).filter((r) => r.sent_at && (r.half === 'a' || r.half === 'b'))
+    const sentA = rows.filter((r) => r.half === 'a').length
+    const sentB = rows.length - sentA
+    const lastSentAt = new Date(Math.max(0, ...rows.map((r) => new Date(r.sent_at as string).getTime())))
+    if (!readyToJudge({ sentA, sentB, testPerHalf: play.test_per_half ?? Number.POSITIVE_INFINITY, lastSentAt, now })) {
+      report.waiting.push({ playId: play.id, why: `a ${sentA}, b ${sentB} of ${play.test_per_half} sent; judged ${CLAIM_WINDOW_DAYS} days after the last` })
+      continue
+    }
+    const tally: { half: Half; claimedAfter: boolean }[] = []
+    for (const r of rows) tally.push({ half: r.half as Half, claimedAfter: await claimedAfter(db, r.contact_id, new Date(r.sent_at as string)) })
+    const arms = armsOf(tally)
+    const j = judgeVariant(arms.a, arms.b)
+    const written = await db.from('outreach_play_judgements').insert({
+      play_id: play.id, sent_a: arms.a.sent, claims_a: arms.a.claims, sent_b: arms.b.sent, claims_b: arms.b.claims,
+      z: j.z, outcome: j.outcome, why: j.why.slice(0, 500), alpha: ALPHA, critical: Z_CRITICAL,
+    })
+    if (written.error) throw new Error(`outreach_play_judgements: ${written.error.message}`)
+    report.judged.push({ playId: play.id, outcome: j.outcome, z: j.z, a: arms.a, b: arms.b })
+  }
+  return report
+}
+
+
+/** Whether the organiser behind a contact claimed one of its venues, or a night at one, verified after the given moment. */
+async function claimedAfter(db: Admin, contactId: string, after: Date): Promise<boolean> {
+  const contact = await db.from('organiser_contacts').select('organiser_id').eq('id', contactId).maybeSingle()
+  if (contact.error) throw new Error(`organiser_contacts: ${contact.error.message}`)
+  if (!contact.data) return false
+  const links = await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id)
+  if (links.error) throw new Error(`organiser_venues: ${links.error.message}`)
+  const venueIds = (links.data ?? []).map((l) => l.venue_id)
+  if (venueIds.length === 0) return false
+  const byVenue = await db.from('listing_claims').select('id', { count: 'exact', head: true }).in('venue_id', venueIds).in('status', ['verified', 'manual_approved']).gt('verified_at', after.toISOString())
+  if (byVenue.error) throw new Error(`listing_claims: ${byVenue.error.message}`)
+  if ((byVenue.count ?? 0) > 0) return true
+  const nights = await db.from('events').select('id').in('venue_id', venueIds).limit(1000)
+  if (nights.error) throw new Error(`events: ${nights.error.message}`)
+  const eventIds = (nights.data ?? []).map((e) => e.id)
+  if (eventIds.length === 0) return false
+  const byNight = await db.from('listing_claims').select('id', { count: 'exact', head: true }).in('event_id', eventIds).in('status', ['verified', 'manual_approved']).gt('verified_at', after.toISOString())
+  if (byNight.error) throw new Error(`listing_claims: ${byNight.error.message}`)
+  return (byNight.count ?? 0) > 0
 }
