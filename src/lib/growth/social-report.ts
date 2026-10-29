@@ -214,6 +214,26 @@ function refusal(message: string): string {
 }
 
 /** J16: one platform figure for a piece that went, as a person read it in the app. */
+/**
+ * The newest Instagram reach a person entered for any of these pieces, or null: for the organiser's report after a
+ * night (src/lib/growth/organiser-report.ts), which says it as Instagram's own figure, apart from every count (K14).
+ * Read here so this file stays the one reader of social_piece_figures.
+ */
+export async function newestEnteredReach(db: Db, pieceIds: readonly string[]): Promise<{ value: number; readAt: string } | null> {
+  if (pieceIds.length === 0) return null
+  const { data, error } = await db
+    .from('social_piece_figures')
+    .select('value, read_at')
+    .in('piece_id', [...pieceIds])
+    .eq('platform', 'instagram')
+    .eq('metric', 'reach')
+    .order('read_at', { ascending: false })
+    .limit(1)
+  if (error) throw new Error(`the entered Instagram reach: ${error.message}`)
+  const row = (data ?? [])[0] as { value: number | string; read_at: string } | undefined
+  return row ? { value: Number(row.value), readAt: row.read_at } : null
+}
+
 export async function enterPieceFigure(
   db: Db,
   input: { readonly pieceId: string; readonly platform: Platform; readonly metric: PlatformMetric; readonly value: number; readonly readAt: Date; readonly by: string },

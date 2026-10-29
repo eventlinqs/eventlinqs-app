@@ -2611,6 +2611,41 @@ export type Database = {
           },
         ]
       }
+      go_presses: {
+        Row: {
+          day: string
+          id: string
+          piece_id: string
+          pressed_at: string
+          via: string
+          visitor: string
+        }
+        Insert: {
+          day: string
+          id?: string
+          piece_id: string
+          pressed_at?: string
+          via: string
+          visitor: string
+        }
+        Update: {
+          day?: string
+          id?: string
+          piece_id?: string
+          pressed_at?: string
+          via?: string
+          visitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "go_presses_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -5571,6 +5606,61 @@ export type Database = {
           },
           {
             foreignKeyName: "organiser_marketing_consents_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organiser_night_reports: {
+        Row: {
+          event_id: string
+          figures: Json
+          id: string
+          night_ended_at: string
+          organisation_id: string
+          read_at: string
+          sent_at: string | null
+          sent_by: string | null
+        }
+        Insert: {
+          event_id: string
+          figures: Json
+          id?: string
+          night_ended_at: string
+          organisation_id: string
+          read_at?: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Update: {
+          event_id?: string
+          figures?: Json
+          id?: string
+          night_ended_at?: string
+          organisation_id?: string
+          read_at?: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_night_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_night_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_night_reports_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
