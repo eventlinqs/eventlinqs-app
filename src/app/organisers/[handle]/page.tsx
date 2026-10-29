@@ -311,15 +311,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${baseUrl}/organisers/${organisation.slug}`,
       type: 'profile',
+      // An organiser with no logo of its own shares the platform's card, never an empty list: this block replaces the
+      // root's, so [] meant a share with no picture (/organisers/amcf, window 2's public site audit, 29 October 2026).
       images: organisation.logo_url
         ? [{ url: organisation.logo_url, width: 1200, height: 630, alt: organisation.name }]
-        : [],
+        : ['/opengraph-image'],
     },
     twitter: {
       card: 'summary_large_image',
       title: organisation.name,
       description,
-      images: organisation.logo_url ? [organisation.logo_url] : [],
+      images: organisation.logo_url ? [organisation.logo_url] : ['/opengraph-image'],
     },
   }
 }

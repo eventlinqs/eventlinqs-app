@@ -113,8 +113,6 @@ const TAG_EXEMPTIONS = [
       'the licensed stock-photo pool, cached 7 days. Its source is the Pexels API, which this platform never writes to, so there is no mutation that could invalidate it. A 7 day window on a photograph is the whole design.',
   },
   { tag: 'pexels-city', reason: 'same pool, keyed per city. Same reason as pexels above.' },
-  { tag: 'pexels-community', reason: 'same pool, keyed per community. Same reason as pexels above.' },
-  { tag: 'pexels-sub-community', reason: 'same pool, keyed per sub-community. Same reason as pexels above.' },
   { tag: 'pexels-suburb', reason: 'same pool, keyed per suburb. Same reason as pexels above.' },
 ]
 
