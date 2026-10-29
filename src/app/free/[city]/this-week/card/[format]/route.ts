@@ -7,8 +7,6 @@ import { CITY_WEEK_CARD_ROWS, renderCityWeekCard, type CityWeekCardFormat } from
 import { SOCIAL_CARD_EXTENSION, SOCIAL_CARD_MIME } from '@/lib/broadcast/social-card-spec'
 import { describeFreeWeek, freeEntryLabel, freeWeekPath } from '@/lib/listings/free-week'
 import { loadFreeWeek, readGuideCity } from '@/lib/listings/free-week-surface'
-import { cityWeekPhotoFor } from '@/lib/listings/listing-photo'
-import { SOCIAL_CARD_FORMATS } from '@/lib/broadcast/social-card-spec'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,29 +26,6 @@ export const dynamic = 'force-dynamic'
  * anonymous render on that path (launch-artefact, per IP per hour).
  */
 
-/**
- * The card's photograph (Lawal's ruling of 27 October 2026, 08:33), fetched from
- * the platform's own licensed library and cut to the card's exact size. A store
- * that does not answer leaves the card on its ground rather than failing it.
- */
-async function backdropFor(url: string | null, format: CityWeekCardFormat): Promise<string | null> {
-  if (!url) return null
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) return null
-    const { default: sharp } = await import('sharp')
-    const spec = SOCIAL_CARD_FORMATS[format]
-    const jpeg = await sharp(Buffer.from(await res.arrayBuffer()))
-      .rotate()
-      .resize(spec.width, spec.height, { fit: 'cover', position: 'attention' })
-      .jpeg({ quality: 72 })
-      .toBuffer()
-    return `data:image/jpeg;base64,${jpeg.toString('base64')}`
-  } catch (error) {
-    captureException(error, { where: 'app/free/[city]/this-week/card/[format]/route:backdrop', url })
-    return null
-  }
-}
 
 function isCardFormat(value: string): value is CityWeekCardFormat {
   return value === 'story' || value === 'square'
@@ -86,13 +61,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     color: { dark: '#0A1628', light: '#FFFFFF' },
   })
 
-  const backdrop = await backdropFor(
-    cityWeekPhotoFor(
-      city.slug,
-      events.map((e) => (e as { category?: { slug?: string | null } | null }).category?.slug ?? null),
-    ),
-    format,
-  )
+  /*
+   * NO LIBRARY PHOTOGRAPH BEHIND NAMED NIGHTS (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52
+   * directive: contextual photography only for pieces that name no night). The card names the week's nights, so it is
+   * drawn on its own ground; the 27 October library backdrop is retired.
+   */
+  const backdrop = null
 
   let bytes: Uint8Array
   try {

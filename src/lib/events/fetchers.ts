@@ -39,6 +39,7 @@ import type {
   PublicEventRow,
 } from './types'
 import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
+import { isLibraryPhoto } from '@/lib/media/library-photo'
 
 /**
  * Resolve community / sub_community filters into a PostgREST OR-filter that
@@ -597,6 +598,8 @@ function normaliseRelation<T>(rel: T | T[] | null): T | null {
 export function hasRealCover(url: string | null | undefined): url is string {
   if (!url) return false
   if (/^https:\/\/picsum\.photos\//i.test(url)) return false
+  // A library photograph is never a night's own cover (the PM's 18:38 of 29 October 2026; src/lib/media/library-photo.ts).
+  if (isLibraryPhoto(url)) return false
   return true
 }
 

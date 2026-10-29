@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventsPerActiveOrganiser, FUNNEL_STAGES, funnelOf, monthOf, type StageCounts } from '@/lib/growth/organiser-funnel-math'
+import { eventsPerActiveOrganiser, FUNNEL_STAGES, funnelOf, monthOf, monthsEndingAt, type StageCounts } from '@/lib/growth/organiser-funnel-math'
 
 /**
  * The organiser funnel and events per active organiser per month (the engine plan of 28 October 2026, part H). A stage
@@ -55,5 +55,18 @@ describe('eventsPerActiveOrganiser', () => {
 
   it('reads the month in Melbourne, not UTC', () => {
     expect(monthOf('2026-10-31T14:00:00Z', ZONE)).toBe('2026-11')
+  })
+})
+
+describe('monthsEndingAt', () => {
+  it('lists the months ending at the one given, oldest first, across a year boundary', () => {
+    expect(monthsEndingAt('2026-02', 4)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02'])
+    expect(monthsEndingAt('2026-01', 1)).toEqual(['2026-01'])
+    expect(monthsEndingAt('2026-12', 2)).toEqual(['2026-11', '2026-12'])
+  })
+
+  it('refuses a month that is not YYYY-MM', () => {
+    expect(() => monthsEndingAt('2026-1', 2)).toThrow()
+    expect(() => monthsEndingAt('2026-13', 2)).toThrow()
   })
 })
