@@ -15,6 +15,7 @@
  */
 import { appendFileSync, readSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 
 const PRODUCTION_REF = 'gndnldyfudbytbboxesk'
 const TEST_REF = 'vkapkibzokmfaxqogypq'
@@ -74,6 +75,9 @@ function askLine(prompt) {
 }
 
 async function main() {
+  // The supabase client below is TEST's and reads only; production is written through the Management API alone.
+  // The preflight holds that: it refuses if this process's Supabase client is ever pointed at production.
+  assertNotProduction()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key || !url.includes(TEST_REF)) {
