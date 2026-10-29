@@ -207,14 +207,17 @@ export function layoutDailyPoster(format: TreatmentFormat, w: PosterWords, m: Me
   // The bottom row: at most two chips, then the night's own link.
   const rowY = p.panelBottom - 40 - CHIP_H
   if (rowY < Math.max(textBottom, dateTop + dateH) + 20) throw new FitError('the panel cannot hold the title, the time, the venue and the chips at their sizes')
-  const footer = fit(w.footer, m.manrope800, { max: 28, min: 26, width: 420, maxLines: 1, lineHeight: 1.2, spacing: 0 })
+  // The chips first, then the link takes the room left beside them (an /e/ link is wider than 'Link in bio').
+  const chipWidths = w.chips.slice(0, 2).map((chip) => Math.ceil(m.manrope800(chip.text, CHIP_TEXT)) + 4 + 48)
+  const chipsW = chipWidths.reduce((s, cw) => s + cw, 0) + Math.max(0, chipWidths.length - 1) * 16
+  const room = g.w - 2 * pad - chipsW - (chipWidths.length > 0 ? 24 : 0)
+  const footer = fit(w.footer, m.manrope800, { max: 28, min: 26, width: room, maxLines: 1, lineHeight: 1.2, spacing: 0 })
   const footerW = Math.ceil(m.manrope800(footer.lines[0], footer.size)) + 4
   runs.push({ role: 'footer', lines: footer.lines, face: 'manrope800', size: footer.size, lineHeight: 1.2, letterSpacing: 0, color: INK, ground: NAVY, x: g.w - pad - footerW, y: rowY + (CHIP_H - footer.size * 1.2) / 2, w: footerW, align: 'right' })
   let chipX = pad
   for (const [i, chip] of w.chips.slice(0, 2).entries()) {
-    const tw = Math.ceil(m.manrope800(chip.text, CHIP_TEXT)) + 4
-    const cw = tw + 48
-    if (chipX + cw > g.w - pad - footerW - 24) throw new FitError(`the chip "${chip.text}" does not fit beside the link`)
+    const tw = chipWidths[i] - 48
+    const cw = chipWidths[i]
     const admission = chip.kind === 'admission'
     blocks.push({ role: 'pill', x: chipX, y: rowY, w: cw, h: CHIP_H, color: GOLD, ...(admission ? {} : { outline: 3 }) })
     runs.push({ role: `chip-${i}`, lines: [chip.text], face: 'manrope800', size: CHIP_TEXT, lineHeight: 1.2, letterSpacing: 0, color: admission ? NAVY : INK, ground: admission ? GOLD : NAVY, x: chipX + 24, y: rowY + (CHIP_H - CHIP_TEXT * 1.2) / 2, w: tw })

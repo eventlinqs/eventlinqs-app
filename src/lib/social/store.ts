@@ -443,11 +443,12 @@ export async function brandImage(db: Db, now: Date): Promise<UsableImage | null>
  */
 export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date): Promise<Map<number, UsableImage | null>> {
   const out = new Map<number, UsableImage | null>()
-  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story') && sl.photo ? [sl.eventId] : []))
+  /* A night's photograph on a night, a story or a daily poster (family F): the register's row for that night now. */
+  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo ? [sl.eventId] : []))
   const byNight = await usableImages(db, nights, now)
   const brand = slides.some((sl) => sl.t === 'brand' && sl.photo) ? await brandImage(db, now) : null
   slides.forEach((sl, i) => {
-    if ((sl.t === 'night' || sl.t === 'story') && sl.photo) {
+    if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo) {
       const u = byNight.get(sl.eventId)
       out.set(i, u && u.url === sl.photo ? u : null)
     } else if (sl.t === 'brand' && sl.photo) {
@@ -547,7 +548,30 @@ export async function pieceDependencies(
 
   for (const id of ids) {
     const e = byId.get(id)
-    const slide = rev.slides.find((s) => 'eventId' in s && s.eventId === id) as Extract<Slide, { t: 'night' | 'story' }> | undefined
+    const found = rev.slides.find((s) => 'eventId' in s && s.eventId === id)
+    /* Family F: a daily poster prints the night's facts from its own record, so each is read again from the night. */
+    if (found?.t === 'poster') {
+      const facts = found.night
+      const name = facts.title
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      if (String(e.title) !== facts.title) issues.push(`${name}: its title is now "${String(e.title)}".`)
+      if (Date.parse(String(e.start_date)) !== Date.parse(facts.startDate)) issues.push(`${name}: its date or time has changed.`)
+      if (((e.venue_name as string | null) ?? null) !== (facts.venueName ?? null) || ((e.venue_address as string | null) ?? null) !== (facts.venueAddress ?? null)) issues.push(`${name}: its venue or street has changed.`)
+      if (((e.is_age_restricted as boolean | null) === true) !== facts.isAgeRestricted || ((e.age_restriction_min as number | null) ?? null) !== (facts.ageMin ?? null)) issues.push(`${name}: its age restriction has changed.`)
+      const { cta, priceLine } = await admissionOf(e, now)
+      if (cta.state !== facts.cta.state || (priceLine ?? null) !== (facts.priceLine ?? null)) issues.push(`${name}: its admission has changed, so its chips and any FREE badge would no longer be true.`)
+      if (found.photo) {
+        const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+        if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      }
+      continue
+    }
+    const slide = found as Extract<Slide, { t: 'night' | 'story' }> | undefined
     const name = slide?.title ?? id
     if (!e) {
       issues.push(`${name}: the night no longer exists.`)

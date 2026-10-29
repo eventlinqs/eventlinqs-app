@@ -32,7 +32,8 @@ const night = (over: Partial<PosterNight> = {}): PosterNight => ({
   isAgeRestricted: false,
   ageMin: null,
   photo: PHOTO,
-  shortLink: 'eventlinqs.com.au/e/ab12cd',
+  // A real code's length (share-codes.ts: ten characters), as TEST minted 'VlekjUhway' on 30 October.
+  shortLink: 'eventlinqs.com.au/e/VlekjUhway',
   ...over,
 })
 
@@ -77,7 +78,7 @@ describe('every badge and chip is true from the listing', () => {
 
   test('the footer is the night\'s own link or Link in bio, never the bare domain', () => {
     expect(posterWords(night(), 'portrait').footer).toBe('Link in bio')
-    expect(posterWords(night(), 'story').footer).toBe('eventlinqs.com.au/e/ab12cd')
+    expect(posterWords(night(), 'story').footer).toBe('eventlinqs.com.au/e/VlekjUhway')
     expect(() => posterWords(night({ shortLink: null }), 'story')).toThrow(FitError)
   })
 
