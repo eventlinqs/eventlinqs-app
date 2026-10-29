@@ -81,13 +81,13 @@ export default async function GoPage({ searchParams }: Props) {
         ) : (
           <p className="mt-6 text-base text-ink-700">
             {unread
-              ? 'Our latest posts could not be loaded just now. Everything on is still one tap away below.'
-              : 'Nothing from our latest posts is still ahead. Everything on is one tap away below.'}
+              ? 'Our latest posts could not be loaded just now. Everything that is on is still one tap away below.'
+              : 'Nothing from our latest posts is still ahead. Everything that is on is one tap away below.'}
           </p>
         )}
 
         <nav aria-label="More on EventLinqs" className="mt-10 border-t border-ink-100 pt-6">
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <li>
               <Link
                 href="/this-weekend"

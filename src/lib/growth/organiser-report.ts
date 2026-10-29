@@ -81,7 +81,12 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
   const viewers = new Set(viewRows.map((r) => r.occurrence_key.split(':')[1]).filter((v) => v !== undefined && v !== '')).size
 
   // The organiser's own link: a partner kit's link minted for this night (social_pieces.share_link_id), its arrivals.
-  const kits = linkIds.length === 0 ? [] : await readOrThrow('the night partner kit links', () => admin.from('social_pieces').select('share_link_id').in('share_link_id', linkIds))
+  const kits =
+    linkIds.length === 0
+      ? []
+      : await readEveryRow<{ id: string; share_link_id: string | null }>('the night partner kit links', (f, t) =>
+          admin.from('social_pieces').select('id, share_link_id').in('share_link_id', linkIds).order('id', { ascending: true }).range(f, t),
+        )
   const kitLinkIds = (kits ?? []).flatMap((k) => (k.share_link_id ? [k.share_link_id] : []))
   let ownLinkArrivals: number | null = null
   if (kitLinkIds.length > 0) {
@@ -113,8 +118,15 @@ async function postsNaming(admin: Admin, night: { id: string; endDate: string })
   )
   const pieceIds = [...new Set((revisions ?? []).map((r) => r.piece_id))]
   if (pieceIds.length === 0) return []
-  const postings = await readOrThrow('the postings of those pieces', () =>
-    admin.from('social_piece_postings').select('piece_id, post_url, posted_at, social_piece_approvals(revision)').in('piece_id', pieceIds).neq('post_url', 'sent').lte('posted_at', night.endDate),
+  const postings = await readEveryRow<{ id: string; piece_id: string; post_url: string; posted_at: string; social_piece_approvals: { revision: number } | { revision: number }[] | null }>('the postings of those pieces', (f, t) =>
+    admin
+      .from('social_piece_postings')
+      .select('id, piece_id, post_url, posted_at, social_piece_approvals(revision)')
+      .in('piece_id', pieceIds)
+      .neq('post_url', 'sent')
+      .lte('posted_at', night.endDate)
+      .order('id', { ascending: true })
+      .range(f, t),
   )
   const posts: NightPost[] = []
   for (const p of postings ?? []) {
@@ -150,7 +162,7 @@ export async function readNightsOwed(now: Date = new Date()): Promise<{ id: stri
 async function reportedOf(admin: Admin, ids: readonly string[]): Promise<Set<string>> {
   const reported = new Set<string>()
   for (let i = 0; i < ids.length; i += 200) {
-    const rows = await readOrThrow('the nights already reported', () => admin.from('organiser_night_reports').select('event_id').in('event_id', ids.slice(i, i + 200)))
+    const rows = await readOrThrow('the nights already reported', () => admin.from('organiser_night_reports').select('event_id').in('event_id', ids.slice(i, i + 200)).limit(200))
     for (const r of rows ?? []) reported.add(r.event_id)
   }
   return reported

@@ -59,7 +59,7 @@ export async function readGoLinks(now: Date = new Date()): Promise<GoLink[]> {
       admin.from('events').select('id, start_date, end_date, timezone').in('id', nightIds).limit(nightIds.length),
     )
     const visible = await readOrThrow('the public nights /go names', () =>
-      applyPublicEventVisibility(admin.from('events').select('id').in('id', nightIds), { includeExternal: true }).limit(nightIds.length),
+      applyPublicEventVisibility(admin.from('events').select('id').in('id', nightIds).limit(nightIds.length), { includeExternal: true }),
     )
     const isPublic = new Set((visible ?? []).map((v) => v.id))
     for (const e of all ?? []) nights.set(e.id, { id: e.id, startDate: e.start_date, endDate: e.end_date, timezone: e.timezone ?? null, isPublic: isPublic.has(e.id) })
