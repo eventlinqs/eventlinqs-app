@@ -9,7 +9,7 @@ import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/show
  * From the week's real public nights, one campaign: per city, Monday's week ahead (to /city/<city>) and Thursday's
  * weekend guide (to /free/<city>/this-week); for the week, Wednesday's Discovery Reel (9:16 frames, three to five
  * nights), Friday's venue spotlight for attendees and, as a separate asset, the organiser campaign for organisers
- * (J11, to /for-organisers); a partner kit for every organiser or venue featured; and an image request to every
+ * (J11, to /organisers); a partner kit for every organiser or venue featured; and an image request to every
  * organiser whose night goes out with no approved photograph (J5).
  *
  * Every piece carries one audience, one of the two growth objectives, one purpose, one call to action and one
@@ -417,7 +417,7 @@ export function pieceRefusal(p: PiecePlan): string | null {
 
 /**
  * The week's campaign from its nights. Only cities with a weekly guide are planned, and only the routes that exist are
- * linked: /city/<city>, /free/<city>/this-week and /for-organisers.
+ * linked: /city/<city>, /free/<city>/this-week and /organisers.
  */
 export function planCampaign(input: {
   nights: readonly CampaignNight[]
@@ -593,7 +593,7 @@ export function planCampaign(input: {
     feature(nights.slice(0, 4))
   }
 
-  /* The organiser campaign: its own asset, for organisers, advertising no night (J11), to /for-organisers. */
+  /* The organiser campaign: its own asset, for organisers, advertising no night (J11), to /organisers. */
   if (inWeek.length > 0) {
     const hook = 'Run regular nights in Victoria?'
     const body = [
@@ -607,16 +607,16 @@ export function planCampaign(input: {
       audience: 'organisers',
       objective: 'organiser_growth',
       purpose: 'Bring organisers and venues to list their nights on EventLinqs',
-      nextStep: `List your nights at ${site}/for-organisers`,
+      nextStep: `List your nights at ${site}/organisers`,
       outcome: 'Organiser enquiries and listings started through this post\'s own link',
-      link: `${origin}/for-organisers`,
+      link: `${origin}/organisers`,
       format: 'feed',
       eventIds: [],
       picks: [],
       mode: 'graphic_led',
-      slides: [{ t: 'offer', composition: 'organiser_campaign', eyebrow: 'For venues and organisers', headline: hook, points: body, url: `${site}/for-organisers` }],
-      caption: join([hook, '', ...body, '', `${site}/for-organisers`]),
-      versions: versionsOf(hook, body, `${origin}/for-organisers`, 'The link to list is in our bio.', 'List your nights:', '4:5', '#victoriaevents'),
+      slides: [{ t: 'offer', composition: 'organiser_campaign', eyebrow: 'For venues and organisers', headline: hook, points: body, url: `${site}/organisers` }],
+      caption: join([hook, '', ...body, '', `${site}/organisers`]),
+      versions: versionsOf(hook, body, `${origin}/organisers`, 'The link to list is in our bio.', 'List your nights:', '4:5', '#victoriaevents'),
       partnerName: null,
       partnerEventId: null,
       message: null,
