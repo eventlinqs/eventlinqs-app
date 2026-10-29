@@ -132,6 +132,14 @@ describe('supplyScorecard', () => {
     expect(city(s, 'melbourne')?.recurringSuppliers).toBe(3) // org-a (recurring), series-trivia, series-jazz
   })
 
+  it('counts a verified upcoming night with no category as missing information', () => {
+    const s = supplyScorecard(
+      rows({ nights: [night({ id: 'm' }), night({ id: 'x', categoryId: null }), night({ id: 'y', categoryId: null, freshUntil: at(-1) })] }),
+      NOW,
+    )
+    expect(city(s, 'melbourne')?.missingCategory).toBe(1)
+  })
+
   it('names the categories with nothing verified upcoming as the city\'s gaps', () => {
     const s = supplyScorecard(rows({ nights: [night({ id: 'm', categoryId: 'music' }), night({ id: 's', categoryId: 'family', freshUntil: at(-1) })] }), NOW)
     expect(city(s, 'melbourne')?.gaps).toEqual(['Comedy', 'Family'])

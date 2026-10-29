@@ -19,6 +19,7 @@ import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
  *                          photograph and never a cover EventLinqs composed in type (generated-covers/)
  *   active organisers      the organisations behind verified upcoming nights, never the EventLinqs listings account
  *   recurring suppliers    a series, or an organisation with recurring nights, behind verified upcoming nights
+ *   missing category       verified upcoming nights with no category: missing information a person fills in
  *   gaps                   the categories with nothing verified upcoming in the city
  *
  * Pure: the caller reads the rows (./supply-scorecard.ts) and passes only published, public nights.
@@ -70,6 +71,8 @@ export interface CitySupply {
   readonly withApprovedImagery: number
   readonly activeOrganisers: number
   readonly recurringSuppliers: number
+  /** Verified upcoming nights with no category: missing information a person fills in. */
+  readonly missingCategory: number
   /** Category names with nothing verified upcoming, alphabetical. */
   readonly gaps: readonly string[]
 }
@@ -127,6 +130,7 @@ export function supplyScorecard(rows: SupplyRows, now: Date): SupplyScorecard {
       withApprovedImagery: here.filter((n) => isSuppliedImage(n.coverUrl)).length,
       activeOrganisers: new Set(here.map((n) => n.organisationId).filter(real)).size,
       recurringSuppliers: recurring.size,
+      missingCategory: here.filter((n) => n.categoryId === null).length,
       gaps: rows.categories
         .filter((c) => !covered.has(c.id))
         .map((c) => c.name)
