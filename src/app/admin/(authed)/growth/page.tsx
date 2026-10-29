@@ -9,6 +9,7 @@ import { TRAFFIC_CHANNEL_COPY, type TrafficChannel } from '@/lib/growth/traffic-
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { formatPlatformDate } from '@/lib/dates/event-time'
 import { getCity } from '@/lib/cities/data'
+import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { monthOf } from '@/lib/growth/organiser-funnel-math'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
@@ -49,8 +50,8 @@ function bestWords(best: Best | null, what: string, label: (key: string) => stri
 const channelName = (key: string) => TRAFFIC_CHANNEL_COPY[key as TrafficChannel]?.label ?? key
 const cityName = (slug: string) => getCity(slug)?.name ?? slug
 const met = (yes: boolean) => (yes ? 'ok' : 'pending')
-/** A YYYY-MM month in words, e.g. 'October 2026'. The 15th at noon UTC sits inside the month in every zone. */
-const monthWords = (m: string) => new Intl.DateTimeFormat('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${m}-15T12:00:00Z`))
+/** A YYYY-MM month in words, e.g. 'October 2026', on the platform's clock (the 15th sits inside the month in every zone). */
+const monthWords = (m: string) => new Intl.DateTimeFormat('en-AU', { month: 'long', year: 'numeric', timeZone: PLATFORM_TIME_ZONE }).format(new Date(`${m}-15T12:00:00Z`))
 const percent = (share: number) => `${Math.round(share * 100)} percent`
 
 function Dimension({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
@@ -210,26 +211,35 @@ export default async function AdminGrowthPage() {
           An organiser is active in a month when a public night of theirs starts in it. Organisations that hold their own nights only: the EventLinqs listings
           account, which holds every curated night whatever its host, and seed listings are left out.
         </p>
-        <div className="mt-4 overflow-x-auto">
-          <table data-table="events-per-active-organiser" className="w-full text-left text-sm">
-            <thead className="text-white/50">
+        <div className={`mt-4 ${ADMIN_TABLE_WRAP}`}>
+          <table data-table="events-per-active-organiser" className={ADMIN_TABLE}>
+            <thead className={ADMIN_THEAD}>
               <tr>
-                <th scope="col" className="py-2 pr-4 font-normal">Month</th>
-                <th scope="col" className="py-2 pr-4 font-normal">Active organisers</th>
-                <th scope="col" className="py-2 pr-4 font-normal">Public nights</th>
-                <th scope="col" className="py-2 font-normal">Per active organiser</th>
+                <th scope="col" className="px-4 py-3 font-medium">Month</th>
+                <th scope="col" className="px-4 py-3 font-medium">Active organisers</th>
+                <th scope="col" className="px-4 py-3 font-medium">Public nights</th>
+                <th scope="col" className="px-4 py-3 font-medium">Per active organiser</th>
               </tr>
             </thead>
-            <tbody className="text-white">
+            <tbody className={ADMIN_TBODY}>
               {funnel.months.map((m) => (
-                <tr key={m.month} data-month={m.month} className="border-t border-white/[0.06]">
-                  <th scope="row" className="py-2 pr-4 font-normal">
+                <tr key={m.month} data-month={m.month} className={ADMIN_ROW}>
+                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-white`}>
                     {monthWords(m.month)}
                     {m.month === thisMonth ? ', so far' : ''}
                   </th>
-                  <td className="py-2 pr-4">{number(m.activeOrganisers)}</td>
-                  <td className="py-2 pr-4">{number(m.nights)}</td>
-                  <td className="py-2">{m.perActive === null ? 'No organiser active' : m.perActive.toFixed(1)}</td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Active organisers</span>
+                    {number(m.activeOrganisers)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Public nights</span>
+                    {number(m.nights)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Per active organiser</span>
+                    {m.perActive === null ? 'No organiser active' : m.perActive.toFixed(1)}
+                  </td>
                 </tr>
               ))}
             </tbody>

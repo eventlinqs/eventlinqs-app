@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { LISTINGS_ORGANISATION_SLUG } from '@/lib/listings/shown-organiser'
 import { eventsPerActiveOrganiser, funnelOf, monthOf, type FunnelStage, type FunnelStep, type MonthFigure, type OrganiserNight } from './organiser-funnel-math'
@@ -119,7 +120,7 @@ export async function readOrganiserFunnel(now: Date = new Date()): Promise<Organ
     publishing: organisers === null ? null : await stage(async () => {
       const until = new Date(now.getTime() + PUBLISHING_DAYS * DAY_MS).toISOString()
       const nights = await readEveryRow<{ id: string; organisation_id: string }>('the nights in the next 90 days', (f, t) =>
-        admin.from('events').select('id, organisation_id').match(PUBLIC_EVENT_MATCH).gte('start_date', nowIso).lte('start_date', until).order('id', { ascending: true }).range(f, t),
+        admin.from('events').select('id, organisation_id').match(PUBLIC_EVENT_MATCH).or(listingWindowOrPredicate(now)).lte('start_date', until).order('id', { ascending: true }).range(f, t),
       )
       return byOrganisation(organiserRows, new Set(nights.map((n) => n.organisation_id)))
     }),
@@ -143,16 +144,15 @@ export async function readOrganiserFunnel(now: Date = new Date()): Promise<Organ
   const counts = Object.fromEntries(Object.entries(reached).map(([k, v]) => [k, v === null ? null : v.size])) as Record<FunnelStage, number | null>
 
   // Events per active organiser: this month and the three before it, on the platform's clock.
+  // The months by YYYY-MM arithmetic on this month as the platform's clock reads it; no date is built in UTC.
+  const [year, month] = monthOf(nowIso, PLATFORM_TIME_ZONE).split('-').map(Number)
   const months: string[] = []
   for (let i = MONTHS_SHOWN - 1; i >= 0; i -= 1) {
-    const d = new Date(now)
-    d.setUTCDate(1)
-    d.setUTCMonth(d.getUTCMonth() - i)
-    months.push(monthOf(d.toISOString(), PLATFORM_TIME_ZONE))
+    const index = year * 12 + (month - 1) - i
+    months.push(`${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`)
   }
-  const from = new Date(now)
-  from.setUTCDate(1)
-  from.setUTCMonth(from.getUTCMonth() - MONTHS_SHOWN)
+  // Read from a day before the earliest month can begin in any zone; each night is then placed in its month.
+  const from = new Date(now.getTime() - (MONTHS_SHOWN * 31 + 1) * DAY_MS)
   const listings = await readOrThrow('the listings account', () => admin.from('organisations').select('id').eq('slug', LISTINGS_ORGANISATION_SLUG).limit(1))
   const listingsId = listings?.[0]?.id ?? null
   const monthNights = await readEveryRow<{ id: string; organisation_id: string; start_date: string; is_seed_data: boolean | null }>('the nights of the months shown', (f, t) =>
