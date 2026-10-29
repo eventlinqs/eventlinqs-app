@@ -1,0 +1,15 @@
+{
+  "source": "Project manager, ruling of 29 October 2026, 17:31 (C:\\dev\\BP-STATE.md): message 7, a partner kit is a story alone; the line exactly as ruled, every other line of message 7 as it stands",
+  "readings": "Version 2 of featured only. Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-29oct-v2.json --version 2.",
+  "templates": [
+    {
+      "key": "featured",
+      "channel": "email",
+      "purpose": "relationship",
+      "step": null,
+      "message": "7",
+      "subject": "Your [night] is in this week's [city] picks",
+      "body": "Hi [first name],\nYour [night] is in this week's [city] picks, going out on Instagram and Facebook on [day]. Here's your story card and a caption if you'd like to share it: [story version] \"[caption]\"\nYour own link: [tracked link]. It counts everyone it sends to your listing, and I'll send you the numbers after the night.\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}

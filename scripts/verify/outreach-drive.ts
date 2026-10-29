@@ -16,7 +16,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { planDms, planPlays } from '@/lib/outreach/planner'
+import { planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { clearRecordedOutreachMail, recordedOutreachMail, runOutreachSender } from '@/lib/outreach/sender'
 import { handleInbox } from '@/lib/outreach/replies'
 
@@ -60,7 +60,7 @@ function nextBusinessMorning(): Date {
   throw new Error('no weekday in seven days')
 }
 
-const made: { organiser?: string; contact?: string; play?: string; dmOrganiser?: string; dmContact?: string } = {}
+const made: { organiser?: string; contact?: string; play?: string; dmOrganiser?: string; dmContact?: string; nightReport?: string } = {}
 let senderBefore: Record<string, unknown> | null = null
 
 async function drive() {
@@ -127,6 +127,67 @@ async function drive() {
   const mime2 = mail2 ? Buffer.from(mail2.base64Mime, 'base64').toString('utf8') : ''
   check('message 5 sent in their thread', second.sent.length === 1 && mime2.includes('In-Reply-To: <w6-drive-yes@venue.example>'), JSON.stringify({ sent: second.sent.length, failed: second.failed, refused: second.refused }))
 
+  // Message 9 on its trigger (29 October): not while a night is listed in the next 30 days; drafted once when none is.
+  const in30 = new Date(now.getTime() + 30 * 86_400_000).toISOString()
+  const ahead = (await sql(`select count(*)::int as n from public.events where venue_id = '${venueRow.id}' and status = 'published' and visibility = 'public'
+                              and coalesce(end_date, start_date) >= '${now.toISOString()}' and start_date < '${in30}'`) as { n: number }[])[0].n
+  const partners = { organisers: [made.organiser!] }
+  const first9 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  if (ahead > 0) {
+    check(`message 9 waits while the venue has ${ahead} night(s) listed in the next 30 days`, first9.queued === 0 && first9.notDue.some((n) => /nights? listed/.test(n.why)), JSON.stringify(first9))
+    const quiet = (await sql(`select v.id, v.name from public.venues v join public.event_series s on s.venue_id = v.id and s.status = 'active'
+                                where v.listing_source = 'eventlinqs' and v.removed_at is null and v.id <> '${venueRow.id}'
+                                  and not exists (select 1 from public.organiser_venues ov where ov.venue_id = v.id)
+                                  and not exists (select 1 from public.events e where e.venue_id = v.id and e.status = 'published' and e.visibility = 'public'
+                                                  and coalesce(e.end_date, e.start_date) >= '${now.toISOString()}' and e.start_date < '${in30}')
+                                order by v.name limit 1`) as { id: string; name: string }[])[0]
+    check('a venue with an active series and nothing on the guide in the next 30 days on TEST', Boolean(quiet), quiet?.name ?? 'none')
+    await db.from('organiser_venues').delete().eq('organiser_id', made.organiser!)
+    const moved = await db.from('organiser_venues').insert({ venue_id: quiet.id, organiser_id: made.organiser!, linked_by: user })
+    check('the partner now runs only that venue', !moved.error, moved.error?.message ?? '')
+  }
+  const due9 = ahead > 0 ? await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners }) : first9
+  check('with nothing listed in the next 30 days, message 9 is drafted and queued after their yes', due9.queued === 1 && due9.held.length === 0 && due9.refused.length === 0, JSON.stringify(due9))
+  const fourth = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  const mail9 = recordedOutreachMail()[2]
+  const mime9 = mail9 ? Buffer.from(mail9.base64Mime, 'base64').toString('utf8') : ''
+  const body9 = mime9 ? Buffer.from(mime9.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : ''
+  check('message 9 goes: Hi Sam, anything coming up at the venue, with the one-click pair', fourth.sent.length === 1 && body9.startsWith('Hi Sam,') && /Subject: Anything coming up at /.test(mime9) && mime9.includes('List-Unsubscribe-Post: List-Unsubscribe=One-Click'), body9.split('\n').slice(0, 3).join(' / '))
+  const again9 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 9 is not asked again within 30 days', again9.queued === 0 && again9.notDue.some((n) => n.why.startsWith('asked on')), JSON.stringify(again9))
+
+  // Message 8 on its trigger (29 October): window 5's report of a night that ended three to five days ago, at a venue the
+  // partner runs, is sent once with its counted figures, and never twice.
+  const night = (await sql(`select e.id, e.title, e.venue_id, e.organisation_id, e.end_date from public.events e
+                              where e.status = 'published' and e.venue_id is not null
+                                and e.end_date between now() - interval '5 days' and now() - interval '3 days'
+                                and not exists (select 1 from public.organiser_night_reports r where r.event_id = e.id)
+                                and not exists (select 1 from public.organiser_venues ov where ov.venue_id = e.venue_id and ov.organiser_id <> '${made.organiser}')
+                              order by e.end_date desc limit 1`) as { id: string; title: string; venue_id: string; organisation_id: string; end_date: string }[])[0]
+  check('a published night that ended three to five days ago on TEST', Boolean(night), night ? `${night.title} (${night.end_date})` : 'none')
+  const runsIt = await db.from('organiser_venues').select('venue_id').eq('venue_id', night.venue_id).eq('organiser_id', made.organiser!)
+  if ((runsIt.data ?? []).length === 0) await db.from('organiser_venues').insert({ venue_id: night.venue_id, organiser_id: made.organiser!, linked_by: user })
+  const planted = (await sql(`insert into public.organiser_night_reports (event_id, organisation_id, figures, night_ended_at, read_at)
+                                values ('${night.id}', '${night.organisation_id}', '{"version": 1, "viewers": 57, "pressesOut": {"people": 8, "bySite": []}, "ownLink": {"arrivals": 3}}'::jsonb, '${night.end_date}', now())
+                                returning id`) as { id: string }[])[0]
+  made.nightReport = planted?.id
+  check('window 5\'s report of that night, planted for the drive', Boolean(made.nightReport))
+  const due8 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 8 is drafted and queued from the report, after their yes', due8.afterNight.queued === 1 && due8.afterNight.held.length === 0 && due8.afterNight.refused.length === 0, JSON.stringify(due8.afterNight))
+  const fifth = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  const mail8 = recordedOutreachMail()[3]
+  const mime8 = mail8 ? Buffer.from(mail8.base64Mime, 'base64').toString('utf8') : ''
+  const body8 = mime8 ? Buffer.from(mime8.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : ''
+  check('message 8 goes with the counted figures: 57 viewed, 8 clicked through, 3 by their own link', fifth.sent.length === 1 && body8.startsWith('Hi Sam,') && body8.includes('57 people viewed your listing') && body8.includes('8 clicked through') && body8.includes('3 came through your own share link'), body8.split('\n').slice(0, 5).join(' / '))
+  const row8 = await db.from('outreach_touches').select('state').eq('night_report_id', made.nightReport!).single()
+  check('the message names its report and is sent', row8.data?.state === 'sent', JSON.stringify(row8.data ?? row8.error))
+  const again8 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 8 is never drafted twice for one night', again8.afterNight.queued === 0 && again8.afterNight.held.length === 0, JSON.stringify(again8.afterNight))
+  // A second message for the same night, whole in every other way (the sent one's own words), so only the index can refuse it.
+  const sent8 = await db.from('outreach_touches').select('subject, body, template_id').eq('night_report_id', made.nightReport!).single()
+  const twice = await db.from('outreach_touches').insert({ contact_id: made.contact!, purpose: 'relationship', template_id: sent8.data?.template_id ?? null, subject: sent8.data?.subject ?? null, body: sent8.data?.body ?? '', drafted_by: user, state: 'held', held_because: ['drive: a second message for one night'], night_report_id: made.nightReport! })
+  check('the database refuses a second live message for the same night', Boolean(twice.error) && /outreach_touches_one_per_night_report|duplicate/.test(twice.error?.message ?? ''), twice.error?.message ?? 'inserted')
+
   const stop = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],
@@ -135,7 +196,7 @@ async function drive() {
   const suppressed = await db.from('outreach_unsubscribes').select('id').eq('email', ADDRESS)
   check('their stop is suppressed at once', stop.replies[0]?.outcome === 'stop' && (suppressed.data?.length ?? 0) === 1, JSON.stringify(stop.replies))
   const third = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
-  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 3, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
+  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 5, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
   const again = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],
@@ -188,6 +249,9 @@ async function cleanup() {
     delete from public.outreach_touches where contact_id = ${c};
     delete from public.outreach_touches where contact_id = ${d};
     delete from public.outreach_unsubscribes where email = '${ADDRESS}';
+    alter table public.organiser_night_reports disable trigger user;
+    delete from public.organiser_night_reports where id = ${made.nightReport ? `'${made.nightReport}'` : 'null'};
+    alter table public.organiser_night_reports enable trigger user;
     alter table public.outreach_touches enable trigger user;
     alter table public.outreach_replies enable trigger user;
     alter table public.outreach_unsubscribes enable trigger user;
@@ -214,6 +278,7 @@ async function cleanup() {
       (select count(*) from public.outreach_touches where contact_id in (${c}, ${d}))::int as touches,
       (select count(*) from public.outreach_unsubscribes where email = '${ADDRESS}')::int as unsubscribes,
       (select count(*) from public.outreach_plays where name = 'W6 drive play')::int as plays,
+      (select count(*) from public.organiser_night_reports where id = ${made.nightReport ? `'${made.nightReport}'` : 'null'})::int as night_reports,
       (select mode from public.outreach_sender where id) as mode,
       (select changed_by from public.outreach_sender where id) as changed_by,
       (select count(*) from pg_trigger where tgrelid = 'public.outreach_touches'::regclass and tgenabled = 'D')::int as disabled_triggers`) as Record<string, unknown>[])[0]
@@ -227,7 +292,7 @@ async function main() {
     check('the drive ran to its end', false, (error as Error).message)
   }
   const left = await cleanup()
-  check('TEST left as found', left.organisers === 0 && left.contacts === 0 && left.touches === 0 && left.unsubscribes === 0 && left.plays === 0 && left.mode === (senderBefore?.mode ?? 'hold') && left.changed_by === (senderBefore?.changed_by ?? null) && left.disabled_triggers === 0, JSON.stringify(left))
+  check('TEST left as found', left.organisers === 0 && left.contacts === 0 && left.touches === 0 && left.unsubscribes === 0 && left.plays === 0 && left.night_reports === 0 && left.mode === (senderBefore?.mode ?? 'hold') && left.changed_by === (senderBefore?.changed_by ?? null) && left.disabled_triggers === 0, JSON.stringify(left))
   console.log(`OUTREACH DRIVE ${failures === 0 ? 'PASSED' : 'FAILED'} (${failures} failure(s)) on TEST ${TEST_REF}`)
   for (const line of checks) console.log(`  ${line}`)
   process.exitCode = failures === 0 ? 0 : 1
