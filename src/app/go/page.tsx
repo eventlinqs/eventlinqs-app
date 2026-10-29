@@ -87,7 +87,7 @@ export default async function GoPage({ searchParams }: Props) {
         )}
 
         <nav aria-label="More on EventLinqs" className="mt-10 border-t border-ink-100 pt-6">
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <li>
               <Link
                 href="/this-weekend"

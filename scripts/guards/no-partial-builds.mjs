@@ -175,6 +175,11 @@ const DETECTOR_FILES = new Set([
   // ipsum" and "sample event". It was reported for containing the words it
   // exists to catch on a shipped page.
   'scripts/verify/launch-screens-read.mjs',
+  // Added 2026-10-29, the same joke for part H: engine-h-pages-drive.mjs reads
+  // /go, /admin/today and the night report in a browser and fails a page that
+  // shows placeholder words, so its PLACEHOLDER pattern spells out lorem ipsum,
+  // coming soon and sample event. Reported by window 1's car 4 build.
+  'scripts/verify/engine-h-pages-drive.mjs',
 ])
 
 function walk(dir, out = []) {

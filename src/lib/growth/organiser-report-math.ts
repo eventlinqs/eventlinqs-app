@@ -148,7 +148,9 @@ export function nightFigures(rows: NightRows): NightFigures {
   }
 }
 
-const n = (count: number, one: string, many: string) => `${count.toLocaleString('en-AU')} ${count === 1 ? one : many}`
+/** A count in Australian digit grouping. A number, not a date, so it carries no time zone. */
+const count = new Intl.NumberFormat('en-AU')
+const n = (c: number, one: string, many: string) => `${count.format(c)} ${c === 1 ? one : many}`
 
 /**
  * The lines this adds to the after-event report, in plain words, as the organiser and Lawal read them. `siteName`
@@ -158,7 +160,7 @@ export function addedLines(f: NightFigures, words: { siteName: (provider: string
   const lines: string[] = []
   lines.push(`${n(f.viewers, 'person', 'people')} viewed your listing.`)
   if (f.pressesOut.people > 0) {
-    const sites = f.pressesOut.bySite.map((s) => `${s.people.toLocaleString('en-AU')} to ${words.siteName(s.provider)}`).join(', ')
+    const sites = f.pressesOut.bySite.map((s) => `${count.format(s.people)} to ${words.siteName(s.provider)}`).join(', ')
     lines.push(
       `EventLinqs sent ${n(f.pressesOut.people, 'person', 'people')} on to your booking page: ${sites}. That is a person heading to your tickets, not a ticket sold; what they bought there is not visible to us.`,
     )
