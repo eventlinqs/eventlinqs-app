@@ -70,10 +70,17 @@ export function clockOf(iso: string, tz: string | null): string {
 
 const dayKey = (iso: string, tz: string | null) => parts(iso, tz, { year: 'numeric', month: '2-digit', day: '2-digit' }).map((x) => x.value).join('')
 
-/** The street: the first part of the address when it begins with a number ('158 McKillop St'). */
-export function streetOf(address: string | null): string | null {
+/**
+ * Where the venue is, as the address's first part ('158 McKillop St', 'Centrepoint Arcade'), unless that part only
+ * repeats the venue's name or is the town, state and postcode the line already ends with.
+ */
+export function streetOf(address: string | null, venueName: string | null = null, city: string | null = null): string | null {
   const first = (address ?? '').split(',')[0]?.trim() ?? ''
-  return /^\d/.test(first) ? first : null
+  if (!first) return null
+  const same = (a: string | null) => Boolean(a) && first.toLowerCase() === (a as string).trim().toLowerCase()
+  if (same(venueName) || same(city)) return null
+  if (/\b(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\b\s*\d{4}$/i.test(first) || (city && first.toLowerCase().startsWith(city.toLowerCase()))) return null
+  return first
 }
 
 /** The admission chip, from section E's words only. */
@@ -95,7 +102,7 @@ export function posterWords(n: PosterNight, format: TreatmentFormat): PosterWord
   const start = clockOf(n.startDate, tz)
   const sameDay = n.endDate ? dayKey(n.endDate, tz) === dayKey(n.startDate, tz) : false
   const time = n.endDate && sameDay ? `${start} to ${clockOf(n.endDate, tz)}` : `From ${start}`
-  const venue = [n.venueName, streetOf(n.venueAddress), n.cityName].filter((s): s is string => Boolean(s && s.trim())).join(', ')
+  const venue = [n.venueName, streetOf(n.venueAddress, n.venueName, n.cityName), n.cityName].filter((s): s is string => Boolean(s && s.trim())).join(', ')
 
   const verifiedFree = n.cta.state === 'free_open' || n.cta.state === 'free_registration'
   const chips: PosterChip[] = []

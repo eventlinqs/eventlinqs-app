@@ -91,6 +91,12 @@ describe('every badge and chip is true from the listing', () => {
     expect(posterWords(ORIGINALS["Friyay at Beav's"], 'portrait').time).toBe('From 9.30pm')
   })
 
+  test('the venue line keeps a place that is not a numbered street, and never repeats the venue or the town', () => {
+    expect(posterWords(night(), 'portrait').venue).toBe('The House, Centrepoint Arcade, Geelong')
+    expect(posterWords(night({ venueName: 'Aireys Pub', venueAddress: 'Aireys Pub' }), 'portrait').venue).toBe('Aireys Pub, Geelong')
+    expect(posterWords(night({ venueName: 'Costa Hall', venueAddress: 'Geelong VIC 3220' }), 'portrait').venue).toBe('Costa Hall, Geelong')
+  })
+
   test('no approved photograph: the same night is type-led, with no credit', () => {
     const w = posterWords(night({ photo: null }), 'portrait')
     expect(w.variant).toBe('type')

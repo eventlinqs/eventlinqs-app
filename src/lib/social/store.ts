@@ -643,7 +643,7 @@ export async function pieceDependencies(
 /* ------------------------------------------------------------------ the weekly campaign (the release checklist, B, C, J, K) */
 
 /** The guide cities a campaign is planned for: the cities table's own rows, as /free/<city>/this-week reads them. */
-async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
+export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
   const { data, error } = await db.from('cities').select('slug, name').eq('free_guide', true).eq('is_active', true).order('display_order', { ascending: true })
   if (error) throw new Error(`the guide cities could not be read: ${error.message}`)
   return (data ?? []).map((c) => ({ slug: c.slug as string, name: c.name as string }))
