@@ -926,6 +926,39 @@ export async function approvePieceChecked(
   return approvePiece(db, input)
 }
 
+export type WeekApproved = { readonly approved: string[]; readonly held: { id: string; label: string; reason: string }[] }
+
+/**
+ * The week in one press (the release checklist's B3, "per post and per week"): the same checked approval as one piece,
+ * one piece after another, on every piece still waiting; drafted only, so an approved, rejected or gone piece is never
+ * touched. A piece that fails its checks, or whose check throws, is held with its reason and the rest go on.
+ */
+export async function approveWeek(
+  pieces: readonly { id: string; state: PieceState; label: string }[],
+  approveOne: (pieceId: string) => Promise<Done>,
+): Promise<WeekApproved> {
+  const approved: string[] = []
+  const held: { id: string; label: string; reason: string }[] = []
+  for (const p of pieces.filter((x) => x.state === 'drafted')) {
+    try {
+      const done = await approveOne(p.id)
+      if (done.state === 'done') approved.push(p.id)
+      else held.push({ id: p.id, label: p.label, reason: done.reason })
+    } catch (error) {
+      held.push({ id: p.id, label: p.label, reason: `Its checks could not run: ${(error as Error).message}` })
+    }
+  }
+  return { approved, held }
+}
+
+/** This week's campaign approved in one press, each piece through approvePieceChecked. */
+export async function approveWeekChecked(db: Db, input: { readonly by: string; readonly now: Date; readonly siteOrigin: string }): Promise<WeekApproved | null> {
+  const campaign = await readCampaign(db, input.now)
+  if (campaign === null) return null
+  const pieces = campaign.pieces.map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
+  return approveWeek(pieces, (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
+}
+
 /** A piece as it went (F8): its address, or "sent" for a partner kit; the database refuses one without its approval. */
 export async function recordPiecePosting(db: Db, input: { readonly pieceId: string; readonly postUrl: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
