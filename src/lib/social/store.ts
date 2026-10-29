@@ -10,7 +10,7 @@ import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type Social
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { quotableSummary, wordsRefusal } from './words'
-import { dailyPosterPieces } from './daily-posters'
+import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -557,14 +557,8 @@ export async function pieceDependencies(
         issues.push(`${name}: the night no longer exists.`)
         continue
       }
-      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
-      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
-      if (String(e.title) !== facts.title) issues.push(`${name}: its title is now "${String(e.title)}".`)
-      if (Date.parse(String(e.start_date)) !== Date.parse(facts.startDate)) issues.push(`${name}: its date or time has changed.`)
-      if (((e.venue_name as string | null) ?? null) !== (facts.venueName ?? null) || ((e.venue_address as string | null) ?? null) !== (facts.venueAddress ?? null)) issues.push(`${name}: its venue or street has changed.`)
-      if (((e.is_age_restricted as boolean | null) === true) !== facts.isAgeRestricted || ((e.age_restriction_min as number | null) ?? null) !== (facts.ageMin ?? null)) issues.push(`${name}: its age restriction has changed.`)
       const { cta, priceLine } = await admissionOf(e, now)
-      if (cta.state !== facts.cta.state || (priceLine ?? null) !== (facts.priceLine ?? null)) issues.push(`${name}: its admission has changed, so its chips and any FREE badge would no longer be true.`)
+      issues.push(...posterDrift(facts, e as unknown as NightNow, { state: cta.state, priceLine }, now))
       if (found.photo) {
         const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
         if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)

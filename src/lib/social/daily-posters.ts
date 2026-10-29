@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, pickLine, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan } from './campaign'
+import { creditsOf, dayInWeek, join, pickLine, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -120,4 +120,35 @@ export function dailyPosterPieces(input: { nights: readonly CampaignNight[]; cit
     })
   }
   return pieces
+}
+
+/** The night as it is read again at approval: the columns a poster prints from. */
+export type NightNow = {
+  title: string
+  start_date: string
+  end_date: string
+  status: string
+  visibility: string
+  venue_name: string | null
+  venue_address: string | null
+  is_age_restricted: boolean | null
+  age_restriction_min: number | null
+}
+
+/**
+ * What has changed since a daily poster was made, said for the founder (J15: facts are re-checked at approval). Every
+ * fact the poster prints is read again from the night; an admission that moved means its chips, and any FREE badge,
+ * would no longer be true. Empty when the poster still says only what is true.
+ */
+export function posterDrift(facts: PosterFacts, e: NightNow, admission: { state: string; priceLine: string | null }, now: Date): string[] {
+  const name = facts.title
+  const issues: string[] = []
+  if (e.status !== 'published' || e.visibility !== 'public') issues.push(`${name}: it is no longer published and public.`)
+  if (Date.parse(e.end_date) <= now.getTime()) issues.push(`${name}: it has ended.`)
+  if (e.title !== facts.title) issues.push(`${name}: its title is now "${e.title}".`)
+  if (Date.parse(e.start_date) !== Date.parse(facts.startDate)) issues.push(`${name}: its date or time has changed.`)
+  if ((e.venue_name ?? null) !== (facts.venueName ?? null) || (e.venue_address ?? null) !== (facts.venueAddress ?? null)) issues.push(`${name}: its venue or street has changed.`)
+  if ((e.is_age_restricted === true) !== facts.isAgeRestricted || (e.age_restriction_min ?? null) !== (facts.ageMin ?? null)) issues.push(`${name}: its age restriction has changed.`)
+  if (admission.state !== facts.cta.state || (admission.priceLine ?? null) !== (facts.priceLine ?? null)) issues.push(`${name}: its admission has changed, so its chips and any FREE badge would no longer be true.`)
+  return issues
 }
