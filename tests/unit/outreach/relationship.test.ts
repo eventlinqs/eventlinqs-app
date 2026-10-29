@@ -9,6 +9,7 @@ import {
   kitImages,
   anythingComingUpRefusal,
   type PartnerState,
+  withdrawalConfirmationRefusal,
 } from '@/lib/outreach/planner'
 
 /* Message 9, ANYTHING COMING UP (the PM's messages file: "partner, nothing listed in the next 30 days"; the engine plan's
@@ -111,5 +112,19 @@ describe('message 7 with window 3\'s public kit route (/kit/<piece>/<n>)', () =>
     const f = featuredFields({ ...kit, images: kitImages('https://www.eventlinqs.com.au/', 'piece-1') })
     expect(f['story version']).toBe('https://www.eventlinqs.com.au/kit/piece-1/1')
     expect(f['feed image']).toBeNull()
+  })
+})
+
+/* Message 10, WITHDRAWAL CONFIRMED (the PM's messages file; the project manager's 21:42: "message 10 on the removal
+   path"). Its words promise two facts, so it is drafted only when both are true. */
+describe('message 10, withdrawal confirmed', () => {
+  test('due when no unposted piece and no listing cover still shows a withdrawn image', () => {
+    expect(withdrawalConfirmationRefusal({ unpostedShowing: 0, coversShowing: 0 })).toBeNull()
+  })
+  test('not while an unposted piece still shows one ("your images are off every post that has not gone out yet")', () => {
+    expect(withdrawalConfirmationRefusal({ unpostedShowing: 2, coversShowing: 0 })).toMatch(/2 unposted piece/)
+  })
+  test('not while a listing cover still shows one ("your listing now uses our standard design")', () => {
+    expect(withdrawalConfirmationRefusal({ unpostedShowing: 0, coversShowing: 1 })).toMatch(/1 listing cover/)
   })
 })

@@ -89,8 +89,10 @@ if (VIA_API) {
     async query(text, params = []) {
       // The Management API takes SQL text only, so the two ledger parameters are
       // quoted here. Both are derived from the migration FILENAME, and a filename
-      // cannot reach this point without matching /^\d+_/ and living on disk.
-      const sql = text.replace(/\$(\d+)/g, (_, n) => `'${String(params[Number(n) - 1]).replace(/'/g, "''")}'`)
+      // cannot reach this point without matching /^\d+_/ and living on disk. The migration itself is sent with no
+      // parameters and is never rewritten: a '$50,000' in its words is text, not a parameter (29 October 2026, when
+      // 20261027160001 reached TEST as "under 'undefined',000" and was refused).
+      const sql = params.length === 0 ? text : text.replace(/\$(\d+)/g, (_, n) => `'${String(params[Number(n) - 1]).replace(/'/g, "''")}'`)
       const res = await fetch(`https://api.supabase.com/v1/projects/${TEST_PROJECT_REF}/database/query`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' },

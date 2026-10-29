@@ -10,7 +10,8 @@
  *
  * One organiser with a real curated venue and a whole basis; a play approved over the stored templates; then the real
  * planner, sender and reply handler: message 1 drafted from verified facts and sent; their yes logged and message 5
- * sent in their thread; their stop suppressed at once with one confirmation; the one-click link finding it done. Every
+ * sent in their thread; messages 9, 8, 7 and 10 on their triggers (10 only once a withdrawn image shows nowhere unposted);
+ * their stop suppressed at once with one confirmation; the one-click link finding it done. Every
  * row the drive made is then removed (the append-only triggers are disabled for the cleanup statement only) and TEST is
  * read back as found.
  */
@@ -60,7 +61,7 @@ function nextBusinessMorning(): Date {
   throw new Error('no weekday in seven days')
 }
 
-const made: { organiser?: string; contact?: string; play?: string; dmOrganiser?: string; dmContact?: string; nightReport?: string } = {}
+const made: { organiser?: string; contact?: string; play?: string; dmOrganiser?: string; dmContact?: string; nightReport?: string; permission?: string; asset?: string; posting?: string; coverBefore?: { id: string; url: string | null } } = {}
 let senderBefore: Record<string, unknown> | null = null
 
 async function drive() {
@@ -188,6 +189,74 @@ async function drive() {
   const twice = await db.from('outreach_touches').insert({ contact_id: made.contact!, purpose: 'relationship', template_id: sent8.data?.template_id ?? null, subject: sent8.data?.subject ?? null, body: sent8.data?.body ?? '', drafted_by: user, state: 'held', held_because: ['drive: a second message for one night'], night_report_id: made.nightReport! })
   check('the database refuses a second live message for the same night', Boolean(twice.error) && /outreach_touches_one_per_night_report|duplicate/.test(twice.error?.message ?? ''), twice.error?.message ?? 'inserted')
 
+  // Message 7 on its trigger (29 October): an approved partner kit at a venue the partner runs; not due before a post
+  // naming its night has gone out; drafted with the kit's story card and tracked link once one has (a planted posting
+  // of an approved piece naming the night); never twice.
+  const kit = (await sql(`select k.id, k.link, r.event_ids[1] as event_id, e.venue_id from public.social_pieces k
+                            join lateral (select revision from public.social_piece_approvals where piece_id = k.id order by approved_at desc limit 1) a on true
+                            join public.social_piece_revisions r on r.piece_id = k.id and r.version = a.revision
+                            join public.events e on e.id = r.event_ids[1]
+                           where k.kind = 'partner_kit' and k.planned_at >= now() - interval '14 days' and e.venue_id is not null
+                             and not exists (select 1 from public.outreach_touches t where t.tracked_link = k.link)
+                           order by k.planned_at desc limit 1`) as { id: string; link: string; event_id: string; venue_id: string }[])[0]
+  check('an approved partner kit of the last fortnight on TEST', Boolean(kit), kit ? `${kit.id} ${kit.link}` : 'none')
+  const kitVenue = await db.from('organiser_venues').select('venue_id').eq('venue_id', kit.venue_id).eq('organiser_id', made.organiser!)
+  if ((kitVenue.data ?? []).length === 0) await db.from('organiser_venues').insert({ venue_id: kit.venue_id, organiser_id: made.organiser!, linked_by: user })
+  const before7 = (await sql(`select count(*)::int as n from public.social_piece_postings p join public.social_piece_revisions r on r.piece_id = p.piece_id
+                                where r.event_ids @> array['${kit.event_id}']::uuid[] and p.piece_id <> '${kit.id}' and p.post_url <> 'sent'`) as { n: number }[])[0].n
+  if (before7 === 0) {
+    const early7 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+    check('message 7 is not drafted before a post naming the night has gone out', early7.featured.queued === 0 && early7.featured.notDue.some((n) => n.why.includes('no post naming the night')), JSON.stringify(early7.featured))
+    const naming = (await sql(`select a.id as approval_id, a.piece_id from public.social_piece_approvals a join public.social_piece_revisions r on r.piece_id = a.piece_id and r.version = a.revision
+                                 where r.event_ids @> array['${kit.event_id}']::uuid[] and a.piece_id <> '${kit.id}' order by a.approved_at desc limit 1`) as { approval_id: string; piece_id: string }[])[0]
+    check('an approved piece naming the night, to post', Boolean(naming), naming ? naming.piece_id : 'none')
+    made.posting = ((await sql(`insert into public.social_piece_postings (piece_id, approval_id, post_url, posted_at, recorded_by)
+                                  values ('${naming.piece_id}', '${naming.approval_id}', 'https://www.instagram.com/p/w6-drive-${Date.now()}/', now() - interval '1 hour', '${user}') returning id`)) as { id: string }[])[0]?.id
+  }
+  const due7 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 7 is drafted and queued once the post has gone out', due7.featured.queued === 1 && due7.featured.held.length === 0 && due7.featured.refused.length === 0, JSON.stringify(due7.featured))
+  const sent7 = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  const mail7 = recordedOutreachMail()[4]
+  const mime7 = mail7 ? Buffer.from(mail7.base64Mime, 'base64').toString('utf8') : ''
+  const body7 = mime7 ? Buffer.from(mime7.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : ''
+  check('message 7 goes with the kit\'s story card and its tracked link', sent7.sent.length === 1 && body7.startsWith('Hi Sam,') && body7.includes(kit.link) && body7.includes(`/kit/${kit.id}/1`), body7.split('\n').slice(0, 4).join(' / '))
+  const again7 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 7 is never drafted twice for one kit', again7.featured.queued === 0 && again7.featured.held.length === 0, JSON.stringify(again7.featured))
+
+  // Message 10 on the removal path (29 October): their yes to images, one image under it, then the yes withdrawn the
+  // way organiser_permission_withdraw writes it. Not drafted while their listing still shows the image; drafted once
+  // the listing has its standard design back; never twice.
+  const assetUrl = `https://www.eventlinqs.com.au/w6-drive/withdrawn-${Date.now()}.jpg`
+  const yesRow = (await sql(`insert into public.organiser_permissions (host_name, granted_at, wording, scope, channel, logged_by, organisation_id)
+                               values ('W6 Drive Host', now() - interval '20 days', 'Yes, use our photos for this and future nights.', 'current_and_future', 'email', '${user}', '${night.organisation_id}')
+                               returning id`) as { id: string }[])[0]
+  made.permission = yesRow?.id
+  const assetRow = (await sql(`insert into public.social_assets (asset_state, asset_type, asset_url, source_url, rights_holder, attribution_text, scope, permission_id,
+                                  permission_evidence, original_file, received_on, permitted_uses)
+                                values ('organiser_authorised', 'photo', '${assetUrl}', 'mailto:w6-drive@eventlinqs.com', 'W6 Drive Host', 'Photo: W6 Drive Host', 'both', '${made.permission}',
+                                  'Their email of yes, kept for the drive.', 'w6-drive.jpg', current_date - 20, 'Social posts and the listing.')
+                                returning id`) as { id: string }[])[0]
+  made.asset = assetRow?.id
+  await sql(`begin;
+    update public.organiser_permissions set withdrawn_at = now(), withdrawn_reason = 'Drive: the organiser withdrew their yes' where id = '${made.permission}';
+    update public.social_assets set withdrawal_status = 'withdrawn', withdrawn_at = now(), withdrawal_reason = 'Drive: the organiser withdrew their yes' where id = '${made.asset}';
+    commit;`)
+  check('their yes to images, one image under it, then withdrawn', Boolean(made.permission && made.asset))
+  made.coverBefore = { id: night.id, url: ((await sql(`select cover_image_url from public.events where id = '${night.id}'`)) as { cover_image_url: string | null }[])[0].cover_image_url }
+  await sql(`update public.events set cover_image_url = '${assetUrl}' where id = '${night.id}'`)
+  const showing10 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 10 is not drafted while their listing still shows the withdrawn image', showing10.withdrawal.queued === 0 && showing10.withdrawal.notDue.some((n) => n.why.includes('1 listing cover')), JSON.stringify(showing10.withdrawal))
+  await sql(`update public.events set cover_image_url = ${made.coverBefore.url === null ? 'null' : `'${made.coverBefore.url.replace(/'/g, "''")}'`} where id = '${night.id}'`)
+  const due10 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 10 is drafted and queued once nothing shows it', due10.withdrawal.queued === 1 && due10.withdrawal.held.length === 0 && due10.withdrawal.refused.length === 0, JSON.stringify(due10.withdrawal))
+  const sixth = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
+  const mail10 = recordedOutreachMail()[5]
+  const mime10 = mail10 ? Buffer.from(mail10.base64Mime, 'base64').toString('utf8') : ''
+  const body10 = mime10 ? Buffer.from(mime10.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : ''
+  check('message 10 goes in their thread with its own words', sixth.sent.length === 1 && body10.startsWith('Hi Sam,') && body10.includes("Your images are off every post that hasn't gone out yet") && /Subject: Re: /.test(mime10), body10.split('\n').slice(0, 2).join(' / '))
+  const again10 = await planRelationship(db, { now, origin: ORIGIN, actingUser: user, ...partners })
+  check('message 10 is never drafted twice for one withdrawal', again10.withdrawal.queued === 0 && again10.withdrawal.held.length === 0, JSON.stringify(again10.withdrawal))
+
   const stop = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],
@@ -196,7 +265,7 @@ async function drive() {
   const suppressed = await db.from('outreach_unsubscribes').select('id').eq('email', ADDRESS)
   check('their stop is suppressed at once', stop.replies[0]?.outcome === 'stop' && (suppressed.data?.length ?? 0) === 1, JSON.stringify(stop.replies))
   const third = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
-  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 5, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
+  check('exactly one confirmation goes', third.sent.length === 1 && recordedOutreachMail().length === 7, JSON.stringify({ sent: third.sent.length, refused: third.refused }))
   const again = await handleInbox(
     db,
     [{ graphId: 'g2', internetMessageId: '<w6-drive-stop@venue.example>', subject: 'Re: Thank you', fromAddress: ADDRESS, fromName: 'Sam Drive', receivedAt: new Date().toISOString(), text: 'Please unsubscribe me.', headers: {} }],
@@ -250,6 +319,13 @@ async function cleanup() {
     delete from public.outreach_touches where contact_id = ${d};
     delete from public.outreach_unsubscribes where email = '${ADDRESS}';
     alter table public.organiser_night_reports disable trigger user;
+    alter table public.social_piece_postings disable trigger user;
+    delete from public.social_piece_postings where id = ${made.posting ? `'${made.posting}'` : 'null'};
+    alter table public.social_piece_postings enable trigger user;
+    alter table public.social_assets disable trigger user;
+    delete from public.social_assets where id = ${made.asset ? `'${made.asset}'` : 'null'};
+    alter table public.social_assets enable trigger user;
+    delete from public.organiser_permissions where id = ${made.permission ? `'${made.permission}'` : 'null'};
     delete from public.organiser_night_reports where id = ${made.nightReport ? `'${made.nightReport}'` : 'null'};
     alter table public.organiser_night_reports enable trigger user;
     alter table public.outreach_touches enable trigger user;
@@ -263,6 +339,10 @@ async function cleanup() {
     delete from public.organisers where id = ${made.organiser ? `'${made.organiser}'` : 'null'};
     delete from public.outreach_plays where id = ${made.play ? `'${made.play}'` : 'null'};
     commit;`)
+  if (made.coverBefore) {
+    const u = made.coverBefore.url
+    await sql(`update public.events set cover_image_url = ${u === null ? 'null' : `'${u.replace(/'/g, "''")}'`} where id = '${made.coverBefore.id}'`)
+  }
   if (senderBefore) {
     const v = (x: unknown) => (x === null || x === undefined ? 'null' : `'${String(typeof x === 'object' ? JSON.stringify(x) : x).replace(/'/g, "''")}'`)
     await sql(`begin;
@@ -279,6 +359,10 @@ async function cleanup() {
       (select count(*) from public.outreach_unsubscribes where email = '${ADDRESS}')::int as unsubscribes,
       (select count(*) from public.outreach_plays where name = 'W6 drive play')::int as plays,
       (select count(*) from public.organiser_night_reports where id = ${made.nightReport ? `'${made.nightReport}'` : 'null'})::int as night_reports,
+      (select count(*) from public.organiser_permissions where host_name = 'W6 Drive Host')::int as permissions,
+      (select count(*) from public.social_assets where rights_holder = 'W6 Drive Host')::int as assets,
+      (select count(*) from public.social_piece_postings where post_url like 'https://www.instagram.com/p/w6-drive-%')::int as postings,
+      (select count(*) from public.events where cover_image_url like 'https://www.eventlinqs.com.au/w6-drive/%')::int as covers,
       (select mode from public.outreach_sender where id) as mode,
       (select changed_by from public.outreach_sender where id) as changed_by,
       (select count(*) from pg_trigger where tgrelid = 'public.outreach_touches'::regclass and tgenabled = 'D')::int as disabled_triggers`) as Record<string, unknown>[])[0]
@@ -292,7 +376,7 @@ async function main() {
     check('the drive ran to its end', false, (error as Error).message)
   }
   const left = await cleanup()
-  check('TEST left as found', left.organisers === 0 && left.contacts === 0 && left.touches === 0 && left.unsubscribes === 0 && left.plays === 0 && left.night_reports === 0 && left.mode === (senderBefore?.mode ?? 'hold') && left.changed_by === (senderBefore?.changed_by ?? null) && left.disabled_triggers === 0, JSON.stringify(left))
+  check('TEST left as found', left.organisers === 0 && left.contacts === 0 && left.touches === 0 && left.unsubscribes === 0 && left.plays === 0 && left.night_reports === 0 && left.permissions === 0 && left.assets === 0 && left.postings === 0 && left.covers === 0 && left.mode === (senderBefore?.mode ?? 'hold') && left.changed_by === (senderBefore?.changed_by ?? null) && left.disabled_triggers === 0, JSON.stringify(left))
   console.log(`OUTREACH DRIVE ${failures === 0 ? 'PASSED' : 'FAILED'} (${failures} failure(s)) on TEST ${TEST_REF}`)
   for (const line of checks) console.log(`  ${line}`)
   process.exitCode = failures === 0 ? 0 : 1

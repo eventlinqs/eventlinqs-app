@@ -22,6 +22,7 @@ import {
 import { CampaignRenderError, RENDER_FAILURE, renderCampaignMessage, unsubscribeUrl } from './render'
 import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
 import { SinkRefusal, transportForMode } from './sink'
+import { undeliverableAddresses } from '@/lib/email/delivery-events'
 
 /**
  * THE PACING RUNNER. One campaign, one pass.
@@ -432,10 +433,17 @@ export async function runCampaign(params: {
     return result
   }
 
+  // A recorded permanent bounce: the address cannot receive mail (src/lib/email/delivery-events.ts, 29 October 2026).
+  const undeliverable = await undeliverableAddresses(admin, [...members.values()].map((m) => m.email))
+
   for (const row of allowlist) {
     const member = members.get(row.audience_member_id)
     if (!member) {
       await recordSkip(row, null, 'the audience row this admission points at no longer exists')
+      continue
+    }
+    if (undeliverable.has(member.email.trim().toLowerCase())) {
+      await recordSkip(row, null, 'a permanent bounce is recorded for this address')
       continue
     }
 

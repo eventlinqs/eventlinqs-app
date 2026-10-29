@@ -107,6 +107,14 @@ const RECORD = {
     exposure: 'PENDING-OWNER',
     why: 'A dropped webhook is a paid order the platform never records. Vercel system mitigation is the only thing that could drop one at the network layer, and the documented exemption is a System Bypass Rule. Install with: npm run firewall:bypass',
   },
+  'src/app/api/webhooks/resend/route.ts': {
+    caller: 'Resend delivery webhooks (window 6, 29 October 2026; reviewed 30 October 2026)',
+    proves: 'svix-id, svix-timestamp and svix-signature over the raw body, verified with RESEND_WEBHOOK_SECRET through the resend SDK before anything is read',
+    addresses:
+      'UNSOURCED: Resend publishes no webhook source addresses on its webhook pages (https://resend.com/docs/webhooks/introduction and https://resend.com/docs/webhooks/retries-and-replays, read 30 October 2026)',
+    exposure: 'PENDING-OWNER',
+    why: 'A dropped event is a bounce or a complaint not recorded, so a dead address keeps being written to. Resend retries a failed delivery with exponential backoff, immediately, then after 5 seconds, 5 minutes, 30 minutes, 2 hours, 5 hours, 10 hours and 10 hours more (https://resend.com/docs/webhooks/retries-and-replays, read 30 October 2026), so a short block loses nothing. A System Bypass Rule needs source addresses Resend does not publish; whether to ask Resend for them is the owner\'s decision.',
+  },
   'src/app/api/cron/**': {
     caller: 'Vercel Cron',
     proves: 'CRON_SECRET as a bearer token, checked by requireCronAuth before any work',
