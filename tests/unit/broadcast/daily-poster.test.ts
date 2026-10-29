@@ -140,6 +140,23 @@ describe('every poster fits, at every format, both variants', () => {
     }
   }
 
+  test('two long chips and a real /e/ link: the link takes its own line under the chips, at 26 px or more', () => {
+    // Plan this week on TEST, 30 October: 'eventlinqs.com.au/e/vJIVz4sOyr does not fit 1 line(s) of 393 at 26px'.
+    const n = night({ cta: ctaFor({ externalTicketUrl: 'https://www.gpac.org.au/x', providerName: 'Geelong Performing Arts Centre' }), isAgeRestricted: true, ageMin: 18, shortLink: 'eventlinqs.com.au/e/vJIVz4sOyr' })
+    for (const format of ['square', 'story'] as const) {
+      for (const photo of [PHOTO, null]) {
+        const w = posterWords({ ...n, photo }, format)
+        expect(w.chips.map((c) => c.text)).toEqual(['Tickets at Geelong Performing Arts Centre', '18+'])
+        const l = layoutDailyPoster(format, w, m, photo)
+        expect(layoutFaults(l, m)).toEqual([])
+        const footer = l.runs.find((r) => r.role === 'footer')
+        const chip = l.runs.find((r) => r.role === 'chip-0')
+        expect(footer?.size).toBeGreaterThanOrEqual(26)
+        expect(footer && chip && footer.y > chip.y).toBe(true)
+      }
+    }
+  })
+
   test('a long title steps down, then wraps to two lines; one that cannot fit is refused, never cut', () => {
     const long = posterWords(night({ title: 'The Geelong Waterfront Summer Sessions' }), 'portrait')
     const l = layoutDailyPoster('portrait', long, m, PHOTO)
