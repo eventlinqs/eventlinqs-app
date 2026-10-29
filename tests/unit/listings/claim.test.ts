@@ -62,6 +62,7 @@ function fake(over: Partial<ClaimDeps> = {}) {
       if (hash !== rightHash) return 'wrong'
       return org ? 'verified' : 'needs_organisation'
     },
+    keepYes: async () => {},
     claimOf: async (id) => (kept.find((k) => k.id === id) ? { userId: kept.find((k) => k.id === id)!.userId, target: kept[0].target } : null),
     ...over,
   }

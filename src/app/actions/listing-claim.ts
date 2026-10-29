@@ -7,6 +7,8 @@ import { actionRateLimit } from '@/lib/rate-limit/action'
 import { resolveVenueProfile } from '@/lib/venues/resolver'
 import { checkClaim, claimDeps, startClaim, type ClaimTarget } from '@/lib/listings/claim'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { claimYes } from '@/lib/listings/claim-acceptance'
+import { formatEventDateTimeCompact } from '@/lib/dates/event-time'
 
 const CLOSED = 'Claiming a listing is not open yet.'
 
@@ -22,7 +24,9 @@ export type ClaimStartState =
   | { state: 'refused'; reason: string }
   | null
 
-export type ClaimCheckState = { state: 'verified' } | { state: 'refused'; reason: string } | null
+/** After the right code: the claimant's nights to come (for the upload step) and their regular nights (series). */
+export type ClaimedNights = { nights: { id: string; label: string }[]; series: { id: string; name: string; keep: boolean }[] }
+export type ClaimCheckState = ({ state: 'verified' } & ClaimedNights) | { state: 'refused'; reason: string } | null
 
 async function signedIn(): Promise<string | null> {
   const supabase = await createClient()
@@ -76,17 +80,48 @@ export async function startListingClaim(_prev: ClaimStartState, formData: FormDa
   return started
 }
 
+/** What a verified claim now holds: its series (a venue's, or the one event's) and their nights to come. */
+async function claimedNights(claimId: string): Promise<ClaimedNights> {
+  const admin = createAdminClient()
+  const claim = await readOrThrow('verified claim', () => admin.from('listing_claims').select('venue_id, event_id').eq('id', claimId).limit(1).maybeSingle())
+  if (!claim) return { nights: [], series: [] }
+  const seriesIds: string[] = []
+  let series: ClaimedNights['series'] = []
+  if (claim.venue_id) {
+    const venueId = claim.venue_id
+    const rows = await readOrThrow('claimed series', () =>
+      admin.from('event_series').select('id, name, status').eq('venue_id', venueId).neq('status', 'removed').order('name'),
+    )
+    series = (rows ?? []).map((r) => ({ id: r.id, name: r.name, keep: r.status === 'active' }))
+    seriesIds.push(...series.map((s) => s.id))
+  }
+  const now = new Date().toISOString()
+  const nights = claim.event_id
+    ? await readOrThrow('claimed event', () => admin.from('events').select('id, title, start_date, timezone').eq('id', claim.event_id as string).gte('start_date', now))
+    : seriesIds.length
+      ? await readOrThrow('claimed nights', () =>
+          admin.from('events').select('id, title, start_date, timezone').in('listing_series_id', seriesIds).gte('start_date', now).order('start_date').limit(50),
+        )
+      : []
+  return { nights: (nights ?? []).map((n) => ({ id: n.id, label: `${n.title}, ${formatEventDateTimeCompact(n.start_date, n.timezone)}` })), series }
+}
+
 export async function checkListingClaim(_prev: ClaimCheckState, formData: FormData): Promise<ClaimCheckState> {
   if (!(await isFeatureEnabled('listing_claims'))) return { state: 'refused', reason: CLOSED }
   const userId = await signedIn()
   if (!userId) return { state: 'refused', reason: 'Sign in to claim this listing.' }
+  // The two ticks beside the code (the claim page's words): kept on the claim, written by the database with the move.
+  const at = new Date()
+  const yes = claimYes({ ticked: formData.get('permission') === 'yes', authority: formData.get('authority') === 'yes' }, at)
+  if (yes.state === 'refused') return yes
+  const claimId = String(formData.get('claimId') ?? '')
   const answer = await checkClaim(
-    { claimId: String(formData.get('claimId') ?? ''), code: String(formData.get('code') ?? ''), userId, at: new Date() },
+    { claimId, code: String(formData.get('code') ?? ''), userId, at, yes: yes.state === 'given' ? { words: yes.words, scope: yes.scope, at: yes.at } : null },
     claimDeps(),
   )
   switch (answer) {
     case 'verified':
-      return { state: 'verified' }
+      return { state: 'verified', ...(await claimedNights(claimId)) }
     case 'wrong':
       return { state: 'refused', reason: 'That code does not match. Check the email and try again.' }
     case 'expired':

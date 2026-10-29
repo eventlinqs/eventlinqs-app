@@ -2969,6 +2969,10 @@ export type Database = {
           expires_at: string | null
           id: string
           method: string
+          permission_authority: boolean | null
+          permission_given_at: string | null
+          permission_scope: string | null
+          permission_words: string | null
           status: string
           target_organisation_id: string | null
           venue_id: string | null
@@ -2986,6 +2990,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           method: string
+          permission_authority?: boolean | null
+          permission_given_at?: string | null
+          permission_scope?: string | null
+          permission_words?: string | null
           status?: string
           target_organisation_id?: string | null
           venue_id?: string | null
@@ -3003,6 +3011,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           method?: string
+          permission_authority?: boolean | null
+          permission_given_at?: string | null
+          permission_scope?: string | null
+          permission_words?: string | null
           status?: string
           target_organisation_id?: string | null
           venue_id?: string | null
@@ -5569,6 +5581,7 @@ export type Database = {
       organiser_permissions: {
         Row: {
           channel: string
+          claim_id: string | null
           event_id: string | null
           evidence_file: string | null
           granted_at: string
@@ -5576,11 +5589,15 @@ export type Database = {
           id: string
           logged_at: string
           logged_by: string
+          organisation_id: string | null
           scope: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
           wording: string
         }
         Insert: {
           channel: string
+          claim_id?: string | null
           event_id?: string | null
           evidence_file?: string | null
           granted_at: string
@@ -5588,11 +5605,15 @@ export type Database = {
           id?: string
           logged_at?: string
           logged_by: string
+          organisation_id?: string | null
           scope: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
           wording: string
         }
         Update: {
           channel?: string
+          claim_id?: string | null
           event_id?: string | null
           evidence_file?: string | null
           granted_at?: string
@@ -5600,10 +5621,20 @@ export type Database = {
           id?: string
           logged_at?: string
           logged_by?: string
+          organisation_id?: string | null
           scope?: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
           wording?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organiser_permissions_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "listing_claims"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organiser_permissions_event_id_fkey"
             columns: ["event_id"]
@@ -5616,6 +5647,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_permissions_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -11145,6 +11183,32 @@ export type Database = {
         }
         Returns: number
       }
+      organiser_media_add: {
+        Args: {
+          p_asset_url: string
+          p_attribution: string
+          p_event: string
+          p_kind: string
+          p_original_name: string
+          p_restrictions: string
+          p_user: string
+        }
+        Returns: string
+      }
+      organiser_media_path: { Args: { p_url: string }; Returns: string }
+      organiser_media_replace: {
+        Args: {
+          p_asset: string
+          p_asset_url: string
+          p_original_name: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      organiser_media_withdraw: {
+        Args: { p_asset: string; p_reason: string; p_user: string }
+        Returns: string[]
+      }
       organiser_permission_evidence: {
         Args: {
           p: Database["public"]["Tables"]["organiser_permissions"]["Row"]
@@ -11155,6 +11219,7 @@ export type Database = {
         Args: { p_event: string }
         Returns: {
           channel: string
+          claim_id: string | null
           event_id: string | null
           evidence_file: string | null
           granted_at: string
@@ -11162,7 +11227,10 @@ export type Database = {
           id: string
           logged_at: string
           logged_by: string
+          organisation_id: string | null
           scope: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
           wording: string
         }
         SetofOptions: {
@@ -11171,6 +11239,28 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      organiser_permission_give: {
+        Args: { p_claim: string; p_user: string; p_words: string }
+        Returns: string
+      }
+      organiser_permission_withdraw: {
+        Args: { p_permission: string; p_reason: string; p_user: string }
+        Returns: string[]
+      }
+      organiser_runs_night: {
+        Args: { p_event: string; p_user: string }
+        Returns: boolean
+      }
+      organiser_series_keep: {
+        Args: { p_keep: boolean; p_series: string; p_user: string }
+        Returns: string
+      }
+      organiser_yes_takes_native_shares: {
+        Args: {
+          v_perm: Database["public"]["Tables"]["organiser_permissions"]["Row"]
+        }
+        Returns: undefined
       }
       outreach_close_stuck_sends: {
         Args: { p_minutes?: number }

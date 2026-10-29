@@ -6,12 +6,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { ClaimForm } from '@/components/listings/claim-form'
+import { maskAddress } from '@/lib/listings/claim'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * CLAIM THIS EVENT (the locked foundation's item 7: "Claim this event and claim this venue, free, by a code to the
  * published email"; WI2-PLAN.md Part 3b). A curated listing, one EventLinqs listed from public information, is claimed
- * through its venue's own published address (src/lib/listings/claim.ts), which is never shown here. An event its
+ * through its venue's own published address (src/lib/listings/claim.ts), shown here only masked (maskAddress). An event its
  * organiser made is theirs already and is not claimable. Never indexed.
  */
 
@@ -53,15 +54,13 @@ export default async function ClaimEventPage({ params }: Props) {
       <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-800">Claim this event, free</p>
-          <h1 className="mt-2 font-display text-2xl font-bold text-ink-900">{event.title}</h1>
+          {/* The project manager's claim page words (EVENTLINQS-ORGANISER-MESSAGES-28OCT.md, section 6). */}
+          <h1 className="mt-2 font-display text-2xl font-bold text-ink-900">{claimable ? `${event.title} is on EventLinqs. Claim it free.` : event.title}</h1>
           {!claimable || !venue ? (
             <p className="mt-3 text-sm text-ink-600">This event is already run by its organiser on EventLinqs.</p>
           ) : (
             <>
-              <p className="mt-3 text-sm text-ink-600">
-                Listed by EventLinqs from public information. Claim it to run its listing, choose its main ticket link and see how many
-                people EventLinqs sends you. We send a code to the address {venue.name} publishes, so only the host can claim it.
-              </p>
+              <p className="mt-3 text-sm text-ink-600">Takes two minutes. You keep your own tickets and booking page.</p>
               <div className="mt-6">
                 {user ? (
                   <ClaimForm
@@ -69,6 +68,7 @@ export default async function ClaimEventPage({ params }: Props) {
                     slug={slug}
                     hostName={venue.name}
                     askDomainEmail={!venue.published_email && Boolean(venue.website_url)}
+                    codeTo={maskAddress(venue.published_email)}
                     doneHref="/dashboard"
                   />
                 ) : (

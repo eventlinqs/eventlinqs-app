@@ -264,6 +264,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/dashboard/my-waitlists', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/organisation', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/organisation/create', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/organisation/media', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/payouts', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/promote', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/reports/gst', klass: 'never', why: 'authenticated' },
