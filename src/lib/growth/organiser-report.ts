@@ -19,8 +19,9 @@ import {
 
 /**
  * The rows behind each organiser's report after a night, and the hourly sweep that keeps it (the rules and why are in
- * ./organiser-report-math.ts). Written once per night into organiser_night_reports (20261028203001), held for Lawal:
- * nothing here sends an email or posts anything.
+ * ./organiser-report-math.ts). Written once per night into organiser_night_reports (20261028203001). Nothing here sends
+ * an email or posts anything: message 8, after your night, is sent from the kept row by window 6's outreach run and
+ * recorded on outreach_touches (20261029172001 says why the row's own sent_at stays for a send by hand).
  */
 
 const HOUR_MS = 60 * 60 * 1000

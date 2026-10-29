@@ -256,6 +256,25 @@ describe('a walk-in page, read as rendered', () => {
     expect(phone!.className).toContain('lg:hidden')
     expect(phone!.textContent).toContain('Add to calendar')
   })
+
+  /*
+   * The project manager's ruling of 29 October 2026, 15:56: an archival photograph says it is from a past festival
+   * wherever it is drawn. Production's /events/amcf-2026 hid the cover's 'Photo: AMCF, past festival' and the gallery's
+   * 'From past festivals' below 1024 px, so a phone showed past photographs with nothing saying so.
+   */
+  it('says the photographs are from a past festival on a phone too: the cover credit and the gallery heading at every width', () => {
+    const { container } = drawn()
+    const hiddenOnAPhone = (el: Element | null) => {
+      for (let e = el; e; e = e.parentElement) if (/(^|\s)hidden(\s|$)/.test(e.getAttribute('class') ?? '')) return true
+      return false
+    }
+    const credit = [...container.querySelectorAll('figcaption')].find((f) => f.textContent?.includes('Photo: AMCF, past festival')) ?? null
+    expect(credit).not.toBeNull()
+    expect(hiddenOnAPhone(credit)).toBe(false)
+    const heading = [...container.querySelectorAll('h2')].find((h) => h.textContent === 'From past festivals') ?? null
+    expect(heading).not.toBeNull()
+    expect(hiddenOnAPhone(heading)).toBe(false)
+  })
 })
 
 describe('the one button that leaves, on a curated listing (WI3)', () => {

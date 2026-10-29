@@ -15,11 +15,16 @@
  *   4. otherwise record the basis whole: the page, the date seen, the no-messages check, why the message fits their
  *      role (they run the nights EventLinqs lists), and the saved copy of the page as the evidence file.
  *
- * Every decision is written to a report beside the saved pages. Nothing here sends anything. TEST only; for
- * production the same run is a dry run for Lawal's APPLY (operating rule 4).
+ * Every decision is written to a report beside the saved pages. Nothing here sends anything.
+ *
+ * TWO MODES. --test writes on TEST. --production --organiser "<name>" READS production through the SELECT-only reader
+ * (scripts/lib/production-select.mjs) and writes NOTHING there: every write it would make goes into one file ending in
+ * ROLLBACK, for Lawal's APPLY or window 4's logged apply (operating rule 4). It runs for one named organiser only.
+ * (Until 29 October this header promised that dry run while the code refused anything but --test; window 6.)
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { productionSelect } from '../lib/production-select.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const args = process.argv.slice(2)
@@ -27,13 +32,24 @@ const arg = (n) => (args.indexOf(n) >= 0 ? args[args.indexOf(n) + 1] : null)
 const by = arg('--by')
 const evidence = arg('--evidence') ?? 'C:/dev/EVIDENCE/CRM-28OCT/basis'
 const token = process.env.SUPABASE_ACCESS_TOKEN
-if (!by || !/^[0-9a-f-]{36}$/i.test(by) || !args.includes('--test') || !token) {
-  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> --test [--evidence <dir>]')
+const production = args.includes('--production')
+const modeOk = production ? !args.includes('--test') && Boolean(arg('--organiser')) : args.includes('--test')
+if (!by || !/^[0-9a-f-]{36}$/i.test(by) || !modeOk || !token) {
+  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> (--test | --production --organiser "<name>") [--evidence <dir>]')
   process.exit(2)
 }
 mkdirSync(evidence, { recursive: true })
 
+/** The writes a production run would make, kept for the dry-run file and never sent. */
+const held = []
+const select = production ? productionSelect(token) : null
+
 async function sql(query) {
+  if (production) {
+    if (/^\s*select/i.test(query)) return select(query)
+    held.push(query.trim())
+    return []
+  }
   const r = await fetch(`https://api.supabase.com/v1/projects/${TEST_REF}/database/query`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ query }) })
   const body = await r.text()
   if (!r.ok) throw new Error(`TEST refused (HTTP ${r.status}): ${body.slice(0, 400)}`)
@@ -201,4 +217,8 @@ const read = (await sql(`select (select count(*) from public.organiser_contacts 
   (select count(*) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as with_a_whole_basis,
   (select count(distinct organiser_id) from public.organiser_contacts where channel = 'email' and basis <> 'none')::int as organisers_writable,
   (select count(*) from public.organiser_contacts where channel = 'instagram' and basis <> 'none')::int as instagram_with_a_whole_basis`))[0]
-console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${reportFile}`)
+if (production) {
+  const dry = join(evidence, `outreach-basis-PRODUCTION-DRY-RUN-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`)
+  writeFileSync(dry, `-- Bases for ${arg('--organiser')} on production, from scripts/ops/outreach-basis.mjs --production. Dry run: ends in ROLLBACK.\n-- Each statement only fills a contact whose basis is still 'none'. Report: ${reportFile}\nbegin;\n${held.map((s) => `${s};`).join('\n')}\nrollback;\n`)
+  console.log(`organisers checked ${organisers.length}; bases this run would record ${recorded}, NOTHING WRITTEN on production; dry run ${dry}; production now ${JSON.stringify(read)}; report ${reportFile}`)
+} else console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${reportFile}`)

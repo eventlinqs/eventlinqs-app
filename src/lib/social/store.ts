@@ -9,7 +9,7 @@ import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
-import { wordsRefusal } from './words'
+import { quotableSummary, wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -100,6 +100,8 @@ export interface PostCard {
   readonly listing: boolean
   /** The photograph is EventLinqs' licensed library shot, and the card says so at its foot. */
   readonly libraryPhoto: boolean
+  /** The approved register row's credit for the cover, printed on the card; null with no register photograph. */
+  readonly photoCredit: string | null
 }
 
 /**
@@ -119,7 +121,8 @@ export async function cardOf(db: Db, postId: string, now: Date): Promise<PostCar
    * scope social; a library or category photo never stands for a named night, and an event's own cover is not
    * permission by being there. With none the card is typographic.
    */
-  const approved = (await usableImages(db, [post.event_id as string], now)).get(post.event_id as string)?.url ?? null
+  const usable = (await usableImages(db, [post.event_id as string], now)).get(post.event_id as string) ?? null
+  const approved = usable?.url ?? null
   const cover = approved && !isLibraryPhoto(approved) ? approved : null
   return {
     context: { ...context, coverImageUrl: cover },
@@ -128,6 +131,8 @@ export async function cardOf(db: Db, postId: string, now: Date): Promise<PostCar
     platform: post.platform as SocialPlatform,
     listing,
     libraryPhoto: isLibraryPhoto(cover),
+    /* The row's own credit, printed on the card (an archival photograph says 'past festival'; the PM's 15:56). */
+    photoCredit: cover ? (usable?.credit ?? null) : null,
   }
 }
 
@@ -156,7 +161,9 @@ export async function planWeek(db: Db, input: { readonly plannedBy: string; read
       held.push({ eventId: item.eventId, reason: 'The event could not be read.' })
       continue
     }
-    const caption = toCaptionInput(context)
+    const told = toCaptionInput(context)
+    /* The organiser's description is quoted only where it does not carry the banned word (words.ts quotableSummary). */
+    const caption = { ...told, summary: quotableSummary(told.summary, [told.title, told.organiserName]) }
 
     const kit = await getOrCreateShareLink({ eventId: item.eventId, channel: item.platform, createdBy: input.plannedBy, eventSlug: context.slug })
     if (kit === null) {
@@ -185,7 +192,7 @@ export async function planWeek(db: Db, input: { readonly plannedBy: string; read
     }
     planned += 1
     const words = kitCaption(caption, item.platform, url)
-    const why = wordsRefusal(words, url, facts)
+    const why = wordsRefusal(words, url, facts, [caption.title, caption.organiserName])
     if (why !== null) {
       held.push({ eventId: item.eventId, reason: `The Launch Kit's words were not kept: ${why}` })
       continue
@@ -200,9 +207,11 @@ export type Done = { readonly state: 'done' } | { readonly state: 'refused'; rea
 
 /** A person's own words for a post, as its next version. */
 export async function writeDraft(db: Db, input: { readonly postId: string; readonly caption: string; readonly by: string; readonly now: Date }): Promise<Done> {
-  const { data: post, error } = await db.from('social_posts').select('link, facts').eq('id', input.postId).maybeSingle()
+  const { data: post, error } = await db.from('social_posts').select('link, facts, event_id').eq('id', input.postId).maybeSingle()
   if (error || !post) return { state: 'refused', reason: 'That post could not be found.' }
-  const why = wordsRefusal(input.caption, post.link as string, post.facts as string[])
+  /* The names the words may quote exactly, read as the Launch Kit reads them (words.ts carriesBannedWord). */
+  const context = await contextFor(db, post.event_id as string, input.now)
+  const why = wordsRefusal(input.caption, post.link as string, post.facts as string[], context === null ? [] : [context.title, context.organiserName])
   if (why !== null) return { state: 'refused', reason: why }
   const { data: last } = await db.from('social_drafts').select('version').eq('post_id', input.postId).order('version', { ascending: false }).limit(1).maybeSingle()
   const { error: derr } = await db.from('social_drafts').insert({
@@ -870,6 +879,34 @@ export async function readPiece(db: Db, pieceId: string): Promise<{ slides: Slid
   return { slides: rev.slides, format: data.format as 'feed' | 'story', kind: data.kind as PiecePlan['kind'], city: data.city as string }
 }
 
+/**
+ * Whether a piece is drawn at its public address, /kit/<piece>/<n> (window 6's message 7 names the kit's images): only a
+ * partner kit whose newest version is approved and not rejected; a kit already sent stays drawn.
+ */
+export function publicKitServes(p: { kind: PiecePlan['kind']; newestVersion: number; approvedVersions: readonly number[]; rejectedVersions: readonly number[] }): boolean {
+  return p.kind === 'partner_kit' && p.approvedVersions.includes(p.newestVersion) && !p.rejectedVersions.includes(p.newestVersion)
+}
+
+/** An approved partner kit's slides for its public address, or null for anything publicKitServes refuses. */
+export async function readPublicKit(db: Db, pieceId: string): Promise<{ slides: Slide[]; format: 'feed' | 'story'; city: string; partnerName: string | null } | null> {
+  const { data } = await db.from('social_pieces').select('format, kind, city, partner_name').eq('id', pieceId).maybeSingle()
+  if (!data) return null
+  const rev = await newestRevision(db, pieceId)
+  if (!rev) return null
+  const [{ data: approvals }, { data: decisions }] = await Promise.all([
+    db.from('social_piece_approvals').select('revision').eq('piece_id', pieceId),
+    db.from('social_piece_decisions').select('revision, decision').eq('piece_id', pieceId).eq('decision', 'rejected'),
+  ])
+  const serves = publicKitServes({
+    kind: data.kind as PiecePlan['kind'],
+    newestVersion: rev.version,
+    approvedVersions: (approvals ?? []).map((a) => a.revision as number),
+    rejectedVersions: (decisions ?? []).map((d) => d.revision as number),
+  })
+  if (!serves) return null
+  return { slides: rev.slides, format: data.format as 'feed' | 'story', city: data.city as string, partnerName: (data.partner_name as string | null) ?? null }
+}
+
 /** A person approves a piece's newest revision (B3, F8): its own state, before anything goes. */
 export async function approvePiece(db: Db, input: { readonly pieceId: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
@@ -887,6 +924,39 @@ export async function approvePieceChecked(
   const issues = await pieceDependencies(db, input.pieceId, input.now, { siteOrigin: input.siteOrigin, fetcher: input.fetcher })
   if (issues.length > 0) return { state: 'refused', reason: `Not approved yet: ${issues.join(' ')}` }
   return approvePiece(db, input)
+}
+
+export type WeekApproved = { readonly approved: string[]; readonly held: { id: string; label: string; reason: string }[] }
+
+/**
+ * The week in one press (the release checklist's B3, "per post and per week"): the same checked approval as one piece,
+ * one piece after another, on every piece still waiting; drafted only, so an approved, rejected or gone piece is never
+ * touched. A piece that fails its checks, or whose check throws, is held with its reason and the rest go on.
+ */
+export async function approveWeek(
+  pieces: readonly { id: string; state: PieceState; label: string }[],
+  approveOne: (pieceId: string) => Promise<Done>,
+): Promise<WeekApproved> {
+  const approved: string[] = []
+  const held: { id: string; label: string; reason: string }[] = []
+  for (const p of pieces.filter((x) => x.state === 'drafted')) {
+    try {
+      const done = await approveOne(p.id)
+      if (done.state === 'done') approved.push(p.id)
+      else held.push({ id: p.id, label: p.label, reason: done.reason })
+    } catch (error) {
+      held.push({ id: p.id, label: p.label, reason: `Its checks could not run: ${(error as Error).message}` })
+    }
+  }
+  return { approved, held }
+}
+
+/** This week's campaign approved in one press, each piece through approvePieceChecked. */
+export async function approveWeekChecked(db: Db, input: { readonly by: string; readonly now: Date; readonly siteOrigin: string }): Promise<WeekApproved | null> {
+  const campaign = await readCampaign(db, input.now)
+  if (campaign === null) return null
+  const pieces = campaign.pieces.map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
+  return approveWeek(pieces, (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
 }
 
 /** A piece as it went (F8): its address, or "sent" for a partner kit; the database refuses one without its approval. */

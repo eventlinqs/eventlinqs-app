@@ -30,11 +30,13 @@ const arg = (name) => {
 const by = arg('--by')
 const version = Number(arg('--version') ?? '1')
 if (!by || !/^[0-9a-f-]{36}$/i.test(by)) {
-  console.error('usage: node scripts/ops/outreach-templates.mjs --by <auth user uuid> [--version N] [--test]')
+  console.error('usage: node scripts/ops/outreach-templates.mjs --by <auth user uuid> [--data <json>] [--version N] [--test]')
   process.exit(2)
 }
 
-const data = JSON.parse(readFileSync(join(process.cwd(), 'scripts/ops/data/outreach-templates-28oct.json'), 'utf8'))
+/* --data names another file of the same shape: a later version of some keys only (message 7's version 2, the project
+   manager's ruling of 29 October 2026, 17:31, is scripts/ops/data/outreach-templates-29oct-v2.json with --version 2). */
+const data = JSON.parse(readFileSync(join(process.cwd(), arg('--data') ?? 'scripts/ops/data/outreach-templates-28oct.json'), 'utf8'))
 const q = (v) => (v === null || v === undefined ? 'null' : `'${String(v).replace(/'/g, "''")}'`)
 const rows = data.templates.map(
   (t) =>

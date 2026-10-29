@@ -6252,6 +6252,7 @@ export type Database = {
           id: string
           in_reply_to: string | null
           internet_message_id: string | null
+          night_report_id: string | null
           play_id: string | null
           provider: string | null
           purpose: string
@@ -6277,6 +6278,7 @@ export type Database = {
           id?: string
           in_reply_to?: string | null
           internet_message_id?: string | null
+          night_report_id?: string | null
           play_id?: string | null
           provider?: string | null
           purpose?: string
@@ -6302,6 +6304,7 @@ export type Database = {
           id?: string
           in_reply_to?: string | null
           internet_message_id?: string | null
+          night_report_id?: string | null
           play_id?: string | null
           provider?: string | null
           purpose?: string
@@ -6322,6 +6325,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "organiser_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_touches_night_report_id_fkey"
+            columns: ["night_report_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_night_reports"
             referencedColumns: ["id"]
           },
           {

@@ -258,6 +258,11 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // An approved partner kit's slide at its public address (window 6's message 7), the same renderer as the admin's.
+    '/kit/[pieceId]/[n]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/api/launch/[code]/card/[format]': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
@@ -437,6 +442,18 @@ const nextConfig: NextConfig = {
           ...SECURITY_HEADERS,
         ],
       },
+      /*
+       * THE ROUTES THAT ARE NEVER INDEXED SAY SO AGAIN, AFTER THE RULE ABOVE. Each sets X-Robots-Tag itself, and the
+       * rule above replaced it: "If two headers match the same path and set the same header key, the last header key
+       * will override the first" (Next 16.3.0, node_modules/next/dist/docs/01-app/03-api-reference/05-config/
+       * 01-next-config-js/headers.md). Found driving /kit on a build, 29 October 2026, where the route said
+       * 'noindex, nofollow' and the response read 'index, follow'. An image has no other signal. Held by
+       * tests/unit/seo/route-noindex-survives-config-headers.test.ts, which reads every route that says noindex.
+       */
+      { source: '/kit/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
+      { source: '/api/launch/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
+      { source: '/go/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      { source: '/out/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       // Edge-cache the discovery surfaces so a crawler burst (e.g. Facebook
       // scraping Open Graph tags) is served from Vercel's CDN instead of
       // re-rendering against the database on every hit. CDN-Cache-Control only

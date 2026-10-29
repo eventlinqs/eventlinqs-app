@@ -16,6 +16,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 
 type Admin = SupabaseClient<Database>
@@ -196,4 +197,266 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     reports.push(report)
   }
   return reports
+}
+
+/* ------------------------------------------------------------------ partner messages on their triggers */
+
+/**
+ * MESSAGE 9, ANYTHING COMING UP, ON ITS TRIGGER (window 6, 29 October 2026; the PM's messages file: "partner, nothing
+ * listed in the next 30 days"; the engine plan's FULL AUTOMATION: it sends without Lawal).
+ *
+ * A partner is an organiser one of whose email contacts said yes (outreach_replies yes or interested) or gave their own
+ * words of consent. Each run, a partner who runs a venue, has no published public night at any of its venues in the
+ * next 30 days, and was not asked in the last 30 days, gets message 9 drafted to the contact who said yes. It is filled
+ * and judged like every message (draftFromTemplate) and the database lets it go only after their yes; nothing here
+ * sends, and nothing sends while the sender is on hold.
+ */
+export const ANYTHING_COMING_UP_DAYS = 30
+
+export type PartnerState = { organiserId: string; contactId: string; venueIds: string[]; upcomingNights: number; lastAskedAt: Date | null }
+
+/** Why message 9 is not due for this partner now, or null when it is. */
+export function anythingComingUpRefusal(p: PartnerState, now: Date): string | null {
+  if (p.venueIds.length === 0) return 'no venue is linked to this organiser, and the message names one'
+  if (p.upcomingNights > 0) return `${p.upcomingNights} night${p.upcomingNights === 1 ? '' : 's'} listed in the next ${ANYTHING_COMING_UP_DAYS} days`
+  if (p.lastAskedAt && now.getTime() - p.lastAskedAt.getTime() < ANYTHING_COMING_UP_DAYS * 86_400_000) {
+    return `asked on ${p.lastAskedAt.toISOString().slice(0, 10)}, under ${ANYTHING_COMING_UP_DAYS} days ago`
+  }
+  return null
+}
+
+type DraftTally = { queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
+/** Message 9's tally at the top level; message 8's in afterNight; message 7's in featured. */
+export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally; featured: DraftTally }
+
+/** organisers, when named, limits the run to them (the TEST drive's own), as planDms does. */
+export async function planRelationship(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<RelationshipReport> {
+  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] }, featured: { queued: 0, held: [], refused: [], notDue: [] } }
+  const yes = await db.from('outreach_replies').select('contact_id, received_at').in('outcome', ['yes', 'interested']).order('received_at', { ascending: false })
+  if (yes.error) throw new Error(`outreach_replies: ${yes.error.message}`)
+  const consent = await db.from('organiser_contacts').select('id').eq('basis', 'express_consent').eq('channel', 'email')
+  if (consent.error) throw new Error(`organiser_contacts: ${consent.error.message}`)
+  const ids = [...new Set([...(yes.data ?? []).map((r) => r.contact_id), ...(consent.data ?? []).map((c) => c.id)])]
+  if (ids.length === 0) return report
+  const contacts = await db.from('organiser_contacts').select('id, organiser_id').in('id', ids).eq('channel', 'email')
+  if (contacts.error) throw new Error(`organiser_contacts: ${contacts.error.message}`)
+  // One contact per partner: the most recent yes first, in the order the replies were read.
+  const order = new Map(ids.map((id, i) => [id, i]))
+  const byOrganiser = new Map<string, string>()
+  for (const c of [...(contacts.data ?? [])].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))) {
+    if (!byOrganiser.has(c.organiser_id)) byOrganiser.set(c.organiser_id, c.id)
+  }
+  report.partners = byOrganiser.size
+
+  const template = await db.from('outreach_templates').select('id').eq('key', 'anything_coming_up')
+  if (template.error) throw new Error(`outreach_templates: ${template.error.message}`)
+  const templateIds = (template.data ?? []).map((t) => t.id)
+  const until = new Date(deps.now.getTime() + ANYTHING_COMING_UP_DAYS * 86_400_000)
+
+  for (const [organiserId, contactId] of byOrganiser) {
+    if (deps.organisers && !deps.organisers.includes(organiserId)) continue
+    const links = await db.from('organiser_venues').select('venue_id').eq('organiser_id', organiserId)
+    if (links.error) throw new Error(`organiser_venues: ${links.error.message}`)
+    const venueIds = (links.data ?? []).map((l) => l.venue_id)
+    let upcomingNights = 0
+    if (venueIds.length > 0) {
+      // What the guide lists (the shared rule: published, public, until it has ENDED, fresh; outside tickets included,
+      // since the guide lists them too), starting before the month is out.
+      const nights = await applyPublicEventVisibility(
+        db.from('events').select('id', { count: 'exact', head: true }).in('venue_id', venueIds),
+        { now: deps.now, includeExternal: true },
+      ).lt('start_date', until.toISOString())
+      if (nights.error) throw new Error(`events: ${nights.error.message}`)
+      upcomingNights = nights.count ?? 0
+    }
+    let lastAskedAt: Date | null = null
+    if (templateIds.length > 0) {
+      const partnerContacts = await db.from('organiser_contacts').select('id').eq('organiser_id', organiserId)
+      if (partnerContacts.error) throw new Error(`organiser_contacts: ${partnerContacts.error.message}`)
+      const asked = await db
+        .from('outreach_touches')
+        .select('drafted_at')
+        .in('contact_id', (partnerContacts.data ?? []).map((c) => c.id))
+        .in('template_id', templateIds)
+        .neq('state', 'void')
+        .order('drafted_at', { ascending: false })
+        .limit(1)
+      if (asked.error) throw new Error(`outreach_touches: ${asked.error.message}`)
+      lastAskedAt = asked.data?.[0] ? new Date(asked.data[0].drafted_at as string) : null
+    }
+    const why = anythingComingUpRefusal({ organiserId, contactId, venueIds, upcomingNights, lastAskedAt }, deps.now)
+    if (why) {
+      report.notDue.push({ organiserId, why })
+      continue
+    }
+    const r = await draftFromTemplate(db, { contactId, templateKey: 'anything_coming_up', purpose: 'relationship', scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
+    if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
+    else report.queued++
+  }
+
+  // Message 8: each night report from two to seven days old, not sent by hand, to the partner whose venue held the night.
+  const reports = await db
+    .from('organiser_night_reports')
+    .select('id, event_id, figures, night_ended_at')
+    .is('sent_at', null)
+    .lte('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_DUE_DAYS * 86_400_000).toISOString())
+    .gt('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_STALE_DAYS * 86_400_000).toISOString())
+    .order('night_ended_at')
+    .limit(200)
+  if (reports.error) throw new Error(`organiser_night_reports: ${reports.error.message}`)
+  for (const night of reports.data ?? []) {
+    const already = await db.from('outreach_touches').select('id').eq('night_report_id', night.id).neq('state', 'void').limit(1)
+    if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
+    if ((already.data ?? []).length > 0) continue
+    const event = await db.from('events').select('title, venue_id').eq('id', night.event_id).maybeSingle()
+    if (event.error) throw new Error(`events: ${event.error.message}`)
+    if (!event.data?.venue_id) continue
+    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
+    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
+    if (!organiserId) continue
+    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now)
+    if (why) {
+      report.afterNight.notDue.push({ organiserId, why })
+      continue
+    }
+    const contactId = byOrganiser.get(organiserId)!
+    const r = await draftFromTemplate(db, {
+      contactId,
+      templateKey: 'after_your_night',
+      purpose: 'relationship',
+      extraFields: afterYourNightFields(night.figures, event.data.title),
+      nightReportId: night.id,
+      scheduledFor: deps.now,
+      origin: deps.origin,
+      draftedBy: deps.actingUser,
+    })
+    if (r.state === 'refused') report.afterNight.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.afterNight.held.push({ contactId, why: r.value.heldBecause })
+    else report.afterNight.queued++
+  }
+
+  // Message 7: each approved partner kit of the last fortnight, once a post naming its night has gone out.
+  const kits = await db
+    .from('social_pieces')
+    .select('id, city, link')
+    .eq('kind', 'partner_kit')
+    .gte('planned_at', new Date(deps.now.getTime() - FEATURED_LOOKBACK_DAYS * 86_400_000).toISOString())
+    .order('planned_at')
+    .limit(200)
+  if (kits.error) throw new Error(`social_pieces: ${kits.error.message}`)
+  for (const kit of kits.data ?? []) {
+    const already = await db.from('outreach_touches').select('id').eq('tracked_link', kit.link).neq('state', 'void').limit(1)
+    if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
+    if ((already.data ?? []).length > 0) continue
+    const approval = await db.from('social_piece_approvals').select('revision').eq('piece_id', kit.id).order('approved_at', { ascending: false }).limit(1)
+    if (approval.error) throw new Error(`social_piece_approvals: ${approval.error.message}`)
+    if (!approval.data?.[0]) continue
+    const rev = await db.from('social_piece_revisions').select('event_ids, caption').eq('piece_id', kit.id).eq('version', approval.data[0].revision).maybeSingle()
+    if (rev.error) throw new Error(`social_piece_revisions: ${rev.error.message}`)
+    const eventId = rev.data?.event_ids?.[0]
+    if (!eventId) continue
+    const event = await db.from('events').select('title, venue_id').eq('id', eventId).maybeSingle()
+    if (event.error) throw new Error(`events: ${event.error.message}`)
+    if (!event.data?.venue_id) continue
+    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
+    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
+    if (!organiserId) continue
+    const wentOutAt = await postNamingNightWentOut(db, eventId, kit.id)
+    if (!wentOutAt) {
+      report.featured.notDue.push({ organiserId, why: 'no post naming the night has gone out yet' })
+      continue
+    }
+    const city = await db.from('cities').select('name').eq('slug', kit.city).maybeSingle()
+    if (city.error) throw new Error(`cities: ${city.error.message}`)
+    const contactId = byOrganiser.get(organiserId)!
+    const r = await draftFromTemplate(db, {
+      contactId,
+      templateKey: 'featured',
+      purpose: 'relationship',
+      extraFields: featuredFields({ title: event.data.title, cityName: city.data?.name ?? null, wentOutAt, caption: rev.data?.caption ?? null, link: kit.link, images: kitImages(deps.origin, kit.id) }),
+      trackedLink: kit.link,
+      scheduledFor: deps.now,
+      origin: deps.origin,
+      draftedBy: deps.actingUser,
+    })
+    if (r.state === 'refused') report.featured.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.featured.held.push({ contactId, why: r.value.heldBecause })
+    else report.featured.queued++
+  }
+  return report
+}
+
+/** When a post naming the night, other than the partner's own kit, first went out: recorded posted, or published. */
+async function postNamingNightWentOut(db: Admin, eventId: string, kitId: string): Promise<Date | null> {
+  const revisions = await db.from('social_piece_revisions').select('piece_id').contains('event_ids', [eventId]).neq('piece_id', kitId).limit(200)
+  if (revisions.error) throw new Error(`social_piece_revisions: ${revisions.error.message}`)
+  const pieceIds = [...new Set((revisions.data ?? []).map((r) => r.piece_id))]
+  if (pieceIds.length === 0) return null
+  const posted = await db.from('social_piece_postings').select('posted_at').in('piece_id', pieceIds).neq('post_url', 'sent').order('posted_at').limit(1)
+  if (posted.error) throw new Error(`social_piece_postings: ${posted.error.message}`)
+  const published = await db.from('social_piece_schedules').select('published_at').in('piece_id', pieceIds).eq('state', 'published').order('published_at').limit(1)
+  if (published.error) throw new Error(`social_piece_schedules: ${published.error.message}`)
+  const times = [posted.data?.[0]?.posted_at, published.data?.[0]?.published_at].filter((t): t is string => typeof t === 'string').map((t) => new Date(t))
+  return times.length === 0 ? null : new Date(Math.min(...times.map((t) => t.getTime())))
+}
+
+/**
+ * MESSAGE 7, YOU'RE FEATURED (the PM's messages file; the engine plan's part G: "kit sent to the organiser when their
+ * post goes out"; the PM's ruling of 29 October, 16:28). The kit is window 3's partner_kit piece: its approved caption and
+ * its own tracked link. Its story is window 3's public /kit/<piece>/<n> (approved kits only). A partner kit is made as a
+ * story alone, so the feed image stays empty; message 7's version 2 (the PM's ruling of 29 October, 17:31,
+ * scripts/ops/data/outreach-templates-29oct-v2.json) names the story card only, so it goes by itself once every field is
+ * filled. Under version 1, which names a feed image, it is held for Lawal on that field.
+ */
+export const FEATURED_LOOKBACK_DAYS = 14
+
+/** A partner kit's public images (window 3's /kit route): its first slide as the story; no feed version is made. */
+export function kitImages(origin: string, pieceId: string): { feed: string | null; story: string | null } {
+  return { feed: null, story: `${origin.replace(/\/+$/, '')}/kit/${pieceId}/1` }
+}
+
+export function featuredFields(k: { title: string; cityName: string | null; wentOutAt: Date; caption: string | null; link: string; images: { feed: string | null; story: string | null } | null }): Record<string, string | null> {
+  return {
+    night: k.title,
+    city: k.cityName,
+    day: new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'Australia/Melbourne' }).format(k.wentOutAt),
+    caption: k.caption,
+    'tracked link': k.link,
+    'feed image': k.images?.feed ?? null,
+    'story version': k.images?.story ?? null,
+  }
+}
+
+/**
+ * MESSAGE 8, AFTER YOUR NIGHT (the PM's messages file: "2 days after; counted figures only ... clicks never called
+ * sales"; the PM's ruling of 29 October, 16:28; window 5's 16:33: the send is recorded once, on this message's row).
+ * Its figures are window 5's organiser_night_reports, read as they were counted; a field the report does not hold stays
+ * empty, so the message is held for Lawal rather than saying a number nobody counted.
+ */
+export const AFTER_YOUR_NIGHT_DUE_DAYS = 2
+export const AFTER_YOUR_NIGHT_STALE_DAYS = 7
+
+/** Why message 8 is not due for a night that ended at endedAt, or null when it is. */
+export function afterYourNightRefusal(endedAt: Date, now: Date): string | null {
+  const days = (now.getTime() - endedAt.getTime()) / 86_400_000
+  if (days < AFTER_YOUR_NIGHT_DUE_DAYS) return 'the night ended under two days ago'
+  if (days >= AFTER_YOUR_NIGHT_STALE_DAYS) return `the night ended ${Math.floor(days)} days ago, too late to report`
+  return null
+}
+
+const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
+
+/** The message's fields from a report's figures (window 5's NightFigures), each a counted number or empty. */
+export function afterYourNightFields(figures: unknown, title: string): Record<string, string | null> {
+  const f = (figures && typeof figures === 'object' ? figures : {}) as { viewers?: unknown; pressesOut?: { people?: unknown }; ownLink?: { arrivals?: unknown } | null }
+  return {
+    night: title,
+    gig: 'night',
+    views: countOf(f.viewers),
+    clicks: countOf(f.pressesOut?.people),
+    'share clicks': f.ownLink ? countOf(f.ownLink.arrivals) : null,
+  }
 }

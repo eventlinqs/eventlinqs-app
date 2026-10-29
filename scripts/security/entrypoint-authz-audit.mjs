@@ -281,6 +281,9 @@ const PUBLIC_BY_DESIGN = {
   'api/launch/[code]/cover/POST': 'BEARER: the cookie ownership token is the credential, and ownership is verified against the code BEFORE any write, so a shared code cannot replace the owner artwork',
   // THE CITY GUIDE'S WEEK AS AN INSTAGRAM CARD (WI2 Part 2, 24 October 2026).
   // READ before being declared here, like the composer above.
+  // AN APPROVED PARTNER KIT'S SLIDE (window 6's message 7, 29 October 2026). READ before being declared here.
+  'kit/[pieceId]/[n]/GET':
+    'one slide of a partner kit Lawal approved, at the address message 7 gives that partner, so a caller identity would remove the feature rather than protect it. It takes a piece uuid and a slide number from 1 to 20 and answers 404 for anything else, and for every piece but a partner kit whose newest version is approved and not rejected (store.publicKitServes). It writes nothing, sends nothing and bills no third party; its image is asked of the register at the moment, so a withdrawn photograph is never drawn. Its cost is CPU on the slide raster path, bounded by the launch-artefact rate limit every anonymous render takes, and by a public cache of an hour at most.',
   'free/[city]/this-week/card/[format]/GET':
     'the share card of a public page, downloaded by an anonymous visitor from /free/<city>/this-week, so a caller identity would remove the feature rather than protect it. It takes a city slug and a format from a closed set of two and answers 404 for anything else, including a city with no guide. It reads only what that page shows, the same guide city and the same cached week through the public visibility rule, writes nothing, sends nothing and bills no third party. Its cost is CPU on the one card raster path, bounded by the launch-artefact rate limit that every anonymous render on that path takes, and by a five minute public cache.',
 }
