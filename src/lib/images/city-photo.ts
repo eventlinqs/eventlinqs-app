@@ -78,10 +78,16 @@ interface PexelsApiPhoto {
 
 const TOP_N = 5
 
-async function fetchCityPhotoRaw(query: string): Promise<string | null> {
-  if (!PEXELS_API_KEY) return null
-
-  try {
+/*
+ * A REFUSED ANSWER IS NEVER CACHED (29 October 2026; the community and category tiles went blank on production that
+ * evening because a refusal was kept for a week). Each Raw fetcher THROWS on a refusal, which unstable_cache does not
+ * store, and its caller catches outside the cache; the keys moved on so nothing kept that evening is read again.
+ * Lawal's spine answers first for the 13 cities it holds; the other cities still ask Pexels until their photographs
+ * are kept (a 429 stopped that download at 23:28 on 29 October 2026; it resumes once the limit resets).
+ */
+async function fetchCityPhotoRaw(query: string): Promise<string> {
+  if (!PEXELS_API_KEY) throw new Error('PEXELS_API_KEY is not set')
+  {
     const res = await fetch(
       `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=portrait&size=large`,
       {
@@ -89,10 +95,10 @@ async function fetchCityPhotoRaw(query: string): Promise<string | null> {
         next: { revalidate: 60 * 60 * 24 * 7 },
       }
     )
-    if (!res.ok) return null
+    if (!res.ok) throw new Error(`Pexels answered ${res.status}`)
 
     const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return null
+    if (!data.photos?.length) throw new Error('Pexels returned no photograph')
 
     // Filter to min 800x1200 portrait + sample from top 5.
     const usable = data.photos.filter(p => (p.width ?? 0) >= 800 && (p.height ?? 0) >= 1200)
@@ -100,17 +106,23 @@ async function fetchCityPhotoRaw(query: string): Promise<string | null> {
     const photo = pool[simpleHash(query) % pool.length]
 
     return photo.src.portrait ?? photo.src.large
-  } catch (error) {
-    captureException(error, { where: 'lib/images/city-photo:104' })
-    return null
   }
 }
 
-const fetchCityPhoto = unstable_cache(
+const fetchCityPhotoCached = unstable_cache(
   fetchCityPhotoRaw,
-  ['pexels-city-photo-v2'],
+  ['pexels-city-photo-v3'],
   { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-city'] }
 )
+
+async function fetchCityPhoto(query: string): Promise<string | null> {
+  try {
+    return await fetchCityPhotoCached(query)
+  } catch (error) {
+    captureException(error, { where: 'lib/images/city-photo:fetchCityPhoto' })
+    return null
+  }
+}
 
 export async function getCityPhoto(slug: string): Promise<string | null> {
   // Spine-first: the licensed city photo is the slot image platform-wide.
@@ -130,10 +142,9 @@ export async function getCityPhoto(slug: string): Promise<string | null> {
  * a landscape container. The portrait helper above stays in place for
  * the city tile rail (CityTileImage) which is genuinely portrait.
  */
-async function fetchCityHeroPhotoRaw(query: string): Promise<string | null> {
-  if (!PEXELS_API_KEY) return null
-
-  try {
+async function fetchCityHeroPhotoRaw(query: string): Promise<string> {
+  if (!PEXELS_API_KEY) throw new Error('PEXELS_API_KEY is not set')
+  {
     const res = await fetch(
       `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape&size=large`,
       {
@@ -141,27 +152,33 @@ async function fetchCityHeroPhotoRaw(query: string): Promise<string | null> {
         next: { revalidate: 60 * 60 * 24 * 7 },
       }
     )
-    if (!res.ok) return null
+    if (!res.ok) throw new Error(`Pexels answered ${res.status}`)
 
     const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return null
+    if (!data.photos?.length) throw new Error('Pexels returned no photograph')
 
     const usable = data.photos.filter(p => (p.width ?? 0) >= 1600 && (p.height ?? 0) >= 900)
     const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
     const photo = pool[simpleHash(query + ':landscape') % pool.length]
 
     return photo.src.large
-  } catch (error) {
-    captureException(error, { where: 'lib/images/city-photo:155' })
-    return null
   }
 }
 
-const fetchCityHeroPhoto = unstable_cache(
+const fetchCityHeroPhotoCached = unstable_cache(
   fetchCityHeroPhotoRaw,
-  ['pexels-city-hero-photo-v1'],
+  ['pexels-city-hero-photo-v2'],
   { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-city'] }
 )
+
+async function fetchCityHeroPhoto(query: string): Promise<string | null> {
+  try {
+    return await fetchCityHeroPhotoCached(query)
+  } catch (error) {
+    captureException(error, { where: 'lib/images/city-photo:fetchCityHeroPhoto' })
+    return null
+  }
+}
 
 export async function getCityHeroPhoto(slug: string): Promise<string | null> {
   // Spine-first: the licensed city photo also fronts the city hero band.

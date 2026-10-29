@@ -1,5 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { captureException } from '@/lib/observability/sentry'
+import { getSpineCategoryTile } from './spine'
+import { storedCategoryPhoto } from './stored-photos'
 
 /**
  * Category-aware photo pipeline backed by Pexels.
@@ -148,54 +150,71 @@ interface PexelsApiPhoto {
 // category show different, varied imagery instead of an identical dark tile.
 const TOP_N = 10
 
+/**
+ * A FAILED ANSWER IS NEVER CACHED (29 October 2026). This used to return [FALLBACK] on a refusal, and unstable_cache
+ * kept that for a week, so one Pexels refusal (a quota or rate limit that evening) put the branded placeholder on
+ * production's Comedy tile until the week ran out. A refusal now THROWS inside the cached function, which
+ * unstable_cache does not store, and is caught outside it; the key moved to v2 so the entries poisoned that evening
+ * are never read again.
+ */
 async function fetchPexelsPoolRaw(query: string): Promise<PexelsPhoto[]> {
-  if (!PEXELS_API_KEY) return [FALLBACK]
+  if (!PEXELS_API_KEY) throw new Error('PEXELS_API_KEY is not set')
+  const res = await fetch(
+    `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=24&orientation=landscape&size=large`,
+    {
+      headers: { Authorization: PEXELS_API_KEY },
+      next: { revalidate: 60 * 60 * 24 * 7 },
+    }
+  )
+  if (!res.ok) throw new Error(`Pexels answered ${res.status}`)
 
+  const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
+  if (!data.photos?.length) throw new Error('Pexels returned no photograph')
+
+  // Filter to min 1200x800 + keep the top results as a sampling pool.
+  const usable = data.photos.filter(p => (p.width ?? 0) >= 1200 && (p.height ?? 0) >= 800)
+  const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
+  return pool.map(photo => ({
+    src: photo.src.landscape ?? photo.src.large,
+    thumb: photo.src.medium,
+    alt: photo.alt ?? query,
+    photographer: photo.photographer,
+  }))
+}
+
+const fetchPexelsPoolCached = unstable_cache(
+  fetchPexelsPoolRaw,
+  ['pexels-category-pool-v2'],
+  { revalidate: 60 * 60 * 24 * 7, tags: ['pexels'] }
+)
+
+async function fetchPexelsPool(query: string): Promise<PexelsPhoto[]> {
   try {
-    const res = await fetch(
-      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=24&orientation=landscape&size=large`,
-      {
-        headers: { Authorization: PEXELS_API_KEY },
-        next: { revalidate: 60 * 60 * 24 * 7 },
-      }
-    )
-    if (!res.ok) return [FALLBACK]
-
-    const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return [FALLBACK]
-
-    // Filter to min 1200x800 + keep the top results as a sampling pool.
-    const usable = data.photos.filter(p => (p.width ?? 0) >= 1200 && (p.height ?? 0) >= 800)
-    const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
-    return pool.map(photo => ({
-      src: photo.src.landscape ?? photo.src.large,
-      thumb: photo.src.medium,
-      alt: photo.alt ?? query,
-      photographer: photo.photographer,
-    }))
+    return await fetchPexelsPoolCached(query)
   } catch (error) {
-    captureException(error, { where: 'lib/images/category-photo:134' })
+    captureException(error, { where: 'lib/images/category-photo:fetchPexelsPool' })
     return [FALLBACK]
   }
 }
 
-const fetchPexelsPool = unstable_cache(
-  fetchPexelsPoolRaw,
-  ['pexels-category-pool-v1'],
-  { revalidate: 60 * 60 * 24 * 7, tags: ['pexels'] }
-)
-
 /**
- * Resolve a category photo. Pass a per-event `seed` (e.g. the event title or
- * slug) so two events in the same category get DIFFERENT photos from the
- * pool, breaking the monotonous one-photo-per-rail wall. Omit the seed for
- * category/scene tiles where a single stable image per category is correct.
+ * Resolve a category's tile photograph.
+ *
+ * STORED FIRST, NEVER A REQUEST-TIME CALL FOR A KNOWN CATEGORY (Lawal, 22:23 on 29 October 2026): Lawal's licensed
+ * category tile through the spine, else the category's stored photograph (src/lib/images/stored-photos.ts). Pexels is
+ * asked only for a slug no table names, and its failure is never kept (above). The seed still varies the Pexels pick
+ * for such a slug; a stored photograph is one per category, as a tile should be.
  */
 export async function getCategoryPhoto(
   categorySlug: string | null | undefined,
   seed?: string | null,
 ): Promise<PexelsPhoto> {
   const slug = (categorySlug || 'other').toLowerCase()
+  const stored = getSpineCategoryTile(slug) ?? storedCategoryPhoto(slug)
+  if (stored) {
+    const alt = `${slug.replace(/-/g, ' ')} events`
+    return { src: stored.src, thumb: stored.src, alt, photographer: 'EventLinqs library' }
+  }
   const query = CATEGORY_QUERIES[slug] ?? CATEGORY_QUERIES.other
   const pool = await fetchPexelsPool(query)
   if (pool.length === 0) return FALLBACK
