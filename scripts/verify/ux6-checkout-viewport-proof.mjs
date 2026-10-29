@@ -474,8 +474,9 @@ function makePage(page, width, label) {
   }
 }
 
-const clickText = async (page, rx) => {
-  for (const el of await page.$$('button, a[role=button], a')) {
+const clickText = async (page, rx, scope = '') => {
+  const within = scope ? `${scope} ` : ''
+  for (const el of await page.$$(`${within}button, ${within}a[role=button], ${within}a`)) {
     const t = ((await el.innerText().catch(() => '')) || '').trim()
     if (rx.test(t) && (await el.isVisible().catch(() => false))) {
       await el.click().catch(() => {})
@@ -565,8 +566,17 @@ async function walk({ browser, width, slug, label, complete }) {
      */
     await m.measure('2-ticket-select', { totalRequired: label === 'paid' })
 
+    /*
+     * Asked inside the ticket panel (#tickets) only. A free night with registration
+     * says "Register" in the hero and the sticky bar too (cta.ts, the checklist's
+     * E2), and those are links that scroll to #tickets, ahead of the panel's button
+     * in the document, so an unscoped search clicked the hero and never left the
+     * page (car 2's gate, 29 October 2026: 'free @ 390: "Register" did not reach
+     * checkout; ended on /events/gate-fixture-checkout-viewport-free').
+     */
     const toCheckout =
-      (await clickText(page, /^checkout\b/i)) ?? (await clickText(page, /^(continue|proceed|register)/i))
+      (await clickText(page, /^checkout\b/i, '#tickets')) ??
+      (await clickText(page, /^(continue|proceed|register)/i, '#tickets'))
     if (!toCheckout) {
       fail(`${label} @ ${width}: ticket selection offers no way to continue to checkout`)
       return

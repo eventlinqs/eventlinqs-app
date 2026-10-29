@@ -59,13 +59,13 @@ describe('freeListingOutbound', () => {
 
 describe('ticketButtonLabel', () => {
   it('names it from the address where no provider is recorded', () => {
-    expect(ticketButtonLabel('https://www.eventbrite.com.au/e/123')).toBe('Get tickets on Eventbrite')
-    expect(ticketButtonLabel('https://www.moshtix.com.au/v2/event/1')).toBe('Get tickets on Moshtix')
-    expect(ticketButtonLabel('https://dice.fm/event/abc')).toBe('Get tickets on DICE')
+    expect(ticketButtonLabel('https://www.eventbrite.com.au/e/123')).toBe('View tickets at Eventbrite')
+    expect(ticketButtonLabel('https://www.moshtix.com.au/v2/event/1')).toBe('View tickets at Moshtix')
+    expect(ticketButtonLabel('https://dice.fm/event/abc')).toBe('View tickets at DICE')
   })
 
   it("keeps the plain words for a venue's own booking page", () => {
-    expect(ticketButtonLabel('https://beavsbar.com.au/book')).toBe('Get tickets')
+    expect(ticketButtonLabel('https://beavsbar.com.au/book')).toBe('View tickets at beavsbar.com.au')
   })
 })
 

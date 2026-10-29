@@ -1,13 +1,28 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveDraft, planWeek, recordPosting, writeDraft } from '@/lib/social/store'
+import {
+  addAsset,
+  approveDraft,
+  approvePieceChecked,
+  decideAsset,
+  editPiece,
+  excludeNight,
+  planCampaignWeek,
+  planWeek,
+  recordPiecePosting,
+  recordPosting,
+  regeneratePiece,
+  rejectPiece,
+  writeDraft,
+} from '@/lib/social/store'
 
 /**
  * THE PRESSES ON /admin/social (item 11, the social engine; docs/SOCIAL-ENGINE.md): plan the week, change a post's
@@ -26,14 +41,22 @@ async function staff() {
 
 export async function planWeekAction(): Promise<void> {
   const session = await staff()
-  const done = await planWeek(createAdminClient(), { plannedBy: session.userId, now: new Date() })
-  await recordAuditEvent({ action: 'admin.social.plan', session, metadata: { planned: done.planned, held: done.held.length } })
+  const now = new Date()
+  const done = await planWeek(createAdminClient(), { plannedBy: session.userId, now })
+  /* The week's campaign (the release checklist, A1 and F7): found again on a second press, never doubled; nothing is
+     approved or published here (F9). */
+  const campaign = await planCampaignWeek(createAdminClient(), { plannedBy: session.userId, now })
+  await recordAuditEvent({ action: 'admin.social.plan', session, metadata: { planned: done.planned, held: done.held.length, pieces: campaign.created, piecesExisting: campaign.existing, imageRequests: campaign.requests } })
   revalidatePath('/admin/social')
-  back(
+  const posts =
     done.planned === 0 && done.held.length === 0
       ? 'Every event this week already has its posts.'
-      : `${done.planned} post${done.planned === 1 ? '' : 's'} planned.${done.held.length === 0 ? '' : ` Held: ${done.held.map((h) => h.reason).join(' ')}`}`,
-  )
+      : `${done.planned} post${done.planned === 1 ? '' : 's'} planned.${done.held.length === 0 ? '' : ` Held: ${done.held.map((h) => h.reason).join(' ')}`}`
+  const pieces =
+    campaign.created === 0
+      ? ` This week's campaign is planned already (${campaign.existing} pieces).`
+      : ` This week's campaign: ${campaign.created} piece${campaign.created === 1 ? '' : 's'}, ${campaign.requests} image request${campaign.requests === 1 ? '' : 's'} drafted.`
+  back(`${posts}${pieces}${campaign.held.length === 0 ? '' : ` Held: ${campaign.held.join(' ')}`}`)
 }
 
 const WordsSchema = z.object({ post: z.string().uuid(), caption: z.string().min(1).max(2200) })
@@ -77,4 +100,152 @@ export async function recordPostedAction(formData: FormData): Promise<void> {
   await recordAuditEvent({ action: 'admin.social.posted', targetType: 'social_post', targetId: post, session })
   revalidatePath('/admin/social')
   back('Recorded. What it brings is counted from now.')
+}
+
+/* ------------------------------------------------------------------ the weekly campaign (the release checklist, B, C, F7 to F9, J, K) */
+
+/** The deployment these presses run on, so a TEST plan is checked against TEST's own pages (J15). */
+async function siteOrigin(): Promise<string> {
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'www.eventlinqs.com.au'
+  const proto = h.get('x-forwarded-proto') ?? (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) ? 'http' : 'https')
+  return `${proto}://${host}`
+}
+
+const PieceSchema = z.object({ piece: z.string().uuid() })
+const ReasonSchema = z.object({ piece: z.string().uuid(), reason: z.string().trim().min(3).max(500) })
+
+export async function approvePieceAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = PieceSchema.safeParse({ piece: formData.get('piece') })
+  if (!parsed.success) back('That piece could not be read.')
+  const { piece } = parsed.data as z.infer<typeof PieceSchema>
+  const done = await approvePieceChecked(createAdminClient(), { pieceId: piece, by: session.userId, now: new Date(), siteOrigin: await siteOrigin() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.piece.approve', targetType: 'social_piece', targetId: piece, session })
+  revalidatePath('/admin/social')
+  back('Approved. Post it, then record where it went.')
+}
+
+export async function rejectPieceAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = ReasonSchema.safeParse({ piece: formData.get('piece'), reason: formData.get('reason') })
+  if (!parsed.success) back('Say in a few words why it is rejected.')
+  const { piece, reason } = parsed.data as z.infer<typeof ReasonSchema>
+  const done = await rejectPiece(createAdminClient(), { pieceId: piece, reason, by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.piece.reject', targetType: 'social_piece', targetId: piece, session, metadata: { reason } })
+  revalidatePath('/admin/social')
+  back('Rejected, with your reason kept. Edit or regenerate it to bring it back.')
+}
+
+const EditSchema = z.object({ piece: z.string().uuid(), platform: z.enum(['instagram', 'facebook']), caption: z.string().trim().min(1).max(2200) })
+
+export async function editPieceAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = EditSchema.safeParse({ piece: formData.get('piece'), platform: formData.get('platform'), caption: formData.get('caption') })
+  if (!parsed.success) back('Those words could not be read.')
+  const { piece, platform, caption } = parsed.data as z.infer<typeof EditSchema>
+  const done = await editPiece(createAdminClient(), { pieceId: piece, platform, caption, by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.piece.edit', targetType: 'social_piece', targetId: piece, session, metadata: { platform } })
+  revalidatePath('/admin/social')
+  back('Your words are kept as a new version. Check and approve it when it is right.')
+}
+
+export async function regeneratePieceAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = ReasonSchema.safeParse({ piece: formData.get('piece'), reason: formData.get('reason') })
+  if (!parsed.success) back('Say in a few words why it is regenerated.')
+  const { piece, reason } = parsed.data as z.infer<typeof ReasonSchema>
+  const done = await regeneratePiece(createAdminClient(), { pieceId: piece, reason, by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.piece.regenerate', targetType: 'social_piece', targetId: piece, session, metadata: { reason } })
+  revalidatePath('/admin/social')
+  back('Regenerated from this week’s nights as a new version; the earlier ones are kept.')
+}
+
+const ExcludeSchema = z.object({ event: z.string().uuid(), reason: z.string().trim().min(3).max(300) })
+
+export async function excludeNightAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = ExcludeSchema.safeParse({ event: formData.get('event'), reason: formData.get('reason') })
+  if (!parsed.success) back('Say in a few words why that night is left out.')
+  const { event, reason } = parsed.data as z.infer<typeof ExcludeSchema>
+  const done = await excludeNight(createAdminClient(), { eventId: event, reason, by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.night.exclude', targetType: 'event', targetId: event, session, metadata: { reason } })
+  revalidatePath('/admin/social')
+  back('Left out of this week. Regenerate a piece to take it out of its set.')
+}
+
+const PieceGoneSchema = z.object({ piece: z.string().uuid(), url: z.string().min(1).max(500) })
+
+export async function recordPieceAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = PieceGoneSchema.safeParse({ piece: formData.get('piece'), url: formData.get('url') })
+  if (!parsed.success) back('Paste the post’s address from Instagram or Facebook, or press I sent it for a partner kit.')
+  const { piece, url } = parsed.data as z.infer<typeof PieceGoneSchema>
+  const done = await recordPiecePosting(createAdminClient(), { pieceId: piece, postUrl: url.trim(), by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.piece.posted', targetType: 'social_piece', targetId: piece, session })
+  revalidatePath('/admin/social')
+  back('Recorded. What it brings is counted from now.')
+}
+
+const AssetSchema = z.object({
+  assetState: z.enum(['organiser_authorised', 'separately_licensed', 'native_share']),
+  assetType: z.enum(['photo', 'artwork', 'video', 'post']),
+  assetUrl: z.string().url().max(800),
+  sourceUrl: z.string().min(8).max(800),
+  rightsHolder: z.string().min(2).max(200),
+  permissionEvidence: z.string().max(4000).optional(),
+  evidenceFile: z.string().max(800).optional(),
+  eventSlug: z.string().max(200).optional(),
+  attributionText: z.string().min(2).max(200),
+  scope: z.enum(['social', 'site', 'both']),
+  archival: z.enum(['yes']).optional(),
+  expiresAt: z.string().max(40).optional(),
+  restrictions: z.string().max(1000).optional(),
+})
+
+export async function addAssetAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = AssetSchema.safeParse(Object.fromEntries([...formData.entries()].filter(([, v]) => v !== '')))
+  if (!parsed.success) back('The asset needs its state, type, address, source, rights holder, credit and scope.')
+  const a = parsed.data as z.infer<typeof AssetSchema>
+  const done = await addAsset(createAdminClient(), {
+    assetState: a.assetState,
+    assetType: a.assetType,
+    assetUrl: a.assetUrl,
+    sourceUrl: a.sourceUrl,
+    rightsHolder: a.rightsHolder,
+    permissionEvidence: a.permissionEvidence ?? null,
+    evidenceFile: a.evidenceFile ?? null,
+    eventSlug: a.eventSlug ?? null,
+    attributionText: a.attributionText,
+    scope: a.scope,
+    archival: a.archival === 'yes',
+    expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString() : null,
+    restrictions: a.restrictions ?? null,
+    by: session.userId,
+  })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: 'admin.social.asset.add', session, metadata: { state: a.assetState } })
+  revalidatePath('/admin/social')
+  back('Kept as pending. It is used only once it is approved.')
+}
+
+const DecideSchema = z.object({ asset: z.string().uuid(), decision: z.enum(['approved', 'refused']) })
+
+export async function decideAssetAction(formData: FormData): Promise<void> {
+  const session = await staff()
+  const parsed = DecideSchema.safeParse({ asset: formData.get('asset'), decision: formData.get('decision') })
+  if (!parsed.success) back('That asset could not be read.')
+  const { asset, decision } = parsed.data as z.infer<typeof DecideSchema>
+  const done = await decideAsset(createAdminClient(), { id: asset, decision, by: session.userId, now: new Date() })
+  if (done.state === 'refused') back(done.reason)
+  await recordAuditEvent({ action: `admin.social.asset.${decision}`, targetType: 'social_asset', targetId: asset, session })
+  revalidatePath('/admin/social')
+  back(decision === 'approved' ? 'Approved for its scope until it expires.' : 'Refused. It is used for nothing.')
 }

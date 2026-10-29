@@ -31,7 +31,7 @@ interface Props {
    * a no-op control as a defect. Driven at 390, 768 and 1440 by
    * scripts/verify/seo5-states-drive.mjs.
    */
-  ctaLabel?: string
+  ctaLabel: string
   /** Pixels past which the bar reveals. */
   threshold?: number
   /** Share URL (copied to clipboard when share tapped). */
@@ -46,7 +46,7 @@ export function StickyActionBar({
   ticketAnchor = '#tickets',
   threshold = 420,
   shareUrl,
-  ctaLabel = 'Get tickets',
+  ctaLabel,
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [saved, setSaved] = useState(false)

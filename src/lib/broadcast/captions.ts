@@ -2,6 +2,7 @@ import { enforceCopyLaws } from '@/lib/ai/sanitise'
 import { findCopyTells } from '@/lib/ai/copy-tells'
 import { ARTEFACT_CHANNELS, type ArtefactChannel } from '@/lib/broadcast/artefact-channels'
 import { isSoldElsewhereLabel } from '@/lib/broadcast/sold-elsewhere'
+import type { Cta } from '@/lib/events/cta'
 
 /**
  * THE CAPTION ENGINE.
@@ -52,6 +53,12 @@ export type CaptionInput = {
   city?: string | null
   /** The live price line, for example "From $25" or "Free entry". */
   priceLabel: string
+  /**
+   * The event's call to action (src/lib/events/cta.ts), when the caller knows it. With it, an unknown price says no
+   * price (priceLabel empty), a registration says Register, and only our own paid tickets claim a presale. Without
+   * it every line reads as before.
+   */
+  cta?: Cta
   organiserName: string
   /** Category slug, used to pick the register and the hashtag set. */
   categorySlug?: string | null
@@ -136,18 +143,40 @@ function ticketNoun(family: EventFamily): string {
  * so labelling the link "Entry" straight after read as a stutter: "Free entry.
  * Entry: ...". Free events point at details instead.
  */
-function ticketLine(family: EventFamily, priceLabel: string, url: string): string {
+function ticketLine(family: EventFamily, priceLabel: string, url: string, cta?: Cta): string {
+  if (cta) {
+    const price = priceLabel.trim() ? `${priceLabel.trim()}. ` : ''
+    switch (cta.state) {
+      case 'free_registration':
+        return `${price}Register: ${url}`
+      case 'paid_native':
+        return `${price}${ticketNoun(family)}: ${url}`
+      default:
+        /* Free entry, an unknown price, or tickets sold elsewhere: the link is our page with every way in. */
+        return `${price}Details: ${url}`
+    }
+  }
   if (isFree(priceLabel)) return `${priceLabel}. Details: ${url}`
   return `${priceLabel}. ${ticketNoun(family)}: ${url}`
 }
 
+/** "<when>. <price>." or "<when>." when no price may be said (E5). */
+function whenAndPrice(when: string, priceLabel: string): string {
+  return priceLabel.trim() ? `${when}. ${priceLabel.trim()}.` : `${when}.`
+}
+
+/** Whether the post may speak of tickets on sale: our own or another site's, never a free or unknown event. */
+function sellsTickets(input: CaptionInput): boolean {
+  return input.cta ? input.cta.state === 'paid_native' || input.cta.state === 'paid_external' : !isFree(input.priceLabel)
+}
+
 /** The closing nudge, one short clause, true for every event of that family. */
-function closingLine(family: EventFamily, priceLabel: string): string {
+function closingLine(family: EventFamily, priceLabel: string, cta?: Cta): string {
   const free = /free/i.test(priceLabel)
   switch (family) {
     case 'music':
       /* Sold on another site: we know of no presale and no door, so neither is claimed. */
-      return free || isSoldElsewhereLabel(priceLabel)
+      return (cta ? cta.state !== 'paid_native' : free || isSoldElsewhereLabel(priceLabel))
         ? 'Bring whoever you were going to text about it.'
         : 'Presale now, on the door if any are left.'
     case 'workshop':
@@ -260,9 +289,9 @@ function instagramCaption(input: CaptionInput): Caption {
   lines.push(whenClause(input))
   lines.push('')
   if (input.summary) lines.push(firstSentence(input.summary, 180))
-  lines.push(closingLine(family, input.priceLabel))
+  lines.push(closingLine(family, input.priceLabel, input.cta))
   lines.push('')
-  lines.push(ticketLine(family, input.priceLabel, url))
+  lines.push(ticketLine(family, input.priceLabel, url, input.cta))
   lines.push('')
   lines.push(buildHashtags(input).join(' '))
   const text = tidy(lines.join('\n'))
@@ -286,13 +315,13 @@ function facebookCaption(input: CaptionInput): Caption {
   const lines: string[] = []
   lines.push(place ? `${input.title} is on at ${place}.` : `${input.title} is on.`)
   lines.push('')
-  lines.push(`${whenClause(input)}. ${input.priceLabel}.`)
+  lines.push(whenAndPrice(whenClause(input), input.priceLabel))
   if (input.summary) {
     lines.push('')
     lines.push(input.summary.trim())
   }
   lines.push('')
-  lines.push(closingLine(family, input.priceLabel))
+  lines.push(closingLine(family, input.priceLabel, input.cta))
   lines.push('')
   lines.push(url)
   const text = tidy(lines.join('\n'))
@@ -319,9 +348,9 @@ function xCaption(input: CaptionInput): Caption {
   // Assembled longest first, then dropped in a fixed order until it fits, so
   // the result is deterministic rather than truncated mid-word.
   const candidates: string[][] = [
-    [place ? `${input.title} at ${place}.` : `${input.title}.`, `${when}.`, ticketLine(family, input.priceLabel, url), tag],
-    [place ? `${input.title} at ${place}.` : `${input.title}.`, `${when}.`, ticketLine(family, input.priceLabel, url)],
-    [`${input.title}.`, `${when}. ${input.priceLabel}.`, url],
+    [place ? `${input.title} at ${place}.` : `${input.title}.`, `${when}.`, ticketLine(family, input.priceLabel, url, input.cta), tag],
+    [place ? `${input.title} at ${place}.` : `${input.title}.`, `${when}.`, ticketLine(family, input.priceLabel, url, input.cta)],
+    [`${input.title}.`, whenAndPrice(when, input.priceLabel), url],
     [`${input.title}.`, url],
   ]
   const chosen =
@@ -350,7 +379,7 @@ function linkedinCaption(input: CaptionInput): Caption {
   // the subject when there is nobody to name.
   const org = (input.organiserName ?? '').trim()
   lines.push(
-    isFree(input.priceLabel)
+    !sellsTickets(input)
       ? org
         ? `${org} has announced ${input.title}.`
         : `${input.title} has been announced.`
@@ -361,8 +390,8 @@ function linkedinCaption(input: CaptionInput): Caption {
   lines.push('')
   lines.push(
     place
-      ? `${whenClause(input)} at ${place}. ${input.priceLabel}.`
-      : `${whenClause(input)}. ${input.priceLabel}.`,
+      ? whenAndPrice(`${whenClause(input)} at ${place}`, input.priceLabel)
+      : whenAndPrice(whenClause(input), input.priceLabel),
   )
   if (input.summary) {
     lines.push('')
@@ -370,7 +399,7 @@ function linkedinCaption(input: CaptionInput): Caption {
   }
   lines.push('')
   lines.push(
-    isFree(input.priceLabel) ? `Full details: ${url}` : `Full details and tickets: ${url}`,
+    sellsTickets(input) ? `Full details and tickets: ${url}` : `Full details: ${url}`,
   )
   const text = tidy(lines.join('\n'))
   return {
@@ -391,7 +420,7 @@ function whatsappCaption(input: CaptionInput): Caption {
   const place = placeClause(input)
   const when = [input.shortDateLabel ?? input.dateLabel, input.timeLabel].filter(Boolean).join(', ')
   const opener = place ? `${input.title} at ${place}` : input.title
-  const text = tidy(`${opener}, ${when}. ${ticketLine(family, input.priceLabel, url)}`)
+  const text = tidy(`${opener}, ${when}. ${ticketLine(family, input.priceLabel, url, input.cta)}`)
   return {
     platform: 'whatsapp',
     label: 'WhatsApp',
@@ -429,7 +458,7 @@ function emailCaption(input: CaptionInput): Caption {
     lines.push(input.summary.trim())
   }
   lines.push('')
-  lines.push(ticketLine(family, input.priceLabel, url))
+  lines.push(ticketLine(family, input.priceLabel, url, input.cta))
   // The sign-off is omitted rather than left blank when there is no organiser
   // name: a trailing empty line reads as an unfinished email.
   if (org) {

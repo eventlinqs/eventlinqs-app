@@ -1,4 +1,5 @@
 import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
+import { ctaFor } from '@/lib/events/cta'
 
 /**
  * THE ONE BUTTON THAT LEAVES, ON EVERY CURATED LISTING (WI3's page, Lawal's
@@ -100,8 +101,8 @@ export function freeListingOutbound(eventSlug: string, hostName: string | null |
  * "Get tickets" where it is not (the venue's own booking page).
  */
 export function ticketButtonLabel(destinationUrl: string): string {
-  const name = PROVIDER_NAMES[providerOf(destinationUrl)]
-  return name ? `Get tickets on ${name}` : 'Get tickets'
+  /* The release checklist's E4 (28 October 2026): "View tickets at <provider>", the outside site named, by the one function. */
+  return ctaFor({ externalTicketUrl: destinationUrl, providerName: PROVIDER_NAMES[providerOf(destinationUrl)] ?? outboundHost(destinationUrl) }).action
 }
 
 function isEventLinqs(host: string): boolean {

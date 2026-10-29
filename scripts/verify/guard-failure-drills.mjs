@@ -10661,6 +10661,81 @@ const DRILLS = [
     replace: "export const SHARE = 'Share'\nexport const DRILL_SCHEMA_NOTE = 'offers.price is 0'",
   },
   /*
+   * cta-five-states (the release checklist of 28 October 2026, section E). Three ways
+   * the five states drift apart: a display falls back to "Free entry" when no price is
+   * stored, the old outside wording comes back, and a surface stops asking the one
+   * call to action.
+   */
+  {
+    name: 'cta: a caption falls back to Free entry when no price is stored',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/broadcast/captions.ts',
+    find: "import type { Cta } from '@/lib/events/cta'",
+    replace: "import type { Cta } from '@/lib/events/cta'\nexport const drillPrice = (p: string | null) => p ?? 'Free entry'",
+    expect: 'falls back to "Free entry"',
+  },
+  {
+    name: 'cta: the outside button says Get tickets on again',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/listings/outbound.ts',
+    find: "import { ctaFor } from '@/lib/events/cta'",
+    replace: "import { ctaFor } from '@/lib/events/cta'\nexport const drillLabel = 'Get tickets on Humanitix'",
+    expect: 'says "Get tickets on"',
+  },
+  {
+    name: 'cta: the ticket panel stops asking the one call to action',
+    guard: `${GUARDS}/cta-five-states.mjs`,
+    file: 'src/lib/listings/ticket-panel.ts',
+    find: "from '@/lib/events/cta'",
+    replace: "from '@/lib/events/cta-copy'",
+    expect: 'no longer asks the one call to action',
+  },
+  /*
+   * social-measured-apart (the release checklist of 28 October 2026, K14 and J16). Five
+   * ways the weekly social report could mix what EventLinqs counted with what a
+   * platform reported, call a press out a sale, or grow a second reader of its tables.
+   */
+  {
+    name: 'social report: an entered figure summed with a counted one',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/growth/social-report-math.ts',
+    find: '    enteredTotals: totalsOf(pieces),',
+    replace: '    enteredTotals: totalsOf(pieces),\n    drillMixed: (counted?.visitors ?? 0) + (totalsOf(pieces).instagram.reach?.value ?? 0),',
+    expect: 'puts an entered figure and a counted one in one calculation',
+  },
+  {
+    name: 'social report: the counted week carries reach',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/growth/social-report-math.ts',
+    find: '  readonly eventViews: number',
+    replace: '  readonly eventViews: number\n  readonly reach: number',
+    expect: 'a platform figure; it belongs in the entered figures',
+  },
+  {
+    name: 'social report: the counted section shows an entered total',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/app/admin/(authed)/growth/social-report/report-view.tsx',
+    find: "Not counted: this campaign&apos;s week has not begun.",
+    replace: "Not counted: this campaign&apos;s week has not begun. {String(r.enteredTotals.instagram.reach)}",
+    expect: 'the counted section names',
+  },
+  {
+    name: 'social report: a press out labelled a sale',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/app/admin/(authed)/growth/social-report/report-view.tsx',
+    find: "label: 'Presses out to booking sites'",
+    replace: "label: 'Ticket sales on booking sites'",
+    expect: 'a press to another site is never a sale',
+  },
+  {
+    name: 'social report: a second reader of the decisions',
+    guard: `${GUARDS}/social-measured-apart.mjs`,
+    file: 'src/lib/social/results.ts',
+    find: 'export const CREDIT_DAYS = 30',
+    replace: "export const CREDIT_DAYS = 30\nexport const drillPeek = (db: { from: (t: string) => unknown }) => db.from('social_report_decisions')",
+    expect: 'reads or writes social_report_decisions',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the

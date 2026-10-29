@@ -5,7 +5,7 @@ import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { buildShortUrl, getOrCreateShareLink } from '@/lib/broadcast/share-links'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
-import { priceLabel } from '@/lib/events/price-label'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 import { captureException } from '@/lib/observability/sentry'
@@ -66,7 +66,7 @@ export async function GET(
   const admin = createAdminClient()
   const { data: event } = await admin
     .from('events')
-    .select('cover_image_url, venue_name, venue_city, ticket_tiers(price, currency), organisation:organisations(name, logo_url)')
+    .select('cover_image_url, venue_name, venue_city, external_ticket_url, is_free, entry_mode, ticket_tiers(price, currency, is_active), organisation:organisations(name, logo_url)')
     .eq('id', id)
     .maybeSingle()
 
@@ -97,8 +97,13 @@ export async function GET(
     timeZone: organiserEvent.timezone ?? 'Australia/Sydney',
   })
   const locality = [event?.venue_name, event?.venue_city].filter(Boolean).join(', ')
-  const tiers = (event?.ticket_tiers ?? []) as { price: number; currency: string | null }[]
-  const price = priceLabel(tiers, 'Free entry')
+  /* The one price line (src/lib/broadcast/price-line.ts, the checklist's section E): never free because no price is stored. */
+  const price = broadcastPriceLabel({
+    ticket_tiers: (event?.ticket_tiers ?? []) as { price: number; currency: string | null; is_active?: boolean | null }[],
+    external_ticket_url: (event as { external_ticket_url?: string | null } | null)?.external_ticket_url ?? null,
+    is_free: (event as { is_free?: boolean | null } | null)?.is_free ?? null,
+    entry_mode: (event as { entry_mode?: string | null } | null)?.entry_mode ?? null,
+  })
 
   // Both reads are deadlined, so a slow object store degrades the poster to a
   // designed state rather than hanging the organiser's download.
@@ -124,7 +129,7 @@ export async function GET(
     title: organiserEvent.title,
     dateLabel,
     locality,
-    priceLabel: price ?? 'Free entry',
+    priceLabel: price,
     shortUrl,
     qrPng: new Uint8Array(qrPng),
     coverImage: await embeddable(coverFetch?.bytes ?? null),

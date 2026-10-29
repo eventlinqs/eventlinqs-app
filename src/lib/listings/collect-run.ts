@@ -1,9 +1,10 @@
 import {
   COLLECTOR_AGENT,
   dueSources,
-  eventsFromHtml,
+  eventsFromBody,
   planCandidates,
   robotsVerdict,
+  withPermittedContent,
   type CandidatePlan,
   type FoundLink,
   type KnownEvent,
@@ -34,6 +35,7 @@ export type CandidateRow = {
   venueAddress: string | null
   pageUrl: string
   imageUrl: string | null
+  description: string | null
   links: FoundLink[]
 }
 
@@ -44,17 +46,22 @@ export type CollectionStore = {
   heldLinks(eventId: string): Promise<Set<string>>
   /** True when it was new; a candidate found before (the same source, page and start) is left as it is. */
   land(row: CandidateRow): Promise<boolean>
-  record(sourceId: string, outcome: string, at: Date): Promise<void>
+  /** succeeded: the source's page or feed was read, so its last successful collection moves to at. */
+  record(sourceId: string, outcome: string, at: Date, succeeded: boolean): Promise<void>
 }
 
 export type SourceOutcome = { sourceId: string; name: string; outcome: string; landed: number }
 export type CollectionResult = { read: number; skipped: number; landed: number; notReached: number; sources: SourceOutcome[] }
 
-const FETCH_TIMEOUT_MS = 15_000
+/**
+ * How long one fetch may take. Bendigo Pride Festival's feed answered in 7.3 to 12.6 s on 28 October 2026 and once
+ * passed the 15 s this was. Robots.txt and the page together stay inside the 60 s the cron keeps after its last start.
+ */
+export const FETCH_TIMEOUT_MS = 30_000
 
 async function get(fetcher: Fetcher, url: string): Promise<{ status: number | null; body: string }> {
   try {
-    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/plain' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/calendar,text/plain' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     return { status: res.status, body: res.status >= 200 && res.status < 300 ? await res.text() : '' }
   } catch {
     return { status: null, body: '' }
@@ -83,7 +90,16 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
     }
     let outcome: string
     let landed = 0
+    let succeeded = false
     try {
+      if (!source.permits.facts) {
+        /* The database never lets such a source be 'read'; the run holds the same rule on its own. */
+        outcome = 'the source permits no facts: nothing read'
+        result.skipped += 1
+        result.sources.push({ sourceId: source.id, name: source.name, outcome, landed })
+        await store.record(source.id, outcome, now, false).catch((err) => console.error(`[collection] ${source.name}: its check could not be recorded:`, err))
+        continue
+      }
       const page = new URL(source.pageUrl)
       let robots = robotsByOrigin.get(page.origin)
       if (!robots) {
@@ -100,7 +116,10 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
           result.skipped += 1
         } else {
           result.read += 1
-          const plans = planCandidates(eventsFromHtml(res.body, source.pageUrl), known, now)
+          succeeded = true
+          /* Only what the source permits (D4): a facts only source lands no image, no description and no link. */
+          const found = eventsFromBody(res.body, source.pageUrl).flatMap((e) => withPermittedContent(e, source.permits) ?? [])
+          const plans = planCandidates(found, known, now)
           for (const p of plans) {
             const plan = await stillNew(store, p)
             if (!plan) continue
@@ -116,6 +135,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
               venueAddress: plan.event.venueAddress,
               pageUrl: plan.event.pageUrl,
               imageUrl: plan.event.imageUrl,
+              description: plan.event.description,
               links: plan.event.links,
             })
             if (isNew) landed += 1
@@ -130,7 +150,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
     result.landed += landed
     result.sources.push({ sourceId: source.id, name: source.name, outcome, landed })
     try {
-      await store.record(source.id, outcome.slice(0, 500), now)
+      await store.record(source.id, outcome.slice(0, 500), now, succeeded)
     } catch (err) {
       console.error(`[collection] ${source.name}: its check could not be recorded:`, err)
     }

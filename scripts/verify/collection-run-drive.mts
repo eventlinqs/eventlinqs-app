@@ -55,13 +55,19 @@ const fetcher: Fetcher = async (u) => {
 }
 
 const made: string[] = []
+const today = new Date().toISOString().slice(0, 10)
 try {
   const { data: src, error } = await db
     .from('listing_sources')
     .insert([
-      { name: `bp-drive ${stamp}`, kind: 'venue', city_slug: 'geelong', page_url: page, collection: 'read', terms_url: `https://bp-${stamp}.example.com/terms`, terms_quote: 'bp-drive: a stand in terms line', terms_read_on: new Date().toISOString().slice(0, 10) },
+      {
+        name: `bp-drive ${stamp}`, kind: 'venue', city_slug: 'geelong', page_url: page, collection: 'read', terms_url: `https://bp-${stamp}.example.com/terms`, terms_quote: 'bp-drive: a stand in terms line', terms_read_on: today,
+        /* The register's answers (20261028140001): scraping answered yes with its evidence, verified, facts and links. */
+        may_scrape: 'yes', may_scrape_quote: 'bp-drive: a stand in line allowing the read', may_scrape_url: `https://bp-${stamp}.example.com/terms`, may_scrape_read_on: today,
+        verification: 'verified', verified_on: today, permits_links: true,
+      },
       { name: `bp-drive ask ${stamp}`, kind: 'promoter', page_url: `https://bp-ask-${stamp}.example.com/`, collection: 'ask' },
-    ])
+    ], { defaultToNull: false })
     .select('id, collection')
   if (error) throw error
   made.push(...(src ?? []).map((s) => s.id as string))
@@ -82,11 +88,13 @@ try {
   const trio = (landed ?? []).find((c) => String(c.title).startsWith('Bp Drive Trio'))
   check('the trio carries its Humanitix link and its price', JSON.stringify(trio?.links) === JSON.stringify([{ url: `https://events.humanitix.com/bp-${stamp}`, availability: 'on_sale', priceFromCents: 2500 }]), trio)
 
-  const { data: src0 } = await db.from('listing_sources').select('last_checked_at, last_outcome').eq('id', made[0]).single()
+  const { data: src0 } = await db.from('listing_sources').select('last_checked_at, last_outcome, last_success_at').eq('id', made[0]).single()
   check('the source records its check', src0?.last_outcome === 'read: 2 event(s) found, 2 new for review' && src0.last_checked_at !== null, src0)
+  check('the source records its last successful collection', src0?.last_success_at !== null && src0?.last_success_at === src0?.last_checked_at, src0)
 
   await db.from('listing_candidates').update({ status: 'refused', refused_because: 'Not for EventLinqs', reviewed_at: now.toISOString() }).eq('id', trio!.id)
-  await db.from('listing_sources').update({ last_checked_at: null }).eq('id', made[0])
+  const { error: undue } = await db.from('listing_sources').update({ last_checked_at: null, last_success_at: null }).eq('id', made[0])
+  if (undue) throw undue
   const second = await runCollection({ ...store, sources: ours }, fetcher, now)
   const { data: again } = await db.from('listing_candidates').select('id, status').in('source_id', made)
   check('a second run lands nothing it already found, and keeps the review', second.landed === 0 && (again ?? []).length === 2 && (again ?? []).some((c) => c.status === 'refused'), { second, again })

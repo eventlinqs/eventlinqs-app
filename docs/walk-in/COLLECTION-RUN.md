@@ -84,3 +84,29 @@ lands events. The licensed feed for Victoria's tourism boards is ATDW, a paid pl
 
 Reversal condition: if a source's robots.txt or terms change against reading, its row is set to 'ask' and the next run
 reads nothing there; if a week's refusals for one source pass half of what it landed, its row is reviewed.
+
+## The register's fields and the licensed run (28 October 2026, the release checklist's D2 to D5 and item 19)
+
+The checklist (START-16OCT/EVENTLINQS-RELEASE-CHECKLIST-28OCT.md): D2 "Five separate permission answers per source", D3
+"listing_sources holds all eight", D4 "facts-only means the image stays blank, never copied", D5 "Acquisition order:
+1 organiser submissions, 2 licensed datasets and feeds, 3 venue partnerships, 4 manual editorial discovery".
+
+- `supabase/migrations/20261028140001_listing_sources_register_fields.sql`: `source_type` and the computed
+  `acquisition_order`; five answers (`may_scrape`, `may_use_dataset`, `may_subscribe`, `may_redistribute_facts`,
+  `may_reuse_media`), each yes, no or unknown, a yes or a no with its own quote, address and day; `permits_facts`,
+  `permits_descriptions`, `permits_images`, `permits_links`; `verification` and `verified_on`; `last_success_at`;
+  `licence_owner` and `contact`. A source is 'read' only where scraping, a feed or a dataset is answered yes, its facts
+  are not forbidden and it is verified. Images and descriptions only where media reuse is yes. A trigger refuses a
+  candidate carrying an image, a description or a link its source does not permit. A row that was 'read' with no
+  answer is set to 'ask' with a note.
+- The run (`src/lib/listings/collect-run.ts`) lands only what the source permits (`withPermittedContent`), writes
+  `last_success_at` only when a read succeeds, and gives each fetch 30 seconds (Bendigo Pride Festival's feed took
+  7.3 to 12.6 s). A feed's venue is the part of LOCATION before a spaced hyphen (Geelong Regional Libraries writes a
+  room after it), and an event with no URL of its own is told apart by its UID.
+- `/admin/collected` shows the acquisition order with a count per path, and each source's type, five answers, what we
+  may use, verification, last successful collection (stale past twice its pace) and owner.
+- The four licensed feeds, each answer quoted and dated: `docs/walk-in/collection-sources-28oct.json`, registered and
+  run on TEST by `scripts/verify/collection-licensed-run.mts` (`--dry-run` writes nothing; TEST only without
+  `--production`). The database's rules on TEST: `scripts/verify/listing-sources-register-proof.sql`, rolled back.
+
+Venue partnership asks (D7), drafts for Lawal only: C:\dev\EVIDENCE\COLLECT-28OCT\venue-asks.md.

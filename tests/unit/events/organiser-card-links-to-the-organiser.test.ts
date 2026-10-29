@@ -79,3 +79,26 @@ describe('the event page links to the organiser it names', () => {
     expect(page).toContain('View profile')
   })
 })
+
+/**
+ * AN EVENTLINQS LISTING SHOWS NO ORGANISER CARD (ruling A of 23 October 2026; window 5's finish pass on production,
+ * 29 October 2026): the card linked /organisers/eventlinqs-listings, which answers 404, on every curated night the
+ * event page draws (Fighters Of Foo and Kate Ceberano among them). The card renders only where shownOrganiser
+ * gives a page to link, which it never does for the listings organisation.
+ */
+describe('an EventLinqs listing never shows the listings organisation', () => {
+  test('the Organised by card is gated on shownOrganiser having a page to link', () => {
+    const page = readFileSync(EVENT_PAGE, 'utf8')
+    const gateAt = page.indexOf('shownOrganiser(event, event.organisation).slug !== null')
+    const cardAt = page.indexOf('eyebrow="Organised by"')
+    expect(gateAt, 'the card is gated on shownOrganiser').toBeGreaterThan(-1)
+    expect(cardAt).toBeGreaterThan(gateAt)
+  })
+
+  test('shownOrganiser gives the listings organisation no page to link', async () => {
+    const { shownOrganiser } = await import('@/lib/listings/shown-organiser')
+    expect(shownOrganiser({ listing_source: 'eventlinqs', venue_name: 'Barwon Club Hotel' }, { name: 'EventLinqs listings', slug: 'eventlinqs-listings' }).slug).toBeNull()
+    expect(shownOrganiser({ listing_source: null }, { name: 'EventLinqs listings', slug: 'eventlinqs-listings' }).slug).toBeNull()
+    expect(shownOrganiser({ listing_source: null }, { name: 'MKL Studios', slug: 'mkl-studios' }).slug).toBe('mkl-studios')
+  })
+})
