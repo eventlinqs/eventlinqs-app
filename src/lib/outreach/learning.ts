@@ -54,3 +54,41 @@ export function halfOf(contactId: string): Half {
   }
   return (h >>> 16) & 1 ? 'b' : 'a'
 }
+
+/**
+ * The claim window, a CHOICE, not a fact: a test is judged 14 days after its last first message went, so the cadence's
+ * own day 10 close has gone out and a few days more are left for the organiser to claim. For the project manager or
+ * Lawal to confirm or change.
+ */
+export const CLAIM_WINDOW_DAYS = 14
+
+export type JudgedOutcome = Judgement['outcome']
+export type PlayTerms = { readonly step1TemplateId: string; readonly variantTemplateId: string | null; readonly testPerHalf: number | null }
+
+/**
+ * The text a first message takes and the half it counts in. While the test is open, the contact's own half and that
+ * half's text; once a half has its size, or once the play is judged, the current text (or the winner) outside the test.
+ */
+export function firstMessageChoice(play: PlayTerms, judged: JudgedOutcome | null, half: Half, alreadyInHalf: number): { templateId: string; half: Half | null } {
+  if (!play.variantTemplateId || play.testPerHalf === null) return { templateId: play.step1TemplateId, half: null }
+  if (judged === 'variant_wins') return { templateId: play.variantTemplateId, half: null }
+  if (judged !== null) return { templateId: play.step1TemplateId, half: null }
+  if (alreadyInHalf >= play.testPerHalf) return { templateId: play.step1TemplateId, half: null }
+  return { templateId: half === 'b' ? play.variantTemplateId : play.step1TemplateId, half }
+}
+
+/** Whether a play's test is judged now: both halves have sent their size and the claim window has passed. */
+export function readyToJudge(t: { sentA: number; sentB: number; testPerHalf: number; lastSentAt: Date; now: Date }): boolean {
+  if (t.sentA < t.testPerHalf || t.sentB < t.testPerHalf) return false
+  return t.now.getTime() - t.lastSentAt.getTime() >= CLAIM_WINDOW_DAYS * 86_400_000
+}
+
+/** Each half's messages sent and how many of their organisers claimed after the message. */
+export function armsOf(rows: readonly { half: Half; claimedAfter: boolean }[]): { a: Arm; b: Arm } {
+  const tally = { a: { sent: 0, claims: 0 }, b: { sent: 0, claims: 0 } }
+  for (const r of rows) {
+    tally[r.half].sent++
+    if (r.claimedAfter) tally[r.half].claims++
+  }
+  return tally
+}

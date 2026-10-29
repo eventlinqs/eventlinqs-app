@@ -29,6 +29,8 @@ export type DraftRequest = {
   inReplyTo?: string | null
   /** Message 8: the night report it was drafted from; the database holds one live message per report. */
   nightReportId?: string | null
+  /** The learning loop: the half a play's first message counts in while its test is open (src/lib/outreach/learning.ts). */
+  half?: 'a' | 'b' | null
   /** Message 7: the partner's own tracked link the message carries, which also keeps it to one per kit. */
   trackedLink?: string | null
   scheduledFor: Date
@@ -84,6 +86,7 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
       scheduled_for: state === 'queued' ? r.scheduledFor.toISOString() : null,
       in_reply_to: r.inReplyTo ?? null,
       night_report_id: r.nightReportId ?? null,
+      half: r.half ?? null,
       tracked_link: r.trackedLink ?? null,
       drafted_by: r.draftedBy,
     })

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { ALPHA, MIN_EXPECTED, MIN_SENT_PER_HALF_EXCLUSIVE, Z_CRITICAL, halfOf, judgeVariant } from '@/lib/outreach/learning'
+import { ALPHA, CLAIM_WINDOW_DAYS, MIN_EXPECTED, MIN_SENT_PER_HALF_EXCLUSIVE, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge } from '@/lib/outreach/learning'
 
 /* THE LEARNING LOOP (the engine plan's FULL AUTOMATION: "each play tests one change at a time ... against the current
    template on equal random halves; a variant replaces the template only on a measured rise in claims (not opens),
@@ -60,5 +60,54 @@ describe('equal halves by a stable hash, no person choosing', () => {
     let a = 0
     for (let i = 0; i < 10_000; i++) if (halfOf(`00000000-0000-4000-8000-${String(i).padStart(12, '0')}`) === 'a') a++
     expect(Math.abs(a - 5_000)).toBeLessThan(300)
+  })
+})
+
+describe('which text a first message takes', () => {
+  const play = { step1TemplateId: 'current', variantTemplateId: 'variant', testPerHalf: 31 }
+
+  test('no variant: always the current text, no half', () => {
+    expect(firstMessageChoice({ ...play, variantTemplateId: null, testPerHalf: null }, null, 'b', 0)).toEqual({ templateId: 'current', half: null })
+  })
+
+  test('while the test is open: the contact\'s half and its text', () => {
+    expect(firstMessageChoice(play, null, 'a', 0)).toEqual({ templateId: 'current', half: 'a' })
+    expect(firstMessageChoice(play, null, 'b', 30)).toEqual({ templateId: 'variant', half: 'b' })
+  })
+
+  test('a half that has its size takes the current text, outside the test', () => {
+    expect(firstMessageChoice(play, null, 'b', 31)).toEqual({ templateId: 'current', half: null })
+  })
+
+  test('judged: the winner for everyone after, outside the test', () => {
+    expect(firstMessageChoice(play, 'variant_wins', 'a', 0)).toEqual({ templateId: 'variant', half: null })
+    expect(firstMessageChoice(play, 'keep', 'b', 0)).toEqual({ templateId: 'current', half: null })
+    expect(firstMessageChoice(play, 'not_enough', 'b', 0)).toEqual({ templateId: 'current', half: null })
+  })
+})
+
+describe('when a test is judged: once, with its size reached and the claim window passed', () => {
+  const now = new Date('2026-11-30T00:00:00Z')
+  const day = 86_400_000
+  test('both halves at size and the window passed', () => {
+    expect(readyToJudge({ sentA: 31, sentB: 31, testPerHalf: 31, lastSentAt: new Date(now.getTime() - CLAIM_WINDOW_DAYS * day), now })).toBe(true)
+  })
+  test('not before the window has passed', () => {
+    expect(readyToJudge({ sentA: 31, sentB: 31, testPerHalf: 31, lastSentAt: new Date(now.getTime() - CLAIM_WINDOW_DAYS * day + 60_000), now })).toBe(false)
+  })
+  test('not while a half is short', () => {
+    expect(readyToJudge({ sentA: 31, sentB: 30, testPerHalf: 31, lastSentAt: new Date(now.getTime() - 60 * day), now })).toBe(false)
+  })
+})
+
+describe('the tally per half: a message sent, and whether its organiser claimed after it', () => {
+  test('counts each half, and only claims after the message', () => {
+    expect(armsOf([
+      { half: 'a', claimedAfter: true },
+      { half: 'a', claimedAfter: false },
+      { half: 'b', claimedAfter: true },
+      { half: 'b', claimedAfter: true },
+      { half: 'b', claimedAfter: false },
+    ])).toEqual({ a: { sent: 2, claims: 1 }, b: { sent: 3, claims: 2 } })
   })
 })

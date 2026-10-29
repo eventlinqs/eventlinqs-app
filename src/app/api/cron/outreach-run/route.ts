@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { graphConfigFromEnv, graphReadInbox } from '@/lib/outreach/graph'
 import { handleInbox } from '@/lib/outreach/replies'
-import { planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
+import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     const actingUser = sender.data.changed_by
     let inbox: unknown = 'not read: no Graph credentials'
     let plays: unknown = 'not planned: no person has set the sender'
+    let judged: unknown = 'not judged: no person has set the sender'
     let dms: unknown = 'not drafted: no person has set the sender'
     let partners: unknown = 'not drafted: no person has set the sender'
     if (sender.data.mode !== 'hold' && actingUser) {
@@ -56,19 +57,22 @@ export async function GET(request: NextRequest) {
         const messages = await graphReadInbox(graph, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
         inbox = await handleInbox(db, messages, { mailbox: sender.data.from_address, origin, actingUser, now })
       }
+      // The learning loop judges each play's test once, before the plan, so the winner is drafted from the same run.
+      judged = await judgePlays(db, now)
       plays = await planPlays(db, { now, origin, actingUser })
       dms = await planDms(db, { now, origin, actingUser })
       partners = await planRelationship(db, { now, origin, actingUser })
     } else if (sender.data.mode === 'hold') {
       inbox = 'not read: the sender is on hold'
       plays = 'not planned: the sender is on hold'
+      judged = 'not judged: the sender is on hold'
       dms = 'not drafted: the sender is on hold'
       partners = 'not drafted: the sender is on hold'
     }
 
     const sent = await runOutreachSender(db, { now, origin, graph })
     console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
-    return NextResponse.json({ ok: true, dns, inbox, plays, dms, partners, sent })
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })
