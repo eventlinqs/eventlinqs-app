@@ -3,11 +3,13 @@
  * H: "Add: organiser funnel, events per active organiser per month"; Lawal's final directive, section 25: "Active
  * recurring organisers ... Events per active organiser ... Repeat organiser submissions").
  *
- * THE FUNNEL follows the plan's organiser journey, one stage each, every count the number of organisers who have
- * reached that stage (so each stage holds the ones after it): found, qualified (a lawful basis recorded), invited,
- * claimed, said yes to their promotional material, added their own photos, publishing (a public night in the next 90
- * days), reported (a kept after-the-night report in the last 30 days). A stage whose source has not landed on this
- * database is NOT COUNTED and said so, never shown as 0, and the step into or out of it has no rate.
+ * THE FUNNEL follows the plan's organiser journey, one stage each, every count the number of organisers recorded at
+ * that stage: found, qualified (a lawful basis recorded), invited, claimed, said yes to their promotional material,
+ * added their own photos, publishing (a public night in the next 90 days), reported (an after-the-night report sent in
+ * the last 30 days). An organiser who reached a later stage another way (a claim with no invitation) counts there and
+ * not at the stage skipped, so a step's share can pass 100 percent (./organiser-funnel.ts reads each stage). A stage
+ * whose source has not landed on this database is NOT COUNTED and said so, never shown as 0, and the step into or out
+ * of it has no rate.
  *
  * EVENTS PER ACTIVE ORGANISER, per Melbourne month: an organiser is active in a month when at least one public night of
  * theirs starts in it; the figure is that month's public nights divided by its active organisers. A month with none
