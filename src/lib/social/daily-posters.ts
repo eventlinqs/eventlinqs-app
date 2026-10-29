@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { dayInWeek, selectNights, type CampaignCity, type CampaignNight } from './campaign'
+import { creditsOf, dayInWeek, join, pickLine, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -54,4 +54,70 @@ export function planDailyPosters(input: { nights: readonly CampaignNight[]; citi
     }
   }
   return picks
+}
+
+/**
+ * The week's daily posters as pieces the store keeps and a person approves one by one (the directive's pipeline steps
+ * 1 to 5). Each is one night: a feed poster (with its square) for attendees, sent to the night's own page through its
+ * own /e/ link, which the store mints and writes onto the slide before it is kept. Nothing posts by itself.
+ */
+export function dailyPosterPieces(input: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
+  const site = siteOf(input.origin)
+  const byId = new Map(input.nights.map((n) => [n.eventId, n]))
+  const pieces: PiecePlan[] = []
+  for (const pick of planDailyPosters(input)) {
+    const n = byId.get(pick.eventId)
+    const city = input.cities.find((c) => c.slug === pick.city)
+    if (!n || !city) continue
+    const photo = pick.rights === 'photo' ? n.approvedPhotoUrl : null
+    const hook = `${n.title}, ${n.venueName ? `at ${n.venueName}, ` : ''}${city.name}.`
+    const body = [pickLine(n), '', creditsOf([n])]
+    const page = `${input.origin}/events/${n.slug}`
+    pieces.push({
+      kind: 'daily_poster',
+      city: city.slug,
+      audience: 'attendees',
+      objective: 'audience_growth',
+      purpose: `One night in ${city.name}: ${n.title}`.slice(0, 200),
+      nextStep: `Open ${n.title} on ${site}`.slice(0, 200),
+      outcome: "Taps through this poster's own link, then presses out and claims from there",
+      link: page,
+      format: 'feed',
+      eventIds: [n.eventId],
+      picks: [{ eventId: n.eventId, reason: `${pick.reason} ${pick.rightsReason}` }],
+      mode: photo ? 'photo_led' : 'type_led',
+      slides: [
+        {
+          t: 'poster',
+          composition: 'daily_poster',
+          eventId: n.eventId,
+          photo,
+          credit: photo ? n.photoCredit : null,
+          rights: pick.rightsReason,
+          night: {
+            title: n.title,
+            startDate: n.startDate,
+            endDate: n.endDate ?? null,
+            timezone: n.timezone,
+            cityName: city.name,
+            venueName: n.venueName,
+            venueAddress: n.venueAddress ?? null,
+            cta: n.cta,
+            priceLine: n.priceLine,
+            isAgeRestricted: n.isAgeRestricted ?? false,
+            ageMin: n.ageMin ?? null,
+            shortLink: null,
+          },
+        },
+      ],
+      caption: join([hook, '', ...body, '', `The night: ${site}/events/${n.slug}`, '', tagsFor(city, null)]),
+      versions: versionsOf(hook, body, page, 'The night is at the link in our bio.', 'The night:', '4:5', tagsFor(city, null)),
+      partnerName: null,
+      partnerEventId: null,
+      message: null,
+      posterDay: pick.day,
+      names: [...new Set([n.title, n.host ?? ''].filter((s) => s.trim() !== ''))],
+    })
+  }
+  return pieces
 }

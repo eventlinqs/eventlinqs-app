@@ -143,6 +143,7 @@ const KIND_NAME: Record<PieceRow['kind'], string> = {
   organiser_campaign: 'Organiser campaign',
   partner_kit: 'Partner kit',
   brand_campaign: 'The weekend brand piece',
+  daily_poster: 'Daily poster',
 }
 const AUDIENCE_NAME: Record<PieceRow['audience'], string> = { attendees: 'Attendees', organisers: 'Organisers and promoters', venues: 'Venues', partners: 'Community partners' }
 const OBJECTIVE_NAME: Record<PieceRow['objective'], string> = { audience_growth: 'Audience growth', organiser_growth: 'Organiser growth' }

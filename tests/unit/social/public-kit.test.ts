@@ -22,6 +22,12 @@ describe('which partner kit is drawn at /kit/<piece>/<n>', () => {
     expect(publicKitServes({ ...kit, rejectedVersions: [2] })).toBe(false)
   })
 
+  it('an approved daily poster too, by the same rule (its square previews the first invitation)', () => {
+    expect(publicKitServes({ ...kit, kind: 'daily_poster' })).toBe(true)
+    expect(publicKitServes({ ...kit, kind: 'daily_poster', approvedVersions: [] })).toBe(false)
+    expect(publicKitServes({ ...kit, kind: 'daily_poster', rejectedVersions: [2] })).toBe(false)
+  })
+
   it('never any other piece of the campaign, approved or not', () => {
     for (const kind of ['week_ahead', 'weekend_carousel', 'discovery_reel', 'venue_spotlight', 'organiser_campaign', 'brand_campaign'] as const) {
       expect(publicKitServes({ ...kit, kind })).toBe(false)
