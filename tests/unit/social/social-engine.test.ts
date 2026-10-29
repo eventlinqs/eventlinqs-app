@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { bestBands, bestGap, GAP_BOUNDS, hourOfWeek, learn, nextAllowed, nextSlot, SOCIAL_ZONE, type CadenceRule, type PostOutcome } from '@/lib/social/cadence'
 import { factsOf, kitCaption, listingPriceLabel, plan, postKey, type PlanCandidate } from '@/lib/social/plan'
 import { resultOf, type CreditedOrder, type LinkEvent } from '@/lib/social/results'
-import { carriesBannedWord, strayNumbers, wordsRefusal } from '@/lib/social/words'
+import { carriesBannedWord, quotableSummary, strayNumbers, wordsRefusal } from '@/lib/social/words'
 import { soldOut } from '@/lib/social/store'
 import type { BookingLink } from '@/lib/events/booking-links'
 import type { CaptionInput } from '@/lib/broadcast/captions'
@@ -153,6 +153,16 @@ describe('the banned word is judged in our words, never in an organiser own name
 
   test('a link is not words: a slug carrying the word is not judged', () => {
     expect(carriesBannedWord('Details: https://www.eventlinqs.com.au/events/childrens-week-multicultural-board-games', [])).toBe(false)
+  })
+
+  test('an organiser description carrying the word is not quoted, so the kit words go without it and are kept', () => {
+    const games: CaptionInput = { ...input, title: TITLE, organiserName: HOST, summary: 'Children share and play board games from different cultures.' }
+    expect(quotableSummary(games.summary, [TITLE, HOST])).toBeNull()
+    expect(quotableSummary(input.summary, [input.title])).toBe(input.summary ?? null)
+    const without = { ...games, summary: quotableSummary(games.summary, [TITLE, HOST]) }
+    const words = kitCaption(without, 'instagram', LINK)
+    expect(words).not.toContain('different cultures')
+    expect(wordsRefusal(words, LINK, factsOf(without), [TITLE, HOST])).toBeNull()
   })
 
   test('with no names given, every use of the word is refused, as before', () => {

@@ -159,6 +159,17 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(pieceRefusal({ ...p, names: [] })).toMatch(/banned word/)
   })
 
+  it('a night whose own description carries the word is drawn without that line, and its pieces are kept', () => {
+    const games = night({ at: '2026-10-30T05:00:00Z', title: "Children's Week: Multicultural Board Games", host: 'Geelong Regional Libraries', summary: 'Children share and play board games from different cultures. Bring a friend.' })
+    const { pieces: withGames } = planCampaign({ nights: [...geelongWeek, games], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
+    const carrying = withGames.filter((p) => p.eventIds.includes(games.eventId))
+    expect(carrying.length).toBeGreaterThan(0)
+    for (const p of carrying) {
+      expect(JSON.stringify(p.slides)).not.toContain('different cultures')
+      expect(pieceRefusal(p), `${p.kind} ${p.city}`).toBeNull()
+    }
+  })
+
   it('a photograph only with an approved rights row; otherwise the slide is typographic (J1 to J4)', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     const photos = ahead.slides.filter((s) => s.t === 'night').map((s) => (s as { photo: string | null }).photo)

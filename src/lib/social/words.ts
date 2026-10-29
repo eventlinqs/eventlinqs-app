@@ -42,6 +42,16 @@ export function carriesBannedWord(text: string, names: readonly (string | null |
   return /cultur/i.test(ours)
 }
 
+/**
+ * An organiser's own description, where our words may quote it: never where it carries the banned word outside the
+ * night's exact names (only the title and the organisation name are their names). Then the words go without it, so a
+ * night is still told and its post or piece is never held for a sentence we need not repeat.
+ */
+export function quotableSummary(summary: string | null | undefined, names: readonly (string | null | undefined)[]): string | null {
+  if (typeof summary !== 'string' || summary.trim() === '') return null
+  return carriesBannedWord(summary, names) ? null : summary
+}
+
 /** Why these words cannot be kept, in the admin's own words, or null where they can. names: the exact names quoted (carriesBannedWord). */
 export function wordsRefusal(caption: string, link: string | null, facts: readonly string[], names: readonly (string | null | undefined)[] = []): string | null {
   const text = caption.trim()

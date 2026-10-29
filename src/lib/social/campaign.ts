@@ -1,6 +1,6 @@
 import type { Cta } from '@/lib/events/cta'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
-import { carriesBannedWord } from './words'
+import { carriesBannedWord, quotableSummary } from './words'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -279,7 +279,7 @@ function metaOf(n: CampaignNight): string {
 }
 
 function whyOf(n: CampaignNight): string | null {
-  const s = (n.summary ?? '').replace(/\s+/g, ' ').trim()
+  const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
   if (!s) return null
   const first = s.match(/^.*?[.?](\s|$)/)?.[0]?.trim() ?? s
   return first.length <= 140 ? first : `${first.slice(0, 137).replace(/\s+\S*$/, '')}.`

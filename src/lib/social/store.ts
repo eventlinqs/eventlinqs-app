@@ -9,7 +9,7 @@ import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
-import { wordsRefusal } from './words'
+import { quotableSummary, wordsRefusal } from './words'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -156,7 +156,9 @@ export async function planWeek(db: Db, input: { readonly plannedBy: string; read
       held.push({ eventId: item.eventId, reason: 'The event could not be read.' })
       continue
     }
-    const caption = toCaptionInput(context)
+    const told = toCaptionInput(context)
+    /* The organiser's description is quoted only where it does not carry the banned word (words.ts quotableSummary). */
+    const caption = { ...told, summary: quotableSummary(told.summary, [told.title, told.organiserName]) }
 
     const kit = await getOrCreateShareLink({ eventId: item.eventId, channel: item.platform, createdBy: input.plannedBy, eventSlug: context.slug })
     if (kit === null) {
