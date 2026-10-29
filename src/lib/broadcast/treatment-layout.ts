@@ -93,7 +93,18 @@ export type Run = {
   align?: 'left' | 'right'
 }
 
-export type Block = { role: 'pill' | 'bar' | 'rule' | 'divider'; x: number; y: number; w: number; h: number; color: string }
+export type Block = {
+  role: 'pill' | 'bar' | 'rule' | 'divider'
+  x: number
+  y: number
+  w: number
+  h: number
+  color: string
+  /** Drawn as an outline this thick in `color`, with no fill (the daily poster's date block and qualifier chip). */
+  outline?: number
+  /** Its corner radius in design units, over the role's own. */
+  radius?: number
+}
 
 export type Art = { kind: 'disc' | 'ring'; cx: number; cy: number; r: number; stroke: number; color: string }
 
