@@ -1,0 +1,15 @@
+{
+  "source": "Project manager, 30 October 2026, 00:21, and the daily poster directive (C:\\dev\\START-16OCT\\EVENTLINQS-DAILY-POSTER-DIRECTIVE-30OCT.md, correction 4): the type-led poster of the organiser's own night is the preview in the first invitation, with the line exactly as ruled; every other line of message 1 as it stands",
+  "readings": "Version 2 of first_invitation only. Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-30oct-v2.json --version 2. [poster preview] is the public image of a Family F poster of their own night that went out; with none, the field stays unfilled and the draft is held, never sent without it. A play uses this text only once Lawal approves a play pinned to it.",
+  "templates": [
+    {
+      "key": "first_invitation",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 1,
+      "message": "1 (version 2, with the poster preview)",
+      "subject": "[Venue]'s [nights], could I ask you something?",
+      "body": "Hi [first name],\nI hope you're all well. [true line]\nWe'd love to help fill the room. Your [nights] are already on EventLinqs' [city] guide, and we'd like to feature them in our weekly picks on Instagram and Facebook, with every link going straight to your own page.\nHere's how we've featured your night. [poster preview] With your yes we'll use your own photos.\nHere's your listing: [claim link]. Claim it in two minutes and it's yours to update, with your own posters and photos. It's free, and you keep your own booking setup.\nWould that work for you?\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}

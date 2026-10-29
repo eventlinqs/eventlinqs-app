@@ -1,0 +1,15 @@
+{
+  "source": "Project manager, 30 October 2026, 01:23 (4), the growth blueprint's rulings (C:\\dev\\START-16OCT\\EVENTLINQS-GROWTH-BLUEPRINT-PM-RULINGS-30OCT.md, ruling 1): the blueprint's variant B (recurring organiser partnership) as a template version in Lawal's format, never 'EventLinqs Team'",
+  "readings": "Version 3 of first_invitation only, variant B of the first learning-loop test; version 2 is variant A (the listing-first invitation with the poster preview, ruling 2). Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-30oct-v3.json --version 3. The subject, the greeting, the true line, the listing link, the free and own-booking line and the one question are version 2's; what changes is the offer: their nights listing themselves each week with their own links and material, in place of the weekly picks and the poster. Every claim is a working fact: the claim page's 'Keep listing these automatically' (messages file, message 6), the listing linking to their own page, the kit sent when a night is featured (message 7). Nothing says limited, by invitation or a small number (LAW 24, rule 5).",
+  "templates": [
+    {
+      "key": "first_invitation",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 1,
+      "message": "1 (version 3, variant B, the recurring partnership)",
+      "subject": "[Venue]'s [nights], could I ask you something?",
+      "body": "Hi [first name],\nI hope you're all well. [true line]\nYour [nights] are already on EventLinqs' [city] guide. Claim your listing and each new one can list itself every week, with your own ticket links, your own posters and photos, and a ready-to-share post and caption whenever one is featured.\nHere's your listing: [claim link]. Claim it in two minutes and it's yours to update. It's free, and you keep your own booking setup.\nWould that work for you?\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}

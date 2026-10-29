@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
+import { undeliverableAddresses } from '@/lib/email/delivery-events'
 import { broadcastPriceLabel } from './price-line'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
@@ -207,6 +208,11 @@ export async function fetchDigestRecipients(
     )
     for (const row of rows) suppressed.push(row.email)
   }
+
+  // An address with a recorded permanent bounce cannot receive the digest: it stays out with the withdrawals, so
+  // "suppression wins" covers it too (src/lib/email/delivery-events.ts; window 6, 29 October 2026).
+  const everyone = [...consents.map((r) => r.email), ...waitlist.map((r) => r.email)]
+  for (const address of await undeliverableAddresses(admin, everyone)) suppressed.push(address)
 
   return mergeDigestAudience({
     consents,

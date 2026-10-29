@@ -18,7 +18,11 @@ import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
  *      clear answers acted on, anything unclear left for Lawal;
  *   3. the plays Lawal approved draft what is due, within each play's cap for the day, and the DMs Lawal sends by hand
  *      are drafted and held for him (never sent by the system);
- *   4. the sender sends what is queued, inside the recipient's business hours, as the sender's mode allows.
+ *   4. the sender sends what is queued, inside the recipient's business hours, as the sender's mode allows;
+ *   5. every organiser's acquisition state is refreshed from its proof (organiser_acquisition_refresh_all, migration
+ *      20261030034001). The states a night moves (qualified, active, recurring) have no trigger on events, so this is
+ *      what moves them. It writes no message, so it runs whatever the sender's mode; a fault in it is reported in the
+ *      answer and never stops the steps before it.
  *
  * With the sender on HOLD (its default) steps 2 to 4 claim and send nothing. Steps 2 and 3 act in the name of the
  * person who last set the sender's mode (outreach_sender.changed_by); until someone has, they do not run.
@@ -72,7 +76,11 @@ export async function GET(request: NextRequest) {
 
     const sent = await runOutreachSender(db, { now, origin, graph })
     console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent })
+
+    const refreshed = await db.rpc('organiser_acquisition_refresh_all', { p_proved_by: 'outreach-run' })
+    const acquisition = refreshed.error ? { error: refreshed.error.message } : { changed: refreshed.data }
+    if (refreshed.error) console.error('[cron/outreach-run] acquisition states not refreshed:', refreshed.error.message)
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

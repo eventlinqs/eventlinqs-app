@@ -19,12 +19,14 @@
  *
  * TWO MODES. --test writes on TEST. --production --organiser "<name>" READS production through the SELECT-only reader
  * (scripts/lib/production-select.mjs) and writes NOTHING there: every write it would make goes into one file ending in
- * ROLLBACK, for Lawal's APPLY or window 4's logged apply (operating rule 4). It runs for one named organiser only.
+ * ROLLBACK, for Lawal's APPLY or window 4's logged apply (operating rule 4). It runs for one named organiser, or with
+ * --every-organiser for all of them (the first cohort, 29 October 2026), and refuses to run naming neither or both.
  * (Until 29 October this header promised that dry run while the code refused anything but --test; window 6.)
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { productionSelect } from '../lib/production-select.mjs'
+import { roleRefusal } from '../lib/outreach-basis-role.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const args = process.argv.slice(2)
@@ -33,9 +35,12 @@ const by = arg('--by')
 const evidence = arg('--evidence') ?? 'C:/dev/EVIDENCE/CRM-28OCT/basis'
 const token = process.env.SUPABASE_ACCESS_TOKEN
 const production = args.includes('--production')
-const modeOk = production ? !args.includes('--test') && Boolean(arg('--organiser')) : args.includes('--test')
+// Production names its reach out loud: one organiser (--organiser), or every organiser (--every-organiser, the first
+// cohort's step 2 under the project manager's R4 of 29 October 2026); never the two together, never neither.
+const every = args.includes('--every-organiser')
+const modeOk = production ? !args.includes('--test') && (Boolean(arg('--organiser')) !== every) : args.includes('--test')
 if (!by || !/^[0-9a-f-]{36}$/i.test(by) || !modeOk || !token) {
-  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> (--test | --production --organiser "<name>") [--evidence <dir>]')
+  console.error('usage: scripts\\ops\\with-supabase-token.ps1 node scripts/ops/outreach-basis.mjs --by <uuid> (--test | --production (--organiser "<name>" | --every-organiser)) [--evidence <dir>]')
   process.exit(2)
 }
 mkdirSync(evidence, { recursive: true })
@@ -140,11 +145,20 @@ async function check(o, n) {
     return
   }
   // Their own addresses on their own pages: at their domain, or one the cohort files already named for them.
+  // And only in the role the invitation relates to (scripts/lib/outreach-basis-role.mjs): R4 step 2 took 23 that were not.
   const candidates = new Map()
+  const refused = new Set()
   for (const page of pages) {
     for (const a of addresses(page.html)) {
       const d = a.split('@')[1]
-      if (d === siteDomain || d.endsWith(`.${siteDomain}`) || known.includes(a)) if (!candidates.has(a)) candidates.set(a, page)
+      if (!(d === siteDomain || d.endsWith(`.${siteDomain}`) || known.includes(a)) || candidates.has(a) || refused.has(a)) continue
+      const words = text(page.html)
+      const at = words.toLowerCase().indexOf(a)
+      const why = roleRefusal(a, o.name, at >= 0 ? words.slice(0, at) : '')
+      if (why) {
+        refused.add(a)
+        report.push({ organiser: o.name, address: a, page: page.url, outcome: `not their role (${why}): no basis recorded` })
+      } else candidates.set(a, page)
     }
   }
   // Their Instagram handle, published by a link from their own site to the profile: the same reading as an address.
@@ -170,7 +184,7 @@ async function check(o, n) {
     recorded++
     report.push({ organiser: o.name, instagram: ig.address, page: page.url, outcome: 'basis recorded whole (their site links to the profile)', evidence: file })
   }
-  for (const k of known) if (!candidates.has(k)) report.push({ organiser: o.name, address: k, outcome: `not found on ${pages.map((p) => p.url).join(', ')}: no basis recorded` })
+  for (const k of known) if (!candidates.has(k) && !refused.has(k)) report.push({ organiser: o.name, address: k, outcome: `not found on ${pages.map((p) => p.url).join(', ')}: no basis recorded` })
   if (candidates.size === 0) {
     report.push({ organiser: o.name, outcome: `no address of theirs published on ${pages.length} page(s) of ${site}` })
     return
@@ -196,7 +210,7 @@ async function check(o, n) {
     if (existing) await sql(`update public.organiser_contacts set ${basis} where id = ${q(existing.id)} and basis = 'none'`)
     else
       await sql(`insert into public.organiser_contacts (organiser_id, role, channel, address, created_by) values (${q(o.id)}, 'Published contact address', 'email', ${q(address)}, ${q(by)})
-                 on conflict do nothing; update public.organiser_contacts set ${basis} where channel = 'email' and address = ${q(address)} and basis = 'none'`)
+                 on conflict do nothing; update public.organiser_contacts set ${basis} where organiser_id = ${q(o.id)} and channel = 'email' and address = ${q(address)} and basis = 'none'`)
     recorded++
     report.push({ organiser: o.name, address, page: page.url, outcome: 'basis recorded whole', evidence: file })
   }
@@ -219,6 +233,6 @@ const read = (await sql(`select (select count(*) from public.organiser_contacts 
   (select count(*) from public.organiser_contacts where channel = 'instagram' and basis <> 'none')::int as instagram_with_a_whole_basis`))[0]
 if (production) {
   const dry = join(evidence, `outreach-basis-PRODUCTION-DRY-RUN-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`)
-  writeFileSync(dry, `-- Bases for ${arg('--organiser')} on production, from scripts/ops/outreach-basis.mjs --production. Dry run: ends in ROLLBACK.\n-- Each statement only fills a contact whose basis is still 'none'. Report: ${reportFile}\nbegin;\n${held.map((s) => `${s};`).join('\n')}\nrollback;\n`)
+  writeFileSync(dry, `-- Bases for ${every ? 'every organiser' : arg('--organiser')} on production, from scripts/ops/outreach-basis.mjs --production. Dry run: ends in ROLLBACK.\n-- Each statement only fills a contact whose basis is still 'none'. Report: ${reportFile}\nbegin;\n${held.map((s) => `${s};`).join('\n')}\nrollback;\n`)
   console.log(`organisers checked ${organisers.length}; bases this run would record ${recorded}, NOTHING WRITTEN on production; dry run ${dry}; production now ${JSON.stringify(read)}; report ${reportFile}`)
 } else console.log(`organisers checked ${organisers.length}; bases recorded this run ${recorded}; TEST read back ${JSON.stringify(read)}; report ${reportFile}`)

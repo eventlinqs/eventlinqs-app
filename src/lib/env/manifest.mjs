@@ -567,6 +567,23 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
 
+  // ── Delivery events from the operational stream (window 6, 29 October 2026) ──
+  {
+    name: 'RESEND_WEBHOOK_SECRET',
+    describe: "The signing secret of Resend's delivery webhook, verified on the raw body by POST /api/webhooks/resend",
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the route answers 503 and records nothing while it is unset, and the webhook only exists once it is registered in Resend (a scripted production configuration write under the project manager\'s YES); requiring it would block every deployment on that one registration. Its format is not stated on Resend\'s verification page (https://resend.com/docs/webhooks/verify-webhooks-requests, fetched 29 October 2026), so no tighter shape is claimed',
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+
   // ── Scheduled work and queue integrity ────────────────────────────────────
   {
     name: 'CRON_SECRET',

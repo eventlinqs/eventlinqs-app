@@ -100,6 +100,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'The receipt and the tickets for an order the buyer just placed.',
   },
   {
+    file: 'src/app/api/webhooks/resend/route.ts',
+    kind: 'transport',
+    purpose: '',
+    reason:
+      'Resend calling us back about mail already sent: it imports the SDK only to verify the webhook signature (webhooks.verify), then records the delivery facts. It sends no message.',
+  },
+  {
     file: 'src/app/api/webhooks/stripe/route.ts',
     kind: 'transactional',
     purpose: 'order_confirmation',

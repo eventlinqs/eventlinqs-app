@@ -96,6 +96,10 @@ const AUTH = [
   // or wrongly signed request. Named for the one function, so no other signature
   // check is credited by its name.
   { re: /verifyBookedproofSignature\s*\(/, how: 'Bookedproof request signature (HMAC-SHA256, 300 s, constant time)' },
+  // 29 October 2026, window 6: Resend's delivery webhook, verified on the raw body by the installed SDK
+  // (src/app/api/webhooks/resend/route.ts; https://resend.com/docs/webhooks/verify-webhooks-requests). Named for the
+  // one method, as the two signatures above are.
+  { re: /\.webhooks\.verify\s*\(/, how: 'Resend webhook signature (svix headers, raw body, SDK verify)' },
 ]
 
 /**
@@ -120,6 +124,10 @@ const AUTHZ = [
   // addresses it asks, through the service role in src/lib/connect/bookedproof/read.ts,
   // with counts only and nothing about any buyer; no user's own data is scoped.
   { re: /verifyBookedproofSignature\s*\(/, how: 'machine caller (signed partner read), no user data scoping needed' },
+  // 29 October 2026, window 6, READ in src/app/api/webhooks/resend/route.ts: the signed caller is Resend, writing the
+  // delivery facts of messages this platform sent (one row per event and address) and, for a complaint, the recipient's
+  // own marketing stop; nothing is read back to the caller and no user's data is scoped.
+  { re: /\.webhooks\.verify\s*\(/, how: 'machine caller (signed provider webhook), no user data scoping needed' },
   // Cross-module gates, each READ and verified during the 2026-08-09 sweep. A
   // call to one counts as an ownership check because the function itself performs
   // one and fails closed. Adding to this list means "I read it", not "the name
