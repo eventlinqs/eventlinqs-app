@@ -267,7 +267,9 @@ const AUDIENCE_PAGE =
 const DRILLS = [
   /*
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
-   * blank on production), two drills: a community losing its stored photograph, and a refused Pexels lookup cached again.
+   * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile
+   * or a suburb asking Pexels at request time again, and a city page event type losing its stored photograph (30
+   * October 2026: the Concerts, DJ Sets, Theatre, Workshops and Sports tiles were still a live Pexels call).
    */
   {
     name: 'the African community loses its stored photograph',
@@ -278,12 +280,28 @@ const DRILLS = [
     expect: "the community 'african' has no stored photograph",
   },
   {
-    name: 'a refused Pexels lookup is kept by the cache again',
+    name: 'a category tile asks Pexels at request time again',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
     file: 'src/lib/images/category-photo.ts',
-    find: "  if (!res.ok) throw new Error(`Pexels answered ${res.status}`)",
-    replace: '  if (!res.ok) return [FALLBACK]',
-    expect: 'returns the placeholder inside the cached function',
+    find: '  if (!stored) return FALLBACK',
+    replace: "  if (!stored) return { ...FALLBACK, src: (await fetch('https://api.pexels.com/v1/search')).url }",
+    expect: 'category-photo.ts makes a request-time call',
+  },
+  {
+    name: 'a city page event type loses its stored photograph',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/lib/images/stored-photos.ts',
+    find: "  workshop: { kept: 'education' },",
+    replace: '',
+    expect: "the category slug 'workshop' has no stored photograph",
+  },
+  {
+    name: 'a suburb tile asks Pexels at request time again',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/lib/images/suburb-photo.ts',
+    find: '  return KEPT_SUBURBS.has(slug) ? `/images/library/suburb-${slug}.jpg` : null',
+    replace: "  return KEPT_SUBURBS.has(slug) ? `/images/library/suburb-${slug}.jpg` : (await fetch('https://api.pexels.com/v1/search')).url",
+    expect: 'suburb-photo.ts makes a request-time call',
   },
   {
     name: 'a sub-community tile asks Pexels at request time again',
