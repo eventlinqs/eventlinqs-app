@@ -15,6 +15,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { PROVIDER_NAMES } from '@/lib/events/booking-links'
 import type { InboundMessage } from './graph'
 import { draftFromTemplate } from './drafts'
 
@@ -78,7 +79,9 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   return { kind: 'reply', outcome: 'unclear', confidence: distinct.length === 0 ? 0.3 : 0.5, answerKey: null }
 }
 
-const PROVIDERS = ['Humanitix', 'Eventbrite', 'TryBooking', 'Moshtix', 'Oztix', 'Ticketmaster', 'Ticketek', 'Megatix', 'Ticket Tailor', 'DICE']
+/* The names come from the one table the listing page reads, the only file the copy gate lets spell them; a platform
+ * that table does not name (Megatix, Ticket Tailor) is recognised as none, so its answer is held for Lawal. */
+const PROVIDERS = Object.values(PROVIDER_NAMES).filter((n): n is string => n !== null)
 
 /** The ticketing provider their own reply names, in its own spelling, or null: the answer is then held for Lawal. */
 export function providerNamed(text: string): string | null {
