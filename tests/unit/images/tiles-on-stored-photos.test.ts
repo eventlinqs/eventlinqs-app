@@ -84,6 +84,22 @@ describe('sub-community tiles', () => {
   })
 })
 
+describe('a refused city lookup', () => {
+  test('a spine city asks nothing; a refused answer for another city is not kept', async () => {
+    const city = await import('@/lib/images/city-photo')
+    expect(await city.getCityPhoto('melbourne')).toMatch(/\/event-images\/stock\/cities\/melbourne\//)
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    fetchSpy.mockResolvedValueOnce(new Response('rate limited', { status: 429 }))
+    expect(await city.getCityPhoto('ballarat')).toBeNull()
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ photos: [{ src: { large: 'https://images.pexels.com/b.jpg', medium: 'm', portrait: 'https://images.pexels.com/b-p.jpg' }, width: 900, height: 1300, alt: 'b', photographer: 'p' }] }), { status: 200 }),
+    )
+    expect(await city.getCityPhoto('ballarat')).toBe('https://images.pexels.com/b-p.jpg')
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('a refused Pexels answer', () => {
   test('is never kept: the next call asks again, and is served once it answers', async () => {
     fetchSpy.mockResolvedValueOnce(new Response('rate limited', { status: 429 }))

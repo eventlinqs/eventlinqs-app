@@ -18,6 +18,8 @@
  *      inside the cached function (a failure is thrown there, so it is not kept).
  *   6  sub-community-photo.ts makes no request-time call, and every sub-community photograph it keeps exists with its
  *      photographer on record.
+ *   7  city-photo.ts never returns null from inside a cached Pexels fetch (the 13 spine cities answer first; the
+ *      others still ask Pexels until their photographs are kept, and a refusal there must not be kept for a week).
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -107,6 +109,14 @@ for (const m of sub.matchAll(/^\s+'([a-z0-9-]+):([a-z0-9-]+)',$/gm)) {
   else if (!attribution[name]?.photographer) fail('6', `public/images/library/${name}.jpg has no photographer on record in attribution.json`)
 }
 if (sub && subFilesChecked === 0) fail('6', 'no kept sub-community photograph found in sub-community-photo.ts; the scan cannot be trusted')
+
+const city = code(read('src/lib/images/city-photo.ts'))
+for (const name of ['fetchCityPhotoRaw', 'fetchCityHeroPhotoRaw']) {
+  const at = city.indexOf(`async function ${name}`)
+  const body = at < 0 ? '' : city.slice(at, city.indexOf('unstable_cache(', at))
+  if (!body) fail('7', `src/lib/images/city-photo.ts has no ${name} to judge`)
+  else if (/return null\b/.test(body)) fail('7', `${name} returns null inside the cached function, so a refused city lookup is kept for a week`)
+}
 
 console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} categories, ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), and the three photo resolvers`)
 if (FAILURES.length) {

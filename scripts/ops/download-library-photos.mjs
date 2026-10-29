@@ -68,6 +68,51 @@ const WANTED = [
   { slug: 'sub-filipino-fiesta', pick: 'sub', before: true, query: 'filipino fiesta parol traditional colorful' },
   { slug: 'sub-filipino-sinulog', pick: 'sub', before: true, query: 'sinulog cebu festival dance colorful' },
   { slug: 'sub-filipino-modern-filipino', pick: 'sub', before: true, query: 'filipino modern music youth celebration' },
+  // The city tiles (portrait) and city heroes (landscape) for every city Lawal's spine does not hold (city-photo.ts).
+  { slug: 'city-townsville', pick: 'city', before: true, query: 'townsville magnetic island tropical' },
+  { slug: 'city-hero-townsville', pick: 'city-hero', before: true, query: 'townsville magnetic island tropical' },
+  { slug: 'city-sunshine-coast', pick: 'city', before: true, query: 'sunshine coast beach hinterland' },
+  { slug: 'city-hero-sunshine-coast', pick: 'city-hero', before: true, query: 'sunshine coast beach hinterland' },
+  { slug: 'city-bendigo', pick: 'city', before: true, query: 'bendigo heritage architecture city' },
+  { slug: 'city-hero-bendigo', pick: 'city-hero', before: true, query: 'bendigo heritage architecture city' },
+  { slug: 'city-ballarat', pick: 'city', before: true, query: 'ballarat heritage gold rush architecture' },
+  { slug: 'city-hero-ballarat', pick: 'city-hero', before: true, query: 'ballarat heritage gold rush architecture' },
+  { slug: 'city-albury', pick: 'city', before: true, query: 'albury murray river city' },
+  { slug: 'city-hero-albury', pick: 'city-hero', before: true, query: 'albury murray river city' },
+  { slug: 'city-launceston', pick: 'city', before: true, query: 'launceston tasmania heritage city' },
+  { slug: 'city-hero-launceston', pick: 'city-hero', before: true, query: 'launceston tasmania heritage city' },
+  { slug: 'city-toowoomba', pick: 'city', before: true, query: 'toowoomba garden city heritage' },
+  { slug: 'city-hero-toowoomba', pick: 'city-hero', before: true, query: 'toowoomba garden city heritage' },
+  { slug: 'city-auckland', pick: 'city', before: true, query: 'auckland new zealand harbour skyline' },
+  { slug: 'city-hero-auckland', pick: 'city-hero', before: true, query: 'auckland new zealand harbour skyline' },
+  { slug: 'city-london', pick: 'city', before: true, query: 'london england skyline big ben' },
+  { slug: 'city-hero-london', pick: 'city-hero', before: true, query: 'london england skyline big ben' },
+  { slug: 'city-manchester', pick: 'city', before: true, query: 'manchester england city skyline' },
+  { slug: 'city-hero-manchester', pick: 'city-hero', before: true, query: 'manchester england city skyline' },
+  { slug: 'city-birmingham', pick: 'city', before: true, query: 'birmingham england city skyline' },
+  { slug: 'city-hero-birmingham', pick: 'city-hero', before: true, query: 'birmingham england city skyline' },
+  { slug: 'city-dublin', pick: 'city', before: true, query: 'dublin ireland city' },
+  { slug: 'city-hero-dublin', pick: 'city-hero', before: true, query: 'dublin ireland city' },
+  { slug: 'city-toronto', pick: 'city', before: true, query: 'toronto canada skyline cn tower' },
+  { slug: 'city-hero-toronto', pick: 'city-hero', before: true, query: 'toronto canada skyline cn tower' },
+  { slug: 'city-montreal', pick: 'city', before: true, query: 'montreal canada skyline night' },
+  { slug: 'city-hero-montreal', pick: 'city-hero', before: true, query: 'montreal canada skyline night' },
+  { slug: 'city-new-york', pick: 'city', before: true, query: 'new york manhattan skyline' },
+  { slug: 'city-hero-new-york', pick: 'city-hero', before: true, query: 'new york manhattan skyline' },
+  { slug: 'city-washington-dc', pick: 'city', before: true, query: 'washington dc capitol skyline' },
+  { slug: 'city-hero-washington-dc', pick: 'city-hero', before: true, query: 'washington dc capitol skyline' },
+  { slug: 'city-houston', pick: 'city', before: true, query: 'houston texas skyline' },
+  { slug: 'city-hero-houston', pick: 'city-hero', before: true, query: 'houston texas skyline' },
+  { slug: 'city-atlanta', pick: 'city', before: true, query: 'atlanta georgia skyline' },
+  { slug: 'city-hero-atlanta', pick: 'city-hero', before: true, query: 'atlanta georgia skyline' },
+  { slug: 'city-miami', pick: 'city', before: true, query: 'miami florida skyline beach' },
+  { slug: 'city-hero-miami', pick: 'city-hero', before: true, query: 'miami florida skyline beach' },
+  { slug: 'city-los-angeles', pick: 'city', before: true, query: 'los angeles california skyline' },
+  { slug: 'city-hero-los-angeles', pick: 'city-hero', before: true, query: 'los angeles california skyline' },
+  { slug: 'city-lagos', pick: 'city', before: true, query: 'lagos nigeria victoria island skyline' },
+  { slug: 'city-hero-lagos', pick: 'city-hero', before: true, query: 'lagos nigeria victoria island skyline' },
+  { slug: 'city-accra', pick: 'city', before: true, query: 'accra ghana city' },
+  { slug: 'city-hero-accra', pick: 'city-hero', before: true, query: 'accra ghana city' },
 ]
 
 const kept = existsSync(ATTRIBUTION) ? JSON.parse(readFileSync(ATTRIBUTION, 'utf8')) : { licence: 'Pexels License, https://www.pexels.com/license/', photos: {} }
@@ -76,13 +121,16 @@ for (const w of WANTED) {
   const file = join(DIR, `${w.slug}.jpg`)
   if (existsSync(file) && kept.photos[w.slug]) { console.log(`kept      ${w.slug}`); continue }
   const perPage = w.pick === 'category' ? 24 : 15
-  const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(w.query)}&per_page=${perPage}&orientation=landscape&size=large`, { headers: { Authorization: KEY } })
+  const orientation = w.pick === 'city' ? 'portrait' : 'landscape'
+  const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(w.query)}&per_page=${perPage}&orientation=${orientation}&size=large`, { headers: { Authorization: KEY } })
   if (!res.ok) throw new Error(`Pexels answered ${res.status} for ${w.slug}; nothing kept for it`)
   const photos = (await res.json()).photos ?? []
   if (photos.length === 0) throw new Error(`no photograph for ${w.slug}`)
   // pick 'sub': sub-community-photo.ts (per_page 15, at least 1200 x 700, the top 5, hash(query + ':sub-community')).
+  // pick 'city': city-photo.ts getCityPhoto (portrait, per_page 15, at least 800 x 1200, the top 5, hash(query)).
+  // pick 'city-hero': getCityHeroPhoto (landscape, per_page 15, at least 1600 x 900, the top 5, hash(query + ':landscape')).
   const [minW, minH, top, seed] =
-    w.pick === 'community' ? [1600, 900, 5, `${w.query}:community-hero`] : w.pick === 'sub' ? [1200, 700, 5, `${w.query}:sub-community`] : [1200, 800, 10, w.query]
+    w.pick === 'community' ? [1600, 900, 5, `${w.query}:community-hero`] : w.pick === 'sub' ? [1200, 700, 5, `${w.query}:sub-community`] : w.pick === 'city' ? [800, 1200, 5, w.query] : w.pick === 'city-hero' ? [1600, 900, 5, `${w.query}:landscape`] : [1200, 800, 10, w.query]
   const usable = photos.filter((p) => (p.width ?? 0) >= minW && (p.height ?? 0) >= minH)
   const pool = (usable.length > 0 ? usable : photos).slice(0, top)
   const photo = pool[hash(seed) % pool.length]
@@ -99,6 +147,9 @@ for (const w of WANTED) {
     shown_before_tonight: w.before,
     downloaded_on: '2026-10-29',
   }
+  // Recorded as each one is kept, so a run cut short (a 429 at 23:28 on 29 October 2026) never leaves a file without
+  // its photographer and licence on record.
+  writeFileSync(ATTRIBUTION, `${JSON.stringify(kept, null, 2)}\n`)
   fetched += 1
   console.log(`fetched   ${w.slug}: ${photo.photographer}, ${photo.url}`)
 }
