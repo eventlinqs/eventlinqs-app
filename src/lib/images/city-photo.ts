@@ -23,6 +23,15 @@ const KEPT_CITIES = new Set([
   'new-york', 'washington-dc', 'houston', 'atlanta', 'miami', 'los-angeles', 'lagos', 'accra',
 ])
 
+async function fetchCityPhoto(query: string): Promise<string | null> {
+  try {
+    return await fetchCityPhotoCached(query)
+  } catch (error) {
+    captureException(error, { where: 'lib/images/city-photo:fetchCityPhoto' })
+    return null
+  }
+}
+
 export async function getCityPhoto(slug: string): Promise<string | null> {
   const spine = getSpineCity(slug)
   if (spine) return spine.src

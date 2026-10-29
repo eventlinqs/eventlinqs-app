@@ -35,7 +35,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
@@ -731,6 +731,9 @@ export default async function EventDetailPage({ params }: Props) {
     // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
     readJoinedCollaborators(event.id),
   ])
+  // A night whose only image is our composed cover: the title is set in type over the hero, so no raster is drawn
+  // behind it (src/lib/images/event-media.ts heroIsTypographic; the layout skips its preload the same way).
+  const typographicHero = heroIsTypographic(media)
   // The ticket column of an event sold on other sites (src/lib/listings/ticket-panel.ts); null with no links read,
   // where the panel falls back to events.external_ticket_url, the database's mirror of the button.
   const ticketPanel = bookingLinks.length > 0 ? ticketPanelOf(event.slug, bookingLinks, now) : null
@@ -1123,7 +1126,9 @@ export default async function EventDetailPage({ params }: Props) {
       <ShareViewBeacon />
       {/* A buyer whose hold expired mid-payment is returned HERE now, to the
         * event they were actually buying, with an explanation. */}
-      <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
+      {/* empty:hidden: with no notice, which is nearly always, this wrapper's pt-6 drew a 24px strip above the header
+          on every event page (the PM's public site audit, 29 October 2026). */}
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 empty:hidden sm:px-6">
         <Suspense fallback={null}>
           <ReservationNotice backHref="#tickets" backLabel="Choose tickets again" />
         </Suspense>
@@ -1156,13 +1161,15 @@ export default async function EventDetailPage({ params }: Props) {
         >
           <HeroPresenceMarker />
           <div className="absolute inset-0">
-            <HeroMedia
-              image={media.image}
-              alt={event.cover_image_alt || media.alt}
-              videoSrc={media.videoSrc}
-              kenBurns={media.kenBurns}
-              objectPosition={media.objectPosition}
-            />
+            {typographicHero ? null : (
+              <HeroMedia
+                image={media.image}
+                alt={event.cover_image_alt || media.alt}
+                videoSrc={media.videoSrc}
+                kenBurns={media.kenBurns}
+                objectPosition={media.objectPosition}
+              />
+            )}
             {/* The header wash only. What used to sit here was this hero's own
                 bottom-up ramp, expressed as percentages of a band the text does
                 not occupy a fixed share of: at 390 the meta line read 3.85:1 and
