@@ -187,7 +187,13 @@ export function FeaturedHeroClient({ slides }: Props) {
               priority={idx === 0}
               objectPosition={slide.objectPosition}
             />
-            <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
+            {/* With dots below it, the content keeps 112px under it until lg (the bar's 16px offset, its 44px targets,
+             *  44px clear and 8px for the hero's sub-pixel height; 104px measured 42.3 at 390), so a dot never sits on
+             *  the button: at 390 two did (the project manager's 18:38 of 29 October 2026;
+             *  scripts/verify/hero-dots-fit.mjs). From lg the button sits left and the dots centre. */}
+            <div
+              className={`relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 sm:px-8 lg:px-12 lg:pb-12 ${multi ? 'pb-28' : 'pb-8 sm:pb-10'}`}
+            >
               {/* hero-enter staggers the content stack (kicker, title, detail,
                *  CTA) in on load, 60-80ms apart. hero-slide-content re-runs a
                *  single gentle rise when this slide becomes active during
