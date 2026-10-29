@@ -56,5 +56,16 @@ describe("a listing night's card", () => {
       expect(text).toContain('Ticketing by EVENTLINQS')
       expect(text).not.toContain('It is not this venue')
     })
+
+    /*
+     * The project manager's ruling of 29 October 2026, 15:56: every place that draws an archival AMCF photograph carries
+     * 'past festival' in its credit. A post's card draws the night's approved register photograph, so it prints that
+     * row's own credit, as the campaign's slides and captions do.
+     */
+    it(`${format}: a photograph from the register is credited on the card, in the row's own words`, async () => {
+      const text = textOf(await buildCardElement(format, input({ photoCredit: 'AMCF, past festival' })))
+      expect(text).toContain('Photo: AMCF, past festival')
+      expect(textOf(await buildCardElement(format, input()))).not.toContain('Photo:')
+    })
   }
 })

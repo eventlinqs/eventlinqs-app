@@ -100,6 +100,8 @@ export interface PostCard {
   readonly listing: boolean
   /** The photograph is EventLinqs' licensed library shot, and the card says so at its foot. */
   readonly libraryPhoto: boolean
+  /** The approved register row's credit for the cover, printed on the card; null with no register photograph. */
+  readonly photoCredit: string | null
 }
 
 /**
@@ -119,7 +121,8 @@ export async function cardOf(db: Db, postId: string, now: Date): Promise<PostCar
    * scope social; a library or category photo never stands for a named night, and an event's own cover is not
    * permission by being there. With none the card is typographic.
    */
-  const approved = (await usableImages(db, [post.event_id as string], now)).get(post.event_id as string)?.url ?? null
+  const usable = (await usableImages(db, [post.event_id as string], now)).get(post.event_id as string) ?? null
+  const approved = usable?.url ?? null
   const cover = approved && !isLibraryPhoto(approved) ? approved : null
   return {
     context: { ...context, coverImageUrl: cover },
@@ -128,6 +131,8 @@ export async function cardOf(db: Db, postId: string, now: Date): Promise<PostCar
     platform: post.platform as SocialPlatform,
     listing,
     libraryPhoto: isLibraryPhoto(cover),
+    /* The row's own credit, printed on the card (an archival photograph says 'past festival'; the PM's 15:56). */
+    photoCredit: cover ? (usable?.credit ?? null) : null,
   }
 }
 
