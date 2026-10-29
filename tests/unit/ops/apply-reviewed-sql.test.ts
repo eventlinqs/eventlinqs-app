@@ -23,6 +23,13 @@ describe('reviewedBody', () => {
     expect(reviewedBody(ok.replace('on conflict do nothing;', 'on conflict do nothing;\ncommit;')).refused).toMatch(/never commit itself/)
   })
 
+  test('takes an insert whose select starts its own line, as the AMCF pilot file writes it', () => {
+    const pilot = `begin;\n\ninsert into public.organisers (name, created_by)\nselect a.name, 'x'\n  from public.organisations a where a.slug = 'amcf'\non conflict do nothing;\n\nrollback;\n`
+    const r = reviewedBody(pilot)
+    expect(r.refused).toBeUndefined()
+    expect(r.statements).toBe(1)
+  })
+
   test('refuses a bare select, which a DO block cannot run, and an empty file', () => {
     expect(reviewedBody(ok.replace('update public', 'select count(*) from public.organisers;\nupdate public')).refused).toMatch(/select/)
     expect(reviewedBody('begin;\nrollback;\n').refused).toMatch(/no statement/)

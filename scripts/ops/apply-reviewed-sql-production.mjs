@@ -32,10 +32,11 @@ export function reviewedBody(text) {
   }
   const body = sql.replace(/^begin\s*;/i, '').replace(/\nrollback\s*;$/i, '').trim()
   if (body.includes('$apply$')) return { refused: 'a statement holds $apply$, which would end the DO block it runs in' }
-  if (/^\s*select\b/im.test(body)) return { refused: 'a bare select cannot run inside a DO block; take it out of the file' }
-  const statements = body.split(/;\s*(?:\n|$)/).filter((s) => s.trim().length > 0).length
-  if (statements === 0) return { refused: 'there is no statement between begin and rollback' }
-  return { body, statements }
+  // Judged statement by statement, not line by line: an insert's own select often starts a line of its own.
+  const parts = body.split(/;\s*(?:\n|$)/).filter((s) => s.trim().length > 0)
+  if (parts.some((s) => /^select\b/i.test(s.trim()))) return { refused: 'a bare select cannot run inside a DO block; take it out of the file' }
+  if (parts.length === 0) return { refused: 'there is no statement between begin and rollback' }
+  return { body, statements: parts.length }
 }
 
 function askLine(prompt) {
