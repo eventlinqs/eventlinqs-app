@@ -33,6 +33,7 @@ export type PolicyName =
   | 'newsletter-subscribe'
   | 'partner-enquiry'
   | 'listing-submission'
+  | 'listing-report'
   | 'organiser-media'
   | 'admin-social-press'
   | 'admin-social-plan'
@@ -257,6 +258,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
+  },
+  'listing-report': {
+    keyPrefix: 'listing-rep',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'The Report or remove this listing form on /events/[slug]/report per IP per 10 min (release checklist I5, 29 October 2026). It is public, unauthenticated and writes a row to the admin queue, so it is a table-flooding target. Five covers someone reporting a few nights of one series; a scripted flood is bounded.',
   },
   'admin-social-press': {
     keyPrefix: 'adm-social',

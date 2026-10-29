@@ -35,6 +35,38 @@ export interface QueueItem {
   readonly href: string | null
 }
 
+type Named = { name: string } | { name: string }[] | null
+type Night = { title: string; slug: string } | { title: string; slug: string }[] | null
+
+/**
+ * One open removal request as a queue item. A venue or series request names its target; a night reported from its own
+ * page (the release checklist's I5, 20261029150201) names the night and links to it, and its sender may have given no
+ * name, only maybe an email.
+ */
+export function removalItem(r: {
+  id: string
+  requester_name: string | null
+  requester_email: string | null
+  reason: string
+  created_at: string
+  venues: Named
+  event_series: Named
+  events: Night
+}): QueueItem {
+  const one = <T,>(x: T | T[] | null): T | null => (Array.isArray(x) ? (x[0] ?? null) : x)
+  const venue = one(r.venues)
+  const series = one(r.event_series)
+  const night = one(r.events)
+  const who = r.requester_name ?? (r.requester_email ? `Someone (${r.requester_email})` : 'Someone')
+  return {
+    id: `removal:${r.id}`,
+    what: `${who} asks for ${venue?.name ?? series?.name ?? night?.title ?? 'a listing'} to be taken down`,
+    why: `Their reason: ${r.reason.length > 160 ? `${r.reason.slice(0, 157)}...` : r.reason}. No admin page acts on a removal yet.`,
+    since: r.created_at,
+    href: night?.slug ? `/events/${night.slug}` : null,
+  }
+}
+
 export type SourceRead =
   | { readonly state: 'read'; readonly items: readonly QueueItem[] }
   | { readonly state: 'not_landed'; readonly owner: string }
