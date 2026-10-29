@@ -156,9 +156,11 @@ describe('conversion and view recording integrity', () => {
           eq: () => ({
             eq: () => ({
               eq: () => ({
-                gte: () => ({
-                  limit: () => ({
-                    maybeSingle: async () => ({ data: { id: 'existing-view' }, error: null }),
+                eq: () => ({
+                  gte: () => ({
+                    limit: () => ({
+                      maybeSingle: async () => ({ data: { id: 'existing-view' }, error: null }),
+                    }),
                   }),
                 }),
               }),

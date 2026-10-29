@@ -111,6 +111,11 @@ function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceRepo
               {p.counted.orders === 1 ? 'order' : 'orders'} on EventLinqs ({number(p.counted.tickets)} tickets, {money(p.counted.cents)}).
             </p>
           )}
+          {p.goTaps !== null && p.claimsAfter !== null ? (
+            <p data-piece-poster className="mt-1 text-white/70">
+              {number(p.goTaps)} {p.goTaps === 1 ? 'tap' : 'taps'} through /go; {number(p.claimsAfter)} {p.claimsAfter === 1 ? 'claim' : 'claims'}. {p.claimsWords}
+            </p>
+          ) : null}
         </div>
         <div data-piece-entered>
           <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Entered from the apps</p>

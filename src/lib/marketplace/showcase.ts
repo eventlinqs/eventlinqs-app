@@ -340,7 +340,7 @@ export async function fetchDrawTotalsForArtists(
         (from, to) =>
           admin
             .from('share_link_events')
-            .select('id, link_id, kind, order_id, occurred_at')
+            .select('id, link_id, kind, order_id, occurred_at').eq('is_test', false)
             .in('link_id', chunk)
             .order('id', { ascending: true })
             .range(from, to) as unknown as PromiseLike<PagedResult<EventRow>>,

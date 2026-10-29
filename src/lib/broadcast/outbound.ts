@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isPreviewCrawler } from '@/lib/broadcast/crawler'
+import type { QaPress } from '@/lib/broadcast/qa-marker'
 import { validateExternalTicketUrl } from '@/lib/broadcast/external-destination'
 import { getOrCreateShareLink, recordShareLinkEvent, resolveShareLink, visitorHash } from '@/lib/broadcast/share-links'
 import { buttonOf, providerOf, type BookingLink } from '@/lib/events/booking-links'
@@ -51,7 +52,8 @@ export type OutboundDeps = {
   arrivedBy(code: string | null): Promise<OutboundLink | null>
   /** The event's own share link for channel 'other', minted on first need. */
   ownLink(event: OutboundEvent): Promise<OutboundLink | null>
-  record(linkId: string, visitor: string | null, pressed: { bookingLinkId: string | null; provider: string }): Promise<void>
+  /** isTest: a QA press carrying a verified marker (qa-marker.ts), recorded and counted nowhere. */
+  record(linkId: string, visitor: string | null, pressed: { bookingLinkId: string | null; provider: string }, isTest?: boolean): Promise<void>
   counting(): Promise<boolean>
 }
 
@@ -78,7 +80,7 @@ export function destinationsOf(links: readonly BookingLink[], pages: ListingPage
 
 /** Decides a press: where it goes, and on which link it is counted. Pure over its deps, so the rules are tested alone. */
 export async function followOutbound(
-  input: { slug: string; to: string | null; cookieCode: string | null; userAgent: string | null; ip: string | null },
+  input: { slug: string; to: string | null; cookieCode: string | null; userAgent: string | null; ip: string | null; qa?: QaPress },
   deps: OutboundDeps,
 ): Promise<OutboundAnswer> {
   const event = await deps.findEvent(input.slug)
@@ -92,11 +94,14 @@ export async function followOutbound(
 
   let counted = false
   try {
-    if (!isPreviewCrawler(input.userAgent) && (await deps.counting())) {
+    // A QA press carrying a verified marker is counted as a test even from a crawler agent (qa-marker.ts); an
+    // unverified marker is counted as neither.
+    const qa = input.qa ?? 'none'
+    if (qa !== 'refused' && (qa === 'test' || !isPreviewCrawler(input.userAgent)) && (await deps.counting())) {
       const arrived = await deps.arrivedBy(input.cookieCode)
       const link = arrived && arrived.event_id === event.id ? arrived : await deps.ownLink(event)
       if (link) {
-        await deps.record(link.id, visitorHash(input.ip, input.userAgent), { bookingLinkId: pressed.bookingLinkId, provider: pressed.provider })
+        await deps.record(link.id, visitorHash(input.ip, input.userAgent), { bookingLinkId: pressed.bookingLinkId, provider: pressed.provider }, qa === 'test')
         counted = true
       }
     }
@@ -159,8 +164,8 @@ export function outboundDeps(): OutboundDeps {
       const link = await getOrCreateShareLink({ eventId: event.id, channel: 'other', eventSlug: event.slug })
       return link ? { id: link.id, event_id: link.event_id } : null
     },
-    async record(linkId, visitor, pressed) {
-      await recordShareLinkEvent({ linkId, kind: 'outbound', visitorHash: visitor, outbound: pressed })
+    async record(linkId, visitor, pressed, isTest) {
+      await recordShareLinkEvent({ linkId, kind: 'outbound', visitorHash: visitor, outbound: pressed, isTest: isTest === true })
     },
     counting: () => isFeatureEnabled('broadcast_share'),
   }

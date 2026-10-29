@@ -11,6 +11,7 @@ import {
   visitorHash,
 } from '@/lib/broadcast/share-links'
 import { isPreviewCrawler } from '@/lib/broadcast/crawler'
+import { QA_HEADER, qaPressOf } from '@/lib/broadcast/qa-marker'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 export const runtime = 'nodejs'
@@ -101,7 +102,11 @@ export async function GET(
   // headless and spider catches. Their union is strictly safer than either
   // alone, and a false positive costs one uncounted click while a false
   // negative corrupts an organiser's attribution.
-  if (isLinkPreviewCrawler(userAgent) || isPreviewCrawler(userAgent)) return destination
+  // A QA press carrying a verified marker is recorded as a test even from a crawler agent (qa-marker.ts); an
+  // unverified marker is recorded as neither.
+  const qa = await qaPressOf(request.headers.get(QA_HEADER))
+  if (qa === 'refused') return destination
+  if (qa === 'none' && (isLinkPreviewCrawler(userAgent) || isPreviewCrawler(userAgent))) return destination
 
   const ip =
     request.headers.get('x-real-ip') ??
@@ -111,6 +116,7 @@ export async function GET(
     linkId: link.id,
     kind: 'click',
     visitorHash: visitorHash(ip, userAgent),
+    isTest: qa === 'test',
   }).catch(() => {})
 
   // Last-touch share attribution: the most recent tracked link the browser

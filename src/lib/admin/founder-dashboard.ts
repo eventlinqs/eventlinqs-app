@@ -1,0 +1,236 @@
+import 'server-only'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
+import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
+import { readGrowthWeek } from '@/lib/growth/weekly'
+import { runAllChecks } from '@/lib/health/checks'
+import { weekStartOf } from '@/lib/social/campaign'
+import { formatMoneyDisplay } from '@/lib/money/format'
+import { CREDIT_DAYS } from '@/lib/social/results'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { economicsFigures, kitsSentAndUsed, type DashboardFigure, type DashboardSection } from './founder-dashboard-math'
+
+/**
+ * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
+ * are in ./founder-dashboard-math.ts), read now for /admin/today, under Lawal's queue. Read only. Each figure comes from
+ * the table its owner keeps, or from a reader that already exists (the supply scorecard, the organiser funnel, the
+ * growth week, the platform health checks); a source that cannot be read is NOT COUNTED with its reason, never 0, so
+ * one broken table never blanks the page.
+ */
+
+const DAY_MS = 24 * 60 * 60 * 1000
+/** A count in Australian digit grouping: a number, not a date, so it carries no time zone. */
+const count = new Intl.NumberFormat('en-AU')
+
+type Counted = { readonly value: number | null; readonly note?: string }
+type CountAnswer = { count: number | null; error: { message: string } | null }
+
+async function counted(read: () => PromiseLike<CountAnswer>): Promise<Counted> {
+  try {
+    const { count, error } = await read()
+    if (error) return { value: null, note: `could not be read: ${error.message}` }
+    return { value: count ?? 0 }
+  } catch (err) {
+    return { value: null, note: `could not be read: ${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
+async function settle<T>(read: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; note: string }> {
+  try {
+    return { ok: true, value: await read() }
+  } catch (err) {
+    return { ok: false, note: `could not be read: ${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
+const fig = (label: string, c: Counted, asksForAPerson: boolean, href: string | null, note?: string): DashboardFigure => ({
+  label,
+  value: c.value,
+  asksForAPerson,
+  href,
+  ...(c.note || note ? { note: c.note ?? note } : {}),
+})
+
+export async function readFounderDashboard(now: Date = new Date()): Promise<DashboardSection[]> {
+  const admin = createAdminClient()
+  const weekAgo = new Date(now.getTime() - 7 * DAY_MS).toISOString()
+  const dayAgo = new Date(now.getTime() - DAY_MS).toISOString()
+  const head = { count: 'exact' as const, head: true }
+
+  const [supply, funnel, growth, health, submissions, claims, media, permissions, pressesOut, claimsVerified, failedSends, sentThisWeek, reportsKept, loginFailures, campaign] =
+    await Promise.all([
+      settle(() => readSupplyScorecard(now)),
+      settle(() => readOrganiserFunnel(now)),
+      settle(() => readGrowthWeek(now)),
+      settle(() => runAllChecks()),
+      counted(() => admin.from('listing_submissions').select('id', head).eq('status', 'waiting')),
+      counted(() => admin.from('listing_claims').select('id', head).eq('status', 'manual_open')),
+      counted(() => admin.from('social_assets').select('id', head).eq('approval_status', 'pending')),
+      counted(() => admin.from('organiser_permissions').select('id', head).is('withdrawn_at', null)),
+      counted(() => admin.from('share_link_events').select('id', head).eq('kind', 'outbound').eq('is_test', false).gte('occurred_at', weekAgo)),
+      counted(() => admin.from('listing_claims').select('id', head).in('status', ['verified', 'manual_approved']).gte('verified_at', weekAgo)),
+      counted(() => admin.from('outreach_touches').select('id', head).not('failed_reason', 'is', null).gte('drafted_at', weekAgo)),
+      counted(() => admin.from('outreach_touches').select('id', head).not('sent_at', 'is', null).gte('sent_at', weekAgo)),
+      counted(() => admin.from('organiser_night_reports').select('id', head).gte('read_at', weekAgo)),
+      counted(() => admin.from('audit_log').select('id', head).eq('action', 'admin.session.login.failure').gte('created_at', dayAgo)),
+      settle(async () => {
+        const { data, error } = await admin.from('social_campaigns').select('id').eq('week_start', weekStartOf(now)).limit(1)
+        if (error) throw new Error(error.message)
+        return data?.[0]?.id ?? null
+      }),
+    ])
+
+  // This week's campaign, its pieces and where each stands.
+  const marketing = await settle(async () => {
+    if (!campaign.ok) throw new Error(campaign.note)
+    if (campaign.value === null) return null
+    const { data: pieces, error } = await admin.from('social_pieces').select('id, kind').eq('campaign_id', campaign.value).limit(500)
+    if (error) throw new Error(error.message)
+    const ids = (pieces ?? []).map((p) => p.id)
+    if (ids.length === 0) return { pieces: 0, toApprove: 0, scheduled: 0, held: 0, posted: 0, kits: 0 }
+    const [{ data: approvals, error: aErr }, { data: schedules, error: sErr }, { data: postings, error: pErr }] = await Promise.all([
+      admin.from('social_piece_approvals').select('piece_id').in('piece_id', ids).limit(ids.length * 10),
+      admin.from('social_piece_schedules').select('piece_id, state').in('piece_id', ids).limit(ids.length * 10),
+      admin.from('social_piece_postings').select('piece_id').in('piece_id', ids).neq('post_url', 'sent').limit(ids.length * 10),
+    ])
+    if (aErr || sErr || pErr) throw new Error((aErr ?? sErr ?? pErr)?.message ?? 'unknown')
+    const approved = new Set((approvals ?? []).map((a) => a.piece_id))
+    return {
+      pieces: ids.length,
+      toApprove: ids.filter((id) => !approved.has(id)).length,
+      scheduled: (schedules ?? []).filter((s) => s.state === 'scheduled').length,
+      held: (schedules ?? []).filter((s) => s.state === 'held').length,
+      posted: new Set((postings ?? []).map((p) => p.piece_id)).size,
+      kits: (pieces ?? []).filter((p) => p.kind === 'partner_kit').length,
+    }
+  })
+
+  // Partner kits sent in the credit window, and the real taps on each kit's own link since (the blueprint's 4D).
+  const kits = await settle(async () => {
+    const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
+    const sent = await readEveryRow<{ id: string; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] }>('the partner kits sent', (from, to) =>
+      admin.from('social_pieces').select('id, share_link_id, social_piece_postings!inner(posted_at)').eq('kind', 'partner_kit').gte('social_piece_postings.posted_at', since).order('id', { ascending: true }).range(from, to),
+    )
+    const rows = sent.map((k) => {
+      const went = Array.isArray(k.social_piece_postings) ? k.social_piece_postings[0] : k.social_piece_postings
+      return { sentAt: went ? new Date(went.posted_at).toISOString() : null, linkId: k.share_link_id }
+    })
+    const linkIds = [...new Set(rows.map((k) => k.linkId).filter((v): v is string => v !== null))]
+    const taps =
+      linkIds.length === 0
+        ? []
+        : await readEveryRow<{ id: string; link_id: string; occurred_at: string }>("the taps on the kits' own links", (from, to) =>
+            admin.from('share_link_events').select('id, link_id, occurred_at').eq('kind', 'click').eq('is_test', false).in('link_id', linkIds).gte('occurred_at', since).order('id', { ascending: true }).range(from, to),
+          )
+    return kitsSentAndUsed(rows, taps.map((t) => ({ linkId: t.link_id, at: new Date(t.occurred_at).toISOString() })), now)
+  })
+
+  const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
+    supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
+  const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
+  const step = (stage: string): Counted => {
+    if (!funnel.ok) return { value: null, note: funnel.note }
+    const s = funnel.value.steps.find((x) => x.stage === stage)
+    return s?.organisers === null || s === undefined ? { value: null, note: 'its table is not on this database' } : { value: s.organisers }
+  }
+  const m = (pick: (v: { pieces: number; toApprove: number; scheduled: number; held: number; posted: number; kits: number }) => number): Counted =>
+    !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
+  const g = growth.ok ? growth.value.lastFigures : null
+  const failing = health.ok ? health.value.filter((r) => !r.ok) : null
+  const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
+  const environment = process.env.VERCEL_ENV ?? 'local'
+
+  const notPlanned = marketing.ok && marketing.value === null
+  const newNights = sum((c) => c.newThisWeek).value
+  const posted = m((v) => v.posted).value
+
+  return [
+    {
+      key: 'events',
+      title: 'Events',
+      figures: [
+        fig('Expiring in 7 days', sum((c) => c.expiringSoon), true, '/admin/collected', 'their source check lapses; re-check or they leave the site'),
+        fig('Awaiting a check', awaiting, true, '/admin/collected'),
+        fig('Missing a category', sum((c) => c.missingCategory), true, '/admin/events'),
+        fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'),
+        fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'),
+      ],
+      done: newNights === null ? [] : [`${count.format(newNights)} ${newNights === 1 ? 'night' : 'nights'} published this week`],
+    },
+    {
+      key: 'organisers',
+      title: 'Organisers',
+      figures: [
+        fig('Submissions waiting', submissions, true, '/admin/submissions'),
+        fig('Claims to decide by hand', claims, true, null, 'listed in the queue above'),
+        fig('Images awaiting approval', media, true, '/admin/social'),
+        fig('Organisers found', step('found'), false, '/admin/growth'),
+        fig('Invited', step('invited'), false, '/admin/growth'),
+        fig('Claimed their listing', step('claimed'), false, '/admin/growth'),
+        fig('Permissions given', permissions, false, null),
+        fig('Recurring partners', sum((c) => c.recurringSuppliers), false, '/admin/growth'),
+      ],
+      done: [],
+    },
+    {
+      key: 'marketing',
+      title: 'Marketing',
+      figures: [
+        ...(notPlanned ? [fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week')] : []),
+        fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'),
+        fig('Held from posting', m((v) => v.held), true, '/admin/social'),
+        fig('Pieces this week', m((v) => v.pieces), false, '/admin/social'),
+        fig('Scheduled to post', m((v) => v.scheduled), false, '/admin/social'),
+        fig('Partner kits this week', m((v) => v.kits), false, '/admin/social'),
+        fig(`Partner kits sent, ${CREDIT_DAYS} days`, kits.ok ? { value: kits.value.sent } : { value: null, note: kits.note }, false, '/admin/growth/social-report'),
+        fig(
+          'Of those, used',
+          kits.ok ? { value: kits.value.used } : { value: null, note: kits.note },
+          false,
+          '/admin/growth/social-report',
+          kits.ok && kits.value.withoutALink > 0
+            ? `its own link tapped at least once since it went; ${kits.value.withoutALink} sent without a link of its own cannot be judged`
+            : 'its own link tapped at least once since it went; a kit sent is not a kit used',
+        ),
+      ],
+      done: posted === null || posted === 0 ? [] : [`${count.format(posted)} ${posted === 1 ? 'piece' : 'pieces'} posted this week`],
+    },
+    {
+      key: 'conversion',
+      title: 'Revenue and conversion',
+      figures: [
+        fig('Paid orders last week', g ? { value: g.conversion.orders } : { value: null, note: growth.ok ? undefined : growth.note }, false, '/admin/growth'),
+        {
+          ...fig('Order value last week', g ? { value: g.conversion.orderValueCents } : { value: null }, false, '/admin/growth'),
+          ...(g ? { display: formatMoneyDisplay(g.conversion.orderValueCents, 'AUD') } : {}),
+        },
+        fig('Presses out to booking sites, 7 days', pressesOut, false, '/admin/growth', 'a press is a person heading to the tickets, never a sale'),
+        fig('Claims verified, 7 days', claimsVerified, false, null),
+        fig('New subscribers last week', g ? { value: g.engagement.subscribers } : { value: null }, false, '/admin/growth'),
+      ],
+      done: [],
+    },
+    {
+      key: 'economics',
+      title: 'Economics',
+      figures: g
+        ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health })
+        : [fig('Gross ticket sales last week', { value: null, note: growth.ok ? undefined : growth.note }, false, '/admin/growth')],
+      done: [],
+    },
+    {
+      key: 'operations',
+      title: 'Operations',
+      figures: [
+        fig('Health checks failing', failing === null ? { value: null, note: health.ok ? undefined : health.note } : { value: failing.length }, true, '/admin/health', failing && failing.length > 0 ? failing.map((f) => f.label).join(', ') : undefined),
+        fig('Messages that failed to send, 7 days', failedSends, true, null),
+        fig('Admin sign-in failures, 24 hours', loginFailures, true, '/admin/audit'),
+        { label: 'Production', value: 0, asksForAPerson: false, href: null, display: commit ? `${environment}, ${commit}` : environment },
+      ],
+      done: [
+        ...(reportsKept.value ? [`${count.format(reportsKept.value)} after-the-night ${reportsKept.value === 1 ? 'report' : 'reports'} kept`] : []),
+        ...(sentThisWeek.value ? [`${count.format(sentThisWeek.value)} outreach ${sentThisWeek.value === 1 ? 'message' : 'messages'} sent`] : []),
+      ],
+    },
+  ]
+}

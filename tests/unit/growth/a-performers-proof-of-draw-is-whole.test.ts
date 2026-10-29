@@ -73,7 +73,9 @@ function server(
   const requests: Request[] = []
   const client = {
     from(table: string) {
-      let rows = [...(tables[table] ?? [])]
+      // A share_link_events row carries is_test false unless a QA press made it, as the column's default does
+      // (20261029220001); the readers leave QA presses out with .eq('is_test', false).
+      let rows = [...(tables[table] ?? [])].map((r) => (table === 'share_link_events' && !('is_test' in r) ? { ...r, is_test: false } : r))
       let lo = 0
       let hi = Number.MAX_SAFE_INTEGER
       let single = false

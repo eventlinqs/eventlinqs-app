@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { SHARE_COOKIE } from '@/lib/broadcast/share-codes'
 import { followOutbound, outboundDeps } from '@/lib/broadcast/outbound'
+import { QA_HEADER, qaPressOf } from '@/lib/broadcast/qa-marker'
 
 /**
  * /out/[slug]: a curated listing's one button out to the organiser's own page or booking site, counted on the way
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       cookieCode: request.cookies.get(SHARE_COOKIE)?.value ?? null,
       userAgent: request.headers.get('user-agent'),
       ip: request.headers.get('x-real-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      qa: await qaPressOf(request.headers.get(QA_HEADER)),
     },
     outboundDeps(),
   )
