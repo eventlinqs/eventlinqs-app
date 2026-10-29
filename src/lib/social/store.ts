@@ -636,7 +636,8 @@ export async function pieceDependencies(
   const path = new URL(String(piece.link)).pathname
   const page = await answers(fetcher, `${opts.siteOrigin.replace(/\/$/, '')}${path}`)
   if (!page.ok) issues.push(`Its page ${path} answers ${page.status ?? 'nothing'}.`)
-  else if (String(piece.kind) !== 'partner_kit') {
+  // A partner kit's and a daily poster's link is the night's own /e/ link, which opens that night's page itself.
+  else if (String(piece.kind) !== 'partner_kit' && String(piece.kind) !== 'daily_poster') {
     for (const id of ids) {
       const e = byId.get(id)
       if (e && !page.body.includes(`/events/${String(e.slug)}`)) issues.push(`${String(e.title)}: ${path} does not list it, so the post would send people to a page without it.`)
