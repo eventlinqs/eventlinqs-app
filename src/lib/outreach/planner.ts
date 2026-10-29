@@ -225,12 +225,12 @@ export function anythingComingUpRefusal(p: PartnerState, now: Date): string | nu
 }
 
 type DraftTally = { queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDue: { organiserId: string; why: string }[] }
-/** Message 9's tally at the top level; message 8's in afterNight. */
-export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally }
+/** Message 9's tally at the top level; message 8's in afterNight; message 7's in featured. */
+export type RelationshipReport = DraftTally & { partners: number; afterNight: DraftTally; featured: DraftTally }
 
 /** organisers, when named, limits the run to them (the TEST drive's own), as planDms does. */
 export async function planRelationship(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<RelationshipReport> {
-  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] } }
+  const report: RelationshipReport = { partners: 0, queued: 0, held: [], refused: [], notDue: [], afterNight: { queued: 0, held: [], refused: [], notDue: [] }, featured: { queued: 0, held: [], refused: [], notDue: [] } }
   const yes = await db.from('outreach_replies').select('contact_id, received_at').in('outcome', ['yes', 'interested']).order('received_at', { ascending: false })
   if (yes.error) throw new Error(`outreach_replies: ${yes.error.message}`)
   const consent = await db.from('organiser_contacts').select('id').eq('basis', 'express_consent').eq('channel', 'email')
@@ -337,7 +337,91 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     else if (r.value.state === 'held') report.afterNight.held.push({ contactId, why: r.value.heldBecause })
     else report.afterNight.queued++
   }
+
+  // Message 7: each approved partner kit of the last fortnight, once a post naming its night has gone out.
+  const kits = await db
+    .from('social_pieces')
+    .select('id, city, link')
+    .eq('kind', 'partner_kit')
+    .gte('planned_at', new Date(deps.now.getTime() - FEATURED_LOOKBACK_DAYS * 86_400_000).toISOString())
+    .order('planned_at')
+    .limit(200)
+  if (kits.error) throw new Error(`social_pieces: ${kits.error.message}`)
+  for (const kit of kits.data ?? []) {
+    const already = await db.from('outreach_touches').select('id').eq('tracked_link', kit.link).neq('state', 'void').limit(1)
+    if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
+    if ((already.data ?? []).length > 0) continue
+    const approval = await db.from('social_piece_approvals').select('revision').eq('piece_id', kit.id).order('approved_at', { ascending: false }).limit(1)
+    if (approval.error) throw new Error(`social_piece_approvals: ${approval.error.message}`)
+    if (!approval.data?.[0]) continue
+    const rev = await db.from('social_piece_revisions').select('event_ids, caption').eq('piece_id', kit.id).eq('version', approval.data[0].revision).maybeSingle()
+    if (rev.error) throw new Error(`social_piece_revisions: ${rev.error.message}`)
+    const eventId = rev.data?.event_ids?.[0]
+    if (!eventId) continue
+    const event = await db.from('events').select('title, venue_id').eq('id', eventId).maybeSingle()
+    if (event.error) throw new Error(`events: ${event.error.message}`)
+    if (!event.data?.venue_id) continue
+    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
+    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
+    if (!organiserId) continue
+    const wentOutAt = await postNamingNightWentOut(db, eventId, kit.id)
+    if (!wentOutAt) {
+      report.featured.notDue.push({ organiserId, why: 'no post naming the night has gone out yet' })
+      continue
+    }
+    const city = await db.from('cities').select('name').eq('slug', kit.city).maybeSingle()
+    if (city.error) throw new Error(`cities: ${city.error.message}`)
+    const contactId = byOrganiser.get(organiserId)!
+    const r = await draftFromTemplate(db, {
+      contactId,
+      templateKey: 'featured',
+      purpose: 'relationship',
+      extraFields: featuredFields({ title: event.data.title, cityName: city.data?.name ?? null, wentOutAt, caption: rev.data?.caption ?? null, link: kit.link, images: null }),
+      trackedLink: kit.link,
+      scheduledFor: deps.now,
+      origin: deps.origin,
+      draftedBy: deps.actingUser,
+    })
+    if (r.state === 'refused') report.featured.refused.push({ contactId, why: r.reason })
+    else if (r.value.state === 'held') report.featured.held.push({ contactId, why: r.value.heldBecause })
+    else report.featured.queued++
+  }
   return report
+}
+
+/** When a post naming the night, other than the partner's own kit, first went out: recorded posted, or published. */
+async function postNamingNightWentOut(db: Admin, eventId: string, kitId: string): Promise<Date | null> {
+  const revisions = await db.from('social_piece_revisions').select('piece_id').contains('event_ids', [eventId]).neq('piece_id', kitId).limit(200)
+  if (revisions.error) throw new Error(`social_piece_revisions: ${revisions.error.message}`)
+  const pieceIds = [...new Set((revisions.data ?? []).map((r) => r.piece_id))]
+  if (pieceIds.length === 0) return null
+  const posted = await db.from('social_piece_postings').select('posted_at').in('piece_id', pieceIds).neq('post_url', 'sent').order('posted_at').limit(1)
+  if (posted.error) throw new Error(`social_piece_postings: ${posted.error.message}`)
+  const published = await db.from('social_piece_schedules').select('published_at').in('piece_id', pieceIds).eq('state', 'published').order('published_at').limit(1)
+  if (published.error) throw new Error(`social_piece_schedules: ${published.error.message}`)
+  const times = [posted.data?.[0]?.posted_at, published.data?.[0]?.published_at].filter((t): t is string => typeof t === 'string').map((t) => new Date(t))
+  return times.length === 0 ? null : new Date(Math.min(...times.map((t) => t.getTime())))
+}
+
+/**
+ * MESSAGE 7, YOU'RE FEATURED (the PM's messages file; the engine plan's part G: "kit sent to the organiser when their
+ * post goes out"; the PM's ruling of 29 October, 16:28). The kit is window 3's partner_kit piece: its approved caption and
+ * its own tracked link. Its images have no public address yet (they render behind /admin), so the image fields stay
+ * empty and the message is held for Lawal until one exists; everything else is filled.
+ */
+export const FEATURED_LOOKBACK_DAYS = 14
+
+export function featuredFields(k: { title: string; cityName: string | null; wentOutAt: Date; caption: string | null; link: string; images: { feed: string; story: string } | null }): Record<string, string | null> {
+  return {
+    night: k.title,
+    city: k.cityName,
+    day: new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'Australia/Melbourne' }).format(k.wentOutAt),
+    caption: k.caption,
+    'tracked link': k.link,
+    'feed image': k.images?.feed ?? null,
+    'story version': k.images?.story ?? null,
+  }
 }
 
 /**

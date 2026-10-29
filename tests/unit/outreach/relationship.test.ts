@@ -5,6 +5,7 @@ import {
   ANYTHING_COMING_UP_DAYS,
   afterYourNightFields,
   afterYourNightRefusal,
+  featuredFields,
   anythingComingUpRefusal,
   type PartnerState,
 } from '@/lib/outreach/planner'
@@ -72,5 +73,32 @@ describe('message 8, after your night', () => {
 
   test('figures that are not the shape window 5 writes fill nothing', () => {
     expect(afterYourNightFields({}, 'Trivia at Bonnibel')).toMatchObject({ views: null, clicks: null, 'share clicks': null })
+  })
+})
+
+/* Message 7, YOU'RE FEATURED (the PM's messages file; the engine plan's part G: "kit sent to the organiser when their
+   post goes out"; the PM's 16:28: each once, held on a missing field). */
+describe('message 7, you\'re featured', () => {
+  const kit = { title: 'Trivia at Bonnibel', cityName: 'Melbourne', wentOutAt: new Date('2026-10-29T08:00:00Z'), caption: 'Trivia at Bonnibel, featured on EventLinqs this week.', link: 'https://www.eventlinqs.com.au/e/abc123' }
+
+  test('the kit fills the message: the night, the city, the day the post went out in Melbourne, the caption, their own link', () => {
+    expect(featuredFields({ ...kit, images: { feed: 'https://x/feed.png', story: 'https://x/story.png' } })).toEqual({
+      night: 'Trivia at Bonnibel',
+      city: 'Melbourne',
+      day: 'Thursday',
+      caption: 'Trivia at Bonnibel, featured on EventLinqs this week.',
+      'tracked link': 'https://www.eventlinqs.com.au/e/abc123',
+      'feed image': 'https://x/feed.png',
+      'story version': 'https://x/story.png',
+    })
+  })
+
+  test('the day is Melbourne\'s: late on Wednesday in UTC is Thursday morning there', () => {
+    expect(featuredFields({ ...kit, wentOutAt: new Date('2026-10-28T22:30:00Z'), images: null }).day).toBe('Thursday')
+  })
+
+  test('with no public image address the image fields stay empty, so the message is held for Lawal', () => {
+    const f = featuredFields({ ...kit, images: null })
+    expect([f['feed image'], f['story version']]).toEqual([null, null])
   })
 })
