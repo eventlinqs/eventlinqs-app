@@ -48,6 +48,12 @@ describe("a night's words, from its facts alone", () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z' }))
     expect(w).toMatchObject({ entry: 'Free, no ticket needed', action: 'View event details', eyebrow: 'Live at The Barwon Club', city: 'Geelong' })
   })
+  it('says "Live at" only for a performance: a trivia night is "At" its venue (found by eye on demonstration D)', () => {
+    const at = (categorySlug: string) => nightWords(night({ at: '2026-10-29T07:00:00Z', categorySlug, venueName: 'Bonnibel' })).eyebrow
+    expect(at('nightlife')).toBe('At Bonnibel')
+    expect(at('music')).toBe('Live at Bonnibel')
+    expect(at('comedy')).toBe('Live at Bonnibel')
+  })
   it('an outside ticketed night names its provider and never claims EventLinqs ticketing (E4, E7)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { externalTicketUrl: 'https://www.geelongartscentre.org.au/x', providerName: 'Geelong Arts Centre' } }))
     expect(w.action).toBe('View tickets at Geelong Arts Centre')
@@ -128,5 +134,17 @@ describe('one night per title in a set', () => {
     const { nights } = selectNights([sat, sun, other], 5)
     expect(nights.map((n) => n.title)).toEqual(['The Melbourne Book Market', 'Run the Tan'])
     expect(nights[0].eventId).toBe(sat.eventId)
+  })
+
+  it('the venue spotlight lists a title once too, its sooner date (A5, found by the review queue drive on TEST)', () => {
+    const at = (iso: string, title: string) => night({ at: iso, title, host: 'Hop Temple', venueName: 'Hop Temple', citySlug: 'ballarat', cityName: 'Ballarat' })
+    const thu = at('2026-10-29T09:00:00Z', 'Trivia at Hop Temple')
+    const fri = at('2026-10-30T09:00:00Z', 'Trivia at Hop Temple')
+    const sat = at('2026-10-31T09:00:00Z', 'Hop Temple Sessions')
+    const plan = planCampaign({ nights: [thu, fri, sat], cities: [{ slug: 'ballarat', name: 'Ballarat' }], weekStart: '2026-10-26', origin: 'https://www.eventlinqs.com.au' })
+    const spot = plan.pieces.find((p) => p.kind === 'venue_spotlight')
+    expect(spot?.eventIds).toEqual([thu.eventId, sat.eventId])
+    const programme = spot?.slides.find((s) => s.t === 'programme')
+    expect(programme && 'rows' in programme ? programme.rows.map((r) => r.title) : []).toEqual(['Trivia at Hop Temple', 'Hop Temple Sessions'])
   })
 })

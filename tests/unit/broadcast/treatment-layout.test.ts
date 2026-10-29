@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { contrast, FitError, GEOMETRY, layoutBrand, layoutCover, layoutEnd, layoutFaults, layoutNight, layoutOffer, layoutProgramme, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
+import { contrast, FitError, GEOMETRY, INK_CLEAR_LEADING, layoutBrand, layoutCover, layoutEnd, layoutFaults, layoutNight, layoutOffer, layoutProgramme, leadingFor, rgbOf, type Layout, type Measurers, type NightWords, type TreatmentFormat } from '@/lib/broadcast/treatment-layout'
 import { enlargement, formatsOf, MAX_ENLARGEMENT } from '@/lib/broadcast/campaign-slides'
 import { treatmentMeasurers } from '@/lib/broadcast/treatments'
 
@@ -117,6 +117,28 @@ describe('every night, every format', () => {
   })
 })
 
+describe("a title's lines never draw into each other", () => {
+  /* Found by eye on demonstration D (29 October 2026): "Biggest" over "Treat" and "Lounge" over "Music", at 0.86. */
+  const titled = (title: string) => ({ ...base, title, eyebrow: 'At The District Docklands', city: 'Melbourne' })
+  for (const f of FORMATS) {
+    it(`a descender above another line clears the measured ink, ${f}`, () => {
+      for (const title of ["Melbourne's Biggest Trick or Treat Trail", 'Lounge Bar Live Music']) {
+        const run = layoutNight(f, titled(title), m).runs.find((r) => r.role === 'title')
+        expect(run && run.lines.length > 1, `${title} breaks over lines at ${f}`).toBe(true)
+        const above = run!.lines.slice(0, -1).some((l) => /[gjpqy]/.test(l))
+        if (above) expect(run!.lineHeight, `${title} at ${f}: ${run!.lines.join(' / ')}`).toBeGreaterThanOrEqual(0.947)
+        expectClean(layoutNight(f, titled(title), m))
+      }
+    })
+  }
+
+  it('keeps the tight leading of the reference where nothing descends above a line', () => {
+    expect(leadingFor(['KATE', 'CEBERANO'], 0.86)).toBe(0.86)
+    expect(leadingFor(['Big Night', 'Out'], 0.86)).toBe(INK_CLEAR_LEADING)
+    expect(leadingFor(['Out', 'Big Night'], 0.86)).toBe(0.86)
+  })
+})
+
 describe('a title is a fact', () => {
   it('is refused, never cut, when it cannot fit at the smallest size', () => {
     const long = Array.from({ length: 40 }, (_, i) => `Word${i}`).join(' ')
@@ -138,7 +160,7 @@ describe('the brand piece and the organiser campaign', () => {
     })
     it(`the organiser campaign fits (${f})`, () => {
       expectClean(
-        layoutOffer(f, { eyebrow: 'For venues and organisers', headline: 'Run regular nights in Victoria?', points: ['List them on EventLinqs for free.', 'We put them in front of people looking for something to do this week.', 'Each week we send you a post of your own to share, with a link that counts who it sends.'], url: 'eventlinqs.com.au/for-organisers' }, m),
+        layoutOffer(f, { eyebrow: 'For venues and organisers', headline: 'Run regular nights in Victoria?', points: ['List them on EventLinqs for free.', 'We put them in front of people looking for something to do this week.', 'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.'], url: 'eventlinqs.com.au/for-organisers' }, m),
       )
     })
   }
@@ -209,6 +231,20 @@ describe('the cover, the programme and the close are measured too', () => {
           { day: 'SUN', title: 'Sunday Makers', meta: '10am · Free entry' },
         ] }, m),
       )
+    })
+    it(`a short programme fills its slide, not its top half (${f})`, () => {
+      const rows = [
+        { day: 'THU', title: 'Toddler Time', meta: '10.30am · Free entry' },
+        { day: 'FRI', title: 'Baby Rhyme Time', meta: '10.30am · Free entry' },
+        { day: 'FRI', title: 'Beyond the Books: Board Games, Roll and Relax', meta: '5pm · Free entry' },
+      ]
+      const l = layoutProgramme(f, { heading: 'This week at Goldfields Libraries (Bendigo Library)', address: 'Goldfields Libraries (Bendigo Library), Bendigo', label: '2/2', rows }, m)
+      expectClean(l)
+      const g = GEOMETRY[f]
+      const address = l.runs.find((r) => r.role === 'address')!
+      const bottom = address.y + address.lines.length * address.size * address.lineHeight
+      const limit = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 50) - g.stickerZone
+      expect(bottom, `the rows end at ${Math.round(bottom)} of ${limit}`).toBeGreaterThan(limit * 0.7)
     })
     it(`the close fits on its gold (${f})`, () => {
       const l = layoutEnd(f, { headline: 'Plan the weekend.', line: 'Every free thing on in Melbourne this week, by day, with times and maps:', url: 'eventlinqs.com.au/free/melbourne/this-week', foot: 'Save this for Saturday.', label: '7/7' }, m)
