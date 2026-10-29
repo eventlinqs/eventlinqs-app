@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import type * as SlidesModule from '@/lib/broadcast/campaign-slides'
 import type * as StoreModule from '@/lib/social/store'
+import type * as ReelModule from '@/lib/social/reel-video'
 
 const EMPTY = fileURLToPath(new URL('../../tests/stubs/empty.ts', import.meta.url))
 const cjs = Module as unknown as { _resolveFilename: (request: string, ...rest: unknown[]) => string }
@@ -28,6 +29,7 @@ cjs._resolveFilename = (request: string, ...rest: unknown[]) =>
 const pick = <T,>(mod: T & { default?: T }) => (mod.default ?? mod) as T
 const slides = pick((await import('@/lib/broadcast/campaign-slides')) as typeof SlidesModule & { default?: typeof SlidesModule })
 const store = pick((await import('@/lib/social/store')) as typeof StoreModule & { default?: typeof StoreModule })
+const reelVideo = pick((await import('@/lib/social/reel-video')) as typeof ReelModule & { default?: typeof ReelModule })
 
 /*
  * --now <ISO time>: plan the week holding that moment instead of today's (the project manager's 21:48 of 29 October
@@ -59,14 +61,27 @@ for (const [pieceNo, p] of campaign.pieces.entries()) {
   const qa = await slides.visualFaults(rev.slides, p.format, images)
   faults += qa.length
   const files: string[] = []
+  const stem = `${String(pieceNo + 1).padStart(2, '0')}-${p.kind}-${p.city}${p.partnerName ? `-${p.partnerName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''}`
+  const storyFrames: Uint8Array[] = []
   for (const f of slides.formatsOf(p.format)) {
     for (const [i, s] of rev.slides.entries()) {
       const bytes = await slides.renderCampaignSlide(f, s, i + 1, rev.slides.length, null, images.get(i) ?? null)
       const name = `${String(pieceNo + 1).padStart(2, '0')}-${p.kind}-${p.city}${p.partnerName ? `-${p.partnerName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''}-${String(i + 1).padStart(2, '0')}-${f === 'feed' ? 'portrait' : f}`
       writeFileSync(join(out, `${name}.jpg`), bytes)
+      if (f === 'story') storyFrames.push(bytes)
       if (i === 0) await sharp(Buffer.from(bytes)).resize({ width: 390 }).png().toFile(join(out, `${name}-phone-390.png`))
       files.push(`${name}.jpg`)
     }
+  }
+  // The register's row K8 (the output matrix): each platform's own words, as the founder copies them from /admin/social.
+  for (const platform of ['instagram', 'facebook'] as const) {
+    writeFileSync(join(out, `${stem}-${platform}-caption.txt`), `${rev.versions[platform].caption}\n`)
+    files.push(`${stem}-${platform}-caption.txt`)
+  }
+  // The register's row C5: Wednesday's Discovery Reel as the one MP4 /admin/social exports, from these same story frames.
+  if (p.kind === 'discovery_reel' && storyFrames.length > 0) {
+    writeFileSync(join(out, `${stem}-reel.mp4`), await reelVideo.encodeReel(storyFrames))
+    files.push(`${stem}-reel.mp4`)
   }
   report.push({
     piece: p.kind,
