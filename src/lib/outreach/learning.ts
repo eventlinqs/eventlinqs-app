@@ -12,7 +12,9 @@
  *     "min{N p0, N(1-p0)} >= 5" and "valid for large N, (N > 30)";
  *   - the critical value, 1.3.6.7.1 (https://www.itl.nist.gov/div898/handbook/eda/section3/eda3671.htm): 1.645 at
  *     p = 0.950.
- * ALPHA itself is a CHOICE, not a fact: 0.05, named here for the project manager or Lawal to confirm or change.
+ * ALPHA itself is a CHOICE, not a fact: 0.05 one-sided, CONFIRMED by the project manager's ruling of 29 October 2026,
+ * 21:01 (with at least 31 sent per half, np >= 5 on both halves, judged once after 14 days, verified claims only);
+ * Lawal may change it later, here, and the judgement row records the value it was judged with.
  *
  * A test is judged ONCE, when both halves have reached the size the play declared at approval and the claim window has
  * passed: judging it every run would be looking again and again at a test made for one look, which raises the chance of
@@ -57,8 +59,8 @@ export function halfOf(contactId: string): Half {
 
 /**
  * The claim window, a CHOICE, not a fact: a test is judged 14 days after its last first message went, so the cadence's
- * own day 10 close has gone out and a few days more are left for the organiser to claim. For the project manager or
- * Lawal to confirm or change.
+ * own day 10 close has gone out and a few days more are left for the organiser to claim. Confirmed by the project
+ * manager's ruling of 29 October 2026, 21:01.
  */
 export const CLAIM_WINDOW_DAYS = 14
 
