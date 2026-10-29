@@ -16,6 +16,7 @@
  * (correction 3).
  */
 import type { Cta } from '@/lib/events/cta'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import { FitError, GEOMETRY, GOLD, INK, NAVY, breakLines, fit, groundFor, type Block, type Layout, type Measurers, type Run, type TreatmentFormat } from './treatment-layout'
 
 /** The verified facts of one night a poster is made from. */
@@ -102,7 +103,8 @@ export function posterWords(n: PosterNight, format: TreatmentFormat): PosterWord
   const start = clockOf(n.startDate, tz)
   const sameDay = n.endDate ? dayKey(n.endDate, tz) === dayKey(n.startDate, tz) : false
   const time = n.endDate && sameDay ? `${start} to ${clockOf(n.endDate, tz)}` : `From ${start}`
-  const venue = [n.venueName, streetOf(n.venueAddress, n.venueName, n.cityName), n.cityName].filter((s): s is string => Boolean(s && s.trim())).join(', ')
+  // The one venue formatter (src/lib/venues/format-venue-address.ts): the name once, then the place, then the town.
+  const venue = formatVenueWithAddress({ name: n.venueName, address: streetOf(n.venueAddress, n.venueName, n.cityName), city: n.cityName }) ?? n.cityName
 
   const verifiedFree = n.cta.state === 'free_open' || n.cta.state === 'free_registration'
   const chips: PosterChip[] = []
