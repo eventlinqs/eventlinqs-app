@@ -56,9 +56,20 @@ export interface GrowthWeek {
 }
 
 export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek> {
-  const admin = createAdminClient()
   const { last, before } = lastWeeks(now)
-  const since = new Date(new Date(before.from).getTime() - LOOKBACK_DAYS * DAY_MS).toISOString()
+  const { rows, unreadVisitRows } = await readGrowthRows(before.from, last.to)
+  return { last, before, lastFigures: figuresFor(rows, last), beforeFigures: figuresFor(rows, before), best: bestOfWeek(rows, last), victoria: stateScorecard(rows, last, before, VICTORIA), unreadVisitRows }
+}
+
+/**
+ * The rows behind any run of whole weeks from `spanFrom` to `spanTo`: the visits from 90 days before `spanFrom` (so a visitor seen
+ * then counts as returning), the demand, saves, subscribers and refunds inside the span, every listing, and every order
+ * before `spanTo`. The growth page reads its two weeks through it, and the social report (./social-report.ts) its campaign
+ * weeks, so both count from the same rows.
+ */
+export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<{ readonly rows: Rows; readonly unreadVisitRows: number }> {
+  const admin = createAdminClient()
+  const since = new Date(new Date(spanFrom).getTime() - LOOKBACK_DAYS * DAY_MS).toISOString()
 
   const [visitRows, demandRows, listingRows, saveRows, subscriberRows, orderRows, refundRows] = await Promise.all([
     readEveryRow<{ occurrence_key: string; occurred_at: string; referrer: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null }>(
@@ -70,7 +81,7 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
           .eq('kind', 'demand')
           .eq('demand_action', 'page_view')
           .gte('occurred_at', since)
-          .lt('occurred_at', last.to)
+          .lt('occurred_at', spanTo)
           .order('id', { ascending: true })
           .range(from, to),
     ),
@@ -80,8 +91,8 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
         .select('demand_action, occurred_at')
         .eq('kind', 'demand')
         .in('demand_action', ['calendar_add', 'share', 'follow'])
-        .gte('occurred_at', before.from)
-        .lt('occurred_at', last.to)
+        .gte('occurred_at', spanFrom)
+        .lt('occurred_at', spanTo)
         .order('id', { ascending: true })
         .range(from, to),
     ),
@@ -95,17 +106,17 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
           .range(from, to),
     ),
     readEveryRow<{ created_at: string }>('the saves for the growth page', (from, to) =>
-      admin.from('saved_events').select('created_at').gte('created_at', before.from).lt('created_at', last.to).order('id', { ascending: true }).range(from, to),
+      admin.from('saved_events').select('created_at').gte('created_at', spanFrom).lt('created_at', spanTo).order('id', { ascending: true }).range(from, to),
     ),
     readEveryRow<{ confirmed_at: string | null }>('the new subscribers for the growth page', (from, to) =>
-      admin.from('email_subscribers').select('confirmed_at').gte('confirmed_at', before.from).lt('confirmed_at', last.to).order('id', { ascending: true }).range(from, to),
+      admin.from('email_subscribers').select('confirmed_at').gte('confirmed_at', spanFrom).lt('confirmed_at', spanTo).order('id', { ascending: true }).range(from, to),
     ),
     readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null }>('the orders for the growth page', (from, to) =>
       admin
         .from('orders')
         .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents')
         .eq('currency', 'AUD')
-        .lt('created_at', last.to)
+        .lt('created_at', spanTo)
         .order('id', { ascending: true })
         .range(from, to),
     ),
@@ -114,8 +125,8 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
         .from('refunds')
         .select('amount_cents, status, created_at')
         .eq('currency', 'AUD')
-        .gte('created_at', before.from)
-        .lt('created_at', last.to)
+        .gte('created_at', spanFrom)
+        .lt('created_at', spanTo)
         .order('id', { ascending: true })
         .range(from, to),
     ),
@@ -157,5 +168,5 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
     refunds: refundRows.map((r) => ({ amountCents: Number(r.amount_cents ?? 0), status: r.status, at: iso(r.created_at) })),
   }
 
-  return { last, before, lastFigures: figuresFor(rows, last), beforeFigures: figuresFor(rows, before), best: bestOfWeek(rows, last), victoria: stateScorecard(rows, last, before, VICTORIA), unreadVisitRows }
+  return { rows, unreadVisitRows }
 }

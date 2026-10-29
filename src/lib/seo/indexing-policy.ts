@@ -208,6 +208,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/admin/events/[id]', klass: 'never', why: 'staff only' },
   { route: '/admin/flags', klass: 'never', why: 'staff only' },
   { route: '/admin/growth', klass: 'never', why: 'staff only' },
+  { route: '/admin/growth/social-report', klass: 'never', why: 'staff only' },
   { route: '/admin/roundup', klass: 'never', why: 'staff only' },
   { route: '/admin/partners', klass: 'never', why: 'staff only' },
   { route: '/admin/promotions', klass: 'never', why: 'staff only' },

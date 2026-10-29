@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { noIndexMetadata } from '@/lib/seo/indexing-policy'
 import { isHubspotContactId } from '@/lib/outreach/unsubscribe'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 import { OutreachUnsubscribeForm } from './outreach-unsubscribe-form'
 
 export const metadata: Metadata = {
@@ -17,7 +18,8 @@ type Props = { searchParams: Promise<{ [key: string]: string | string[] | undefi
  * THE UNSUBSCRIBE PAGE FOR THE FOUNDER'S ONE TO ONE OUTREACH EMAILS.
  *
  * Linked from the footer of every outreach message as
- * https://www.eventlinqs.com.au/unsubscribe/outreach?id=<HubSpot contact id>.
+ * https://www.eventlinqs.com.au/unsubscribe/outreach?id=<HubSpot contact id>, and the CRM's own emails as
+ * ?t=<organiser_contacts.unsubscribe_token> (migration 20261028221001), which names the contact so no address is asked.
  * A static segment, so it wins over the sibling /unsubscribe/[token] for this
  * one path and leaves every token in that family untouched.
  *
@@ -32,9 +34,10 @@ type Props = { searchParams: Promise<{ [key: string]: string | string[] | undefi
  * all fetched 2026-10-03) are in src/lib/outreach/unsubscribe.ts.
  */
 export default async function OutreachUnsubscribePage({ searchParams }: Props) {
-  const { id } = await searchParams
+  const { id, t } = await searchParams
   // An id repeated in the URL arrives as an array; it is not one usable id.
   const contactId = isHubspotContactId(id) ? id : null
+  const contactToken = typeof t === 'string' && isUnsubscribeToken(t) ? t.toLowerCase() : null
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -46,7 +49,7 @@ export default async function OutreachUnsubscribePage({ searchParams }: Props) {
 
       <main className="mx-auto max-w-lg px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-ink-200 bg-white p-8 shadow-sm">
-          <OutreachUnsubscribeForm contactId={contactId} />
+          <OutreachUnsubscribeForm contactId={contactId} contactToken={contactToken} />
         </div>
       </main>
     </div>

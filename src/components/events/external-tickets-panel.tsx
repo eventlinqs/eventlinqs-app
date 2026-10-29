@@ -32,7 +32,7 @@ import {
 export function ExternalTicketsPanel({
   destinationUrl,
   host,
-  label = 'Get tickets',
+  label,
   price = null,
   also = [],
   soldOut = null,
@@ -41,7 +41,7 @@ export function ExternalTicketsPanel({
   /** The destination's hostname, shown so the visitor knows where they land. */
   host: string | null
   /** The words on the button, naming the site where it can (src/lib/listings/ticket-panel.ts). */
-  label?: string
+  label: string
   /** "From $35.50", only when read within the last day; else none. */
   price?: string | null
   /** The other sites still selling, for the one quiet line under the button. */

@@ -10,14 +10,21 @@
  *   E5 price unknown           "View event details"          no price at all
  * E6: free is never inferred from a missing price. E7: an outside event is never called EventLinqs ticketing.
  *
+ * And a sixth, ahead of the five: a night that is over (ended, archived or cancelled) offers "View event details" and
+ * no price, whatever its tickets were (the project manager's 22:02 of 28 October 2026: an ended night on production
+ * still said "Get tickets" over "From AUD $18" beside its own "This event has ended."). The caller says it is over
+ * from eventPageState (src/lib/events/event-state.ts), so the page and every surface agree on when a night ends.
+ *
  * Social cards, captions, the event page, share links and the Launch Kit all ask this function, and
  * tests/unit/events/cta-five-states.test.ts holds every one of them to it (a registered guard, cta-five-states).
  * A leaf: no imports, so the browser bundle and the server ask the same question for nothing.
  */
 
-export type CtaState = 'free_open' | 'free_registration' | 'paid_native' | 'paid_external' | 'unknown_price'
+export type CtaState = 'over' | 'free_open' | 'free_registration' | 'paid_native' | 'paid_external' | 'unknown_price'
 
 export type CtaInput = {
+  /** True when the night is over: ended, archived or cancelled (eventPageState says 'past', 'archived' or 'cancelled'). */
+  over?: boolean | null
   /** events.entry_mode: 'walk_in' is free entry with no ticket, held free by the database (20261021000020). */
   entryMode?: string | null
   /** The event's own ticket types at EventLinqs; inactive ones are ignored. */
@@ -59,6 +66,7 @@ function activeTiers(tiers: CtaInput['tiers']): { price: number }[] {
 
 /** Which of the five states an event is in, read from what is stored and never guessed. */
 export function ctaStateOf(input: CtaInput): CtaState {
+  if (input.over === true) return 'over'
   if (input.entryMode === 'walk_in') return 'free_open'
   const external = typeof input.externalTicketUrl === 'string' && input.externalTicketUrl.trim() !== ''
   if (external) return input.externalKind === 'free_register' || input.isFree === true ? 'free_registration' : 'paid_external'
@@ -73,6 +81,8 @@ export function ctaFor(input: CtaInput): Cta {
   const external = typeof input.externalTicketUrl === 'string' && input.externalTicketUrl.trim() !== ''
   const outside = input.providerName?.trim() || null
   switch (state) {
+    case 'over':
+      return { state, action: 'View event details', scan: 'Scan for details', ticketingByEventLinqs: false, freeEntry: false, registrationRequired: false, where: null, chip: null }
     case 'free_open':
       return { state, action: 'View event details', scan: 'Scan for details', ticketingByEventLinqs: false, freeEntry: true, registrationRequired: false, where: null, chip: 'Free · just turn up' }
     case 'free_registration':
@@ -80,13 +90,16 @@ export function ctaFor(input: CtaInput): Cta {
         ? { state, action: outside ? `Register free on ${outside}` : 'Register free', scan: 'Scan to register', ticketingByEventLinqs: false, freeEntry: false, registrationRequired: true, where: outside, chip: outside ? `Free · register first on ${outside}` : 'Free · register first' }
         : { state, action: 'Register', scan: 'Scan to register', ticketingByEventLinqs: true, freeEntry: false, registrationRequired: true, where: 'EventLinqs', chip: 'Free · register first' }
     case 'paid_native':
-      return { state, action: 'Get tickets', scan: 'Scan to buy', ticketingByEventLinqs: true, freeEntry: false, registrationRequired: false, where: 'EventLinqs', chip: 'Tickets · on EventLinqs' }
+      return { state, action: GET_TICKETS, scan: 'Scan to buy', ticketingByEventLinqs: true, freeEntry: false, registrationRequired: false, where: 'EventLinqs', chip: 'Tickets · on EventLinqs' }
     case 'paid_external':
       return { state, action: outside ? `View tickets at ${outside}` : 'View tickets', scan: 'Scan for tickets', ticketingByEventLinqs: false, freeEntry: false, registrationRequired: false, where: outside, chip: outside ? `Tickets · at ${outside}` : 'Tickets · sold elsewhere' }
     case 'unknown_price':
       return { state, action: 'View event details', scan: 'Scan for details', ticketingByEventLinqs: false, freeEntry: false, registrationRequired: false, where: null, chip: null }
   }
 }
+
+/** E3's action, our own paid tickets: the only place in src these words are written (the cta-five-states guard). */
+export const GET_TICKETS = 'Get tickets'
 
 /** The words "Free, registration required" (E2's required clarity). */
 export const FREE_REGISTRATION_REQUIRED = 'Free, registration required'
@@ -98,6 +111,8 @@ export const FREE_REGISTRATION_REQUIRED = 'Free, registration required'
  */
 export function ctaPriceLine(cta: Cta, prices: { native?: string | null; outsideChecked?: string | null } = {}): string | null {
   switch (cta.state) {
+    case 'over':
+      return null
     case 'free_open':
       return 'Free entry'
     case 'free_registration':

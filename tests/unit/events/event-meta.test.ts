@@ -47,7 +47,8 @@ describe('buildEventMetaDescription', () => {
 
   it('fallback works with only a title (every other field empty)', () => {
     const d = buildEventMetaDescription({ title: 'Mystery Event' })
-    expect(d).toBe('Get tickets to Mystery Event. All-in pricing, no surprise fees.')
+    // No call to action given, so no ticket is claimed (the project manager's 22:02 of 28 October 2026).
+    expect(d).toBe('Mystery Event.')
     expect(d.length).toBeGreaterThan(0)
   })
 

@@ -305,6 +305,11 @@ export const SHAPES = {
     minLength: 1,
     describe: 'any non-empty value with no leading or trailing whitespace',
   },
+  azureGuid: {
+    pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    minLength: 36,
+    describe: 'a Microsoft Entra tenant or application id, a lower case GUID',
+  },
 }
 
 /**
@@ -510,6 +515,53 @@ export const ENV_MANIFEST = [
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.stripeWebhookSecret,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+
+  // ── Organiser outreach through Microsoft Graph (engine part C, 28 October 2026) ──
+  {
+    name: 'OUTREACH_GRAPH_TENANT_ID',
+    describe: 'The Microsoft Entra tenant that holds the hello mailbox, for the outreach sender',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the organiser outreach sender (src/lib/outreach/graph.ts) stays on HOLD until Lawal grants the Graph app consent (a GO-LIVE founder step) and approves a play; until then nothing reads these, and outreach_sender cannot leave hold without a passing DNS check, so requiring them would block every deployment on a step that is his to take',
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.azureGuid,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'OUTREACH_GRAPH_CLIENT_ID',
+    describe: 'The Entra application id the outreach sender signs in as (application permissions Mail.Send and Mail.Read, limited to the hello mailbox)',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the organiser outreach sender (src/lib/outreach/graph.ts) stays on HOLD until Lawal grants the Graph app consent (a GO-LIVE founder step) and approves a play; until then nothing reads these, and outreach_sender cannot leave hold without a passing DNS check, so requiring them would block every deployment on a step that is his to take',
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.azureGuid,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'OUTREACH_GRAPH_CLIENT_SECRET',
+    describe: 'The client secret of that application, for the client credentials token',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the organiser outreach sender (src/lib/outreach/graph.ts) stays on HOLD until Lawal grants the Graph app consent (a GO-LIVE founder step) and approves a play; until then nothing reads these, and outreach_sender cannot leave hold without a passing DNS check, so requiring them would block every deployment on a step that is his to take',
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
     paymentCritical: false,
     githubActions: false,
     publicVar: false,

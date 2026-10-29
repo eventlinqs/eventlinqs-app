@@ -122,6 +122,10 @@
       "schedule": "0 19 * * 0"
     },
     {
+      "path": "/api/cron/outreach-run",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/social-image-sweep",
       "schedule": "25 * * * *"
     },

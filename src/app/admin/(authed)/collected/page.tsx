@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PROVIDER_NAMES, providerOf } from '@/lib/events/booking-links'
+import { ACQUISITION_PATHS, SOURCE_TYPE_LABELS, sourceFreshness, type SourceChanges, type SourceType } from '@/lib/listings/collect'
 import { acceptCandidateAction, refuseCandidateAction } from './actions'
 import { REFUSAL_REASONS } from './reasons'
 import {
@@ -49,6 +50,19 @@ function hostOf(url: string): string {
   }
 }
 
+/** The five permission answers (the checklist's D2), each yes, no or unknown with its own quoted, dated evidence. */
+const PERMISSION_ANSWERS = [
+  { column: 'may_scrape', label: 'Scraping' },
+  { column: 'may_use_dataset', label: 'Licensed API or dataset' },
+  { column: 'may_subscribe', label: 'Subscription feed' },
+  { column: 'may_redistribute_facts', label: 'Facts redistributed' },
+  { column: 'may_reuse_media', label: 'Photos, posters, descriptions' },
+] as const
+
+/* Written out whole so the generated types read every column (a built string types as an error). */
+const REGISTER_COLUMNS =
+  'id, name, kind, city_slug, page_url, collection, changes, last_checked_at, last_outcome, last_success_at, source_type, acquisition_order, verification, verified_on, licence_owner, contact, permits_facts, permits_descriptions, permits_images, permits_links, may_scrape, may_scrape_quote, may_scrape_read_on, may_use_dataset, may_use_dataset_quote, may_use_dataset_read_on, may_subscribe, may_subscribe_quote, may_subscribe_read_on, may_redistribute_facts, may_redistribute_facts_quote, may_redistribute_facts_read_on, may_reuse_media, may_reuse_media_quote, may_reuse_media_read_on' as const
+
 const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   accepted: { tone: 'ok', text: 'Accepted. A new listing goes out with the next import; added links are on the event now.' },
   refused: { tone: 'ok', text: 'Refused, with its reason kept.' },
@@ -79,10 +93,11 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
         .limit(200),
     ),
     readOrThrow('admin-collected-register', () =>
-      db.from('listing_sources').select('id, name, kind, city_slug, page_url, collection, changes, last_checked_at, last_outcome').order('name'),
+      db.from('listing_sources').select(REGISTER_COLUMNS).order('acquisition_order').order('name'),
     ),
   ])
   const notice = status ? NOTICES[status] : undefined
+  const now = new Date()
 
   return (
     <div>
@@ -223,43 +238,96 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
       )}
 
       <h2 className="mb-3 font-display text-lg font-semibold">The source register ({(sources ?? []).length})</h2>
+      <p className="mb-3 max-w-2xl text-sm text-white/60">
+        Where events come from, in the order we grow them. Each source is read only where its own answers allow it.
+      </p>
+      <ol className="mb-4 grid grid-cols-1 gap-2 text-sm text-white/70 sm:grid-cols-2 lg:grid-cols-4" data-acquisition-order>
+        {ACQUISITION_PATHS.map((p) => (
+          <li key={p.order} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2" data-path={p.order}>
+            <span className="font-display font-semibold text-white">{p.order}.</span> {p.label}
+            <span className="ml-1 text-white/40">({(sources ?? []).filter((s) => s.acquisition_order === p.order).length})</span>
+          </li>
+        ))}
+      </ol>
       <div className={`relative ${ADMIN_TABLE_WRAP}`}>
-        <table className={`${ADMIN_TABLE} lg:min-w-[800px]`}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[1100px]`}>
           <thead className={ADMIN_THEAD}>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
               <th scope="col" className="px-4 py-3 font-medium">Source</th>
               <th scope="col" className="px-4 py-3 font-medium">Its terms</th>
-              <th scope="col" className="px-4 py-3 font-medium">Changes</th>
-              <th scope="col" className="px-4 py-3 font-medium">Last checked</th>
+              <th scope="col" className="px-4 py-3 font-medium">Permission</th>
+              <th scope="col" className="px-4 py-3 font-medium">We may use</th>
+              <th scope="col" className="px-4 py-3 font-medium">Last collected</th>
+              <th scope="col" className="px-4 py-3 font-medium">Owner</th>
             </tr>
           </thead>
           <tbody className={ADMIN_TBODY}>
-            {(sources ?? []).map((s) => (
-              <tr key={s.id} className={`${ADMIN_ROW} align-top`}>
-                <td className={ADMIN_CELL_NAME}>
-                  <a href={s.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} font-medium text-white underline underline-offset-2`}>
-                    {s.name}
-                  </a>
-                  <div className="text-xs text-white/40">
-                    {s.kind}
-                    {s.city_slug ? `, ${s.city_slug}` : ''}
-                  </div>
-                </td>
-                <td className={`${ADMIN_CELL} text-white/70`}>
-                  <span className={ADMIN_CELL_LABEL}>Its terms</span>
-                  {s.collection === 'read' ? 'Read weekly' : s.collection === 'ask' ? 'Ask them to submit' : 'Never read'}
-                </td>
-                <td className={`${ADMIN_CELL} text-white/70`}>
-                  <span className={ADMIN_CELL_LABEL}>Changes</span>
-                  {s.changes}
-                </td>
-                <td className={`${ADMIN_CELL} text-white/70`}>
-                  <span className={ADMIN_CELL_LABEL}>Last checked</span>
-                  {s.last_checked_at ? WHEN.format(new Date(s.last_checked_at as string)) : 'Not yet'}
-                  {s.last_outcome && <div className="text-xs text-white/40">{s.last_outcome}</div>}
-                </td>
-              </tr>
-            ))}
+            {(sources ?? []).map((s) => {
+              const freshness = sourceFreshness({ changes: s.changes as SourceChanges, lastSuccessAt: s.last_success_at as string | null }, now)
+              const path = ACQUISITION_PATHS.find((p) => p.order === s.acquisition_order)
+              const content = [s.permits_facts && 'facts', s.permits_descriptions && 'descriptions', s.permits_images && 'images', s.permits_links && 'links'].filter(Boolean)
+              return (
+                <tr key={s.id} className={`${ADMIN_ROW} align-top`} data-source={s.id} data-source-type={s.source_type}>
+                  <td className={ADMIN_CELL_NAME}>
+                    <a href={s.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} font-medium text-white underline underline-offset-2`}>
+                      {s.name}
+                    </a>
+                    <div className="text-xs text-white/40">
+                      {path ? `${path.order}. ` : ''}
+                      {SOURCE_TYPE_LABELS[s.source_type as SourceType] ?? s.source_type}
+                      {`, ${s.kind}`}
+                      {s.city_slug ? `, ${s.city_slug}` : ''}
+                    </div>
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Its terms</span>
+                    {s.collection === 'read' ? 'Read weekly' : s.collection === 'ask' ? 'Ask them to submit' : 'Never read'}
+                    <div className="text-xs text-white/40">
+                      {s.verification === 'verified' && s.verified_on ? `Verified ${s.verified_on}` : s.verification === 'needs_recheck' ? 'Needs a recheck' : 'Not verified'}
+                    </div>
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Permission</span>
+                    <ul className="space-y-0.5 text-xs">
+                      {PERMISSION_ANSWERS.map((a) => {
+                        const answer = s[a.column] as string
+                        const quote = s[`${a.column}_quote` as const] as string | null
+                        const read = s[`${a.column}_read_on` as const] as string | null
+                        return (
+                          <li key={a.column} title={quote ?? undefined} data-answer={a.column} data-value={answer}>
+                            {a.label}: <span className={answer === 'yes' ? 'text-emerald-200' : answer === 'no' ? 'text-amber-200' : 'text-white/40'}>{answer}</span>
+                            {read ? <span className="text-white/40"> ({read})</span> : null}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>We may use</span>
+                    {content.length === 0 ? 'Nothing' : content.join(', ')}
+                    <div className="text-xs text-white/40">Changes {s.changes}</div>
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Last collected</span>
+                    <span data-freshness={freshness}>
+                      {s.last_success_at ? WHEN.format(new Date(s.last_success_at as string)) : 'Never collected'}
+                      {freshness === 'stale' && <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-200">Stale</span>}
+                    </span>
+                    {s.last_checked_at && (
+                      <div className="text-xs text-white/40">
+                        Checked {WHEN.format(new Date(s.last_checked_at as string))}
+                        {s.last_outcome ? `: ${s.last_outcome}` : ''}
+                      </div>
+                    )}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Owner</span>
+                    {s.licence_owner ?? 'Not recorded'}
+                    {s.contact && <div className="break-all text-xs text-white/40">{s.contact}</div>}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
