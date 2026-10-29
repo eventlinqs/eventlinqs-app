@@ -1,4 +1,4 @@
-import { getCategoryPhoto, BRANDED_FALLBACK_PHOTO, isBrandedFallbackPhoto } from './category-photo'
+import { BRANDED_FALLBACK_PHOTO } from './category-photo'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { isLibraryPhoto } from '@/lib/media/library-photo'
@@ -10,7 +10,8 @@ import { isLibraryPhoto } from '@/lib/media/library-photo'
 // "no cover" so the tile falls through to category Pexels / branded SVG.
 function isRealCover(url: string | null | undefined): url is string {
   if (!url) return false
-  return !/^https:\/\/picsum\.photos\//i.test(url)
+  // A library photograph is never a night's own cover (the PM's 18:38 of 29 October 2026; src/lib/media/library-photo.ts).
+  return !/^https:\/\/picsum\.photos\//i.test(url) && !isLibraryPhoto(url)
 }
 
 /**
@@ -89,14 +90,7 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug, event.title)
-  if (!isBrandedFallbackPhoto(photo)) {
-    return {
-      kind: 'still-kenburns',
-      src: photo.src,
-      alt: event.title ?? photo.alt,
-    }
-  }
+  // No category or library photograph for a named night (the PM's 18:38 of 29 October 2026): the branded ground.
 
   return {
     kind: 'branded-placeholder',
@@ -130,14 +124,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug, event.title)
-  if (!isBrandedFallbackPhoto(photo)) {
-    return {
-      kind: 'still-kenburns',
-      src: photo.src,
-      alt: event.title ?? photo.alt,
-    }
-  }
+  // No category or library photograph for a named night (the PM's 18:38 of 29 October 2026): the branded ground.
 
   return {
     kind: 'branded-placeholder',
