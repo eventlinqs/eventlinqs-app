@@ -5,6 +5,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { broadcastCta } from '@/lib/broadcast/price-line'
+import { statedCityOf } from './cohort-pick'
 import { HORIZON_DAYS, lineOf, rankOrganisers, scoreOrganisers, type Night, type OrganiserFacts, type OrganiserScore } from './organiser-score'
 
 /**
@@ -25,7 +26,14 @@ import { HORIZON_DAYS, lineOf, rankOrganisers, scoreOrganisers, type Night, type
 type Admin = SupabaseClient<Database>
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export type ScoredOrganiser = { id: string; name: string } & OrganiserScore
+/**
+ * city: for the cohort's city shares (src/lib/outreach/cohort-pick.ts). The city most of their linked venues stand in
+ * (a tie by slug); else, for an organiser with no venue linked, the city their source file stated, as the cohort import
+ * wrote it into notes ('City: Geelong.', scripts/ops/outreach-cohort.mjs). On production on 30 October 118 of the 151
+ * organisers had no venue linked, so without the second source the shares could place only 33. citySource says which.
+ * writableEmail as the score read it.
+ */
+export type ScoredOrganiser = { id: string; name: string; city: string | null; citySource: 'venue' | 'source_file' | null; writableEmail: boolean } & OrganiserScore
 
 type NightRow = {
   id: string
@@ -45,8 +53,8 @@ export async function readOrganiserScores(db: Admin, now: Date = new Date()): Pr
   const fromIso = now.toISOString()
   const untilIso = new Date(now.getTime() + HORIZON_DAYS * DAY_MS).toISOString()
 
-  const organisers = await readEveryRow<{ id: string; name: string; organisation_id: string | null }>('the organisers the score reads', (a, b) =>
-    db.from('organisers').select('id, name, organisation_id').order('id', { ascending: true }).range(a, b),
+  const organisers = await readEveryRow<{ id: string; name: string; organisation_id: string | null; notes: string | null }>('the organisers the score reads', (a, b) =>
+    db.from('organisers').select('id, name, organisation_id, notes').order('id', { ascending: true }).range(a, b),
   )
   const links = await readEveryRow<{ venue_id: string; organiser_id: string }>('their venues', (a, b) =>
     db.from('organiser_venues').select('venue_id, organiser_id').order('venue_id', { ascending: true }).range(a, b),
@@ -136,9 +144,21 @@ export async function readOrganiserScores(db: Admin, now: Date = new Date()): Pr
     return { id: o.id, nights, writableEmail: writable.has(o.id), positiveSign: positive.has(o.id) || o.organisation_id !== null, stopped: stopped.has(o.id) }
   })
 
+  const notesOf = new Map(organisers.map((o) => [o.id, o.notes]))
+  const cityOf = (organiserId: string): Pick<ScoredOrganiser, 'city' | 'citySource'> => {
+    const count = new Map<string, number>()
+    for (const v of venuesOf.get(organiserId) ?? []) {
+      const slug = venues.get(v)?.city_slug
+      if (slug) count.set(slug, (count.get(slug) ?? 0) + 1)
+    }
+    const byVenue = [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null
+    if (byVenue) return { city: byVenue, citySource: 'venue' }
+    const stated = statedCityOf(notesOf.get(organiserId) ?? null)
+    return stated ? { city: stated, citySource: 'source_file' } : { city: null, citySource: null }
+  }
   const nameOf = new Map(organisers.map((o) => [o.id, o.name]))
   const scored = scoreOrganisers(facts)
   const ranked = rankOrganisers(scored)
   const rest = scored.filter((s) => s.state !== 'scored')
-  return [...ranked, ...rest].map((s) => ({ ...s, name: nameOf.get(s.id) ?? '' }))
+  return [...ranked, ...rest].map((s) => ({ ...s, name: nameOf.get(s.id) ?? '', ...cityOf(s.id), writableEmail: writable.has(s.id) }))
 }

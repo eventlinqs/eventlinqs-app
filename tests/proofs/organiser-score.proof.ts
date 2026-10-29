@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { readOrganiserScores } from '@/lib/outreach/organiser-score-read'
 import { HORIZON_DAYS, PARTS, WEIGHTS } from '@/lib/outreach/organiser-score'
+import { COHORT_SIZE, pickCohort } from '@/lib/outreach/cohort-pick'
 
 const REF = 'vkapkibzokmfaxqogypq'
 const token = process.env.SUPABASE_ACCESS_TOKEN
@@ -91,6 +92,42 @@ it('scores every organiser on TEST from its real rows, and the numbers hold from
   console.log(`independent SQL count: ${agree} of ${scored.length} organisers agree on nights ahead; ${outside} outside-ticket night(s) among them`)
   for (const d of differ.slice(0, 10)) console.log(`  DIFFERS ${d}`)
   expect(differ).toEqual([])
+
+  // The first cohort (ruling 5) from the same rows: the quotas add to 100, no city takes more than its quota, each pick's
+  // city is where most of its venues stand (read again in SQL), and email holds only organisers we may write to.
+  const cohort = pickCohort(
+    scored.flatMap((r) => (r.state === 'scored' ? [{ id: r.id, name: r.name, city: r.city, score: r.score, writableEmail: r.writableEmail }] : [])),
+  )
+  expect(Object.values(cohort.quota).reduce((a, b) => a + b, 0)).toBe(COHORT_SIZE)
+  for (const [city, list] of Object.entries(cohort.byCity)) expect(list.length).toBeLessThanOrEqual(cohort.quota[city as keyof typeof cohort.quota])
+  const venueCities = await query(`
+    select ov.organiser_id as id, v.city_slug as city, count(*)::int as n
+      from public.organiser_venues ov join public.venues v on v.id = ov.venue_id and v.removed_at is null
+     where v.city_slug is not null group by 1, 2`)
+  const topCity = new Map<string, { city: string; n: number }>()
+  for (const r of venueCities as { id: string; city: string; n: number }[]) {
+    const best = topCity.get(r.id)
+    if (!best || r.n > best.n || (r.n === best.n && r.city < best.city)) topCity.set(r.id, { city: r.city, n: r.n })
+  }
+  const notes = new Map((await query('select id, notes from public.organisers')).map((r: { id: string; notes: string | null }) => [r.id, r.notes]))
+  const sourceOf = new Map(rows.map((r) => [r.id, r.citySource]))
+  for (const list of Object.values(cohort.byCity))
+    for (const p of list) {
+      if (sourceOf.get(p.id) === 'venue') expect(p.city).toBe(topCity.get(p.id)?.city)
+      else {
+        // No venue linked: the city is the one the import stated, read again from the raw notes.
+        expect(topCity.has(p.id)).toBe(false)
+        expect(p.city).toBe(/City: ([^.]+)\./.exec(notes.get(p.id) ?? '')?.[1]?.trim().toLowerCase().replace(/\s+/g, '-'))
+      }
+    }
+  const bySource = (s: string | null) => scored.filter((r) => sourceOf.get(r.id) === s).length
+  console.log(`CITY SOURCE: ${bySource('venue')} from a linked venue, ${bySource('source_file')} from the source file the import read, ${bySource(null)} none`)
+  expect(cohort.email.every((p) => p.writableEmail)).toBe(true)
+  console.log(
+    `COHORT on TEST: ${cohort.total} of ${COHORT_SIZE} picked (${cohort.email.length} by email, ${cohort.otherRoutes.length} by other routes); ` +
+      Object.entries(cohort.quota).map(([city, q]) => `${city} ${cohort.byCity[city as keyof typeof cohort.byCity].length} of ${q}`).join(', ') +
+      `; ${cohort.outside} outside the four cities or with no city`,
+  )
 
   console.log(`TEST: ${rows.length} organisers read, ${scored.length} scored, ${stopped.length} stopped (never ranked)`)
   for (const r of scored.slice(0, 5)) {
