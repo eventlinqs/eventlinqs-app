@@ -9,6 +9,10 @@ import { TRAFFIC_CHANNEL_COPY, type TrafficChannel } from '@/lib/growth/traffic-
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { formatPlatformDate } from '@/lib/dates/event-time'
 import { getCity } from '@/lib/cities/data'
+import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
+import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
+import { monthOf } from '@/lib/growth/organiser-funnel-math'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -46,6 +50,9 @@ function bestWords(best: Best | null, what: string, label: (key: string) => stri
 const channelName = (key: string) => TRAFFIC_CHANNEL_COPY[key as TrafficChannel]?.label ?? key
 const cityName = (slug: string) => getCity(slug)?.name ?? slug
 const met = (yes: boolean) => (yes ? 'ok' : 'pending')
+/** A YYYY-MM month in words, e.g. 'October 2026', on the platform's clock (the 15th sits inside the month in every zone). */
+const monthWords = (m: string) => new Intl.DateTimeFormat('en-AU', { month: 'long', year: 'numeric', timeZone: PLATFORM_TIME_ZONE }).format(new Date(`${m}-15T12:00:00Z`))
+const percent = (share: number) => `${Math.round(share * 100)} percent`
 
 function Dimension({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
   return (
@@ -62,7 +69,8 @@ export default async function AdminGrowthPage() {
   if (!can(session, 'admin.network.manage') || !can(session, 'admin.pricing.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.growth.view', session })
 
-  const g = await readGrowthWeek()
+  const [g, funnel] = await Promise.all([readGrowthWeek(), readOrganiserFunnel()])
+  const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
   const lastSunday = new Date(new Date(g.last.to).getTime() - 1).toISOString()
@@ -171,6 +179,73 @@ export default async function AdminGrowthPage() {
         <AdminStatTile label="Returning visitors" value={g.victoria.returningUp ? 'Up' : 'Not up'} hint="last week against the week before" status={met(g.victoria.returningUp)} />
         <AdminStatTile label="Margin" value={g.victoria.marginPositive ? 'Positive' : 'Not positive'} hint="last week" status={met(g.victoria.marginPositive)} />
       </Dimension>
+
+      <section data-section="organiser-funnel" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+        <h2 className="font-display text-lg font-semibold text-white">Organisers, from found to reported</h2>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          Each organiser counts at the stages recorded for them, read now from the table that stage&apos;s owner keeps. One who claimed without an invitation
+          counts at claimed and not at invited, so a step can read over 100 percent. A stage whose table is not on this database is not counted, never 0.
+        </p>
+        <ol className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          {funnel.steps.map((step, i) => (
+            <li key={step.stage} data-stage={step.stage} className="rounded-lg border border-white/[0.06] p-4">
+              <p className="text-white/50">
+                {i + 1}. {step.words}
+              </p>
+              <p className="mt-1 font-display text-2xl font-semibold text-white">{step.organisers === null ? 'Not counted' : number(step.organisers)}</p>
+              <p className="mt-1 text-white/60">
+                {step.organisers === null
+                  ? 'Its table is not on this database yet.'
+                  : step.fromBefore === null
+                    ? i === 0
+                      ? 'Real hosts on record.'
+                      : 'No share: the step before has none or is not counted.'
+                    : `${percent(step.fromBefore)} of the step before`}
+              </p>
+            </li>
+          ))}
+        </ol>
+
+        <h3 className="mt-8 font-display text-base font-semibold text-white">Events per active organiser</h3>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          An organiser is active in a month when a public night of theirs starts in it. Organisations that hold their own nights only: the EventLinqs listings
+          account, which holds every curated night whatever its host, and seed listings are left out.
+        </p>
+        <div className={`mt-4 ${ADMIN_TABLE_WRAP}`}>
+          <table data-table="events-per-active-organiser" className={ADMIN_TABLE}>
+            <thead className={ADMIN_THEAD}>
+              <tr>
+                <th scope="col" className="px-4 py-3 font-medium">Month</th>
+                <th scope="col" className="px-4 py-3 font-medium">Active organisers</th>
+                <th scope="col" className="px-4 py-3 font-medium">Public nights</th>
+                <th scope="col" className="px-4 py-3 font-medium">Per active organiser</th>
+              </tr>
+            </thead>
+            <tbody className={ADMIN_TBODY}>
+              {funnel.months.map((m) => (
+                <tr key={m.month} data-month={m.month} className={ADMIN_ROW}>
+                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-white`}>
+                    {monthWords(m.month)}
+                    {m.month === thisMonth ? ', so far' : ''}
+                  </th>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Active organisers</span>
+                    {number(m.activeOrganisers)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Public nights</span>
+                    {number(m.nights)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Per active organiser</span>
+                    {m.perActive === null ? 'No organiser active' : m.perActive.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {g.unreadVisitRows > 0 ? (
         <p data-state="unread-rows" className="text-sm text-amber-300">

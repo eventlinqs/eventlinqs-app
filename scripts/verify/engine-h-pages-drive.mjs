@@ -1,7 +1,8 @@
 /**
  * PART H's THREE PAGES IN A BROWSER, AT 390, 768 AND 1440, ON TEST (the EventLinqs engine plan of 28 October 2026).
  *
- * /go (the link in bio, signed out), /admin/today (Lawal's one queue, signed in as an admin) and
+ * /go (the link in bio, signed out), /admin/today (Lawal's one queue, signed in as an admin), /admin/growth (with the
+ * organiser funnel and events per active organiser) and
  * /dashboard/events/[id]/report (the organiser's report after a night, signed in as a manager of that night's
  * organisation), each served by the gate's own production server (startGateServer) from this tree's build.
  *
@@ -178,6 +179,11 @@ try {
       if (signedIn) {
         const today = await judge(page, vp.label, '/admin/today')
         if (vp.label === '1440') console.log(`${TAG} /admin/today says: ${today.text.replace(/\s+/g, ' ').slice(0, 600)}`)
+        const growth = await judge(page, vp.label, '/admin/growth')
+        const funnelShown = await page.locator('[data-section="organiser-funnel"] [data-stage]').count()
+        const monthsShown = await page.locator('[data-table="events-per-active-organiser"] tbody tr').count()
+        check(`${vp.label} /admin/growth shows the eight funnel stages and four months`, funnelShown === 8 && monthsShown === 4, `${funnelShown} stages, ${monthsShown} months`)
+        if (vp.label === '390') console.log(`${TAG} /admin/growth's organisers say: ${growth.text.replace(/\s+/g, ' ').match(/Organisers, from found to reported.{0,700}/)?.[0] ?? '(not found)'}`)
         const report = await judge(page, vp.label, `/dashboard/events/${night.id}/report`)
         if (vp.label === '1440') console.log(`${TAG} the report says: ${report.text.replace(/\s+/g, ' ').slice(0, 600)}`)
       }
