@@ -26,6 +26,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { productionSelect } from '../lib/production-select.mjs'
+import { roleRefusal } from '../lib/outreach-basis-role.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const args = process.argv.slice(2)
@@ -144,11 +145,20 @@ async function check(o, n) {
     return
   }
   // Their own addresses on their own pages: at their domain, or one the cohort files already named for them.
+  // And only in the role the invitation relates to (scripts/lib/outreach-basis-role.mjs): R4 step 2 took 23 that were not.
   const candidates = new Map()
+  const refused = new Set()
   for (const page of pages) {
     for (const a of addresses(page.html)) {
       const d = a.split('@')[1]
-      if (d === siteDomain || d.endsWith(`.${siteDomain}`) || known.includes(a)) if (!candidates.has(a)) candidates.set(a, page)
+      if (!(d === siteDomain || d.endsWith(`.${siteDomain}`) || known.includes(a)) || candidates.has(a) || refused.has(a)) continue
+      const words = text(page.html)
+      const at = words.toLowerCase().indexOf(a)
+      const why = roleRefusal(a, o.name, at >= 0 ? words.slice(0, at) : '')
+      if (why) {
+        refused.add(a)
+        report.push({ organiser: o.name, address: a, page: page.url, outcome: `not their role (${why}): no basis recorded` })
+      } else candidates.set(a, page)
     }
   }
   // Their Instagram handle, published by a link from their own site to the profile: the same reading as an address.
@@ -174,7 +184,7 @@ async function check(o, n) {
     recorded++
     report.push({ organiser: o.name, instagram: ig.address, page: page.url, outcome: 'basis recorded whole (their site links to the profile)', evidence: file })
   }
-  for (const k of known) if (!candidates.has(k)) report.push({ organiser: o.name, address: k, outcome: `not found on ${pages.map((p) => p.url).join(', ')}: no basis recorded` })
+  for (const k of known) if (!candidates.has(k) && !refused.has(k)) report.push({ organiser: o.name, address: k, outcome: `not found on ${pages.map((p) => p.url).join(', ')}: no basis recorded` })
   if (candidates.size === 0) {
     report.push({ organiser: o.name, outcome: `no address of theirs published on ${pages.length} page(s) of ${site}` })
     return
@@ -200,7 +210,7 @@ async function check(o, n) {
     if (existing) await sql(`update public.organiser_contacts set ${basis} where id = ${q(existing.id)} and basis = 'none'`)
     else
       await sql(`insert into public.organiser_contacts (organiser_id, role, channel, address, created_by) values (${q(o.id)}, 'Published contact address', 'email', ${q(address)}, ${q(by)})
-                 on conflict do nothing; update public.organiser_contacts set ${basis} where channel = 'email' and address = ${q(address)} and basis = 'none'`)
+                 on conflict do nothing; update public.organiser_contacts set ${basis} where organiser_id = ${q(o.id)} and channel = 'email' and address = ${q(address)} and basis = 'none'`)
     recorded++
     report.push({ organiser: o.name, address, page: page.url, outcome: 'basis recorded whole', evidence: file })
   }
