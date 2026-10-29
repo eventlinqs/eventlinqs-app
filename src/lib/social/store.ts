@@ -703,7 +703,11 @@ function revisionRow(pieceId: string, version: number, p: PiecePlan, message: st
   }
 }
 
-export type CampaignPlanned = { readonly campaignId: string; readonly weekStart: string; readonly created: number; readonly existing: number; readonly held: readonly string[]; readonly requests: number }
+/**
+ * existing counts today's plan found already kept; kept is every piece the week holds after this press, which is the
+ * number the founder is told (a night ended since Monday takes its partner kit out of today's plan, not out of the week).
+ */
+export type CampaignPlanned = { readonly campaignId: string; readonly weekStart: string; readonly created: number; readonly existing: number; readonly kept: number; readonly held: readonly string[]; readonly requests: number }
 
 /**
  * "Plan this week": ONE campaign for the week, found again on a second press (F7), each piece kept once (the
@@ -779,7 +783,7 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
     if (qerr) held.push(`image requests: ${refusalOf(qerr.message) ?? qerr.message}`)
     else requests = (req ?? []).length
   }
-  return { campaignId, weekStart, created, existing, held, requests }
+  return { campaignId, weekStart, created, existing, kept: kept.size + created, held, requests }
 }
 
 export type PieceState = 'drafted' | 'rejected' | 'approved' | 'gone'

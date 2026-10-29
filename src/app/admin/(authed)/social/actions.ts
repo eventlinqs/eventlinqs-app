@@ -58,7 +58,7 @@ export async function planWeekAction(): Promise<void> {
       : `${done.planned} post${done.planned === 1 ? '' : 's'} planned.${done.held.length === 0 ? '' : ` Held: ${done.held.map((h) => h.reason).join(' ')}`}`
   const pieces =
     campaign.created === 0
-      ? ` This week's campaign is planned already (${campaign.existing} pieces).`
+      ? ` This week's campaign is planned already (${campaign.kept} pieces).`
       : ` This week's campaign: ${campaign.created} piece${campaign.created === 1 ? '' : 's'}, ${campaign.requests} image request${campaign.requests === 1 ? '' : 's'} drafted.`
   back(`${posts}${pieces}${campaign.held.length === 0 ? '' : ` Held: ${campaign.held.join(' ')}`}`)
 }
