@@ -10817,9 +10817,17 @@ const DRILLS = [
     name: 'listed hosts: the structured data links an organiser page that does not exist',
     guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
     file: 'src/lib/seo/event-schema.ts',
-    find: '      ...(organisation.slug ? { url: `${baseUrl}/organisers/${organisation.slug}` } : {}),',
-    replace: '      url: `${baseUrl}/organisers/${organisation.slug}`,',
+    find: '        ...(shown.slug ? { url: `${baseUrl}/organisers/${shown.slug}` } : {}),',
+    replace: '        url: `${baseUrl}/organisers/${shown.slug}`,',
     expect: 'carries a url whether or not there is an organiser page',
+  },
+  {
+    name: 'listed hosts: the structured data names the organisation it was handed, unasked',
+    guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '      const shown = shownOrganiser(event, organisation)',
+    replace: '      const shown = { name: organisation.name, slug: organisation.slug }',
+    expect: 'it must ask shownOrganiser',
   },
   /*
    * the-daily-run-finishes-what-it-starts (window 4, 24 October 2026, WI2 Part
