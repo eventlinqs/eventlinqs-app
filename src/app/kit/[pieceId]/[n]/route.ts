@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         'Content-Disposition': `inline; filename="${name}"`,
         'Content-Length': String(bytes.byteLength),
         'Cache-Control': 'public, max-age=300, s-maxage=3600',
-        'X-Robots-Tag': 'noindex, nofollow',
+        'X-Robots-Tag': 'noindex, nofollow, noimageindex',
       },
     })
   } catch (error) {
