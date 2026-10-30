@@ -49,10 +49,14 @@ let checked = 0
 /** Every place the section is marked, by either form, or by a shared component that draws it. */
 function marksOf(text, name) {
   const forms = [`<EventSection name="${name}"`, `data-event-section="${name}"`]
-  for (const c of COMPOSITES) if (c.sections.includes(name)) forms.push(c.tag)
   const at = []
   for (const form of forms) {
     for (let i = text.indexOf(form); i !== -1; i = text.indexOf(form, i + 1)) at.push(i)
+  }
+  // A component tag counts only as a whole name: <EventVenueSection, never <EventVenueSectionGone.
+  for (const c of COMPOSITES) {
+    if (!c.sections.includes(name)) continue
+    for (const m of text.matchAll(new RegExp(`${c.tag}(?![A-Za-z0-9_])`, 'g'))) at.push(m.index)
   }
   return at.sort((a, b) => a - b)
 }
@@ -136,7 +140,7 @@ if (faults.length > 0) {
 }
 
 declareWork('event-page-one-spine', {
-  did: { 'template read': read, 'section mark checked': checked },
+  did: { 'file read': read, 'section mark checked': checked },
   found: { fault: 0 },
   zeroIsFine: { fault: 'every event template drawing the five shared sections once, in order, is the goal state' },
   exitOnZero: false,
