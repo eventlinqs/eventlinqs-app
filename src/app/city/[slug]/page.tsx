@@ -16,7 +16,6 @@ import {
 } from '@/lib/cities/data'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
-import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
 import { readGuideCity } from '@/lib/listings/free-week-surface'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -187,15 +186,17 @@ export default async function CityPage({ params }: Props) {
   )
 
   // The community tiles take no photo (BrowseByCommunityRail): each community's photo belongs to its own tile only.
-  const [eventTypePhotos, suburbPhotos, relatedCityPhotos] = await Promise.all([
-    Promise.all(eventTypeSlugs.map(s => getCategoryPhoto(s))),
+  // The by-type tiles take none either: they open this city's events of one type, and a category's photo belongs to
+  // the category's own tile and page (NO PHOTO IS EVER REUSED, the project manager's 05:05 (3)); each draws its navy
+  // gradient. Suburb and related city tiles keep their photos: each is that place's own tile.
+  const [suburbPhotos, relatedCityPhotos] = await Promise.all([
     Promise.all(suburbs.map(s => getSuburbHeroPhoto(s.slug))),
     Promise.all(city.relatedCities.map(s => getCityPhoto(s))),
   ])
 
   const eventTypeImages: Record<string, string | null> = {}
-  eventTypeSlugs.forEach((t, i) => {
-    eventTypeImages[t] = eventTypePhotos[i]?.src ?? null
+  eventTypeSlugs.forEach((t) => {
+    eventTypeImages[t] = null
   })
 
   const suburbImages: Record<string, string | null> = {}
