@@ -12325,7 +12325,12 @@ export type Database = {
         Returns: string
       }
       venue_image_approve: {
-        Args: { p_admin: string; p_image: string; p_primary: boolean; p_quality: number }
+        Args: {
+          p_admin: string
+          p_image: string
+          p_primary: boolean
+          p_quality: number
+        }
         Returns: undefined
       }
       venue_image_challenge: {
