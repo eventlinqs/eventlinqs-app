@@ -355,6 +355,22 @@ BEGIN
     ELSE v_out := v_out || ' | B2 source: FAIL (' || coalesce(v_url, 'null') || ')'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | B2 source: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
+  -- C1 a challenged photograph stops serving and waits in the queue with what was said; approved again, it serves and
+  -- leaves the queue with the challenge cleared (20261030194501).
+  BEGIN
+    SELECT id INTO v_c FROM public.venue_images WHERE venue_id = v_venue AND image_url = v_bucket || 'batch-primary.jpg';
+    UPDATE public.venue_images SET approval_state = 'challenged', challenge_reason = 'Not this hall.', challenged_at = now() WHERE id = v_c;
+    SELECT q.challenge_reason INTO v_url FROM public.venue_photo_queue() q WHERE q.id = v_c;
+    v_ok := v_url = 'Not this hall.'
+      AND NOT EXISTS (SELECT 1 FROM public.venue_photos_for(array[v_venue], 'venue_page') f WHERE f.image_url = v_bucket || 'batch-primary.jpg');
+    PERFORM public.venue_image_approve(v_staff, v_c, 10::smallint, true);
+    IF v_ok AND NOT EXISTS (SELECT 1 FROM public.venue_photo_queue() q WHERE q.id = v_c)
+       AND EXISTS (SELECT 1 FROM public.venue_photos_for(array[v_venue], 'venue_page') f WHERE f.image_url = v_bucket || 'batch-primary.jpg')
+       AND (SELECT challenge_reason FROM public.venue_images WHERE id = v_c) IS NULL THEN
+      v_out := v_out || ' | C1 a challenged photograph waits for a person with what was said, approved again it serves: PASS';
+    ELSE v_out := v_out || ' | C1 challenge: FAIL (' || coalesce(v_url, 'null') || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | C1 challenge: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
   -- The runner reads the verdict up to the first double quote, and error messages quote names.
   RAISE EXCEPTION 'PROOF % (% failure(s), rolled back):%',
     CASE WHEN v_fail = 0 THEN 'PASSED' ELSE 'FAILED' END, v_fail, replace(v_out, '"', '');

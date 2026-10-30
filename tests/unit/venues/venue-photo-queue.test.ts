@@ -23,10 +23,21 @@ const row = (over: Partial<QueueRow>): QueueRow => ({
   match_method: 'auto',
   match_distance_m: '42.5',
   permission_evidence: null,
+  challenge_reason: null,
   ...over,
 })
 
 describe('the queue', () => {
+  test('a challenged photograph leads its venue and carries what was said, so a person answers it', () => {
+    const venues = groupWaiting([
+      row({ id: 'own', source: 'venue', licence: 'owner_permission', quality_score: 95 }),
+      row({ id: 'said', quality_score: 40, challenge_reason: 'This is the hall next door.' }),
+    ])
+    expect(venues[0].photos.map((p) => p.id)).toEqual(['said', 'own'])
+    expect(venues[0].photos[0].challengeReason).toBe('This is the hall next door.')
+    expect(venues[0].photos[1].challengeReason).toBeNull()
+  })
+
   test('groups by venue, venues by name, and pre-picks the best of each first', () => {
     const venues = groupWaiting([
       row({ id: 'c-low', quality_score: 55 }),

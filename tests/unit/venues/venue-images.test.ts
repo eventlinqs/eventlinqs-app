@@ -10,6 +10,7 @@ import {
   approveVenuePhoto,
   challengeVenuePhoto,
   replaceVenuePhoto,
+  shownVenuePhoto,
   venuePhotoFor,
   venuePhotosFor,
   withdrawVenuePhoto,
@@ -159,6 +160,34 @@ describe('the public read, the chain\'s second link', () => {
   test('is null when the venue has no approved photograph for that use', async () => {
     const { d } = fake(() => ({ data: [], error: null }))
     expect(await venuePhotoFor('v1', 'social', d)).toBeNull()
+  })
+})
+
+describe('the photograph an organiser sees on their event, to challenge', () => {
+  const served = { venue_id: 'v1', image_url: 'https://x/hall.webp', attribution_text: 'Photo: Jane', licence: 'cc0', licence_url: null, author: null, source_url: null }
+  const deps = (rpc: VenueMediaDeps['rpc'], id: string | null = 'i1') => ({ rpc, idOf: async () => id })
+
+  test('gives the photograph the event page shows, with its id', async () => {
+    const shown = await shownVenuePhoto('v1', deps(async () => ({ data: [served], error: null })))
+    expect(shown).toEqual({ id: 'i1', imageUrl: 'https://x/hall.webp', credit: 'Photo: Jane' })
+  })
+
+  test('falls to the card photograph when the page has none', async () => {
+    const asked: unknown[] = []
+    const shown = await shownVenuePhoto(
+      'v1',
+      deps(async (_, args) => {
+        asked.push(args.p_use)
+        return { data: args.p_use === 'event_card' ? [served] : [], error: null }
+      }),
+    )
+    expect(asked).toEqual(['event_page', 'event_card'])
+    expect(shown?.id).toBe('i1')
+  })
+
+  test('is null with no photograph, and a failed read takes only this section away', async () => {
+    expect(await shownVenuePhoto('v1', deps(async () => ({ data: [], error: null })))).toBeNull()
+    expect(await shownVenuePhoto('v1', deps(async () => ({ data: null, error: { code: '42883', message: 'no such function' } })))).toBeNull()
   })
 })
 
