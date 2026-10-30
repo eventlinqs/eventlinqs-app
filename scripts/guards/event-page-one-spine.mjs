@@ -109,8 +109,9 @@ for (const c of COMPOSITES) {
   try {
     text = readFileSync(join(ROOT, c.file), 'utf8').replace(/\r\n/g, '\n')
     read++
-  } catch {
+  } catch (error) {
     // Not built yet: a template drawing it then fails above, since the tag is missing; nothing more to judge here.
+    console.warn(`[event-page-one-spine] ${c.file} could not be read, so its order is not judged here: ${error.message}`)
     continue
   }
   let last = -1
