@@ -12,6 +12,7 @@ import {
 } from '../../../scripts/guards/lib/gitignore.mjs'
 import { filesForUpload, listTrackedFiles } from '../../../scripts/guards/lib/vercel-upload.mjs'
 import { gitEnv } from '../../../scripts/lib/git-env.mjs'
+import { sparseAbsentPaths } from '../../../scripts/lib/sparse-checkout.mjs'
 
 /**
  * ENUMERATING A TREE WITHOUT GIT. Close-out F2.2.
@@ -177,7 +178,13 @@ describe('the walk, against git itself, on this repository', () => {
      * that could not be STARTED as `status: null`, and reading that as "git says
      * not ignored" would be the opposite of what happened.
      */
-    const droppedByWalk = tracked.filter((f) => !walked.has(f))
+    /*
+     * A SPARSE CHECKOUT IS NOT A DROP. A path git marks skip-worktree is absent from the disk on purpose (the window
+     * worktrees leave about 4,400 docs files out), so the walk cannot see it and that says nothing about the rules.
+     * Only those are set aside; on a full checkout, the gate's, the set is empty (X13, 31 October 2026).
+     */
+    const sparse = sparseAbsentPaths(root)
+    const droppedByWalk = tracked.filter((f) => !walked.has(f) && !sparse.has(f))
     const ask = spawnSync('git', ['check-ignore', '--stdin', '-z', '--no-index'], {
       cwd: root,
       encoding: 'utf8',
