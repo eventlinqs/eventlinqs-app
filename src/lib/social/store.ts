@@ -869,7 +869,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     .order('planned_at', { ascending: true })
     .limit(500)
   if (error) throw new Error(`the week's pieces could not be read: ${error.message}`)
-  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'venue_spotlight', 'organiser_campaign', 'brand_campaign', 'partner_kit']
+  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'organiser_campaign', 'brand_campaign', 'partner_kit']
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
     const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)

@@ -30,7 +30,8 @@ function night(over: Partial<CampaignNight> & { at: string; state?: CtaInput }):
     timezone: 'Australia/Melbourne',
     citySlug: 'geelong',
     cityName: 'Geelong',
-    venueName: 'The Barwon Club',
+    // Each night at its own venue: the planner keeps at most two of one venue in a set (K6), which is not under test here.
+    venueName: `Venue ${seq}`,
     host: `Host ${seq}`,
     categorySlug: 'music',
     summary: 'A night of local bands in the front bar. Doors at seven.',
