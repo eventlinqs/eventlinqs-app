@@ -11154,6 +11154,35 @@ const DRILLS = [
     replace: "db.rpc('google_spend_noop',",
     expect: 'no longer asks the database',
   },
+  /*
+   * one-photo-one-event (window 1, 31 October 2026), one drill per clause that can be judged without the database:
+   * the hash made unique only together with the night, a public page reading the venue library itself, and the video
+   * trigger no longer firing on video_url. Each puts back a way one photo or one video reaches two events.
+   */
+  {
+    name: 'one photo, one event: the hash is unique only together with the night',
+    guard: `${GUARDS}/one-photo-one-event.mjs`,
+    file: 'supabase/migrations/20261031010001_photo_assignments.sql',
+    find: 'on public.photo_assignments (photo_sha256);',
+    replace: 'on public.photo_assignments (photo_sha256, event_id);',
+    expect: 'is not unique on its own',
+  },
+  {
+    name: 'one photo, one event: the home page reads the venue library itself',
+    guard: `${GUARDS}/one-photo-one-event.mjs`,
+    file: 'src/app/page.tsx',
+    find: "import { withVenuePhotos } from '@/lib/images/venue-photo-chain'",
+    replace: "import { withVenuePhotos } from '@/lib/images/venue-photo-chain'\nimport { venuePhotosFor } from '@/lib/venues/venue-images'",
+    expect: 'reads the venue library (venuePhotosFor)',
+  },
+  {
+    name: 'one video, one event: the trigger no longer fires when a video link is written',
+    guard: `${GUARDS}/one-photo-one-event.mjs`,
+    file: 'supabase/migrations/20261031010001_photo_assignments.sql',
+    find: 'before insert or update of video_url, listing_series_id on public.events',
+    replace: 'before insert or update of listing_series_id on public.events',
+    expect: 'P10',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
