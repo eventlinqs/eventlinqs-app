@@ -35,3 +35,19 @@ describe.each(TEMPLATES)('%s', (path) => {
     expect(source).toMatch(/\{ events: allEvents, cap: ALL_EVENTS_SHOWN \}/)
   })
 })
+
+describe('the home page, src/app/page.tsx', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/page.tsx'), 'utf8')
+
+  it('passes the hero first, then every rail in the order it is drawn, through oneCardPerEvent', () => {
+    const block = source.slice(source.indexOf('oneCardPerEvent(['), source.indexOf('])', source.indexOf('oneCardPerEvent([')))
+    const order = [...block.matchAll(/events: (\w+?)(?:Candidates|\(heroEvents\))/g)].map((m) => m[1])
+    expect(order).toEqual(['heroSlideEvents', 'thisWeek', 'music', 'food', 'trending', 'festival', 'arts', 'thisWeekend', 'nightlife', 'comedy', 'free', 'sports', 'family', 'justAdded'])
+    const drawn = [...source.matchAll(/events=\{(\w+)\}/g)].map((m) => m[1]).filter((n) => n !== 'heroEvents')
+    expect(drawn).toEqual(['thisWeek', 'musicEvents', 'foodEvents', 'trending', 'festivalEvents', 'artsEvents', 'thisWeekend', 'nightlifeEvents', 'comedyEvents', 'freeEvents', 'sportsEvents', 'familyEvents', 'justAdded'])
+  })
+
+  it('no rail draws a candidate list', () => {
+    expect(source).not.toMatch(/events=\{\w+Candidates\}/)
+  })
+})
