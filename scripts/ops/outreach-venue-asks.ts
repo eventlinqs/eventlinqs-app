@@ -7,7 +7,8 @@
  * rules (src/lib/outreach/venue-asks.ts), and writes ONE SQL transaction that:
  *   1. records the venues new to the CRM as organisers, and their published addresses as contacts with the whole
  *      conspicuous-publication basis (the page, the date read, the no-marketing check, the role and why the ask fits);
- *   2. stores the two templates, venue_ask (email) and venue_ask_dm, as version 1;
+ *   2. stores the two templates, venue_ask (email) and venue_ask_dm, VERSIONED: a wording not yet stored is the next
+ *      version, and a draft still held on an older version is voided with its reason and drafted again (4a);
  *   3. makes the play 'D7 venue partnerships' as a DRAFT (no window approves it), its cohort the drafted organisers;
  *   4. writes each draft as a HELD first message in that play, the contact's own unsubscribe link in each email;
  *   5. reads it all back.
@@ -105,14 +106,16 @@ select g.organiser_id, d.role, 'email', d.address, 'conspicuous_publication', d.
  where not d.existing
    and not exists (select 1 from public.organiser_contacts c where c.channel = 'email' and c.address = d.address);
 
--- 2. The two templates, version 1.
+-- 2. The two templates, VERSIONED, never edited: a wording not yet stored is the next version (the 16:42 photo request
+--    made venue_ask version 2), and a wording already stored is left as it is.
 insert into public.outreach_templates (key, version, channel, purpose, step, subject, body, source, created_by)
-select t.key, 1, t.channel, t.purpose, t.step, t.subject, t.body, ${q(source)}, ${q(by)}
+select t.key, coalesce((select max(x.version) from public.outreach_templates x where x.key = t.key), 0) + 1,
+       t.channel, t.purpose, t.step, t.subject, t.body, ${q(source)}, ${q(by)}
   from (values
     (${q(VENUE_ASK_EMAIL.key)}, ${q(VENUE_ASK_EMAIL.channel)}, ${q(VENUE_ASK_EMAIL.purpose)}, ${VENUE_ASK_EMAIL.step}::smallint, ${q(VENUE_ASK_EMAIL.subject)}, ${q(VENUE_ASK_EMAIL.body)}),
     (${q(VENUE_ASK_DM.key)}, ${q(VENUE_ASK_DM.channel)}, ${q(VENUE_ASK_DM.purpose)}, ${VENUE_ASK_DM.step}::smallint, null, ${q(VENUE_ASK_DM.body)})
   ) as t(key, channel, purpose, step, subject, body)
- where not exists (select 1 from public.outreach_templates x where x.key = t.key);
+ where not exists (select 1 from public.outreach_templates x where x.key = t.key and x.body = t.body and x.subject is not distinct from t.subject);
 
 -- 3. The play, a DRAFT: no window approves it.
 insert into public.outreach_plays (name, cohort_rule, step1_template_id, created_by)
@@ -121,6 +124,20 @@ select 'D7 venue partnerships',
        (select id from public.outreach_templates where key = 'venue_ask' order by version desc limit 1),
        ${q(by)}
  where not exists (select 1 from public.outreach_plays where name = 'D7 venue partnerships');
+
+-- 4a. A draft still HELD (never sent) on an older version of its template is VOIDED with its reason, never rewritten:
+--     a message keeps its template (outreach_touch_is_lawful), and a voided one stays as the record. Step 4 then
+--     drafts the latest version in its place.
+update public.outreach_touches t
+   set state = 'void',
+       void_reason = 'superseded by ' || d.template || ' version ' || (select max(version) from public.outreach_templates where key = d.template)
+  from w6_d7 d
+  join w6_d7_org g on g.organiser = d.organiser
+  join public.organiser_contacts c on c.organiser_id = g.organiser_id and c.channel = d.channel and c.address = d.address
+ where t.contact_id = c.id
+   and t.state = 'held'
+   and t.template_id in (select id from public.outreach_templates where key = d.template)
+   and t.template_id <> (select id from public.outreach_templates where key = d.template order by version desc limit 1);
 
 -- 4. The drafts, HELD in that play; each email carries its contact's own unsubscribe link.
 insert into public.outreach_touches (contact_id, purpose, step, template_id, play_id, subject, body, held_because, state, drafted_by)
@@ -132,7 +149,7 @@ select c.id, 'cadence', 1,
   join w6_d7_org g on g.organiser = d.organiser
   join public.organiser_contacts c on c.organiser_id = g.organiser_id and c.channel = d.channel and c.address = d.address
  where not exists (select 1 from public.outreach_touches t join public.outreach_templates tp on tp.id = t.template_id
-                    where t.contact_id = c.id and tp.key in ('venue_ask', 'venue_ask_dm'));
+                    where t.contact_id = c.id and tp.key in ('venue_ask', 'venue_ask_dm') and t.state <> 'void');
 
 -- 5. Read back: every row, and what each draft is.
 ${'__READ_BACK__'}`
