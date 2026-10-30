@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { dhashBits, hamming, judgeAssignments, judgeSchema } from '../../../scripts/guards/one-photo-one-event.mjs'
+import { dhashBits, hamming, judgeAssignments, judgeRenderPaths, judgeSchema } from '../../../scripts/guards/one-photo-one-event.mjs'
 
 /**
  * The photo system's gate guard (P1 and P2, Lawal's ruling of 31 October 2026
@@ -112,5 +112,34 @@ describe('clause B, the rows', () => {
     expect(judgeAssignments(at('63'), 6).near).toHaveLength(1) // 6 bits
     expect(judgeAssignments(at('127'), 6).near).toHaveLength(0) // 7 bits
     expect(judgeAssignments(at('x'), 6).unhashed).toBe(1)
+  })
+})
+
+describe('clause C, the render paths', () => {
+  const file = (path: string, code: string) => ({ path, withStrings: code, code: code.replace(/(['"`])[^'"`]*\1/g, '$1$1') })
+  const reader = file('src/lib/venues/venue-photos-read.ts', "deps.rpc('event_cover_photos_for', {}); deps.rpc('venue_photos_for', {})")
+  const chain = file('src/lib/images/venue-photo-chain.ts', 'eventCoversFor(ids); export function withVenuePhotos() {}')
+  const page = (code: string) => file('src/app/page.tsx', 'await withVenuePhotos(rows);' + code)
+
+  test('one reader, the chain reading it, and pages passing rows through the chain pass', () => {
+    expect(judgeRenderPaths([reader, chain, page('')])).toEqual({ faults: [], readers: 2 })
+  })
+
+  test('a public page reading the venue library, the photo tables or the database itself fails', () => {
+    expect(judgeRenderPaths([reader, chain, page('venuePhotosFor(ids)')]).faults[0]).toContain('reads the venue library')
+    expect(judgeRenderPaths([reader, chain, page("db.from('photo_assignments')")]).faults[0]).toContain('reads photo_assignments directly')
+    expect(judgeRenderPaths([reader, chain, page("db.rpc('venue_photos_for')")]).faults[0]).toContain('calls venue_photos_for itself')
+  })
+
+  test('managing a library may read it; it may still not call the database read itself', () => {
+    const media = file('src/app/(dashboard)/dashboard/organisation/media/page.tsx', "admin.from('venue_images'); shownVenuePhoto(v)")
+    expect(judgeRenderPaths([reader, chain, media]).faults).toEqual([])
+    const rogue = file('src/app/(dashboard)/x/page.tsx', "db.rpc('event_cover_photos_for')")
+    expect(judgeRenderPaths([reader, chain, rogue]).faults[0]).toContain('calls event_cover_photos_for itself')
+  })
+
+  test('no reader of the assignment, or a chain that does not read it, fails', () => {
+    expect(judgeRenderPaths([chain]).faults[0]).toContain('does not call event_cover_photos_for')
+    expect(judgeRenderPaths([reader, file('src/lib/images/venue-photo-chain.ts', 'venueOnly()')]).faults[0]).toContain('does not read eventCoversFor')
   })
 })

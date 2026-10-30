@@ -11,7 +11,7 @@
  * proof (proof 1 in the document): it fails any car in which a photo can be, or
  * is, assigned to two events.
  *
- * WHAT IT JUDGES, two clauses, each printed on every run:
+ * WHAT IT JUDGES, three clauses, each printed on every run:
  *
  *   A. THE SCHEMA (P2, read from supabase/migrations, no network). Some
  *      migration creates public.photo_assignments; photo_sha256 is NOT NULL and
@@ -37,16 +37,20 @@
  * which is why the guard is registered in run-guards.mjs in the same car as the
  * assignment table, and run by C:\dev\STACK-CHECK.sh before that.
  *
- * NOT JUDGED HERE, said so that nobody reads a PASS as more than it is: that a
- * render path reads the assignment rather than picking a photo (clause C, added
- * with the chain that reads event_cover_photos_for), the same video link on two
- * events (P10, added with its refusal), and the live crawl (proof 2), which is
- * window 6's script and reads production pages.
+ *   C. THE RENDER PATHS (P2, read from src, no network). The night's photo is
+ *      read by one module only and the card chain reads it; no public page
+ *      reads the venue library or the photo tables itself. See READER below.
+ *
+ * NOT JUDGED HERE, said so that nobody reads a PASS as more than it is: the same
+ * video link on two events (P10, a trigger on events, added with its proof),
+ * and the live crawl (proof 2), which is window 6's script and reads production
+ * pages.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { selectRest, couldNotLook } from './lib/db-read.mjs'
+import { readSource, sourceFiles } from './lib/source.mjs'
 import { tableReadCredential } from './lib/table-read-credential.mjs'
 
 const TAG = '[one-photo-one-event]'
@@ -170,6 +174,48 @@ export function judgeSchema(given) {
   return { built: true, faults, where: made.file, holds: live.length, bits }
 }
 
+/*
+ * Clause C, the render paths (P2: "nothing picks a photo at render time"). Window 3's 31 October 00:36: the ONE
+ * reader of a night's assigned photo is public.event_cover_photos_for, called only by eventCoversFor in READER,
+ * called only by withVenuePhotos in CHAIN, through which every card loader and event page passes its rows. The venue
+ * library read (venue_photos_for and its wrappers) is the photo a VENUE holds, not the one a night was dealt, so a
+ * public page that reads it is picking a photo outside the assignment. Managing a library (the organiser's media page,
+ * the admin approval screen) may read it.
+ */
+export const READER = 'src/lib/venues/venue-photos-read.ts'
+export const CHAIN = 'src/lib/images/venue-photo-chain.ts'
+export const MANAGE = ['src/lib/venues/venue-images.ts', 'src/app/(dashboard)/', 'src/app/admin/', 'src/lib/admin/']
+const GENERATED = 'src/types/database.ts'
+const LIBRARY_READS = /\b(venuePhotosFor|venuePhotoFor|shownVenuePhoto)\b/
+const TABLE_READS = /\.from\(\s*['"`](venue_images|photo_assignments)['"`]\s*\)/
+
+/**
+ * @param {{ path: string, withStrings: string, code: string }[]} files  comments blanked (withStrings) and strings
+ *   blanked too (code), as readSource gives them
+ * @returns {{ faults: string[], readers: number }}
+ */
+export function judgeRenderPaths(files) {
+  const faults = []
+  const managing = (p) => MANAGE.some((m) => (m.endsWith('/') ? p.startsWith(m) : p === m))
+  const reader = files.find((f) => f.path === READER)
+  const chain = files.find((f) => f.path === CHAIN)
+  if (!reader || !/['"`]event_cover_photos_for['"`]/.test(reader.withStrings)) {
+    faults.push(`${READER} does not call event_cover_photos_for, so no card reads its night's assigned photo`)
+  }
+  if (!chain || !/\beventCoversFor\b/.test(chain.code)) faults.push(`${CHAIN} does not read eventCoversFor, so the card chain does not read the assignment`)
+  for (const f of files) {
+    if (f.path === READER || f.path === GENERATED) continue
+    const rpc = f.withStrings.match(/['"`](event_cover_photos_for|venue_photos_for)['"`]/)
+    if (rpc) faults.push(`${f.path} calls ${rpc[1]} itself; only ${READER} reads photos from the database`)
+    if (managing(f.path)) continue
+    const lib = f.code.match(LIBRARY_READS)
+    if (lib) faults.push(`${f.path} reads the venue library (${lib[1]}), a photo the venue holds and no night was dealt`)
+    const table = f.withStrings.match(TABLE_READS)
+    if (table && f.path !== READER) faults.push(`${f.path} reads ${table[1]} directly; a page shows a photo only through ${CHAIN}`)
+  }
+  return { faults, readers: files.filter((f) => f.code.includes('withVenuePhotos')).length }
+}
+
 /** A signed 64-bit bigint, as the text Postgres writes, to its unsigned bits; null when it is not one. */
 export function dhashBits(v) {
   if (typeof v !== 'string' || !/^-?\d{1,20}$/.test(v)) return null
@@ -237,6 +283,14 @@ async function main() {
   }
   console.log(`${TAG} A, schema: public.${TABLE} created in ${schema.where}; ${HASH} not null and unique on its own (${schema.holds} rule(s) standing); a near copy refused within ${schema.bits} bit(s)`)
 
+  const render = judgeRenderPaths(sourceFiles('.').map((path) => ({ path, ...readSource(path) })))
+  if (render.faults.length) {
+    for (const f of render.faults) console.error(`${TAG} FAIL (C, render paths): ${f}`)
+    process.exitCode = 1
+    return
+  }
+  console.log(`${TAG} C, render paths: photos read only through ${READER}; ${render.readers} file(s) pass their rows through withVenuePhotos; no public page reads the venue library`)
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL && existsSync('.env.test')) {
     for (const line of readFileSync('.env.test', 'utf8').split(String.fromCharCode(10))) {
       const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
@@ -245,12 +299,12 @@ async function main() {
   }
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
   if (!/^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/.test(url)) {
-    console.log(`${TAG} B, rows: NOT JUDGED, no real Supabase project URL in the environment (${url.length} characters); clause A alone passed`)
+    console.log(`${TAG} B, rows: NOT JUDGED, no real Supabase project URL in the environment (${url.length} characters); clauses A and C passed`)
     return
   }
   const credential = tableReadCredential(process.env)
   if (!credential.key) {
-    console.log(`${TAG} B, rows: NOT JUDGED [no-credential]: ${credential.reason}. No assignment was read; clause A alone passed`)
+    console.log(`${TAG} B, rows: NOT JUDGED [no-credential]: ${credential.reason}. No assignment was read; clauses A and C passed`)
     return
   }
   const rows = []
