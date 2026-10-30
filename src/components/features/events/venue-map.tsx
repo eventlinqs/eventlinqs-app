@@ -10,7 +10,6 @@ import {
 } from '@/lib/maps/google-maps-loader'
 import { createVenuePin } from '@/lib/maps/brand-pin'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
-import { isAuditRun } from '@/lib/ui/audit-mode'
 import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 interface Props {
@@ -44,7 +43,7 @@ export function VenueMap({
   const mapRef = useRef<google.maps.Map | null>(null)
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [interactive, setInteractive] = useState(false)
-  const [inView, setInView] = useState(false)
+  const [wanted, setWanted] = useState(false)
   /*
    * WHEN GOOGLE REFUSES THE KEY, KEEP OUR OWN PLATE UP.
    *
@@ -73,43 +72,10 @@ export function VenueMap({
   const geocodeQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
   const hasLocation = hasCoords || geocodeQuery.trim().length > 0
 
-  // Defer Google Maps JS download (~290KB) until the venue section enters
-  // the viewport. Map sits well below the fold; eager load wastes mobile
-  // bandwidth and drags Speed Index because the map JS continues painting
-  // tiles after the Lighthouse measurement window starts. In headless/
-  // audit mode, skip auto-load entirely - a real user scrolling to the
-  // venue section still triggers the IntersectionObserver, but the
-  // headless bot never gets there within the PSI 6s measurement window.
-  useEffect(() => {
-    if (!hasLocation) return
-    // Skip entirely in headless audit mode - matches smart-media's pattern.
-    if (isAuditRun()) {
-      return
-    }
-    const el = containerRef.current
-    // Defer setState to the next tick so we don't cascade-render inside
-    // the effect body (react-hooks/set-state-in-effect).
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      const t = setTimeout(() => setInView(true), 0)
-      return () => clearTimeout(t)
-    }
-    const io = new IntersectionObserver(
-      entries => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setInView(true)
-            io.disconnect()
-            break
-          }
-        }
-      },
-      { rootMargin: '200px 0px' },
-    )
-    io.observe(el)
-    return () => {
-      io.disconnect()
-    }
-  }, [hasLocation])
+  // GOOGLE LOADS ONLY WHEN THE VISITOR ASKS (the controller's 06:16 (4), 31 October 2026). It used to load as the
+  // venue section scrolled into view, so every event page view became a Maps JavaScript API load in the visitor's
+  // browser, outside the zero-budget spend guard (that guard sees server calls only). Now our plate stands until the
+  // visitor presses 'Show map'; 'Open in Maps' below stays a plain link. A headless audit never presses it.
   const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
@@ -120,7 +86,7 @@ export function VenueMap({
 
   useEffect(() => {
     if (!hasLocation) return
-    if (!inView) return
+    if (!wanted) return
     const loader = getGoogleMapsLoader()
     if (!loader) return
     if (!containerRef.current) return
@@ -204,7 +170,7 @@ export function VenueMap({
       markerRef.current = null
       mapRef.current = null
     }
-  }, [hasLocation, hasCoords, inView, latitude, longitude, venueName, geocodeQuery])
+  }, [hasLocation, hasCoords, wanted, latitude, longitude, venueName, geocodeQuery])
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -216,20 +182,6 @@ export function VenueMap({
               // Hidden rather than unmounted: Google has already written its own
               // error panel in here, and unmounting mid-callback races the API.
               className={`absolute inset-0 h-full w-full ${authFailed ? 'invisible' : ''}`}
-            />
-            {/* Native lazy-img sentinel - when the browser decides this
-                pseudo-image is near the viewport it kicks off `onLoad`,
-                giving us a second independent trigger alongside the IO.
-                This is a 1-pixel transparent GIF, not a display image  - 
-                `next/image` is the wrong tool here. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt=""
-              src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
-              loading="lazy"
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
-              onLoad={() => setInView(true)}
             />
             {(!interactive || authFailed) && (
               <div
@@ -253,6 +205,15 @@ export function VenueMap({
                       </p>
                       {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
                     </>
+                  )}
+                  {!wanted && !authFailed && (
+                    <button
+                      type="button"
+                      onClick={() => setWanted(true)}
+                      className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
+                    >
+                      Show map
+                    </button>
                   )}
                 </div>
               </div>
