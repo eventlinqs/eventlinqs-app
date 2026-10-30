@@ -50,6 +50,10 @@ describe('a recommendation', () => {
     const [r] = recommendations(nights)
     expect(r).toBe(`Give melbourne more of the next plan: 30 people a night against 10 for geelong, over ${MIN_NIGHTS_TO_COMPARE} nights each. Observed, not a prediction.`)
   })
+  test('lead time reads as how far ahead a night went up', () => {
+    const r = recommendations([...many(MIN_NIGHTS_TO_COMPARE, { leadDays: 30, people: 30 }), ...many(MIN_NIGHTS_TO_COMPARE, { leadDays: 1, people: 10 })])
+    expect(r).toContain(`Publish earlier where you can: nights up 21 days or more ahead drew 30 people a night against 10 for 0 to 1 days, over ${MIN_NIGHTS_TO_COMPARE} nights each. Observed, not a prediction.`)
+  })
   test('too few nights says nothing rather than guess', () => {
     expect(recommendations(nights.slice(1))).toEqual([])
   })
