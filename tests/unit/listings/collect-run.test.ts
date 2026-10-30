@@ -95,7 +95,8 @@ describe('the weekly collection run', () => {
   it('never fetches a source whose terms do not allow it, or one not yet due', async () => {
     const { store } = memoryStore([
       source('ask', 'https://ask.example.com/e', { collection: 'ask' }),
-      source('fresh', 'https://fresh.example.com/e', { lastCheckedAt: '2026-10-26T00:00:00Z' }),
+      /* A check that SUCCEEDED (last_success_at with it); a failed one is read again daily (failed-source-retried.test.ts). */
+      source('fresh', 'https://fresh.example.com/e', { lastCheckedAt: '2026-10-26T00:00:00Z', lastSuccessAt: '2026-10-26T00:00:00Z' }),
     ])
     const { fetcher, asked } = sites({})
     const r = await runCollection(store, fetcher, NOW)
