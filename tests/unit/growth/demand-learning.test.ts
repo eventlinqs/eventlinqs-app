@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { MIN_NIGHTS_TO_COMPARE, MIN_PAIRS_TO_READ, compareNights, holdoutArm, holdoutReading, leadTimeBand, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
+import { MIN_NIGHTS_TO_COMPARE, MIN_PAIRS_TO_READ, compareNights, holdoutArm, holdoutReading, leadTimeBand, nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
 
 /**
  * THE DEMAND LEARNING LOOP (D10 of Lawal's DemandOS directive of 30 October 2026, section 10: "Compare performance by
@@ -80,5 +80,28 @@ describe('the holdout: matched recurring nights in alternating weeks', () => {
   test('too few pairs reads nothing, and never claims incremental sales', () => {
     expect(holdoutReading([{ distributedOrders: 9, heldOutOrders: 1 }])).toEqual({ state: 'too_few', pairs: 1 })
     expect(JSON.stringify(holdoutReading(Array.from({ length: MIN_PAIRS_TO_READ }, () => ({ distributedOrders: 2, heldOutOrders: 1 }))))).not.toMatch(/incremental/i)
+  })
+})
+
+describe('a kept report read as an outcome', () => {
+  const figures = { version: 1, viewers: 12, posts: [], instagramReach: null, pressesOut: { people: 3, bySite: [] }, onEventLinqs: null }
+  test('takes the night and its place from the event', () => {
+    expect(nightOutcomeFrom({ figures, city: 'geelong', category: 'Music', publishedAt: '2026-10-01T00:00:00.000Z', startDate: '2026-10-11T00:00:00.000Z' })).toEqual({ city: 'geelong', category: 'Music', leadDays: 10, people: 12, presses: 3, orders: null })
+  })
+  test('our own orders are read where we ticket', () => {
+    expect(nightOutcomeFrom({ figures: { ...figures, onEventLinqs: { orders: 2, tickets: 5 } }, city: null, category: null, publishedAt: '2026-10-01T00:00:00.000Z', startDate: '2026-10-02T00:00:00.000Z' })?.orders).toBe(2)
+  })
+  test('a broken report or a night with no publish date is left out', () => {
+    expect(nightOutcomeFrom({ figures: { version: 9 }, city: null, category: null, publishedAt: '2026-10-01T00:00:00.000Z', startDate: '2026-10-02T00:00:00.000Z' })).toBeNull()
+    expect(nightOutcomeFrom({ figures, city: null, category: null, publishedAt: null, startDate: '2026-10-02T00:00:00.000Z' })).toBeNull()
+  })
+})
+
+describe('the recommended next actions on /admin/today', () => {
+  test('nothing to say reads so, and how many nights it had', () => {
+    expect(recommendationFigure([], 11)).toMatchObject({ label: 'Recommended next', value: 0, kind: 'measure', cadence: 'weekly', asksForAPerson: false, display: 'Too few nights to compare yet (11 reported)' })
+  })
+  test('says each line it has', () => {
+    expect(recommendationFigure(['One.', 'Two.'], 40)).toMatchObject({ value: 2, display: 'One. Two.' })
   })
 })
