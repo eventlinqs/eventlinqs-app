@@ -132,6 +132,22 @@ export interface OrderRow {
   /** What the platform kept out of the order, and what Stripe is estimated to take; null where the order does not record it. */
   readonly retainedCents: number | null
   readonly processingCents: number | null
+  /**
+   * What has been refunded on this order (completed refunds). The kept fee is written once at charge time and a refund
+   * never rewrites it, so the margin takes the refunded share of it off here. Absent where the reader does not know.
+   */
+  readonly refundedCents?: number
+}
+
+/** The kept fee a refund gave back: the refunded share of the order (refund.ts refunds the fee in proportion). */
+export function feeGivenBack(o: Pick<OrderRow, 'totalCents' | 'retainedCents' | 'refundedCents'>): number {
+  if (!o.refundedCents || o.refundedCents <= 0 || o.totalCents <= 0 || o.retainedCents === null) return 0
+  return Math.round((o.retainedCents * Math.min(o.refundedCents, o.totalCents)) / o.totalCents)
+}
+
+/** An order's refunded cents, from its embedded refunds rows: completed ones only. */
+export function refundedOf(refunds: readonly { readonly amount_cents: number | string; readonly status: string }[] | null | undefined): number {
+  return (refunds ?? []).filter((r) => r.status === 'completed').reduce((n, r) => n + (Number(r.amount_cents) || 0), 0)
 }
 
 export interface RefundRow {
@@ -192,7 +208,7 @@ export function figuresFor(rows: Rows, w: Week): WeekFigures {
   const organisers = new Set(weekOrders.map((o) => o.organisationId))
   const before = new Set(sold.filter((o) => o.createdAt < w.from).map((o) => o.organisationId))
   const recorded = weekOrders.filter((o) => o.retainedCents !== null && o.processingCents !== null)
-  const marginCents = recorded.reduce((n, o) => n + (o.retainedCents ?? 0) - (o.processingCents ?? 0), 0)
+  const marginCents = recorded.reduce((n, o) => n + (o.retainedCents ?? 0) - (o.processingCents ?? 0) - feeGivenBack(o), 0)
 
   return {
     relevance: { live, published },

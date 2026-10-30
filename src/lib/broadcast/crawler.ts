@@ -81,7 +81,30 @@ const CRAWLER_TOKENS: readonly string[] = [
   'spider',
   'crawler',
   'preview',
+  // Scripts and our own tools (the DemandOS audit, 30 October 2026: production read 73 booking presses against 3
+  // page views in a day). A script never runs the page-view beacon, so each of its /out requests read as a person
+  // about to book. Each token is the start of that tool's own default agent, as observed, UNSOURCED as a list.
+  // Our link crawler sends 'eventlinqs-link-crawl', which carries no 'crawler'.
+  'eventlinqs-',
+  'curl/',
+  'wget/',
+  'python-requests',
+  'python-urllib',
+  'python-httpx',
+  'aiohttp/',
+  'undici',
+  'node-fetch',
+  'axios/',
+  'go-http-client',
+  'okhttp/',
+  'java/',
+  'apache-httpclient',
+  'libwww-perl',
+  'claude-user',
 ]
+
+/** Agents that are a bare word, matched whole so no browser containing the word is caught: Node's built-in fetch sends 'node'. */
+const SCRIPT_AGENTS_EXACT: readonly string[] = ['node']
 
 /**
  * True when the request is a link-preview fetch or a crawler rather than a
@@ -96,7 +119,7 @@ export function isPreviewCrawler(userAgent: string | null | undefined): boolean 
     return true
   }
   const ua = userAgent.toLowerCase()
-  return CRAWLER_TOKENS.some(token => ua.includes(token))
+  return SCRIPT_AGENTS_EXACT.includes(ua.trim()) || CRAWLER_TOKENS.some(token => ua.includes(token))
 }
 
 /**

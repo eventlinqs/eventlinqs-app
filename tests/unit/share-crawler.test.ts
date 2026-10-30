@@ -35,6 +35,34 @@ describe('link preview crawlers are not people', () => {
     expect(isPreviewCrawler('Mozilla/5.0 (compatible; Googlebot/2.1)')).toBe(true)
   })
 
+  // 30 October 2026, the DemandOS audit (window 5): production read 73 booking presses against 3 page views on one day.
+  // A script never runs the page-view beacon, and none of these agents was refused, so each of their /out requests
+  // counted as a person about to book. Our own link crawler among them: 'link-crawl' carries no 'crawler'.
+  it('catches script agents and our own tools, which never run the page-view beacon', () => {
+    for (const ua of [
+      'eventlinqs-link-crawl',
+      'EventLinqs-QA crawler (window 5, mobile audit)',
+      'curl/8.9.1',
+      'Wget/1.21.4',
+      'python-requests/2.32.3',
+      'Python-urllib/3.12',
+      'python-httpx/0.27.0',
+      'aiohttp/3.9.5',
+      'node',
+      'undici',
+      'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)',
+      'axios/1.7.2',
+      'Go-http-client/2.0',
+      'okhttp/4.12.0',
+      'Java/21.0.2',
+      'Apache-HttpClient/5.3 (Java/21)',
+      'libwww-perl/6.77',
+      'Claude-User (+https://support.anthropic.com/)',
+    ]) {
+      expect(isPreviewCrawler(ua), ua).toBe(true)
+    }
+  })
+
   it('treats a missing user agent as automation', () => {
     // Every mainstream browser sends one. An empty string is a script.
     expect(isPreviewCrawler(null)).toBe(true)
