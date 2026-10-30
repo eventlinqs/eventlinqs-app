@@ -37,6 +37,9 @@ describe('the event page and its preload ask it', () => {
 
   test('the layout skips the preload for a typographic hero, but not for a walk-in night', () => {
     const layout = readFileSync('src/app/events/[slug]/layout.tsx', 'utf8')
-    expect(layout).toMatch(/eventHeroPreloadLink\(event, \{ typographicHasNoRaster: !isWalkIn\(event\) \}\)/)
+    // The row's cover after the venue chain (withVenuePhotos), the raster both pages paint.
+    expect(layout).toMatch(
+      /eventHeroPreloadLink\(\{ \.\.\.event, cover_image_url: heroCover\.cover_image_url \}, \{ typographicHasNoRaster: !isWalkIn\(event\) \}\)/,
+    )
   })
 })

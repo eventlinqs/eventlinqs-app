@@ -156,6 +156,33 @@ function eventlinqsWords(root: HTMLElement): string {
 
 const ALLOWED = ['Free entry, no ticket needed', 'Free, no ticket needed', 'Free · No ticket needed', 'No ticket needed']
 
+describe("a walk-in night shown with its venue's approved photograph", () => {
+  it('credits it under the photograph, linked to the file page and the licence', () => {
+    const { container } = render(
+      <WalkInEventView
+        event={{ ...(event as object), cover_image_url: null } as never}
+        guide={guide.ok ? { ...guide.guide, cover_credit: null } : (null as never)}
+        remindMeOn
+        now={Date.now()}
+        baseUrl="https://www.eventlinqs.com.au"
+        hero={{
+          image: 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Fed_Square.jpg',
+          alt: 'Fed Square',
+          credit: {
+            text: 'Photo: Dietmar Rabich, CC BY-SA 4.0',
+            file: 'https://commons.wikimedia.org/wiki/File:Fed_Square.jpg',
+            licence: 'https://creativecommons.org/licenses/by-sa/4.0',
+          },
+        }}
+      />,
+    )
+    const caption = container.querySelector('figcaption[data-venue-credit]')
+    expect(caption?.textContent).toContain('Photo: Dietmar Rabich, CC BY-SA 4.0')
+    expect(caption?.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Fed_Square.jpg"]')).not.toBeNull()
+    expect(caption?.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0"]')?.textContent).toBe('Licence')
+  })
+})
+
 describe('a walk-in page, read as rendered', () => {
   it('EventLinqs writes no ticket or book word but "No ticket needed", and no dollar sign', () => {
     const { container } = drawn()
