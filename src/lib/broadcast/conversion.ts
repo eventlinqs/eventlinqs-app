@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureException } from '@/lib/observability/sentry'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { pieceNamesNight } from '@/lib/broadcast/outbound'
 import {
@@ -48,8 +49,9 @@ export async function creditConversion(
   if (candidate !== null) {
     try {
       pieceId = (await deps.pieceNamesNight(candidate, order.event_id)) ? candidate : null
-    } catch {
+    } catch (error) {
       // A failed read of the post never costs the share link its credit.
+      captureException(error, { where: 'lib/broadcast/conversion:creditConversion the post' })
     }
   }
   const target = link ?? (pieceId !== null ? await deps.ownLinkFor(order.event_id) : null)
@@ -73,7 +75,8 @@ export async function recordShareConversionForOrder(order: {
         resolve: resolveShareLink,
         pieceNamesNight: (pieceId, eventId) => pieceNamesNight(admin, pieceId, eventId),
         async ownLinkFor(eventId) {
-          const { data } = await admin.from('events').select('slug').eq('id', eventId).maybeSingle()
+          const { data, error } = await admin.from('events').select('slug').eq('id', eventId).maybeSingle()
+          if (error) throw new Error(`the night's own link could not be read: ${error.message}`)
           return data?.slug ? getOrCreateShareLink({ eventId, channel: 'other', eventSlug: data.slug }) : null
         },
         async record(linkId, orderId, pieceId) {
@@ -81,7 +84,8 @@ export async function recordShareConversionForOrder(order: {
         },
       },
     )
-  } catch {
-    // Instrumentation only. The confirmation page always renders.
+  } catch (error) {
+    // Instrumentation only. The confirmation page always renders; the lost credit is reported, never silent.
+    captureException(error, { where: 'lib/broadcast/conversion:recordShareConversionForOrder' })
   }
 }
