@@ -61,6 +61,28 @@ describe('the organiser media step, src/lib/upload.ts', () => {
     expect(stored).toBeLessThan(locked)
   })
 
+  it('a public submission asks whether its photo is used for any event before it stores it', () => {
+    const sub = readFileSync(join(process.cwd(), 'src/lib/listings/submission-store.ts'), 'utf8')
+    const hashed = sub.indexOf('photoHashes(')
+    const asked = sub.indexOf('photoLockedElsewhere(hashes, null')
+    const stored = sub.indexOf('.upload(path')
+    for (const at of [hashed, asked, stored]) expect(at).toBeGreaterThan(-1)
+    expect(hashed).toBeLessThan(asked)
+    expect(asked).toBeLessThan(stored)
+    expect(sub).toContain("return { state: 'refused', reason: PHOTO_ALREADY_USED }")
+  })
+
+  it('a walk-in listing refuses a photo used elsewhere before storing it, and locks the set only once it is written', () => {
+    const draft = readFileSync(join(process.cwd(), 'src/lib/walk-in/list-draft.ts'), 'utf8')
+    const asked = draft.indexOf('photoLockedElsewhere(hashes, eventId, lockRpc)')
+    const stored = draft.indexOf('.upload(name, processed.image.buffer')
+    const published = draft.indexOf("publishUnlisted(client, plan, organisationId, eventId, 'draft')")
+    const locked = draft.indexOf('lockPhotoToEvent({ eventId, hashes: p.hashes')
+    for (const at of [asked, stored, published, locked]) expect(at).toBeGreaterThan(-1)
+    expect(asked).toBeLessThan(stored)
+    expect(published).toBeLessThan(locked)
+  })
+
   it('takes the stored file back out when the lock refuses', () => {
     const tail = SOURCE.slice(SOURCE.indexOf('lockPhotoToEvent('))
     expect(tail.slice(0, 600)).toMatch(/\.remove\(\[objectName\]\)/)

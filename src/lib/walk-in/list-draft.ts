@@ -9,6 +9,8 @@ import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-mod
 import { MAX_GALLERY_IMAGES } from '@/lib/media/limits'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { processEventImage } from '@/lib/media/image-pipeline'
+import { photoHashes } from '@/lib/images/photo-hash'
+import { lockPhotoToEvent, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { checkPublishGate } from '@/lib/events/publish-gate'
 import { canTransition } from '@/lib/event-lifecycle'
 import type { EventStatus } from '@/types/database'
@@ -378,9 +380,20 @@ export async function writeWalkInListing(
     listing_source: block.listing_source,
   }))
 
+  // NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P8 and P9): each photo is refused before it is stored when
+  // another event holds it, and the whole set is locked to this night only once the listing is written, so a write that
+  // fails and takes the draft away never leaves a photo locked to a night that is gone.
+  const lockRpc = {
+    rpc: (name: string, args: Record<string, unknown>) =>
+      (client.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args),
+  }
+  const toLock: { url: string; role: 'cover' | 'gallery'; hashes: PhotoHashes }[] = []
   try {
     const upload = async (file: string, role: 'cover' | 'gallery') => {
-      const processed = await processEventImage(await deps.readPhoto(file), { role })
+      const bytes = await deps.readPhoto(file)
+      const hashes = await photoHashes(bytes)
+      if (await photoLockedElsewhere(hashes, eventId, lockRpc)) throw new Error(`${file}: ${PHOTO_ALREADY_USED}`)
+      const processed = await processEventImage(bytes, { role })
       if (!processed.ok) throw new Error(`${file}: ${processed.error}`)
       const name = `${deps.ownerUserId}/${eventId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${processed.image.ext}`
       const { error } = await client.storage.from(BUCKET).upload(name, processed.image.buffer, {
@@ -390,7 +403,9 @@ export async function writeWalkInListing(
       })
       if (error) throw new Error(`${file} could not be stored: ${error.message}`)
       objects.push(name)
-      return { url: client.storage.from(BUCKET).getPublicUrl(name).data.publicUrl, blur: processed.image.blurDataURL }
+      const url = client.storage.from(BUCKET).getPublicUrl(name).data.publicUrl
+      toLock.push({ url, role, hashes })
+      return { url, blur: processed.image.blurDataURL }
     }
     const cover = await upload(block.event.cover.file, 'cover')
     const gallery: GalleryImage[] = []
@@ -408,6 +423,10 @@ export async function writeWalkInListing(
     await saveGuide(client, eventId, plan)
     const listed = await publishUnlisted(client, plan, organisationId, eventId, 'draft')
     if (!listed.ok) throw new Error(listed.reason)
+    for (const p of toLock) {
+      const locked = await lockPhotoToEvent({ eventId, hashes: p.hashes, imageUrl: p.url, role: p.role }, lockRpc)
+      if (!locked.ok) throw new Error(locked.error)
+    }
   } catch (error) {
     if (objects.length > 0) await client.storage.from(BUCKET).remove(objects)
     await client.from('event_guides').delete().eq('event_id', eventId)
