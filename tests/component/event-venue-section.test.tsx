@@ -45,6 +45,13 @@ describe('the one venue section', () => {
     expect(container.textContent).toContain('Lift access to all areas.')
   })
 
+  it('says the venue and address once: a page whose facts already state them draws the map and Get directions only', () => {
+    const { container } = render(<EventVenueSection event={FED} heading={<h2>Venue</h2>} addressStatedAbove />)
+    expect(markers(container)).toEqual(['map', 'getting-there'])
+    expect(container.textContent).not.toContain('Corner of Swanston and Flinders Streets')
+    expect(container.querySelectorAll('a[href^="https://www.google.com/maps/dir/"]').length).toBe(1)
+  })
+
   it('draws nothing for an event with no venue', () => {
     const { container } = render(<EventVenueSection event={{ ...FED, venue_name: null, venue_address: null, venue_latitude: null, venue_longitude: null }} heading={<h2>x</h2>} />)
     expect(container.innerHTML).toBe('')
