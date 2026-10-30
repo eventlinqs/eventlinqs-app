@@ -227,6 +227,27 @@ export async function draftTouch(
   }).select('id').single())
 }
 
+/**
+ * Lawal opened the published page of a held message's contact and it carries no statement against messages (the
+ * CONTROLLER's 05:32 of 31 October 2026, ruling (3)): recorded as his check, now. Until this is recorded the database
+ * refuses the message leaving held (migration 20261031053501). Express consent has no page to check and is left alone.
+ */
+export async function confirmPageChecked(db: Admin, input: { touchId: string; by: string }): Promise<Done<{ id: string }>> {
+  const touch = await db.from('outreach_touches').select('contact_id').eq('id', input.touchId).eq('state', 'held').maybeSingle()
+  if (touch.error || !touch.data) return { state: 'refused', reason: touch.error ? refusalFromError(touch.error) : 'That message is no longer waiting.' }
+  const contact = await db.from('organiser_contacts').select('id, basis, no_marketing_statement_checked').eq('id', touch.data.contact_id).single()
+  if (contact.error) return { state: 'refused', reason: refusalFromError(contact.error) }
+  if (contact.data.basis !== 'conspicuous_publication' || contact.data.no_marketing_statement_checked) return { state: 'done', value: { id: contact.data.id } }
+  return result(
+    await db
+      .from('organiser_contacts')
+      .update({ no_marketing_statement_checked: true, basis_recorded_by: input.by, basis_recorded_at: new Date().toISOString() })
+      .eq('id', contact.data.id)
+      .select('id')
+      .single(),
+  )
+}
+
 /** Lawal sent it by hand. The database checks the cadence and keeps the basis relied on beside the message. */
 export async function markSent(db: Admin, input: { touchId: string; sentAt: string; sentBy: string }): Promise<Done<{ id: string }>> {
   return result(await db.from('outreach_touches').update({ state: 'sent', sent_at: input.sentAt, sent_by: input.sentBy, provider: 'by_hand' }).eq('id', input.touchId).eq('state', 'held').select('id').single())
