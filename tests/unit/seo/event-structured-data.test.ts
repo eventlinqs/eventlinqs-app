@@ -620,12 +620,11 @@ describe('SEO1: the country code, and the JSON itself', () => {
 })
 
 describe('an event sold on another site (WI3)', () => {
-  it("offers the organiser's booking page, with no price, and stays valid", () => {
+  // The project manager's 23:56 of 30 October 2026 (3), on Search Console's 'missing price' warnings: an Offer only with
+  // a price we hold; the ticket link stays on the page.
+  it('whose price we do not hold carries no offers node at all, and stays valid', () => {
     const payload = build({ external_ticket_url: 'https://events.humanitix.com/an-outside-gig' }, { ticketTiers: [] }) as Record<string, unknown>
-    const offers = payload.offers as Record<string, unknown>[]
-    expect(offers).toHaveLength(1)
-    expect(offers[0].url).toBe('https://events.humanitix.com/an-outside-gig')
-    expect(offers[0].price).toBeUndefined()
+    expect('offers' in payload && payload.offers !== undefined).toBe(false)
     expect(validate(payload).errors).toEqual([])
   })
 
@@ -644,13 +643,12 @@ describe('an event sold on several sites (WI3, the 12:30 point 8)', () => {
     { ...base, id: 'c', provider: 'moshtix' as const, url: 'https://www.moshtix.com.au/v2/event/1', kind: 'tickets' as const, availability: 'dead' as const, priceFromCents: 2000, priceCheckedAt: new Date(NOW.getTime() - 30 * 3_600_000).toISOString(), position: 2 },
   ]
 
-  it("offers each place it sells, the button's first, never a dead one, a price only while fresh", () => {
+  it("offers only the places it sells with a fresh price, the button's first, never a dead one", () => {
     const payload = build({ external_ticket_url: 'https://events.humanitix.com/gig' }, { ticketTiers: [], bookingLinks: links, now: NOW }) as Record<string, unknown>
     const offers = payload.offers as Record<string, unknown>[]
-    expect(offers.map((o) => o.url)).toEqual(['https://events.humanitix.com/gig', 'https://www.eventbrite.com.au/e/1'])
+    expect(offers.map((o) => o.url)).toEqual(['https://events.humanitix.com/gig'])
     expect(offers[0]).toMatchObject({ price: '35.50', priceCurrency: 'AUD', availability: 'https://schema.org/InStock' })
-    expect(offers[1].price).toBeUndefined()
-    expect(offers[1].availability).toBe('https://schema.org/SoldOut')
+    expect(offers.every((o) => typeof o.price === 'string' && o.priceCurrency === 'AUD')).toBe(true)
     expect(validate(payload).errors).toEqual([])
   })
 })
@@ -676,5 +674,38 @@ describe('an EventLinqs listing names its host, never the listings organisation 
   it("an organiser's own event still names and links its organisation", () => {
     const payload = build() as Record<string, unknown>
     expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney', url: `${BASE}/organisers/owambe-sydney` })
+  })
+})
+
+describe("Search Console's Events warnings, answered honestly (the project manager's 23:56 of 30 October 2026, (3))", () => {
+  it('a free walk-in night keeps its one Offer at 0.00 AUD', () => {
+    const payload = build({ is_free: true, entry_mode: 'walk_in' }, { ticketTiers: [] }) as Record<string, unknown>
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect(offers[0]).toMatchObject({ price: '0.00', priceCurrency: 'AUD' })
+  })
+
+  it('every Offer it writes carries a price and a priceCurrency', () => {
+    for (const payload of [build(), build({ is_free: true, entry_mode: 'walk_in' }, { ticketTiers: [] })] as Record<string, unknown>[]) {
+      for (const o of (payload.offers ?? []) as Record<string, unknown>[]) {
+        expect(typeof o.price).toBe('string')
+        expect(typeof o.priceCurrency).toBe('string')
+      }
+    }
+  })
+
+  it('performer never stands in for the organiser or the title when no lineup is confirmed', () => {
+    const payload = build() as Record<string, unknown>
+    expect(payload.performer).toBeUndefined()
+  })
+
+  it("organizer.url is the organiser's own website when we hold no page of theirs", () => {
+    const payload = build({}, { organisation: { name: 'Owambe Sydney', slug: null, website: 'https://owambe.example.com', description: null } }) as Record<string, unknown>
+    expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney', url: 'https://owambe.example.com' })
+  })
+
+  it('organizer.url is omitted when we hold neither', () => {
+    const payload = build({}, { organisation: { name: 'Owambe Sydney', slug: null, website: null, description: null } }) as Record<string, unknown>
+    expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney' })
   })
 })
