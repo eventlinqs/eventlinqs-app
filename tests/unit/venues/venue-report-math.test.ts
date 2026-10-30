@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildVenueReport, nightsAVenueSees, type VenueNightRow } from '@/lib/venues/venue-report-math'
+import { arrivalsLine, buildVenueReport, nightsAVenueSees, venueArrivals, type VenueNightRow } from '@/lib/venues/venue-report-math'
 import { FIGURES_VERSION } from '@/lib/growth/organiser-report-math'
 
 /*
@@ -96,5 +96,27 @@ describe('the venue report', () => {
     const r = buildVenueReport([])
     expect(r.empty).toBe(true)
     expect(r.lines).toEqual([])
+  })
+})
+
+describe("arrivals by the venue's own code (/go/v, car 17)", () => {
+  it('counts each press once, by how it came, and never a QA press', () => {
+    const a = venueArrivals([
+      { via: 'qr', is_test: false },
+      { via: 'qr', is_test: false },
+      { via: 'link', is_test: false },
+      { via: 'qr', is_test: true },
+    ])
+    expect(a).toEqual({ total: 3, qr: 2, link: 1 })
+    expect(arrivalsLine(a)).toBe('Arrivals by your own code: 3 (2 by the printed QR code, 1 by the link). One per person per day; an arrival is not a booking.')
+  })
+
+  it('says plainly when no one has come by it yet, never a row of zeros', () => {
+    expect(arrivalsLine(venueArrivals([]))).toBe('No one has arrived by your own code yet.')
+    expect(arrivalsLine(venueArrivals([{ via: 'link', is_test: true }]))).toBe('No one has arrived by your own code yet.')
+  })
+
+  it('a code that was not read is said so, never shown as none', () => {
+    expect(arrivalsLine(null)).toBe('Arrivals by your own code could not be read just now.')
   })
 })
