@@ -24,8 +24,12 @@ describe('judgeVenueSave', () => {
     expect(v.ok).toBe(false)
     if (v.ok) return
     expect(v.kind).toBe('configuration')
-    expect(v.error).toContain('GOOGLE_MAPS_API_KEY')
-    expect(v.error).toMatch(/pick the venue from the suggestions/i)
+    // The organiser reads words they can act on (the CONTROLLER's 07:49 (2)); the key's name is for the server log,
+    // which events/actions.ts writes with the reason, never for the screen.
+    expect(v.error).not.toContain('GOOGLE_MAPS_API_KEY')
+    expect(v.error).not.toMatch(/geocod|environment|configur/i)
+    expect(v.error).toMatch(/^Pick your venue from the suggestions as you type/)
+    expect(v.error).toMatch(/hello@/)
   })
 
   test('the browser key standing in for the server key is the same configuration fault', () => {
