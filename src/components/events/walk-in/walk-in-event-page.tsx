@@ -290,7 +290,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   so the typographic cover stands in (the category and the EventLinqs mark; no date mark, as a guide can
                   span many days), as on the event page (heroIsTypographic). */}
               {hero.image &&
-                (heroIsTypographic(hero) ? (
+                (heroIsTypographic({ image: hero.image }) ? (
                   <BrandedPlaceholder category={event.category?.name ?? null} />
                 ) : (
                   <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />

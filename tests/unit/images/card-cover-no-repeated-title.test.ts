@@ -59,7 +59,7 @@ describe("a card with the night's own photograph", () => {
 describe('the walk-in page hero', () => {
   it('asks heroIsTypographic before drawing the hero raster, as the event page does', () => {
     const src = readFileSync('src/components/events/walk-in/walk-in-event-page.tsx', 'utf8')
-    expect(src).toMatch(/heroIsTypographic\(hero\)\s*\?\s*\(\s*<BrandedPlaceholder/)
+    expect(src).toMatch(/heroIsTypographic\(\{ image: hero\.image \}\)\s*\?\s*\(\s*<BrandedPlaceholder/)
   })
 })
 
