@@ -16,6 +16,17 @@
  *      night sold elsewhere, or one whose price nobody checked.
  *   2  No component returns the word 'Free' itself, except the reviewed exceptions below, each with its reason.
  *   3  Every card, tile and pin surface named below asks broadcastPriceLabel (or shows the server's price_line).
+ *   4  No page under src/app builds a map pin's price itself: a `price:` that can come out 'Free' is refused.
+ *   5  A page under src/app that hands rows to EventCard carries the night's price fields: a select that reads
+ *      ticket_tiers for cards also reads is_free and external_ticket_url, and a projection that copies entry_mode
+ *      onto the card also copies external_ticket_url.
+ *
+ * WHY 4 AND 5 (window 3, step 3 on live after car 14, 30 October 2026, 16:34): clauses 1 to 3 read src/components
+ * only. On production the CITY MAP PINS still said 'Free' for Kate Ceberano, Guy Sebastian and 36 more paid nights
+ * sold elsewhere (src/app/city/[slug]/page.tsx and src/app/community/[community]/[city]/page.tsx kept their own
+ * "cheapest > 0 ? ... : 'Free'"), and Kate Ceberano's CARD on /city/geelong showed no price at all: the city page
+ * selected external_ticket_url and its projection dropped it, so every outside night read as 'price unknown'.
+ * /categories, /community and /faith never selected is_free or external_ticket_url at all.
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -67,7 +78,27 @@ for (const [file, asks] of SURFACES) {
   if (!asks.test(code(readFileSync(file, 'utf8')))) fail('3', `${file} does not take its price words from the night's call to action`)
 }
 
-console.log(`${TAG} did ${filesScanned} component file(s) scanned, ${surfacesChecked} card, tile and pin surface(s) judged`)
+let pagesScanned = 0
+let cardPages = 0
+for (const file of walk('src/app')) {
+  pagesScanned += 1
+  const src = code(readFileSync(file, 'utf8'))
+  if (/\bprice:[^\n]*['"]Free['"]/.test(src)) fail('4', `${file} builds a pin's price with 'Free' itself; take it from broadcastPriceLabel`)
+  if (!/\bEventCardData\b/.test(src)) continue
+  cardPages += 1
+  for (const select of src.match(/['"`][^'"`\n]*ticket_tiers\([^'"`\n]*['"`]/g) ?? []) {
+    for (const field of ['is_free', 'external_ticket_url']) {
+      if (!new RegExp(`\\b${field}\\b`).test(select)) fail('5', `${file} selects ticket_tiers for cards without ${field}; the card cannot know the night's call to action`)
+    }
+  }
+  if (/\bentry_mode:\s*\w+\.entry_mode\b/.test(src) && !/\bexternal_ticket_url:\s*\w+\.external_ticket_url\b/.test(src)) {
+    fail('5', `${file} copies entry_mode onto the card but drops external_ticket_url; an outside night would show no price`)
+  }
+}
+if (pagesScanned < 100) fail('4', `only ${pagesScanned} file(s) found under src/app; the scan cannot be trusted`)
+if (cardPages < 5) fail('5', `only ${cardPages} page(s) under src/app hand rows to EventCard; the scan cannot be trusted`)
+
+console.log(`${TAG} did ${filesScanned} component file(s) scanned, ${surfacesChecked} card, tile and pin surface(s) judged, ${pagesScanned} file(s) under src/app read, ${cardPages} of them handing rows to EventCard`)
 console.log(`${TAG} reviewed exceptions to clause 2, printed so they cannot rot:`)
 for (const a of FREE_WORD_ALLOWED) console.log(`${TAG}   ${a.file}: ${a.reason}`)
 if (FAILURES.length) {
