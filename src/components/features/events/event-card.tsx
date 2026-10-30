@@ -8,8 +8,8 @@ import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
-import { priceLabel } from '@/lib/events/price-label'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { isWalkIn } from '@/lib/events/entry-mode'
 import { freeEntryLabel } from '@/lib/listings/free-week'
 
 /**
@@ -62,6 +62,8 @@ export type EventCardData = {
   is_free?: boolean | null
   /** WI1. A walk-in event says "Free entry" where the price goes. */
   entry_mode?: string | null
+  /** A night sold on another site: the card's price line names the site ("Tickets on ..."), never "Free". */
+  external_ticket_url?: string | null
   organisation?: { name: string; slug?: string } | null
   badge?: M5Badge | null
 }
@@ -102,20 +104,21 @@ type Props = {
 
 
 
-function formatPrice(
-  tiers: EventCardTier[],
-  dynamicPrices: Map<string, number>,
-  isFree: boolean | null = null,
-  entryMode: string | null = null,
-): string {
-  // Walk-in first: it is also is_free, and "Free" would hide that no ticket is
-  // needed at all, which is the whole difference for the person reading it.
-  if (isWalkIn({ entry_mode: entryMode })) return FREE_ENTRY_LABEL
-  if (isFree === true) return 'Free'
-  if (!tiers || tiers.length === 0) return 'Free'
-  return priceLabel(
-    tiers.map(t => ({ price: dynamicPrices.get(t.id) ?? t.price, currency: t.currency })),
-  )
+/**
+ * THE CARD'S PRICE LINE IS THE NIGHT'S CALL TO ACTION (rules E6 and E7; the project manager's 12:40 of 30 October
+ * 2026). This used to answer 'Free' for any night with no ticket types of ours, so Kate Ceberano's paid Costa Hall
+ * show, sold by Geelong Arts Centre, read 'Free' on /city/geelong. It now asks the one function every broadcast asks
+ * (src/lib/broadcast/price-line.ts): a night sold elsewhere names the site, free is said only where free is stored
+ * (a walk-in, our own $0 tickets, or is_free), one wording for each free state, and a night whose price nobody has
+ * checked says no price at all.
+ */
+function formatPrice(event: EventCardData, dynamicPrices: Map<string, number>): string {
+  return broadcastPriceLabel({
+    ticket_tiers: event.ticket_tiers.map((t) => ({ price: dynamicPrices.get(t.id) ?? t.price, currency: t.currency })),
+    external_ticket_url: event.external_ticket_url ?? null,
+    is_free: event.is_free ?? null,
+    entry_mode: event.entry_mode ?? null,
+  })
 }
 
 function buildInventory(tiers: EventCardTier[]): EventInventory {
@@ -144,7 +147,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   const priceLabel =
     freeLabels && (event.is_free === true || isWalkIn({ entry_mode: event.entry_mode ?? null }))
       ? freeEntryLabel(event.entry_mode)
-      : formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null, event.entry_mode ?? null)
+      : formatPrice(event, dynamicPrices)
   const inventory  = ticket_tiers.length > 0 ? buildInventory(ticket_tiers) : null
 
   // Location display: city if available, else country

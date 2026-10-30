@@ -44,6 +44,8 @@ export type PublicEventRow = {
   is_free: boolean | null
   /** WI1. `walk_in` for a free walk-in event; cards then say "Free entry". */
   entry_mode: string | null
+  /** A night sold on another site: its card's price line names the site, never "Free". */
+  external_ticket_url?: string | null
   category: { id: string; name: string; slug: string } | null
   organisation: { id: string; name: string; slug: string } | null
   ticket_tiers: PublicEventTier[]

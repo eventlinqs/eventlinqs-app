@@ -17,6 +17,12 @@ export type MapEventPoint = {
   is_free: boolean
   /** WI1. A walk-in event's pin says "Free entry". */
   walk_in: boolean
+  /**
+   * The pin's price words, the night's call to action read on the server (src/lib/broadcast/price-line.ts): a night
+   * sold elsewhere names the site, free only where free is stored, '' where no price may be said. The pin shows these
+   * and decides nothing itself (it used to say 'Free' for any night with no paid ticket of ours).
+   */
+  price_line: string
   currency: string
   lat: number
   lng: number

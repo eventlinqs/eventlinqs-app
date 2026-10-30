@@ -1,7 +1,6 @@
 'use client'
 
 import { formatEventDateShort } from '@/lib/dates/event-time'
-import { FREE_ENTRY_LABEL } from '@/lib/events/entry-mode'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapPinOff } from 'lucide-react'
 import { loadEventsInBbox } from '@/app/events/actions'
@@ -23,13 +22,9 @@ const BRAND_GOLD_TEXT = '#8B6A0E' // --color-gold-700 (gold text, AA on white)
 
 
 
+/** The pin's price words, decided on the server from the night's call to action (MapEventPoint.price_line). */
 function formatPrice(p: MapEventPoint): string {
-  if (p.walk_in) return FREE_ENTRY_LABEL
-  if (p.is_free) return 'Free'
-  if (p.starting_from_cents === null) return 'Free'
-  const dollars = p.starting_from_cents / 100
-  const amount = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${p.currency} ${amount}`
+  return p.price_line
 }
 
 function escapeHtml(s: string): string {

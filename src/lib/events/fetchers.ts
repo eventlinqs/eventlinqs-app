@@ -580,7 +580,7 @@ type RawRow = {
 
 const DEFAULT_PAGE_SIZE = 24
 const BASE_SELECT =
-  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, listing_source, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null

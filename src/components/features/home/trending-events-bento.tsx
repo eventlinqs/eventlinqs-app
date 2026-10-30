@@ -3,6 +3,7 @@ import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { TileCaption } from '@/components/media/tile-caption'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { formatEventDateShort } from '@/lib/dates/event-time'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 
 /**
  * TrendingEventsBento (Batch 9.2) - asymmetric 6-card bento for the
@@ -50,15 +51,12 @@ function formatDateBadge(iso: string, timezone: string | null | undefined): stri
   return formatEventDateShort(iso, timezone)
 }
 
+/**
+ * The night's price line from its call to action (src/lib/broadcast/price-line.ts). This used to keep its own rule:
+ * 'Free' when the cheapest ticket was $0 even beside paid ones, and 'Tickets soon' for a night sold on another site.
+ */
 function priceLabel(event: BentoEvent): string {
-  if (event.is_free) return 'Free'
-  const tiers = event.ticket_tiers ?? []
-  if (tiers.length === 0) return 'Tickets soon'
-  const min = tiers.reduce((m, t) => Math.min(m, t.price), Number.POSITIVE_INFINITY)
-  if (!Number.isFinite(min)) return 'Tickets soon'
-  if (min === 0) return 'Free'
-  const currency = tiers[0]?.currency ?? 'AUD'
-  return `From ${currency === 'AUD' ? '$' : currency + ' '}${(min / 100).toFixed(0)}`
+  return broadcastPriceLabel(event)
 }
 
 function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featured' | 'medium' }) {
