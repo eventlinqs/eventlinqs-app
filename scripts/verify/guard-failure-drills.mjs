@@ -295,6 +295,22 @@ const DRILLS = [
     replace: '  if (true) {',
     expect: 'promises a QR ticket outside if (qrTicket)',
   },
+  {
+    name: "the event page names our own $0 ticket types 'Free entry' again",
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '  return priceLabel(tiers, FREE_REGISTRATION_REQUIRED, allIn)',
+    replace: "  return priceLabel(tiers, 'Free entry', allIn)",
+    expect: "writes 'Free entry' (E1's words)",
+  },
+  {
+    name: "the event page's view event records 'Free' where no price is known again",
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: "        priceRange={heroPriceLabel ?? 'Not stated'}",
+    replace: "        priceRange={priceLabel ?? 'Free'}",
+    expect: "falls back to 'Free' where no price is known",
+  },
   /*
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
    * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile
@@ -342,6 +358,26 @@ const DRILLS = [
     expect: 'sub-community-photo.ts makes a request-time call',
   },
   /*
+   * sub-community-tiles-stored (30 October 2026, Lawal 16:05, L14: the First Nations and Indian tiles drew no
+   * photograph on production), two drills: a tile on Lawal's photograph and a tile kept in the library each losing it.
+   */
+  {
+    name: 'the NAIDOC tile loses its photograph',
+    guard: `${GUARDS}/sub-community-tiles-stored.mjs`,
+    file: 'src/lib/images/sub-community-photo.ts',
+    find: "  'aboriginal-torres-strait-islander:naidoc': { scene: 'first-nations' },",
+    replace: '',
+    expect: "the sub-community tile 'aboriginal-torres-strait-islander:naidoc' has no stored photograph",
+  },
+  {
+    name: 'the Bollywood tile loses its photograph',
+    guard: `${GUARDS}/sub-community-tiles-stored.mjs`,
+    file: 'src/lib/images/sub-community-photo.ts',
+    find: "  'indian:bollywood',",
+    replace: '',
+    expect: "the sub-community tile 'indian:bollywood' has no stored photograph",
+  },
+  /*
    * card-price-from-cta (30 October 2026, the project manager's 12:40: Kate Ceberano's paid show read 'Free' on
    * /city/geelong): the card guessing 'Free' for a night with no ticket types of ours again.
    */
@@ -352,6 +388,26 @@ const DRILLS = [
     find: '  return broadcastPriceLabel({',
     replace: "  if (event.ticket_tiers.length === 0) return 'Free'\n  return broadcastPriceLabel({",
     expect: "event-card.tsx says 'Free' itself",
+  },
+  /*
+   * card-price-from-cta clauses 4 and 5 (30 October 2026, window 3's step 3 on live after car 14): the city map pin
+   * guessing 'Free' for a paid night sold elsewhere again, and the city page's projection dropping the outside link.
+   */
+  {
+    name: 'a city map pin says Free for a paid night sold elsewhere again',
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/app/city/[slug]/page.tsx',
+    find: '        price: broadcastPriceLabel(r) || null,',
+    replace: "        price: r.ticket_tiers.length > 0 ? broadcastPriceLabel(r) : 'Free',",
+    expect: "builds a pin's price with 'Free' itself",
+  },
+  {
+    name: "the city page's card projection drops the night's outside ticket link again",
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/app/city/[slug]/page.tsx',
+    find: '    external_ticket_url: r.external_ticket_url ?? null,',
+    replace: '    // the outside link not carried',
+    expect: 'drops external_ticket_url',
   },
   /*
    * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for

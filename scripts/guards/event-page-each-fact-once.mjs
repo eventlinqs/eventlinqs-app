@@ -18,6 +18,8 @@
  *   4. the Refund policy block and the trust row render only behind the promise gate (src/lib/events/event-page-promises.ts,
  *      which reads cta.ts's ticketingByEventLinqs);
  *   5. on an outside night the hero carries the one booking link and the panel is told so (bookingInHero).
+ *   6. E1's words ('Free entry') are never written in the page: a $0 ticket type of ours is a registration (E2).
+ *   7. the view event records the price words the page shows (heroPriceLabel), never a fallback 'Free'.
  *
  * WHAT IT CANNOT SEE: a fact restated through a component it does not name. It names the blocks that repeated on
  * production rather than guessing at every way a sentence could be written twice.
@@ -103,6 +105,15 @@ if (page) {
   if (!/data-booking-button/.test(page)) faults.push(`${PAGE} has no booking link in the hero for an outside night`)
   if (!/bookingInHero=\{/.test(page)) faults.push(`${PAGE} never tells the outside panel the hero carries its button`)
   if (!/bookingHref=\{/.test(page)) faults.push(`${PAGE} never sends the sticky bar to the booking link`)
+
+  // 6. E1's words never on our own registration night (E2 on car 14's preview, 30 October 2026, 15:45: the sticky bar
+  // read "Free entry" under a hero reading "Free, registration required").
+  if (page.includes("'Free entry'")) faults.push(`${PAGE} writes 'Free entry' (E1's words); a $0 ticket type of ours is a registration`)
+
+  // 7. The view event never records an invented Free (WINDOW 3's step 3 on live, 30 October 2026, 16:34: the page
+  // handed analytics `priceLabel ?? 'Free'`, and priceLabel is null on every night sold elsewhere).
+  if (/\?\?\s*'Free'/.test(page)) faults.push(`${PAGE} falls back to 'Free' where no price is known`)
+  if (!/priceRange=\{heroPriceLabel \?\? 'Not stated'\}/.test(page)) faults.push(`${PAGE} hands the view event a price other than the one the page shows`)
 }
 
 if (know) {
@@ -130,7 +141,7 @@ if (faults.length > 0) {
 }
 
 declareWork('event-page-each-fact-once', {
-  did: { 'file read': Object.keys(read).length, 'clause checked': 5 },
+  did: { 'file read': Object.keys(read).length, 'clause checked': 7 },
   found: { fault: 0 },
   zeroIsFine: { fault: 'an event page that states each fact once and promises only our own ticket is the goal state' },
   exitOnZero: false,

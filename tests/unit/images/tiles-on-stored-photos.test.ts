@@ -75,11 +75,15 @@ describe('category tiles', () => {
 })
 
 describe('sub-community tiles', () => {
-  test('a kept one resolves to its stored file with no network call; one never kept answers null as before', async () => {
+  // Lawal 16:05 on 30 October 2026 (L14): every tile has a photograph, kept or his own, so only a slug no table names
+  // answers null (and scripts/guards/sub-community-tiles-stored.mjs fails the build if a real tile is one).
+  test('a kept one resolves to its stored file, one on Lawal\'s photographs to the spine, with no network call', async () => {
     const sub = await import('@/lib/images/sub-community-photo')
     expect(await sub.getSubCommunityPhoto('african', 'owambe')).toBe('/images/library/sub-african-owambe.jpg')
     expect(await sub.getSubCommunityPhoto('Caribbean', 'Reggae')).toBe('/images/library/sub-caribbean-reggae.jpg')
-    expect(await sub.getSubCommunityPhoto('greek', 'glendi')).toBeNull()
+    expect(await sub.getSubCommunityPhoto('greek', 'glendi')).toBe('/images/library/sub-greek-glendi.jpg')
+    expect(await sub.getSubCommunityPhoto('aboriginal-torres-strait-islander', 'naidoc')).toMatch(/\/event-images\/stock\/scenes\/first-nations\//)
+    expect(await sub.getSubCommunityPhoto('greek', 'nowhere-at-all')).toBeNull()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

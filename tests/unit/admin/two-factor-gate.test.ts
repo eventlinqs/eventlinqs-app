@@ -133,6 +133,24 @@ describe('AUTH-03: an un-enrolled admin reaches enrolment and nothing else', () 
 
   it('BLOCKS an un-enrolled admin everywhere, even with the bootstrap proof', async () => {
     expect(await getAdminSession()).toBeNull()
+  })
+
+  /*
+   * And sends them to finish enrolment, not to an error page: on car 14's TEST preview (30 October 2026, 15:45,
+   * C:\dev\EVIDENCE\WI1\auth03-preview) an un-enrolled admin opening /admin/today was refused but shown 'We hit a snag
+   * loading this page', because requireAdminSession threw. It now redirects them to /admin/enrol-2fa.
+   */
+  it('requireAdminSession REDIRECTS an un-enrolled admin to /admin/enrol-2fa, never to an error', async () => {
+    const thrown = await requireAdminSession().then(
+      () => null,
+      (e: unknown) => e as { digest?: string; message?: string },
+    )
+    expect(String(thrown?.digest ?? '')).toContain('NEXT_REDIRECT')
+    expect(String(thrown?.digest ?? '')).toContain('/admin/enrol-2fa')
+  })
+
+  it('requireAdminSession still throws, not redirects, for no proof at all', async () => {
+    cookieValue = undefined
     await expect(requireAdminSession()).rejects.toThrow('admin session required')
   })
 

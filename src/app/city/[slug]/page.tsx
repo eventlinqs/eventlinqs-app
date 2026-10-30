@@ -4,7 +4,7 @@ import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -136,6 +136,9 @@ export default async function CityPage({ params }: Props) {
     // WI1. Carried for the same reason: without it a walk-in event's city card
     // says "Free" while its own map pin on this page says "Free entry".
     entry_mode: r.entry_mode ?? null,
+    // Carried too: without it a night sold elsewhere read as 'price unknown' and its card showed no price at all
+    // (Kate Ceberano on /city/geelong, step 3 on live after car 14, 30 October 2026).
+    external_ticket_url: r.external_ticket_url ?? null,
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],
   }))
 
@@ -150,7 +153,6 @@ export default async function CityPage({ params }: Props) {
     .filter(r => typeof r.venue_latitude === 'number' && typeof r.venue_longitude === 'number')
     .slice(0, 100)
     .map(r => {
-      const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
       // The EVENT's zone, never the reader's: a 9pm Perth event reads as
       // the next day in Sydney.
       const dateStr = formatEventDateShort(r.start_date, r.timezone)
@@ -158,7 +160,9 @@ export default async function CityPage({ params }: Props) {
         id: r.id, slug: r.slug, title: r.title,
         date: dateStr,
         suburb: r.venue_city,
-        price: isWalkIn(r) ? FREE_ENTRY_LABEL : cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+        // The card's own words from the night's one call to action: a paid night sold elsewhere names its site, never
+        // 'Free'; a night whose price nobody checked says nothing (the map drops an empty price).
+        price: broadcastPriceLabel(r) || null,
         cover: r.cover_image_url,
         latitude: r.venue_latitude as number,
         longitude: r.venue_longitude as number,
