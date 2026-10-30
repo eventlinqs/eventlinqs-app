@@ -382,3 +382,26 @@ describe('a campaign week on the platform clock', () => {
     expect(weekOf('2026-10-26', 'Australia/Melbourne')).toEqual({ from: '2026-10-25T13:00:00.000Z', to: '2026-11-01T13:00:00.000Z', monday: '2026-10-26' })
   })
 })
+
+// D8 of Lawal's DemandOS directive, 30 October 2026: a guide's link is a page, so it had no counted result of its own.
+// A tap on its /go link now names the piece on what follows, on the nights it named.
+describe('a post whose link is a page', () => {
+  const posted = piece('c2', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: null })
+  const base = { campaignId: 'c2', campaigns: [C2], pieces: [posted], figures: [], linkEvents: [], counted: new Map(), now: new Date('2026-10-30T00:00:00.000Z'), goPresses: [], claims: [] }
+
+  it('reads what its taps brought, a press still never a sale', () => {
+    const orders = new Map([['o1', { id: 'o1', status: 'confirmed', totalCents: 4500, tickets: 2 }]])
+    const pieceEvents = [
+      { linkId: posted.id, kind: 'outbound' as const, orderId: null, occurredAt: '2026-10-28T08:00:00.000Z' },
+      { linkId: posted.id, kind: 'conversion' as const, orderId: 'o1', occurredAt: '2026-10-28T09:00:00.000Z' },
+    ]
+    const r = buildSocialReport({ ...base, orders, pieceEvents } as never)
+    expect(r.pieces[0].counted).toMatchObject({ pressedOut: 1, tickets: 2, cents: 4500, orders: 1 })
+    expect(r.pieces[0].countedWords).toMatch(/taps on its link/)
+  })
+  it('with nothing named yet still says it is counted for the week only', () => {
+    const r = buildSocialReport({ ...base, orders: new Map(), pieceEvents: [] } as never)
+    expect(r.pieces[0].counted).toBeNull()
+    expect(r.pieces[0].countedWords).toMatch(/counted for the week only/)
+  })
+})
