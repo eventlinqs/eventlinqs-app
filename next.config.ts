@@ -302,6 +302,13 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // The campaign eligibility read (src/lib/campaigns/eligibility-read.ts) imports the social store and the venue
+    // media module, and the import graph from there reaches card-raster.ts; card-raster-traced named it on
+    // 31 October 2026 and fails the build without this pin.
+    '/admin/eligibility': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     /*
      * WHAT THESE PINS ARE, measured on 6 September 2026 (close-out C3) rather
      * than believed. The comment above says that without the pin "the lambda
