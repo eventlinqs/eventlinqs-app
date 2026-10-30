@@ -4,7 +4,10 @@
 // stored without a real image; a replacement, a challenge and a withdrawal each go to their one database function;
 // staff approve once with a whole quality score; and the public read gives the photograph with its credit, or null.
 
-import { describe, expect, test } from 'vitest'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, test, vi } from 'vitest'
 import {
   addVenuePhoto,
   approveVenuePhoto,
@@ -16,6 +19,8 @@ import {
   withdrawVenuePhoto,
   type VenueMediaDeps,
 } from '@/lib/venues/venue-images'
+
+const ROOM = readFileSync(resolve(process.cwd(), 'public/images/hero/afrobeats.jpg'))
 
 type Call = { name: string; args: Record<string, unknown> }
 
@@ -126,17 +131,59 @@ describe('replace, challenge, withdraw and approve each go to their one database
     expect(calls[0]).toEqual({ name: 'venue_image_withdraw', args: { p_user: 'u1', p_image: 'img-1' } })
   })
 
+  // No photo is ever reused (Lawal's ruling of 31 October 2026, 00:14): an approval fingerprints the photo from its own
+  // bytes first, so it can be dealt to one night only, then deals it.
+  const fingerprinting = (fingerprinted = false, bytes: Buffer | null = ROOM) => ({
+    photoOf: vi.fn(async () => ({ imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/r/room.jpg', fingerprinted })),
+    bytesOf: vi.fn(async () => {
+      if (!bytes) throw new Error('HTTP 404')
+      return bytes
+    }),
+  })
+
   test('staff approve once with a whole quality score from 0 to 100, primary on request', async () => {
     const { d, calls } = fake(() => ({ data: null, error: null }))
-    expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 85, primary: true }, d)).toEqual({ state: 'done', id: 'img-1' })
-    expect(calls[0]).toEqual({ name: 'venue_image_approve', args: { p_admin: 'a1', p_image: 'img-1', p_quality: 85, p_primary: true } })
+    const f = fingerprinting()
+    expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 85, primary: true }, { ...d, ...f })).toEqual({ state: 'done', id: 'img-1' })
+    expect(calls.find((c) => c.name === 'venue_image_approve')).toEqual({ name: 'venue_image_approve', args: { p_admin: 'a1', p_image: 'img-1', p_quality: 85, p_primary: true } })
     for (const quality of [-1, 101, 7.5, Number.NaN]) {
-      expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality, primary: false }, d)).toEqual({
+      expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality, primary: false }, { ...d, ...f })).toEqual({
         state: 'refused',
         reason: 'Give the photograph a quality score from 0 to 100.',
       })
     }
-    expect(calls).toHaveLength(1)
+    expect(calls.filter((c) => c.name === 'venue_image_approve')).toHaveLength(1)
+  })
+
+  test('fingerprints the photo from its own bytes, then approves, then deals it to a night', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const f = fingerprinting()
+    await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...f })
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_fingerprint', 'venue_image_approve', 'deal_venue_photos'])
+    expect(f.bytesOf).toHaveBeenCalledWith('https://upload.wikimedia.org/wikipedia/commons/r/room.jpg')
+    expect(calls[0].args).toEqual({ p_image: 'img-1', p_sha256: createHash('sha256').update(ROOM).digest('hex'), p_dhash: expect.stringMatching(/^-?\d+$/) })
+  })
+
+  test('a photo fingerprinted already is not read again', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const f = fingerprinting(true)
+    await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...f })
+    expect(f.bytesOf).not.toHaveBeenCalled()
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_approve', 'deal_venue_photos'])
+  })
+
+  test('a photo whose bytes cannot be read is not approved', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const answer = await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...fingerprinting(false, null) })
+    expect(answer).toEqual({ state: 'refused', reason: 'The photograph could not be read to fingerprint it, so it was not approved: HTTP 404' })
+    expect(calls).toHaveLength(0)
+  })
+
+  test('an approval the database refuses deals nothing', async () => {
+    const { d, calls } = fake((c) => (c.name === 'venue_image_approve' ? { data: null, error: { code: '23514', message: 'refused: that photograph was withdrawn' } } : { data: null, error: null }))
+    const answer = await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...fingerprinting(true) })
+    expect(answer.state).toBe('refused')
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_approve'])
   })
 })
 
