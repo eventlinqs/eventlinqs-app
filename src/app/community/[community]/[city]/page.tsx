@@ -26,7 +26,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import {
   listingWindowOrPredicate,
@@ -193,7 +193,6 @@ export default async function CommunityByCityPage({ params }: Props) {
       .filter(r => typeof r.venue_latitude === 'number' && typeof r.venue_longitude === 'number')
       .slice(0, 100)
       .map(r => {
-        const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
         // The EVENT's zone, never the reader's: a 9pm Perth event reads as
         // the next day to someone in Sydney.
         const dateStr = formatEventDateShort(r.start_date, r.timezone)
@@ -201,7 +200,9 @@ export default async function CommunityByCityPage({ params }: Props) {
           id: r.id, slug: r.slug, title: r.title,
           date: dateStr,
           suburb: r.venue_city,
-          price: isWalkIn(r) ? FREE_ENTRY_LABEL : cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+          // The card's own words from the night's one call to action, never a guessed 'Free' (step 3 on live after
+          // car 14, 30 October 2026); a night whose price nobody checked says nothing (the map drops an empty price).
+          price: broadcastPriceLabel(r) || null,
           cover: r.cover_image_url,
           latitude: r.venue_latitude as number,
           longitude: r.venue_longitude as number,

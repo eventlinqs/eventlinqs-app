@@ -84,7 +84,7 @@ export default async function CommunityPage({ params }: Props) {
         supabase
           .from('events')
           .select(
-            'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+            'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
           )
           .match(PUBLIC_EVENT_MATCH)
           .or(listingWindowOrPredicate(new Date()))

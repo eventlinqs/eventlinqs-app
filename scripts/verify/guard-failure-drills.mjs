@@ -354,6 +354,26 @@ const DRILLS = [
     expect: "event-card.tsx says 'Free' itself",
   },
   /*
+   * card-price-from-cta clauses 4 and 5 (30 October 2026, window 3's step 3 on live after car 14): the city map pin
+   * guessing 'Free' for a paid night sold elsewhere again, and the city page's projection dropping the outside link.
+   */
+  {
+    name: 'a city map pin says Free for a paid night sold elsewhere again',
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/app/city/[slug]/page.tsx',
+    find: '        price: broadcastPriceLabel(r) || null,',
+    replace: "        price: r.ticket_tiers.length > 0 ? broadcastPriceLabel(r) : 'Free',",
+    expect: "builds a pin's price with 'Free' itself",
+  },
+  {
+    name: "the city page's card projection drops the night's outside ticket link again",
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/app/city/[slug]/page.tsx',
+    find: '    external_ticket_url: r.external_ticket_url ?? null,',
+    replace: '    // the outside link not carried',
+    expect: 'drops external_ticket_url',
+  },
+  /*
    * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for
    * a night), two drills: the publish gate counting a library photograph as a cover again, and the home hero choosing
    * its slides without asking whether the photograph is the night's own.
