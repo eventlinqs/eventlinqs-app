@@ -171,6 +171,38 @@ export async function venuePhotoFor(venueId: string, use: VenueUse, deps: Pick<V
   return (await venuePhotosFor([venueId], use, deps)).get(venueId) ?? null
 }
 
+export type ShownVenuePhoto = { readonly id: string; readonly imageUrl: string; readonly credit: string }
+type ShownVenuePhotoDeps = Pick<VenueMediaDeps, 'rpc'> & { idOf(venueId: string, imageUrl: string): Promise<string | null> }
+
+/**
+ * The photograph an organiser's nights at this venue show, with the id a challenge needs. Null when there is none. A
+ * failed read is null too, so it takes only the challenge section away, never the organiser's event dashboard (this
+ * also holds while the migration waits to be applied).
+ */
+export async function shownVenuePhoto(venueId: string, deps: ShownVenuePhotoDeps): Promise<ShownVenuePhoto | null> {
+  try {
+    const photo = (await venuePhotoFor(venueId, 'event_page', deps)) ?? (await venuePhotoFor(venueId, 'event_card', deps))
+    if (!photo) return null
+    const id = await deps.idOf(venueId, photo.imageUrl)
+    return id ? { id, imageUrl: photo.imageUrl, credit: photo.credit } : null
+  } catch {
+    return null
+  }
+}
+
+/** shownVenuePhoto's real reads, the id through the service role (a photograph is one row per venue and address). */
+export function shownVenuePhotoDeps(): ShownVenuePhotoDeps {
+  const admin = createAdminClient()
+  return {
+    rpc: venueMediaDeps().rpc,
+    async idOf(venueId, imageUrl) {
+      const { data, error } = await admin.from('venue_images').select('id').eq('venue_id', venueId).eq('image_url', imageUrl).maybeSingle()
+      if (error) throw new Error(`the venue photograph could not be read: ${error.message}`)
+      return (data as { id: string } | null)?.id ?? null
+    },
+  }
+}
+
 /**
  * The page's read: one call for all its cards, each venue's one photograph by venue id. A venue with nothing approved
  * for the use is simply absent. A failed read is thrown, and the caller falls to its typographic cover.

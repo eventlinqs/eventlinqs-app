@@ -44,6 +44,7 @@ function matchWords(p: WaitingPhoto): string {
 function PhotoFacts({ p }: { p: WaitingPhoto }) {
   return (
     <div className="text-xs text-white/60">
+      {p.challengeReason && <p className="mb-1 text-amber-200">Taken down after a concern: &ldquo;{p.challengeReason}&rdquo; Approve it to show it again, or refuse it.</p>}
       <p className="text-white/80">{p.credit}</p>
       <p className="mt-1">
         {LICENCE_WORDS[p.licence] ?? p.licence}

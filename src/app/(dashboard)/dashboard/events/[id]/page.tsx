@@ -42,6 +42,8 @@ import { readWalkInNumbers, oneIn } from '@/lib/walk-in/organiser-numbers'
 import { WalkInProgramPanel } from '@/components/features/dashboard/walk-in-program-panel'
 import { readVenueAsk } from '@/lib/events/collaborators'
 import { askVenueAction } from '../../collaborations/actions'
+import { shownVenuePhoto, shownVenuePhotoDeps } from '@/lib/venues/venue-images'
+import { ChallengeVenuePhotoForm } from '@/components/listings/venue-media-forms'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -159,6 +161,8 @@ export default async function EventViewPage({ params }: Props) {
   const walkIn = isWalkIn(event)
   // Item 15 of the locked plan of 27 October 2026: the event's venue, where it is another organisation's, can be asked to share it.
   const venueAsk = await readVenueAsk(event)
+  // The photograph of the venue this event's page shows, so the organiser can say it is wrong (the PM's 16:42).
+  const venuePhoto = event.venue_id ? await shownVenuePhoto(event.venue_id, shownVenuePhotoDeps()) : null
   const [walkInNumbers, walkInGuide] = walkIn
     ? await Promise.all([
         readWalkInNumbers(event.id),
@@ -410,6 +414,21 @@ export default async function EventViewPage({ params }: Props) {
               </button>
             </form>
           )}
+        </section>
+      )}
+
+      {venuePhoto && (
+        <section aria-label="The photograph of your venue" data-venue-photo={venuePhoto.id} className="mt-6 rounded-2xl border border-ink-100 bg-white p-5">
+          <p className="font-semibold text-ink-900">Your event page shows a photograph of the venue</p>
+          <p className="mt-1 text-sm text-ink-600">
+            {venuePhoto.credit}.{' '}
+            <a href={venuePhoto.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center underline underline-offset-2">
+              See the photograph
+            </a>
+          </p>
+          <div className="mt-3 max-w-md">
+            <ChallengeVenuePhotoForm imageId={venuePhoto.id} eventId={event.id} />
+          </div>
         </section>
       )}
 

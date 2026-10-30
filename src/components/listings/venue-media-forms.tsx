@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { addVenuePhotoAction, replaceVenuePhotoAction, withdrawVenuePhotoAction, type VenueMediaState } from '@/app/actions/venue-media'
+import { addVenuePhotoAction, challengeVenuePhotoAction, replaceVenuePhotoAction, withdrawVenuePhotoAction, type VenueMediaState } from '@/app/actions/venue-media'
 import { VENUE_PHOTO_YES_WORDS } from '@/lib/venues/venue-photo-words'
 
 /**
@@ -94,6 +94,24 @@ export function ReplaceVenuePhotoForm({ venueId, imageId }: { venueId: string; i
       <Answer state={state} done="Sent. The current photograph stays until our team approves the new one." />
       <button type="submit" disabled={pending} className={`mt-3 ${quiet}`}>
         Replace
+      </button>
+    </form>
+  )
+}
+
+export function ChallengeVenuePhotoForm({ imageId, eventId }: { imageId: string; eventId: string }) {
+  const [state, action, pending] = useActionState<VenueMediaState, FormData>(challengeVenuePhotoAction, null)
+  return (
+    <form action={action} className="text-left">
+      <input type="hidden" name="imageId" value={imageId} />
+      <input type="hidden" name="eventId" value={eventId} />
+      <label className="block text-sm font-medium text-ink-900">
+        What is wrong with this photograph?
+        <input name="reason" required minLength={5} maxLength={300} className={input} />
+      </label>
+      <Answer state={state} done="Thank you. It no longer shows while we look at it." />
+      <button type="submit" disabled={pending} className={`mt-3 ${quiet}`}>
+        Tell us it is wrong
       </button>
     </form>
   )

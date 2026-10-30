@@ -24,6 +24,8 @@ export type WaitingPhoto = {
   readonly matchMethod: 'auto' | 'review' | 'manual' | null
   readonly matchDistanceM: number | null
   readonly permissionWords: string | null
+  /** What the venue or organiser said when they challenged it; null for a photograph nobody has challenged. */
+  readonly challengeReason: string | null
 }
 
 export type WaitingVenue = {
@@ -49,13 +51,15 @@ export type QueueRow = {
   match_method: WaitingPhoto['matchMethod']
   match_distance_m: number | string | null
   permission_evidence: string | null
+  challenge_reason: string | null
 }
 
 const own = (p: WaitingPhoto) => (p.source === 'venue' || p.source === 'organiser' ? 0 : 1)
+const challenged = (p: WaitingPhoto) => (p.challengeReason ? 0 : 1)
 
-/** Best first: the venue's own, then quality, then width. */
+/** Best first: a challenged photograph (someone is waiting on an answer), then the venue's own, then quality, then width. */
 export function bestFirst(a: WaitingPhoto, b: WaitingPhoto): number {
-  return own(a) - own(b) || (b.quality ?? -1) - (a.quality ?? -1) || (b.width ?? 0) - (a.width ?? 0)
+  return challenged(a) - challenged(b) || own(a) - own(b) || (b.quality ?? -1) - (a.quality ?? -1) || (b.width ?? 0) - (a.width ?? 0)
 }
 
 /** Queue rows into venues, each with its photographs best first, the venues by name. */
@@ -76,6 +80,7 @@ export function groupWaiting(rows: readonly QueueRow[]): WaitingVenue[] {
       matchMethod: r.match_method,
       matchDistanceM: r.match_distance_m === null ? null : Number(r.match_distance_m),
       permissionWords: r.permission_evidence,
+      challengeReason: r.challenge_reason,
     })
     byVenue.set(r.venue_id, group)
   }

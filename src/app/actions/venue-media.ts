@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { actionRateLimit } from '@/lib/rate-limit/action'
-import { addVenuePhoto, replaceVenuePhoto, venueMediaDeps, withdrawVenuePhoto, type VenuePhotoAnswer } from '@/lib/venues/venue-images'
+import { addVenuePhoto, challengeVenuePhoto, replaceVenuePhoto, venueMediaDeps, withdrawVenuePhoto, type VenuePhotoAnswer } from '@/lib/venues/venue-images'
 import { venuePhotoYes } from '@/lib/venues/venue-photo-words'
 
 /**
@@ -77,6 +77,22 @@ export async function replaceVenuePhotoAction(_: VenueMediaState, formData: Form
       replaceVenuePhoto({ userId, venueId: venueId.data, imageId: imageId.data, file: fileOf(formData), permissionWords: yes.words, sourceUrl: WHERE }, venueMediaDeps()),
     true,
   )
+}
+
+/**
+ * A venue's people, or an organiser with nights there, say a photograph is wrong: on the event dashboard. The database
+ * decides who may, and the photograph stops showing at once and waits for a person. Limited per user, as one press takes
+ * a photograph off every night at that venue.
+ */
+export async function challengeVenuePhotoAction(_: VenueMediaState, formData: FormData): Promise<VenueMediaState> {
+  const imageId = Id.safeParse(formData.get('imageId'))
+  if (!imageId.success) return { state: 'refused', reason: 'That photograph could not be found.' }
+  const reason = String(formData.get('reason') ?? '').trim()
+  if (reason.length > 300) return { state: 'refused', reason: 'Keep it under 300 characters.' }
+  const answer = await guarded((userId) => challengeVenuePhoto({ userId, imageId: imageId.data, reason }, venueMediaDeps()), true)
+  const eventId = Id.safeParse(formData.get('eventId'))
+  if (answer?.state === 'done' && eventId.success) revalidatePath(`/dashboard/events/${eventId.data}`)
+  return answer
 }
 
 export async function withdrawVenuePhotoAction(_: VenueMediaState, formData: FormData): Promise<VenueMediaState> {

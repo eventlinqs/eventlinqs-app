@@ -12274,6 +12274,7 @@ export type Database = {
         Args: never
         Returns: {
           attribution_text: string
+          challenge_reason: string
           height: number
           id: string
           image_url: string
