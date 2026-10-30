@@ -342,6 +342,18 @@ const DRILLS = [
     expect: 'sub-community-photo.ts makes a request-time call',
   },
   /*
+   * card-price-from-cta (30 October 2026, the project manager's 12:40: Kate Ceberano's paid show read 'Free' on
+   * /city/geelong): the card guessing 'Free' for a night with no ticket types of ours again.
+   */
+  {
+    name: 'the event card says Free for a night with no tickets of ours again',
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/components/features/events/event-card.tsx',
+    find: '  return broadcastPriceLabel({',
+    replace: "  if (event.ticket_tiers.length === 0) return 'Free'\n  return broadcastPriceLabel({",
+    expect: "event-card.tsx says 'Free' itself",
+  },
+  /*
    * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for
    * a night), two drills: the publish gate counting a library photograph as a cover again, and the home hero choosing
    * its slides without asking whether the photograph is the night's own.

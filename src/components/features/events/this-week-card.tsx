@@ -3,8 +3,7 @@ import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEve
 import { getEventMedia } from '@/lib/images/event-media'
 import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
-import { priceLabel } from '@/lib/events/price-label'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
@@ -26,10 +25,9 @@ import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/r
 
 
 
+/** The night's price line from its call to action (src/lib/broadcast/price-line.ts): never 'Free' unless free is stored. */
 function formatPrice(event: BentoEvent): string {
-  // WI1. A walk-in event says "Free entry" where the price goes.
-  if (isWalkIn(event)) return FREE_ENTRY_LABEL
-  return priceLabel(event.ticket_tiers ?? [])
+  return broadcastPriceLabel(event)
 }
 
 export async function ThisWeekCard({

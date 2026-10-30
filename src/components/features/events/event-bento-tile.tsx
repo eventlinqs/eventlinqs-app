@@ -8,8 +8,7 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { SaveEventButton } from './save-event-button'
 import type { BentoSize } from './bento-grid'
-import { priceLabel } from '@/lib/events/price-label'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 
 /**
  * EventBentoTile: renders a single event tile with EventCardMedia background.
@@ -43,6 +42,8 @@ export interface BentoEvent extends EventMediaInput {
   is_free?: boolean | null
   /** WI1. A walk-in event says "Free entry" where the price goes. */
   entry_mode?: string | null
+  /** A night sold on another site: the price line names the site ("Tickets on ..."), never "Free". */
+  external_ticket_url?: string | null
   percent_sold?: number | null
   sold_today?: number | null
 }
@@ -58,10 +59,9 @@ interface Props {
 
 
 
+/** The night's price line from its call to action (src/lib/broadcast/price-line.ts), or null where none may be said. */
 function formatCheapestPrice(event: BentoEvent): string | null {
-  // WI1. A walk-in event says "Free entry" where the price goes.
-  if (isWalkIn(event)) return FREE_ENTRY_LABEL
-  return priceLabel(event.ticket_tiers ?? [])
+  return broadcastPriceLabel(event) || null
 }
 
 function liveSignal(event: BentoEvent): string | null {

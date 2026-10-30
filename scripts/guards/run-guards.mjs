@@ -644,6 +644,9 @@
  *                              its first run naming a token globals.css does not declare
  *   tiles-on-stored-photos     every community and category tile is on a stored
  *                              photograph, and a refused Pexels lookup is never cached
+ *   card-price-from-cta        every card, tile and map pin takes its price words from the
+ *                              night's call to action: never 'Free' unless free is stored
+ *                              (30 October 2026, Kate Ceberano's paid show read 'Free')
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2011,6 +2014,11 @@ const GUARDS = [
   // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
   // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.
   'scripts/guards/tiles-on-stored-photos.mjs',
+  // 30 October 2026, the project manager's 12:40 at 390 x 844: Kate Ceberano's paid Costa Hall show read 'Free' on
+  // /city/geelong. Every card, tile and pin now takes its price words from the night's call to action; red on main
+  // with 13 faults across six surfaces (the card, the bento tile, the this-week card, the trending bento, the map pins
+  // and the sold-out page's related cards).
+  'scripts/guards/card-price-from-cta.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   // 20 September 2026, close-out C8. REPLACES hero-preload-above-the-loading-
   // boundary, and the replacement is a STRONGER rule rather than a rename.

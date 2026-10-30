@@ -92,7 +92,7 @@ const PAST_EVENTS_SHOWN = 12
 async function fetchVenueEventsByName(venueName: string) {
   const supabase = createPublicClient()
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
   /*
    * A FAILED READ IS NOT A VENUE WITH NOTHING ON, for the reason written out on
