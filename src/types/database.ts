@@ -8606,6 +8606,7 @@ export type Database = {
           link_id: string
           occurred_at: string
           order_id: string | null
+          piece_id: string | null
           provider: string | null
           visitor_hash: string | null
         }
@@ -8617,6 +8618,7 @@ export type Database = {
           link_id: string
           occurred_at?: string
           order_id?: string | null
+          piece_id?: string | null
           provider?: string | null
           visitor_hash?: string | null
         }
@@ -8628,6 +8630,7 @@ export type Database = {
           link_id?: string
           occurred_at?: string
           order_id?: string | null
+          piece_id?: string | null
           provider?: string | null
           visitor_hash?: string | null
         }
@@ -8658,6 +8661,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_link_events_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
             referencedColumns: ["id"]
           },
         ]

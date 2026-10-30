@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { goDestination, liveGoLinks, NO_NIGHT_DAYS, pressDay, viaOf, type GoNight, type GoPieceRow } from '@/lib/growth/go-math'
+import { GO_PIECE_COOKIE_MAX_AGE_SECONDS, goDestination, liveGoLinks, NO_NIGHT_DAYS, pieceIdOf, pressDay, viaOf, type GoNight, type GoPieceRow } from '@/lib/growth/go-math'
+import { CREDIT_DAYS } from '@/lib/social/results'
 
 /**
  * /go, the link in bio (the engine plan of 28 October 2026, part H, and Lawal's final directive of that day). It lists
@@ -117,5 +118,15 @@ describe('viaOf and pressDay', () => {
   it('counts a press on its Melbourne day, not the UTC one', () => {
     // 14:30 UTC on 30 October is 01:30 on 31 October in Melbourne (daylight time, UTC+11).
     expect(pressDay(new Date('2026-10-30T14:30:00Z'), 'Australia/Sydney')).toBe('2026-10-31')
+  })
+})
+
+describe('the piece cookie a tap on /go sets', () => {
+  it('holds a piece id only, and lasts the credit window', () => {
+    expect(pieceIdOf('11111111-1111-4111-8111-111111111111')).toBe('11111111-1111-4111-8111-111111111111')
+    expect(pieceIdOf('nope')).toBeNull()
+    expect(pieceIdOf(null)).toBeNull()
+    expect(pieceIdOf(undefined)).toBeNull()
+    expect(GO_PIECE_COOKIE_MAX_AGE_SECONDS).toBe(CREDIT_DAYS * 86_400)
   })
 })

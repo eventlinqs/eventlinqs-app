@@ -5,6 +5,7 @@ import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import type { QaPress } from '@/lib/broadcast/qa-marker'
 import { validateExternalTicketUrl } from '@/lib/broadcast/external-destination'
 import { getOrCreateShareLink, recordShareLinkEvent, resolveShareLink, visitorHash } from '@/lib/broadcast/share-links'
+import { pieceIdOf } from '@/lib/growth/go-math'
 import { buttonOf, providerOf, type BookingLink } from '@/lib/events/booking-links'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { readListingPages } from '@/lib/listings/listing-pages-read'
@@ -53,8 +54,22 @@ export type OutboundDeps = {
   /** The event's own share link for channel 'other', minted on first need. */
   ownLink(event: OutboundEvent): Promise<OutboundLink | null>
   /** isTest: a QA press carrying a verified marker (qa-marker.ts), recorded and counted nowhere. */
-  record(linkId: string, visitor: string | null, pressed: { bookingLinkId: string | null; provider: string }, isTest?: boolean): Promise<void>
+  record(linkId: string, visitor: string | null, pressed: { bookingLinkId: string | null; provider: string }, isTest?: boolean, pieceId?: string | null): Promise<void>
   counting(): Promise<boolean>
+  /** Whether the post a visitor tapped named this night (the newest social_piece_revisions.event_ids). */
+  pieceNamesNight?(pieceId: string, eventId: string): Promise<boolean>
+}
+
+/** The post to credit with this press: the tapped piece, only if it named the night; a failed read never loses the press. */
+async function creditedPiece(cookie: string | null | undefined, eventId: string, deps: OutboundDeps): Promise<string | null> {
+  const pieceId = pieceIdOf(cookie)
+  if (pieceId === null || !deps.pieceNamesNight) return null
+  try {
+    return (await deps.pieceNamesNight(pieceId, eventId)) ? pieceId : null
+  } catch (err) {
+    console.warn('[outbound] the post could not be read', err instanceof Error ? err.message : String(err))
+    return null
+  }
 }
 
 export type OutboundAnswer =
@@ -80,7 +95,7 @@ export function destinationsOf(links: readonly BookingLink[], pages: ListingPage
 
 /** Decides a press: where it goes, and on which link it is counted. Pure over its deps, so the rules are tested alone. */
 export async function followOutbound(
-  input: { slug: string; to: string | null; cookieCode: string | null; userAgent: string | null; ip: string | null; qa?: QaPress },
+  input: { slug: string; to: string | null; cookieCode: string | null; userAgent: string | null; ip: string | null; qa?: QaPress; pieceCookie?: string | null },
   deps: OutboundDeps,
 ): Promise<OutboundAnswer> {
   const event = await deps.findEvent(input.slug)
@@ -101,7 +116,7 @@ export async function followOutbound(
       const arrived = await deps.arrivedBy(input.cookieCode)
       const link = arrived && arrived.event_id === event.id ? arrived : await deps.ownLink(event)
       if (link) {
-        await deps.record(link.id, visitorHash(input.ip, input.userAgent), { bookingLinkId: pressed.bookingLinkId, provider: pressed.provider }, qa === 'test')
+        await deps.record(link.id, visitorHash(input.ip, input.userAgent), { bookingLinkId: pressed.bookingLinkId, provider: pressed.provider }, qa === 'test', await creditedPiece(input.pieceCookie, event.id, deps))
         counted = true
       }
     }
@@ -164,9 +179,18 @@ export function outboundDeps(): OutboundDeps {
       const link = await getOrCreateShareLink({ eventId: event.id, channel: 'other', eventSlug: event.slug })
       return link ? { id: link.id, event_id: link.event_id } : null
     },
-    async record(linkId, visitor, pressed, isTest) {
-      await recordShareLinkEvent({ linkId, kind: 'outbound', visitorHash: visitor, outbound: pressed, isTest: isTest === true })
+    async record(linkId, visitor, pressed, isTest, pieceId) {
+      await recordShareLinkEvent({ linkId, kind: 'outbound', visitorHash: visitor, outbound: pressed, isTest: isTest === true, pieceId: pieceId ?? null })
     },
     counting: () => isFeatureEnabled('broadcast_share'),
+    pieceNamesNight: (pieceId, eventId) => pieceNamesNight(admin, pieceId, eventId),
   }
+}
+
+/** Whether the piece named this night (the newest revision of it): a guide tapped on Monday claims only the nights it showed. */
+export async function pieceNamesNight(admin: ReturnType<typeof createAdminClient>, pieceId: string, eventId: string): Promise<boolean> {
+  const row = await readOrThrow('the post a press came through', () =>
+    admin.from('social_piece_revisions').select('event_ids').eq('piece_id', pieceId).order('version', { ascending: false }).limit(1).maybeSingle(),
+  )
+  return (row?.event_ids ?? []).includes(eventId)
 }

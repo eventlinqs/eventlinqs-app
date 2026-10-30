@@ -171,6 +171,8 @@ export interface ReportInput {
   readonly pieces: readonly PieceRow[]
   readonly figures: readonly FigureRow[]
   readonly linkEvents: readonly LinkEvent[]
+  /** What taps on a page-linked piece's /go link brought, on nights it named (share_link_events.piece_id), keyed by the piece's id as linkId. */
+  readonly pieceEvents?: readonly LinkEvent[]
   readonly orders: ReadonlyMap<string, CreditedOrder>
   readonly counted: ReadonlyMap<string, WeekCounted>
   readonly now: Date
@@ -249,7 +251,12 @@ function pieceReport(p: PieceRow, input: ReportInput): PieceReport {
   let counted: PostResult | null = null
   let countedWords: string
   if (!posted) countedWords = 'Not gone yet.'
-  else if (p.countedLinkId === null) countedWords = 'Its link is a page, so it is counted for the week only.'
+  else if (p.countedLinkId === null) {
+    if (input.pieceEvents?.some((e) => e.linkId === p.id)) {
+      counted = resultOf(p.id, new Date(p.postedAt as string), input.pieceEvents, input.orders)
+      countedWords = 'Counted through taps on its link for 30 days from when it went, on the nights it named.'
+    } else countedWords = 'Its link is a page, so it is counted for the week only.'
+  }
   else {
     counted = resultOf(p.countedLinkId, new Date(p.postedAt as string), input.linkEvents, input.orders)
     countedWords = 'Counted through its own link for 30 days from when it went.'
