@@ -58,7 +58,7 @@ describe('one card per event per page', () => {
  * A RAIL ABOVE A RESULTS LIST (/events, /events/browse/<city>; WINDOW 1's 09:04 crawl of live found the same night in
  * the popular rail and in the results below it). The results list is the complete answer to the visitor's search and
  * keeps its count and its pages, so it is never thinned; the rail above it shows only what the list does not already
- * draw, a recurring series counting as one event (P4). With nothing left, the rail is not drawn.
+ * draw, a recurring series counting as one event (P4). With nothing left, the rail is not drawn. 
  */
 describe('a rail never repeats an event the results list on the same page draws', () => {
   const e = (id: string, listing_series_id: string | null = null) => ({ id, listing_series_id })
@@ -67,7 +67,7 @@ describe('a rail never repeats an event the results list on the same page draws'
     const listed = [e('b'), e('x', 's1')]
     expect(notAlreadyListed(rail, listed).map((r) => r.id)).toEqual(['a', 'd'])
   })
-  it('leaves the rail empty, so it is not drawn, when the list already draws all of it', () => {
+  it("leaves the rail nothing of its own when the list already draws all of it (it then draws as the 26 August 2026 ruling says)", () => {
     expect(notAlreadyListed([e('a')], [e('a')])).toEqual([])
   })
 })

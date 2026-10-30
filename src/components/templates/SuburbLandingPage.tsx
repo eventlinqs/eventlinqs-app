@@ -16,6 +16,7 @@ import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getSuburb } from '@/lib/cities/data'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
 
 /**
  * How many of the suburb's events the grid shows. It was the literal 24
@@ -58,7 +59,12 @@ export function SuburbLandingPage({
   /* ONE array feeds both the reserved height and the cards, so the section
    * declares the height of what it renders rather than of what it was
    * handed. */
-  const shownEvents = events.slice(0, ALL_EVENTS_SHOWN)
+  // One card per event per page (P5; WINDOW 1 found the same night in the weekend rail and the full list on live): the
+  // rail keeps its nights, the full list fills from the rest, a series one card (P4).
+  const [railEvents, shownEvents] = oneCardPerEvent([
+    { events: weekendEvents, cap: 12 },
+    { events, cap: ALL_EVENTS_SHOWN },
+  ])
   const relatedItems = suburb.relatedSuburbs
     .map(s => getSuburb(s))
     .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -95,7 +101,7 @@ export function SuburbLandingPage({
         On a platform still building volume that hid the only event a place had. The
         gate is gone; an empty rail still does not render, because there is nothing
         to show. */}
-      {weekendEvents.length > 0 ? (
+      {railEvents.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder>
           <SnapRailScroller
             railLabel={`On in ${suburb.name} now`}
@@ -105,7 +111,7 @@ export function SuburbLandingPage({
               title: `On in ${suburb.name} now`,
             }}
           >
-            {weekendEvents.slice(0, 12).map(e => (
+            {railEvents.map(e => (
               <div key={e.id} className={FLAT_RAIL_CELL}>
                 <EventCard event={e} variant="rail-flat" />
               </div>
@@ -130,7 +136,7 @@ export function SuburbLandingPage({
               All upcoming
             </p>
             <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              All {suburb.name} events
+              {railEvents.length > 0 ? `More ${suburb.name} events` : `All ${suburb.name} events`}
             </h2>
           </div>
           {/* gold-800 (--brand-accent-strong) keeps the gold accent
