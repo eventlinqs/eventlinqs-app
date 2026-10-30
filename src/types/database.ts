@@ -12290,6 +12290,7 @@ export type Database = {
           width: number
         }[]
       }
+      venue_photo_unmatched_count: { Args: never; Returns: number }
       venue_photos_for: {
         Args: { p_use: string; p_venues: string[] }
         Returns: {
@@ -12302,7 +12303,6 @@ export type Database = {
           venue_id: string
         }[]
       }
-      venue_photo_unmatched_count: { Args: never; Returns: number }
       void_payout: {
         Args: { p_payout_id: string; p_reason?: string; p_status?: string }
         Returns: Json
