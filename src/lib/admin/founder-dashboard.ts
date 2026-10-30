@@ -4,8 +4,8 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { runAllChecks } from '@/lib/health/checks'
-import { paidFigure, paidReadFrom } from '@/lib/growth/paid-controls-math'
 import { weekStartOf } from '@/lib/social/campaign'
+import { paidFigure, paidReadFrom } from '@/lib/growth/paid-controls-math'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
@@ -158,6 +158,15 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     return figuresFor({ listings: [], visits: [], demand: [], saves: [], subscribers: [], orders, refunds: [] }, { from: since, to: now.toISOString(), monday: since.slice(0, 10) }).health
   })
 
+  // The paid controls' counter (src/lib/growth/paid-controls-math.ts): built and off; nothing here can spend.
+  const paid = await settle(async () => {
+    const { data, error } = await admin.rpc('paid_state')
+    if (error) throw new Error(error.message)
+    const read = paidReadFrom(data)
+    if (!read) throw new Error('paid_state answered no readable row')
+    return read
+  })
+
   const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
     supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
   const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
@@ -170,14 +179,6 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
   const g = growth.ok ? growth.value.lastFigures : null
   const failing = health.ok ? health.value.filter((r) => !r.ok) : null
-  // The paid controls' counter (src/lib/growth/paid-controls-math.ts): built and off; nothing here can spend.
-  const paid = await settle(async () => {
-    const { data, error } = await admin.rpc('paid_state')
-    if (error) throw new Error(error.message)
-    const read = paidReadFrom(data)
-    if (!read) throw new Error('paid_state answered no readable row')
-    return read
-  })
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
 
@@ -256,12 +257,12 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'marketing',
       title: 'Marketing',
       figures: [
-        paid.ok ? paidFigure(paid.value) : paidFigure(null, paid.note),
         ...(notPlanned ? [tag(fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week'), 'approve', 'weekly')] : []),
         tag(fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'), 'approve', 'weekly'),
         tag(fig('Held from posting', m((v) => v.held), true, '/admin/social', 'a check stopped them; open each for its reason'), 'failed', 'daily'),
         tag(fig('Scheduled to post', m((v) => v.scheduled), false, '/admin/social'), 'scheduled', 'daily'),
         tag(fig('Pieces this week', m((v) => v.pieces), false, '/admin/social'), 'measure', 'weekly'),
+        paid.ok ? paidFigure(paid.value) : paidFigure(null, paid.note),
         tag(fig('Partner kits this week', m((v) => v.kits), false, '/admin/social'), 'measure', 'weekly'),
         tag(fig(`Partner kits sent, ${CREDIT_DAYS} days`, kits.ok ? { value: kits.value.sent } : { value: null, note: kits.note }, false, '/admin/growth/social-report'), 'measure', 'weekly'),
         tag(
