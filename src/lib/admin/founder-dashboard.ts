@@ -8,6 +8,7 @@ import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
 import { runAllChecks } from '@/lib/health/checks'
+import { contributionByEvent, profitabilityFigures, type CampaignSpend } from '@/lib/growth/event-contribution'
 import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
 import { paidFigure, paidReadFrom } from '@/lib/growth/paid-controls-math'
@@ -174,6 +175,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
 
   // The last 28 days' AUD orders, for the monthly contribution (the supreme specification, section 29), through the growth
   // page's own figuresFor so the month counts sold orders exactly as the week does.
+  let monthOrders: OrderRow[] = []
   const month = await settle(async () => {
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
     const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>(
@@ -198,7 +200,24 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
       refundedCents: refundedOf(o.refunds),
     }))
+    monthOrders = orders
     return figuresFor({ listings: [], visits: [], demand: [], saves: [], subscribers: [], orders, refunds: [] }, { from: since, to: now.toISOString(), monday: since.slice(0, 10) }).health
+  })
+
+  // Contribution per event against the direct campaign cost recorded for it (the directive's section 9); a city guide's
+  // spend is platform acquisition, apart. Never the ticket value.
+  const campaigns = await settle(async () => {
+    if (!month.ok) throw new Error(month.note)
+    const since = new Date(now.getTime() - 28 * DAY_MS).toISOString().slice(0, 10)
+    const rows = await readEveryRow<{ amount_cents: number; paid_campaigns: { scope: string; event_id: string | null } | { scope: string; event_id: string | null }[] }>('the campaign spend of the last 28 days', (from, to) =>
+      admin.from('paid_campaign_spend').select('amount_cents, paid_campaigns!inner(scope, event_id)').gte('spend_day', since).order('id', { ascending: true }).range(from, to),
+    )
+    const spend: CampaignSpend[] = rows.map((r) => {
+      const c = Array.isArray(r.paid_campaigns) ? r.paid_campaigns[0] : r.paid_campaigns
+      return { scope: c?.scope === 'event' ? 'event' : 'city_guide', eventId: c?.event_id ?? null, amountCents: Number(r.amount_cents) }
+    })
+    const pooledSpendCents = spend.filter((s) => s.scope !== 'event').reduce((n, s) => n + s.amountCents, 0)
+    return profitabilityFigures({ events: contributionByEvent({ orders: monthOrders.map((o) => ({ ...o, refundedCents: o.refundedCents ?? 0 })), spend }), pooledSpendCents })
   })
 
   // The paid controls' counter (src/lib/growth/paid-controls-math.ts): built and off; nothing here can spend.
@@ -371,6 +390,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'economics',
       title: 'Economics',
       figures: [
+        ...(campaigns.ok ? campaigns.value : [{ label: 'Event campaigns, last 28 days', value: null, asksForAPerson: false, href: null, kind: 'measure' as const, cadence: 'monthly' as const, note: campaigns.note }]),
         ...(g
           ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health }).map((f) => tag(f, economicsKind[f.label] ?? 'measure', f.label === 'Break-even volume' ? 'monthly' : 'weekly'))
           : [tag(money('Gross ticket sales last week', null, notRead), 'value', 'weekly')]),
