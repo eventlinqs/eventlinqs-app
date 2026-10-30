@@ -11,7 +11,7 @@
  * proof (proof 1 in the document): it fails any car in which a photo can be, or
  * is, assigned to two events.
  *
- * WHAT IT JUDGES, three clauses, each printed on every run:
+ * WHAT IT JUDGES, four clauses, each printed on every run:
  *
  *   A. THE SCHEMA (P2, read from supabase/migrations, no network). Some
  *      migration creates public.photo_assignments; photo_sha256 is NOT NULL and
@@ -41,10 +41,14 @@
  *      read by one module only and the card chain reads it; no public page
  *      reads the venue library or the photo tables itself. See READER below.
  *
- * NOT JUDGED HERE, said so that nobody reads a PASS as more than it is: the same
- * video link on two events (P10, a trigger on events, added with its proof),
- * and the live crawl (proof 2), which is window 6's script and reads production
- * pages.
+ *   D. VIDEOS (P10, one video, one event). A trigger before insert or update
+ *      of video_url on public.events stands at the end of the migrations, and
+ *      no link (trimmed, any case) is held by two events outside one series.
+ *
+ * NOT JUDGED HERE, said so that nobody reads a PASS as more than it is: the
+ * live crawl (proof 2), which is window 6's script and reads production pages,
+ * and whether every upload path calls window 3's lock (P9), which its own tests
+ * prove.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -274,6 +278,51 @@ export function judgeAssignments(rows, threshold) {
   return { twice, near, unhashed }
 }
 
+/*
+ * Clause D, videos (P10: one video, one event). A video is a link on the event (events.video_url), so the rule
+ * lives in a trigger on public.events: window 3's events_one_video_per_event refuses the same link, trimmed and in
+ * any case, on another event outside the same series. The schema half asks that some trigger fires before insert or
+ * update of video_url on public.events and is not dropped afterwards; the rows half reads every event holding a link.
+ */
+const VIDEO_TRIGGER = /create\s+(?:or\s+replace\s+)?trigger\s+("?[a-z0-9_]+"?)\s+before\s+insert\s+or\s+update\s+of\s+[^;]*\bvideo_url\b[^;]*\bon\s+(?:public\.)?events\b/g
+
+/** @param {{ file: string, sql: string }[]} given  @returns {{ faults: string[], trigger: string | null }} */
+export function judgeVideoSchema(given) {
+  const migrations = given.map((m) => ({ file: m.file, sql: m.sql.replace(SQL_COMMENT, ' ').toLowerCase() }))
+  /* Statement order across files decides: a create later dropped by name, and not created again, does not hold. */
+  const standing = new Map()
+  for (const m of migrations) {
+    const events = []
+    for (const x of m.sql.matchAll(VIDEO_TRIGGER)) events.push({ at: x.index, name: x[1].replace(/"/g, ''), on: true })
+    for (const x of m.sql.matchAll(/drop\s+trigger\s+(?:if\s+exists\s+)?("?[a-z0-9_]+"?)\s+on\s+(?:public\.)?events\b/g)) {
+      events.push({ at: x.index, name: x[1].replace(/"/g, ''), on: false })
+    }
+    for (const e of events.sort((a, b) => a.at - b.at)) standing.set(e.name, e.on ? m.file : null)
+  }
+  const live = [...standing].find(([, file]) => file)
+  return live
+    ? { faults: [], trigger: live[0] }
+    : { faults: ['no trigger on public.events refuses a video link already on another event, so one video can be shown for two events (P10)'], trigger: null }
+}
+
+/**
+ * Rows are { id, video_url, listing_series_id }. One link (trimmed, any case) held by two events of different
+ * series, or by two events of no series, is one video on two events.
+ * @returns {string[]}
+ */
+export function judgeVideos(rows) {
+  const byLink = new Map()
+  for (const r of rows) {
+    const link = typeof r.video_url === 'string' ? r.video_url.trim().toLowerCase() : ''
+    if (!link) continue
+    const holder = r.listing_series_id ? `series ${r.listing_series_id}` : `event ${r.id}`
+    const held = byLink.get(link) ?? new Set()
+    held.add(holder)
+    byLink.set(link, held)
+  }
+  return [...byLink].filter(([, held]) => held.size > 1).map(([link, held]) => `one video on ${held.size} events: ${link.slice(0, 80)} (${[...held].join(', ')})`)
+}
+
 async function main() {
   const schema = judgeSchema(readMigrations())
   if (!schema.built || schema.faults.length) {
@@ -291,6 +340,14 @@ async function main() {
   }
   console.log(`${TAG} C, render paths: photos read only through ${READER}; ${render.readers} file(s) pass their rows through withVenuePhotos; no public page reads the venue library`)
 
+  const video = judgeVideoSchema(readMigrations())
+  if (video.faults.length) {
+    for (const f of video.faults) console.error(`${TAG} FAIL (D, videos): ${f}`)
+    process.exitCode = 1
+    return
+  }
+  console.log(`${TAG} D, videos: ${video.trigger} refuses a link already on another event`)
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL && existsSync('.env.test')) {
     for (const line of readFileSync('.env.test', 'utf8').split(String.fromCharCode(10))) {
       const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
@@ -299,12 +356,12 @@ async function main() {
   }
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
   if (!/^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/.test(url)) {
-    console.log(`${TAG} B, rows: NOT JUDGED, no real Supabase project URL in the environment (${url.length} characters); clauses A and C passed`)
+    console.log(`${TAG} B, rows: NOT JUDGED, no real Supabase project URL in the environment (${url.length} characters); clauses A, C and D passed`)
     return
   }
   const credential = tableReadCredential(process.env)
   if (!credential.key) {
-    console.log(`${TAG} B, rows: NOT JUDGED [no-credential]: ${credential.reason}. No assignment was read; clauses A and C passed`)
+    console.log(`${TAG} B, rows: NOT JUDGED [no-credential]: ${credential.reason}. No assignment was read; clauses A, C and D passed`)
     return
   }
   const rows = []
@@ -320,18 +377,35 @@ async function main() {
     if (outcome.value.length < 1000) break
   }
   const { twice, near, unhashed } = judgeAssignments(rows, schema.bits)
+  const linked = []
+  for (let from = 0; ; from += 1000) {
+    const query = `events?select=id,video_url,listing_series_id&video_url=not.is.null&order=id.asc&offset=${from}&limit=1000`
+    const outcome = await selectRest({ url, key: credential.key, query })
+    if (!outcome.ok) {
+      console.error(`${TAG} FAIL (D, videos): ${couldNotLook('events.video_url', outcome)}`)
+      process.exitCode = 1
+      return
+    }
+    linked.push(...outcome.value)
+    if (outcome.value.length < 1000) break
+  }
+  const videos = judgeVideos(linked)
   declareWork('one-photo-one-event', {
-    did: { 'photo assignment read': rows.length },
-    found: { 'photo assigned twice': twice.length, 'near copy on two events': near.length, 'assignment with no difference hash': unhashed },
-    zeroIsFine: { 'photo assignment read': 'a database with no assignment yet shows only typographic covers, which P1 allows' },
+    did: { 'photo assignment read': rows.length, 'event with a video link read': linked.length },
+    found: { 'photo assigned twice': twice.length, 'near copy on two events': near.length, 'assignment with no difference hash': unhashed, 'video on two events': videos.length },
+    zeroIsFine: {
+      'photo assignment read': 'a database with no assignment yet shows only typographic covers, which P1 allows',
+      'event with a video link read': 'a video is optional on an event',
+    },
   })
   for (const f of [...twice, ...near]) console.error(`${TAG} FAIL (B, rows): ${f}`)
-  if (twice.length || near.length) {
+  for (const f of videos) console.error(`${TAG} FAIL (D, videos): ${f}`)
+  if (twice.length || near.length || videos.length) {
     process.exitCode = 1
     return
   }
   const said = unhashed ? `; ${unhashed} with no difference hash, judged by their bytes alone` : ''
-  console.log(`${TAG} PASS: ${rows.length} photo assignment(s) on ${url.replace(/^https:\/\/([a-z0-9]+)\..*$/, '$1')}, no hash twice, no two events within ${schema.bits} bit(s)${said}`)
+  console.log(`${TAG} PASS: ${rows.length} photo assignment(s) on ${url.replace(/^https:\/\/([a-z0-9]+)\..*$/, '$1')}, no hash twice, no two events within ${schema.bits} bit(s)${said}; ${linked.length} video link(s), none on two events`)
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/guards/one-photo-one-event.mjs')) await main()

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { dhashBits, hamming, judgeAssignments, judgeRenderPaths, judgeSchema } from '../../../scripts/guards/one-photo-one-event.mjs'
+import { dhashBits, hamming, judgeAssignments, judgeRenderPaths, judgeSchema, judgeVideoSchema, judgeVideos } from '../../../scripts/guards/one-photo-one-event.mjs'
 
 /**
  * The photo system's gate guard (P1 and P2, Lawal's ruling of 31 October 2026
@@ -141,5 +141,27 @@ describe('clause C, the render paths', () => {
   test('no reader of the assignment, or a chain that does not read it, fails', () => {
     expect(judgeRenderPaths([chain]).faults[0]).toContain('does not call event_cover_photos_for')
     expect(judgeRenderPaths([reader, file('src/lib/images/venue-photo-chain.ts', 'venueOnly()')]).faults[0]).toContain('does not read eventCoversFor')
+  })
+})
+
+describe('clause D, videos (P10)', () => {
+  const TRIGGER =
+    'create trigger events_one_video_per_event before insert or update of video_url, listing_series_id on public.events ' +
+    'for each row execute function public.events_one_video_per_event();'
+  const DROP = 'drop trigger if exists events_one_video_per_event on public.events;'
+
+  test('a standing trigger before insert or update of video_url holds; none, or one dropped later, fails', () => {
+    expect(judgeVideoSchema([m(DROP + TRIGGER)])).toEqual({ faults: [], trigger: 'events_one_video_per_event' })
+    expect(judgeVideoSchema([m('create table public.events (id uuid);')]).faults[0]).toContain('P10')
+    expect(judgeVideoSchema([m(DROP + TRIGGER), later(DROP)]).faults[0]).toContain('P10')
+    expect(judgeVideoSchema([m(DROP + TRIGGER), later(DROP + TRIGGER)]).trigger).toBe('events_one_video_per_event')
+  })
+
+  test('one link on two events fails, however spaced or cased; nights of one series keep it', () => {
+    const v = 'https://youtu.be/abc'
+    expect(judgeVideos([{ id: 'e1', video_url: v, listing_series_id: null }, { id: 'e2', video_url: ' HTTPS://youtu.be/ABC ', listing_series_id: null }])).toHaveLength(1)
+    expect(judgeVideos([{ id: 'e1', video_url: v, listing_series_id: 's1' }, { id: 'e2', video_url: v, listing_series_id: 's1' }])).toEqual([])
+    expect(judgeVideos([{ id: 'e1', video_url: v, listing_series_id: 's1' }, { id: 'e2', video_url: v, listing_series_id: 's2' }])).toHaveLength(1)
+    expect(judgeVideos([{ id: 'e1', video_url: '  ', listing_series_id: null }, { id: 'e2', video_url: '  ', listing_series_id: null }])).toEqual([])
   })
 })
