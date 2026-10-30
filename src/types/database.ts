@@ -10610,6 +10610,38 @@ export type Database = {
           },
         ]
       }
+      venue_distribution_preferences: {
+        Row: {
+          our_posts: boolean
+          set_at: string
+          set_by: string
+          venue_id: string
+          weekly_roundup: boolean
+        }
+        Insert: {
+          our_posts?: boolean
+          set_at?: string
+          set_by: string
+          venue_id: string
+          weekly_roundup?: boolean
+        }
+        Update: {
+          our_posts?: boolean
+          set_at?: string
+          set_by?: string
+          venue_id?: string
+          weekly_roundup?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_distribution_preferences_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_enrolments: {
         Row: {
           action: string
@@ -12681,6 +12713,25 @@ export type Database = {
           p_payment_id: string
         }
         Returns: boolean
+      }
+      venue_distribution_for: {
+        Args: { p_venues: string[] }
+        Returns: {
+          our_posts: boolean
+          set_at: string
+          venue_id: string
+          weekly_roundup: boolean
+        }[]
+      }
+      venue_distribution_off: { Args: { p_channel: string }; Returns: string[] }
+      venue_distribution_set: {
+        Args: {
+          p_our_posts: boolean
+          p_user: string
+          p_venue: string
+          p_weekly_roundup: boolean
+        }
+        Returns: undefined
       }
       venue_event_share_balance: {
         Args: { p_currency: string; p_event_id: string; p_venue_id: string }
