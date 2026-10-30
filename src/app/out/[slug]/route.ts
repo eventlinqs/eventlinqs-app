@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { SHARE_COOKIE } from '@/lib/broadcast/share-codes'
+import { GO_PIECE_COOKIE } from '@/lib/growth/go-math'
 import { followOutbound, outboundDeps } from '@/lib/broadcast/outbound'
 import { QA_HEADER, qaPressOf } from '@/lib/broadcast/qa-marker'
 
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       slug,
       to: request.nextUrl.searchParams.get('to'),
       cookieCode: request.cookies.get(SHARE_COOKIE)?.value ?? null,
+      pieceCookie: request.cookies.get(GO_PIECE_COOKIE)?.value ?? null,
       userAgent: request.headers.get('user-agent'),
       ip: request.headers.get('x-real-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
       qa: await qaPressOf(request.headers.get(QA_HEADER)),

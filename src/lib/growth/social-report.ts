@@ -165,12 +165,27 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
   const linkIds = [...new Set(pieces.map((p) => p.countedLinkId).filter((v): v is string => v !== null))]
   const linkEvents: LinkEvent[] = []
   const orders = new Map<string, CreditedOrder>()
-  if (linkIds.length > 0) {
+  // What taps on page-linked pieces brought (share_link_events.piece_id). A failed read leaves those pieces counted for
+  // the week only, as they were; it never costs the report.
+  const pagePieces = pieces.filter((p) => p.countedLinkId === null).map((p) => p.id)
+  const pieceEvents: LinkEvent[] = []
+  if (pagePieces.length > 0) {
+    try {
+      const ev = await readEveryRow<{ piece_id: string; kind: LinkEvent['kind']; order_id: string | null; occurred_at: string }>('what taps on the pieces brought', (from, to) =>
+        db.from('share_link_events').select('piece_id, kind, order_id, occurred_at').eq('is_test', false).in('piece_id', pagePieces).in('kind', ['outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
+      )
+      for (const e of ev) pieceEvents.push({ linkId: e.piece_id, kind: e.kind, orderId: e.order_id, occurredAt: iso(e.occurred_at) })
+    } catch (err) {
+      console.warn('[social-report] what taps brought could not be read', err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  if (linkIds.length > 0 || pieceEvents.length > 0) {
     const ev = await readEveryRow<{ link_id: string; kind: LinkEvent['kind']; order_id: string | null; occurred_at: string }>('the pieces\' own counted rows', (from, to) =>
       db.from('share_link_events').select('link_id, kind, order_id, occurred_at').eq('is_test', false).in('link_id', linkIds).in('kind', ['click', 'outbound', 'conversion']).order('id', { ascending: true }).range(from, to),
     )
     for (const e of ev) linkEvents.push({ linkId: e.link_id, kind: e.kind, orderId: e.order_id, occurredAt: iso(e.occurred_at) })
-    const orderIds = [...new Set(linkEvents.filter((e) => e.kind === 'conversion' && e.orderId !== null).map((e) => e.orderId as string))]
+    const orderIds = [...new Set([...linkEvents, ...pieceEvents].filter((e) => e.kind === 'conversion' && e.orderId !== null).map((e) => e.orderId as string))]
     if (orderIds.length > 0) {
       const { data: os, error: oerr } = await db.from('orders').select('id, status, total_cents, tickets(id)').in('id', orderIds).limit(5000)
       if (oerr) throw new Error(`the orders could not be read: ${oerr.message}`)
@@ -230,7 +245,7 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
   }
 
   const withNights: PieceRow[] = pieces.map((p) => ({ ...p, nightIds: nightsOf.get(p.id)?.eventIds ?? [] }))
-  const report = buildSocialReport({ campaignId: chosen.id, campaigns, pieces: withNights, figures, linkEvents, orders, counted, now: input.now, goPresses, claims })
+  const report = buildSocialReport({ campaignId: chosen.id, campaigns, pieces: withNights, figures, linkEvents, pieceEvents, orders, counted, now: input.now, goPresses, claims })
 
   const { data: ds, error: derr } = await db.from('social_report_decisions').select('rule, decision, recommendation, decided_at').eq('campaign_id', chosen.id).order('decided_at', { ascending: true }).limit(50)
   if (derr) throw new Error(`the decisions could not be read: ${derr.message}`)
