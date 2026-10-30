@@ -35,6 +35,20 @@ describe('one card per event per page', () => {
     expect(new Set(out.flat().map((e) => e.id)).size).toBe(out.flat().length)
   })
 
+  // P4: a recurring series is one event. Its first night shown is its one card on the page, and its later nights on
+  // the page are named on that card, so no published night disappears from the page.
+  it('shows a series once, at its first night shown, naming its later nights on that card', () => {
+    const sat1 = { id: 's1', listing_series_id: 'market', start_date: '2026-10-31T22:00:00Z' }
+    const sat2 = { id: 's2', listing_series_id: 'market', start_date: '2026-11-07T22:00:00Z' }
+    const sat3 = { id: 's3', listing_series_id: 'market', start_date: '2026-11-14T22:00:00Z' }
+    const gig = { id: 'g', listing_series_id: null, start_date: '2026-11-01T09:00:00Z' }
+    const [weekend, all] = oneCardPerEvent([{ events: [sat1, gig], cap: 12 }, { events: [sat1, gig, sat2, sat3], cap: 12 }])
+    expect(weekend.map((e) => e.id)).toEqual(['s1', 'g'])
+    expect(weekend[0].also_on).toEqual(['2026-11-07T22:00:00Z', '2026-11-14T22:00:00Z'])
+    expect(weekend[1].also_on).toBeUndefined()
+    expect(all).toEqual([])
+  })
+
   it('a section left with nothing comes back empty, so its rail does not draw', () => {
     expect(ids(oneCardPerEvent([{ events: [ev('a')], cap: 12 }, { events: [ev('a')], cap: 12 }]))).toEqual([['a'], []])
   })
