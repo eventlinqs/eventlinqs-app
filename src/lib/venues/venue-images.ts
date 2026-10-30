@@ -1,5 +1,6 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
+import { photoHashes } from '@/lib/images/photo-hash'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -115,12 +116,47 @@ export function withdrawVenuePhoto(input: { userId: string; imageId: string }, d
   return decide('venue_image_withdraw', { p_user: input.userId, p_image: input.imageId }, input.imageId, deps)
 }
 
-/** Staff approve a photograph once: checked to show the venue, scored 0 to 100, primary on request. */
-export function approveVenuePhoto(input: { adminId: string; imageId: string; quality: number; primary: boolean }, deps: Pick<VenueMediaDeps, 'rpc'>) {
+// A harvested original (a Commons file at full size) can be several times an upload's limit; it is only read to be
+// fingerprinted, never stored. Our own working ceiling, not a published one.
+const LARGEST_SOURCE_PHOTO_BYTES = 5 * MAX_IMAGE_BYTES
+
+/** What an approval reads to fingerprint a photograph: its file, and whether the database already holds its fingerprint. */
+export type FingerprintDeps = {
+  photoOf(imageId: string): Promise<{ imageUrl: string; fingerprinted: boolean } | null>
+  bytesOf(url: string): Promise<Buffer>
+}
+
+/**
+ * Staff approve a photograph once: checked to show the venue, scored 0 to 100, primary on request. NO PHOTO IS EVER
+ * REUSED (Lawal's ruling of 31 October 2026, 00:14): it is fingerprinted from its own bytes first (SHA-256 and difference
+ * hash, written once by venue_image_fingerprint), so the database can give it to one night only, and then dealt
+ * (deal_venue_photos). A photograph that cannot be read is not approved.
+ */
+export async function approveVenuePhoto(
+  input: { adminId: string; imageId: string; quality: number; primary: boolean },
+  deps: Pick<VenueMediaDeps, 'rpc'> & FingerprintDeps,
+): Promise<VenuePhotoAnswer> {
   if (!Number.isInteger(input.quality) || input.quality < 0 || input.quality > 100) {
-    return Promise.resolve<VenuePhotoAnswer>({ state: 'refused', reason: 'Give the photograph a quality score from 0 to 100.' })
+    return { state: 'refused', reason: 'Give the photograph a quality score from 0 to 100.' }
   }
-  return decide('venue_image_approve', { p_admin: input.adminId, p_image: input.imageId, p_quality: input.quality, p_primary: input.primary }, input.imageId, deps)
+  const photo = await deps.photoOf(input.imageId)
+  if (!photo) return { state: 'refused', reason: 'No such photograph.' }
+  if (!photo.fingerprinted) {
+    let hashes: { sha256: string; dhash: string }
+    try {
+      hashes = await photoHashes(await deps.bytesOf(photo.imageUrl))
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error)
+      return { state: 'refused', reason: `The photograph could not be read to fingerprint it, so it was not approved: ${why}` }
+    }
+    const marked = await decide('venue_image_fingerprint', { p_image: input.imageId, p_sha256: hashes.sha256, p_dhash: hashes.dhash }, input.imageId, deps)
+    if (marked.state === 'refused') return marked
+  }
+  const approved = await decide('venue_image_approve', { p_admin: input.adminId, p_image: input.imageId, p_quality: input.quality, p_primary: input.primary }, input.imageId, deps)
+  if (approved.state === 'refused') return approved
+  const dealt = await deps.rpc('deal_venue_photos', {})
+  if (dealt.error) throw new Error(`the photograph was approved but not dealt to a night: ${dealt.error.message}`)
+  return approved
 }
 
 /** Staff refuse a photograph, the reason kept; it never serves. */
@@ -134,9 +170,27 @@ export function linkVenuePhoto(input: { adminId: string; imageId: string; venueI
 }
 
 /** The real dependencies: the image pipeline, the event-images bucket's venues folder, and the service role. */
-export function venueMediaDeps(): VenueMediaDeps {
+export function venueMediaDeps(): VenueMediaDeps & FingerprintDeps {
   const admin = createAdminClient()
   return {
+    async photoOf(imageId) {
+      const { data, error } = await (admin.from('venue_images') as unknown as {
+        select(c: string): { eq(k: string, v: string): { maybeSingle(): Promise<{ data: { image_url: string; photo_sha256: string | null } | null; error: { message: string } | null }> } }
+      })
+        .select('image_url, photo_sha256')
+        .eq('id', imageId)
+        .maybeSingle()
+      if (error) throw new Error(`the photograph could not be read: ${error.message}`)
+      return data ? { imageUrl: data.image_url, fingerprinted: data.photo_sha256 !== null } : null
+    },
+    async bytesOf(url) {
+      // Wikimedia asks every client to name itself (https://meta.wikimedia.org/wiki/User-Agent_policy).
+      const res = await fetch(url, { headers: { 'User-Agent': 'EventLinqs venue photos (https://www.eventlinqs.com.au; hello@eventlinqs.com)' } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const bytes = Buffer.from(await res.arrayBuffer())
+      if (bytes.byteLength > LARGEST_SOURCE_PHOTO_BYTES) throw new Error('the file is larger than any photograph we fingerprint')
+      return bytes
+    },
     async process(bytes) {
       const result = await processEventImage(bytes, { role: 'cover' })
       if (!result.ok) throw new Error(result.error)
