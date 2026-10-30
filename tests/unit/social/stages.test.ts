@@ -84,6 +84,7 @@ describe('the Coming Up edition, the consideration stage', () => {
 
   it('prints each night\'s date, as a weekday alone would mislead this far out', () => {
     expect(coming[0].caption).toMatch(/Wed 4 Nov/)
+    expect(coming[0].caption.match(/Wed 4 Nov/g)).toHaveLength(1) // once: a fact is never said twice
     const cover = coming[0].slides[0] as { contents: string[] }
     expect(cover.contents[0]).toContain('4 Nov')
   })

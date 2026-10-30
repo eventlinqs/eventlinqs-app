@@ -3,6 +3,7 @@ import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/show
 import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
+import { campaignStageOf } from './stages'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -36,6 +37,7 @@ export type PieceKind =
   | 'daily_poster'
   | 'tonight_tomorrow'
   | 'category_spotlight'
+  | 'coming_up'
 
 /**
  * THE EDITION CITIES, in order (D5 of Lawal's final directive, 30 October 2026: 'Initially support Geelong and
@@ -597,6 +599,43 @@ export function planCampaign(input: {
         message: null,
       })
       feature(friSat)
+    }
+
+    /* Coming Up: the consideration stage, T-20 to T-8 counted from the week's Monday (src/lib/social/stages.ts), to the
+       city page. Each line prints its date, as a weekday alone would mislead this far out. */
+    const monday = new Date(`${weekStart}T00:00:00Z`)
+    const { nights: later, picks: laterPicks } = selectNights(
+      input.nights.filter((n) => n.citySlug === city.slug && !(input.excluded?.has(n.eventId) ?? false) && campaignStageOf(n, monday) === 'consideration'),
+      MAX_NIGHTS,
+    )
+    if (later.length >= 2) {
+      const hook = `${countWord(later.length)} nights worth planning for in ${city.name}.`
+      const body = [...later.map(pickLine), '', creditsOf(later)]
+      pieces.push({
+        kind: 'coming_up',
+        city: city.slug,
+        audience: 'attendees',
+        objective: 'audience_growth',
+        purpose: `Show what is coming up in ${city.name}, while there is time to plan`,
+        nextStep: `Save it and open ${site}/city/${city.slug}`,
+        outcome: outcomeOf(`/city/${city.slug}`),
+        link: `${origin}/city/${city.slug}`,
+        format: 'feed',
+        eventIds: later.map((n) => n.eventId),
+        picks: laterPicks,
+        mode: modeOf(later),
+        slides: [
+          { t: 'cover', composition: 'contents_cover', chip: `Coming up · ${city.name}`, headline: hook, line: splitLine(later), contents: later.map((n) => `${dateOf(n)} ${n.title}`) },
+          ...later.map(nightSlide),
+          { t: 'end', composition: 'close', headline: 'Put a date in the diary.', line: `Everything coming up in ${city.name}, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Save this for later.' },
+        ],
+        caption: join([hook, '', ...body, '', `Everything coming up: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
+        versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, 'Everything coming up is at the link in our bio.', 'Everything coming up:', '4:5', tagsFor(city, null)),
+        partnerName: null,
+        partnerEventId: null,
+        message: null,
+      })
+      feature(later)
     }
 
     /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */

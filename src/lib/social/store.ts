@@ -661,7 +661,9 @@ export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
 
 /** The week's public nights in the guide cities, each with its call to action, its price line and any usable image. */
 export async function readCampaignNights(db: Db, cities: readonly CampaignCity[], weekStart: string, now: Date): Promise<CampaignNight[]> {
-  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 8 * DAY_MS)
+  // Three weeks on, for Coming Up's consideration stage; every piece of the week keeps to its week by dayInWeek. The
+  // rows come soonest first, so if the limit below ever cuts, it cuts only the furthest nights.
+  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 21 * DAY_MS)
   const { data, error } = await applyPublicEventVisibility(db.from('events').select(NIGHT_COLUMNS), { now, includeExternal: true })
     .gt('end_date', now.toISOString())
     .lte('start_date', weekEnd.toISOString())
@@ -879,7 +881,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     .order('planned_at', { ascending: true })
     .limit(500)
   if (error) throw new Error(`the week's pieces could not be read: ${error.message}`)
-  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'organiser_campaign', 'brand_campaign', 'partner_kit']
+  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'coming_up', 'organiser_campaign', 'brand_campaign', 'partner_kit']
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
     const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)
