@@ -162,7 +162,59 @@ export interface SocialReport {
   readonly baselineWords: string
   readonly recommendations: readonly Recommendation[]
   readonly recommendationWords: string
+  /** D6: each partner's kits across every campaign read, strongest first. */
+  readonly partners: readonly PartnerKits[]
+  readonly partnerWords: string
   readonly limitations: readonly string[]
+}
+
+/**
+ * D6 (the DemandOS directive of 30 October 2026, section 6): one partner's kits, keyed by the name the planner made
+ * them for (the host a night is shown under, ../social/campaign.ts hostOf). Delivery is apart from sharing: sent is a
+ * kit recorded as gone, used a sent kit whose own link was tapped in its credit window. Then the levels, never added:
+ * visits through their links, presses out to an outside booking page (booking intent, never a sale), and EventLinqs
+ * orders that stand (the verified sale).
+ */
+export interface PartnerKits {
+  readonly partner: string
+  readonly kits: number
+  readonly sent: number
+  readonly used: number
+  readonly visits: number
+  readonly pressedOut: number
+  readonly orders: number
+  readonly tickets: number
+}
+
+function partnersOf(input: ReportInput): PartnerKits[] {
+  const by = new Map<string, { kits: number; sent: number; used: number; visits: number; pressedOut: number; orders: number; tickets: number }>()
+  for (const p of input.pieces) {
+    if (p.kind !== 'partner_kit' || p.partnerName === null) continue
+    const t = by.get(p.partnerName) ?? { kits: 0, sent: 0, used: 0, visits: 0, pressedOut: 0, orders: 0, tickets: 0 }
+    t.kits += 1
+    if (p.postedAt !== null) {
+      t.sent += 1
+      if (p.countedLinkId !== null) {
+        const r = resultOf(p.countedLinkId, new Date(p.postedAt), input.linkEvents, input.orders)
+        if (r.arrived > 0) t.used += 1
+        t.visits += r.arrived
+        t.pressedOut += r.pressedOut
+        t.orders += r.orders
+        t.tickets += r.tickets
+      }
+    }
+    by.set(p.partnerName, t)
+  }
+  return [...by.entries()]
+    .map(([partner, t]) => ({ partner, ...t }))
+    .sort((a, b) => b.orders - a.orders || b.visits - a.visits || a.partner.localeCompare(b.partner))
+}
+
+function partnerWordsOf(partners: readonly PartnerKits[], campaigns: number): string {
+  if (partners.length === 0) return 'No partner kit made yet, so no partner has anything to count.'
+  const who = partners.length === 1 ? '1 partner' : `${partners.length} partners`
+  const over = campaigns === 1 ? 'the 1 campaign read' : `the ${campaigns} campaigns read`
+  return `${who} across ${over}. Sent is a kit you recorded as gone; used, a sent kit whose own link was tapped within ${CREDIT_DAYS} days. A press out is a press to their own booking page, never a sale; orders are EventLinqs orders through their links that still stand.`
 }
 
 export interface ReportInput {
@@ -398,6 +450,7 @@ export function buildSocialReport(input: ReportInput): SocialReport {
     .filter((c) => c.piecesPosted > 0)
     .slice(0, EARLIER_SHOWN)
 
+  const partners = partnersOf(input)
   const baseline = earlier.length === 0 ? null : { campaigns: earlier.length, from: earlier[earlier.length - 1].weekStart, to: earlier[0].weekStart }
   const counted = input.counted.get(campaign.id) ?? null
 
@@ -430,6 +483,8 @@ export function buildSocialReport(input: ReportInput): SocialReport {
         : recommendations.length === 0
           ? 'No recommendation this week: no comparison cleared the bar a change needs.'
           : 'Each change waits for your approval; approving one records it and changes nothing by itself.',
+    partners,
+    partnerWords: partnerWordsOf(partners, input.campaigns.length),
     limitations: LIMITATIONS,
   }
 }

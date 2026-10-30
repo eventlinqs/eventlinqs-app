@@ -43,6 +43,9 @@ const COUNTED: readonly { key: keyof Omit<WeekCounted, 'liveByCity' | 'socialVis
 /** The earlier campaigns' columns; below lg each cell carries its own heading (src/components/admin/table-card.ts). */
 const EARLIER_COLUMNS = ['Week of', 'Pieces that went', 'Visitors from social', 'Presses out', 'Orders on EventLinqs', 'Instagram reach (entered)'] as const
 
+/** D6: each partner's kits across the campaigns read; each level its own column, never added to another. */
+const PARTNER_COLUMNS = ['Partner', 'Kits made', 'Sent', 'Used', 'Visits', 'Presses out', 'Orders on EventLinqs', 'Tickets'] as const
+
 function against(now: number, then: WeekCounted | null, key: (typeof COUNTED)[number]['key'], show: (n: number) => string): string {
   if (then === null) return 'no earlier campaign counted'
   const was = then[key]
@@ -275,6 +278,43 @@ export function SocialReportView({
                   <PieceCard key={p.id} p={p} campaignId={r.campaign.id} readAtDefault={readAtDefault} enterFigure={enterFigure} />
                 ))}
               </ul>
+            )}
+          </Section>
+
+          <Section name="partners" title="Partner kits, by partner" lead={r.partnerWords}>
+            {r.partners.length === 0 ? null : (
+              <div className={ADMIN_TABLE_WRAP}>
+                <table className={ADMIN_TABLE}>
+                  <thead className={ADMIN_THEAD}>
+                    <tr>
+                      {PARTNER_COLUMNS.map((h) => (
+                        <th key={h} scope="col" className="px-4 py-3 font-normal">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={ADMIN_TBODY}>
+                    {r.partners.map((p) => {
+                      const cells = [p.kits, p.sent, p.used, p.visits, p.pressedOut, p.orders, p.tickets].map(number)
+                      return (
+                        <tr key={p.partner} data-partner={p.partner} className={ADMIN_ROW}>
+                          <td className={`${ADMIN_CELL_NAME} text-white`}>
+                            <span className={ADMIN_CELL_LABEL}>{PARTNER_COLUMNS[0]}</span>
+                            {p.partner}
+                          </td>
+                          {cells.map((v, i) => (
+                            <td key={PARTNER_COLUMNS[i + 1]} className={`${ADMIN_CELL} text-white/80`}>
+                              <span className={ADMIN_CELL_LABEL}>{PARTNER_COLUMNS[i + 1]}</span>
+                              {v}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Section>
 
