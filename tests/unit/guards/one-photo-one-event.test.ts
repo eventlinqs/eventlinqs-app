@@ -1,24 +1,26 @@
 import { describe, expect, test } from 'vitest'
-import {
-  hammingHex,
-  judgeAssignments,
-  judgeSchema,
-  NEAR_DUPLICATE_BITS,
-} from '../../../scripts/guards/one-photo-one-event.mjs'
+import { dhashBits, hamming, judgeAssignments, judgeSchema } from '../../../scripts/guards/one-photo-one-event.mjs'
 
 /**
  * The photo system's gate guard (P1 and P2, Lawal's ruling of 31 October 2026
- * 00:14), driven over synthetic migrations and rows. Each fault is one way the
- * same photo could reach two events.
+ * 00:14), driven over synthetic migrations and rows in the shape of window 3's
+ * 20261031010001_photo_assignments. Each fault is one way the same photo could
+ * reach two events.
  */
-const FILE = '20261031000001_photo_assignments.sql'
+const FILE = '20261031010001_photo_assignments.sql'
 const TABLE =
-  'create table public.photo_assignments (id uuid primary key default gen_random_uuid(), ' +
-  'photo_sha256 text not null, photo_phash text not null, ' +
-  'event_id uuid not null references public.events(id), source text not null, ' +
-  'assigned_at timestamptz not null default now()); '
-const INDEX = 'create unique index photo_assignments_sha256_one on public.photo_assignments (photo_sha256);'
-const m = (sql: string, file = FILE) => ({ file, sql: sql.toLowerCase() })
+  'create table if not exists public.photo_assignments (id uuid primary key default gen_random_uuid(), ' +
+  "photo_sha256 text not null check (photo_sha256 ~ '^[0-9a-f]{64}$'), photo_dhash bigint, " +
+  'event_id uuid references public.events (id) on delete set null, ' +
+  'listing_series_id uuid references public.event_series (id) on delete set null, ' +
+  'constraint photo_assignments_one_target check (num_nonnulls(event_id, listing_series_id) <= 1)); '
+const INDEX = 'create unique index if not exists photo_assignments_one_event_per_photo on public.photo_assignments (photo_sha256); '
+const NEAR =
+  'create function public.photo_assignments_made_once() returns trigger language plpgsql as $$ begin ' +
+  'if new.photo_dhash is not null and exists (select 1 from public.photo_assignments a where a.photo_dhash is not null ' +
+  "and bit_count((a.photo_dhash # new.photo_dhash)::bit(64)) <= 6) then raise exception 'near copy'; end if; return new; end; $$;"
+const m = (sql: string, file = FILE) => ({ file, sql })
+const later = (sql: string) => m(sql, '20261101000001_later.sql')
 
 describe('clause A, the schema', () => {
   test('no migration creates the table: not built, and that fails', () => {
@@ -27,75 +29,88 @@ describe('clause A, the schema', () => {
     expect(r.faults[0]).toContain('NOT BUILT')
   })
 
-  test('a unique index on the hash alone holds', () => {
-    expect(judgeSchema([m(TABLE + INDEX)]).faults).toEqual([])
+  test('the hash unique on its own and a near-copy line hold, and the line is read from the SQL', () => {
+    const r = judgeSchema([m(TABLE + INDEX + NEAR)])
+    expect(r.faults).toEqual([])
+    expect(r.bits).toBe(6)
   })
 
   test('a unique column constraint holds', () => {
-    const sql = TABLE.replace('photo_sha256 text not null,', 'photo_sha256 text not null unique,')
+    const sql = TABLE.replace('photo_sha256 text not null', 'photo_sha256 text not null unique') + NEAR
     expect(judgeSchema([m(sql)]).faults).toEqual([])
   })
 
-  test('unique on (hash, event) lets one photo onto two events', () => {
-    const sql = TABLE + 'alter table public.photo_assignments add constraint pa_pair unique (photo_sha256, event_id);'
+  test('unique on (hash, night) lets one photo onto two nights', () => {
+    const sql = TABLE + NEAR + 'alter table public.photo_assignments add constraint pa_pair unique (photo_sha256, event_id);'
     expect(judgeSchema([m(sql)]).faults[0]).toContain('not unique on its own')
   })
 
-  test('a nullable hash, a missing perceptual hash and a nullable event each fail', () => {
-    expect(judgeSchema([m(TABLE.replace('photo_sha256 text not null', 'photo_sha256 text') + INDEX)]).faults[0]).toContain('may be null')
-    expect(judgeSchema([m(TABLE.replace('photo_phash text not null,', '') + INDEX)]).faults[0]).toContain('no photo_phash')
-    expect(judgeSchema([m(TABLE.replace('event_id uuid not null', 'event_id uuid') + INDEX)]).faults[0]).toContain('event_id may be null')
+  test('a partial unique index lets a retired photo be dealt again', () => {
+    const sql = TABLE + INDEX.replace('(photo_sha256);', '(photo_sha256) where retired_at is null;') + NEAR
+    expect(judgeSchema([m(sql)]).faults[0]).toContain('is partial')
+  })
+
+  test('a nullable hash, no difference hash and no near-copy refusal each fail', () => {
+    expect(judgeSchema([m(TABLE.replace('photo_sha256 text not null', 'photo_sha256 text') + INDEX + NEAR)]).faults[0]).toContain('may be null')
+    expect(judgeSchema([m(TABLE.replace('photo_dhash bigint,', '') + INDEX + NEAR)]).faults[0]).toContain('no photo_dhash')
+    expect(judgeSchema([m(TABLE + INDEX)]).faults[0]).toContain('no migration refuses a near copy')
   })
 
   test('a later migration that drops the index or the column constraint undoes it', () => {
-    const dropIndex = m('drop index public.photo_assignments_sha256_one;', '20261101000001_later.sql')
-    expect(judgeSchema([m(TABLE + INDEX), dropIndex]).faults[0]).toContain('later migration drops it')
-    const col = TABLE.replace('photo_sha256 text not null,', 'photo_sha256 text not null unique,')
-    const dropKey = m('alter table public.photo_assignments drop constraint photo_assignments_photo_sha256_key;', '20261101000001_later.sql')
+    const dropIndex = later('drop index if exists public.photo_assignments_one_event_per_photo;')
+    expect(judgeSchema([m(TABLE + INDEX + NEAR), dropIndex]).faults[0]).toContain('later migration drops it')
+    const col = TABLE.replace('photo_sha256 text not null', 'photo_sha256 text not null unique') + NEAR
+    const dropKey = later('alter table public.photo_assignments drop constraint photo_assignments_photo_sha256_key;')
     expect(judgeSchema([m(col), dropKey]).faults[0]).toContain('later migration drops it')
   })
 
   test('comments are not SQL', () => {
-    expect(judgeSchema([m(TABLE + '-- ' + INDEX)]).faults[0]).toContain('not unique on its own')
+    expect(judgeSchema([m(TABLE + '-- ' + INDEX + '\n' + NEAR)]).faults[0]).toContain('not unique on its own')
   })
 })
 
 describe('clause B, the rows', () => {
-  test('hamming distance over 64-bit hex hashes', () => {
-    expect(hammingHex('ffffffffffffffff', 'fffffffffffffff0')).toBe(4)
-    expect(hammingHex('0000000000000000', 'ffffffffffffffff')).toBe(64)
-    expect(hammingHex('abc', 'ffffffffffffffff')).toBeNull()
+  test('difference hashes are signed bigints, compared as 64 bits, never as rounded numbers', () => {
+    expect(hamming('0', '-1')).toBe(64)
+    expect(hamming('-1', '9223372036854775807')).toBe(1)
+    // 2^63 - 1 and 2^63 - 2 are one number apart in JSON's doubles too, but not in all pairs: the text is exact.
+    expect(hamming('9223372036854775807', '9223372036854775806')).toBe(1)
+    expect(dhashBits('9223372036854775808')).toBeNull()
+    expect(dhashBits(null)).toBeNull()
   })
 
-  test('the same bytes twice, and a near copy on another event, both fail', () => {
-    const r = judgeAssignments([
-      { photo_sha256: 'a', photo_phash: 'ffffffffffffffff', event_id: 'e1' },
-      { photo_sha256: 'b', photo_phash: 'fffffffffffffff0', event_id: 'e2' },
-      { photo_sha256: 'a', photo_phash: '00000000ffffffff', event_id: 'e3' },
-    ])
+  test('the same bytes twice, and a near copy held by another night or series, both fail', () => {
+    const r = judgeAssignments(
+      [
+        { photo_sha256: 'a', photo_dhash: '-1', event_id: 'e1', listing_series_id: null },
+        { photo_sha256: 'b', photo_dhash: '-2', event_id: null, listing_series_id: 's1' },
+        { photo_sha256: 'a', photo_dhash: '0', event_id: 'e2', listing_series_id: null },
+      ],
+      6,
+    )
     expect(r.twice).toHaveLength(1)
-    expect(r.near).toHaveLength(1)
+    expect(r.near).toEqual(['one photo on two events: night e1 and series s1 hold photos 1 bit(s) apart, within 6'])
   })
 
-  test('near copies on ONE event (its own gallery, P7) and distant photos pass', () => {
-    const r = judgeAssignments([
-      { photo_sha256: 'a', photo_phash: 'ffffffffffffffff', event_id: 'e1' },
-      { photo_sha256: 'b', photo_phash: 'fffffffffffffff0', event_id: 'e1' },
-      { photo_sha256: 'c', photo_phash: '0000000000000000', event_id: 'e2' },
-    ])
-    expect(r).toEqual({ twice: [], near: [], unreadable: 0 })
+  test('near copies on ONE night (its own set, P8) and distant photos pass', () => {
+    const r = judgeAssignments(
+      [
+        { photo_sha256: 'a', photo_dhash: '-1', event_id: 'e1', listing_series_id: null },
+        { photo_sha256: 'b', photo_dhash: '-2', event_id: 'e1', listing_series_id: null },
+        { photo_sha256: 'c', photo_dhash: '0', event_id: 'e2', listing_series_id: null },
+      ],
+      6,
+    )
+    expect(r).toEqual({ twice: [], near: [], unhashed: 0 })
   })
 
-  test('the line is NEAR_DUPLICATE_BITS, inclusive', () => {
-    const base = '0000000000000000'
-    const within = '00000000000000ff' // 8 bits
-    const beyond = '00000000000001ff' // 9 bits
-    expect(NEAR_DUPLICATE_BITS).toBe(8)
-    expect(judgeAssignments([{ photo_sha256: 'a', photo_phash: base, event_id: 'e1' }, { photo_sha256: 'b', photo_phash: within, event_id: 'e2' }]).near).toHaveLength(1)
-    expect(judgeAssignments([{ photo_sha256: 'a', photo_phash: base, event_id: 'e1' }, { photo_sha256: 'b', photo_phash: beyond, event_id: 'e2' }]).near).toHaveLength(0)
-  })
-
-  test('a row with no readable perceptual hash is counted, never skipped silently', () => {
-    expect(judgeAssignments([{ photo_sha256: 'a', photo_phash: null, event_id: 'e1' }]).unreadable).toBe(1)
+  test('the line is inclusive, and a row with no difference hash is counted', () => {
+    const at = (d: string) => [
+      { photo_sha256: 'a', photo_dhash: '0', event_id: 'e1', listing_series_id: null },
+      { photo_sha256: 'b', photo_dhash: d, event_id: 'e2', listing_series_id: null },
+    ]
+    expect(judgeAssignments(at('63'), 6).near).toHaveLength(1) // 6 bits
+    expect(judgeAssignments(at('127'), 6).near).toHaveLength(0) // 7 bits
+    expect(judgeAssignments(at('x'), 6).unhashed).toBe(1)
   })
 })
