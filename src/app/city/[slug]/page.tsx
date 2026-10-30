@@ -14,11 +14,9 @@ import {
   getSuburbsForCity,
   CITY_EVENT_TYPES,
 } from '@/lib/cities/data'
-import { getAllCommunities } from '@/lib/communities/data'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
-import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
 import { readGuideCity } from '@/lib/listings/free-week-surface'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -102,7 +100,7 @@ export default async function CityPage({ params }: Props) {
   // ilike match (city_primary FK is the new path post-migration; until
   // organisers fill the column, venue_city ilike is the bridge).
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, timezone, listing_series_id, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   const { data: rows } = await withBuildRetry(
     () =>
@@ -178,8 +176,6 @@ export default async function CityPage({ params }: Props) {
   const suburbs = getSuburbsForCity(city.slug)
   const eventTypeSlugs = CITY_EVENT_TYPES.map(t => t.slug)
 
-  const communities = getAllCommunities()
-
   const heroImage = await getCityHeroPhoto(city.slug)
   // A guide city links its free week; a failed read only leaves the link off.
   const hasFreeGuide = await readGuideCity(city.slug).then(
@@ -190,11 +186,11 @@ export default async function CityPage({ params }: Props) {
     },
   )
 
-  const [eventTypePhotos, suburbPhotos, relatedCityPhotos, communityPhotos] = await Promise.all([
+  // The community tiles take no photo (BrowseByCommunityRail): each community's photo belongs to its own tile only.
+  const [eventTypePhotos, suburbPhotos, relatedCityPhotos] = await Promise.all([
     Promise.all(eventTypeSlugs.map(s => getCategoryPhoto(s))),
     Promise.all(suburbs.map(s => getSuburbHeroPhoto(s.slug))),
     Promise.all(city.relatedCities.map(s => getCityPhoto(s))),
-    Promise.all(communities.map(c => getCommunityHeroPhoto(c.slug))),
   ])
 
   const eventTypeImages: Record<string, string | null> = {}
@@ -212,10 +208,6 @@ export default async function CityPage({ params }: Props) {
     relatedCityImages[s] = relatedCityPhotos[i] ?? null
   })
 
-  const communityImages: Record<string, string | null> = {}
-  communities.forEach((c, i) => {
-    communityImages[c.slug] = communityPhotos[i] ?? null
-  })
 
   const caption = `${allEvents.length} upcoming event${allEvents.length === 1 ? '' : 's'}`
 
@@ -272,7 +264,6 @@ export default async function CityPage({ params }: Props) {
         eventTypeImages={eventTypeImages}
         relatedCityImages={relatedCityImages}
         suburbImages={suburbImages}
-        communityImages={communityImages}
         suburbs={suburbs}
         mapPins={mapPins}
         hasFreeGuide={hasFreeGuide}

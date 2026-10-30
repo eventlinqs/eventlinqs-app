@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { runOccurrences } from '@/lib/listings/occurrence-run'
 import { occurrenceStore } from '@/lib/listings/occurrence-store'
+import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +44,16 @@ export async function GET(request: NextRequest) {
     )
     for (const h of result.held) console.log(`[cron/listing-occurrences] held ${h.seriesId} ${h.date}: ${h.why}`)
     for (const f of result.failed) console.error(`[cron/listing-occurrences] failed ${f.seriesId} ${f.date ?? '(the night)'}: ${f.why}`)
-    return NextResponse.json({ ok: true, ...result })
+    // NO PHOTO IS EVER REUSED (Lawal's ruling of 31 October 2026): the nights just made take their venue's photos, one
+    // per night (the photo system's P3). A deal that fails is logged and never takes the nights' result down with it.
+    let dealt: number | null = null
+    try {
+      dealt = await dealVenuePhotos(venueMediaDeps())
+      console.log(`[cron/listing-occurrences] ${dealt} venue photo(s) dealt to nights`)
+    } catch (error) {
+      console.error('[cron/listing-occurrences] the venue photos were not dealt:', error instanceof Error ? error.message : error)
+    }
+    return NextResponse.json({ ok: true, ...result, dealt })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)
     return NextResponse.json({ error: 'listing occurrences failed' }, { status: 500 })

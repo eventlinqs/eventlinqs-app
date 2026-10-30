@@ -158,3 +158,49 @@ describe('the destinations an event holds', () => {
     ])
   })
 })
+
+// D8 of Lawal's DemandOS directive, 30 October 2026: only partner kits and daily posters have a share link of their own,
+// so a press on /go/<piece> for a guide or a reel was counted and then lost. The press out now names the piece, and only
+// a piece that named this night (a guide tapped on Monday does not claim a night it never showed).
+describe('a press out after a tap on a post', () => {
+  const PIECE = '11111111-1111-4111-8111-111111111111'
+  function withPiece(names: boolean | 'throws') {
+    const seen: (string | null | undefined)[] = []
+    const asked: { pieceId: string; eventId: string }[] = []
+    const { d } = deps({
+      record: async (_l, _v, _p, _t, pieceId) => {
+        seen.push(pieceId)
+      },
+      pieceNamesNight: async (pieceId, eventId) => {
+        asked.push({ pieceId, eventId })
+        if (names === 'throws') throw new Error('read failed')
+        return names
+      },
+    })
+    return { d, seen, asked }
+  }
+  test('names the piece when the piece named this night', async () => {
+    const { d, seen, asked } = withPiece(true)
+    expect(await followOutbound({ slug: EVENT.slug, ...PERSON, pieceCookie: PIECE }, d)).toMatchObject({ kind: 'out', counted: true })
+    expect(seen).toEqual([PIECE])
+    expect(asked).toEqual([{ pieceId: PIECE, eventId: EVENT.id }])
+  })
+  test('names no piece when it did not name this night, and the press still counts', async () => {
+    const { d, seen } = withPiece(false)
+    expect(await followOutbound({ slug: EVENT.slug, ...PERSON, pieceCookie: PIECE }, d)).toMatchObject({ kind: 'out', counted: true })
+    expect(seen).toEqual([null])
+  })
+  test('a failed read of the piece never loses the press', async () => {
+    const { d, seen } = withPiece('throws')
+    expect(await followOutbound({ slug: EVENT.slug, ...PERSON, pieceCookie: PIECE }, d)).toMatchObject({ kind: 'out', counted: true })
+    expect(seen).toEqual([null])
+  })
+  test('no cookie or a cookie that is no id asks nothing', async () => {
+    for (const pieceCookie of [null, 'not-an-id', `${PIECE}'; drop`]) {
+      const { d, seen, asked } = withPiece(true)
+      await followOutbound({ slug: EVENT.slug, ...PERSON, pieceCookie }, d)
+      expect(seen).toEqual([null])
+      expect(asked).toEqual([])
+    }
+  })
+})

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { formatEventDateShort } from '@/lib/dates/event-time'
+import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { MapPin } from 'lucide-react'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
@@ -66,6 +67,9 @@ export type EventCardData = {
   external_ticket_url?: string | null
   /** A venue photograph's credit (src/lib/images/venue-photo-chain.ts), the image's title attribute, never on the image. */
   image_credit?: string | null
+  /** The series a night belongs to, and its later nights on this page (src/lib/events/one-card-per-event.ts, P4). */
+  listing_series_id?: string | null
+  also_on?: string[]
   organisation?: { name: string; slug?: string } | null
   badge?: M5Badge | null
 }
@@ -138,8 +142,9 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   const {
     id, slug, title, cover_image_url, start_date, timezone,
     venue_city, venue_country, created_at, category, ticket_tiers,
-    organisation, badge,
+    organisation, badge, also_on,
   } = event
+  const alsoOn = seriesAlsoOn(also_on, timezone)
 
   // M5 mode: caller explicitly attached a pre-computed `badge` (including
   // `null`, meaning "no badge for this event"). Disables the inventory
@@ -246,8 +251,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
              * lose to it silently. */
             className="type-micro event-card-date"
             style={{ fontWeight: 600 }}
+            title={alsoOn?.every}
           >
             {formatEventDateShort(start_date, timezone)}
+            {alsoOn ? ` · ${alsoOn.words}` : null}
           </p>
         )}
 
@@ -265,7 +272,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
            * ever applied: the inline `gap` token beat both. One row now. */
           <p className="type-small event-card-meta">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span>{formatEventDateShort(start_date, timezone)}</span>
+            <span title={alsoOn?.every}>
+              {formatEventDateShort(start_date, timezone)}
+              {alsoOn ? ` · ${alsoOn.words}` : null}
+            </span>
             {location && (
               <>
                 <span aria-hidden="true">·</span>

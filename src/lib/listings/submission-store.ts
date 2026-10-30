@@ -2,6 +2,8 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
+import { photoHashes } from '@/lib/images/photo-hash'
+import { PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import type { SubmissionCity, SubmissionEntry, SubmissionRole, SubmissionRow } from './submission'
 
 /**
@@ -29,13 +31,23 @@ export async function recordSubmission(admin: Admin, row: SubmissionRow, photo: 
   }
   if (photo.size > MAX_IMAGE_BYTES) return { state: 'refused', reason: 'The photo must be under 10MB.' }
   let processed
+  let hashes: PhotoHashes
   try {
-    const result = await processEventImage(await photo.arrayBuffer(), { role: 'cover' })
+    const bytes = await photo.arrayBuffer()
+    const result = await processEventImage(bytes, { role: 'cover' })
     if (!result.ok) return { state: 'refused', reason: result.error }
     processed = result.image
+    hashes = await photoHashes(Buffer.from(bytes))
   } catch {
     return { state: 'refused', reason: 'That photo could not be read. Try a JPEG or PNG.' }
   }
+  // NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P9): a photo already locked to an event is refused here,
+  // before it is stored. The night it would belong to does not exist yet, so it is locked when its listing is written.
+  const lockRpc = {
+    rpc: (name: string, args: Record<string, unknown>) =>
+      (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args),
+  }
+  if (await photoLockedElsewhere(hashes, null, lockRpc)) return { state: 'refused', reason: PHOTO_ALREADY_USED }
 
   const path = `${crypto.randomUUID()}.${processed.ext}`
   const { error: storeError } = await admin.storage.from(SUBMISSION_BUCKET).upload(path, processed.buffer, {

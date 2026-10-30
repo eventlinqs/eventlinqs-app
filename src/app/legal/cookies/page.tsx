@@ -14,6 +14,7 @@ const SECTIONS = [
   { id: 'what-cookies-are',  title: 'What Cookies Are' },
   { id: 'how-we-use-them',   title: 'How We Use Cookies' },
   { id: 'categories',        title: 'Cookie Categories' },
+  { id: 'measuring-our-own-links', title: 'Measuring Our Own Links' },
   { id: 'third-parties',     title: 'Third-Party Cookies' },
   { id: 'analytics',         title: 'Analytics (Plausible)' },
   { id: 'your-choices',      title: 'Your Choices' },
@@ -25,7 +26,7 @@ export default function CookiesPage() {
   return (
     <LegalPageShell
       title="Cookie Policy"
-      lastUpdated="25 April 2026"
+      lastUpdated="30 October 2026"
       sections={SECTIONS}
     >
       <h2 id="what-cookies-are">What Cookies Are</h2>
@@ -107,6 +108,35 @@ export default function CookiesPage() {
         You can change your mind at any time by clearing the
         <code>el_consent</code> cookie in your browser, which brings the
         question back on your next visit.
+      </p>
+
+      <h2 id="measuring-our-own-links">Measuring Our Own Links</h2>
+      <p>
+        So we can tell an organiser which of our own links and posts brought
+        people to their event, EventLinqs sets three first-party cookies.
+        They last 30 days, and they hold a code, a post or where a visit came
+        from, never a name or contact detail:
+      </p>
+      <ul>
+        <li>
+          <code>el_share_code</code> holds the short code of the tracked link
+          you last followed, the same code you can see in that link.
+        </li>
+        <li>
+          <code>el_from</code> holds the website that first sent you here and
+          any campaign tags on that link.
+        </li>
+        <li>
+          <code>el_go_piece</code> holds the id of the EventLinqs post you
+          last tapped through from our link page.
+        </li>
+      </ul>
+      <p>
+        We use them only on EventLinqs, to credit a press through to a booking
+        site or an order to the link or post that led to it. They are set by us
+        alone, and what they hold is never sold or shared with an advertiser.
+        You can clear them in your browser at any time, and nothing else about
+        the platform changes if you do.
       </p>
 
       <h2 id="third-parties">Third-Party Cookies</h2>

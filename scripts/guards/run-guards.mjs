@@ -651,6 +651,9 @@
  *                              (30 October 2026, Kate Ceberano's paid show read 'Free')
  *   google-calls-through-the-spend-guard  every billed Places call asks the database's
  *                              daily quota and monthly cap first; Google starts OFF
+ *   one-photo-one-event        every photo is assigned to one event: the hash unique on its own,
+ *                              a near copy refused, one reader picks a night's photo, one video
+ *                              link per event, and the rows agree (31 October 2026)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -3320,6 +3323,10 @@ const GUARDS = [
   // OFF until he says, he wants the cost first): every Places web service address in src asks google_spend_reserve first, through
   // withGoogleSpend, and the migration starts with Google OFF and serialises every reservation. Drilled red two ways.
   'scripts/guards/google-calls-through-the-spend-guard.mjs',
+  // The photo system (Lawal's ruling of 31 October 2026 00:14, every photo unique to one event): the assignment table
+  // refuses a second assignment of the same bytes or a near copy, only one reader picks a night's photo, a video link is
+  // held by one event, and the rows on the database agree. Registered with the table; drilled red once per clause.
+  'scripts/guards/one-photo-one-event.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

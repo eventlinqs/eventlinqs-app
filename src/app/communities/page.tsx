@@ -226,7 +226,7 @@ async function CommunityTile({
       </div>
       <div className="flex flex-col gap-1 px-4 py-3 sm:px-5">
         <p className="text-xs font-medium text-ink-600 sm:text-sm">{subtitle}</p>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           {countLabel}
         </p>
       </div>

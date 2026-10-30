@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { readGoPieceLink, recordGoPress } from '@/lib/growth/go'
-import { goDestination, viaOf } from '@/lib/growth/go-math'
+import { GO_PIECE_COOKIE, GO_PIECE_COOKIE_MAX_AGE_SECONDS, goDestination, viaOf } from '@/lib/growth/go-math'
 import { QA_HEADER, qaPressOf } from '@/lib/broadcast/qa-marker'
 
 /**
@@ -34,5 +34,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const response = NextResponse.redirect(goDestination(stored, request.nextUrl.origin, via), 302)
   response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   response.headers.set('Cache-Control', 'no-store')
+  // Which post brought them, for a later press out or order on a night it named (go-math.ts). A piece id and nothing
+  // about the person; never set for an unknown piece or a refused QA marker.
+  if (stored !== null && qa !== 'refused') {
+    response.cookies.set(GO_PIECE_COOKIE, piece, { maxAge: GO_PIECE_COOKIE_MAX_AGE_SECONDS, path: '/', sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' })
+  }
   return response
 }

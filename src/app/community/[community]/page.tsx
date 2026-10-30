@@ -13,7 +13,7 @@ import { getCommunityRedirect } from '@/lib/communities/redirects'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSubCommunityPhoto } from '@/lib/images/sub-community-photo'
-import { getCityPhoto, getCityHeroPhoto } from '@/lib/images/city-photo'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CommunityLandingPage } from '@/components/templates/CommunityLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
@@ -116,27 +116,18 @@ export default async function CommunityPage({ params }: Props) {
     // and the CTA panel renders its dark navy fallback.
     citySlugs[0] ? getCityHeroPhoto(citySlugs[0]) : Promise.resolve(null),
     ...community.subCommunities.map(sc => getSubCommunityPhoto(community.slug, sc.slug)),
-    ...citySlugs.map(slug => getCityPhoto(slug)),
+    // The city tiles take no photo (CommunitiesByCityRail): each city's photo belongs to its own tile only.
     // Related-community tiles below the fold do not need the fallback - they
     // are small thumbnails, not LCP candidates.
     ...relatedSlugs.map(slug => getCommunityHeroPhoto(slug)),
   ])
 
   const subImages = rest.slice(0, subCommunityKeys.length)
-  const cityImageList = rest.slice(
-    subCommunityKeys.length,
-    subCommunityKeys.length + citySlugs.length,
-  )
-  const relatedImageList = rest.slice(subCommunityKeys.length + citySlugs.length)
+  const relatedImageList = rest.slice(subCommunityKeys.length)
 
   const subCommunityImages: Record<string, string | null> = {}
   subCommunityKeys.forEach((key, i) => {
     subCommunityImages[key] = subImages[i] ?? null
-  })
-
-  const cityImages: Record<string, string | null> = {}
-  citySlugs.forEach((slug, i) => {
-    cityImages[slug] = cityImageList[i] ?? null
   })
 
   const relatedCommunityImages: Record<string, string | null> = {}
@@ -187,7 +178,6 @@ export default async function CommunityPage({ params }: Props) {
         heroImage={heroImage}
         liveEvents={liveEvents}
         subCommunityImages={subCommunityImages}
-        cityImages={cityImages}
         cityCtaImage={cityCtaImage}
         relatedCommunityImages={relatedCommunityImages}
       />

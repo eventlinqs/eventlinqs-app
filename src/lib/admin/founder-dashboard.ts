@@ -6,7 +6,9 @@ import { countFrom, inventoryFigures } from './founder-dashboard-math'
 import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
+import { nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
 import { runAllChecks } from '@/lib/health/checks'
+import { contributionByEvent, profitabilityFigures, type CampaignSpend } from '@/lib/growth/event-contribution'
 import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
 import { paidFigure, paidReadFrom } from '@/lib/growth/paid-controls-math'
@@ -17,6 +19,8 @@ import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
 import { googleSpendFigure, spendReadFrom } from '@/lib/google/spend-guard-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
 import { refundedOf } from '@/lib/growth/weekly-math'
+import { campaignReadyFigure, venuePhotoFigure } from './control-centre-complete'
+import { readEligibility } from '@/lib/campaigns/eligibility-read'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
@@ -115,6 +119,11 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     ),
     counted(() => admin.from('partners').select('id', head).eq('status', 'live').eq('kind', 'venue')),
   ])
+  // The control centre's last two rows (./control-centre-complete.ts): venue photographs waiting, nights campaign-ready.
+  const [venuePhotos, eligibility] = await Promise.all([
+    counted(() => admin.from('venue_images').select('id', head).in('approval_state', ['pending', 'challenged'])),
+    settle(() => readEligibility(now)),
+  ])
 
   // This week's campaign, its pieces and where each stands.
   const marketing = await settle(async () => {
@@ -173,6 +182,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
 
   // The last 28 days' AUD orders, for the monthly contribution (the supreme specification, section 29), through the growth
   // page's own figuresFor so the month counts sold orders exactly as the week does.
+  let monthOrders: OrderRow[] = []
   const month = await settle(async () => {
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
     const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>(
@@ -197,7 +207,24 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
       refundedCents: refundedOf(o.refunds),
     }))
+    monthOrders = orders
     return figuresFor({ listings: [], visits: [], demand: [], saves: [], subscribers: [], orders, refunds: [] }, { from: since, to: now.toISOString(), monday: since.slice(0, 10) }).health
+  })
+
+  // Contribution per event against the direct campaign cost recorded for it (the directive's section 9); a city guide's
+  // spend is platform acquisition, apart. Never the ticket value.
+  const campaigns = await settle(async () => {
+    if (!month.ok) throw new Error(month.note)
+    const since = new Date(now.getTime() - 28 * DAY_MS).toISOString().slice(0, 10)
+    const rows = await readEveryRow<{ amount_cents: number; paid_campaigns: { scope: string; event_id: string | null } | { scope: string; event_id: string | null }[] }>('the campaign spend of the last 28 days', (from, to) =>
+      admin.from('paid_campaign_spend').select('amount_cents, paid_campaigns!inner(scope, event_id)').gte('spend_day', since).order('id', { ascending: true }).range(from, to),
+    )
+    const spend: CampaignSpend[] = rows.map((r) => {
+      const c = Array.isArray(r.paid_campaigns) ? r.paid_campaigns[0] : r.paid_campaigns
+      return { scope: c?.scope === 'event' ? 'event' : 'city_guide', eventId: c?.event_id ?? null, amountCents: Number(r.amount_cents) }
+    })
+    const pooledSpendCents = spend.filter((s) => s.scope !== 'event').reduce((n, s) => n + s.amountCents, 0)
+    return profitabilityFigures({ events: contributionByEvent({ orders: monthOrders.map((o) => ({ ...o, refundedCents: o.refundedCents ?? 0 })), spend }), pooledSpendCents })
   })
 
   // The paid controls' counter (src/lib/growth/paid-controls-math.ts): built and off; nothing here can spend.
@@ -228,6 +255,21 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     const read = spendReadFrom(data)
     if (!read) throw new Error('google_spend_state answered no readable row')
     return read
+  })
+  // What the nights are teaching (the directive's section 10): every kept report, with its night's place and how far ahead it went up.
+  const learned = await settle(async () => {
+    const rows = await readEveryRow<{ figures: unknown; events: { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null } | { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null }[] | null }>('the kept reports the learning loop reads', (from, to) =>
+      admin.from('organiser_night_reports').select('figures, events(city_primary, published_at, start_date, event_categories(name))').order('id', { ascending: true }).range(from, to),
+    )
+    const nights: NightOutcome[] = []
+    for (const r of rows) {
+      const e = Array.isArray(r.events) ? r.events[0] : r.events
+      if (!e) continue
+      const c = Array.isArray(e.event_categories) ? e.event_categories[0] : e.event_categories
+      const n = nightOutcomeFrom({ figures: r.figures, city: e.city_primary, category: c?.name ?? null, publishedAt: e.published_at, startDate: e.start_date })
+      if (n) nights.push(n)
+    }
+    return recommendationFigure(recommendations(nights), nights.length)
   })
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
@@ -275,6 +317,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'), 'measure', 'daily'),
         tag(fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'), 'measure', 'weekly'),
         ...inventoryFigures({ next7, next14, next30, deadLinks, venuePartners }),
+        campaignReadyFigure(eligibility),
       ],
       done: newNights === null ? [] : [`${count.format(newNights)} ${newNights === 1 ? 'night' : 'nights'} published this week`],
     },
@@ -285,6 +328,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Submissions waiting', submissions, true, '/admin/submissions'), 'approve', 'daily'),
         tag(fig('Claims to decide by hand', claims, true, null, 'listed in the queue above'), 'approve', 'daily'),
         tag(fig('Images awaiting approval', media, true, '/admin/social'), 'approve', 'daily'),
+        venuePhotoFigure(venuePhotos),
         tag(fig('Organisers found', step('found'), false, '/admin/growth'), 'measure', 'weekly'),
         tag(fig('Invited', step('invited'), false, '/admin/growth'), 'measure', 'weekly'),
         tag(fig('Claimed their listing', step('claimed'), false, '/admin/growth'), 'value', 'weekly'),
@@ -308,6 +352,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'marketing',
       title: 'Marketing',
       figures: [
+        learned.ok ? learned.value : { label: 'Recommended next', value: null, asksForAPerson: false, href: null, kind: 'measure' as const, cadence: 'weekly' as const, note: learned.note },
         ...(notPlanned ? [tag(fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week'), 'approve', 'weekly')] : []),
         tag(fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'), 'approve', 'weekly'),
         tag(fig('Held from posting', m((v) => v.held), true, '/admin/social', 'a check stopped them; open each for its reason'), 'failed', 'daily'),
@@ -354,6 +399,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'economics',
       title: 'Economics',
       figures: [
+        ...(campaigns.ok ? campaigns.value : [{ label: 'Event campaigns, last 28 days', value: null, asksForAPerson: false, href: null, kind: 'measure' as const, cadence: 'monthly' as const, note: campaigns.note }]),
         ...(g
           ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health }).map((f) => tag(f, economicsKind[f.label] ?? 'measure', f.label === 'Break-even volume' ? 'monthly' : 'weekly'))
           : [tag(money('Gross ticket sales last week', null, notRead), 'value', 'weekly')]),

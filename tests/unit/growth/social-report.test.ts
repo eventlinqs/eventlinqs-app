@@ -382,3 +382,84 @@ describe('a campaign week on the platform clock', () => {
     expect(weekOf('2026-10-26', 'Australia/Melbourne')).toEqual({ from: '2026-10-25T13:00:00.000Z', to: '2026-11-01T13:00:00.000Z', monday: '2026-10-26' })
   })
 })
+
+// D8 of Lawal's DemandOS directive, 30 October 2026: a guide's link is a page, so it had no counted result of its own.
+// A tap on its /go link now names the piece on what follows, on the nights it named.
+describe('a post whose link is a page', () => {
+  const posted = piece('c2', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: null })
+  const base = { campaignId: 'c2', campaigns: [C2], pieces: [posted], figures: [], linkEvents: [], counted: new Map(), now: new Date('2026-10-30T00:00:00.000Z'), goPresses: [], claims: [] }
+
+  it('reads what its taps brought, a press still never a sale', () => {
+    const orders = new Map([['o1', { id: 'o1', status: 'confirmed', totalCents: 4500, tickets: 2 }]])
+    const pieceEvents = [
+      { linkId: posted.id, kind: 'outbound' as const, orderId: null, occurredAt: '2026-10-28T08:00:00.000Z' },
+      { linkId: posted.id, kind: 'conversion' as const, orderId: 'o1', occurredAt: '2026-10-28T09:00:00.000Z' },
+    ]
+    const r = buildSocialReport({ ...base, orders, pieceEvents } as never)
+    expect(r.pieces[0].counted).toMatchObject({ pressedOut: 1, tickets: 2, cents: 4500, orders: 1 })
+    expect(r.pieces[0].countedWords).toMatch(/taps on its link/)
+  })
+  it('with nothing named yet still says it is counted for the week only', () => {
+    const r = buildSocialReport({ ...base, orders: new Map(), pieceEvents: [] } as never)
+    expect(r.pieces[0].counted).toBeNull()
+    expect(r.pieces[0].countedWords).toMatch(/counted for the week only/)
+  })
+})
+
+/*
+ * D6 (the DemandOS directive of 30 October 2026, section 6): partner kits measured per partner, delivery kept apart
+ * from sharing, and visits, booking actions and verified sales each said at its own level, never added together.
+ */
+describe('D6: partner kits, by partner', () => {
+  const kit = (campaignId: string, partnerName: string, over: Partial<PieceRow> = {}) =>
+    piece(campaignId, { kind: 'partner_kit', audience: 'partners', partnerName, ...over })
+  const build = (pieces: PieceRow[], linkEvents: Parameters<typeof buildSocialReport>[0]['linkEvents'], orders: Parameters<typeof buildSocialReport>[0]['orders'] = new Map()) =>
+    buildSocialReport({ campaignId: 'c2', campaigns: [C1, C2], pieces, figures: [], linkEvents, orders, counted: new Map(), now: NOW })
+
+  it('rolls each partner up across the campaigns read: kits made, sent, used, visits, presses out and orders that stand', () => {
+    const corner1 = kit('c1', 'Corner Hotel', { postedAt: '2026-10-20T08:00:00.000Z', countedLinkId: 'K1' })
+    const corner2 = kit('c2', 'Corner Hotel', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'K2' })
+    const kaze = kit('c2', 'Kaze', { countedLinkId: 'K3' })
+    const r = build([corner1, corner2, kaze, piece('c2', { postedAt: '2026-10-27T08:00:00.000Z' })], [
+      { linkId: 'K1', kind: 'click', orderId: null, occurredAt: '2026-10-20T09:00:00.000Z' },
+      { linkId: 'K1', kind: 'click', orderId: null, occurredAt: '2026-10-21T09:00:00.000Z' },
+      { linkId: 'K1', kind: 'outbound', orderId: null, occurredAt: '2026-10-21T09:01:00.000Z' },
+      { linkId: 'K1', kind: 'conversion', orderId: 'o1', occurredAt: '2026-10-21T10:00:00.000Z' },
+      { linkId: 'K1', kind: 'conversion', orderId: 'o2', occurredAt: '2026-10-21T11:00:00.000Z' },
+      // A tap on the unsent kit's link is not counted: the kit has not gone.
+      { linkId: 'K3', kind: 'click', orderId: null, occurredAt: '2026-10-28T09:00:00.000Z' },
+    ], new Map([
+      ['o1', { id: 'o1', status: 'confirmed', totalCents: 5000, tickets: 2 }],
+      ['o2', { id: 'o2', status: 'refunded', totalCents: 2500, tickets: 1 }],
+    ]))
+    expect(r.partners).toEqual([
+      { partner: 'Corner Hotel', kits: 2, sent: 2, used: 1, visits: 2, pressedOut: 1, orders: 1, tickets: 2 },
+      { partner: 'Kaze', kits: 1, sent: 0, used: 0, visits: 0, pressedOut: 0, orders: 0, tickets: 0 },
+    ])
+    expect(r.partnerWords).toMatch(/2 partners/)
+    expect(r.partnerWords).toMatch(/never a sale/)
+  })
+
+  it('a kit sent but never tapped is sent, not used; a press out alone is not a use', () => {
+    const k = kit('c2', 'Kaze', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'K9' })
+    const r = build([k], [{ linkId: 'K9', kind: 'outbound', orderId: null, occurredAt: '2026-10-27T09:00:00.000Z' }])
+    expect(r.partners).toEqual([{ partner: 'Kaze', kits: 1, sent: 1, used: 0, visits: 0, pressedOut: 1, orders: 0, tickets: 0 }])
+  })
+
+  it('orders the partners by orders that stand, then visits, then name', () => {
+    const a = kit('c2', 'Alpha', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'A' })
+    const b = kit('c2', 'Bravo', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'B' })
+    const c = kit('c2', 'Charlie', { postedAt: '2026-10-27T08:00:00.000Z', countedLinkId: 'C' })
+    const r = build([a, b, c], [
+      { linkId: 'B', kind: 'click', orderId: null, occurredAt: '2026-10-27T09:00:00.000Z' },
+      { linkId: 'C', kind: 'conversion', orderId: 'o3', occurredAt: '2026-10-27T09:00:00.000Z' },
+    ], new Map([['o3', { id: 'o3', status: 'confirmed', totalCents: 1000, tickets: 1 }]]))
+    expect(r.partners.map((p) => p.partner)).toEqual(['Charlie', 'Bravo', 'Alpha'])
+  })
+
+  it('with no partner kit made yet says so and invents no partner', () => {
+    const r = build([piece('c2')], [])
+    expect(r.partners).toEqual([])
+    expect(r.partnerWords).toMatch(/No partner kit/)
+  })
+})

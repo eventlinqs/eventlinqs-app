@@ -19,20 +19,23 @@ import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
 
 interface RelatedIntersection {
   communitySlug: string
   communityLabel: string
   citySlug: string
   cityLabel: string
-  image: string | null
 }
 
+/**
+ * Both related rails open other community-in-city pages, which have no photo of their own, so their tiles draw the
+ * navy tile and take no photo (NO PHOTO IS EVER REUSED, Lawal, 31 October 2026; the photo system's P6).
+ */
 interface RelatedCommunity {
   slug: string
   label: string
   tagline: string
-  image: string | null
 }
 
 /**
@@ -100,17 +103,26 @@ export function CommunityCityLandingPage({
   editorial,
   heroSubtitle,
   caption,
-  thisWeekEvents,
-  thisWeekendEvents,
-  popularEvents,
+  thisWeekEvents: thisWeekCandidates,
+  thisWeekendEvents: thisWeekendCandidates,
+  popularEvents: popularCandidates,
   allEvents,
   subCommunityImages,
   relatedCities,
   relatedCommunities,
   mapPins,
 }: Props) {
+  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the sections in the order
+  // they are drawn, the first to show an event keeping it, each later one filling its places from the rest.
   /* ONE array feeds both the reserved height and the cards. */
-  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
+  const [thisWeekendEvents, thisWeekEvents, popularEvents, shownEvents] = oneCardPerEvent([
+    { events: thisWeekendCandidates, cap: 12 },
+    { events: thisWeekCandidates, cap: 12 },
+    { events: popularCandidates, cap: 12 },
+    { events: allEvents, cap: ALL_EVENTS_SHOWN },
+  ])
+  // The last grid holds what the sections above did not, so it says so when they showed any.
+  const shownAbove = thisWeekendEvents.length + thisWeekEvents.length + popularEvents.length > 0
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
 
@@ -303,10 +315,10 @@ export function CommunityCityLandingPage({
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              All upcoming
+              {shownAbove ? 'More upcoming' : 'All upcoming'}
             </p>
             <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              All {community.displayName} events in {cityName}
+              {shownAbove ? `More ${community.displayName} events in ${cityName}` : `All ${community.displayName} events in ${cityName}`}
             </h2>
           </div>
           <Link
@@ -362,18 +374,14 @@ export function CommunityCityLandingPage({
                 className={`group block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
               >
                 <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                  {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} layout="rail-standard-tile" />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                      }}
-                    />
-                  )}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                    }}
+                  />
                   <TileCaption className="p-3">
                     <p className="font-display text-sm font-semibold text-white">
                       {item.communityLabel}
@@ -406,18 +414,14 @@ export function CommunityCityLandingPage({
                 className={`group flex h-full flex-col ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg motion-reduce:transition-none`}
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                  {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} layout="rail-wide-tile" />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                      }}
-                    />
-                  )}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                    }}
+                  />
                   {/* The tagline moved below the image: on this 16:10 tile the
                     *  two together measured 93px against 161px, 72.6 per cent of
                     *  a picture the rail exists to show. */}
@@ -449,7 +453,7 @@ export function CommunityCityLandingPage({
        *  benefits from the more specific label. */}
       <MobileStickyBar
         cityName={`${community.displayName} ${cityName}`}
-        weekendCount={thisWeekendEvents.length}
+        weekendCount={thisWeekendCandidates.length}
         anchorId="all-events"
       />
     </PageShell>

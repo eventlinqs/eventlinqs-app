@@ -16,6 +16,7 @@ import {
   type WaitlistAudienceRow,
 } from './digest-audience'
 import { contactAddress } from '@/lib/email/sender'
+import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 
 /**
  * The weekly local digest (Broadcast Layer SPEC 3.2): one city-scoped email
@@ -325,7 +326,7 @@ export async function fetchDigestEvents(
     admin
     .from('events')
     .select(
-      'id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility, is_seed_data, external_ticket_url, is_free, entry_mode, ticket_tiers(price, currency, is_active)',
+      'id, slug, title, start_date, timezone, venue_name, venue_city, venue_id, status, visibility, is_seed_data, external_ticket_url, is_free, entry_mode, ticket_tiers(price, currency, is_active)',
     )
     .eq('city_primary', citySlug)
     .eq('status', 'published')
@@ -349,6 +350,7 @@ export async function fetchDigestEvents(
     timezone: string | null
     venue_name: string | null
     venue_city: string | null
+    venue_id?: string | null
     visibility: string | null
     is_seed_data: boolean | null
     external_ticket_url?: string | null
@@ -357,7 +359,14 @@ export async function fetchDigestEvents(
     ticket_tiers: { price: number; currency: string | null }[] | null
   }
 
-  const events = ((data ?? []) as Row[])
+  /* D3 (6): a venue that said no to the weekly round-up is not carried; a failed read stops the city (it throws). */
+  const rows = (data ?? []) as Row[]
+  const leftOut = nightsLeftOut(
+    rows.map((e) => ({ eventId: e.id, venueId: e.venue_id ?? null })),
+    await venuesOff('weekly_roundup', distributionDeps(admin)),
+  )
+  const events = rows
+    .filter((e) => !leftOut.has(e.id))
     // Defence in depth: the query already restricts to public, and this repeats
     // it through the one shared predicate. Two independent guards, because a
     // regression here emails a private address to a whole city.

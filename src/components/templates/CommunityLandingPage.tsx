@@ -16,8 +16,6 @@ interface Props {
   liveEvents: EventCardData[]
   /** Map of sub-community slug → Pexels landscape URL (null when not available). */
   subCommunityImages: Record<string, string | null>
-  /** Map of city slug → Pexels portrait URL (null when not available). */
-  cityImages: Record<string, string | null>
   /** Map of city slug → city name (the rail prop expects names). */
   cityCtaImage: string | null
   /** Map of related community slug → Pexels landscape URL (null when not available). */
@@ -41,7 +39,6 @@ export function CommunityLandingPage({
   heroImage,
   liveEvents,
   subCommunityImages,
-  cityImages,
   cityCtaImage,
   relatedCommunityImages,
 }: Props) {
@@ -79,7 +76,6 @@ export function CommunityLandingPage({
         communitySlug={community.slug}
         communityName={community.displayName}
         cities={community.cities}
-        images={cityImages}
       />
 
       <AllEventsGridByCommunity

@@ -164,7 +164,7 @@ export default async function CommunityByCityPage({ params }: Props) {
   // category-bridge resolved every community to zero on live
   // generic-category events.
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, listing_series_id, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   let allEvents: EventCardData[] = []
   let mapPins: MapEventPin[] = []
@@ -246,25 +246,19 @@ export default async function CommunityByCityPage({ params }: Props) {
   const heroImage = await getCityHeroPhoto(cityParam)
     ?? await getCommunityHeroPhoto(community.slug, { allowBundledFallback: true })
 
-  const [subCommunityPhotos, relatedCityPhotos, relatedCommunityPhotos] = await Promise.all([
-    Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s))),
-    Promise.all(relatedCitiesEntries.map(r => getCityHeroPhoto(r.citySlug))),
-    Promise.all(otherCommunities.map(c => getCommunityHeroPhoto(c.slug))),
-  ])
+  const subCommunityPhotos = await Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s)))
 
   const subCommunityImages: Record<string, string | null> = {}
   subCommunitySlugs.forEach((s, i) => { subCommunityImages[s] = subCommunityPhotos[i] ?? null })
 
-  const relatedCities = relatedCitiesEntries.map((entry, i) => ({
-    ...entry,
-    image: relatedCityPhotos[i] ?? null,
-  }))
+  // The related tiles open other community-in-city pages and take no photo: a city's or a community's photo belongs
+  // to its own tile only (NO PHOTO IS EVER REUSED, the photo system's P6).
+  const relatedCities = relatedCitiesEntries
 
-  const relatedCommunities = otherCommunities.map((c, i) => ({
+  const relatedCommunities = otherCommunities.map(c => ({
     slug: c.slug,
     label: c.displayName,
     tagline: c.tagline,
-    image: relatedCommunityPhotos[i] ?? null,
   }))
 
   const editorial = getIntersectionEditorial(community, cityParam, cityName, cityRecord)

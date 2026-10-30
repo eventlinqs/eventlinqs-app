@@ -1,3 +1,5 @@
+import { CREDIT_DAYS } from '@/lib/social/results'
+
 /**
  * /go, THE LINK IN BIO (the EventLinqs engine plan of 28 October 2026, part H; Lawal's final directive of that day: "A
  * button drawn in an image is not a link. The image shows a label only ("Link in bio" or the domain); the real path is
@@ -125,4 +127,19 @@ export function pressDay(at: Date, zone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(at)
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
   return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+/**
+ * WHICH POST BROUGHT THE VISITOR (D8 of Lawal's DemandOS directive, 30 October 2026). Only partner kits and daily posters
+ * have a share link of their own, so a tap on a guide or a reel was counted here and then lost. A tap now leaves this
+ * first-party cookie, read by the press out and the order, for the post's credit window (results.ts CREDIT_DAYS). It
+ * holds a piece id and nothing about the person, and a piece only ever claims a night it named.
+ */
+export const GO_PIECE_COOKIE = 'el_go_piece'
+export const GO_PIECE_COOKIE_MAX_AGE_SECONDS = CREDIT_DAYS * 86_400
+const PIECE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** The cookie's value as a piece id, or null: anything else is never read as one. */
+export function pieceIdOf(raw: string | null | undefined): string | null {
+  return typeof raw === 'string' && PIECE_ID.test(raw) ? raw : null
 }

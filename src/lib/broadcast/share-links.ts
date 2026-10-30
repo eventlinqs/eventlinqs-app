@@ -497,6 +497,8 @@ export async function recordShareLinkEvent(
     outbound?: { bookingLinkId: string | null; provider: string } | null
     /** A QA press carrying a verified marker (src/lib/broadcast/qa-marker.ts, 20261029220001): recorded, counted nowhere. */
     isTest?: boolean
+    /** The post a tap on /go brought the visitor through, when it named this night (go-math.ts, D8). */
+    pieceId?: string | null
   },
   opts?: { client?: BroadcastClient },
 ): Promise<boolean> {
@@ -587,6 +589,8 @@ export async function recordShareLinkEvent(
     booking_link_id: input.outbound?.bookingLinkId ?? null,
     provider: input.outbound?.provider ?? null,
     is_test: input.isTest === true,
+    // Named only when there is a piece: PostgREST refuses a column it does not know, so this can never cost a count.
+    ...(input.pieceId ? { piece_id: input.pieceId } : {}),
   })
   // The partial unique index rejects a duplicate conversion; that is a
   // success from the caller's perspective (the sale is already counted).

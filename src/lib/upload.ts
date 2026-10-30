@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
+import { photoHashes } from '@/lib/images/photo-hash'
+import { lockIfSaved, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { checkRateLimit } from '@/lib/redis/rate-limit'
 import { POLICIES } from '@/lib/rate-limit/policies'
 
@@ -81,6 +83,11 @@ async function callerCanWriteEvent(
   return !!owned || !!member
 }
 
+/** The lock's functions are named by src/lib/images/photo-lock.ts; the typed client takes only a literal name. */
+function rpcByName(admin: ReturnType<typeof createAdminClient>, name: string, args: Record<string, unknown>) {
+  return (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args)
+}
+
 export async function uploadEventImage(formData: FormData): Promise<UploadImageResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -112,17 +119,24 @@ export async function uploadEventImage(formData: FormData): Promise<UploadImageR
   }
 
   let processed
+  let hashes: PhotoHashes
   try {
     const bytes = await file.arrayBuffer()
     const result = await processEventImage(bytes, { role })
     if (!result.ok) return { ok: false, error: result.error }
     processed = result.image
+    // The photo is the bytes the organiser chose, before we re-encode them (the photo system's P1).
+    hashes = await photoHashes(Buffer.from(bytes))
   } catch (err) {
     console.error('[upload] image processing failed:', err)
     return { ok: false, error: 'We could not process that image. Try a different file.' }
   }
 
   const admin = createAdminClient()
+  // EVERY PHOTO OF AN EVENT'S SET IS LOCKED TO IT (Lawal's 00:23 of 31 October 2026): one already locked to another
+  // event is refused here, at the door, before anything is stored.
+  const lockRpc = { rpc: (name: string, args: Record<string, unknown>) => rpcByName(admin, name, args) }
+  if (await photoLockedElsewhere(hashes, eventId, lockRpc)) return { ok: false, error: PHOTO_ALREADY_USED }
   const objectName = `${user.id}/${eventId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${processed.ext}`
   const { error } = await admin.storage.from(BUCKET).upload(objectName, processed.buffer, {
     cacheControl: '31536000',
@@ -135,6 +149,15 @@ export async function uploadEventImage(formData: FormData): Promise<UploadImageR
   }
 
   const { data } = admin.storage.from(BUCKET).getPublicUrl(objectName)
+  // The create wizard uploads before the event row exists: such a photo is locked when the event is saved
+  // (lockSavedEventPhotos in the create action), never refused here for an event the database does not know yet.
+  const { data: savedRow } = await admin.from('events').select('id').eq('id', eventId).maybeSingle()
+  const locked = await lockIfSaved({ eventId, saved: savedRow !== null, hashes, imageUrl: data.publicUrl, role }, lockRpc)
+  if (!locked.ok) {
+    // Another event took it in the moment between the question and the lock: the file goes back out.
+    await admin.storage.from(BUCKET).remove([objectName])
+    return { ok: false, error: locked.error }
+  }
   return {
     ok: true,
     image: { url: data.publicUrl, blur: processed.blurDataURL, width: processed.width, height: processed.height },

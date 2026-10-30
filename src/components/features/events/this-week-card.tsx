@@ -1,4 +1,5 @@
 import { formatEventDateShort } from '@/lib/dates/event-time'
+import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
@@ -62,7 +63,10 @@ export async function ThisWeekCard({
     title: event.title ?? 'Event',
     venue: event.venue_name ?? '',
     city: event.venue_city ?? '',
-    dateLabel: formatEventDateShort(event.start_date, event.timezone),
+    // A series' later nights on this page are named on its one card (the photo system's P4).
+    dateLabel: [formatEventDateShort(event.start_date, event.timezone), seriesAlsoOn(event.also_on, event.timezone)?.words]
+      .filter(Boolean)
+      .join(' · '),
     priceLabel: formatPrice(event),
     // Feature cards default to priority=true (built for above-fold hero use).
     // Every homepage feature RAIL is below the fold, so force priority off

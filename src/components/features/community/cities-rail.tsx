@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
-import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { WIDE_TILE_CELL } from '@/lib/ui/rhythm'
@@ -13,27 +12,25 @@ interface Props {
   communitySlug: string
   communityName: string
   cities: string[]
-  /**
-   * Map of city slug -> Pexels portrait URL (null when not available).
-   * Tiles with null images render the navy-gradient fallback so the
-   * rail stays visually uniform.
-   */
-  images: Record<string, string | null>
 }
 
 /**
- * CommunitiesByCityRail - photographic city tiles for /community/[community].
+ * CommunitiesByCityRail - the city tiles for /community/[community].
  *
  * Batch 5.6: rebuilt from a static grid into the SnapRailScroller pattern
  * used on the homepage. Arrow nav + drag-scroll on desktop, native swipe
  * snap on mobile, scroll-progress indicator below.
  *
- * Each tile is 280px wide (the SnapRail card contract), 4/5 portrait
- * aspect, photographic city image with a darkened bottom-up gradient and
+ * Each tile is 280px wide (the SnapRail card contract), 4/5 portrait, with
  * the city name anchored bottom-left in white. Click routes to
  * /community/{communitySlug}/{citySlug} - the intersection landing page.
+ *
+ * NO PHOTO IS EVER REUSED (Lawal, 31 October 2026; C:\dev\START-16OCT\EVENTLINQS-PHOTO-SYSTEM-31OCT.md P6). These
+ * tiles used to borrow each city's own photo, so that photo stood on the city's tile and again on this rail for every
+ * community. A community-in-city page has no photo of its own, so each tile draws the navy tile and its name, and this
+ * rail takes no photo.
  */
-export function CommunitiesByCityRail({ communitySlug, communityName, cities, images }: Props) {
+export function CommunitiesByCityRail({ communitySlug, communityName, cities }: Props) {
   if (cities.length === 0) return null
   return (
     <ContentSection surface="base" width="default" topBorder reveal>
@@ -46,7 +43,6 @@ export function CommunitiesByCityRail({ communitySlug, communityName, cities, im
       >
         {cities.map((city) => {
           const slug = citySlugify(city)
-          const img = images[slug] ?? null
           return (
             <Link
               key={city}
@@ -54,23 +50,14 @@ export function CommunitiesByCityRail({ communitySlug, communityName, cities, im
               className={`group relative block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                {img ? (
-                  <CityTileImage
-                    layout="rail-wide-tile"
-                    src={img}
-                    alt={`${communityName} events in ${city}`}
-                    className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                  />
-                ) : (
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, var(--color-navy-950) 0%, color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)) 100%)',
-                    }}
-                    aria-hidden
-                  />
-                )}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--color-navy-950) 0%, color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)) 100%)',
+                  }}
+                  aria-hidden
+                />
                 <TileCaption className="p-4">
                   <p className="font-display text-base font-semibold text-white drop-shadow-sm sm:text-lg">
                     {city}

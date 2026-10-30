@@ -21,6 +21,9 @@ import { parseGuide, type Guide } from '@/lib/walk-in/guide'
 import { eventlinqsListingProblems } from '@/lib/events/eventlinqs-listing-words'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
+import { isOwnPhoto } from '@/lib/images/event-media'
+import { photoHashes } from '@/lib/images/photo-hash'
+import { lockSavedEventPhotos } from '@/lib/images/photo-lock'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { resolveCityClaim } from '@/lib/cities/resolve'
 import { resolveVenueCoordinates, type VenueGeocodeSource } from '@/lib/geo/venue-coordinates'
@@ -470,6 +473,31 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
   if (eventError) {
     console.error('Event insert error:', eventError)
     return { error: `Failed to create event: ${eventError.message}` }
+  }
+
+  // THE NEW EVENT's PHOTOS ARE LOCKED TO IT NOW THAT IT EXISTS (Lawal's 00:23 of 31 October 2026, P8 and P9): the
+  // wizard uploaded them before this row was written, so the upload door refused any photo used elsewhere and left
+  // the lock for here (src/lib/upload.ts lockIfSaved). One that cannot be locked is logged, never a lost event.
+  const ownPhotos = [
+    ...(isOwnPhoto(media.columns.cover_image_url) ? [{ url: media.columns.cover_image_url, role: 'cover' as const }] : []),
+    ...media.columns.gallery_urls.filter((g) => isOwnPhoto(g.url)).map((g) => ({ url: g.url, role: 'gallery' as const })),
+  ]
+  if (ownPhotos.length > 0) {
+    const photoLock = await lockSavedEventPhotos(
+      { eventId: input.eventId, photos: ownPhotos },
+      {
+        rpc: async (name, args) => {
+          const { data, error } = await (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args)
+          return { data, error: error ? { code: error.code, message: error.message } : null }
+        },
+        hashesOf: async (url) => {
+          const res = await fetch(url)
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return photoHashes(Buffer.from(await res.arrayBuffer()))
+        },
+      },
+    )
+    if (photoLock.notLocked.length > 0) console.error('[events] photos not locked to new event', input.eventId, photoLock.notLocked)
   }
 
   // The stream link goes to the vault, where anon has no grant. An in-person
