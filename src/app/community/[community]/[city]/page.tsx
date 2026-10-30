@@ -164,7 +164,7 @@ export default async function CommunityByCityPage({ params }: Props) {
   // category-bridge resolved every community to zero on live
   // generic-category events.
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, listing_series_id, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   let allEvents: EventCardData[] = []
   let mapPins: MapEventPin[] = []

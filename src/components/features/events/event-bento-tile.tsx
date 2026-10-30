@@ -21,6 +21,9 @@ import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 
 export interface BentoEvent extends EventMediaInput {
   id: string
+  /** The series a night belongs to, and the series' later nights on this page (the photo system's P4). */
+  listing_series_id?: string | null
+  also_on?: string[]
   slug: string
   start_date: string
   /**
