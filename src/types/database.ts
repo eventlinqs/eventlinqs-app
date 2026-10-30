@@ -2749,6 +2749,90 @@ export type Database = {
           },
         ]
       }
+      google_spend_ledger: {
+        Row: {
+          allowed: boolean
+          api: string
+          cost_micros: number
+          id: number
+          occurred_at: string
+          purpose: string
+          reason: string | null
+          units: number
+        }
+        Insert: {
+          allowed: boolean
+          api: string
+          cost_micros?: number
+          id?: never
+          occurred_at?: string
+          purpose: string
+          reason?: string | null
+          units: number
+        }
+        Update: {
+          allowed?: boolean
+          api?: string
+          cost_micros?: number
+          id?: never
+          occurred_at?: string
+          purpose?: string
+          reason?: string | null
+          units?: number
+        }
+        Relationships: []
+      }
+      google_spend_prices: {
+        Row: {
+          api: string
+          read_on: string
+          sku: string
+          source_url: string
+          unit_price_micros: number
+        }
+        Insert: {
+          api: string
+          read_on: string
+          sku: string
+          source_url: string
+          unit_price_micros: number
+        }
+        Update: {
+          api?: string
+          read_on?: string
+          sku?: string
+          source_url?: string
+          unit_price_micros?: number
+        }
+        Relationships: []
+      }
+      google_spend_settings: {
+        Row: {
+          daily_call_quota: number
+          enabled: boolean
+          id: boolean
+          monthly_cap_micros: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          daily_call_quota?: number
+          enabled?: boolean
+          id?: boolean
+          monthly_cap_micros?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          daily_call_quota?: number
+          enabled?: boolean
+          id?: boolean
+          monthly_cap_micros?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -11598,6 +11682,24 @@ export type Database = {
       gen_ticket_code: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       get_current_tier_price: { Args: { p_tier_id: string }; Returns: number }
+      google_spend_reserve: {
+        Args: { p_api: string; p_purpose: string; p_units: number }
+        Returns: {
+          allowed: boolean
+          reason: string
+        }[]
+      }
+      google_spend_state: {
+        Args: never
+        Returns: {
+          calls_today: number
+          daily_call_quota: number
+          enabled: boolean
+          monthly_cap_micros: number
+          refused_today: number
+          spent_this_month_micros: number
+        }[]
+      }
       group_rate_floor_cents: {
         Args: {
           p_country_code: string
