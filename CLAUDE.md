@@ -32,6 +32,37 @@ If a law here is contradicted by any other document in the repo, this file wins
 and that document is wrong until reconciled. Report the contradiction; do not
 silently follow the stale doc.
 
+## Operating contract: where the truth lives (Supreme Specification s19, 30 October 2026)
+
+This section is the short, operational index. It does not replace any law below. Conversation memory is never the
+only source of project truth: read these before deciding what to build, what is done, or what may ship.
+
+- **The product specification.** Lawal's Supreme Product Specification and Execution Contract v1.0 (30 October 2026),
+  `C:\dev\START-16OCT\EVENTLINQS-SUPREME-SPEC-30OCT.md`. It supersedes conflicting implementation instructions and
+  removes no earlier requirement. It lives with the founder's documents on the build machine, outside version
+  control, beside the master mandate (`EVENTLINQS-MASTER-MANDATE-29OCT.md`) and the growth blueprint and its rulings.
+- **The requirement register and the master checklist.** `C:\dev\START-16OCT\EVENTLINQS-REQUIREMENT-REGISTER-29OCT.md`
+  (every requirement, its owner, evidence and state) and `EVENTLINQS-MASTER-CHECKLIST-30OCT.md` beside it (what is
+  done). Only eight states exist: NOT STARTED; IN PROGRESS; BUILT - NOT VERIFIED (the register writes it with a dash
+  this file may not use); TEST VERIFIED; PRODUCTION VERIFIED; OPERATIONAL VERIFIED; EXTERNAL AUTHORISATION PENDING;
+  CRITICAL DEFECT. A unit test is never production evidence; a
+  production line is verified only by looking at every surface it touches, phone viewports first. Missing evidence is
+  written "missing". A status changes by exact replacement of its one row.
+- **Founder decisions.** The laws in this file, each with its date; the release checklist
+  (`C:\dev\START-16OCT\EVENTLINQS-RELEASE-CHECKLIST-28OCT.md`, Lawal's standing order); and the dated notes at the top
+  of `C:\dev\BP-STATE.md`, where the project manager records each ruling. A decision already made is not asked again.
+- **The release gates.** Nothing is pushed until `npm run gate:push` passes (`.githooks/pre-push` runs it). Main
+  requires `lint · typecheck · build`, `test (vitest)`, `production parity` and the `Lighthouse mobile gate`; a pull
+  request opens as a draft. One release owner stacks each car from heads named after a full guard run on the stacked
+  tree; one window merges, pinned to the gated head, and production is read back before a car is called live. A
+  production write is a reviewed script, dry run first, applied only on a typed APPLY, and logged in
+  `C:\dev\PRODUCTION-WRITES.txt`. Heavy runs take `C:\dev\.light-lock` in the order of `C:\dev\HEAVY-QUEUE.txt`
+  (`C:\dev\HEAVY-QUEUE-RULES.txt`).
+- **The task loop.** Inspect, make the smallest correct change, test red then green, run the gates, deploy when
+  authorised, verify on production, record the evidence, update the register, then the next dependency. Escalate only
+  legal, external-account, spending, pricing, outbound-communication, sensitive-content, irreversible or scope
+  decisions, and keep working on everything else meanwhile.
+
 ## Constitution map (find the law that governs your task)
 
 | If you are touching... | The governing laws are... |
