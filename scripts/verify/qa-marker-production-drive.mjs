@@ -47,6 +47,12 @@ if (!token) {
   console.error('run through scripts\\ops\\with-supabase-token.ps1: the read back goes through the Management API')
   process.exit(2)
 }
+if (sCode && !/^[0-9A-Za-z]{10}$/.test(sCode)) {
+  // src/lib/broadcast/share-codes.ts SHARE_CODE_RE: /s takes only the 10-character random code; a readable code
+  // resolves on /e alone, so on /s it falls to the /events fallback and writes nothing.
+  console.error(`--s ${sCode} is not a 10-character share code; /s refuses it before any write. Pass readable codes with --e.`)
+  process.exit(2)
+}
 if (plant && ref !== TEST_REF) {
   console.error('--plant-marker-on-test is for TEST only; on production WINDOW 4 writes the marker through its logged apply')
   process.exit(2)
@@ -108,14 +114,21 @@ try {
       redirect: 'manual',
       headers: { 'x-eventlinqs-qa': secret, 'user-agent': 'EventLinqs-QA crawler (window 5, R3 marked press)' },
     })
-    return res.status
+    return { status: res.status, location: res.headers.get('location') ?? '' }
   }
-  if (sCode) check(`/s/${sCode} answers a redirect`, [301, 302, 307, 308].includes(await press(`/s/${sCode}`)))
+  if (sCode) {
+    // /s answers 302 to bare /events for a code it refuses (its format gate, or a missing link), and writes nothing;
+    // only a redirect to the night's own page means the press reached the writer (30 October 07:39: a readable code
+    // on /s passed 'answers a redirect' on that fallback).
+    const { status, location } = await press(`/s/${sCode}`)
+    const path = location === '' ? '' : new URL(location, site).pathname
+    check(`/s/${sCode} redirects to its night's page, not the /events fallback`, [301, 302, 307, 308].includes(status) && /^\/events\/[^/]+/.test(path), { status, path })
+  }
   if (eCode) {
-    const status = await press(`/e/${eCode}`)
+    const { status } = await press(`/e/${eCode}`)
     check(`/e/${eCode} answers`, status === 200 || (status >= 300 && status < 400), { status })
   }
-  if (goPiece) check(`/go/${goPiece} answers a redirect`, (await press(`/go/${goPiece}`)) === 302)
+  if (goPiece) check(`/go/${goPiece} answers a redirect`, (await press(`/go/${goPiece}`)).status === 302)
 
   // Give the writes a moment, then read every row they made.
   await new Promise((r) => setTimeout(r, 5_000))

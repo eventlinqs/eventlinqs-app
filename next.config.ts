@@ -186,7 +186,9 @@ const nextConfig: NextConfig = {
   // deliberate runtime load. Found on 2 September 2026, when the resvg swap was
   // built for the first time: it had been proved in isolation but never through
   // `next build`, so this error had never had the chance to appear.
-  serverExternalPackages: ['@resvg/resvg-wasm'],
+  // ffmpeg-static (the Discovery Reel's encoder, src/lib/social/reel-video.ts) finds its binary beside its own
+  // index.js at run time; bundled, that lookup points into .next and finds nothing, so it is left to Node's require.
+  serverExternalPackages: ['@resvg/resvg-wasm', 'ffmpeg-static'],
   // Preview-density fixture. The homepage reads the 55-event catalogue fixture
   // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
   // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so
@@ -239,6 +241,14 @@ const nextConfig: NextConfig = {
     ],
     // The weekly campaign's slides (the release checklist, sections B and C), through the same rasteriser, for staff
     // (src/app/admin/(authed)/social/piece/[pieceId]/[n]).
+    // The Discovery Reel as one MP4 (the register's row C5, src/app/admin/(authed)/social/piece/[pieceId]/reel): its
+    // frames through the same rasteriser, then the ffmpeg binary ffmpeg-static installed for the build's platform. The
+    // binary is data nothing imports, so it is named here or the lambda ships without it.
+    '/admin/social/piece/[pieceId]/reel': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+      './node_modules/ffmpeg-static/ffmpeg*',
+    ],
     '/admin/social/piece/[pieceId]/[n]': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',

@@ -144,10 +144,27 @@ describe('the city dialog is not in the shell', () => {
     expect(screen.getByText('Geelong')).toBeTruthy()
   })
 
-  test('escape_closes_the_dialog', async () => {
-    render(<LocationPicker currentLocation={LOCATION} />)
+  /*
+   * The panel listens for Escape from a useEffect, so the listener exists only once
+   * its effects have run, which can be after role="dialog" is already in the DOM.
+   * Pressing Escape the instant the dialog appears raced that, and under a loaded
+   * suite the key landed before the listener and the dialog never closed (gates of
+   * 27 and 30 October 2026, 'expected <div role="dialog"> to be null' after about
+   * 1 s). The panel's own effects focus the search box after attaching the
+   * listener, so waiting for that focus is waiting for the dialog to be ready, which
+   * is what a person sees before they press Escape.
+   */
+  async function openedAndReady() {
     fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
     await screen.findByRole('dialog')
+    const search = screen.getByPlaceholderText('Search for a city')
+    await waitFor(() => expect(document.activeElement).toBe(search))
+    return search as HTMLInputElement
+  }
+
+  test('escape_closes_the_dialog', async () => {
+    render(<LocationPicker currentLocation={LOCATION} />)
+    await openedAndReady()
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
@@ -161,9 +178,7 @@ describe('the city dialog is not in the shell', () => {
      * rather than trusting the refactor.
      */
     render(<LocationPicker currentLocation={LOCATION} />)
-    fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
-    await screen.findByRole('dialog')
-    const search = screen.getByPlaceholderText('Search for a city')
+    const search = await openedAndReady()
     fireEvent.change(search, { target: { value: 'geel' } })
     expect((search as HTMLInputElement).value).toBe('geel')
 
