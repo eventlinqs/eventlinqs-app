@@ -73,7 +73,7 @@ try {
       terms_url: `https://bp-${stamp}.example.com/terms`, terms_quote: 'bp-recovery: a stand in terms line', terms_read_on: today,
       may_scrape: 'yes', may_scrape_quote: 'bp-recovery: a stand in line allowing the read', may_scrape_url: `https://bp-${stamp}.example.com/terms`, may_scrape_read_on: today,
       verification: 'verified', verified_on: today, permits_links: true,
-    }, { defaultToNull: false })
+    })
     .select('id')
     .single()
   if (error) throw error
