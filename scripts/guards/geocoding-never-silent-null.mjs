@@ -14,8 +14,9 @@
  * WHAT THIS GUARD CHECKS.
  *   1. THE RULE, DRIVEN. The TypeScript rule is loaded through the alias loader
  *      and run against the cases that matter: the key absent on production
- *      (refused, named as a configuration fault, GOOGLE_MAPS_API_KEY in the
- *      message), the browser key standing in for the server key on production
+ *      (refused, named as a configuration fault in its kind and the server log,
+ *      NEVER the key's name in the organiser's message, the CONTROLLER's 07:49 of
+ *      31 October 2026 (2)), the browser key standing in for the server key on production
  *      (refused the same way), Google refusing on preview (refused as a
  *      geocoding fault), the key absent on development (allowed, the reason
  *      kept as the warning), coordinates present (allowed), a virtual event
@@ -74,12 +75,13 @@ if (r.status !== 0) {
 }
 
 if (cases) {
-  const refused = (name, kind, mentions) => {
+  const refused = (name, kind, mentions, neverNames) => {
     const v = cases[name]
     if (!v || v.ok !== false) fail(`${name}: the rule ALLOWED a typed address with no coordinates on a production-like environment; the event would save with a null pair and nobody would be told`)
     else {
       if (v.kind !== kind) fail(`${name}: refused as ${v.kind}, expected ${kind}`)
       if (mentions && !String(v.error).includes(mentions)) fail(`${name}: the refusal does not name ${mentions}; the organiser would not know what to do`)
+      if (neverNames && String(v.error).includes(neverNames)) fail(`${name}: the refusal names ${neverNames}, a server setting the organiser cannot act on; it belongs in the server log, not on their screen`)
       if (!/pick the venue from the suggestions/i.test(String(v.error))) fail(`${name}: the refusal does not offer the path that works (pick the venue from the suggestions)`)
     }
   }
@@ -89,8 +91,8 @@ if (cases) {
     else if (wantWarning && !v.warning) fail(`${name}: allowed silently; the reason must travel as the warning so the server log carries it`)
     else if (!wantWarning && v.warning) fail(`${name}: allowed with a warning where there is nothing to warn about`)
   }
-  refused('productionKeyAbsent', 'configuration', 'GOOGLE_MAPS_API_KEY')
-  refused('productionBrowserKey', 'configuration', 'GOOGLE_MAPS_API_KEY')
+  refused('productionKeyAbsent', 'configuration', null, 'GOOGLE_MAPS_API_KEY')
+  refused('productionBrowserKey', 'configuration', null, 'GOOGLE_MAPS_API_KEY')
   refused('previewGoogleRefused', 'geocoding', 'REQUEST_DENIED')
   allowed('developmentKeyAbsent', true)
   allowed('productionWithCoordinates', false)

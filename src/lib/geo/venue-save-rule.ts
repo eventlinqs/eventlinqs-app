@@ -76,9 +76,11 @@ export function judgeVenueSave(input: VenueSaveInput): VenueSaveVerdict {
     return {
       ok: false,
       kind: 'configuration',
+      // Words the organiser can act on (the CONTROLLER's 07:49 of 31 October 2026, (2)). Which setting is missing is
+      // ours to know: events/actions.ts writes the reason to the server log with every refusal.
       error:
-        'This environment cannot place a typed address on the map: GOOGLE_MAPS_API_KEY is not configured for server geocoding. ' +
-        `Pick the venue from the suggestions so it carries its own coordinates, or contact ${contactAddress('hello')} so we can fix the configuration.`,
+        'Pick the venue from the suggestions as you type its name or address, and it saves with its place on the map. ' +
+        `A typed address cannot be placed on the map just now. If your venue is not in the suggestions, email ${contactAddress('hello')} and we will add it.`,
       nextAction: null,
     }
   }
