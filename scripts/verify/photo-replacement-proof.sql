@@ -2,7 +2,8 @@
 -- replacement workflow; EVENTLINQS-PHOTO-SYSTEM-31OCT.md P2, P3 and P11). Run joined after Supabase's new default and
 -- supabase/migrations/20261031054001_commons_thumbnail_at_approval.sql through scripts/verify/replay-under-new-default.mjs,
 -- one transaction; it ends by RAISING its verdict, so TEST is left as found. It needs 20261031010001 (the assignment)
--- already on TEST. RED without 054001: the photo dealt to the night is the full original, so R1 and R2 fail.
+-- already on TEST. RED without 054001 (replayed with venue_image_approve exactly as 20261030171501 wrote it, since
+-- 054001 is on TEST): the photo dealt to the night is the full original, so R1, R2 and R4 fail and R3 still passes.
 -- photo-assignments-proof.sql A8 proves a withdrawn photo retires; this proves the whole replacement as staff see it:
 -- approve, deal, the venue's new photo replaces it, approve the new one, and the night shows only the new one.
 DO $proof$
