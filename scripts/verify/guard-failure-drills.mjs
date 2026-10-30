@@ -1172,6 +1172,14 @@ const DRILLS = [
     replace: '  const venueVerdict = { ok: true, warning: null } as const; void ({',
     expect: 'judgeVenueSave is called 1 time(s)',
   },
+  {
+    name: "the organiser's refusal names the server key again (the CONTROLLER's 07:49 (2))",
+    guard: `${GUARDS}/geocoding-never-silent-null.mjs`,
+    file: 'src/lib/geo/venue-save-rule.ts',
+    find: "        'Pick the venue from the suggestions as you type its name or address, and it saves with its place on the map. ' +",
+    replace: "        'GOOGLE_MAPS_API_KEY is not configured. Pick the venue from the suggestions as you type its name or address, and it saves with its place on the map. ' +",
+    expect: 'the refusal names GOOGLE_MAPS_API_KEY',
+  },
   /*
    * homepage-hero-never-empty (close-out C17), two drills: the empty branch
    * painting a panel without HeroMedia, and a curated entry with no raster.

@@ -28,7 +28,7 @@ describe('judgeVenueSave', () => {
     // which events/actions.ts writes with the reason, never for the screen.
     expect(v.error).not.toContain('GOOGLE_MAPS_API_KEY')
     expect(v.error).not.toMatch(/geocod|environment|configur/i)
-    expect(v.error).toMatch(/^Pick your venue from the suggestions as you type/)
+    expect(v.error).toMatch(/^Pick the venue from the suggestions as you type/)
     expect(v.error).toMatch(/hello@/)
   })
 
