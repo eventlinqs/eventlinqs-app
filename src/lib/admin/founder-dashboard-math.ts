@@ -12,7 +12,7 @@ import { CREDIT_DAYS } from '@/lib/social/results'
  * be counted is said so, never shown as 0 and never flagged. Pure.
  */
 
-export type DashboardKey = 'events' | 'organisers' | 'marketing' | 'conversion' | 'economics' | 'operations'
+export type DashboardKey = 'events' | 'organisers' | 'marketing' | 'conversion' | 'economics' | 'expansion' | 'operations'
 
 export interface DashboardFigure {
   readonly label: string
@@ -25,7 +25,14 @@ export interface DashboardFigure {
   readonly note?: string
   /** How the value reads when a plain number would not (money, the deployed commit). */
   readonly display?: string
+  /** Its place in the view by exception (byException): work to approve, a failure, something scheduled, value made, or a plain measure. */
+  readonly kind?: FigureKind
+  /** How often the founder reads it (rhythm): the supreme specification's section 29. A figure with none reads weekly. */
+  readonly cadence?: Cadence
 }
+
+export type FigureKind = 'approve' | 'failed' | 'scheduled' | 'value' | 'measure'
+export type Cadence = 'daily' | 'weekly' | 'monthly'
 
 export interface DashboardSection {
   readonly key: DashboardKey
@@ -57,6 +64,53 @@ export function arrangeDashboard(sections: readonly DashboardSection[]): Arrange
   return arranged
     .sort((a, b) => Number(b.section.needsYou > 0) - Number(a.section.needsYou > 0) || a.i - b.i)
     .map((a) => a.section)
+}
+
+/**
+ * THE DASHBOARD BY EXCEPTION (the supreme specification of 30 October 2026, section 28: "what the system completed, what
+ * is scheduled, what failed, what requires approval, what generated measurable value, what needs attention next").
+ * Each group holds only the counted figures of its kind that are above zero, so a quiet day reads empty, not as a wall
+ * of zeros; approvals and failures largest first. NEXT is the one most urgent thing: a failure before an approval. A
+ * figure that could not be counted goes to notCounted, never into a group as if it were 0.
+ */
+export interface ExceptionView {
+  readonly completed: readonly string[]
+  readonly scheduled: readonly DashboardFigure[]
+  readonly failed: readonly DashboardFigure[]
+  readonly needsApproval: readonly DashboardFigure[]
+  readonly value: readonly DashboardFigure[]
+  readonly next: DashboardFigure | null
+  readonly notCounted: readonly DashboardFigure[]
+}
+
+export function byException(sections: readonly DashboardSection[]): ExceptionView {
+  const all = sections.flatMap((s) => s.figures)
+  const counted = all.filter((f) => f.value !== null && f.value > 0)
+  const of = (kind: FigureKind) => counted.filter((f) => f.kind === kind)
+  const largestFirst = (fs: DashboardFigure[]) => [...fs].sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+  const failed = largestFirst(of('failed'))
+  const needsApproval = largestFirst(of('approve'))
+  return {
+    completed: sections.flatMap((s) => s.done),
+    scheduled: of('scheduled'),
+    failed,
+    needsApproval,
+    value: of('value'),
+    next: failed[0] ?? needsApproval[0] ?? null,
+    notCounted: all.filter((f) => f.value === null),
+  }
+}
+
+/**
+ * THE OPERATING RHYTHM (the supreme specification, section 29): every figure once, in its cadence, in the order the
+ * sections give it. Daily: event accuracy, organiser responses, failed jobs, upcoming campaigns, ticketing issues.
+ * Weekly: approvals, acquisition, supply, conversion. Monthly: organiser retention, ticketing contribution, acquisition
+ * costs, cash flow, expansion readiness. A figure with no cadence reads weekly, where the growth week reads.
+ */
+export function rhythm(sections: readonly DashboardSection[]): Record<Cadence, DashboardFigure[]> {
+  const out: Record<Cadence, DashboardFigure[]> = { daily: [], weekly: [], monthly: [] }
+  for (const f of sections.flatMap((s) => s.figures)) out[f.cadence ?? 'weekly'].push(f)
+  return out
 }
 
 /**
