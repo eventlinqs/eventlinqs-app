@@ -182,7 +182,7 @@ export async function EventBentoTile({
         {category ? (
           <GlassCard
             variant="dark"
-            className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-white"
+            className="rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-white"
           >
             {category}
           </GlassCard>
@@ -191,14 +191,14 @@ export async function EventBentoTile({
         <div className="flex items-start gap-2">
           <div className="flex flex-col items-end gap-2">
             {featured && (
-              <span className="rounded-full bg-gold-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-ink-900 shadow-sm">
+              <span className="rounded-full bg-gold-500 px-2.5 py-1 text-xs font-bold uppercase tracking-widest text-ink-900 shadow-sm">
                 Featured
               </span>
             )}
             {signal && (
               <GlassCard
                 variant="dark"
-                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white"
               >
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral-500 opacity-80" />
