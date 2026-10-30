@@ -57,12 +57,26 @@ export type QueueRow = {
 const own = (p: WaitingPhoto) => (p.source === 'venue' || p.source === 'organiser' ? 0 : 1)
 const challenged = (p: WaitingPhoto) => (p.challengeReason ? 0 : 1)
 
-/** Best first: a challenged photograph (someone is waiting on an answer), then the venue's own, then quality, then width. */
+const looked = (p: WaitingPhoto) => (p.matchMethod === 'manual' ? 0 : 1)
+/** A person has a stake in this one: it is challenged, it is the venue's own, or someone matched it by eye. */
+const leads = (p: WaitingPhoto) => challenged(p) === 0 || own(p) === 0 || looked(p) === 0
+
+/**
+ * Best first: a challenged photograph (someone is waiting on an answer), then the venue's own, then one a person matched
+ * by eye over any machine match whatever its score (a machine match has proved to be a band on stage or a crowd, and one
+ * tap approves the first for every night there), then quality, then width.
+ */
 export function bestFirst(a: WaitingPhoto, b: WaitingPhoto): number {
-  return challenged(a) - challenged(b) || own(a) - own(b) || (b.quality ?? -1) - (a.quality ?? -1) || (b.width ?? 0) - (a.width ?? 0)
+  return (
+    challenged(a) - challenged(b) ||
+    own(a) - own(b) ||
+    looked(a) - looked(b) ||
+    (b.quality ?? -1) - (a.quality ?? -1) ||
+    (b.width ?? 0) - (a.width ?? 0)
+  )
 }
 
-/** Queue rows into venues, each with its photographs best first, the venues by name. */
+/** Queue rows into venues, each with its photographs best first; venues whose best a person has a stake in lead, then by name. */
 export function groupWaiting(rows: readonly QueueRow[]): WaitingVenue[] {
   const byVenue = new Map<string, { venueName: string; city: string | null; photos: WaitingPhoto[] }>()
   for (const r of rows) {
@@ -86,7 +100,7 @@ export function groupWaiting(rows: readonly QueueRow[]): WaitingVenue[] {
   }
   return [...byVenue.entries()]
     .map(([venueId, g]) => ({ venueId, venueName: g.venueName, city: g.city, photos: [...g.photos].sort(bestFirst) }))
-    .sort((a, b) => a.venueName.localeCompare(b.venueName))
+    .sort((a, b) => Number(leads(b.photos[0])) - Number(leads(a.photos[0])) || a.venueName.localeCompare(b.venueName))
 }
 
 /** Every photograph matched to a venue and waiting for a person, grouped by venue. */

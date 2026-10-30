@@ -469,6 +469,7 @@ const nextConfig: NextConfig = {
       { source: '/kit/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
       { source: '/api/launch/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
       { source: '/go/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      { source: '/api/venues/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/out/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       // Edge-cache the discovery surfaces so a crawler burst (e.g. Facebook
       // scraping Open Graph tags) is served from Vercel's CDN instead of
