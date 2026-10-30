@@ -1,5 +1,8 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { countFrom, inventoryFigures } from './founder-dashboard-math'
 import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
@@ -31,9 +34,7 @@ type CountAnswer = { count: number | null; error: { message: string } | null }
 
 async function counted(read: () => PromiseLike<CountAnswer>): Promise<Counted> {
   try {
-    const { count, error } = await read()
-    if (error) return { value: null, note: `could not be read: ${error.message}` }
-    return { value: count ?? 0 }
+    return countFrom(await read())
   } catch (err) {
     return { value: null, note: `could not be read: ${err instanceof Error ? err.message : String(err)}` }
   }
@@ -86,6 +87,33 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         return data?.[0]?.id ?? null
       }),
     ])
+
+  // The nights a visitor can find ahead at 7, 14 and 30 days, the booking links the daily check found dead on upcoming
+  // nights, and the venue partners live (the DemandOS directive's section 11).
+  const nightsAhead = (days: number) =>
+    counted(() =>
+      admin
+        .from('events')
+        .select('id', head)
+        .match(PUBLIC_EVENT_MATCH)
+        .or(listingWindowOrPredicate(now))
+        .eq('is_seed_data', false)
+        .lte('start_date', new Date(now.getTime() + days * DAY_MS).toISOString()),
+    )
+  const [next7, next14, next30, deadLinks, venuePartners] = await Promise.all([
+    nightsAhead(7),
+    nightsAhead(14),
+    nightsAhead(30),
+    counted(() =>
+      admin
+        .from('event_booking_links')
+        .select('id, events!inner(id)', head)
+        .eq('availability', 'dead')
+        .match({ 'events.status': PUBLIC_EVENT_MATCH.status, 'events.visibility': PUBLIC_EVENT_MATCH.visibility })
+        .gte('events.start_date', now.toISOString()),
+    ),
+    counted(() => admin.from('partners').select('id', head).eq('status', 'live').eq('kind', 'venue')),
+  ])
 
   // This week's campaign, its pieces and where each stands.
   const marketing = await settle(async () => {
@@ -236,6 +264,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Missing a category', sum((c) => c.missingCategory), true, '/admin/events'), 'approve', 'weekly'),
         tag(fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'), 'measure', 'daily'),
         tag(fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'), 'measure', 'weekly'),
+        ...inventoryFigures({ next7, next14, next30, deadLinks, venuePartners }),
       ],
       done: newNights === null ? [] : [`${count.format(newNights)} ${newNights === 1 ? 'night' : 'nights'} published this week`],
     },
