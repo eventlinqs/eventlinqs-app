@@ -8,8 +8,10 @@
  * write, so the refusal is proved on a preview deployment that serves main's code against the TEST project. Writes only
  * to TEST: one admin account of its own with no second factor, removed at the end, pass or fail.
  *
- * Checks: sign-in lands on /admin/enrol-2fa and the enrolment page is served; /admin/today and /admin/health each end on
- * /admin/login; the account is gone after. Each check prints PASS or FAIL; the last line is the verdict.
+ * Checks: sign-in lands on /admin/enrol-2fa and the enrolment page is served; /admin/today and /admin/health each send it
+ * back to /admin/enrol-2fa, never an error page and never admin data (fix/w1-auth03-enrol-redirect; car 14's preview, which
+ * has no such redirect, is this drive's known positive: it must FAIL there); the account is gone after. Each check prints
+ * PASS or FAIL; the last line is the verdict.
  * Evidence: DRIVE_OUT (default C:\dev\EVIDENCE\WI1\auth03-preview), drive.json and a screenshot of each stop.
  */
 import { chromium } from 'playwright'
@@ -77,7 +79,9 @@ try {
     await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded', timeout: 180000 })
     const ended = new URL(page.url()).pathname
     await page.screenshot({ path: join(OUT, `2${path.replace(/\//g, '-')}.png`) })
-    check(`${path} REFUSES it: the visit ends on /admin/login`, ended === '/admin/login', page.url())
+    const body = (await page.locator('body').innerText().catch(() => '')).toLowerCase()
+    check(`${path} REFUSES it: the visit ends on /admin/enrol-2fa`, ended === '/admin/enrol-2fa', page.url())
+    check(`${path} shows it no error page`, !/something went wrong|hit a snag/.test(body), body.slice(0, 200))
   }
   await context.close()
 } catch (error) {
