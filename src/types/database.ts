@@ -10426,6 +10426,138 @@ export type Database = {
           },
         ]
       }
+      venue_images: {
+        Row: {
+          approval_state: string
+          approved_at: string | null
+          approved_by: string | null
+          attribution_text: string
+          author: string | null
+          challenge_reason: string | null
+          challenged_at: string | null
+          challenged_by: string | null
+          commons_file: string | null
+          created_at: string
+          height: number | null
+          id: string
+          image_url: string
+          is_primary: boolean
+          latitude: number | null
+          licence: string
+          licence_url: string | null
+          longitude: number | null
+          match_distance_m: number | null
+          match_method: string | null
+          permission_evidence: string | null
+          permitted_uses: string[]
+          quality_score: number | null
+          replaced_by: string | null
+          restrictions: string | null
+          source: string
+          source_url: string
+          submitted_by: string | null
+          updated_at: string
+          venue_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+          verified_depicts_venue: boolean
+          width: number | null
+          wikidata_id: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          attribution_text: string
+          author?: string | null
+          challenge_reason?: string | null
+          challenged_at?: string | null
+          challenged_by?: string | null
+          commons_file?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          image_url: string
+          is_primary?: boolean
+          latitude?: number | null
+          licence: string
+          licence_url?: string | null
+          longitude?: number | null
+          match_distance_m?: number | null
+          match_method?: string | null
+          permission_evidence?: string | null
+          permitted_uses: string[]
+          quality_score?: number | null
+          replaced_by?: string | null
+          restrictions?: string | null
+          source: string
+          source_url: string
+          submitted_by?: string | null
+          updated_at?: string
+          venue_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_depicts_venue?: boolean
+          width?: number | null
+          wikidata_id?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          attribution_text?: string
+          author?: string | null
+          challenge_reason?: string | null
+          challenged_at?: string | null
+          challenged_by?: string | null
+          commons_file?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          image_url?: string
+          is_primary?: boolean
+          latitude?: number | null
+          licence?: string
+          licence_url?: string | null
+          longitude?: number | null
+          match_distance_m?: number | null
+          match_method?: string | null
+          permission_evidence?: string | null
+          permitted_uses?: string[]
+          quality_score?: number | null
+          replaced_by?: string | null
+          restrictions?: string | null
+          source?: string
+          source_url?: string
+          submitted_by?: string | null
+          updated_at?: string
+          venue_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_depicts_venue?: boolean
+          width?: number | null
+          wikidata_id?: string | null
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_images_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "venue_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_images_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_merges: {
         Row: {
           dropped_venue_id: string
@@ -12180,9 +12312,99 @@ export type Database = {
         Args: { p_currency: string; p_event_id: string; p_venue_id: string }
         Returns: number
       }
+      venue_image_add: {
+        Args: {
+          p_attribution: string
+          p_image_url: string
+          p_permission_words: string
+          p_source_url: string
+          p_user: string
+          p_uses: string[]
+          p_venue: string
+        }
+        Returns: string
+      }
+      venue_image_approve: {
+        Args: { p_admin: string; p_image: string; p_primary: boolean; p_quality: number }
+        Returns: undefined
+      }
+      venue_image_challenge: {
+        Args: { p_image: string; p_reason: string; p_user: string }
+        Returns: undefined
+      }
+      venue_image_link: {
+        Args: { p_admin: string; p_image: string; p_venue: string }
+        Returns: undefined
+      }
+      venue_image_manager: {
+        Args: { p_user: string; p_venue: string }
+        Returns: boolean
+      }
+      venue_image_refuse: {
+        Args: { p_admin: string; p_image: string; p_reason: string }
+        Returns: undefined
+      }
+      venue_image_replace: {
+        Args: {
+          p_image: string
+          p_image_url: string
+          p_permission_words: string
+          p_source_url: string
+          p_user: string
+        }
+        Returns: string
+      }
+      venue_image_withdraw: {
+        Args: { p_image: string; p_user: string }
+        Returns: undefined
+      }
       venue_merge: {
         Args: { p_by: string; p_drop: string; p_keep: string; p_reason: string }
         Returns: string
+      }
+      venue_photo_for: {
+        Args: { p_use: string; p_venue: string }
+        Returns: {
+          attribution_text: string
+          author: string
+          image_url: string
+          licence: string
+          licence_url: string
+        }[]
+      }
+      venue_photo_queue: {
+        Args: never
+        Returns: {
+          attribution_text: string
+          challenge_reason: string
+          height: number
+          id: string
+          image_url: string
+          licence: string
+          match_distance_m: number
+          match_method: string
+          permission_evidence: string
+          quality_score: number
+          source: string
+          source_url: string
+          venue_city: string
+          venue_id: string
+          venue_name: string
+          width: number
+        }[]
+      }
+      venue_photo_unmatched_count: { Args: never; Returns: number }
+      venue_photos_for: {
+        Args: { p_use: string; p_venues: string[] }
+        Returns: {
+          attribution_text: string
+          author: string
+          image_url: string
+          licence: string
+          licence_url: string
+          source_url: string
+          venue_id: string
+        }[]
       }
       void_payout: {
         Args: { p_payout_id: string; p_reason?: string; p_status?: string }

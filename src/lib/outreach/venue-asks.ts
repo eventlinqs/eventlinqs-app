@@ -45,13 +45,20 @@ export type VenueAsk = {
   askLine?: string
 }
 
+/**
+ * The photo request every venue email carries (the project manager's 16:42 of 30 October 2026: D7's asks gain "send us
+ * 3 photos of your venue, with your yes"). A statement, never a second question; a reply with photos and a yes becomes a
+ * pending row in public.venue_images through venue_image_add, shown only once Lawal approves it.
+ */
+export const VENUE_PHOTO_ASK = "If you're happy for us to show your venue on its nights, reply with three photos of it and a line saying yes."
+
 export const VENUE_ASK_EMAIL: TemplateRow & { key: string } = {
   key: 'venue_ask',
   channel: 'email',
   purpose: 'cadence',
   step: 1,
   subject: '[subject]',
-  body: "Hi [venue] team,\nI hope you're all well. [true line]\n[ask]\nKind regards,\n[signature]\n\n[unsubscribe]",
+  body: `Hi [venue] team,\nI hope you're all well. [true line]\n[ask]\n${VENUE_PHOTO_ASK}\nKind regards,\n[signature]\n\n[unsubscribe]`,
 }
 
 export const VENUE_ASK_DM: TemplateRow & { key: string } = {

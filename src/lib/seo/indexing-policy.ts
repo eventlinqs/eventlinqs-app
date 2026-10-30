@@ -239,6 +239,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/admin/users', klass: 'never', why: 'staff only' },
   { route: '/admin/users/[id]', klass: 'never', why: 'staff only' },
   { route: '/admin/venues', klass: 'never', why: 'staff only' },
+  { route: '/admin/venues/photos', klass: 'never', why: 'staff only' },
   { route: '/artist/dashboard', klass: 'never', why: 'authenticated' },
   { route: '/artists/claim/[token]', klass: 'never', why: 'a one-time claim token' },
   { route: '/auth/reset-password', klass: 'never', why: 'authentication' },
