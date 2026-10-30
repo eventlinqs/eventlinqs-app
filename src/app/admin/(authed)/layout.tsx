@@ -19,7 +19,10 @@ export const metadata = {
  * /admin/login outside the gate.
  */
 export default async function AuthedAdminLayout({ children }: { children: ReactNode }) {
-  const session = await getAdminSession()
+  // AUTH-03: the layout admits an admin who has not enrolled 2FA yet only so /admin/enrol-2fa, beneath it, can
+  // render. It cannot see which page it wraps, so every page and action under it checks the strict session itself
+  // (tests/unit/admin/enrolment-allowance-is-named.test.ts).
+  const session = await getAdminSession({ forEnrolment: true })
   if (!session) {
     redirect('/admin/login')
   }

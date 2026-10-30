@@ -38,7 +38,7 @@ export const dynamic = 'force-dynamic'
  * left with only a picture.
  */
 export default async function EnrolTwoFactorPage() {
-  const session = await requireAdminSession()
+  const session = await requireAdminSession({ forEnrolment: true })
   if (session.admin.totp_secret_encrypted) {
     redirect('/admin')
   }

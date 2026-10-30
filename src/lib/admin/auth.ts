@@ -19,7 +19,19 @@ import type { AdminSession, AdminUserRow } from './types'
  *   - the admin is disabled
  */
 
-export async function getAdminSession(): Promise<AdminSession | null> {
+/**
+ * AUTH-03 (30 October 2026): sign-in mints the 2FA proof for an admin who has not enrolled a second factor yet,
+ * so they can reach /admin/enrol-2fa; that proof must open enrolment and nothing else. Without this an
+ * un-enrolled admin held the whole console on a password alone until they enrolled. `forEnrolment` is asked
+ * for by name in four places only: the (authed) layout (so the enrolment page beneath it can render; every page
+ * under it checks the strict session itself), the enrolment page, and its two actions.
+ * tests/unit/admin/enrolment-allowance-is-named.test.ts holds both halves.
+ */
+export interface AdminSessionOptions {
+  forEnrolment?: boolean
+}
+
+export async function getAdminSession(options: AdminSessionOptions = {}): Promise<AdminSession | null> {
   const supa = await createServerSupabase()
   const { data: userData, error: userErr } = await supa.auth.getUser()
   if (userErr || !userData.user) return null
@@ -38,6 +50,9 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   // buyer /login page) has no proof cookie and is rejected here even though the
   // user has a valid, enabled admin_users row.
   if (!(await hasValidTwoFactorProof(userData.user.id))) return null
+
+  // AUTH-03: no enrolled second factor, so the proof above came from the sign-in bootstrap; it opens enrolment only.
+  if (!admin.data.totp_secret_encrypted && !options.forEnrolment) return null
 
   // Normalise override columns (absent until the migration is applied) so the
   // resolver is safe pre-migration, then compute the effective capability set.
@@ -72,8 +87,8 @@ export async function isAdminUserId(userId: string): Promise<boolean> {
   return !data.disabled_at
 }
 
-export async function requireAdminSession(): Promise<AdminSession> {
-  const session = await getAdminSession()
+export async function requireAdminSession(options: AdminSessionOptions = {}): Promise<AdminSession> {
+  const session = await getAdminSession(options)
   if (!session) {
     throw new AdminUnauthorisedError()
   }
