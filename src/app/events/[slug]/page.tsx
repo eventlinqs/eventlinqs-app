@@ -93,6 +93,8 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
+import { creditLine, readPhotoCredits, withCredits } from '@/lib/media/photo-credits'
+import { captureException } from '@/lib/observability/sentry'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import { isVideoProvider } from '@/lib/media/video-embed'
@@ -748,7 +750,15 @@ export default async function EventDetailPage({ params }: Props) {
   // Event Media Standard: the gallery (below the hero, lazy) and the one optional
   // allowlisted video embed. The cover raster (media.image) is the video poster so
   // the video never competes for the LCP.
-  const gallery = parseGallery(event.gallery_urls)
+  // An organiser's photograph carries its credit (window 6's gap 3, 30 October 2026): the register's own words, only
+  // where the image's rights are on record and current (src/lib/media/photo-credits.ts). A failed read credits nothing
+  // and is reported; it never credits an image as if it were permitted.
+  const photoCredits = await readPhotoCredits(createAdminClient(), event.id).catch((error: unknown) => {
+    captureException(error, { where: 'app/events/[slug]/page:photoCredits' })
+    return new Map<string, string>()
+  })
+  const gallery = withCredits(parseGallery(event.gallery_urls), photoCredits)
+  const coverCredit = typographicHero || !event.cover_image_url ? null : creditLine(photoCredits.get(event.cover_image_url))
   const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
   const hasVideo = !!(event.video_url && videoProvider)
 
@@ -1301,6 +1311,11 @@ export default async function EventDetailPage({ params }: Props) {
             the venue. */}
         {isLibraryPhoto(event.cover_image_url) && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs text-ink-600 sm:px-6 lg:px-8">{LIBRARY_PHOTO_CREDIT}</p>
+        )}
+        {/* The organiser's own cover photograph, credited in the register's words (photo-credits.ts), in the same place
+            and style as the library credit above; nothing for our typographic cover or an image not on record. */}
+        {coverCredit && !isLibraryPhoto(event.cover_image_url) && (
+          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{coverCredit}</p>
         )}
 
         {/* Event Media: the video (allowlisted embed, click-to-play facade so the
