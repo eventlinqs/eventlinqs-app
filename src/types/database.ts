@@ -6600,6 +6600,150 @@ export type Database = {
         }
         Relationships: []
       }
+      paid_campaign_spend: {
+        Row: {
+          amount_cents: number
+          campaign_id: string
+          entered_at: string
+          entered_by: string
+          id: number
+          source_note: string
+          spend_day: string
+        }
+        Insert: {
+          amount_cents: number
+          campaign_id: string
+          entered_at?: string
+          entered_by: string
+          id?: number
+          source_note: string
+          spend_day: string
+        }
+        Update: {
+          amount_cents?: number
+          campaign_id?: string
+          entered_at?: string
+          entered_by?: string
+          id?: number
+          source_note?: string
+          spend_day?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_campaign_spend_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "paid_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paid_campaigns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          budget_cents: number
+          city_slug: string | null
+          created_at: string
+          created_by: string
+          daily_limit_cents: number
+          destination_url: string | null
+          event_id: string | null
+          id: string
+          objective: string | null
+          permission_note: string | null
+          piece_id: string | null
+          scope: string
+          share_link_id: string | null
+          status: string
+          status_reason: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          budget_cents?: number
+          city_slug?: string | null
+          created_at?: string
+          created_by: string
+          daily_limit_cents?: number
+          destination_url?: string | null
+          event_id?: string | null
+          id?: string
+          objective?: string | null
+          permission_note?: string | null
+          piece_id?: string | null
+          scope: string
+          share_link_id?: string | null
+          status?: string
+          status_reason?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          budget_cents?: number
+          city_slug?: string | null
+          created_at?: string
+          created_by?: string
+          daily_limit_cents?: number
+          destination_url?: string | null
+          event_id?: string | null
+          id?: string
+          objective?: string | null
+          permission_note?: string | null
+          piece_id?: string | null
+          scope?: string
+          share_link_id?: string | null
+          status?: string
+          status_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_campaigns_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_campaigns_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_campaigns_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paid_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          monthly_cap_cents: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          monthly_cap_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          monthly_cap_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       partner_enquiries: {
         Row: {
           answered_at: string | null
@@ -11799,6 +11943,43 @@ export type Database = {
       outreach_unsubscribe_by_token: {
         Args: { p_comment?: string; p_reason?: string; p_token: string }
         Returns: string
+      }
+      paid_campaign_approve: {
+        Args: { p_by: string; p_campaign: string }
+        Returns: {
+          approved: boolean
+          problems: string[]
+        }[]
+      }
+      paid_campaign_record_spend: {
+        Args: {
+          p_amount_cents: number
+          p_by: string
+          p_campaign: string
+          p_day: string
+          p_source_note: string
+        }
+        Returns: {
+          paused: boolean
+          spent_cents: number
+        }[]
+      }
+      paid_campaign_start: {
+        Args: { p_campaign: string }
+        Returns: {
+          reason: string
+          started: boolean
+        }[]
+      }
+      paid_state: {
+        Args: never
+        Returns: {
+          enabled: boolean
+          live: number
+          monthly_cap_cents: number
+          paused: number
+          spent_this_month_cents: number
+        }[]
       }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {

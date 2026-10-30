@@ -34,7 +34,6 @@ describe('approving a plan', () => {
     ['destination', { destinationUrl: null }],
     ['creative', { creativeApproved: false }],
     ['attribution', { hasAttributionLink: false }],
-    ['budget', { budgetCents: 0 }],
     ['limit', { dailyLimitCents: 0 }],
     ['limit', { dailyLimitCents: 20_000 }],
     ['objective', { objective: null }],
@@ -42,6 +41,10 @@ describe('approving a plan', () => {
   ] as const)('%s is required', (key, over) => {
     expect(approvalProblems({ ...whole, ...over })).toEqual([APPROVAL_PROBLEMS[key]])
   })
+})
+
+test('no budget fails the budget and the limit it must sit within', () => {
+  expect(approvalProblems({ ...whole, budgetCents: 0 })).toEqual([APPROVAL_PROBLEMS.budget, APPROVAL_PROBLEMS.limit])
 })
 
 describe('starting a plan', () => {
