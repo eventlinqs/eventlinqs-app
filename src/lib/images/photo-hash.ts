@@ -1,4 +1,3 @@
-import 'server-only'
 import { createHash } from 'node:crypto'
 import sharp from 'sharp'
 
@@ -9,7 +8,8 @@ import sharp from 'sharp'
  * apart) refused on the second.
  *
  * dHash: the picture in greyscale at 9 by 8, each bit whether a pixel is darker than the one to its right. As a signed
- * bigint string, the shape of the bigint column it is written to.
+ * bigint string, the shape of the bigint column it is written to. No secret and no database here, so the approval
+ * screen and scripts/ops/venue-photo-fingerprints.ts share it.
  */
 export async function photoHashes(bytes: Buffer): Promise<{ sha256: string; dhash: string }> {
   const sha256 = createHash('sha256').update(bytes).digest('hex')
