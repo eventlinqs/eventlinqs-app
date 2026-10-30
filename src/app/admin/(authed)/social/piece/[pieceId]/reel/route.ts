@@ -9,7 +9,10 @@ import { REEL, encodeReel } from '@/lib/social/reel-video'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+// Measured on car 12's deployed preview (30 October 2026): a seven-slide Reel took 40 to 43 s on Vercel, its slides
+// drawn and then encoded, so 60 s left too thin a margin. 300 s is Vercel's own default ceiling for a function
+// (https://vercel.com/docs/functions/limitations, read 30 October 2026).
+export const maxDuration = 300
 
 /**
  * WEDNESDAY's DISCOVERY REEL AS ONE MP4, MADE ON THE SERVER (the register's row C5: "An MP4 exported from production
