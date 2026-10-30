@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { channelForVisit } from './traffic-channel'
 import { getAllCities } from '@/lib/cities/data'
-import { bestOfWeek, figuresFor, lastWeeks, stateScorecard, type DemandRow, type Rows, type Week, type WeekFigures, type Best, type StateScorecard } from './weekly-math'
+import { bestOfWeek, figuresFor, lastWeeks, refundedOf, stateScorecard, type DemandRow, type Rows, type Week, type WeekFigures, type Best, type StateScorecard } from './weekly-math'
 
 /**
  * READING THE ROWS BEHIND THE GROWTH PAGE. Every read here is a READ; the
@@ -111,10 +111,10 @@ export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<
     readEveryRow<{ confirmed_at: string | null }>('the new subscribers for the growth page', (from, to) =>
       admin.from('email_subscribers').select('confirmed_at').gte('confirmed_at', spanFrom).lt('confirmed_at', spanTo).order('id', { ascending: true }).range(from, to),
     ),
-    readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null }>('the orders for the growth page', (from, to) =>
+    readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>('the orders for the growth page', (from, to) =>
       admin
         .from('orders')
-        .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents')
+        .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents, refunds(amount_cents, status)')
         .eq('currency', 'AUD')
         .lt('created_at', spanTo)
         .order('id', { ascending: true })
@@ -164,6 +164,7 @@ export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<
       eventId: o.event_id,
       retainedCents: o.platform_fee_retained_cents === null ? null : Number(o.platform_fee_retained_cents),
       processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
+      refundedCents: refundedOf(o.refunds),
     })),
     refunds: refundRows.map((r) => ({ amountCents: Number(r.amount_cents ?? 0), status: r.status, at: iso(r.created_at) })),
   }
