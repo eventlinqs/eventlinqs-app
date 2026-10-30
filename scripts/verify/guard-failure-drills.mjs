@@ -1153,8 +1153,9 @@ const DRILLS = [
     expect: 'without passing it through pruneJsonLd',
   },
   /*
-   * geocoding-never-silent-null (close-out C9), two drills: the rule made to
-   * allow the production case, and the create action's call removed.
+   * geocoding-never-silent-null (close-out C9), three drills: the rule made to
+   * allow the production case, the create action's call removed, and the server
+   * key's name put back on the organiser's screen.
    */
   {
     name: 'the save rule lets a typed address with no coordinates through on production',
