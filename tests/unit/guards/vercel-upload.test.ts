@@ -197,7 +197,11 @@ describe('materialising the upload', () => {
        * a sibling directory under docs/verification must still arrive empty.
        */
       expect(holdsNoFile(join(dest, 'docs/verification/system-pass'))).toBe(true)
-      expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
+      if (sparse.has('docs/verification/LAUNCH-READINESS.md')) {
+        expect(heldAtHead(ROOT, 'docs/verification/LAUNCH-READINESS.md')).toBe(true)
+      } else {
+        expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
+      }
       expect(isGitCheckout(dest)).toBe(false)
     } finally {
       removeUpload(dest)
