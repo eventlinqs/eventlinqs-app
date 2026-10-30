@@ -20,6 +20,7 @@ import {
   excludedTopLevels,
 } from '../../../scripts/guards/lib/build-time-scripts.mjs'
 import { gitEnv } from '../../../scripts/lib/git-env.mjs'
+import { heldAtHead, leftOutOfThisCheckout, sparseAbsentPaths } from '../../../scripts/lib/sparse-checkout.mjs'
 
 /**
  * THE SHAPE OF THE TREE VERCEL BUILDS IN, PROVEN RATHER THAN ASSUMED.
@@ -178,8 +179,15 @@ describe('materialising the upload', () => {
     const dest = scratch()
     try {
       materialiseVercelUpload({ root: ROOT, dest, linkNodeModules: false })
+      // A read this sparse checkout leaves out cannot be copied from its disk; it must still be held at HEAD, which is
+      // what Vercel's full clone uploads (X13). On a full checkout the set is empty and every read is judged on disk.
+      const sparse = sparseAbsentPaths(ROOT)
       for (const required of Object.keys(REQUIRED_READS)) {
         const onDisk = required.endsWith('/') ? required.slice(0, -1) : required
+        if (!existsSync(join(dest, onDisk)) && leftOutOfThisCheckout(sparse, required)) {
+          expect(heldAtHead(ROOT, required), `${required} is left out of this checkout and HEAD must hold it`).toBe(true)
+          continue
+        }
         expect(existsSync(join(dest, onDisk)), required).toBe(true)
       }
       /*
@@ -189,7 +197,11 @@ describe('materialising the upload', () => {
        * a sibling directory under docs/verification must still arrive empty.
        */
       expect(holdsNoFile(join(dest, 'docs/verification/system-pass'))).toBe(true)
-      expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
+      if (sparse.has('docs/verification/LAUNCH-READINESS.md')) {
+        expect(heldAtHead(ROOT, 'docs/verification/LAUNCH-READINESS.md')).toBe(true)
+      } else {
+        expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
+      }
       expect(isGitCheckout(dest)).toBe(false)
     } finally {
       removeUpload(dest)
@@ -341,8 +353,14 @@ describe('telling the build host from a developer machine', () => {
 
 describe('the registry the two guards share', () => {
   test('every REQUIRED read exists in the tree', () => {
+    // Left out of a sparse checkout on purpose is not missing: HEAD must hold it (X13). A full checkout judges the disk.
+    const sparse = sparseAbsentPaths(ROOT)
     for (const path of Object.keys(REQUIRED_READS)) {
       const onDisk = path.endsWith('/') ? path.slice(0, -1) : path
+      if (!existsSync(join(ROOT, onDisk)) && leftOutOfThisCheckout(sparse, path)) {
+        expect(heldAtHead(ROOT, path), `${path} is left out of this checkout and HEAD must hold it`).toBe(true)
+        continue
+      }
       expect(existsSync(join(ROOT, onDisk)), path).toBe(true)
     }
   })
