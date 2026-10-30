@@ -1,0 +1,36 @@
+{
+  "_generated": "by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md and C:/dev/comms-gateway/permissions-granted.json; never edited by hand. version is the sha256 of the two policy files together, first 16 hex, as gateway.py computes it.",
+  "version": "6823dffe777dfa1e",
+  "firstSignature": [
+    "Lawal Adams",
+    "Founder, EventLinqs",
+    "eventlinqs.com.au",
+    "ABN 30 837 447 587",
+    "Geelong, VIC, Australia"
+  ],
+  "replySignature": [
+    "Lawal Adams",
+    "Founder, EventLinqs"
+  ],
+  "noExit": [
+    "no pressure",
+    "no thanks is fine",
+    "I won't write again",
+    "if the timing isn't right"
+  ],
+  "permissions": [
+    {
+      "recipient": "chair@amcf.org.au",
+      "topic": "AMCF past festival photos",
+      "given": "Fred Alale AM, 14 Oct 2026 00:52: links to photographs from previous festivals that you are welcome to use to promote AMCF",
+      "neverAsk": [
+        "happy for us to use",
+        "permission to use",
+        "may we use",
+        "can we use",
+        "okay to use",
+        "ok to use"
+      ]
+    }
+  ]
+}
