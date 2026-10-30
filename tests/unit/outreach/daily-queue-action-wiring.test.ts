@@ -25,13 +25,13 @@ describe('the Sent press', () => {
   })
 
   test('records the send through markSent as that admin, and audits it', () => {
-    expect(src).toMatch(/markSent\(\s*createAdminClient\(\),\s*\{[^}]*sentBy:\s*session\.userId/)
+    expect(src).toMatch(/markSent\(\s*(?:createAdminClient\(\)|db),\s*\{[^}]*sentBy:\s*session\.userId/)
     expect(src).toMatch(/recordAuditEvent\(\{\s*action:\s*'admin\.outreach\.sent'/)
   })
 
   test("needs Lawal's tick that he checked their page, records that check as him, and only then marks it sent (the CONTROLLER's 05:32 (3))", () => {
     expect(src).toMatch(/formData\.get\('checked'\)/)
-    expect(src).toMatch(/confirmPageChecked\(\s*createAdminClient\(\),\s*\{[^}]*by:\s*session\.userId/)
+    expect(src).toMatch(/confirmPageChecked\(\s*(?:createAdminClient\(\)|db),\s*\{[^}]*by:\s*session\.userId/)
     expect(src.indexOf('confirmPageChecked(')).toBeLessThan(src.indexOf('markSent('))
     expect(read(resolve('src/app/admin/(authed)/acquisition/daily-queue-item.tsx'))).toMatch(/name="checked"[^>]*required/)
   })

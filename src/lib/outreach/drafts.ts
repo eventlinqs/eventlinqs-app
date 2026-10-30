@@ -1,11 +1,13 @@
 /**
- * ONE MESSAGE FROM A TEMPLATE ROW, STORED QUEUED OR HELD (window 6, 28 October 2026).
+ * ONE MESSAGE FROM A TEMPLATE ROW, STORED HELD (window 6, 28 October 2026; window 2, 31 October 2026).
  *
  * The newest version of the template is filled from the contact's verified facts (src/lib/outreach/facts.ts) and judged
- * by every rule of the messages file (src/lib/outreach/rules.ts). A message that passes is stored QUEUED for the sender
- * when it may go automatically (an email inside an approved play, or an answer or partner message by email); one that
- * fails any rule is stored HELD with the rules named, for Lawal (the project manager's 20:10). The database judges it
- * again either way and refuses what it must (migrations 213001 and 224001), in its own words.
+ * by every rule of the messages file (src/lib/outreach/rules.ts); one that fails any rule is stored with the rules named
+ * (the project manager's 20:10). Every message is stored HELD: nothing leaves held by itself (Lawal's zero-bypass
+ * directive, the CONTROLLER's 08:40 of 31 October 2026). It waits on the daily queue in /admin/acquisition, where the
+ * communication gateway (voice-gate.ts) judges its words and Lawal approves those exact words before it is recorded as
+ * sent. Until 31 October an email inside an approved play was stored QUEUED for the sender here; that ended. The
+ * database judges it again and refuses what it must (migrations 213001 and 224001), in its own words.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
@@ -68,8 +70,8 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
     unsubscribe,
   )
 
-  const automatic = contact.data.channel === 'email' && (r.purpose !== 'cadence' || Boolean(r.playId))
-  const state: 'queued' | 'held' = automatic && rendered.heldBecause.length === 0 ? 'queued' : 'held'
+  // Nothing is queued for the sender from here: Lawal approves each message's exact words first (voice-gate.ts).
+  const state = 'held' as const
   const row = await db
     .from('outreach_touches')
     .insert({
@@ -82,8 +84,8 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
       body: rendered.body,
       held_because: rendered.heldBecause,
       state,
-      provider: state === 'queued' ? 'graph' : null,
-      scheduled_for: state === 'queued' ? r.scheduledFor.toISOString() : null,
+      provider: null,
+      scheduled_for: null,
       in_reply_to: r.inReplyTo ?? null,
       night_report_id: r.nightReportId ?? null,
       half: r.half ?? null,

@@ -11,6 +11,7 @@ import { readDailyQueue } from '@/lib/outreach/daily-queue'
 import { CHANNEL_WORDS, nextStepWords, notReady, openInApp, stepWords, type QueueChannel } from '@/lib/outreach/daily-queue-math'
 import { markSentAction } from './actions'
 import { DailyQueueItem } from './daily-queue-item'
+import { readVoicePolicy } from '@/lib/outreach/voice-gate'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
 /**
@@ -62,7 +63,9 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
   const counts = ACQUISITION_STATES.map((s) => ({ state: s, n: [...stateOf.values()].filter((v) => v === s).length })).filter((c) => c.n > 0)
   // A queue that could not be read is said so, never shown as an empty day.
   let queue: QueueChannel[] | null = null
+  let policyVersion = ''
   try {
+    policyVersion = readVoicePolicy().version
     queue = await readDailyQueue(db, new Date())
   } catch (err) {
     console.warn('[admin/acquisition] the daily queue could not be read', err instanceof Error ? err.message : String(err))
@@ -121,7 +124,7 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
                             <p className="mt-3 text-sm text-white">Not ready: {why.join('; ')}.</p>
                           ) : (
                             <>
-                              <DailyQueueItem touchId={t.touchId} body={t.body} openHref={href} openLabel={OPEN_LABEL[t.channel]} action={markSentAction} />
+                              <DailyQueueItem touchId={t.touchId} contentHash={t.contentHash} policyVersion={policyVersion} body={t.body} openHref={href} openLabel={OPEN_LABEL[t.channel]} action={markSentAction} />
                               <p className="mt-2 text-xs text-white/50">{nextStepWords(t.step)}</p>
                             </>
                           )}
