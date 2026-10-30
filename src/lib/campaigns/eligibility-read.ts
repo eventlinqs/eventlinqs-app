@@ -5,7 +5,8 @@ import { ctaStateOf } from '@/lib/events/cta'
 import { computeFeeLineCents } from '@/lib/payments/fee-math'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { usableImages } from '@/lib/social/store'
-import { venueMediaDeps, venuePhotosFor } from '@/lib/venues/venue-images'
+import { venueMediaDeps } from '@/lib/venues/venue-images'
+import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { judgeEvent, type EligibilityJudgement } from './eligibility'
 
 /** The rows behind the eligibility engine (./eligibility.ts): every public night in the directive's 90 days. */
@@ -19,7 +20,7 @@ type TierRow = { price: number; total_capacity: number; sold_count: number; rese
 export type JudgedEvent = EligibilityJudgement & { readonly eventId: string; readonly slug: string; readonly title: string; readonly startDate: string }
 export type EligibilityReport = {
   readonly events: readonly JudgedEvent[]
-  /** True when the venue photographs could not be read, so a venue's photograph counted for nothing in this reading. */
+  /** True when the nights' dealt venue photographs could not be read, so a venue photograph counted for nothing in this reading. */
   readonly venuePhotosUnread: boolean
 }
 
@@ -44,7 +45,7 @@ export async function readEligibility(now: Date = new Date()): Promise<Eligibili
   let venuePhotosUnread = false
   let venuePhotos = new Map<string, unknown>()
   try {
-    venuePhotos = await venuePhotosFor(rows.flatMap((r) => (r.venue_id ? [r.venue_id as string] : [])), 'event_card', venueMediaDeps())
+    venuePhotos = await eventCoversFor(rows.map((r) => r.id as string), 'event_card', venueMediaDeps())
   } catch {
     venuePhotosUnread = true
   }
@@ -74,7 +75,7 @@ export async function readEligibility(now: Date = new Date()): Promise<Eligibili
         destinationDead: tiers.length === 0 && links.length > 0 && liveLinks.length === 0,
         soldOut:
           tiers.length > 0 ? left <= 0 : liveLinks.length > 0 && !liveLinks.some((l) => l.availability === 'on_sale' || l.availability === 'not_yet'),
-        media: owned.has(r.id as string) ? 'organiser' : r.venue_id && venuePhotos.has(r.venue_id as string) ? 'venue' : null,
+        media: owned.has(r.id as string) ? 'organiser' : venuePhotos.has(r.id as string) ? 'venue' : null,
         potentialFeeCents:
           tiers.length === 0
             ? null
