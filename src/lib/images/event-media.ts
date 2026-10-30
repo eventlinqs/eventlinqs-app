@@ -1,5 +1,5 @@
 import { BRANDED_FALLBACK_PHOTO } from './category-photo'
-import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
+import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { isLibraryPhoto } from '@/lib/media/library-photo'
 
@@ -205,9 +205,7 @@ export const ORGANISER_COVER_OBJECT_POSITION = '50% 0%'
  * which never had it, inherits the same answer. That is the same one-source
  * lesson UX1.2 is about.
  */
-export function isComposedCover(url: string | null | undefined): boolean {
-  return typeof url === 'string' && url.includes(`/${GENERATED_COVER_PREFIX}/`)
-}
+export { isComposedCover }
 
 /**
  * A hero whose only image is our composed cover is TYPOGRAPHIC: the event page sets the title in type over the hero,

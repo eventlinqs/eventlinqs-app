@@ -4,7 +4,8 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { Reveal } from '@/components/ui/reveal'
-import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -285,7 +286,15 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               to keep it. */}
           <figure className="m-0">
             <div className="relative aspect-[3/2] overflow-hidden bg-ink-900 lg:aspect-[16/7] lg:rounded-[var(--radius-card)]">
-              {hero.image && <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />}
+              {/* A night whose only image is our composed cover: its artwork is the title set again under this figure,
+                  so the typographic cover stands in (the category and the EventLinqs mark; no date mark, as a guide can
+                  span many days), as on the event page (heroIsTypographic). */}
+              {hero.image &&
+                (heroIsTypographic({ image: hero.image }) ? (
+                  <BrandedPlaceholder category={event.category?.name ?? null} />
+                ) : (
+                  <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />
+                ))}
             </div>
             {guide.cover_credit && (
               <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">

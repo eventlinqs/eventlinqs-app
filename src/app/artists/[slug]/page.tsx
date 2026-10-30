@@ -20,6 +20,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { OrganiserProfileHero } from '@/components/features/organisers/organiser-profile-hero'
 import { EventVideo } from '@/components/features/events/event-video'
@@ -132,7 +133,7 @@ export default async function ArtistProfilePage({ params }: Props) {
   const showcase = showcaseOn ? await fetchShowcaseArtistBySlug(admin, slug) : null
 
   const shows = await fetchArtistUpcomingShows(admin, artist.id)
-  const showCards = await fetchShowCards(admin, shows.map((s) => s.eventId))
+  const showCards = await withVenuePhotos(await fetchShowCards(admin, shows.map((s) => s.eventId)))
   const credits = showcaseOn ? await fetchArtistCredits(admin, artist.id) : []
   const draw = showcase?.draw_consent ? await fetchArtistAttribution(admin, artist.id) : null
 

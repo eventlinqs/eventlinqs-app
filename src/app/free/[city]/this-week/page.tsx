@@ -9,6 +9,7 @@ import { FreeWeekLandingPage, type FreeWeekCategoryLink } from '@/components/tem
 import { describeFreeWeek, freeWeekPath, groupFreeWeekByDay } from '@/lib/listings/free-week'
 import { loadFreeWeek, readGuideCities, readGuideCity } from '@/lib/listings/free-week-surface'
 import type { PublicEventRow } from '@/lib/events/types'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { isCitySlug } from '@/lib/cities/data'
 
 /**
@@ -71,12 +72,13 @@ export default async function FreeWeekPage({ params, searchParams }: Props) {
   if (!city) notFound()
 
   const now = new Date()
-  const [{ from, to, events, total }, guideCities, heroImage, query] = await Promise.all([
+  const [{ from, to, events: rows, total }, guideCities, heroImage, query] = await Promise.all([
     loadFreeWeek(city),
     readGuideCities(),
     getCityHeroPhoto(city.slug),
     searchParams,
   ])
+  const events = await withVenuePhotos(rows)
   const week = describeFreeWeek(from, to, city.timezone)
   const path = freeWeekPath(city.slug)
   const baseUrl = getSiteUrl()

@@ -38,7 +38,7 @@ export type RawRow = {
   ticket_tiers: { id: string; price: number; currency: string; sold_count: number; reserved_count: number; total_capacity: number }[] | null
 }
 
-export function toBentoEvent(r: RawRow): BentoEvent {
+export function toBentoEvent(r: RawRow & { image_credit?: string | null }): BentoEvent {
   const tiers = r.ticket_tiers ?? []
   const sold = tiers.reduce((s, t) => s + t.sold_count, 0)
   const cap = tiers.reduce((s, t) => s + t.total_capacity, 0)
@@ -49,6 +49,7 @@ export function toBentoEvent(r: RawRow): BentoEvent {
     title: r.title,
     summary: r.summary,
     cover_image_url: r.cover_image_url,
+    image_credit: r.image_credit ?? null,
     thumbnail_url: r.thumbnail_url,
     gallery_urls: r.gallery_urls,
     start_date: r.start_date,
