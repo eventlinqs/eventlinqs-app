@@ -40,7 +40,7 @@ export type DraftRequest = {
   draftedBy: string
 }
 
-export type DraftResult = Done<{ id: string; state: 'queued' | 'held'; heldBecause: string[] }>
+export type DraftResult = Done<{ id: string; state: 'held'; heldBecause: string[] }>
 
 export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<DraftResult> {
   const template = r.templateId

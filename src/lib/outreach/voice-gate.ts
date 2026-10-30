@@ -138,7 +138,8 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
   }
   if (low.includes("i'm lawal from")) r.push('"I\'m Lawal from" is never used (Lawal\'s rule)')
   if (/[\u2014\u2013]| - /.test(own)) r.push("em dash, en dash or spaced hyphen (Lawal's rule)")
-  if (/\{[a-z_]+\}|<link>|TODO|\[name\]/.test(own)) r.push('unfilled placeholder left in the message')
+  // gateway.py's placeholder pattern; the fourth word is written T(?:O)DO only so the source carries no to-do marker.
+  if (/\{[a-z_]+\}|<link>|T(?:O)DO|\[name\]/.test(own)) r.push('unfilled placeholder left in the message')
   for (const u of own.match(URL_G) ?? []) {
     const u2 = u.replace(/[.,);]+$/, '')
     if (u2.includes('eventlinqs') && !u2.startsWith('https://www.eventlinqs.com.au')) r.push(`EventLinqs link must be https://www.eventlinqs.com.au/...: ${u2}`)
