@@ -47,8 +47,9 @@ import { EventTrustSignals } from '@/components/features/event/EventTrustSignals
 // Next.js does not code-split a Client Component dynamically imported from one.
 // The dynamic import is now owned by a Client Component boundary
 // (venue-map-lazy.tsx), which is what actually keeps the map code out of the
-// initial chunk set.
-import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
+// initial chunk set. The venue section that draws it is shared by every event page (event-venue-section.tsx).
+import { EventSection } from '@/components/events/event-page/event-sections'
+import { EventVenueSection } from '@/components/events/event-page/event-venue-section'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { describeRefundPolicy, refundPolicyBadge, policyFromEvent } from '@/lib/refunds/policy'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
@@ -1203,6 +1204,7 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Hero at the single platform scale (.hero-marketing). Flattened from
             the retired 55-70vh content tier per the 2026 competitor mirror:
             neither TM nor Eventbrite runs a taller event-detail hero. */}
+        <EventSection name="hero">
         <section
           aria-label="Event hero"
           className="hero-marketing relative flex items-end overflow-hidden bg-navy-950"
@@ -1319,6 +1321,7 @@ export default async function EventDetailPage({ params }: Props) {
             </HeroCaption>
           </div>
         </section>
+        </EventSection>
 
         {/* Lawal's ruling of 27 October 2026, 08:33: a listing EventLinqs made from
             public information shows its licensed library shot until the host's own
@@ -1425,6 +1428,7 @@ export default async function EventDetailPage({ params }: Props) {
 
                 {/* When + Where. Reveal each discrete block (transform+opacity,
                     no reflow) so the sticky ticket panel is untouched. */}
+                <EventSection name="facts">
                 <Reveal as="div" className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
                     <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
@@ -1512,6 +1516,7 @@ export default async function EventDetailPage({ params }: Props) {
                     )}
                   </div>
                 </Reveal>
+                </EventSection>
 
                 {/* Know before you go: the practical answers in one card
                     (surpass edge B1; rows render only from known data). */}
@@ -1550,22 +1555,11 @@ export default async function EventDetailPage({ params }: Props) {
                   </Reveal>
                 )}
 
-                {/* Venue map */}
+                {/* The venue: the ONE section every event page draws (the map with its pin, then getting there with the
+                    address and Get directions; src/components/events/event-page/event-venue-section.tsx). */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
                   <Reveal as="div" className="mt-10">
-                    <SectionHeader eyebrow="Location" title="Venue" size="sm" />
-                    <div className="mt-5">
-                      <VenueMapLazy
-                        bare
-                        venueName={event.venue_name}
-                        address={event.venue_address}
-                        city={event.venue_city}
-                        state={event.venue_state}
-                        country={event.venue_country}
-                        latitude={event.venue_latitude}
-                        longitude={event.venue_longitude}
-                      />
-                    </div>
+                    <EventVenueSection event={event} heading={<SectionHeader eyebrow="Location" title="Venue" size="sm" />} addressStatedAbove />
                   </Reveal>
                 )}
 
@@ -1617,6 +1611,7 @@ export default async function EventDetailPage({ params }: Props) {
                 {/* An EventLinqs listing names its host, never the listings organisation (ruling A of 23 October 2026,
                     src/lib/listings/shown-organiser.ts): this card linked /organisers/eventlinqs-listings, a 404, on every
                     curated night this page draws (window 5's finish pass, 29 October 2026, Law 5). */}
+                <EventSection name="organiser">
                 {event.organisation && shownOrganiser(event, event.organisation).slug !== null && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
@@ -1683,6 +1678,7 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
                 )}
+                </EventSection>
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
