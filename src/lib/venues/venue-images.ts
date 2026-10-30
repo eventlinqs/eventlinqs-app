@@ -177,9 +177,18 @@ export async function approveVenuePhoto(
   }
   const approved = await decide('venue_image_approve', { p_admin: input.adminId, p_image: input.imageId, p_quality: input.quality, p_primary: input.primary }, input.imageId, deps)
   if (approved.state === 'refused') return approved
-  const dealt = await deps.rpc('deal_venue_photos', {})
-  if (dealt.error) throw new Error(`the photograph was approved but not dealt to a night: ${dealt.error.message}`)
+  await dealVenuePhotos(deps)
   return approved
+}
+
+/**
+ * Deals each venue's approved, fingerprinted photos one per open night, the strongest to the soonest (the photo system's
+ * P3; public.deal_venue_photos). Answers how many it gave out; running it again gives out nothing new.
+ */
+export async function dealVenuePhotos(deps: Pick<VenueMediaDeps, 'rpc'>): Promise<number> {
+  const dealt = await deps.rpc('deal_venue_photos', {})
+  if (dealt.error) throw new Error(`the venue photos could not be dealt: ${dealt.error.message}`)
+  return Number(dealt.data ?? 0)
 }
 
 /** Staff refuse a photograph, the reason kept; it never serves. */
