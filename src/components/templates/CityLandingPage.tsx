@@ -47,8 +47,6 @@ interface Props {
   relatedCityImages: Record<string, string | null>
   /** Map of suburb slug → Pexels landscape URL. Tier 1 only. */
   suburbImages: Record<string, string | null>
-  /** Map of community slug → Pexels landscape URL for the Browse-by-Community rail. */
-  communityImages: Record<string, string | null>
   suburbs: SuburbContent[]
   /** Pre-built Mapbox pins (geocoded events). */
   mapPins: MapEventPin[]
@@ -95,7 +93,6 @@ export function CityLandingPage({
   eventTypeImages,
   relatedCityImages,
   suburbImages,
-  communityImages,
   suburbs,
   mapPins,
   hasFreeGuide = false,
@@ -237,7 +234,6 @@ export function CityLandingPage({
       <BrowseByCommunityRail
         citySlug={city.slug}
         cityName={city.name}
-        images={communityImages}
       />
 
       <EventTypesRail

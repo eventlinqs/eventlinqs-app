@@ -25,14 +25,16 @@ interface RelatedIntersection {
   communityLabel: string
   citySlug: string
   cityLabel: string
-  image: string | null
 }
 
+/**
+ * Both related rails open other community-in-city pages, which have no photo of their own, so their tiles draw the
+ * navy tile and take no photo (NO PHOTO IS EVER REUSED, Lawal, 31 October 2026; the photo system's P6).
+ */
 interface RelatedCommunity {
   slug: string
   label: string
   tagline: string
-  image: string | null
 }
 
 /**
@@ -362,18 +364,14 @@ export function CommunityCityLandingPage({
                 className={`group block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
               >
                 <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                  {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} layout="rail-standard-tile" />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                      }}
-                    />
-                  )}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                    }}
+                  />
                   <TileCaption className="p-3">
                     <p className="font-display text-sm font-semibold text-white">
                       {item.communityLabel}
@@ -406,18 +404,14 @@ export function CommunityCityLandingPage({
                 className={`group flex h-full flex-col ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg motion-reduce:transition-none`}
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                  {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} layout="rail-wide-tile" />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                      }}
-                    />
-                  )}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                    }}
+                  />
                   {/* The tagline moved below the image: on this 16:10 tile the
                     *  two together measured 93px against 161px, 72.6 per cent of
                     *  a picture the rail exists to show. */}
