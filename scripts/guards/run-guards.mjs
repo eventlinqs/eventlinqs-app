@@ -644,6 +644,8 @@
  *                              its first run naming a token globals.css does not declare
  *   tiles-on-stored-photos     every community and category tile is on a stored
  *                              photograph, and a refused Pexels lookup is never cached
+ *   sub-community-tiles-stored every sub-community tile on every community page is on a
+ *                              stored photograph (30 October 2026, 90 of 105 drew none)
  *   card-price-from-cta        every card, tile and map pin takes its price words from the
  *                              night's call to action: never 'Free' unless free is stored
  *                              (30 October 2026, Kate Ceberano's paid show read 'Free')
@@ -2014,6 +2016,9 @@ const GUARDS = [
   // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
   // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.
   'scripts/guards/tiles-on-stored-photos.mjs',
+  // 30 October 2026, Lawal 16:05 (L14): the First Nations and Indian tiles drew no photograph on production; read from
+  // the served HTML, 90 of the 105 sub-community tiles were the navy gradient. Red on main with 91 clauses.
+  'scripts/guards/sub-community-tiles-stored.mjs',
   // 30 October 2026, the project manager's 12:40 at 390 x 844: Kate Ceberano's paid Costa Hall show read 'Free' on
   // /city/geelong. Every card, tile and pin now takes its price words from the night's call to action; red on main
   // with 13 faults across six surfaces (the card, the bento tile, the this-week card, the trending bento, the map pins
