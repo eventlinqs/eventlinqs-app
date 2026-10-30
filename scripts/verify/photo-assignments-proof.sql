@@ -82,9 +82,21 @@ BEGIN
     ELSE v_out := v_out || ' | A2 unhashed: FAIL (' || v_n || ')'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A2 unhashed: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
-  UPDATE public.venue_images SET photo_sha256 = repeat('1', 64), photo_dhash = 0 WHERE id = v_p1;
-  UPDATE public.venue_images SET photo_sha256 = repeat('2', 64), photo_dhash = -1 WHERE id = v_p2;
-  UPDATE public.venue_images SET photo_sha256 = repeat('3', 64), photo_dhash = 6148914691236517205 WHERE id = v_p3;
+  -- A9 the fingerprint is written once, through its function, and never changed to other bytes.
+  BEGIN
+    PERFORM public.venue_image_fingerprint(v_p1, repeat('1', 64), 0);
+    PERFORM public.venue_image_fingerprint(v_p1, repeat('1', 64), 0);
+    BEGIN
+      PERFORM public.venue_image_fingerprint(v_p1, repeat('8', 64), 0);
+      v_ok := false;
+    EXCEPTION WHEN check_violation THEN v_ok := sqlerrm LIKE '%fingerprinted already%';
+    END;
+    IF v_ok AND NOT has_function_privilege('anon', 'public.venue_image_fingerprint(uuid, text, bigint)', 'execute') THEN
+      v_out := v_out || ' | A9 a fingerprint is written once and never changed to other bytes: PASS';
+    ELSE v_out := v_out || ' | A9 fingerprint: FAIL'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A9 fingerprint: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+  PERFORM public.venue_image_fingerprint(v_p2, repeat('2', 64), -1);
+  PERFORM public.venue_image_fingerprint(v_p3, repeat('3', 64), 6148914691236517205);
 
   -- A3 dealt one per series, the strongest to the soonest; the pool beyond the nights stays unassigned; twice is once.
   BEGIN
@@ -164,6 +176,20 @@ BEGIN
       v_out := v_out || ' | A8 a withdrawn photo retires, stays used, and its series takes the waiting photo: PASS';
     ELSE v_out := v_out || ' | A8 withdrawn: FAIL (' || v_n || ', ' || v_m || ', ' || v_series_n || ')'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A8 withdrawn: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- A10 a near copy waiting in the pool (one bit from photo one) is passed over; the deal does not fail.
+  BEGIN
+    INSERT INTO public.venue_images (venue_id, image_url, source, source_url, licence, attribution_text, permitted_uses, approval_state, match_method)
+    VALUES (v_venue, 'https://images.eventlinqs.com/proof/photo-1-resized.jpg', 'licensed', 'https://images.eventlinqs.com/proof/photo-1r', 'licensed', 'Photo: Proof One Again', array['event_card', 'event_page'], 'pending', 'manual')
+    RETURNING id INTO v_p2;
+    PERFORM public.venue_image_approve(v_staff, v_p2, 99::smallint, false);
+    PERFORM public.venue_image_fingerprint(v_p2, repeat('4', 64), 1);
+    UPDATE public.venue_images SET approval_state = 'withdrawn', withdrawn_at = now() WHERE id = v_p3;
+    v_m := public.deal_venue_photos();
+    IF v_m = 0 AND NOT EXISTS (SELECT 1 FROM public.photo_assignments WHERE venue_image_id = v_p2) THEN
+      v_out := v_out || ' | A10 a near copy in the pool is passed over and the deal still runs: PASS';
+    ELSE v_out := v_out || ' | A10 near copy in the pool: FAIL (' || v_m || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A10 near copy in the pool: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
   -- The runner reads the verdict up to the first double quote, and error messages quote names.
   RAISE EXCEPTION 'PROOF % (% failure(s), rolled back):%',

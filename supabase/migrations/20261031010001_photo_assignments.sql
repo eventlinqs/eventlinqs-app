@@ -143,10 +143,42 @@ $$;
 revoke all on function public.event_is_open_night(timestamptz, timestamptz, timestamptz) from public;
 grant execute on function public.event_is_open_night(timestamptz, timestamptz, timestamptz) to anon, authenticated, service_role;
 
--- P3 and P4. Deals each venue's approved, verified, hashed photos (card use) that are not yet assigned, strongest first,
--- to that venue's open public nights that have no own photo and no cover yet, soonest first; a series takes one photo
--- for all its nights, at the place of its soonest open night. Answers how many it assigned. Run after an approval and
--- daily; running it twice assigns nothing new.
+-- The photo's fingerprint, written once by the server that read its bytes (src/lib/images/photo-hash.ts): never changed
+-- after, so an assignment's photo is always the photo that was looked at.
+create or replace function public.venue_image_fingerprint(p_image uuid, p_sha256 text, p_dhash bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_img public.venue_images;
+begin
+  select * into v_img from public.venue_images where id = p_image;
+  if v_img.id is null then
+    raise exception 'refused: no such photograph' using errcode = '23514';
+  end if;
+  if p_sha256 is null or p_sha256 !~ '^[0-9a-f]{64}$' or p_dhash is null then
+    raise exception 'refused: a fingerprint is a SHA-256 in hex and a difference hash' using errcode = '23514';
+  end if;
+  if v_img.photo_sha256 is not null then
+    if v_img.photo_sha256 = p_sha256 and v_img.photo_dhash = p_dhash then
+      return;
+    end if;
+    raise exception 'refused: that photograph was fingerprinted already, as other bytes' using errcode = '23514';
+  end if;
+  update public.venue_images set photo_sha256 = p_sha256, photo_dhash = p_dhash where id = p_image;
+end;
+$$;
+
+revoke all on function public.venue_image_fingerprint(uuid, text, bigint) from public, anon, authenticated;
+grant execute on function public.venue_image_fingerprint(uuid, text, bigint) to service_role;
+
+-- P3 and P4. Deals each venue's approved, verified, fingerprinted photos (card use) that are not yet assigned, strongest
+-- first, to that venue's open public nights that have no own photo and no cover yet, soonest first; a series takes one
+-- photo for all its nights, at the place of its soonest open night. A photo the database refuses (a near copy of one
+-- already assigned, to any event) is passed over and the night takes the next. Answers how many it assigned. Run after
+-- an approval and daily; running it twice assigns nothing new.
 create or replace function public.deal_venue_photos(p_now timestamptz default now())
 returns integer
 language plpgsql
@@ -154,7 +186,9 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_n integer;
+  v_n integer := 0;
+  v_unit record;
+  v_photo record;
 begin
   -- A photo no longer approved and verified for cards retires from its night; the night may take another.
   update public.photo_assignments a
@@ -166,44 +200,49 @@ begin
           and 'event_card' = any (i.permitted_uses)
      );
 
-  with units as (
-    -- one row a standalone night, one row a series (its soonest open night places it)
-    select distinct on (coalesce(e.listing_series_id, e.id))
-           e.venue_id, e.id as event_id, e.listing_series_id, e.start_date
-      from public.events e
-     where e.status = 'published' and e.visibility = 'public' and e.venue_id is not null
-       and public.event_is_open_night(e.start_date, e.end_date, p_now)
-       and not public.event_has_own_photo(e.cover_image_url)
-     order by coalesce(e.listing_series_id, e.id), e.start_date, e.id
-  ),
-  open_units as (
-    select u.*, row_number() over (partition by u.venue_id order by u.start_date, u.event_id) as slot
-      from units u
+  for v_unit in
+    select u.*
+      from (
+        -- one row a standalone night, one row a series (its soonest open night places it)
+        select distinct on (coalesce(e.listing_series_id, e.id))
+               e.venue_id, e.id as event_id, e.listing_series_id, e.start_date
+          from public.events e
+         where e.status = 'published' and e.visibility = 'public' and e.venue_id is not null
+           and public.event_is_open_night(e.start_date, e.end_date, p_now)
+           and not public.event_has_own_photo(e.cover_image_url)
+         order by coalesce(e.listing_series_id, e.id), e.start_date, e.id
+      ) u
      where not exists (
        select 1 from public.photo_assignments a
         where a.role = 'cover' and a.retired_at is null
           and ((u.listing_series_id is not null and a.listing_series_id = u.listing_series_id)
             or (u.listing_series_id is null and a.event_id = u.event_id))
      )
-  ),
-  pool as (
-    select i.*, row_number() over (partition by i.venue_id order by i.is_primary desc, i.quality_score desc nulls last, i.approved_at, i.id) as slot
-      from public.venue_images i
-     where i.approval_state = 'approved' and i.verified_depicts_venue and i.venue_id is not null
-       and 'event_card' = any (i.permitted_uses)
-       and i.photo_sha256 is not null
-       and not exists (select 1 from public.photo_assignments a where a.photo_sha256 = i.photo_sha256)
-  ),
-  made as (
-    insert into public.photo_assignments (photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, venue_image_id)
-    select p.photo_sha256, p.photo_dhash, p.image_url,
-           case when o.listing_series_id is null then o.event_id end, o.listing_series_id,
-           'cover', 'venue', p.id
-      from pool p
-      join open_units o on o.venue_id = p.venue_id and o.slot = p.slot
-    returning 1
-  )
-  select count(*) into v_n from made;
+     order by u.venue_id, u.start_date, u.event_id
+  loop
+    for v_photo in
+      select i.id, i.photo_sha256, i.photo_dhash, i.image_url
+        from public.venue_images i
+       where i.venue_id = v_unit.venue_id
+         and i.approval_state = 'approved' and i.verified_depicts_venue
+         and 'event_card' = any (i.permitted_uses)
+         and i.photo_sha256 is not null
+         and not exists (select 1 from public.photo_assignments a where a.photo_sha256 = i.photo_sha256)
+       order by i.is_primary desc, i.quality_score desc nulls last, i.approved_at, i.id
+    loop
+      begin
+        insert into public.photo_assignments (photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, venue_image_id)
+        values (v_photo.photo_sha256, v_photo.photo_dhash, v_photo.image_url,
+                case when v_unit.listing_series_id is null then v_unit.event_id end, v_unit.listing_series_id,
+                'cover', 'venue', v_photo.id);
+        v_n := v_n + 1;
+        exit;
+      exception when raise_exception or unique_violation then
+        -- refused as a near copy, or already taken: the next photo is tried for this night
+        null;
+      end;
+    end loop;
+  end loop;
   return v_n;
 end;
 $$;
