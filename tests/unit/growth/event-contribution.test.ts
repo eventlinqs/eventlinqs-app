@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { contributionByEvent, profitabilityLines } from '@/lib/growth/event-contribution'
+import { contributionByEvent, profitabilityFigures, profitabilityLines } from '@/lib/growth/event-contribution'
 
 /**
  * EVENT-LEVEL PROFITABILITY (D9x of Lawal's DemandOS directive of 30 October 2026, section 9: "Calculate the contribution
@@ -57,5 +57,20 @@ describe('the words', () => {
       pooledSpendCents: 2_500,
     })
     expect(lines).toEqual(['Event campaigns: A$2.00 contribution, A$0.00 direct cost, A$2.00 after it', 'Platform acquisition, reported apart: A$25.00 spent'])
+  })
+})
+
+describe('on /admin/today', () => {
+  test('monthly measures: the event campaigns, and acquisition apart', () => {
+    const figs = profitabilityFigures({ events: contributionByEvent({ orders: [order()], spend: [] }), pooledSpendCents: 0 })
+    expect(figs.map((f) => [f.label, f.value, f.cadence, f.kind, f.display])).toEqual([
+      ['Event campaigns, last 28 days', 200, 'monthly', 'measure', 'A$2.00 contribution, A$0.00 direct cost, A$2.00 after it'],
+      ['Platform acquisition, last 28 days', 0, 'monthly', 'measure', 'A$0.00 spent, reported apart from any night'],
+    ])
+  })
+  test('a night that lost money after its campaign asks for a person', () => {
+    const figs = profitabilityFigures({ events: contributionByEvent({ orders: [], spend: [{ scope: 'event', eventId: 'e9', amountCents: 500 }] }), pooledSpendCents: 0 })
+    expect(figs[0]).toMatchObject({ value: -500, asksForAPerson: true, kind: 'failed' })
+    expect(figs[0].display).toContain('1 night lost money')
   })
 })
