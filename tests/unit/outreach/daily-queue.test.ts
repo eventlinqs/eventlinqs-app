@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { QUEUE_CHANNELS, buildDailyQueue, nextStepWords, openInApp, type QueueTouch } from '@/lib/outreach/daily-queue-math'
+import { QUEUE_CHANNELS, buildDailyQueue, nextStepWords, notReady, openInApp, type QueueTouch } from '@/lib/outreach/daily-queue-math'
 
 /*
  * LAWAL's DAILY OUTREACH QUEUE (the PROJECT MANAGER's 00:42 and 05:05, 31 October 2026). Every message he sends by hand
@@ -9,6 +9,8 @@ import { QUEUE_CHANNELS, buildDailyQueue, nextStepWords, openInApp, type QueueTo
 const touch = (id: string, channel: QueueTouch['channel'], draftedAt: string, step = 1): QueueTouch => ({
   touchId: id,
   step,
+  purpose: 'cadence',
+  heldBecause: [],
   subject: null,
   body: `Hi team, a message ${id}`,
   trackedLink: null,
@@ -61,5 +63,13 @@ describe('what follows a press of sent', () => {
     expect(nextStepWords(1)).toBe('Follow up 1 is drafted 4 days after this is sent.')
     expect(nextStepWords(2)).toBe('Follow up 2 is drafted 6 days after this is sent.')
     expect(nextStepWords(3)).toBe('The last message: nothing follows it.')
+  })
+})
+
+describe('ready to send', () => {
+  it('a draft held for a reason, or with nowhere to open, is not ready, and says why', () => {
+    expect(notReady(touch('ok', 'instagram', '2026-10-31T00:00:00Z'))).toEqual([])
+    expect(notReady({ ...touch('h', 'instagram', '2026-10-31T00:00:00Z'), heldBecause: ['the no-messages statement is not checked'] })).toEqual(['the no-messages statement is not checked'])
+    expect(notReady({ ...touch('x', 'facebook', '2026-10-31T00:00:00Z'), address: 'http://insecure.example' })).toEqual(['its address cannot be opened safely'])
   })
 })
