@@ -18,6 +18,7 @@
  *   4. the Refund policy block and the trust row render only behind the promise gate (src/lib/events/event-page-promises.ts,
  *      which reads cta.ts's ticketingByEventLinqs);
  *   5. on an outside night the hero carries the one booking link and the panel is told so (bookingInHero).
+ *   6. E1's words ('Free entry') are never written in the page: a $0 ticket type of ours is a registration (E2).
  *
  * WHAT IT CANNOT SEE: a fact restated through a component it does not name. It names the blocks that repeated on
  * production rather than guessing at every way a sentence could be written twice.
@@ -103,6 +104,10 @@ if (page) {
   if (!/data-booking-button/.test(page)) faults.push(`${PAGE} has no booking link in the hero for an outside night`)
   if (!/bookingInHero=\{/.test(page)) faults.push(`${PAGE} never tells the outside panel the hero carries its button`)
   if (!/bookingHref=\{/.test(page)) faults.push(`${PAGE} never sends the sticky bar to the booking link`)
+
+  // 6. E1's words never on our own registration night (E2 on car 14's preview, 30 October 2026, 15:45: the sticky bar
+  // read "Free entry" under a hero reading "Free, registration required").
+  if (page.includes("'Free entry'")) faults.push(`${PAGE} writes 'Free entry' (E1's words); a $0 ticket type of ours is a registration`)
 }
 
 if (know) {
@@ -130,7 +135,7 @@ if (faults.length > 0) {
 }
 
 declareWork('event-page-each-fact-once', {
-  did: { 'file read': Object.keys(read).length, 'clause checked': 5 },
+  did: { 'file read': Object.keys(read).length, 'clause checked': 6 },
   found: { fault: 0 },
   zeroIsFine: { fault: 'an event page that states each fact once and promises only our own ticket is the goal state' },
   exitOnZero: false,
