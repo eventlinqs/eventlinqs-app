@@ -31,7 +31,8 @@ const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*
 const bodyOf = (src, name, open, close) => {
   const at = src.indexOf(name)
   if (at < 0) return null
-  const start = src.indexOf(open, at)
+  // From the '=', so a type annotation's own braces are never read as the table.
+  const start = src.indexOf(open, src.indexOf('=', at))
   let depth = 0
   for (let i = start; i < src.length; i++) {
     if (src[i] === open) depth++

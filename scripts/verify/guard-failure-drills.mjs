@@ -342,6 +342,26 @@ const DRILLS = [
     expect: 'sub-community-photo.ts makes a request-time call',
   },
   /*
+   * sub-community-tiles-stored (30 October 2026, Lawal 16:05, L14: the First Nations and Indian tiles drew no
+   * photograph on production), two drills: a tile on Lawal's photograph and a tile kept in the library each losing it.
+   */
+  {
+    name: 'the NAIDOC tile loses its photograph',
+    guard: `${GUARDS}/sub-community-tiles-stored.mjs`,
+    file: 'src/lib/images/sub-community-photo.ts',
+    find: "  'aboriginal-torres-strait-islander:naidoc': { scene: 'first-nations' },",
+    replace: '',
+    expect: "the sub-community tile 'aboriginal-torres-strait-islander:naidoc' has no stored photograph",
+  },
+  {
+    name: 'the Bollywood tile loses its photograph',
+    guard: `${GUARDS}/sub-community-tiles-stored.mjs`,
+    file: 'src/lib/images/sub-community-photo.ts',
+    find: "  'indian:bollywood',",
+    replace: '',
+    expect: "the sub-community tile 'indian:bollywood' has no stored photograph",
+  },
+  /*
    * card-price-from-cta (30 October 2026, the project manager's 12:40: Kate Ceberano's paid show read 'Free' on
    * /city/geelong): the card guessing 'Free' for a night with no ticket types of ours again.
    */
