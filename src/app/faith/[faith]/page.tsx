@@ -12,7 +12,6 @@ import {
   buildFaithTagOrFilter,
 } from '@/lib/faiths/data'
 import { getCommunity } from '@/lib/communities/data'
-import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
@@ -88,10 +87,9 @@ export default async function FaithPage({ params }: Props) {
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map(c => ({ slug: c.slug, displayName: c.displayName }))
 
-  // Hero image: best-effort via the strongest related heritage. The
-  // hero renders a branded fallback when null (imagery polish: a
-  // dedicated faith photo map is a follow-up).
-  const heroImage = await getCommunityHeroPhoto(faith.relatedCommunities[0] ?? 'african')
+  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): a community's photo belongs
+  // to that community's own tile and page, so a faith page borrows none and its hero draws its own navy band.
+  const heroImage = null
 
   const collectionLd = {
     '@context': 'https://schema.org',

@@ -12,9 +12,6 @@ import {
 import { getCommunityRedirect } from '@/lib/communities/redirects'
 import { getCity, isCitySlug } from '@/lib/cities/data'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
-import { getCityHeroPhoto } from '@/lib/images/city-photo'
-import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
-import { getSubCommunityPhoto } from '@/lib/images/sub-community-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import {
   getIntersectionEditorial,
@@ -238,18 +235,9 @@ export default async function CommunityByCityPage({ params }: Props) {
     .filter((x): x is NonNullable<typeof x> => x !== null)
     .slice(0, 6)
 
-  const subCommunitySlugs = community.subCommunities.map(s => s.slug)
-
-  // allowBundledFallback on the community fallback so the page hero always
-  // has a measurable LCP element when both the city and the Pexels community
-  // lookup return null. Same rationale as src/app/community/[community]/page.tsx.
-  const heroImage = await getCityHeroPhoto(cityParam)
-    ?? await getCommunityHeroPhoto(community.slug, { allowBundledFallback: true })
-
-  const subCommunityPhotos = await Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s)))
-
-  const subCommunityImages: Record<string, string | null> = {}
-  subCommunitySlugs.forEach((s, i) => { subCommunityImages[s] = subCommunityPhotos[i] ?? null })
+  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): a city's photo belongs to
+  // the city's tile and page, a community's to the community's, so this page borrows neither. Its hero draws CityHero's
+  // own navy band and its sub-community tiles their navy gradient; the headline is the hero's largest paint.
 
   // The related tiles open other community-in-city pages and take no photo: a city's or a community's photo belongs
   // to its own tile only (NO PHOTO IS EVER REUSED, the photo system's P6).
@@ -310,7 +298,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         cityName={cityName}
         citySlug={cityParam}
         cityRecord={cityRecord}
-        heroImage={heroImage}
+        heroImage={null}
         editorial={editorial}
         heroSubtitle={heroSubtitle}
         caption={caption}
@@ -318,7 +306,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         thisWeekendEvents={thisWeekendEvents}
         popularEvents={popularEvents}
         allEvents={allEvents}
-        subCommunityImages={subCommunityImages}
+        subCommunityImages={{}}
         relatedCities={relatedCities}
         relatedCommunities={relatedCommunities}
         mapPins={mapPins}

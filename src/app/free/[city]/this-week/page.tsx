@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { getSiteUrl } from '@/lib/site-url'
-import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { FreeWeekLandingPage, type FreeWeekCategoryLink } from '@/components/templates/FreeWeekLandingPage'
@@ -72,10 +71,12 @@ export default async function FreeWeekPage({ params, searchParams }: Props) {
   if (!city) notFound()
 
   const now = new Date()
-  const [{ from, to, events: rows, total }, guideCities, heroImage, query] = await Promise.all([
+  const heroImage = null
+  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): the city's photo belongs to
+  // the city's own tile and page, so this page borrows none and its hero draws its own navy band.
+  const [{ from, to, events: rows, total }, guideCities, query] = await Promise.all([
     loadFreeWeek(city),
     readGuideCities(),
-    getCityHeroPhoto(city.slug),
     searchParams,
   ])
   const events = await withVenuePhotos(rows)
