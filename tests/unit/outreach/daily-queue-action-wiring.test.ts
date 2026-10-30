@@ -51,3 +51,32 @@ describe('the Sent press', () => {
     expect(read(PAGE)).toMatch(/readDailyQueue\(/)
   })
 })
+
+describe("the communication gateway in the send path (the CONTROLLER's 08:40)", () => {
+  const src = read(FILE)
+  const item = read(resolve('src/app/admin/(authed)/acquisition/daily-queue-item.tsx'))
+  const drafts = read(resolve('src/lib/outreach/drafts.ts'))
+  const queue = read(resolve('src/lib/outreach/daily-queue.ts'))
+
+  test('nothing leaves held by itself: a draft is never written queued', () => {
+    expect(drafts).not.toMatch(/'queued' : 'held'/)
+    expect(drafts).not.toMatch(/state:\s*'queued'/)
+    expect(drafts).toMatch(/const state = 'held' as const/)
+  })
+
+  test('the queue judges every held message by the gateway and hands the page the exact content and policy version', () => {
+    expect(queue).toMatch(/voiceProblems\(/)
+    expect(queue).toMatch(/voiceContentHash\(/)
+    expect(item).toMatch(/name="contentHash"/)
+    expect(item).toMatch(/name="policyVersion"/)
+  })
+
+  test('Sent checks the stored words again, against what Lawal saw, under this policy, by Lawal himself, before anything is recorded', () => {
+    expect(src).toMatch(/approvalProblems\(/)
+    expect(src).toMatch(/byFounder:\s*session\.admin\.role === 'super_admin'/)
+    expect(src).toMatch(/formData\.get\('contentHash'\)/)
+    expect(src.indexOf('approvalProblems(')).toBeLessThan(src.indexOf('confirmPageChecked('))
+    expect(src.indexOf('approvalProblems(')).toBeLessThan(src.indexOf('markSent('))
+    expect(src).toMatch(/metadata:\s*\{[^}]*contentHash/)
+  })
+})
