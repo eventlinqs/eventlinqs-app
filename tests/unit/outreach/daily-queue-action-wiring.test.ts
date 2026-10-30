@@ -29,6 +29,20 @@ describe('the Sent press', () => {
     expect(src).toMatch(/recordAuditEvent\(\{\s*action:\s*'admin\.outreach\.sent'/)
   })
 
+  test("needs Lawal's tick that he checked their page, records that check as him, and only then marks it sent (the CONTROLLER's 05:32 (3))", () => {
+    expect(src).toMatch(/formData\.get\('checked'\)/)
+    expect(src).toMatch(/confirmPageChecked\(\s*createAdminClient\(\),\s*\{[^}]*by:\s*session\.userId/)
+    expect(src.indexOf('confirmPageChecked(')).toBeLessThan(src.indexOf('markSent('))
+    expect(read(resolve('src/app/admin/(authed)/acquisition/daily-queue-item.tsx'))).toMatch(/name="checked"[^>]*required/)
+  })
+
+  test('the database refuses a message leaving held while its page is unchecked', () => {
+    const sql = read(resolve('supabase/migrations/20261031053501_outreach_page_checked_before_it_leaves_held.sql'))
+    expect(sql).toMatch(/before insert or update on public\.outreach_touches/)
+    expect(sql).toMatch(/new\.state in \('held', 'void'\)/)
+    expect(sql).toMatch(/not c\.no_marketing_statement_checked/)
+  })
+
   test('sends nothing itself', () => {
     expect(src).not.toMatch(/sendEmail|graph|fetch\(/i)
   })
