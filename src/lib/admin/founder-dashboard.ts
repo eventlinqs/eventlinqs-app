@@ -19,6 +19,8 @@ import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
 import { googleSpendFigure, spendReadFrom } from '@/lib/google/spend-guard-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
 import { refundedOf } from '@/lib/growth/weekly-math'
+import { campaignReadyFigure, venuePhotoFigure } from './control-centre-complete'
+import { readEligibility } from '@/lib/campaigns/eligibility-read'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
@@ -116,6 +118,11 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         .gte('events.start_date', now.toISOString()),
     ),
     counted(() => admin.from('partners').select('id', head).eq('status', 'live').eq('kind', 'venue')),
+  ])
+  // The control centre's last two rows (./control-centre-complete.ts): venue photographs waiting, nights campaign-ready.
+  const [venuePhotos, eligibility] = await Promise.all([
+    counted(() => admin.from('venue_images').select('id', head).in('approval_state', ['pending', 'challenged'])),
+    settle(() => readEligibility(now)),
   ])
 
   // This week's campaign, its pieces and where each stands.
@@ -310,6 +317,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'), 'measure', 'daily'),
         tag(fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'), 'measure', 'weekly'),
         ...inventoryFigures({ next7, next14, next30, deadLinks, venuePartners }),
+        campaignReadyFigure(eligibility),
       ],
       done: newNights === null ? [] : [`${count.format(newNights)} ${newNights === 1 ? 'night' : 'nights'} published this week`],
     },
@@ -320,6 +328,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Submissions waiting', submissions, true, '/admin/submissions'), 'approve', 'daily'),
         tag(fig('Claims to decide by hand', claims, true, null, 'listed in the queue above'), 'approve', 'daily'),
         tag(fig('Images awaiting approval', media, true, '/admin/social'), 'approve', 'daily'),
+        venuePhotoFigure(venuePhotos),
         tag(fig('Organisers found', step('found'), false, '/admin/growth'), 'measure', 'weekly'),
         tag(fig('Invited', step('invited'), false, '/admin/growth'), 'measure', 'weekly'),
         tag(fig('Claimed their listing', step('claimed'), false, '/admin/growth'), 'value', 'weekly'),
