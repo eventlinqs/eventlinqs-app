@@ -1,4 +1,5 @@
 import { isOwnPhoto } from '@/lib/images/event-media'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { venuePhotosFor, type VenuePhoto, type VenuePhotosRpc, type VenueUse } from '@/lib/venues/venue-photos-read'
 
@@ -24,6 +25,8 @@ export type ChainCredit = {
 export type ChainDeps = {
   venueIdsOf(eventIds: readonly string[]): Promise<ReadonlyMap<string, string>>
   photosOf(venueIds: readonly string[], use: VenueUse): Promise<ReadonlyMap<string, VenuePhoto>>
+  /** Each venue's soonest public night that has not ended, on the whole platform, never only this page's. */
+  soonestNightOf(venueIds: readonly string[]): Promise<ReadonlyMap<string, string>>
 }
 
 /** 'CC BY-SA 4.0' from the licence and the version its own link states; no version unless the link states one. */
@@ -55,6 +58,24 @@ function publicDeps(): ChainDeps {
       return out
     },
     photosOf: (venueIds, use) => venuePhotosFor(venueIds, use, { rpc: (name, args) => db.rpc(name, args) as unknown as ReturnType<VenuePhotosRpc['rpc']> }),
+    async soonestNightOf(venueIds) {
+      const now = new Date().toISOString()
+      const { data, error } = await db
+        .from('events')
+        .select('id, venue_id, start_date')
+        .match(PUBLIC_EVENT_MATCH)
+        .in('venue_id', [...venueIds])
+        .or(`end_date.gte.${now},and(end_date.is.null,start_date.gte.${now})`)
+        .order('start_date', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(5000)
+      if (error) throw new Error(`the venues' soonest nights could not be read: ${error.message}`)
+      const out = new Map<string, string>()
+      for (const row of (data ?? []) as { id: string; venue_id: string | null }[]) {
+        if (row.venue_id && !out.has(row.venue_id)) out.set(row.venue_id, row.id)
+      }
+      return out
+    },
   }
 }
 
@@ -76,11 +97,15 @@ export async function withVenuePhotos<T extends ChainRow>(
     const venues = await deps.venueIdsOf(askAbout)
     const venueIds = [...new Set(askAbout.flatMap((id) => venues.get(id) ?? []))]
     if (venueIds.length === 0) return [...rows]
-    const photos = await deps.photosOf(venueIds, options.use ?? 'event_card')
+    const [photos, soonest] = await Promise.all([deps.photosOf(venueIds, options.use ?? 'event_card'), deps.soonestNightOf(venueIds)])
     return rows.map((row) => {
       if (isOwnPhoto(row.cover_image_url)) return row
       const venue = venues.get(row.id)
-      const photo = venue ? photos.get(venue) : undefined
+      // NO PHOTO IS EVER REUSED (Lawal's ruling of 31 October 2026, 00:14). Until the photo assignment table deals a
+      // venue's photos one per night (the project manager's 00:22 (2)), its one photo shows on its soonest night alone,
+      // on every page alike, and every other night there keeps the typographic cover (the same note's (4)).
+      if (!venue || soonest.get(venue) !== row.id) return row
+      const photo = photos.get(venue)
       if (!photo) return row
       return {
         ...row,
