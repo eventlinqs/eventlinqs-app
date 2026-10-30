@@ -24,9 +24,15 @@ interface Props {
    * bleeds through behind the overlay text on short mobile viewports.
    */
   chromeless?: boolean
+  /**
+   * The night's day and month, drawn as the card's date mark. Set only where this stands in for our composed cover on
+   * an event card: the category, the date mark and the EventLinqs mark, never the title (the project manager's 16:42
+   * of 30 October 2026).
+   */
+  dateMark?: { day: string; month: string } | null
 }
 
-export function BrandedPlaceholder({ category, className = '', chromeless = false }: Props) {
+export function BrandedPlaceholder({ category, className = '', chromeless = false, dateMark = null }: Props) {
   return (
     <div
       className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden ${className}`}
@@ -42,6 +48,12 @@ export function BrandedPlaceholder({ category, className = '', chromeless = fals
       />
       {!chromeless && (
         <div className="relative z-10 text-center px-4">
+          {dateMark ? (
+            <div data-date-mark={`${dateMark.day} ${dateMark.month}`} className="mb-3 font-display text-white">
+              <div className="text-4xl font-bold leading-none">{dateMark.day}</div>
+              <div className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-gold-400">{dateMark.month}</div>
+            </div>
+          ) : null}
           <div className="font-display text-white/50 text-xs font-bold tracking-[0.3em] uppercase mb-2">
             EventLinqs<span className="text-gold-400">.</span>
           </div>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
@@ -52,6 +53,13 @@ describe("a card with the night's own photograph", () => {
     )
     expect(html).toContain('<img')
     expect(html).not.toContain('data-date-mark')
+  })
+})
+
+describe('the walk-in page hero', () => {
+  it('asks heroIsTypographic before drawing the hero raster, as the event page does', () => {
+    const src = readFileSync('src/components/events/walk-in/walk-in-event-page.tsx', 'utf8')
+    expect(src).toMatch(/heroIsTypographic\(hero\)\s*\?\s*\(\s*<BrandedPlaceholder/)
   })
 })
 

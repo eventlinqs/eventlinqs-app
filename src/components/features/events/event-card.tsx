@@ -183,6 +183,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             alt={title}
             variant={variant}
             priority={priority}
+            // The typographic cover's facts: the category only where the pill does not already say it on the image.
+            category={m5Mode ? (category?.name ?? null) : null}
+            startDate={start_date}
+            timeZone={timezone ?? null}
             // Image scale-up per spec card hover: subtle 1.02 (2%).
             // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
             // utility (transform: scale 1.02 under --motion-quick).

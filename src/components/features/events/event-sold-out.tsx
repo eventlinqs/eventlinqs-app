@@ -217,6 +217,8 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
             alt={event.title}
             variant="grid-one-two-three-sm"
             className="transition-transform duration-500 group-hover:scale-105"
+            startDate={event.start_date}
+            timeZone={event.timezone}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-ink-400">

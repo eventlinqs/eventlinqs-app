@@ -4,6 +4,8 @@ import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
 import { HoverWash } from './hover-wash'
+import { isComposedCover } from '@/lib/events/generated-cover-prefix'
+import { eventDateMark } from '@/lib/dates/event-time'
 
 /**
  * EventCardMedia - the only allowed surface for event imagery in card,
@@ -81,6 +83,14 @@ interface Props {
   objectPosition?: string
   /** Extra classes for the <Image>. */
   className?: string
+  /**
+   * The night's category name, start and zone. Used only when `src` is our composed cover: the card then draws the
+   * typographic cover (the category, a date mark, the EventLinqs mark) instead of the raster, whose artwork repeats the
+   * title printed beneath the card (the project manager's 16:42 of 30 October 2026).
+   */
+  category?: string | null
+  startDate?: string | null
+  timeZone?: string | null
 }
 
 const SIZES_BY_VARIANT: Record<EventCardMediaVariant, string> = {
@@ -137,7 +147,16 @@ export function EventCardMedia({
   objectFit = 'cover',
   objectPosition,
   className = '',
+  category = null,
+  startDate = null,
+  timeZone = null,
 }: Props) {
+  // Our composed cover is never drawn on a card: its artwork is the title, the date, the venue and the price, every one
+  // printed again beneath the image. Until the organiser's approved photo or an approved photo of the venue exists, the
+  // card shows the typographic cover with no repeated title.
+  if (isComposedCover(src)) {
+    return <BrandedPlaceholder className={className} category={category} dateMark={eventDateMark(startDate, timeZone)} />
+  }
   // A bad/missing/disallowed URL must never 500 the card or its rail.
   const safeSrc = resolveImageSrc(src)
   if (!safeSrc) {
