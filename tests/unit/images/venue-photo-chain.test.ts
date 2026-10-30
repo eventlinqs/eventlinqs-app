@@ -26,12 +26,45 @@ const photo = (over: Partial<VenuePhoto> = {}): VenuePhoto => ({
   ...over,
 })
 
-function deps(venues: Record<string, string>, photos: Record<string, VenuePhoto>): ChainDeps & { venueIdsOf: ReturnType<typeof vi.fn>; photosOf: ReturnType<typeof vi.fn> } {
+/** soonest: each venue's soonest night on the whole platform; by default the first night the fixture names there. */
+function deps(
+  venues: Record<string, string>,
+  photos: Record<string, VenuePhoto>,
+  soonest?: Record<string, string>,
+): ChainDeps & { venueIdsOf: ReturnType<typeof vi.fn>; photosOf: ReturnType<typeof vi.fn>; soonestNightOf: ReturnType<typeof vi.fn> } {
+  const first: Record<string, string> = {}
+  for (const [night, venue] of Object.entries(venues)) first[venue] ??= night
   return {
     venueIdsOf: vi.fn(async () => new Map(Object.entries(venues))),
     photosOf: vi.fn(async () => new Map(Object.entries(photos))),
+    soonestNightOf: vi.fn(async () => new Map(Object.entries(soonest ?? first))),
   }
 }
+
+describe("no photo is ever reused (Lawal's ruling of 31 October 2026, 00:14; the project manager's 00:22 (4))", () => {
+  it("shows a venue's photo on that venue's soonest night only; its other nights keep the typographic cover", async () => {
+    const rows = [
+      { id: 'later', cover_image_url: COMPOSED },
+      { id: 'soonest', cover_image_url: COMPOSED },
+    ]
+    const out = await withVenuePhotos(rows, { deps: deps({ later: 'v1', soonest: 'v1' }, { v1: photo() }, { v1: 'soonest' }) })
+    expect(out.map((r) => r.cover_image_url)).toEqual([COMPOSED, VENUE_FILE])
+    expect(out[0].image_credit).toBeUndefined()
+  })
+
+  it('gives it to no night on the page when the soonest night is elsewhere', async () => {
+    const rows = [{ id: 'later', cover_image_url: COMPOSED }]
+    const out = await withVenuePhotos(rows, { deps: deps({ later: 'v1' }, { v1: photo() }, { v1: 'not-on-this-page' }) })
+    expect(out).toEqual(rows)
+  })
+
+  it('a failed read of the soonest nights shows no venue photo at all', async () => {
+    const d = deps({ e1: 'v1' }, { v1: photo() })
+    d.soonestNightOf.mockRejectedValueOnce(new Error('timeout'))
+    const rows = [{ id: 'e1', cover_image_url: COMPOSED }]
+    expect(await withVenuePhotos(rows, { deps: d })).toEqual(rows)
+  })
+})
 
 describe('the chain, on a page of rows', () => {
   it("keeps a night's own photograph and never asks for it", async () => {
@@ -85,7 +118,11 @@ describe('the chain, on a page of rows', () => {
   })
 
   it('a failed read takes nothing away: the rows stand and the card falls to its typographic cover', async () => {
-    const failing: ChainDeps = { venueIdsOf: async () => new Map([['e1', 'v1']]), photosOf: async () => { throw new Error('function not found') } }
+    const failing: ChainDeps = {
+      venueIdsOf: async () => new Map([['e1', 'v1']]),
+      photosOf: async () => { throw new Error('function not found') },
+      soonestNightOf: async () => new Map([['v1', 'e1']]),
+    }
     const rows = [{ id: 'e1', cover_image_url: COMPOSED }]
     expect(await withVenuePhotos(rows, { deps: failing })).toEqual(rows)
   })
