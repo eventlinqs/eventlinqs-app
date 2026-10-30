@@ -106,7 +106,10 @@ describe('a claim that carries a yes', () => {
 
 type Call = { name: string; args: Record<string, unknown> }
 
-function mediaFake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }) {
+const MEDIA_HASHES = { sha256: 'd'.repeat(64), dhash: '-7' }
+
+/** lockedElsewhere: what photo_locked_elsewhere answers; the lock to the night is taken without fault. */
+function mediaFake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }, lockedElsewhere = false) {
   const calls: Call[] = []
   const stored: string[] = []
   const removed: string[] = []
@@ -115,6 +118,7 @@ function mediaFake(answer: (call: Call) => { data: unknown; error: { code: strin
       if (bytes.byteLength === 3) throw new Error('not an image')
       return { buffer: Buffer.from('webp'), extension: 'webp', contentType: 'image/webp' }
     },
+    hash: async () => MEDIA_HASHES,
     store: async (path) => {
       stored.push(path)
       return `https://test.supabase.co/storage/v1/object/public/organiser-media/${path}`
@@ -125,6 +129,8 @@ function mediaFake(answer: (call: Call) => { data: unknown; error: { code: strin
     rpc: async (name, args) => {
       const call = { name, args }
       calls.push(call)
+      if (name === 'photo_locked_elsewhere') return { data: lockedElsewhere, error: null }
+      if (name === 'photo_lock_for_event') return { data: 'locked', error: null }
       return answer(call)
     },
   }
@@ -141,6 +147,7 @@ describe('the organiser adds an image', () => {
     expect(stored).toHaveLength(1)
     expect(stored[0]).toMatch(/^e1\/[0-9a-f-]{36}\.webp$/)
     expect(calls).toEqual([
+      { name: 'photo_locked_elsewhere', args: { p_sha256: MEDIA_HASHES.sha256, p_dhash: MEDIA_HASHES.dhash, p_event: 'e1' } },
       {
         name: 'organiser_media_add',
         args: {
@@ -153,7 +160,27 @@ describe('the organiser adds an image', () => {
           p_restrictions: null,
         },
       },
+      {
+        name: 'photo_lock_for_event',
+        args: {
+          p_event: 'e1',
+          p_sha256: MEDIA_HASHES.sha256,
+          p_dhash: MEDIA_HASHES.dhash,
+          p_image_url: `https://test.supabase.co/storage/v1/object/public/organiser-media/${stored[0]}`,
+          p_role: 'gallery',
+        },
+      },
     ])
+  })
+
+  // No photo is ever reused (Lawal's 00:23 of 31 October 2026, P8 and P9): every image of a night's set is locked to it;
+  // one already locked to another event is refused at the door, in his words, and nothing is stored.
+  test('an image already used for another event is refused before anything is stored', async () => {
+    const { d, stored, calls } = mediaFake(() => ({ data: 'asset-1', error: null }), true)
+    const done = await addOrganiserMedia({ userId: 'u1', eventId: 'e1', file: PHOTO, kind: 'photo', attribution: null, restrictions: null }, d)
+    expect(done).toEqual({ state: 'refused', reason: 'This photo is already used for another event. Please add a different one.' })
+    expect(stored).toEqual([])
+    expect(calls.map((c) => c.name)).toEqual(['photo_locked_elsewhere'])
   })
 
   test('refused by the database (no yes, not their night) takes its words, and the stored file is removed', async () => {
