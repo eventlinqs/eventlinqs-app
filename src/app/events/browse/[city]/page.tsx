@@ -17,7 +17,6 @@ import {
   type EventsSearchParams,
 } from '@/lib/events/search-params'
 import { getPickerCities, type PickerCity } from '@/lib/locations/picker-cities'
-import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCityHero } from '@/components/templates/PhotographicCityHero'
@@ -155,7 +154,10 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const [categories, result, popularEvents, heroImage] = await Promise.all([
+  const heroImage = null
+  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): the city's photo belongs to
+  // the city's own tile and page, so this page borrows none and its hero draws its own navy band.
+  const [categories, result, popularEvents] = await Promise.all([
     fetchActiveCategoriesCached(),
     canUseCached
       ? fetchPublicEventsCached({
@@ -170,7 +172,6 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           origin,
         }),
     !filterActive ? fetchPopularThisWeekPublic(12, city.city) : Promise.resolve([]),
-    getCityHeroPhoto(city.slug),
   ])
 
   const basePath = `/events/browse/${city.slug}`
