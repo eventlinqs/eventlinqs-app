@@ -2,6 +2,8 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
+import { photoHashes } from '@/lib/images/photo-hash'
+import { lockPhotoToEvent, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { claimYes } from './claim-acceptance'
 
@@ -31,6 +33,8 @@ export type MediaAnswer = { readonly state: 'done'; readonly id: string } | { re
 export type MediaDeps = {
   /** The image pipeline; throws on anything it cannot read as an image. */
   process(bytes: ArrayBuffer): Promise<{ buffer: Buffer; extension: string; contentType: string }>
+  /** The image's fingerprint from the bytes chosen (src/lib/images/photo-hash.ts). */
+  hash(bytes: ArrayBuffer): Promise<PhotoHashes>
   /** Stores the re-encoded file at path in the organiser-media bucket and returns its public address. */
   store(path: string, image: { buffer: Buffer; contentType: string }): Promise<string>
   remove(paths: string[]): Promise<void>
@@ -48,18 +52,31 @@ function chosen(file: File | null): file is File {
   return file instanceof File && file.size > 0
 }
 
-/** Re-encodes and stores one image under its night's folder; the answer is its address and path, or a refusal. */
-async function storeImage(folder: string, file: File | null, deps: MediaDeps): Promise<{ url: string; path: string } | { refused: string }> {
+/**
+ * Re-encodes and stores one image under its night's folder; the answer is its address, path and fingerprint, or a
+ * refusal. NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P8 and P9): one already locked to an event other
+ * than eventId (any event when null) is refused here, before it is stored.
+ */
+async function storeImage(
+  folder: string,
+  file: File | null,
+  eventId: string | null,
+  deps: MediaDeps,
+): Promise<{ url: string; path: string; hashes: PhotoHashes } | { refused: string }> {
   if (!chosen(file)) return { refused: 'Choose a photo or artwork to add.' }
   if (file.size > MAX_IMAGE_BYTES) return { refused: 'The image must be under 10MB.' }
   let image
+  let hashes: PhotoHashes
   try {
-    image = await deps.process(await file.arrayBuffer())
+    const bytes = await file.arrayBuffer()
+    image = await deps.process(bytes)
+    hashes = await deps.hash(bytes)
   } catch {
     return { refused: 'That image could not be read. Try a JPEG or PNG.' }
   }
+  if (await photoLockedElsewhere(hashes, eventId, deps)) return { refused: PHOTO_ALREADY_USED }
   const path = `${folder}/${randomUUID()}.${image.extension}`
-  return { url: await deps.store(path, image), path }
+  return { url: await deps.store(path, image), path, hashes }
 }
 
 async function register(path: string, call: () => ReturnType<MediaDeps['rpc']>, deps: MediaDeps): Promise<{ data: unknown } | MediaAnswer> {
@@ -81,7 +98,7 @@ export async function addOrganiserMedia(
   input: { userId: string; eventId: string; file: File | null; kind: MediaKind; attribution: string | null; restrictions: string | null },
   deps: MediaDeps,
 ): Promise<MediaAnswer> {
-  const stored = await storeImage(input.eventId, input.file, deps)
+  const stored = await storeImage(input.eventId, input.file, input.eventId, deps)
   if ('refused' in stored) return { state: 'refused', reason: stored.refused }
   const done = await register(
     stored.path,
@@ -98,11 +115,16 @@ export async function addOrganiserMedia(
     deps,
   )
   if ('state' in done) return done
+  // Every image of the night's set is locked to it (P8); another event that took it in the moment between is the one
+  // refusal, said in Lawal's words.
+  const locked = await lockPhotoToEvent({ eventId: input.eventId, hashes: stored.hashes, imageUrl: stored.url, role: 'gallery' }, deps)
+  if (!locked.ok) return { state: 'refused', reason: locked.error }
   return { state: 'done', id: String(done.data) }
 }
 
 export async function replaceOrganiserMedia(input: { userId: string; assetId: string; file: File | null }, deps: MediaDeps): Promise<MediaAnswer> {
-  const stored = await storeImage(`replaced/${input.assetId}`, input.file, deps)
+  // The asset's night is not named here, so a replacement already locked to ANY event is refused (P9).
+  const stored = await storeImage(`replaced/${input.assetId}`, input.file, null, deps)
   if ('refused' in stored) return { state: 'refused', reason: stored.refused }
   const done = await register(
     stored.path,
@@ -146,6 +168,7 @@ export async function withdrawOrganiserYes(input: { userId: string; permissionId
 export function mediaDeps(): MediaDeps {
   const admin = createAdminClient()
   return {
+    hash: (bytes) => photoHashes(Buffer.from(bytes)),
     async process(bytes) {
       const result = await processEventImage(bytes, { role: 'cover' })
       if (!result.ok) throw new Error(result.error)

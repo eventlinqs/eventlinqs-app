@@ -213,7 +213,9 @@ describe('the organiser replaces and withdraws', () => {
   test('a replacement is a new stored image the database links to the one it replaces', async () => {
     const { d, calls, stored } = mediaFake(() => ({ data: { id: 'asset-2', old_path: 'e1/old.webp' }, error: null }))
     expect(await replaceOrganiserMedia({ userId: 'u1', assetId: 'asset-1', file: PHOTO }, d)).toEqual({ state: 'done', id: 'asset-2' })
-    expect(calls[0]).toEqual({
+    // Asked first whether it is used for any event (its night is not named on a replace), then replaced.
+    expect(calls[0]).toEqual({ name: 'photo_locked_elsewhere', args: { p_sha256: MEDIA_HASHES.sha256, p_dhash: MEDIA_HASHES.dhash, p_event: null } })
+    expect(calls[1]).toEqual({
       name: 'organiser_media_replace',
       args: { p_user: 'u1', p_asset: 'asset-1', p_asset_url: `https://test.supabase.co/storage/v1/object/public/organiser-media/${stored[0]}`, p_original_name: 'night.jpg' },
     })
