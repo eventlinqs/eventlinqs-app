@@ -11003,8 +11003,9 @@ const DRILLS = [
     name: 'listed hosts: the structured data links an organiser page that does not exist',
     guard: `${GUARDS}/listed-hosts-show-their-source.mjs`,
     file: 'src/lib/seo/event-schema.ts',
-    find: '        ...(shown.slug ? { url: `${baseUrl}/organisers/${shown.slug}` } : {}),',
-    replace: '        url: `${baseUrl}/organisers/${shown.slug}`,',
+    // Re-anchored 31 October 2026: the url now also takes the organiser's own website, so the expression spans lines.
+    find: '        ...(shown.slug\n          ? { url: `${baseUrl}/organisers/${shown.slug}` }',
+    replace: '        ...(true\n          ? { url: `${baseUrl}/organisers/${shown.slug}` }',
     expect: 'carries a url whether or not there is an organiser page',
   },
   {
