@@ -24,7 +24,10 @@ const ROOM = readFileSync(resolve(process.cwd(), 'public/images/hero/afrobeats.j
 
 type Call = { name: string; args: Record<string, unknown> }
 
-function fake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }) {
+const HASHED = { sha256: 'c'.repeat(64), dhash: '-42' }
+
+/** lockedElsewhere: what photo_locked_elsewhere answers; the fingerprint is written without fault. */
+function fake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }, lockedElsewhere = false) {
   const calls: Call[] = []
   const stored: string[] = []
   const removed: string[] = []
@@ -33,6 +36,7 @@ function fake(answer: (call: Call) => { data: unknown; error: { code: string; me
       if (bytes.byteLength === 3) throw new Error('not an image')
       return { buffer: Buffer.from('webp'), extension: 'webp', contentType: 'image/webp' }
     },
+    hash: async () => HASHED,
     store: async (path) => {
       stored.push(path)
       return `https://test.supabase.co/storage/v1/object/public/organiser-media/${path}`
@@ -43,6 +47,8 @@ function fake(answer: (call: Call) => { data: unknown; error: { code: string; me
     rpc: async (name, args) => {
       const call = { name, args }
       calls.push(call)
+      if (name === 'photo_locked_elsewhere') return { data: lockedElsewhere, error: null }
+      if (name === 'venue_image_fingerprint') return { data: null, error: null }
       return answer(call)
     },
   }
@@ -60,6 +66,7 @@ describe('the venue adds a photograph', () => {
     expect(done).toEqual({ state: 'done', id: 'img-1' })
     expect(stored[0]).toMatch(/^venues\/v1\/[0-9a-f-]{36}\.webp$/)
     expect(calls).toEqual([
+      { name: 'photo_locked_elsewhere', args: { p_sha256: HASHED.sha256, p_dhash: HASHED.dhash, p_event: null } },
       {
         name: 'venue_image_add',
         args: {
@@ -72,7 +79,18 @@ describe('the venue adds a photograph', () => {
           p_uses: null,
         },
       },
+      { name: 'venue_image_fingerprint', args: { p_image: 'img-1', p_sha256: HASHED.sha256, p_dhash: HASHED.dhash } },
     ])
+  })
+
+  // No photo is ever reused (Lawal's 00:23 of 31 October 2026, P9): a photo already locked to an event is refused at the
+  // door, in his words, and nothing is stored.
+  test('a photo already used for an event is refused before anything is stored', async () => {
+    const { d, calls, stored } = fake(() => ({ data: 'img-1', error: null }), true)
+    const done = await addVenuePhoto({ userId: 'u1', venueId: 'v1', file: PHOTO, permissionWords: YES, sourceUrl: SOURCE, credit: null }, d)
+    expect(done).toEqual({ state: 'refused', reason: 'This photo is already used for another event. Please add a different one.' })
+    expect(stored).toEqual([])
+    expect(calls.map((c) => c.name)).toEqual(['photo_locked_elsewhere'])
   })
 
   test('refused by the database takes its words, and the stored file is removed', async () => {
@@ -108,7 +126,8 @@ describe('replace, challenge, withdraw and approve each go to their one database
   test('a replacement is a new stored photograph the database links to the one it replaces', async () => {
     const { d, calls, stored } = fake(() => ({ data: 'img-2', error: null }))
     expect(await replaceVenuePhoto({ userId: 'u1', venueId: 'v1', imageId: 'img-1', file: PHOTO, permissionWords: YES, sourceUrl: SOURCE }, d)).toEqual({ state: 'done', id: 'img-2' })
-    expect(calls[0]).toEqual({
+    expect(calls.map((c) => c.name)).toEqual(['photo_locked_elsewhere', 'venue_image_replace', 'venue_image_fingerprint'])
+    expect(calls[1]).toEqual({
       name: 'venue_image_replace',
       args: { p_user: 'u1', p_image: 'img-1', p_image_url: `https://test.supabase.co/storage/v1/object/public/organiser-media/${stored[0]}`, p_source_url: SOURCE, p_permission_words: YES },
     })
