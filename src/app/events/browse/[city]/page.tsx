@@ -29,6 +29,7 @@ import { RecommendedRail } from '@/components/features/events/m5-recommended-rai
 import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
+import { notAlreadyListed } from '@/lib/events/one-card-per-event'
 
 // Rendered dynamically on demand (see the headers() note in the component) -
 // same reason and approach as /events/[slug]. No generateStaticParams: an empty
@@ -234,7 +235,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
         {!filterActive && popularEvents.length > 0 ? (
           <RecommendedRail
-            events={popularEvents}
+            events={notAlreadyListed(popularEvents, result.events)}
             headline="popular"
             seeAllHref={`${basePath}?sort=popular`}
             /*

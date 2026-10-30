@@ -178,7 +178,7 @@ export default async function EventsPage({ searchParams }: Props) {
             to ~5.2s (Lighthouse). The rail's own fetch (anon, cached) is fast.
             Only the below-the-fold results grid streams behind a skeleton. */}
         {!filterActive ? (
-          <EventsPopularSection filterActive={filterActive} />
+          <EventsPopularSection filterActive={filterActive} listedPromise={resultPromise} />
         ) : null}
 
         {/* The header search offers four tabs and three of them route here.

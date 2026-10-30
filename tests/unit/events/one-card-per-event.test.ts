@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
+import { notAlreadyListed, oneCardPerEvent } from '@/lib/events/one-card-per-event'
 
 /*
  * ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026, 00:14; the photo system's P5): an event never appears
@@ -51,5 +51,23 @@ describe('one card per event per page', () => {
 
   it('a section left with nothing comes back empty, so its rail does not draw', () => {
     expect(ids(oneCardPerEvent([{ events: [ev('a')], cap: 12 }, { events: [ev('a')], cap: 12 }]))).toEqual([['a'], []])
+  })
+})
+
+/*
+ * A RAIL ABOVE A RESULTS LIST (/events, /events/browse/<city>; WINDOW 1's 09:04 crawl of live found the same night in
+ * the popular rail and in the results below it). The results list is the complete answer to the visitor's search and
+ * keeps its count and its pages, so it is never thinned; the rail above it shows only what the list does not already
+ * draw, a recurring series counting as one event (P4). With nothing left, the rail is not drawn. 
+ */
+describe('a rail never repeats an event the results list on the same page draws', () => {
+  const e = (id: string, listing_series_id: string | null = null) => ({ id, listing_series_id })
+  it('drops from the rail every event, and every night of a series, that the list already draws', () => {
+    const rail = [e('a'), e('b'), e('c', 's1'), e('d', 's2')]
+    const listed = [e('b'), e('x', 's1')]
+    expect(notAlreadyListed(rail, listed).map((r) => r.id)).toEqual(['a', 'd'])
+  })
+  it("leaves the rail nothing of its own when the list already draws all of it (it then draws as the 26 August 2026 ruling says)", () => {
+    expect(notAlreadyListed([e('a')], [e('a')])).toEqual([])
   })
 })
