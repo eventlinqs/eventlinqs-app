@@ -11,6 +11,7 @@ const touch = (id: string, channel: QueueTouch['channel'], draftedAt: string, st
   step,
   purpose: 'cadence',
   heldBecause: [],
+  refusal: null,
   subject: null,
   body: `Hi team, a message ${id}`,
   trackedLink: null,
@@ -71,5 +72,12 @@ describe('ready to send', () => {
     expect(notReady(touch('ok', 'instagram', '2026-10-31T00:00:00Z'))).toEqual([])
     expect(notReady({ ...touch('h', 'instagram', '2026-10-31T00:00:00Z'), heldBecause: ['the no-messages statement is not checked'] })).toEqual(['the no-messages statement is not checked'])
     expect(notReady({ ...touch('x', 'facebook', '2026-10-31T00:00:00Z'), address: 'http://insecure.example' })).toEqual(['its address cannot be opened safely'])
+  })
+})
+
+describe('suppression', () => {
+  it('a contact the database refuses (a stop, an unsubscribe, a no) is never offered Sent, and says why first', () => {
+    const t = { ...touch('s', 'instagram', '2026-10-31T00:00:00Z'), refusal: 'they asked us to stop', heldBecause: ['x'] }
+    expect(notReady(t)).toEqual(['they asked us to stop', 'x'])
   })
 })
