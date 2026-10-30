@@ -587,6 +587,9 @@
  *   one-venue-address-format  every venue address is composed by one formatter, because
  *                              two call sites each adding the venue name printed it twice
  *                              on the first real organiser event (close-out UX1.2)
+ *   event-page-each-fact-once  the event page states each fact once and promises a QR ticket,
+ *                              our refund policy and the trust row only where EventLinqs
+ *                              issues the ticket (the PROJECT MANAGER's 13:10, 30 October 2026)
  *   organiser-prose-one-rule  organiser and artist prose reaches a screen through
  *                              OrganiserProse or stripMarkdown and never raw, because
  *                              the first real outside organiser's bio shipped to
@@ -1910,6 +1913,10 @@ const GUARDS = [
   'scripts/guards/one-contact-domain.mjs',
   'scripts/guards/one-platform-entity.mjs',
   'scripts/guards/one-venue-address-format.mjs',
+  // The PROJECT MANAGER's 13:10 of 30 October 2026: the event page read the date and the address three times, the
+  // refund and the ticket button twice, and an outside night promised a QR ticket, automatic refunds and our booking
+  // fee. Each fact once, the ticket promised only where EventLinqs issues it. Drilled red on main 985be4de.
+  'scripts/guards/event-page-each-fact-once.mjs',
   'scripts/guards/organiser-prose-one-rule.mjs',
   // UX5: /admin/enrol-2fa told every new administrator to "scan the QR code"
   // and drew nothing to scan, so the real instruction was to type a 32

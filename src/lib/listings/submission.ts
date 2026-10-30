@@ -50,6 +50,16 @@ export const PERMISSION_WORDS =
 /** K4's "with authority confirmed": the sender says they may give that permission. */
 export const AUTHORITY_WORDS = 'I organise this event, or act for its organiser or venue, and I can give this permission.'
 
+/**
+ * THE COLLECTION NOTICE BESIDE "YOU" (window 6's gap list of 30 October 2026, item 1; mandate M43, specification s17).
+ * The form takes a name, an email and a role, and the footer's Privacy link was the only notice. What the details are
+ * used for, read in the code, not assumed: the review in /admin/submissions, a reply about this listing, and the
+ * organiser score, which recognises a sender as an organiser EventLinqs already knows (src/lib/outreach/organiser-score-read.ts).
+ * Remind me's REMIND_ME_PRIVACY_LINE is the shape. A new wording is a new constant.
+ */
+export const SUBMISSION_PRIVACY_LINE =
+  'We use your name, email and role to review this event, to contact you about its listing, and to know you as its organiser on EventLinqs.'
+
 /** Asked only when a photo is sent; a submission never needs one (K: discovery never stops for want of an image). */
 export const PHOTO_OWNED_WORDS = 'I own this photo or have the right to share it.'
 

@@ -112,7 +112,8 @@ describe('the form action', () => {
 describe('every event page carries the link', () => {
   it('the event page and the walk-in page both draw it, and the form is never indexed', () => {
     for (const file of ['src/app/events/[slug]/page.tsx', 'src/components/events/walk-in/walk-in-event-page.tsx']) {
-      expect(readFileSync(file, 'utf8')).toMatch(/<ReportListingLink slug=\{event\.slug\} \/>/)
+      // Unconditional on every night; the claim line beside it (claimable) never hides it.
+      expect(readFileSync(file, 'utf8')).toMatch(/<ReportListingLink\s+slug=\{event\.slug\}(\s+claimable=\{\w+\})?\s*\/>/)
     }
     expect(readFileSync('src/components/events/report-listing-link.tsx', 'utf8')).toMatch(/Report or remove this listing/)
     expect(readFileSync('src/app/events/[slug]/report/page.tsx', 'utf8')).toMatch(/robots: \{ index: false, follow: false \}/)
