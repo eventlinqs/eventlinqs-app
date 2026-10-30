@@ -212,7 +212,7 @@ export interface PrepareEnrolResult {
  */
 export async function prepareTotpEnrolmentAction(): Promise<PrepareEnrolResult> {
   PrepareSchema.parse({})
-  const session = await getAdminSession()
+  const session = await getAdminSession({ forEnrolment: true })
   if (!session) return { ok: false, error: 'Not authorised.' }
   if (session.admin.totp_secret_encrypted) {
     return { ok: false, error: 'This account has already enrolled 2FA.' }
@@ -241,7 +241,7 @@ export async function confirmTotpEnrolmentAction(formData: FormData): Promise<Co
   if (!parsed.success) {
     return { ok: false, error: 'Enter a 6-digit code from your authenticator.' }
   }
-  const session = await getAdminSession()
+  const session = await getAdminSession({ forEnrolment: true })
   if (!session) return { ok: false, error: 'Not authorised.' }
   if (session.admin.totp_secret_encrypted) {
     return { ok: false, error: 'This account has already enrolled 2FA.' }

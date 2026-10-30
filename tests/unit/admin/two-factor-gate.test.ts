@@ -55,10 +55,12 @@ describe('AUTH-02: isTwoFactorProofValid (pure)', () => {
 // ---- Gate integration: getAdminSession requires the proof cookie ----
 
 let cookieValue: string | undefined
-const adminRow = {
+// An ENROLLED admin: a sealed TOTP secret is on the row (its value is never read by the gate).
+const adminRow: Record<string, unknown> = {
   id: 'admin-1',
   disabled_at: null,
   role: 'super_admin',
+  totp_secret_encrypted: 'sealed-totp-secret',
   capabilities_granted: [],
   capabilities_revoked: [],
 }
@@ -87,7 +89,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }))
 
-import { getAdminSession } from '@/lib/admin/auth'
+import { getAdminSession, requireAdminSession } from '@/lib/admin/auth'
 
 describe('AUTH-02: getAdminSession asserts 2FA on the live session', () => {
   beforeEach(() => {
@@ -112,5 +114,42 @@ describe('AUTH-02: getAdminSession asserts 2FA on the live session', () => {
     const session = await getAdminSession()
     expect(session).not.toBeNull()
     expect(session?.userId).toBe('admin-1')
+  })
+})
+
+// ---- AUTH-03: an admin with no enrolled second factor holds the bootstrap proof ONLY to enrol ----
+//
+// Found 30 October 2026 (window 3's 12:11, read by window 1 in main): the sign-in action mints the
+// 12-hour proof for an admin who has not enrolled yet, so that they can reach /admin/enrol-2fa, and the
+// gate checked only the proof. An un-enrolled admin therefore had the whole console on a password alone
+// until they enrolled. The proof now opens enrolment and nothing else.
+
+describe('AUTH-03: an un-enrolled admin reaches enrolment and nothing else', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    adminRow.totp_secret_encrypted = null
+    cookieValue = sealTwoFactorProof('admin-1', Date.now())
+  })
+
+  it('BLOCKS an un-enrolled admin everywhere, even with the bootstrap proof', async () => {
+    expect(await getAdminSession()).toBeNull()
+    await expect(requireAdminSession()).rejects.toThrow('admin session required')
+  })
+
+  it('ALLOWS the same admin on the enrolment path, and only when asked for by name', async () => {
+    const session = await getAdminSession({ forEnrolment: true })
+    expect(session?.userId).toBe('admin-1')
+    expect((await requireAdminSession({ forEnrolment: true })).userId).toBe('admin-1')
+  })
+
+  it('still BLOCKS the enrolment path without the proof', async () => {
+    cookieValue = undefined
+    expect(await getAdminSession({ forEnrolment: true })).toBeNull()
+  })
+
+  it('an ENROLLED admin is let through with or without the enrolment allowance', async () => {
+    adminRow.totp_secret_encrypted = 'sealed-totp-secret'
+    expect((await getAdminSession())?.userId).toBe('admin-1')
+    expect((await getAdminSession({ forEnrolment: true }))?.userId).toBe('admin-1')
   })
 })
