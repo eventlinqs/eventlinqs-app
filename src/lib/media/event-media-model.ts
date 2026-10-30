@@ -12,6 +12,11 @@ export type GalleryImage = {
   alt: string
   /** Optional blurDataURL placeholder for next/image. */
   blur?: string
+  /**
+   * The register's credit words for this image ('AMCF, past festival'), set on the server only when its rights are on
+   * record and current (src/lib/media/photo-credits.ts); printed 'Photo: <credit>' under the image.
+   */
+  credit?: string
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
