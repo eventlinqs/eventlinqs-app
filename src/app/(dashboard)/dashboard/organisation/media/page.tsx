@@ -240,6 +240,13 @@ export default async function OrganisationMediaPage({
             Photographs of your venue
           </h2>
           <p className="mt-1 text-sm text-ink-600">
+            {heldVenues.map((v) => (
+              <a key={v.id} href={`/api/venues/${v.id}/qr-sheet`} className="mr-4 inline-flex min-h-[44px] items-center font-semibold text-ink-900 underline underline-offset-2">
+                Download a QR sheet for {v.name}
+              </a>
+            ))}
+          </p>
+          <p className="mt-1 text-sm text-ink-600">
             Send us three photographs of your venue. Once our team approves one, it shows on every night at your venue, with your credit.
           </p>
           {venuePhotosUnreadable ? (

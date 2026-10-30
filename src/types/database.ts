@@ -10342,6 +10342,44 @@ export type Database = {
           },
         ]
       }
+      venue_go_presses: {
+        Row: {
+          day: string
+          id: string
+          is_test: boolean
+          pressed_at: string
+          venue_id: string
+          via: string
+          visitor: string
+        }
+        Insert: {
+          day: string
+          id?: string
+          is_test?: boolean
+          pressed_at?: string
+          venue_id: string
+          via: string
+          visitor: string
+        }
+        Update: {
+          day?: string
+          id?: string
+          is_test?: boolean
+          pressed_at?: string
+          venue_id?: string
+          via?: string
+          visitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_go_presses_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_images: {
         Row: {
           approval_state: string

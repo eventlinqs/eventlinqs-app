@@ -113,6 +113,9 @@ function Venue({ v }: { v: WaitingVenue }) {
         {v.venueName}
         {v.city ? <span className="font-normal text-white/50">, {v.city}</span> : null}
       </h3>
+      <a href={`/api/venues/${v.venueId}/qr-sheet`} className={`${CONTROL} text-xs text-white/70 underline underline-offset-2 hover:text-white`}>
+        Download its QR sheet
+      </a>
       <div className="mt-3 flex flex-col gap-4 md:flex-row">
         {/* eslint-disable-next-line @next/next/no-img-element -- a staff preview of a photograph waiting for approval, never a public image */}
         <img src={best.imageUrl} alt={`The photograph proposed for ${v.venueName}`} className="h-48 w-full rounded-lg object-cover md:w-80" />
