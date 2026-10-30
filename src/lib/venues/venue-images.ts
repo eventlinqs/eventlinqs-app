@@ -4,6 +4,7 @@ import { photoHashes } from '@/lib/images/photo-hash'
 import { PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
+import { contactAddress } from '@/lib/email/sender'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { venuePhotosFor, type VenuePhoto, type VenueUse } from './venue-photos-read'
 
@@ -217,7 +218,7 @@ export function venueMediaDeps(): VenueMediaDeps & FingerprintDeps {
     },
     async bytesOf(url) {
       // Wikimedia asks every client to name itself (https://meta.wikimedia.org/wiki/User-Agent_policy).
-      const res = await fetch(url, { headers: { 'User-Agent': 'EventLinqs venue photos (https://www.eventlinqs.com.au; hello@eventlinqs.com)' } })
+      const res = await fetch(url, { headers: { 'User-Agent': `EventLinqs venue photos (https://www.eventlinqs.com.au; ${contactAddress('hello')})` } })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const bytes = Buffer.from(await res.arrayBuffer())
       if (bytes.byteLength > LARGEST_SOURCE_PHOTO_BYTES) throw new Error('the file is larger than any photograph we fingerprint')

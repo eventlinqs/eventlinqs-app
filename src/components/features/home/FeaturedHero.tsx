@@ -80,7 +80,8 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
 /** The nights the hero leads with: its own photograph only, the first MAX_SLIDES. The page reads the same choice, so
  * an event the hero shows is not shown again below it (one card per event per page, the photo system's P5). */
 export function heroSlideEvents<E extends { readonly cover_image_url?: string | null }>(events: readonly E[]): E[] {
-  return events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)
+  const featured = events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)
+  return featured
 }
 
 export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
