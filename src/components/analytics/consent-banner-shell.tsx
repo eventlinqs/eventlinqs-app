@@ -56,10 +56,16 @@ export function ConsentBannerShell() {
       id={CONSENT_SHELL_ID}
       role="region"
       aria-label="Cookies and measurement"
-      className="fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--brand-accent)]/40 bg-[var(--color-navy-950)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(10,22,40,0.28)] sm:px-6 lg:px-8"
+      /*
+       * ON A SHORT SCREEN (600 px tall or less) THE STRIP TIGHTENS: at 320 x 568 it and the bottom bar above it covered
+       * more than half the screen (window 5's phone test, live, 31 October 2026). The words are consent wording and
+       * change only by a dated new version, so only the spacing and the size (the platform's own 12 px) move; 667 tall
+       * and up are unchanged.
+       */
+      className="fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--brand-accent)]/40 bg-[var(--color-navy-950)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(10,22,40,0.28)] sm:px-6 lg:px-8 [@media(max-height:600px)]:pt-3 [@media(max-height:600px)]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-        <p className="max-w-3xl text-sm leading-relaxed text-white/85">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8 [@media(max-height:600px)]:gap-3">
+        <p className="max-w-3xl text-sm leading-relaxed text-white/85 [@media(max-height:600px)]:text-xs [@media(max-height:600px)]:leading-normal">
           We count how the site is used so we can make it better, and we measure which of our own
           adverts bring organisers here. None of it runs until you say yes, and you can say no
           without losing anything: buying a ticket and running an event work exactly the same
