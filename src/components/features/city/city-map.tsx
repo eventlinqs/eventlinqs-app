@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
 import { createBrandPin } from '@/lib/maps/brand-pin'
-import { isAuditRun } from '@/lib/ui/audit-mode'
 import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 export interface MapEventPin {
@@ -61,7 +60,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
   const mapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([])
   const [status, setStatus] = useState<'idle' | 'ready' | 'error'>('idle')
-  const [inView, setInView] = useState(false)
+  const [wanted, setWanted] = useState(false)
 
   // Env-only check (NEXT_PUBLIC, inlined at build) - never call
   // getGoogleMapsLoader() in the component body: its setOptions() touches
@@ -69,28 +68,11 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
   // inside the effect below (client-side).
   const configured = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim())
 
-  // Lazy-load on scroll-in (map sits below the fold). Skip in headless audits.
-  useEffect(() => {
-    // No key: the render below already shows the static fallback for !configured,
-    // so we do not setState here (avoids a synchronous set-state-in-effect).
-    if (!configured) return
-    if (isAuditRun()) return
-    const el = containerRef.current
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      const t = setTimeout(() => setInView(true), 0)
-      return () => clearTimeout(t)
-    }
-    const io = new IntersectionObserver(entries => {
-      for (const e of entries) {
-        if (e.isIntersecting) { setInView(true); io.disconnect(); break }
-      }
-    }, { rootMargin: '200px 0px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [configured])
+  // GOOGLE LOADS ONLY WHEN THE VISITOR ASKS (the controller's 06:16 (4), 31 October 2026): no load on scroll-in, so a
+  // page view is never a Maps JavaScript API load in the visitor's browser; the plate stands until 'Show map'.
 
   useEffect(() => {
-    if (!configured || !inView) return
+    if (!configured || !wanted) return
     const loader = getGoogleMapsLoader()
     if (!loader || !containerRef.current) return
     let cancelled = false
@@ -150,7 +132,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
       markersRef.current = []
       mapRef.current = null
     }
-  }, [configured, inView, centerLat, centerLng, zoom, pins])
+  }, [configured, wanted, centerLat, centerLng, zoom, pins])
 
   // Missing key or load failure: the static event list, never a broken map.
   if (status === 'error' || !configured) {
@@ -178,7 +160,17 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
         <div ref={containerRef} className="absolute inset-0 h-full w-full" />
         {status !== 'ready' && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'radial-gradient(ellipse 60% 60% at 50% 40%, rgba(212,160,23,0.14), transparent 70%), linear-gradient(180deg, #f5f4ef 0%, #e8e6df 100%)' }}>
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-500/30 border-t-gold-600" aria-hidden />
+            {wanted ? (
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-500/30 border-t-gold-600" aria-hidden />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setWanted(true)}
+                className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
+              >
+                Show map
+              </button>
+            )}
           </div>
         )}
       </div>
