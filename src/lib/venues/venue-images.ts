@@ -1,6 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { photoHashes } from '@/lib/images/photo-hash'
+import { PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -30,6 +31,8 @@ export type VenuePhotoAnswer = { readonly state: 'done'; readonly id: string } |
 
 export type VenueMediaDeps = {
   process(bytes: ArrayBuffer): Promise<{ buffer: Buffer; extension: string; contentType: string }>
+  /** The photo's fingerprint from the bytes the venue chose (src/lib/images/photo-hash.ts). */
+  hash(bytes: ArrayBuffer): Promise<PhotoHashes>
   store(path: string, image: { buffer: Buffer; contentType: string }): Promise<string>
   remove(paths: string[]): Promise<void>
   rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { code: string; message: string } | null }>
@@ -42,17 +45,35 @@ function refusalOf(error: { code: string; message: string }): VenuePhotoAnswer {
   throw new Error(`the venue photograph change was not saved: ${error.message}`)
 }
 
-async function storeImage(venueId: string, file: File | null, deps: VenueMediaDeps): Promise<{ url: string; path: string } | { refused: string }> {
+async function storeImage(
+  venueId: string,
+  file: File | null,
+  deps: VenueMediaDeps,
+): Promise<{ url: string; path: string; hashes: PhotoHashes } | { refused: string }> {
   if (!(file instanceof File) || file.size === 0) return { refused: 'Choose a photograph of your venue to add.' }
   if (file.size > MAX_IMAGE_BYTES) return { refused: 'The photograph must be under 10MB.' }
   let image
+  let hashes: PhotoHashes
   try {
-    image = await deps.process(await file.arrayBuffer())
+    const bytes = await file.arrayBuffer()
+    image = await deps.process(bytes)
+    hashes = await deps.hash(bytes)
   } catch {
     return { refused: 'That photograph could not be read. Try a JPEG or PNG.' }
   }
+  // NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P9): a photo already locked to an event is refused here,
+  // before it is stored. A library photo is locked itself only when it is dealt to a night (P11).
+  if (await photoLockedElsewhere(hashes, null, deps)) return { refused: PHOTO_ALREADY_USED }
   const path = `${VENUE_MEDIA_FOLDER}/${venueId}/${randomUUID()}.${image.extension}`
-  return { url: await deps.store(path, image), path }
+  return { url: await deps.store(path, image), path, hashes }
+}
+
+/** The new photograph's fingerprint, written once, so it can be dealt to one night only. */
+async function fingerprint(answer: VenuePhotoAnswer, hashes: PhotoHashes, deps: VenueMediaDeps): Promise<VenuePhotoAnswer> {
+  if (answer.state !== 'done') return answer
+  const marked = await deps.rpc('venue_image_fingerprint', { p_image: answer.id, p_sha256: hashes.sha256, p_dhash: hashes.dhash })
+  if (marked.error) throw new Error(`the photograph was added but not fingerprinted: ${marked.error.message}`)
+  return answer
 }
 
 async function register(path: string, name: string, args: Record<string, unknown>, deps: VenueMediaDeps): Promise<VenuePhotoAnswer> {
@@ -76,7 +97,7 @@ export async function addVenuePhoto(
 ): Promise<VenuePhotoAnswer> {
   const stored = await storeImage(input.venueId, input.file, deps)
   if ('refused' in stored) return { state: 'refused', reason: stored.refused }
-  return register(stored.path, 'venue_image_add', {
+  const added = await register(stored.path, 'venue_image_add', {
     p_user: input.userId,
     p_venue: input.venueId,
     p_image_url: stored.url,
@@ -85,6 +106,7 @@ export async function addVenuePhoto(
     p_attribution: input.credit?.trim() || null,
     p_uses: null,
   }, deps)
+  return fingerprint(added, stored.hashes, deps)
 }
 
 export async function replaceVenuePhoto(
@@ -93,13 +115,14 @@ export async function replaceVenuePhoto(
 ): Promise<VenuePhotoAnswer> {
   const stored = await storeImage(input.venueId, input.file, deps)
   if ('refused' in stored) return { state: 'refused', reason: stored.refused }
-  return register(stored.path, 'venue_image_replace', {
+  const replaced = await register(stored.path, 'venue_image_replace', {
     p_user: input.userId,
     p_image: input.imageId,
     p_image_url: stored.url,
     p_source_url: input.sourceUrl,
     p_permission_words: input.permissionWords.trim(),
   }, deps)
+  return fingerprint(replaced, stored.hashes, deps)
 }
 
 async function decide(name: string, args: Record<string, unknown>, id: string, deps: Pick<VenueMediaDeps, 'rpc'>): Promise<VenuePhotoAnswer> {
@@ -191,6 +214,7 @@ export function venueMediaDeps(): VenueMediaDeps & FingerprintDeps {
       if (bytes.byteLength > LARGEST_SOURCE_PHOTO_BYTES) throw new Error('the file is larger than any photograph we fingerprint')
       return bytes
     },
+    hash: (bytes) => photoHashes(Buffer.from(bytes)),
     async process(bytes) {
       const result = await processEventImage(bytes, { role: 'cover' })
       if (!result.ok) throw new Error(result.error)
