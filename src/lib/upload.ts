@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { photoHashes } from '@/lib/images/photo-hash'
-import { lockPhotoToEvent, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
+import { lockIfSaved, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { checkRateLimit } from '@/lib/redis/rate-limit'
 import { POLICIES } from '@/lib/rate-limit/policies'
 
@@ -149,7 +149,10 @@ export async function uploadEventImage(formData: FormData): Promise<UploadImageR
   }
 
   const { data } = admin.storage.from(BUCKET).getPublicUrl(objectName)
-  const locked = await lockPhotoToEvent({ eventId, hashes, imageUrl: data.publicUrl, role }, lockRpc)
+  // The create wizard uploads before the event row exists: such a photo is locked when the event is saved
+  // (lockSavedEventPhotos in the create action), never refused here for an event the database does not know yet.
+  const { data: savedRow } = await admin.from('events').select('id').eq('id', eventId).maybeSingle()
+  const locked = await lockIfSaved({ eventId, saved: savedRow !== null, hashes, imageUrl: data.publicUrl, role }, lockRpc)
   if (!locked.ok) {
     // Another event took it in the moment between the question and the lock: the file goes back out.
     await admin.storage.from(BUCKET).remove([objectName])

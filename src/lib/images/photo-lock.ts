@@ -21,6 +21,41 @@ export async function photoLockedElsewhere(hashes: PhotoHashes, eventId: string 
   return answer.data === true
 }
 
+/**
+ * The upload's lock: a photo added before its event is saved (the create wizard uploads first) is not locked yet, for
+ * the database knows no such event; the door has already refused one locked elsewhere, and lockSavedEventPhotos locks
+ * it the moment the event is written. An event that exists is locked here, as before.
+ */
+export async function lockIfSaved(
+  input: { eventId: string; saved: boolean; hashes: PhotoHashes; imageUrl: string; role: 'cover' | 'gallery' },
+  deps: PhotoLockRpc,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!input.saved) return { ok: true }
+  return lockPhotoToEvent({ eventId: input.eventId, hashes: input.hashes, imageUrl: input.imageUrl, role: input.role }, deps)
+}
+
+/**
+ * Locks a newly saved event's photos (cover and gallery), each fingerprinted from its own stored bytes. Never throws:
+ * the event is already saved, so a photo it could not lock is reported for the server log, not turned into a lost event.
+ */
+export async function lockSavedEventPhotos(
+  input: { eventId: string; photos: readonly { url: string; role: 'cover' | 'gallery' }[] },
+  deps: PhotoLockRpc & { hashesOf(url: string): Promise<PhotoHashes> },
+): Promise<{ locked: number; notLocked: string[] }> {
+  let locked = 0
+  const notLocked: string[] = []
+  for (const photo of input.photos) {
+    try {
+      const done = await lockPhotoToEvent({ eventId: input.eventId, hashes: await deps.hashesOf(photo.url), imageUrl: photo.url, role: photo.role }, deps)
+      if (done.ok) locked += 1
+      else notLocked.push(`${photo.url}: ${done.error}`)
+    } catch (error) {
+      notLocked.push(`${photo.url}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  return { locked, notLocked }
+}
+
 /** Locks the photo to its event; refused in Lawal's words when another event holds it. Any other fault is thrown. */
 export async function lockPhotoToEvent(
   input: { eventId: string; hashes: PhotoHashes; imageUrl: string; role: 'cover' | 'gallery' },

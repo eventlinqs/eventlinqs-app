@@ -53,7 +53,7 @@ describe('the organiser media step, src/lib/upload.ts', () => {
     const hashed = SOURCE.indexOf('photoHashes(')
     const asked = SOURCE.indexOf('photoLockedElsewhere(')
     const stored = SOURCE.indexOf('.upload(objectName')
-    const locked = SOURCE.indexOf('lockPhotoToEvent(')
+    const locked = SOURCE.indexOf('lockIfSaved(')
     for (const at of [read, hashed, asked, stored, locked]) expect(at).toBeGreaterThan(-1)
     expect(read).toBeLessThan(hashed)
     expect(hashed).toBeLessThan(asked)
@@ -84,7 +84,7 @@ describe('the organiser media step, src/lib/upload.ts', () => {
   })
 
   it('takes the stored file back out when the lock refuses', () => {
-    const tail = SOURCE.slice(SOURCE.indexOf('lockPhotoToEvent('))
+    const tail = SOURCE.slice(SOURCE.indexOf('lockIfSaved('))
     expect(tail.slice(0, 600)).toMatch(/\.remove\(\[objectName\]\)/)
   })
 })
