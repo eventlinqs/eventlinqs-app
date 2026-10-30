@@ -34,6 +34,9 @@ export interface QueueTouch {
   readonly purpose: string
   /** Why the draft cannot go yet (outreach_touches.held_because); empty when nothing holds it. */
   readonly heldBecause: readonly string[]
+  /** Why the database will not let this contact be written to now (outreach_contact_refusal): a stop, an unsubscribe,
+   *  a no, a lapsed basis. Null when it may. Suppression is the database's, never decided here. */
+  readonly refusal: string | null
   readonly subject: string | null
   readonly body: string
   readonly trackedLink: string | null
@@ -82,9 +85,10 @@ export function openInApp(channel: ContactChannel, address: string, subject?: st
   }
 }
 
-/** Why this draft cannot be sent now: the reasons it is held, and an address that will not open safely. */
+/** Why this draft cannot be sent now: the database's refusal of its contact first, the reasons it is held, and an address
+ * that will not open safely. */
 export function notReady(t: QueueTouch): string[] {
-  const why = [...t.heldBecause]
+  const why = [...(t.refusal ? [t.refusal] : []), ...t.heldBecause]
   if (openInApp(t.channel, t.address, t.subject) === null) why.push('its address cannot be opened safely')
   return why
 }
