@@ -6,6 +6,7 @@ import { undeliverableAddresses } from '@/lib/email/delivery-events'
 import { broadcastPriceLabel } from './price-line'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
+import { EDITION_CITIES } from '@/lib/social/campaign'
 import { buildShortUrl, getOrCreateShareLink } from './share-links'
 import {
   mergeDigestAudience,
@@ -115,6 +116,15 @@ export async function fetchDigestCities(admin: Admin): Promise<string[]> {
     }
   }
   return [...cities].sort()
+}
+
+/**
+ * The cities a weekly digest goes to: the edition cities (D5 of the DemandOS directive, 'Initially support Geelong and
+ * Melbourne'; src/lib/social/campaign.ts holds the one list, so email and social never cover different cities) that have
+ * someone who said yes. A city joins by one line there. ?city= on the cron stays the operator's path to any city.
+ */
+export function editionDigestCities(found: readonly string[]): string[] {
+  return EDITION_CITIES.filter((city) => found.includes(city))
 }
 
 /**
