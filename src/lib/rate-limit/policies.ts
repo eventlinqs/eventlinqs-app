@@ -37,6 +37,7 @@ export type PolicyName =
   | 'organiser-media'
   | 'admin-social-press'
   | 'admin-social-plan'
+  | 'admin-outreach-sent'
   | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
@@ -279,6 +280,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The Plan press on /admin/social per admin per 10 min (F4), keyed by the admin user id as admin-social-press. Planning is idempotent (F7: a second press finds the week and makes nothing new) but each press reads the whole week of listings and writes or finds its posts and pieces, so it is the costly press. Six in ten minutes covers a plan, a re-plan after excluding a night and a few presses to check; more is a loop. FAIL-OPEN, the same reason as admin-social-press.',
+  },
+  'admin-outreach-sent': {
+    keyPrefix: 'adm-sent',
+    limit: 60,
+    windowSec: 600,
+    rationale:
+      "The Sent press on /admin/acquisition's daily queue per admin per 10 min, keyed by the admin user id as admin-social-press. Each press records one message Lawal sent by hand (crm.ts markSent) and the database judges it; a whole day's queue is at most 45 hand messages (src/lib/outreach/daily-queue-math.ts QUEUE_CAPS), sent a few minutes apart, so 60 in ten minutes is never reached by a person and bounds a loop on a stolen session. FAIL-OPEN, the same reason as admin-social-press.",
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',
