@@ -67,7 +67,8 @@ describe('the migration says the same, and starts shut', () => {
 
 describe('the call is made only on the database\'s yes', () => {
   const req = { api: 'places_photo' as const, units: 1, purpose: 'venue photo, Forum Melbourne' }
-  const rpcSaying = (answer: unknown) => ({ rpc: vi.fn(async () => answer) })
+  type Answer = { data: unknown; error: { message: string } | null }
+  const rpcSaying = (answer: Answer) => ({ rpc: vi.fn(async (_fn: string, _args: Record<string, unknown>) => answer) })
 
   test('a refusal never reaches Google, and says why', async () => {
     const call = vi.fn(async () => 'photo')
