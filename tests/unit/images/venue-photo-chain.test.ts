@@ -59,6 +59,16 @@ describe('the chain, on a page of rows', () => {
     expect(out.every((r) => !r.image_credit)).toBe(true)
   })
 
+  it('never removes a night: every row comes back, in its order, whatever its image', async () => {
+    const rows = [
+      { id: 'own', cover_image_url: OWN },
+      { id: 'venue', cover_image_url: COMPOSED },
+      { id: 'none', cover_image_url: null },
+    ]
+    const out = await withVenuePhotos(rows, { deps: deps({ venue: 'v1' }, { v1: photo() }) })
+    expect(out.map((r) => r.id)).toEqual(['own', 'venue', 'none'])
+  })
+
   it('makes one read for the whole page, each venue once', async () => {
     const d = deps({ a: 'v1', b: 'v1', c: 'v2' }, { v1: photo() })
     await withVenuePhotos(

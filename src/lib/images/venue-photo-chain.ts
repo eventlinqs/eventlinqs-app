@@ -67,12 +67,14 @@ export async function withVenuePhotos<T extends ChainRow>(
   rows: readonly T[],
   options: { readonly use?: VenueUse; readonly deps?: ChainDeps } = {},
 ): Promise<(T & ChainCredit)[]> {
-  const wanting = rows.filter((r) => !isOwnPhoto(r.cover_image_url))
-  if (wanting.length === 0) return [...rows]
+  // The nights to ask about, never a narrowing of the rows: every row comes back, in its order (no-display-time-exclusion).
+  const askAbout: string[] = []
+  for (const row of rows) if (!isOwnPhoto(row.cover_image_url)) askAbout.push(row.id)
+  if (askAbout.length === 0) return [...rows]
   try {
     const deps = options.deps ?? publicDeps()
-    const venues = await deps.venueIdsOf(wanting.map((r) => r.id))
-    const venueIds = [...new Set(wanting.flatMap((r) => venues.get(r.id) ?? []))]
+    const venues = await deps.venueIdsOf(askAbout)
+    const venueIds = [...new Set(askAbout.flatMap((id) => venues.get(id) ?? []))]
     if (venueIds.length === 0) return [...rows]
     const photos = await deps.photosOf(venueIds, options.use ?? 'event_card')
     return rows.map((row) => {
