@@ -30,6 +30,14 @@ describe('a page that is not the subject itself borrows no photo', () => {
     expect(source).not.toMatch(/\bgetCategoryPhoto\b/)
   })
 
+  // The crawl found Sydney's harbour photo as the organiser panel's backdrop on 22 community pages (the first city's
+  // hero); the community page is not Sydney's, so the panel draws its own navy treatment.
+  test("a community page's organiser panel asks for no city photo", () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/app/community/[community]/page.tsx'), 'utf8')
+    expect(source).not.toMatch(/\bgetCityHeroPhoto\b/)
+    expect(source).toMatch(/cityCtaImage=\{null\}/)
+  })
+
   test('the community-in-city page draws its hero and sub-community tiles without a photo', () => {
     const source = readFileSync(resolve(process.cwd(), PAGES[0]), 'utf8')
     expect(source).toMatch(/heroImage=\{null\}/)
