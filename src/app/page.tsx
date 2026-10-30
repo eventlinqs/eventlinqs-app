@@ -23,6 +23,7 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import {
   ThisWeekSkeleton,
   CityRailSkeleton,
@@ -101,7 +102,11 @@ export default async function HomePage() {
   // catalogue so the page can be built and benchmarked at full density while
   // staging is not yet provisioned.
   const upcomingRawTyped = await loadHomeUpcoming(supabase, nowIso, 60)
-  const upcoming = upcomingRawTyped.map(toBentoEvent)
+  // The hero keeps the rows as read: it leads only with a night's own photograph (FeaturedHero, isOwnPhoto), so a
+  // venue's photograph never stands under a night's name there. Every rail takes the card image chain.
+  const heroEvents = upcomingRawTyped.map(toBentoEvent)
+  const upcomingWithPhotos = await withVenuePhotos(upcomingRawTyped)
+  const upcoming = upcomingWithPhotos.map(toBentoEvent)
 
   void nowMs
 
@@ -205,7 +210,7 @@ export default async function HomePage() {
     .sort((a, b) => (b.percent_sold ?? 0) - (a.percent_sold ?? 0))
     .slice(0, 10)
 
-  const justAdded = [...upcomingRawTyped]
+  const justAdded = [...upcomingWithPhotos]
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
     .slice(0, 10)
     .map(toBentoEvent)
@@ -224,7 +229,7 @@ export default async function HomePage() {
          *  crossfade (Hero Carousel law: pauses on hover/touch/focus, gated
          *  on the motion flag, manual arrows and dots always available).
          *  This is the only homepage surface where text sits on a photo. */}
-        <FeaturedHero events={upcoming} />
+        <FeaturedHero events={heroEvents} />
 
         {/* Paid featured slots (Train C, row 12), headed and labelled Featured, never inside the unpaid rails. */}
         <FeaturedRow items={featured} where="homepage" />

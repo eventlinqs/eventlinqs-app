@@ -37,6 +37,8 @@ export interface BentoEvent extends EventMediaInput {
   timezone: string | null
   venue_name?: string | null
   venue_city?: string | null
+  /** A venue photograph's credit (src/lib/images/venue-photo-chain.ts), the image's title attribute, never on the image. */
+  image_credit?: string | null
   ticket_tiers?: { price: number; currency: string }[] | null
   summary?: string | null
   is_free?: boolean | null
@@ -161,6 +163,7 @@ export async function EventBentoTile({
               src={imageSrc}
               alt={imageAlt}
               variant={variant}
+              title={event.image_credit ?? null}
             />
           ) : (
             <BrandedPlaceholder category={placeholderCategory} />

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { DRAFT_PLAY_HOLD, VENUE_ASK_DM, VENUE_ASK_EMAIL, draftVenueAsk, type VenueAsk } from '@/lib/outreach/venue-asks'
+import { DRAFT_PLAY_HOLD, VENUE_ASK_DM, VENUE_ASK_EMAIL, VENUE_PHOTO_ASK, draftVenueAsk, type VenueAsk } from '@/lib/outreach/venue-asks'
 import { DM_SIGN_OFF, LAWAL_SIGNATURE } from '@/lib/outreach/rules'
 
 // D7, the venue partnership asks: twelve venues from window 3's research, each written in Lawal's format and judged by
@@ -45,6 +45,16 @@ describe('the D7 venue asks', () => {
       const content = d.channel === 'email' ? d.body.split('\nKind regards,')[0] : d.body.split(`\n${DM_SIGN_OFF}`)[0]
       expect((content.match(/\?/g) ?? []).length, d.organiser).toBe(1)
       expect(d.body).not.toMatch(/I'm Lawal|I run EventLinqs|we're new/i)
+    }
+  })
+
+  // The project manager's 16:42 of 30 October 2026: D7's venue asks gain "send us 3 photos of your venue, with your yes".
+  // A statement, not a second question, so each email still asks exactly one; the DM stays short and does not carry it.
+  it('ask each email\'s venue for three photos of it with their yes, without a second question', () => {
+    for (const d of drafts) {
+      if (d.state !== 'drafted' || d.channel !== 'email') continue
+      expect(d.body, d.organiser).toContain(VENUE_PHOTO_ASK)
+      expect(VENUE_PHOTO_ASK).not.toContain('?')
     }
   })
 

@@ -4,12 +4,15 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { runAllChecks } from '@/lib/health/checks'
+import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
+import { googleSpendFigure, spendReadFrom } from '@/lib/google/spend-guard-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
+import { refundedOf } from '@/lib/growth/weekly-math'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
@@ -110,6 +113,16 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   })
 
   // Partner kits sent in the credit window, and the real taps on each kit's own link since (the blueprint's 4D).
+  // The four honest levels of the nights reported in the last 28 days, read from the kept night reports, never recounted.
+  const reported = await settle(async () => {
+    const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
+    const kept = await readEveryRow<{ figures: unknown }>('the night reports kept in the last 28 days', (from, to) =>
+      admin.from('organiser_night_reports').select('figures').gte('read_at', since).order('id', { ascending: true }).range(from, to),
+    )
+    const nights = kept.map((r) => nightFiguresFrom(r.figures))
+    return { levels: venueLevels(nights.filter((f) => f !== null).map(fourLevels)), unread: nights.filter((f) => f === null).length }
+  })
+
   const kits = await settle(async () => {
     const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
     const sent = await readEveryRow<{ id: string; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] }>('the partner kits sent', (from, to) =>
@@ -133,12 +146,12 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   // page's own figuresFor so the month counts sold orders exactly as the week does.
   const month = await settle(async () => {
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
-    const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null }>(
+    const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>(
       'the orders of the last 28 days',
       (from, to) =>
         admin
           .from('orders')
-          .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents')
+          .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents, refunds(amount_cents, status)')
           .eq('currency', 'AUD')
           .gte('created_at', since)
           .order('id', { ascending: true })
@@ -153,6 +166,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       eventId: o.event_id,
       retainedCents: o.platform_fee_retained_cents === null ? null : Number(o.platform_fee_retained_cents),
       processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
+      refundedCents: refundedOf(o.refunds),
     }))
     return figuresFor({ listings: [], visits: [], demand: [], saves: [], subscribers: [], orders, refunds: [] }, { from: since, to: now.toISOString(), monday: since.slice(0, 10) }).health
   })
@@ -169,6 +183,14 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
   const g = growth.ok ? growth.value.lastFigures : null
   const failing = health.ok ? health.value.filter((r) => !r.ok) : null
+  // The Google cost guard's counter (src/lib/google/spend-guard-math.ts): spend against the cap, calls against the quota.
+  const googleSpend = await settle(async () => {
+    const { data, error } = await admin.rpc('google_spend_state')
+    if (error) throw new Error(error.message)
+    const read = spendReadFrom(data)
+    if (!read) throw new Error('google_spend_state answered no readable row')
+    return read
+  })
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
 
@@ -267,6 +289,11 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
           'value',
           'weekly',
         ),
+        ...(reported.ok
+          ? levelFigures(reported.value.levels).map((f, i) =>
+              i === 0 && reported.value.unread > 0 ? { ...f, note: `${reported.value.unread} kept report(s) in a shape these levels do not read, left out` } : f,
+            )
+          : levelFigures(venueLevels([])).map((f) => ({ ...f, note: reported.note }))),
       ],
       done: posted === null || posted === 0 ? [] : [`${count.format(posted)} ${posted === 1 ? 'piece' : 'pieces'} posted this week`],
     },
@@ -342,6 +369,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Health checks failing', failing === null ? { value: null, note: health.ok ? undefined : health.note } : { value: failing.length }, true, '/admin/health', failing && failing.length > 0 ? failing.map((f) => f.label).join(', ') : undefined), 'failed', 'daily'),
         tag(fig('Messages that failed to send, 7 days', failedSends, true, null), 'failed', 'daily'),
         tag(fig('Admin sign-in failures, 24 hours', loginFailures, true, '/admin/audit'), 'failed', 'daily'),
+        googleSpend.ok ? googleSpendFigure(googleSpend.value) : googleSpendFigure(null, googleSpend.note),
         tag({ label: 'Production', value: 0, asksForAPerson: false, href: null, display: commit ? `${environment}, ${commit}` : environment }, 'measure', 'daily'),
       ],
       done: [
