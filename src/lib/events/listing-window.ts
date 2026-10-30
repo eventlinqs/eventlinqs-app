@@ -151,6 +151,11 @@ export function startOfLocalDayUtc(now: Date, zone: string): Date {
   return startOfLocalDayUtcOffset(now, zone, 0)
 }
 
+/** Today and tomorrow in `zone`, start of today to the last instant of tomorrow, inclusive: the city page's rail (D5). */
+export function todayAndTomorrowWindow(now: Date, zone: string): { from: Date; to: Date } {
+  return { from: startOfLocalDayUtcOffset(now, zone, 0), to: new Date(startOfLocalDayUtcOffset(now, zone, 2).getTime() - 1) }
+}
+
 /** End of the calendar day containing `date`, in `zone`, as a UTC instant. */
 export function endOfLocalDayUtc(date: Date, zone: string): Date {
   return startOfLocalDayUtcOffset(date, zone, 1)

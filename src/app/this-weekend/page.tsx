@@ -13,6 +13,7 @@ import {
   loadWeekendSurface,
 } from '@/lib/events/weekend-surface'
 import type { PublicEventRow } from '@/lib/events/types'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 
 /**
  * `/this-weekend`, the weekend discovery surface (close-out AQ3).
@@ -87,7 +88,8 @@ function citiesWithEvents(events: PublicEventRow[]): WeekendCityLink[] {
 }
 
 export default async function ThisWeekendPage() {
-  const { from, to, events, total } = await loadWeekendSurface()
+  const { from, to, events: rows, total } = await loadWeekendSurface()
+  const events = await withVenuePhotos(rows)
   const weekend = describeWeekend(from, to)
   const days = groupWeekendByDay(events)
   const baseUrl = getSiteUrl()

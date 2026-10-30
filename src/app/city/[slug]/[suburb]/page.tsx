@@ -14,6 +14,7 @@ import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
@@ -114,11 +115,11 @@ export default async function SuburbPage({ params }: Props) {
     .order('start_date', { ascending: true })
     .limit(200)
 
-  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+  const allRaw = await withVenuePhotos((rows ?? []) as unknown as (EventCardData & {
     suburb_primary: string | null
     venue_latitude: number | null
     venue_longitude: number | null
-  })[]
+  })[])
   // Assignment is EXCLUSIVE: an event belongs to the ONE nearest district, not
   // to every district whose radius happens to reach it. That distinction is the
   // whole difference between six district pages and six copies of the city

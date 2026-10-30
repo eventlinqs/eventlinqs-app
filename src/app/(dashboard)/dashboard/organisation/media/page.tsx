@@ -7,6 +7,8 @@ import { formatEventDateTimeCompact, formatPlatformDate } from '@/lib/dates/even
 import { GalleryImage } from '@/components/media/GalleryImage'
 import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, WithdrawMediaForm, WithdrawYesForm } from '@/components/listings/organiser-media-forms'
 import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
+import { AddVenuePhotoForm, ReplaceVenuePhotoForm, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
+import { venuePhotoStateWords } from '@/lib/venues/venue-photo-words'
 
 /**
  * YOUR PHOTOS AND ARTWORK (the engine plan of 28 October 2026, part D; the final directive, section 15: "Upload artwork
@@ -82,6 +84,31 @@ export default async function OrganisationMediaPage({
     venueIds.length ? readOrThrow('claimed venue names', () => admin.from('venues').select('id, name').in('id', venueIds)) : [],
     eventIds.length ? readOrThrow('claimed event titles', () => admin.from('events').select('id, title').in('id', eventIds)) : [],
   ])
+  // The venues this organisation holds once claimed, and the photographs of them it sent (never a harvested one).
+  const heldVenues =
+    (await readOrThrow('organisation venues', () =>
+      admin.from('venues').select('id, name').eq('organisation_id', orgId).eq('listing_source', 'organiser').is('removed_at', null).order('name'),
+    )) ?? []
+  // A failed read here takes only this section away, said plainly, never the organiser's whole media page (the table
+  // arrives with 20261030171501_venue_images.sql, applied to production by Lawal).
+  let venuePhotosUnreadable = false
+  const venuePhotos = heldVenues.length
+    ? await readOrThrow('venue photographs', () =>
+        admin
+          .from('venue_images')
+          .select('id, venue_id, image_url, attribution_text, approval_state, created_at')
+          .in('venue_id', heldVenues.map((v) => v.id))
+          .in('source', ['venue', 'organiser'])
+          .order('created_at', { ascending: false }),
+      ).then(
+        (rows) => rows ?? [],
+        () => {
+          venuePhotosUnreadable = true
+          return []
+        },
+      )
+    : []
+  const venueName = new Map(heldVenues.map((v) => [v.id, v.name]))
   const claimName = new Map<string, string>([
     ...(claimedVenues ?? []).map((v) => [v.id, v.name] as [string, string]),
     ...(claimedEvents ?? []).map((e) => [e.id, e.title] as [string, string]),
@@ -204,6 +231,53 @@ export default async function OrganisationMediaPage({
           </ul>
         )}
       </section>
+
+      {/* The project manager's 16:42 of 30 October 2026: a claimed venue sends photographs of itself, with its yes; once
+          our team approves one, it shows on every night at the venue (public.venue_images). */}
+      {heldVenues.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="venue-photos-heading">
+          <h2 id="venue-photos-heading" className="text-lg font-semibold text-ink-900">
+            Photographs of your venue
+          </h2>
+          <p className="mt-1 text-sm text-ink-600">
+            Send us three photographs of your venue. Once our team approves one, it shows on every night at your venue, with your credit.
+          </p>
+          {venuePhotosUnreadable ? (
+            <p role="alert" className="mt-3 text-sm text-ink-600">
+              Your venue photographs could not be read just now, so none can be sent here yet. Try again later.
+            </p>
+          ) : null}
+          {venuePhotos.length > 0 ? (
+            <ul className="mt-4 space-y-6">
+              {venuePhotos.map((p) => (
+                <li key={p.id} data-venue-photo={p.id} className="flex flex-col gap-4 sm:flex-row">
+                  <a href={p.image_url} target="_blank" rel="noopener" className="relative block h-40 w-full shrink-0 overflow-hidden rounded-lg sm:w-56">
+                    <GalleryImage src={p.image_url} alt={`A photograph of ${venueName.get(p.venue_id ?? '') ?? 'your venue'}`} />
+                  </a>
+                  <div className="min-w-0 flex-1 text-sm text-ink-600">
+                    <p className="font-semibold text-ink-900">{venueName.get(p.venue_id ?? '') ?? 'Your venue'}</p>
+                    <p className="mt-1">
+                      {p.attribution_text}, added {formatPlatformDate(p.created_at)}
+                    </p>
+                    <p className="mt-1 font-medium text-ink-900">{venuePhotoStateWords(p.approval_state)}</p>
+                    {p.approval_state !== 'withdrawn' && p.venue_id ? (
+                      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <ReplaceVenuePhotoForm venueId={p.venue_id} imageId={p.id} />
+                        <WithdrawVenuePhotoForm imageId={p.id} />
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {venuePhotosUnreadable ? null : (
+            <div className="mt-4">
+              <AddVenuePhotoForm venues={heldVenues.map((v) => ({ id: v.id, name: v.name }))} />
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   )
 }

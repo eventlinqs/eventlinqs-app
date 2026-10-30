@@ -5,6 +5,7 @@ import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -27,6 +28,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
+  todayAndTomorrowWindow,
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -115,17 +117,18 @@ export default async function CityPage({ params }: Props) {
     { label: `city/${city.slug}` },
   )
 
-  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+  const allRaw = await withVenuePhotos((rows ?? []) as unknown as (EventCardData & {
     end_date?: string
     venue_latitude?: number | null
     venue_longitude?: number | null
     /** The event's own zone, so its date is not formatted in the reader's. */
     timezone?: string | null
-  })[]
+  })[])
 
   const allEvents: EventCardData[] = allRaw.map(r => ({
     id: r.id, slug: r.slug, title: r.title,
     cover_image_url: r.cover_image_url, thumbnail_url: r.thumbnail_url,
+    image_credit: r.image_credit ?? null,
     start_date: r.start_date,
     // Carried through rather than dropped. The raw type above has read this
     // column all along, with a comment saying why, and then the projection
@@ -146,6 +149,9 @@ export default async function CityPage({ params }: Props) {
   // morning is still on and still belongs in This week (exclusion audit item 1).
   const thisWeekEvents = allEvents.filter(e => e.start_date >= w.todayStartIso && e.start_date <= w.sevenDaysIso)
   const thisWeekendEvents = allEvents.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
+  // D5's Tonight and Tomorrow on the web, computed at render, so its words are true on every day it shows.
+  const soon = todayAndTomorrowWindow(new Date(w.nowIso), PLATFORM_TIME_ZONE)
+  const todayTomorrowEvents = allEvents.filter(e => e.start_date >= soon.from.toISOString() && e.start_date <= soon.to.toISOString())
   const popularEvents = allEvents.slice(0, 12)
 
   // Map pins: only events with geocoded venues, capped at 100.
@@ -259,6 +265,7 @@ export default async function CityPage({ params }: Props) {
         heroImage={heroImage}
         caption={caption}
         thisWeekEvents={thisWeekEvents}
+        todayTomorrowEvents={todayTomorrowEvents}
         thisWeekendEvents={thisWeekendEvents}
         popularEvents={popularEvents}
         allEvents={allEvents}
