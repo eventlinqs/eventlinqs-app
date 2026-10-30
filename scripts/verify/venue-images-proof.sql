@@ -24,6 +24,7 @@ DECLARE
   v_d uuid;
   v_e uuid;
   v_f uuid;
+  v_other uuid;
   v_bucket constant text := 'https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/organiser-media/venue-proof/';
 BEGIN
   SELECT id INTO v_venue FROM public.venues ORDER BY created_at LIMIT 1;
@@ -317,6 +318,42 @@ BEGIN
       v_out := v_out || ' | R1 staff refuse with a reason, it leaves the queue: PASS';
     ELSE v_out := v_out || ' | R1 refuse: FAIL'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | R1 refuse: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- B1 the page's batch read (20261030190501): to anon itself, one row a venue, the primary photograph, none for a venue
+  -- with nothing approved, none for a use not permitted, and the single read answers the same photograph.
+  BEGIN
+    SELECT id INTO v_other FROM public.venues v WHERE v.id <> v_venue
+       AND NOT EXISTS (SELECT 1 FROM public.venue_images i WHERE i.venue_id = v.id) ORDER BY created_at LIMIT 1;
+    UPDATE public.venue_images SET is_primary = false WHERE venue_id = v_venue AND is_primary;
+    INSERT INTO public.venue_images (venue_id, image_url, source, source_url, licence, attribution_text, permitted_uses, width, height,
+        verified_depicts_venue, verified_by, verified_at, approval_state, approved_by, approved_at, quality_score, is_primary)
+      VALUES (v_venue, v_bucket || 'batch-primary.jpg', 'wikimedia_commons', 'https://commons.wikimedia.org/wiki/File:Batch.jpg', 'cc0', 'Photo: batch', array['venue_page'], 1600, 1200,
+        true, v_staff, now(), 'approved', v_staff, now(), 10, true);
+    INSERT INTO public.venue_images (venue_id, image_url, source, source_url, licence, attribution_text, permitted_uses, width, height,
+        verified_depicts_venue, verified_by, verified_at, approval_state, approved_by, approved_at, quality_score)
+      VALUES (v_venue, v_bucket || 'batch-higher-score.jpg', 'wikimedia_commons', 'https://commons.wikimedia.org/wiki/File:Batch2.jpg', 'cc0', 'Photo: batch two', array['venue_page'], 1600, 1200,
+        true, v_staff, now(), 'approved', v_staff, now(), 99);
+    SET LOCAL ROLE anon;
+    SELECT count(*), min(f.image_url) INTO v_n, v_url FROM public.venue_photos_for(array[v_venue, v_other, v_venue], 'venue_page') f;
+    RESET ROLE;
+    IF v_n = 1 AND v_url = v_bucket || 'batch-primary.jpg'
+       AND (SELECT count(*) FROM public.venue_photos_for(array[v_other], 'venue_page')) = 0
+       AND (SELECT count(*) FROM public.venue_photos_for('{}'::uuid[], 'venue_page')) = 0
+       AND (SELECT f.image_url FROM public.venue_photo_for(v_venue, 'venue_page') f) = v_url
+       AND NOT EXISTS (SELECT 1 FROM public.venue_photos_for(array[v_venue], 'no_such_use')) THEN
+      v_out := v_out || ' | B1 the batch read answers one row a venue, primary first, to anon, as the single read does: PASS';
+    ELSE v_out := v_out || ' | B1 batch: FAIL (' || coalesce(v_n::text, 'null') || ', ' || coalesce(v_url, 'null') || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN RESET ROLE; v_out := v_out || ' | B1 batch: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- B2 the file page is answered for a licensed photograph, and a mailto: yes never reaches a visitor.
+  BEGIN
+    SELECT f.source_url INTO v_url FROM public.venue_photos_for(array[v_venue], 'venue_page') f;
+    v_ok := v_url = 'https://commons.wikimedia.org/wiki/File:Batch.jpg';
+    UPDATE public.venue_images SET source_url = 'mailto:owner@example.com' WHERE venue_id = v_venue AND image_url = v_bucket || 'batch-primary.jpg';
+    SELECT f.source_url INTO v_url FROM public.venue_photos_for(array[v_venue], 'venue_page') f;
+    IF v_ok AND v_url IS NULL THEN v_out := v_out || ' | B2 an https file page is answered, a mailto: yes never is: PASS';
+    ELSE v_out := v_out || ' | B2 source: FAIL (' || coalesce(v_url, 'null') || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | B2 source: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
   -- The runner reads the verdict up to the first double quote, and error messages quote names.
   RAISE EXCEPTION 'PROOF % (% failure(s), rolled back):%',

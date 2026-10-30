@@ -11,6 +11,7 @@ import {
   challengeVenuePhoto,
   replaceVenuePhoto,
   venuePhotoFor,
+  venuePhotosFor,
   withdrawVenuePhoto,
   type VenueMediaDeps,
 } from '@/lib/venues/venue-images'
@@ -141,7 +142,7 @@ describe('replace, challenge, withdraw and approve each go to their one database
 describe('the public read, the chain\'s second link', () => {
   test('gives the one photograph for the use with its credit', async () => {
     const { d, calls } = fake(() => ({
-      data: [{ image_url: 'https://x/room.webp', attribution_text: 'Photo: Jane Citizen, CC BY-SA 4.0', licence: 'cc_by_sa', licence_url: 'https://creativecommons.org/licenses/by-sa/4.0/', author: 'Jane Citizen' }],
+      data: [{ venue_id: 'v1', image_url: 'https://x/room.webp', attribution_text: 'Photo: Jane Citizen, CC BY-SA 4.0', licence: 'cc_by_sa', licence_url: 'https://creativecommons.org/licenses/by-sa/4.0/', author: 'Jane Citizen', source_url: 'https://commons.wikimedia.org/wiki/File:Room.jpg' }],
       error: null,
     }))
     expect(await venuePhotoFor('v1', 'event_card', d)).toEqual({
@@ -149,12 +150,46 @@ describe('the public read, the chain\'s second link', () => {
       credit: 'Photo: Jane Citizen, CC BY-SA 4.0',
       licence: 'cc_by_sa',
       licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+      author: 'Jane Citizen',
+      fileUrl: 'https://commons.wikimedia.org/wiki/File:Room.jpg',
     })
-    expect(calls[0]).toEqual({ name: 'venue_photo_for', args: { p_venue: 'v1', p_use: 'event_card' } })
+    expect(calls[0]).toEqual({ name: 'venue_photos_for', args: { p_venues: ['v1'], p_use: 'event_card' } })
   })
 
   test('is null when the venue has no approved photograph for that use', async () => {
     const { d } = fake(() => ({ data: [], error: null }))
     expect(await venuePhotoFor('v1', 'social', d)).toBeNull()
+  })
+})
+
+describe('the page read, one call for all its cards', () => {
+  const row = (venue: string) => ({
+    venue_id: venue,
+    image_url: `https://x/${venue}.webp`,
+    attribution_text: `Photo: ${venue}`,
+    licence: 'cc0',
+    licence_url: null,
+    author: null,
+    source_url: null,
+  })
+
+  test('asks once with each venue named once and answers by venue', async () => {
+    const { d, calls } = fake(() => ({ data: [row('v1'), row('v2')], error: null }))
+    const photos = await venuePhotosFor(['v1', 'v2', 'v1', 'v3'], 'event_card', d)
+    expect(calls).toEqual([{ name: 'venue_photos_for', args: { p_venues: ['v1', 'v2', 'v3'], p_use: 'event_card' } }])
+    expect(photos.get('v1')?.imageUrl).toBe('https://x/v1.webp')
+    expect(photos.get('v2')?.credit).toBe('Photo: v2')
+    expect(photos.has('v3')).toBe(false)
+  })
+
+  test('asks nothing for a page with no venue', async () => {
+    const { d, calls } = fake(() => ({ data: [], error: null }))
+    expect((await venuePhotosFor([], 'event_card', d)).size).toBe(0)
+    expect(calls).toHaveLength(0)
+  })
+
+  test('a failed read is thrown, so the page can fall to its typographic cover', async () => {
+    const { d } = fake(() => ({ data: null, error: { code: 'XX000', message: 'down' } }))
+    await expect(venuePhotosFor(['v1'], 'event_card', d)).rejects.toThrow('the venue photographs could not be read: down')
   })
 })
