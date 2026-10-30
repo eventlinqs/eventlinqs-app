@@ -11,6 +11,7 @@ import {
   fetchDigestCities,
   fetchDigestEvents,
   fetchDigestRecipients,
+  editionDigestCities,
   resolveDigestPeriod,
 } from '@/lib/broadcast/digest'
 import { DIGEST_MAX_RECIPIENTS_PER_RUN, planDigestRun } from '@/lib/broadcast/digest-run'
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const testTo = request.nextUrl.searchParams.get('test_to')
   const previewTo = request.nextUrl.searchParams.get('preview_to')
 
-  const cities = onlyCity ? [onlyCity] : await fetchDigestCities(admin)
+  const cities = onlyCity ? [onlyCity] : editionDigestCities(await fetchDigestCities(admin))
   const results: Record<string, unknown>[] = []
   let sentTotal = 0
 

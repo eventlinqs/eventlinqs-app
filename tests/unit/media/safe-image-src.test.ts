@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { resolveImageSrc } from '@/components/media/safe-image-src'
 
 const SUPABASE = 'https://gndnldyfudbytbboxesk.supabase.co'
@@ -40,6 +42,20 @@ describe('resolveImageSrc', () => {
     expect(resolveImageSrc('https://images.eventlinqs.com/cdn/event-images/u/e/cover.png')).toBe(
       `${SUPABASE}/storage/v1/object/public/event-images/u/e/cover.png`,
     )
+  })
+
+  test("passes an approved venue photograph's Wikimedia Commons file, and only a Commons file on that host", () => {
+    // Every harvested venue photograph is a Commons file (venue_images, 20261030171501). Refused here, an approved
+    // one reached the card and the card drew the branded placeholder (window 3, car 16's TEST preview).
+    const commons =
+      'https://upload.wikimedia.org/wikipedia/commons/2/2c/Melbourne_%28AU%29%2C_Queen_Victoria_Market_--_2019_--_1535.jpg'
+    expect(resolveImageSrc(commons)).toBe(commons)
+    expect(resolveImageSrc('https://upload.wikimedia.org/wikipedia/en/1/1a/Not_free.jpg')).toBeNull()
+  })
+
+  test('next.config.ts lets next/image load the same Commons path the guard passes', () => {
+    const config = readFileSync(resolve(process.cwd(), 'next.config.ts'), 'utf8')
+    expect(config).toMatch(/hostname: 'upload\.wikimedia\.org',\s*pathname: '\/wikipedia\/commons\/\*\*'/)
   })
 
   test('returns null for a disallowed host (would otherwise 500 next/image)', () => {

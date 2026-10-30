@@ -6,6 +6,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
 import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -113,6 +114,9 @@ function directionsHref(event: FullEvent): string | null {
 }
 
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
+  // The card chain's second link, as on the ticketed page: a night without its own photograph shows its venue's
+  // approved one, credited under it. Most listings are walk-in nights, so this is where the venue photograph matters.
+  const [heroCover] = await withVenuePhotos([{ id: event.id, cover_image_url: event.cover_image_url ?? null }], { use: 'event_page' })
   const [guide, remindMeOn, media, pages, collaborators, claimsOn] = await Promise.all([
     // The event has already resolved under its own policies; the guide follows it
     // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
@@ -121,7 +125,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     // THE SAME RESOLVER the route layout preloads with (eventHeroPreloadLink),
     // and HeroMedia's own default sizes below, so the raster this paints is the
     // raster the head asked for: one download on the LCP path, not two.
-    getFeaturedHeroBackground(eventHeroMediaInput(event)),
+    getFeaturedHeroBackground(eventHeroMediaInput({ ...event, cover_image_url: heroCover.cover_image_url })),
     // WI3's page: the host's own pages, for the one button that leaves (src/lib/listings/outbound.ts).
     readListingPages(event),
     // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
@@ -139,7 +143,14 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
       remindMeOn={remindMeOn}
       now={now.getTime()}
       baseUrl={getSiteUrl()}
-      hero={{ image: media.image, alt: event.cover_image_alt || media.alt, objectPosition: media.objectPosition }}
+      hero={{
+        image: media.image,
+        alt: event.cover_image_alt || media.alt,
+        objectPosition: media.objectPosition,
+        credit: heroCover.image_credit
+          ? { text: heroCover.image_credit, file: heroCover.image_credit_file ?? null, licence: heroCover.image_credit_licence ?? null }
+          : null,
+      }}
       pages={pages}
       collaborators={collaborators}
       claimable={claimsOn && listingClaimable({ listingSource: event.listing_source, hasVenue: Boolean(event.venue_id) })}
@@ -154,7 +165,13 @@ export type WalkInEventViewProps = {
   /** Milliseconds since the epoch at the read, for "has it ended". */
   now: number
   baseUrl: string
-  hero: { image: string | null; alt: string; objectPosition?: string }
+  /** credit: the venue photograph's, when the chain gave the hero one (withVenuePhotos). */
+  hero: {
+    image: string | null
+    alt: string
+    objectPosition?: string
+    credit?: { text: string; file: string | null; licence: string | null } | null
+  }
   /** The host's own pages, for a curated listing's one button that leaves; none for an organiser's own event. */
   pages?: ListingPages
   /** The venues that joined this event (item 15). */
@@ -304,7 +321,23 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             {/* Lawal's ruling of 27 October 2026, 08:33: a listing night without its
                 host's own photo shows EventLinqs' licensed library shot, and says so,
                 so it is never read as the venue. */}
-            {!guide.cover_credit && isLibraryPhoto(event.cover_image_url) && (
+            {/* The venue's photograph, its credit linked to the file page and the licence (the project manager's 18:57). */}
+            {!guide.cover_credit && hero.credit && (
+              <figcaption data-venue-credit className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
+                {hero.credit.file ? (
+                  <a href={hero.credit.file} rel="noopener nofollow" className="underline underline-offset-2">{hero.credit.text}</a>
+                ) : (
+                  hero.credit.text
+                )}
+                {hero.credit.licence && (
+                  <>
+                    {' · '}
+                    <a href={hero.credit.licence} rel="noopener nofollow license" className="underline underline-offset-2">Licence</a>
+                  </>
+                )}
+              </figcaption>
+            )}
+            {!guide.cover_credit && !hero.credit && isLibraryPhoto(event.cover_image_url) && (
               <figcaption className="mt-2 px-4 text-xs text-ink-600 sm:px-6 lg:px-0">{LIBRARY_PHOTO_CREDIT}</figcaption>
             )}
           </figure>

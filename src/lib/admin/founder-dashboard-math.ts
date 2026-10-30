@@ -166,3 +166,44 @@ export function economicsFigures(h: {
     { label: 'Break-even volume', value: null, asksForAPerson: false, href: null, note: 'no monthly fixed cost is recorded, so none is assumed' },
   ]
 }
+
+/** A count as the reader hands it: a number, or null with the reason it could not be read. */
+export interface CountRead {
+  readonly value: number | null
+  readonly note?: string
+}
+
+/**
+ * THE CONTROL CENTRE'S INVENTORY ROWS (the DemandOS directive of 30 October 2026, section 11: "upcoming event
+ * inventory", "broken links", "venue partnerships"; the blueprint's section 8: "events happening in the next 7, 14 and
+ * 30 days"). The nights ahead are public, published and not seed data; a booking link the daily check found dead on an
+ * upcoming night asks for a person; venue partners are the live partners of kind venue. Pure.
+ */
+export function inventoryFigures(c: { next7: CountRead; next14: CountRead; next30: CountRead; deadLinks: CountRead; venuePartners: CountRead }): DashboardFigure[] {
+  const of = (label: string, r: CountRead, asksForAPerson: boolean, href: string | null, kind: FigureKind, cadence: Cadence): DashboardFigure => ({
+    label,
+    value: r.value,
+    asksForAPerson,
+    href,
+    kind,
+    cadence,
+    ...(r.note ? { note: r.note } : {}),
+  })
+  return [
+    of('Public nights in the next 7 days', c.next7, false, null, 'measure', 'daily'),
+    of('Public nights in the next 14 days', c.next14, false, null, 'measure', 'daily'),
+    of('Public nights in the next 30 days', c.next30, false, null, 'measure', 'daily'),
+    of('Booking links found dead on upcoming nights', c.deadLinks, true, '/admin/events', 'failed', 'daily'),
+    of('Venue partners live', c.venuePartners, false, '/admin/partners', 'measure', 'weekly'),
+  ]
+}
+
+/**
+ * A head count's answer as a figure's value. A count request on a table the API cannot reach answered status 204, count
+ * null, error null (read on TEST, 30 October 2026), so null is never read as 0: what cannot be read is not counted.
+ */
+export function countFrom(answer: { count: number | null; error: { message: string } | null }): CountRead {
+  if (answer.error) return { value: null, note: `could not be read: ${answer.error.message}` }
+  if (answer.count === null) return { value: null, note: 'could not be read: the count came back empty' }
+  return { value: answer.count }
+}

@@ -73,5 +73,8 @@ export function resolveImageSrc(url: string | null | undefined): string | null {
   const allowed = new Set(
     [sbHost, baseHost, previewHost, 'images.eventlinqs.com', 'picsum.photos', 'images.pexels.com'].filter(Boolean),
   )
-  return allowed.has(parsed.host) ? trimmed : null
+  if (allowed.has(parsed.host)) return trimmed
+  // An approved venue photograph's Commons file; next.config.ts allows that path on this host and no other.
+  if (parsed.host === 'upload.wikimedia.org' && parsed.pathname.startsWith('/wikipedia/commons/')) return trimmed
+  return null
 }

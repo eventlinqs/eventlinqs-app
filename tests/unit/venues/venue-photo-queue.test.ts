@@ -28,6 +28,24 @@ const row = (over: Partial<QueueRow>): QueueRow => ({
 })
 
 describe('the queue', () => {
+  test('a photograph a person looked at outranks a machine match of any score, so one tap never approves a picture refused by eye', () => {
+    const venues = groupWaiting([
+      row({ id: 'machine', match_method: 'auto', quality_score: 95 }),
+      row({ id: 'looked', match_method: 'manual', quality_score: 40 }),
+    ])
+    expect(venues[0].photos.map((p) => p.id)).toEqual(['looked', 'machine'])
+  })
+
+  test('venues holding a photograph a person looked at come first, then by name', () => {
+    const venues = groupWaiting([
+      row({ id: 'a', venue_id: 'v1', venue_name: 'Arts Hall', match_method: 'auto' }),
+      row({ id: 'z', venue_id: 'v2', venue_name: 'Zoo Hall', match_method: 'manual' }),
+      row({ id: 'm', venue_id: 'v3', venue_name: 'Main Hall', source: 'venue', licence: 'owner_permission', match_method: null }),
+      row({ id: 'b', venue_id: 'v4', venue_name: 'Bay Hall', match_method: 'auto' }),
+    ])
+    expect(venues.map((v) => v.venueName)).toEqual(['Main Hall', 'Zoo Hall', 'Arts Hall', 'Bay Hall'])
+  })
+
   test('a challenged photograph leads its venue and carries what was said, so a person answers it', () => {
     const venues = groupWaiting([
       row({ id: 'own', source: 'venue', licence: 'owner_permission', quality_score: 95 }),
@@ -38,16 +56,16 @@ describe('the queue', () => {
     expect(venues[0].photos[1].challengeReason).toBeNull()
   })
 
-  test('groups by venue, venues by name, and pre-picks the best of each first', () => {
+  test('groups by venue, leads with a venue whose best a person has a stake in, and pre-picks the best of each first', () => {
     const venues = groupWaiting([
       row({ id: 'c-low', quality_score: 55 }),
       row({ id: 'c-high', quality_score: 90 }),
       row({ id: 'own', source: 'venue', licence: 'owner_permission', quality_score: null, permission_evidence: 'Yes, please use our photos.' }),
       row({ id: 'b1', venue_id: 'v2', venue_name: 'Bendigo Bank Theatre', venue_city: 'Bendigo' }),
     ])
-    expect(venues.map((v) => v.venueName)).toEqual(['Bendigo Bank Theatre', 'Costa Hall'])
-    expect(venues[1].photos.map((p) => p.id)).toEqual(['own', 'c-high', 'c-low'])
-    expect(venues[1].photos[1].matchDistanceM).toBe(42.5)
+    expect(venues.map((v) => v.venueName)).toEqual(['Costa Hall', 'Bendigo Bank Theatre'])
+    expect(venues[0].photos.map((p) => p.id)).toEqual(['own', 'c-high', 'c-low'])
+    expect(venues[0].photos[1].matchDistanceM).toBe(42.5)
   })
 
   test('at equal quality, the wider photograph leads', () => {

@@ -192,6 +192,7 @@ export const KIND_NAMES: Readonly<Record<string, string>> = {
   // D5, the owned editions (window 3's 20261030180401, Lawal's final directive of 30 October 2026).
   tonight_tomorrow: 'Tonight and Tomorrow',
   category_spotlight: 'Category Spotlight',
+  coming_up: 'Coming up',
 }
 
 export const LIMITATIONS: readonly string[] = [

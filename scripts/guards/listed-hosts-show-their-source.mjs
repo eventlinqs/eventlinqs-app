@@ -28,7 +28,9 @@
  *   H3  the organiser page refuses the listings organisation
  *   H4  the sitemap's organiser catalogue leaves it out
  *   H5  the event's structured data asks shownOrganiser and carries an
- *       organiser url only where there is an organiser page
+ *       organiser url only where there is an organiser page, or where we hold
+ *       the organiser's own website (the project manager's 23:56 (3) of
+ *       30 October 2026); the expression may span lines
  *   H6  the checked file's reading refuses a host that is a note ("Organiser
  *       not named ..."), because H1 to H5 show that field as who runs the night
  *
@@ -116,7 +118,7 @@ rule('H4', /if \(isListingsOrganisation\(slug\)\) continue/.test(catalogue),
 const schema = read(EVENT_SCHEMA)
 // The builder asks shownOrganiser itself and links only the slug it gives (car 2's read back on production,
 // 29 October 2026: the event page handed the raw organisation, and two listings linked /organisers/eventlinqs-listings).
-rule('H5', /shownOrganiser\(event, organisation\)/.test(schema) && /\.\.\.\(shown\.slug \? \{ url: /.test(schema),
+rule('H5', /shownOrganiser\(event, organisation\)/.test(schema) && /\.\.\.\(shown\.slug\s*\?\s*\{ url: /.test(schema),
   `${EVENT_SCHEMA}: the organizer node carries a url whether or not there is an organiser page, or names the listings organisation (it must ask shownOrganiser)`)
 
 const ROWS = 'src/lib/listings/listing-rows.ts'

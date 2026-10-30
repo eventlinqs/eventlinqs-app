@@ -347,17 +347,16 @@ export function buildEventSchemaPayload({
           }
         })
     : []
-  const offers = linkOffers.length > 0
-    ? linkOffers
-    : external
-    ? [
-        {
-          '@type': 'Offer',
-          availability: schemaAvailability(state),
-          url: (event.external_ticket_url ?? '').trim(),
-          validFrom: event.created_at,
-        },
-      ]
+  /*
+   * AN OFFER ONLY WITH A PRICE WE HOLD (the project manager's 23:56 of 30 October 2026, (3)): Search Console warned
+   * 'missing price' and 'missing priceCurrency' on the outside events' unpriced Offers. Google's page lists both as
+   * recommended Offer properties (developers.google.com/search/docs/appearance/structured-data/event, updated
+   * 2026-09-08). We never invent a figure, so an outside event whose price we do not hold, or no longer hold fresh,
+   * writes no offers node at all; its ticket link stays on the page.
+   */
+  const pricedLinkOffers = linkOffers.filter(o => 'price' in o)
+  const offers = external
+    ? pricedLinkOffers
     : walkIn
     ? [
         {
@@ -463,7 +462,12 @@ export function buildEventSchemaPayload({
       return {
         '@type': 'Organization',
         name: shown.name,
-        ...(shown.slug ? { url: `${baseUrl}/organisers/${shown.slug}` } : {}),
+        // Our page of theirs, else their own website when we hold it, else none (the 23:56 (3)); never invented.
+        ...(shown.slug
+          ? { url: `${baseUrl}/organisers/${shown.slug}` }
+          : shown.website && /^https?:\/\//i.test(shown.website.trim())
+            ? { url: shown.website.trim() }
+            : {}),
       }
     })(),
     // One node per performer, in billing order, each linking to its own artist

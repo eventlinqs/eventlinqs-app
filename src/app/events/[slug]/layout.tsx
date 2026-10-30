@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { readEventForRoute } from '@/lib/events/event-detail-read'
 import { eventHeroPreloadLink } from '@/lib/images/hero-preload'
 import { isWalkIn } from '@/lib/events/entry-mode'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 
 /**
  * Existence guard for /events/[slug].
@@ -88,6 +89,9 @@ export default async function EventSlugLayout({
    */
   const event = await readEventForRoute(slug)
   if (!event) notFound()
+  // The raster the page paints: a night without its own photograph paints its venue's approved one (withVenuePhotos),
+  // so the preload asks for that one, not the cover the row holds.
+  const [heroCover] = await withVenuePhotos([{ id: event.id, cover_image_url: event.cover_image_url ?? null }], { use: 'event_page' })
 
   /*
    * A fragment rather than a wrapper element: this layout sits between the root
@@ -98,7 +102,7 @@ export default async function EventSlugLayout({
    */
   return (
     <>
-      {await eventHeroPreloadLink(event, { typographicHasNoRaster: !isWalkIn(event) })}
+      {await eventHeroPreloadLink({ ...event, cover_image_url: heroCover.cover_image_url }, { typographicHasNoRaster: !isWalkIn(event) })}
       {children}
     </>
   )

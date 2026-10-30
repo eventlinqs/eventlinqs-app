@@ -146,6 +146,7 @@ const KIND_NAME: Record<PieceRow['kind'], string> = {
   brand_campaign: 'The weekend brand piece',
   tonight_tomorrow: 'Friday · Tonight and Tomorrow',
   category_spotlight: 'Category Spotlight',
+  coming_up: 'Sunday · Coming up',
   daily_poster: 'Daily poster',
 }
 const AUDIENCE_NAME: Record<PieceRow['audience'], string> = { attendees: 'Attendees', organisers: 'Organisers and promoters', venues: 'Venues', partners: 'Community partners' }
