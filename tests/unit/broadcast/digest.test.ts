@@ -56,10 +56,16 @@ type Call = { table: string; filters: Filters }
 function stubClient(
   resolve: (table: string, filters: Filters) => Row[],
   calls: Call[] = [],
-  options: { serverCeiling?: number; failOn?: (table: string, filters: Filters) => string | null } = {},
+  options: {
+    serverCeiling?: number
+    failOn?: (table: string, filters: Filters) => string | null
+    /** A database function's answer; by default nobody has said no (the venue distribution read, D3 (6)). */
+    rpc?: (name: string, args: Record<string, unknown>) => { data: unknown; error: { code: string; message: string } | null }
+  } = {},
 ) {
   const serverCeiling = options.serverCeiling ?? 3
   return {
+    rpc: async (name: string, args: Record<string, unknown>) => options.rpc?.(name, args) ?? { data: [], error: null },
     from: (table: string) => {
       const filters: Filters = {}
       calls.push({ table, filters })
@@ -339,6 +345,43 @@ describe('content hygiene', () => {
       'https://staging.eventlinqs.com',
     )
     expect(events[0].url).toBe('https://staging.eventlinqs.com/events/harbour-jazz')
+  })
+})
+
+describe("a venue's answer on the weekly round-up (D3 (6))", () => {
+  const night = (slug: string, venue_id: string | null) => ({
+    id: `evt-${slug}`,
+    slug,
+    title: slug,
+    start_date: '2026-07-05T09:00:00Z',
+    timezone: 'Australia/Melbourne',
+    venue_name: 'V',
+    venue_city: 'Geelong',
+    venue_id,
+    visibility: 'public',
+    is_seed_data: false,
+    ticket_tiers: [{ price: 0, currency: 'AUD' }],
+  })
+  const NO = '11111111-1111-4111-8111-111111111111'
+  const YES = '22222222-2222-4222-8222-222222222222'
+
+  test('a night at a venue that said no is not carried; its other nights and nights with no venue are', async () => {
+    const asked: unknown[] = []
+    const client = stubClient(() => [night('said-no', NO), night('said-nothing', YES), night('no-venue', null)], [], {
+      serverCeiling: 10,
+      rpc: (name, args) => {
+        asked.push({ name, args })
+        return { data: name === 'venue_distribution_off' && args.p_channel === 'weekly_roundup' ? [NO] : [], error: null }
+      },
+    })
+    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })
+    expect(events.map((e) => e.slug)).toEqual(['said-nothing', 'no-venue'])
+    expect(asked).toEqual([{ name: 'venue_distribution_off', args: { p_channel: 'weekly_roundup' } }])
+  })
+
+  test("a failed read of the venues' answers stops the city, never sends the venue's nights", async () => {
+    const client = stubClient(() => [night('said-no', NO)], [], { rpc: () => ({ data: null, error: { code: '42501', message: 'permission denied' } }) })
+    await expect(fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })).rejects.toThrow('permission denied')
   })
 })
 
