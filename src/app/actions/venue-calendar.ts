@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { actionRateLimit } from '@/lib/rate-limit/action'
+import { distributionDeps } from '@/lib/venues/venue-distribution'
 import { giveVenueCalendar, stopVenueCalendar, type VenueCalendarAnswer, type VenueCalendarDeps } from '@/lib/venues/venue-calendar'
 
 /**
@@ -22,10 +23,7 @@ const melbourneToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/M
 function deps(): VenueCalendarDeps {
   const admin = createAdminClient()
   return {
-    async rpc(name, args) {
-      const { data, error } = await (admin.rpc as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>).call(admin, name, args)
-      return { data, error: error ? { code: error.code, message: error.message } : null }
-    },
+    rpc: distributionDeps(admin).rpc,
     async venue(venueId) {
       const { data, error } = await admin.from('venues').select('name, city_slug, organisation_id, organisation:organisations(name)').eq('id', venueId).maybeSingle()
       if (error) throw new Error(`the venue could not be read: ${error.message}`)
