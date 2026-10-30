@@ -246,25 +246,19 @@ export default async function CommunityByCityPage({ params }: Props) {
   const heroImage = await getCityHeroPhoto(cityParam)
     ?? await getCommunityHeroPhoto(community.slug, { allowBundledFallback: true })
 
-  const [subCommunityPhotos, relatedCityPhotos, relatedCommunityPhotos] = await Promise.all([
-    Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s))),
-    Promise.all(relatedCitiesEntries.map(r => getCityHeroPhoto(r.citySlug))),
-    Promise.all(otherCommunities.map(c => getCommunityHeroPhoto(c.slug))),
-  ])
+  const subCommunityPhotos = await Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s)))
 
   const subCommunityImages: Record<string, string | null> = {}
   subCommunitySlugs.forEach((s, i) => { subCommunityImages[s] = subCommunityPhotos[i] ?? null })
 
-  const relatedCities = relatedCitiesEntries.map((entry, i) => ({
-    ...entry,
-    image: relatedCityPhotos[i] ?? null,
-  }))
+  // The related tiles open other community-in-city pages and take no photo: a city's or a community's photo belongs
+  // to its own tile only (NO PHOTO IS EVER REUSED, the photo system's P6).
+  const relatedCities = relatedCitiesEntries
 
-  const relatedCommunities = otherCommunities.map((c, i) => ({
+  const relatedCommunities = otherCommunities.map(c => ({
     slug: c.slug,
     label: c.displayName,
     tagline: c.tagline,
-    image: relatedCommunityPhotos[i] ?? null,
   }))
 
   const editorial = getIntersectionEditorial(community, cityParam, cityName, cityRecord)
