@@ -767,6 +767,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.eventlinqs.com',
       },
+      // Approved venue photographs (venue_images, 20261030171501): every harvested one is a Wikimedia Commons file.
+      // Commons files only, never another Wikimedia path. Mirrored in src/components/media/safe-image-src.ts.
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/wikipedia/commons/**',
+      },
       {
         protocol: 'https',
         hostname: 'picsum.photos',
