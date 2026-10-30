@@ -75,6 +75,9 @@ export const DECLARED = {
   'scripts/guards/one-fee-copy.mjs': {
     docs: 'scans docs/marketing and the three fee authority documents for a second fee, because copy the founder pastes into an email reaches an organiser as directly as a page does.',
   },
+  'scripts/guards/one-photo-one-event.mjs': {
+    token: 'the service-role key, through scripts/guards/lib/table-read-credential.mjs, to read every row of photo_assignments and every event holding a video link (P1 and P10, 31 October 2026). Without it the guard prints NOT JUDGED [no-credential] for the rows; its schema, render-path and video-trigger clauses still run.',
+  },
   'scripts/guards/one-pull-request-at-a-time.mjs': {
     git: 'reads the origin remote to name the repository when GITHUB_REPOSITORY is unset.',
     token: 'GITHUB_TOKEN, to list the open pull requests. Without it there is nothing to count and the guard says so.',
