@@ -28,6 +28,13 @@ import {
  *
  * The links carry `rel="noopener"` because they open a third-party site, and
  * they are plain anchors rather than router links because they leave the app.
+ *
+ * THE BUTTON LIVES IN ONE PLACE (the PROJECT MANAGER's 13:10 of 30 October
+ * 2026). The hero's "View tickets at <site>" only jumped down to this panel's
+ * identical button, so the page offered the same button twice. The page now
+ * puts the booking link itself in the hero and says so with `bookingInHero`:
+ * this panel then keeps the facts (where it sells, a fresh price, the other
+ * sites) and draws no second button.
  */
 export function ExternalTicketsPanel({
   destinationUrl,
@@ -36,6 +43,7 @@ export function ExternalTicketsPanel({
   price = null,
   also = [],
   soldOut = null,
+  bookingInHero = false,
 }: {
   destinationUrl: string
   /** The destination's hostname, shown so the visitor knows where they land. */
@@ -48,6 +56,8 @@ export function ExternalTicketsPanel({
   also?: readonly { href: string; name: string }[]
   /** "Sold out on Humanitix" when every link has sold out: then there is no button. */
   soldOut?: string | null
+  /** The hero carries this button already (the event page's outside night): draw none here. */
+  bookingInHero?: boolean
 }) {
   return (
     <div className="sticky top-20 space-y-5">
@@ -56,7 +66,12 @@ export function ExternalTicketsPanel({
 
         {soldOut === null ? (
           <>
-            <p className="text-sm leading-relaxed text-ink-600">{TICKETS_SOLD_ELSEWHERE_BODY}</p>
+            {/* With the button in the hero, "the button below" would point at nothing: the site is named instead. */}
+            <p className="text-sm leading-relaxed text-ink-600">
+              {bookingInHero
+                ? `This organiser sells tickets for this event on ${host ?? 'another site'}.`
+                : TICKETS_SOLD_ELSEWHERE_BODY}
+            </p>
 
             {price && (
               <p data-price className="mt-4 text-base font-semibold text-ink-900">
@@ -64,6 +79,8 @@ export function ExternalTicketsPanel({
               </p>
             )}
 
+            {bookingInHero ? null : (
+            <>
             <a
               href={destinationUrl}
               target="_blank"
@@ -83,6 +100,8 @@ export function ExternalTicketsPanel({
               <p className="mt-3 text-center text-xs text-ink-400">
                 Opens {host}
               </p>
+            )}
+            </>
             )}
 
             {also.length > 0 && (

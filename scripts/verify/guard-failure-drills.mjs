@@ -266,6 +266,36 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * event-page-each-fact-once (the PROJECT MANAGER's 13:10 of 30 October 2026: the event page repeated the date, the
+   * address, the refund and the ticket button, and Kate Ceberano's outside night promised a QR ticket, automatic refunds
+   * and our booking fee), three drills, each the regression production carried: the refund block shown on every night
+   * again, Know before you go handed the start date again, and its QR row promised on every night again.
+   */
+  {
+    name: 'the event page states our refund policy on an outside night again',
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '{promises.refundPolicy && (',
+    replace: '{true && (',
+    expect: 'calls describeRefundPolicy outside promises.refundPolicy',
+  },
+  {
+    name: 'the event page hands Know before you go the start date again',
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '                      qrTicket={promises.qrTicket}',
+    replace: '                      qrTicket={promises.qrTicket} startLabel={formatDateTime(event.start_date, event.timezone)}',
+    expect: 'hands Know before you go startLabel',
+  },
+  {
+    name: 'Know before you go promises a QR ticket on every night again',
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/components/features/events/know-before-you-go.tsx',
+    find: '  if (qrTicket) {',
+    replace: '  if (true) {',
+    expect: 'promises a QR ticket outside if (qrTicket)',
+  },
+  /*
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
    * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile
    * or a suburb asking Pexels at request time again, and a city page event type losing its stored photograph (30
@@ -310,6 +340,18 @@ const DRILLS = [
     find: "  if (!KEPT.has(key)) return null",
     replace: "  if (!KEPT.has(key)) return (await fetch('https://api.pexels.com/v1/search')).url",
     expect: 'sub-community-photo.ts makes a request-time call',
+  },
+  /*
+   * card-price-from-cta (30 October 2026, the project manager's 12:40: Kate Ceberano's paid show read 'Free' on
+   * /city/geelong): the card guessing 'Free' for a night with no ticket types of ours again.
+   */
+  {
+    name: 'the event card says Free for a night with no tickets of ours again',
+    guard: `${GUARDS}/card-price-from-cta.mjs`,
+    file: 'src/components/features/events/event-card.tsx',
+    find: '  return broadcastPriceLabel({',
+    replace: "  if (event.ticket_tiers.length === 0) return 'Free'\n  return broadcastPriceLabel({",
+    expect: "event-card.tsx says 'Free' itself",
   },
   /*
    * no-library-photo-on-a-night (29 October 2026, Lawal's master mandate section 5: no library photograph stands for

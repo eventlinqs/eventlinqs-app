@@ -34,8 +34,12 @@ export interface EventSoldOutRelated {
   venue_country: string | null
   cover_image_url: string | null
   category_name?: string | null
-  from_price_cents?: number | null
-  currency?: string | null
+  /**
+   * The related night's price words from its call to action (src/lib/broadcast/price-line.ts broadcastPriceLabel),
+   * filled by the caller on the server; absent, no price is shown. It replaced from_price_cents, whose $0 read 'Free'
+   * even beside paid tickets (the project manager's 12:40 of 30 October 2026; no caller filled it).
+   */
+  price_line?: string | null
 }
 
 export interface EventSoldOutProps {
@@ -199,12 +203,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
 function RelatedCard({ event }: { event: EventSoldOutRelated }) {
   const dateLabel = formatEventDateShort(event.start_date, event.timezone)
   const locationLabel = formatVenueAddress({ city: event.venue_city, country: event.venue_country })
-  const priceLabel =
-    event.from_price_cents != null && event.currency
-      ? event.from_price_cents === 0
-        ? 'Free'
-        : `From ${event.currency.toUpperCase()} ${(event.from_price_cents / 100).toFixed(2)}`
-      : null
+  const priceLabel = event.price_line?.trim() || null
 
   return (
     <Link

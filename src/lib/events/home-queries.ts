@@ -12,7 +12,7 @@ export const EVENT_SELECT =
   // in the EVENT's zone. Without it the homepage formats in the runtime zone,
   // which is UTC on the server and the reader's in the browser, so a Perth
   // event at 9pm shows the wrong DAY to someone in Sydney.
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, entry_mode, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, entry_mode, external_ticket_url, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string

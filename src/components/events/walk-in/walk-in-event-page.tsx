@@ -51,6 +51,7 @@ import { readJoinedCollaborators, type JoinedCollaborator } from '@/lib/events/c
 import { CollaboratorsLine } from '@/components/events/collaborators-line'
 import { HoursList } from './hours-list'
 import { ReportListingLink } from '@/components/events/report-listing-link'
+import { listingClaimable } from '@/lib/listings/claimable'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -111,7 +112,7 @@ function directionsHref(event: FullEvent): string | null {
 }
 
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
-  const [guide, remindMeOn, media, pages, collaborators] = await Promise.all([
+  const [guide, remindMeOn, media, pages, collaborators, claimsOn] = await Promise.all([
     // The event has already resolved under its own policies; the guide follows it
     // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
     readPublicGuide(event),
@@ -124,6 +125,8 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     readListingPages(event),
     // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
     readJoinedCollaborators(event.id),
+    // The claim line at the foot (window 6's gap list of 30 October 2026, item 2), behind its flag.
+    isFeatureEnabled('listing_claims'),
   ])
   // The clock is read here with the other reads, as the ticketed page reads it,
   // so the render below stays pure.
@@ -138,6 +141,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
       hero={{ image: media.image, alt: event.cover_image_alt || media.alt, objectPosition: media.objectPosition }}
       pages={pages}
       collaborators={collaborators}
+      claimable={claimsOn && listingClaimable({ listingSource: event.listing_source, hasVenue: Boolean(event.venue_id) })}
     />
   )
 }
@@ -154,10 +158,12 @@ export type WalkInEventViewProps = {
   pages?: ListingPages
   /** The venues that joined this event (item 15). */
   collaborators?: readonly JoinedCollaborator[]
+  /** Where the claim page would accept a claim (listingClaimable, behind listing_claims): the claim line at the foot. */
+  claimable?: boolean
 }
 
 /** The render, separate from the reads so a test can draw it from a fixture. */
-export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, pages = {}, collaborators = [] }: WalkInEventViewProps) {
+export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, pages = {}, collaborators = [], claimable = false }: WalkInEventViewProps) {
   const source = textSource(event)
   const org = event.organisation
   // WI2 ruling A: a listing names its host, never the listings organisation
@@ -570,7 +576,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             </aside>
           </div>
         </div>
-        <ReportListingLink slug={event.slug} />
+        <ReportListingLink slug={event.slug} claimable={claimable} />
       </main>
 
       <WalkInBottomBar

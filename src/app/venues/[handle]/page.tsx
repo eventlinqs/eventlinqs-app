@@ -9,6 +9,8 @@ import { AccessibilitySection } from '@/components/features/accessibility/access
 import { readVenueAccessibility } from '@/lib/accessibility/read'
 import { hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { CLAIM_ENTRY_LINK, CLAIM_ENTRY_QUESTION, offersVenueClaim } from '@/lib/listings/claim-entry'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
@@ -92,7 +94,7 @@ const PAST_EVENTS_SHOWN = 12
 async function fetchVenueEventsByName(venueName: string) {
   const supabase = createPublicClient()
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
   /*
    * A FAILED READ IS NOT A VENUE WITH NOTHING ON, for the reason written out on
@@ -188,17 +190,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${baseUrl}/venues/${handle}`,
       type: 'website',
+      // A route's own openGraph block replaces the root's, so a venue with no image of its own shares the platform's
+      // card rather than no picture at all (the class 7b89c5dd closed for the organiser pages).
       images: venue.imageUrl
         ? [{ url: venue.imageUrl, width: 1200, height: 630, alt: venue.name }]
-        : [],
+        : ['/opengraph-image'],
     },
     twitter: {
       card: 'summary_large_image',
       title: venue.name,
       description,
-      images: venue.imageUrl ? [venue.imageUrl] : [],
+      images: venue.imageUrl ? [venue.imageUrl] : ['/opengraph-image'],
     },
   }
+}
+
+/**
+ * Whether this venue's page offers its claim: the flag first, then the venue's own row read by id with the service
+ * role, as the claim page reads it (its listing_source and claimed_at are not in the public select). A failed read
+ * offers no claim and says so; it never blocks the page.
+ */
+async function venueOffersClaim(venueId: string | null): Promise<boolean> {
+  if (!venueId || !(await isFeatureEnabled('listing_claims'))) return false
+  const { data, error } = await createAdminClient().from('venues').select('listing_source, claimed_at, removed_at').eq('id', venueId).limit(1).maybeSingle()
+  if (error) {
+    console.warn(`[venues/${venueId}] the claim entry was not read, so none is shown: ${error.message}`)
+    return false
+  }
+  return offersVenueClaim(true, data)
 }
 
 export default async function VenueProfilePage({ params }: Props) {
@@ -206,10 +225,11 @@ export default async function VenueProfilePage({ params }: Props) {
   const venue = await venueForRoute(handle)
   if (!venue) notFound()
 
-  const [{ upcoming, past }, regularNights] = await Promise.all([
+  const [{ upcoming, past }, regularNights, showClaim] = await Promise.all([
     fetchVenueEventsByName(venue.name),
     // WI2 Part 3a: a venue record's regular nights (a profile built from event rows alone has none).
     venue.id ? readVenueSeries(venue.id) : Promise.resolve([]),
+    venueOffersClaim(venue.id),
   ])
 
   /* ONE array feeds both the reserved height and the cards: the section
@@ -317,6 +337,18 @@ export default async function VenueProfilePage({ params }: Props) {
           fullAddress={fullAddress}
           venueType={venue.venueType}
         />
+
+        {/* The way in to a claim for the venue's own people, only while claims are on (src/lib/listings/claim-entry.ts). */}
+        {showClaim && (
+          <ContentSection surface="base" width="wide">
+            <p className="text-sm text-ink-600">
+              {CLAIM_ENTRY_QUESTION(venue.name)}{' '}
+              <Link href={`/venues/${handle}/claim`} className="inline-flex min-h-11 items-center font-semibold text-ink-900 underline">
+                {CLAIM_ENTRY_LINK}
+              </Link>
+            </p>
+          </ContentSection>
+        )}
 
         {/*
           VP2b ACCESSIBILITY (close-out SEO5 step 4).

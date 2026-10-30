@@ -93,8 +93,10 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
+import { creditLine, readPhotoCredits, withCredits } from '@/lib/media/photo-credits'
+import { captureException } from '@/lib/observability/sentry'
 import { venueSlugify } from '@/lib/venues/resolver'
-import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import { isVideoProvider } from '@/lib/media/video-embed'
 import { describeCountries } from '@/lib/stream/countries'
 
@@ -104,10 +106,12 @@ import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 import { isWalkIn } from '@/lib/events/entry-mode'
-import { ctaFor } from '@/lib/events/cta'
+import { ctaFor, type CtaInput } from '@/lib/events/cta'
+import { eventPagePromises } from '@/lib/events/event-page-promises'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 import { ReportListingLink } from '@/components/events/report-listing-link'
+import { listingClaimable } from '@/lib/listings/claimable'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -419,6 +423,9 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
   availabilityAndAccessPromise.catch(() => {})
+  // The claim line at the foot (window 6's gap list, item 2), started here for the same reason as the two above.
+  const listingClaimsPromise = isFeatureEnabled('listing_claims')
+  listingClaimsPromise.catch(() => {})
   const event = await readEventForRoute(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
@@ -747,7 +754,15 @@ export default async function EventDetailPage({ params }: Props) {
   // Event Media Standard: the gallery (below the hero, lazy) and the one optional
   // allowlisted video embed. The cover raster (media.image) is the video poster so
   // the video never competes for the LCP.
-  const gallery = parseGallery(event.gallery_urls)
+  // An organiser's photograph carries its credit (window 6's gap 3, 30 October 2026): the register's own words, only
+  // where the image's rights are on record and current (src/lib/media/photo-credits.ts). A failed read credits nothing
+  // and is reported; it never credits an image as if it were permitted.
+  const photoCredits = await readPhotoCredits(createAdminClient(), event.id).catch((error: unknown) => {
+    captureException(error, { where: 'app/events/[slug]/page:photoCredits' })
+    return new Map<string, string>()
+  })
+  const gallery = withCredits(parseGallery(event.gallery_urls), photoCredits)
+  const coverCredit = typographicHero || !event.cover_image_url ? null : creditLine(photoCredits.get(event.cover_image_url))
   const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
   const hasVideo = !!(event.video_url && videoProvider)
 
@@ -860,6 +875,14 @@ export default async function EventDetailPage({ params }: Props) {
     state: event.venue_state,
     country: event.venue_country,
   }) ?? ''
+  // The Where card prints the venue name as its link, so the line under it is the address alone (each fact once).
+  const streetAddress = formatVenueAddress({
+    name: event.venue_name,
+    address: event.venue_address,
+    city: event.venue_city,
+    state: event.venue_state,
+    country: event.venue_country,
+  })
 
   // Resolved in the page's one parallel stage above, keyed by tier id.
   const tierInventory = Object.fromEntries(tierInventoryEntries)
@@ -1048,6 +1071,16 @@ export default async function EventDetailPage({ params }: Props) {
   /* The banner's own judgement: a night it calls ended, archived or cancelled offers no ticket and names no price. */
   const nightIsOver = eventBannerState === 'past' || eventBannerState === 'archived' || eventBannerState === 'cancelled'
   // An event sold on another site names the panel's one button (WI3, heroSaleWords).
+  /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
+  const ctaInput: CtaInput = {
+    over: nightIsOver,
+    entryMode: event.entry_mode ?? null,
+    tiers: priceTiersForDisplay,
+    isFree: event.is_free ?? null,
+    externalTicketUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
+  }
+  /* What the page may promise about the ticket (a QR ticket, our refund policy, the trust row): only our own ticket. */
+  const promises = eventPagePromises(ctaInput)
   const heroSale = heroSaleWords({
     externalUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
     panel: ticketPanel,
@@ -1055,15 +1088,18 @@ export default async function EventDetailPage({ params }: Props) {
     saleBlocked,
     isSoldOut,
     priceLabel,
-    /* The one call to action (src/lib/events/cta.ts, the release checklist's section E). */
-    cta: ctaFor({
-      over: nightIsOver,
-      entryMode: event.entry_mode ?? null,
-      tiers: priceTiersForDisplay,
-      isFree: event.is_free ?? null,
-      externalTicketUrl: externallyTicketed ? event.external_ticket_url ?? null : null,
-    }),
+    cta: ctaFor(ctaInput),
   })
+  /*
+   * ONE BOOKING BUTTON ON AN OUTSIDE NIGHT (the PROJECT MANAGER's 13:10 of 30 October 2026). The hero's
+   * "View tickets at <site>" only jumped to the panel's identical button, so the page offered it twice. On a night
+   * sold elsewhere that is still on sale, the hero now IS the booking link (the panel's own tracked /out href), the
+   * panel keeps the facts with no second button, and the sticky bar goes to the same link.
+   */
+  const outsideBookingHref =
+    externallyTicketed && event.external_ticket_url && !nightIsOver && !ticketPanel?.soldOut
+      ? ticketPanel?.button?.href ?? outboundHref(event.slug, event.external_ticket_url)
+      : null
   const ticketCtaLabel = heroSale.cta
   const heroPriceLabel = heroSale.price
 
@@ -1076,6 +1112,9 @@ export default async function EventDetailPage({ params }: Props) {
   // An archived page is noindex and shown to a ticket holder only; it carries
   // no structured data because there is nothing for a search engine to list.
   const emitSchema = Boolean(event.organisation) && eventBannerState !== 'archived'
+  // The claim line shows exactly where the claim page would accept the claim (src/lib/listings/claimable.ts).
+  const claimLineShown =
+    (await listingClaimsPromise) && listingClaimable({ listingSource: event.listing_source, hasVenue: Boolean(event.venue_id) })
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -1149,6 +1188,7 @@ export default async function EventDetailPage({ params }: Props) {
         priceLabel={externallyTicketed || nightIsOver ? heroPriceLabel : priceLabel}
         shareUrl={`/events/${event.slug}`}
         ctaLabel={ticketCtaLabel}
+        bookingHref={outsideBookingHref}
       />
 
       <main>
@@ -1239,6 +1279,17 @@ export default async function EventDetailPage({ params }: Props) {
                   >
                     Browse upcoming events
                   </Link>
+                ) : outsideBookingHref ? (
+                  /* The outside night's one booking button: a plain anchor, it leaves the app (ExternalTicketsPanel's rule). */
+                  <a
+                    href={outsideBookingHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-booking-button
+                    className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                  >
+                    {ticketCtaLabel}
+                  </a>
                 ) : (
                   <GetTicketsCta className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]">
                     {ticketCtaLabel}
@@ -1256,7 +1307,7 @@ export default async function EventDetailPage({ params }: Props) {
                *  sitewide trust band was removed from the homepage in
                *  this batch; trust now lives at the moment that drives
                *  the conversion. */}
-              {heroSale.trustSignals ? <EventTrustSignals variant="dark" /> : null}
+              {promises.trustSignals && heroSale.trustSignals ? <EventTrustSignals variant="dark" /> : null}
             </HeroCaption>
           </div>
         </section>
@@ -1267,6 +1318,11 @@ export default async function EventDetailPage({ params }: Props) {
             the venue. */}
         {isLibraryPhoto(event.cover_image_url) && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs text-ink-600 sm:px-6 lg:px-8">{LIBRARY_PHOTO_CREDIT}</p>
+        )}
+        {/* The organiser's own cover photograph, credited in the register's words (photo-credits.ts), in the same place
+            and style as the library credit above; nothing for our typographic cover or an image not on record. */}
+        {coverCredit && !isLibraryPhoto(event.cover_image_url) && (
+          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{coverCredit}</p>
         )}
 
         {/* Event Media: the video (allowlisted embed, click-to-play facade so the
@@ -1350,10 +1406,8 @@ export default async function EventDetailPage({ params }: Props) {
                     <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                       When
                     </p>
+                    {/* Each fact once: the hero states the start; this card adds the end, the timezone and the calendar. */}
                     <p className="mt-2 text-sm font-semibold text-ink-900">
-                      {formatDateTime(event.start_date, event.timezone)}
-                    </p>
-                    <p className="mt-1 text-xs text-ink-600">
                       Ends {formatDateTime(event.end_date, event.timezone)}
                     </p>
                     <p className="mt-2 text-xs text-ink-400">Timezone: {event.timezone}</p>
@@ -1415,7 +1469,7 @@ export default async function EventDetailPage({ params }: Props) {
                             </Link>
                           </p>
                         )}
-                        {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
+                        {streetAddress && <p className="mt-1 text-xs text-ink-600">{streetAddress}</p>}
                       </>
                     )}
                     {event.event_type === 'hybrid' && (
@@ -1440,16 +1494,11 @@ export default async function EventDetailPage({ params }: Props) {
                 {surpassEdgesEnabled && (
                   <Reveal>
                     <KnowBeforeYouGo
-                      startLabel={formatDateTime(event.start_date, event.timezone)}
-                      timezone={event.timezone}
-                      venueName={event.venue_name}
-                      fullAddress={fullAddress || null}
-                      isVirtual={event.event_type === 'virtual'}
+                      qrTicket={promises.qrTicket}
                       ageMin={event.is_age_restricted ? (event.age_restriction_min ?? 18) : null}
                       hasAccessibleSeats={eventSeatFacts.some(
                         s => s.seat_type === 'accessible' || s.seat_type === 'companion'
                       )}
-                      isFree={event.is_free ?? false}
                     />
                   </Reveal>
                 )}
@@ -1483,6 +1532,7 @@ export default async function EventDetailPage({ params }: Props) {
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
                       <VenueMapLazy
+                        bare
                         venueName={event.venue_name}
                         address={event.venue_address}
                         city={event.venue_city}
@@ -1524,6 +1574,9 @@ export default async function EventDetailPage({ params }: Props) {
                  *  posture on unavoidable terms points the same way. The sentence
                  *  comes from the one policy module, so what is promised here is what
                  *  the refund path will actually do. */}
+                {/* Only where EventLinqs issues the ticket (eventPagePromises): an outside night's refunds, fees and
+                    window are its seller's, never ours to state. */}
+                {promises.refundPolicy && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Before you book" title="Refund policy" size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
@@ -1535,6 +1588,7 @@ export default async function EventDetailPage({ params }: Props) {
                     </p>
                   </div>
                 </Reveal>
+                )}
 
                 {/* An EventLinqs listing names its host, never the listings organisation (ruling A of 23 October 2026,
                     src/lib/listings/shown-organiser.ts): this card linked /organisers/eventlinqs-listings, a 404, on every
@@ -1670,6 +1724,7 @@ export default async function EventDetailPage({ params }: Props) {
                     price={ticketPanel?.button?.price ?? null}
                     also={ticketPanel?.also ?? []}
                     soldOut={ticketPanel?.soldOut ?? null}
+                    bookingInHero={outsideBookingHref !== null}
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">
@@ -1810,7 +1865,10 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
             No cross-promotion of any other event renders here; discovery
             lives on the city and browse pages only. */}
-        <ReportListingLink slug={event.slug} />
+        <ReportListingLink
+          slug={event.slug}
+          claimable={claimLineShown}
+        />
       </main>
 
       <SiteFooter />

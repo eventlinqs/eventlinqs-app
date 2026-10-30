@@ -21,6 +21,12 @@ interface Props {
   country: string | null
   latitude: number | null
   longitude: number | null
+  /**
+   * The map alone, with no venue name or address written on it (the PROJECT MANAGER's 13:10 of 30 October 2026). The
+   * event page prints the address once, in its Where card; this card printed it twice more (its plate and its footer),
+   * which is how the page read the address three times and more. Open in Maps stays.
+   */
+  bare?: boolean
 }
 
 
@@ -32,6 +38,7 @@ export function VenueMap({
   country,
   latitude,
   longitude,
+  bare = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -239,10 +246,14 @@ export function VenueMap({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <p className="mt-3 font-display text-sm font-semibold text-ink-900">
-                    {venueName ?? 'Venue'}
-                  </p>
-                  {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
+                  {!bare && (
+                    <>
+                      <p className="mt-3 font-display text-sm font-semibold text-ink-900">
+                        {venueName ?? 'Venue'}
+                      </p>
+                      {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -262,20 +273,24 @@ export function VenueMap({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <p className="mt-3 font-display text-sm font-semibold text-ink-900">
-                {venueName ?? 'Venue'}
-              </p>
-              {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
+              {!bare && (
+                <>
+                  <p className="mt-3 font-display text-sm font-semibold text-ink-900">
+                    {venueName ?? 'Venue'}
+                  </p>
+                  {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
+                </>
+              )}
             </div>
           </div>
         )}
       </div>
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0">
-          {venueName && (
+          {!bare && venueName && (
             <p className="font-display text-sm font-bold text-ink-900 line-clamp-1">{venueName}</p>
           )}
-          {fullAddress && (
+          {!bare && fullAddress && (
             <p className="text-xs text-ink-600 line-clamp-2">{fullAddress}</p>
           )}
           {hasLocation && <OsmAttribution className="mt-1" />}

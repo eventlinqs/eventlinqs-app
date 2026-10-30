@@ -7,6 +7,7 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { ClaimForm } from '@/components/listings/claim-form'
 import { maskAddress } from '@/lib/listings/claim'
+import { listingClaimable } from '@/lib/listings/claimable'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
@@ -46,7 +47,8 @@ export default async function ClaimEventPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  const claimable = event.listing_source === 'eventlinqs' && Boolean(venue)
+  // The one rule the event page's claim line asks too (src/lib/listings/claimable.ts).
+  const claimable = listingClaimable({ listingSource: event.listing_source, hasVenue: Boolean(venue) })
   const here = `/events/${slug}/claim`
 
   return (

@@ -1,9 +1,5 @@
-import Link from 'next/link'
 import {
-  Clock,
-  MapPin,
   QrCode,
-  RefreshCcw,
   Accessibility,
   IdCard,
 } from 'lucide-react'
@@ -15,17 +11,23 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
  * (Ticketek buries them in a compliance wall above the artist story); we
  * compile them from data the platform already holds and NEVER invent: a row
  * renders only when the platform truly knows the answer.
+ *
+ * EACH FACT ONCE (the PROJECT MANAGER's 13:10 of 30 October 2026). This card
+ * used to restate the date (the hero states it), the address (the Where card
+ * states it) and the money-back terms (the policy block below states them),
+ * which is how production read the date three times and those terms twice. It now carries
+ * only what nothing else on the page says, and renders nothing when that is
+ * nothing. Its door row is our own ticket's and is asked for by the page
+ * (src/lib/events/event-page-promises.ts): an outside night never promises a
+ * ticket EventLinqs does not issue. Held by the guard
+ * event-page-each-fact-once.
  */
 
 export interface KnowBeforeYouGoProps {
-  startLabel: string
-  timezone: string
-  venueName: string | null
-  fullAddress: string | null
-  isVirtual: boolean
+  /** True only where EventLinqs issues the ticket (eventPagePromises). */
+  qrTicket: boolean
   ageMin: number | null
   hasAccessibleSeats: boolean
-  isFree: boolean
 }
 
 interface Row {
@@ -35,74 +37,20 @@ interface Row {
 }
 
 export function KnowBeforeYouGo({
-  startLabel,
-  timezone,
-  venueName,
-  fullAddress,
-  isVirtual,
+  qrTicket,
   ageMin,
   hasAccessibleSeats,
-  isFree,
 }: KnowBeforeYouGoProps) {
   const rows: Row[] = []
 
-  rows.push({
-    icon: Clock,
-    label: 'When',
-    value: (
-      <>
-        {startLabel}
-        <span className="text-ink-400"> ({timezone.replace('_', ' ')} time)</span>
-      </>
-    ),
-  })
-
-  if (isVirtual) {
+  if (qrTicket) {
     rows.push({
-      icon: MapPin,
-      label: 'Where',
-      value: 'Online event. Your joining link arrives with your ticket.',
-    })
-  } else if (venueName || fullAddress) {
-    // One string for the words and for the Maps query. `fullAddress` is already
-    // composed by formatVenueWithAddress; when a caller has only a name, fall
-    // back to it so the row still says something true.
-    const addressLine = fullAddress || venueName || ''
-    rows.push({
-      icon: MapPin,
-      label: 'Getting there',
-      value: (
-        <>
-          {/* UX1.2: `fullAddress` already carries the venue name, placed once by
-              formatVenueWithAddress. This used to prepend `venueName` on top of
-              it, and the two together printed the name twice on the live page.
-              The displayed line and the Maps query are now the same string, so
-              the words and the pin can never disagree. */}
-          {addressLine}
-          {addressLine && (
-            <>
-              {' '}
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-ink-900"
-              >
-                Open in Maps
-              </a>
-            </>
-          )}
-        </>
-      ),
+      icon: QrCode,
+      label: 'At the door',
+      value:
+        'Your QR ticket lives in your email and your account. Show it on your phone; each QR admits one person.',
     })
   }
-
-  rows.push({
-    icon: QrCode,
-    label: 'At the door',
-    value:
-      'Your QR ticket lives in your email and your account. Show it on your phone; each QR admits one person.',
-  })
 
   if (ageMin !== null) {
     rows.push({
@@ -121,23 +69,7 @@ export function KnowBeforeYouGo({
     })
   }
 
-  rows.push({
-    icon: RefreshCcw,
-    label: 'If plans change',
-    value: (
-      <>
-        {isFree
-          ? 'Free registrations can be released any time so someone else can take your spot.'
-          : 'Cancelled events are refunded automatically to your original payment method.'}{' '}
-        <Link
-          href="/legal/refunds"
-          className="font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-ink-900"
-        >
-          Refund policy
-        </Link>
-      </>
-    ),
-  })
+  if (rows.length === 0) return null
 
   return (
     <div className="mt-10">

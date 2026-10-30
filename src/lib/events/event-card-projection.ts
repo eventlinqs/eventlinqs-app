@@ -29,6 +29,7 @@ function toCardData(e: PublicEventRow): EventCardData {
     // WI1. Without it every /events card for a walk-in event says "Free", not
     // "Free entry", because the card can only answer from what it is given.
     entry_mode: e.entry_mode,
+    external_ticket_url: e.external_ticket_url ?? null,
     organisation: e.organisation
       ? { name: e.organisation.name, slug: e.organisation.slug }
       : null,

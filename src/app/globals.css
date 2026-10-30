@@ -1149,12 +1149,24 @@ html[data-motion="1"] .hero-slide-content.is-active {
   transform: none;
 }
 
-/* Hero CONTENT entrance: a once-only staggered fade-rise on load (60-80ms
+/* Hero CONTENT entrance: a once-only staggered rise on load (60-80ms
  * apart). Apply .hero-enter to the text/CTA stack ONLY - the hero LCP image
  * never carries it (media architecture law). Gated by data-motion so the
- * headless audit + reduced-motion see the final state immediately. */
+ * headless audit + reduced-motion see the final state immediately.
+ *
+ * THE TEXT IS NEVER INVISIBLE (Lawal's mobile rule, 30 October 2026; seen at
+ * 390 x 844 on production: the headline and the button arrived 3 to 4 s after
+ * the first paint). This used 'fade-rise', whose fill 'both' held every line at
+ * opacity 0 until the browser started the animation, which a phone still running
+ * the page's JavaScript can put off for seconds. 'hero-rise' moves the lines only,
+ * so they are painted in the first frame whenever the motion starts.
+ * tests/unit/home/hero-text-in-the-first-paint.test.ts holds it. */
+@keyframes hero-rise {
+  0%   { transform: translate3d(0, 12px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
 html[data-motion="1"] .hero-enter > * {
-  animation: fade-rise 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  animation: hero-rise 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 html[data-motion="1"] .hero-enter > *:nth-child(1) { animation-delay: 40ms; }
 html[data-motion="1"] .hero-enter > *:nth-child(2) { animation-delay: 110ms; }

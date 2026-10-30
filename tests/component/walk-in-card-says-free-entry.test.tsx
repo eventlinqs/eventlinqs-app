@@ -43,10 +43,12 @@ describe('the grid card for a walk-in event', () => {
     expect(container.textContent).not.toMatch(/\$\s?\d/)
   })
 
-  it('a ticketed free event still says "Free", exactly as before', () => {
+  // ONE WORDING FOR A FREE NIGHT (the project manager's 12:40 of 30 October 2026: "'Free' and 'Free entry' both appear
+  // for free nights; one word"): a night stored as free reads the call to action's one line, "Free entry", on every card.
+  it('a ticketed night stored as free says "Free entry", the one wording, never a bare "Free"', () => {
     render(<EventCard event={{ ...base, entry_mode: 'tickets' }} />)
-    expect(screen.getByText('Free')).toBeInTheDocument()
-    expect(screen.queryByText('Free entry')).toBeNull()
+    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    expect(screen.queryByText('Free')).toBeNull()
   })
 
   it('a paid ticketed event still shows its lowest price', () => {

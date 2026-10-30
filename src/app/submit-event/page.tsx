@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
@@ -13,6 +14,7 @@ import {
   SUBMISSION_ENTRIES,
   SUBMISSION_ENTRY_WORDS,
   SUBMISSION_ROLES,
+  SUBMISSION_PRIVACY_LINE,
   SUBMISSION_ROLE_WORDS,
 } from '@/lib/listings/submission'
 import { submitEvent } from './actions'
@@ -135,6 +137,13 @@ export default async function SubmitEventPage({ searchParams }: { searchParams: 
 
               <fieldset className="space-y-5">
                 <legend className="font-display text-xl font-bold text-[var(--text-primary)]">You</legend>
+                {/* The collection notice where the details are asked (mandate M43, specification s17). */}
+                <p data-collection-notice className="text-sm text-[var(--text-secondary)]">
+                  {SUBMISSION_PRIVACY_LINE}{' '}
+                  <Link href="/legal/privacy" className="font-semibold text-[var(--text-primary)] underline">
+                    Privacy Policy
+                  </Link>
+                </p>
                 <FormField id="se-name" name="name" label="Your name" type="text" required autoComplete="name" maxLength={120} />
                 <FormField id="se-email" name="email" label="Email address" type="email" required autoComplete="email" maxLength={320} />
                 <div>

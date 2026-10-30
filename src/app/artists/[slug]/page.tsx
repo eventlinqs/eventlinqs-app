@@ -103,7 +103,7 @@ async function fetchShowCards(
     admin
       .from('events')
       .select(
-        'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+        'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
       )
       .in('id', eventIds)
       .order('start_date', { ascending: true })

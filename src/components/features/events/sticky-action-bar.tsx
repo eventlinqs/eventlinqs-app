@@ -36,6 +36,12 @@ interface Props {
   threshold?: number
   /** Share URL (copied to clipboard when share tapped). */
   shareUrl: string
+  /**
+   * The booking link itself, on a night sold on another site (the PROJECT MANAGER's 13:10 of 30 October 2026). The
+   * event page then carries that link in its hero and the panel draws no second button, so jumping to the panel would
+   * land on no button: the bar goes where the hero goes, the tracked /out link, in a new tab.
+   */
+  bookingHref?: string | null
 }
 
 export function StickyActionBar({
@@ -47,6 +53,7 @@ export function StickyActionBar({
   threshold = 420,
   shareUrl,
   ctaLabel,
+  bookingHref = null,
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -131,13 +138,14 @@ export function StickyActionBar({
               >
                 <Heart className={`h-4 w-4 ${saved ? 'fill-gold-500' : ''}`} />
               </button>
-              <Link
-                href={ticketAnchor}
-                onClick={handleTicketsClick}
+              <TicketAction
+                anchor={ticketAnchor}
+                bookingHref={bookingHref}
+                onAnchorClick={handleTicketsClick}
                 className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 {ctaLabel}
-              </Link>
+              </TicketAction>
             </div>
           </div>
           {shared && (
@@ -170,16 +178,45 @@ export function StickyActionBar({
                 <p className="mt-0.5 text-xs font-semibold text-gold-800">{priceLabel}</p>
               )}
             </div>
-            <Link
-              href={ticketAnchor}
-              onClick={handleTicketsClick}
+            <TicketAction
+              anchor={ticketAnchor}
+              bookingHref={bookingHref}
+              onAnchorClick={handleTicketsClick}
               className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 motion-reduce:transition-none"
             >
               {ctaLabel}
-            </Link>
+            </TicketAction>
           </div>
         </div>
       </div>
     </>
+  )
+}
+
+/** The bar's one action: the jump to the ticket panel, or the booking link itself on an outside night (a plain anchor, it leaves the app). */
+function TicketAction({
+  anchor,
+  bookingHref,
+  onAnchorClick,
+  className,
+  children,
+}: {
+  anchor: string
+  bookingHref: string | null
+  onAnchorClick: (e: React.MouseEvent<HTMLAnchorElement>) => void
+  className: string
+  children: React.ReactNode
+}) {
+  if (bookingHref) {
+    return (
+      <a href={bookingHref} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link href={anchor} onClick={onAnchorClick} className={className}>
+      {children}
+    </Link>
   )
 }
