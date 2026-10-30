@@ -61,7 +61,7 @@ describe('the venue report', () => {
     expect(r.levels.bookingIntent.people).toBe(9)
     expect(JSON.stringify(r)).not.toContain('"orders":40')
     expect(r.lines.join(' ')).not.toMatch(/\b40\b|\b90\b/)
-    expect(r.nights.find((n) => n.eventId === 'joined')?.verifiedSale).toBeNull()
+    expect(r.nights.find((n) => n.eventId === 'joined')?.verifiedSale).toEqual({ orders: null, tickets: null })
   })
 
   it("does not call a joined night 'not ticketed'; that would be a fact we do not state", () => {

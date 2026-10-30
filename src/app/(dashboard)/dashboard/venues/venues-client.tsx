@@ -400,6 +400,12 @@ export function VenuesClient({ venues: initialVenues, accessibility }: Props) {
                     >
                       Seat Maps
                     </Link>
+                    <Link
+                      href={`/dashboard/venues/${venue.id}/report`}
+                      className="rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-100 transition-colors"
+                    >
+                      Report
+                    </Link>
                     <button
                       type="button"
                       onClick={() => setEditingId(venue.id)}
