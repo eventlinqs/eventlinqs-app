@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { campaignReadyFigure, venuePhotoFigure } from '@/lib/admin/control-centre-complete'
+import type { CampaignLevel } from '@/lib/campaigns/eligibility'
 
 /**
  * THE FOUNDER CONTROL CENTRE'S LAST TWO ROWS (Lawal's DemandOS directive of 30 October 2026, section 11: "campaign-ready
@@ -26,7 +27,7 @@ describe('venue photographs waiting for a decision', () => {
   })
 })
 
-const judged = (levels: (string | null)[]) => ({ events: levels.map((level) => ({ level })), venuePhotosUnread: false })
+const judged = (levels: (CampaignLevel | null)[]) => ({ events: levels.map((level) => ({ level })), venuePhotosUnread: false })
 
 describe('nights ready for a campaign', () => {
   test('counts Featured and Performance, never Discovery, and says how many of each', () => {
