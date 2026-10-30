@@ -7,7 +7,8 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { requireVenueSeatingAccess } from '@/lib/organisations/access'
 import { formatEventDate } from '@/lib/dates/event-time'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { readVenueReport } from '@/lib/venues/venue-report'
+import { readVenueArrivals, readVenueReport } from '@/lib/venues/venue-report'
+import { arrivalsLine } from '@/lib/venues/venue-report-math'
 
 export const metadata: Metadata = {
   title: 'Venue report | EventLinqs',
@@ -41,7 +42,7 @@ export default async function VenueReportPage({ params }: Props) {
   )
   if (!venue) notFound()
 
-  const report = await readVenueReport(venueId, access.organisationId)
+  const [report, arrivals] = await Promise.all([readVenueReport(venueId, access.organisationId), readVenueArrivals(venueId)])
 
   return (
     <div className="max-w-2xl">
@@ -102,6 +103,11 @@ export default async function VenueReportPage({ params }: Props) {
             </section>
           </>
         )}
+
+        <section aria-label="Your own code" data-venue-arrivals className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">Your own code</h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-800">{arrivalsLine(arrivals)}</p>
+        </section>
 
         {report.unread > 0 && (
           <p className="mt-6 text-sm text-ink-600">

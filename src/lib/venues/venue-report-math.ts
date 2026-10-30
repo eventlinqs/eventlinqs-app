@@ -97,3 +97,31 @@ function venueLines(levels: VenueLevels, joinedNights: number): string[] {
   }
   return lines
 }
+
+/**
+ * Arrivals by the venue's own code (/go/v/<venue>, src/lib/venues/venue-go.ts): one row per person per venue per
+ * Melbourne day, never a crawler. A QA press is a test, never a person. An arrival is exposure turned into a visit, not
+ * a booking, so it stands beside the four levels and is never added into them. Null is a read that failed.
+ */
+export interface VenueArrivals {
+  readonly total: number
+  readonly qr: number
+  readonly link: number
+}
+
+export function venueArrivals(presses: readonly { via: string; is_test: boolean }[]): VenueArrivals {
+  let qr = 0
+  let link = 0
+  for (const p of presses) {
+    if (p.is_test) continue
+    if (p.via === 'qr') qr++
+    else link++
+  }
+  return { total: qr + link, qr, link }
+}
+
+export function arrivalsLine(arrivals: VenueArrivals | null): string {
+  if (arrivals === null) return 'Arrivals by your own code could not be read just now.'
+  if (arrivals.total === 0) return 'No one has arrived by your own code yet.'
+  return `Arrivals by your own code: ${arrivals.total} (${arrivals.qr} by the printed QR code, ${arrivals.link} by the link). One per person per day; an arrival is not a booking.`
+}

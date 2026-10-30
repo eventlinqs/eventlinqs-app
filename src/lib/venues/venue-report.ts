@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
-import { buildVenueReport, nightsAVenueSees, type VenueNightRow, type VenueReport } from './venue-report-math'
+import { buildVenueReport, nightsAVenueSees, venueArrivals, type VenueArrivals, type VenueNightRow, type VenueReport } from './venue-report-math'
 
 /**
  * The rows behind a venue's own report (the rules and why are in ./venue-report-math.ts). Read with the admin client
@@ -38,4 +38,20 @@ export async function readVenueReport(venueId: string, organisationId: string): 
     .map((e) => ({ eventId: e.id, title: e.title, startDate: e.start_date, timezone: e.timezone, own: e.own, figures: kept.get(e.id) }))
     .sort((a, b) => b.startDate.localeCompare(a.startDate))
   return buildVenueReport(rows)
+}
+
+/**
+ * Arrivals by the venue's own code (venue_go_presses, written by /go/v/<venue>). A failed read is null, which the page
+ * says plainly, so the report of its nights still stands; it is never shown as no arrivals.
+ */
+export async function readVenueArrivals(venueId: string): Promise<VenueArrivals | null> {
+  try {
+    const rows = await readEveryRow<{ id: string; via: string; is_test: boolean }>('the arrivals by this venue code', (from, to) =>
+      createAdminClient().from('venue_go_presses').select('id, via, is_test').eq('venue_id', venueId).order('id', { ascending: true }).range(from, to),
+    )
+    return venueArrivals(rows)
+  } catch (err) {
+    console.warn('[venue report] the arrivals could not be read', err instanceof Error ? err.message : String(err))
+    return null
+  }
 }
