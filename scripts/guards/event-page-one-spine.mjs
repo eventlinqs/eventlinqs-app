@@ -9,7 +9,8 @@
  *
  * WHAT IT HOLDS, reading the source of every event template:
  *   1. each shared section is drawn exactly once: hero, facts, map, getting-there, organiser, marked either as
- *      <EventSection name="..."> (window 3's spine) or by a literal data-event-section="..." attribute;
+ *      <EventSection name="..."> (window 3's spine) or by a literal data-event-section="..." attribute, or drawn by a
+ *      shared component that marks them itself (<EventVenueSection>: map, then getting-there, checked in its own file);
  *   2. in that order, in every template;
  *   3. none of them behind an admission-state test (isWalkIn, isExternallyTicketed, eventIsPaid, isOrganiserSellable or a
  *      cta.state comparison opened as a JSX condition just before the marker): only the action block may differ by
@@ -35,14 +36,20 @@ const TEMPLATES = [MAIN, 'src/components/events/walk-in/walk-in-event-page.tsx']
 const SECTIONS = ['hero', 'facts', 'map', 'getting-there', 'organiser']
 const ADMISSION_TESTS = /\b(isWalkIn|isExternallyTicketed|eventIsPaid|isOrganiserSellable)\s*\(|\bcta\.state\b/
 const FOLD = false
+// A shared component that draws several sections itself (window 3's spine): where a template draws it, the template
+// draws those sections, in the order the component marks them; the component is read and checked on its own.
+const COMPOSITES = [
+  { tag: '<EventVenueSection', file: 'src/components/events/event-page/event-venue-section.tsx', sections: ['map', 'getting-there'] },
+]
 
 const faults = []
 let read = 0
 let checked = 0
 
-/** Every place the section is marked, by either form. */
+/** Every place the section is marked, by either form, or by a shared component that draws it. */
 function marksOf(text, name) {
   const forms = [`<EventSection name="${name}"`, `data-event-section="${name}"`]
+  for (const c of COMPOSITES) if (c.sections.includes(name)) forms.push(c.tag)
   const at = []
   for (const form of forms) {
     for (let i = text.indexOf(form); i !== -1; i = text.indexOf(form, i + 1)) at.push(i)
@@ -70,6 +77,7 @@ for (const rel of TEMPLATES) {
     continue
   }
   let last = -1
+  let lastName = null
   for (const name of SECTIONS) {
     checked++
     const marks = marksOf(text, name)
@@ -78,8 +86,11 @@ for (const rel of TEMPLATES) {
       continue
     }
     if (marks.length > 1) faults.push(`${rel} draws the '${name}' section ${marks.length} times; each shared section once`)
-    if (marks[0] < last) faults.push(`${rel} draws '${name}' out of order; the order is ${SECTIONS.join(', ')}`)
+    // Two sections drawn by one shared component sit at the same place; the component's own order is checked below.
+    const sameComposite = COMPOSITES.some((c) => c.sections.includes(name) && c.sections.includes(lastName))
+    if (marks[0] < last || (marks[0] === last && !sameComposite)) faults.push(`${rel} draws '${name}' out of order; the order is ${SECTIONS.join(', ')}`)
     last = Math.max(last, marks[0])
+    lastName = name
     for (const at of marks) {
       if (behindAdmission(text, at)) faults.push(`${rel} draws '${name}' behind an admission-state test; only the action may differ`)
     }
@@ -89,7 +100,29 @@ for (const rel of TEMPLATES) {
   }
 }
 
-console.log(`${TAG} read ${read} template(s), checked ${checked} section mark(s); fold clause ${FOLD ? 'ON' : 'OFF'}`)
+for (const c of COMPOSITES) {
+  let text
+  try {
+    text = readFileSync(join(ROOT, c.file), 'utf8').replace(/\r\n/g, '\n')
+    read++
+  } catch {
+    // Not built yet: a template drawing it then fails above, since the tag is missing; nothing more to judge here.
+    continue
+  }
+  let last = -1
+  for (const name of c.sections) {
+    checked++
+    const at = []
+    for (const form of [`<EventSection name="${name}"`, `data-event-section="${name}"`]) {
+      for (let i = text.indexOf(form); i !== -1; i = text.indexOf(form, i + 1)) at.push(i)
+    }
+    if (at.length !== 1) faults.push(`${c.file} marks '${name}' ${at.length} time(s); its sections are each marked once`)
+    else if (at[0] < last) faults.push(`${c.file} marks '${name}' out of order; it draws ${c.sections.join(', ')}`)
+    else last = at[0]
+  }
+}
+
+console.log(`${TAG} read ${read} file(s), checked ${checked} section mark(s); fold clause ${FOLD ? 'ON' : 'OFF'}`)
 
 if (faults.length > 0) {
   console.error('')
