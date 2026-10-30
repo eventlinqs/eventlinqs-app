@@ -22,6 +22,7 @@ import { getAllCities, getCity } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { cityHubRails } from '@/lib/cities/city-hubs'
+import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
 
 /**
  * How many of the city's events the grid shows. It was the literal 24 inside
@@ -87,10 +88,10 @@ export function CityLandingPage({
   city,
   heroImage,
   caption,
-  thisWeekEvents,
-  todayTomorrowEvents,
-  thisWeekendEvents,
-  popularEvents,
+  thisWeekEvents: thisWeekCandidates,
+  todayTomorrowEvents: todayTomorrowCandidates,
+  thisWeekendEvents: thisWeekendCandidates,
+  popularEvents: popularCandidates,
   allEvents,
   eventTypeImages,
   relatedCityImages,
@@ -101,13 +102,27 @@ export function CityLandingPage({
   hasFreeGuide = false,
   featuredRow = null,
 }: Props) {
+  // The city's hubs (the locked plan of 27 October 2026, item 10): free, music, family and nightlife, each a rail
+  // only where it holds an event (src/lib/cities/city-hubs.ts).
+  const hubCandidates = cityHubRails(allEvents, Number.MAX_SAFE_INTEGER)
+  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the sections in the order
+  // they are drawn, the first to show an event keeping it, each later one filling its places from the rest.
+  const [todayTomorrowEvents, thisWeekendEvents, thisWeekEvents, ...laterSections] = oneCardPerEvent([
+    { events: todayTomorrowCandidates, cap: 12 },
+    { events: thisWeekendCandidates, cap: 12 },
+    { events: thisWeekCandidates, cap: 12 },
+    ...hubCandidates.map((r) => ({ events: r.events, cap: 12 })),
+    { events: popularCandidates, cap: 12 },
+    { events: allEvents, cap: ALL_EVENTS_SHOWN },
+  ])
+  const hubRails = hubCandidates.map((r, i) => ({ hub: r.hub, events: laterSections[i] })).filter((r) => r.events.length > 0)
+  const popularEvents = laterSections[hubCandidates.length]
   /* ONE array feeds both the reserved height and the cards, so the two can
    * never disagree: the section declares the height of what it renders, not
    * the height of what it was handed. */
-  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
-  // The city's hubs (the locked plan of 27 October 2026, item 10): free, music, family and nightlife, each a rail
-  // only where it holds an event (src/lib/cities/city-hubs.ts).
-  const hubRails = cityHubRails(allEvents)
+  const shownEvents = laterSections[hubCandidates.length + 1]
+  // The last grid holds what the sections above did not, so it says so when they showed any.
+  const shownAbove = [todayTomorrowEvents, thisWeekendEvents, thisWeekEvents, ...laterSections.slice(0, -1)].some((s) => s.length > 0)
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
@@ -350,10 +365,10 @@ export function CityLandingPage({
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              All upcoming
+              {shownAbove ? 'More upcoming' : 'All upcoming'}
             </p>
             <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              All {city.name} events
+              {shownAbove ? `More ${city.name} events` : `All ${city.name} events`}
             </h2>
           </div>
           {/* gold-800 (--brand-accent-strong) keeps the gold accent
@@ -479,7 +494,7 @@ export function CityLandingPage({
 
       <MobileStickyBar
         cityName={city.name}
-        weekendCount={thisWeekendEvents.length}
+        weekendCount={thisWeekendCandidates.length}
         anchorId="all-events"
       />
     </PageShell>

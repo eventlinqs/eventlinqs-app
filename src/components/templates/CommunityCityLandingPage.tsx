@@ -19,6 +19,7 @@ import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
 
 interface RelatedIntersection {
   communitySlug: string
@@ -100,17 +101,26 @@ export function CommunityCityLandingPage({
   editorial,
   heroSubtitle,
   caption,
-  thisWeekEvents,
-  thisWeekendEvents,
-  popularEvents,
+  thisWeekEvents: thisWeekCandidates,
+  thisWeekendEvents: thisWeekendCandidates,
+  popularEvents: popularCandidates,
   allEvents,
   subCommunityImages,
   relatedCities,
   relatedCommunities,
   mapPins,
 }: Props) {
+  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the sections in the order
+  // they are drawn, the first to show an event keeping it, each later one filling its places from the rest.
   /* ONE array feeds both the reserved height and the cards. */
-  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
+  const [thisWeekendEvents, thisWeekEvents, popularEvents, shownEvents] = oneCardPerEvent([
+    { events: thisWeekendCandidates, cap: 12 },
+    { events: thisWeekCandidates, cap: 12 },
+    { events: popularCandidates, cap: 12 },
+    { events: allEvents, cap: ALL_EVENTS_SHOWN },
+  ])
+  // The last grid holds what the sections above did not, so it says so when they showed any.
+  const shownAbove = thisWeekendEvents.length + thisWeekEvents.length + popularEvents.length > 0
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
 
@@ -303,10 +313,10 @@ export function CommunityCityLandingPage({
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              All upcoming
+              {shownAbove ? 'More upcoming' : 'All upcoming'}
             </p>
             <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              All {community.displayName} events in {cityName}
+              {shownAbove ? `More ${community.displayName} events in ${cityName}` : `All ${community.displayName} events in ${cityName}`}
             </h2>
           </div>
           <Link
@@ -449,7 +459,7 @@ export function CommunityCityLandingPage({
        *  benefits from the more specific label. */}
       <MobileStickyBar
         cityName={`${community.displayName} ${cityName}`}
-        weekendCount={thisWeekendEvents.length}
+        weekendCount={thisWeekendCandidates.length}
         anchorId="all-events"
       />
     </PageShell>
