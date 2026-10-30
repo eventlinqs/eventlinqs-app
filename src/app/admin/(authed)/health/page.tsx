@@ -1,5 +1,6 @@
 import { runAllChecks, overallStatus, type HealthResult } from '@/lib/health/checks'
 import { getSiteUrl } from '@/lib/site-url'
+import { requireAdminSession } from '@/lib/admin/auth'
 import {
   ADMIN_CELL,
   ADMIN_CELL_LABEL_LIGHT,
@@ -88,6 +89,9 @@ function StatusWord({ result }: { result: HealthResult }) {
  * waiting for an email. Gated by the admin (authed) layout - founder/admin only.
  */
 export default async function HealthStatusPage() {
+  // AUTH-03: the (authed) layout admits an admin who has not enrolled 2FA only so enrolment can render, so this
+  // page checks the strict session itself, as every page under it does.
+  await requireAdminSession()
   const results = await runAllChecks()
   const status = overallStatus(results)
   const checkedAt = new Date()
