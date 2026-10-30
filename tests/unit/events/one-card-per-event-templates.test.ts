@@ -51,3 +51,19 @@ describe('the home page, src/app/page.tsx', () => {
     expect(source).not.toMatch(/events=\{\w+Candidates\}/)
   })
 })
+
+/* WINDOW 1's 09:04 crawl of live after car 19: still twice on /events, /events/browse/melbourne and two suburb pages. */
+describe('the multi-rail pages WINDOW 1 found on live', () => {
+  const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
+  it('the suburb page passes its weekend rail and its full list through oneCardPerEvent, in that order', () => {
+    const src = read('src/components/templates/SuburbLandingPage.tsx')
+    expect(src).toMatch(/= oneCardPerEvent\(\[\s*\{ events: weekendEvents, cap: \d+ \},\s*\{ events, cap: ALL_EVENTS_SHOWN \},?\s*\]\)/)
+  })
+  it('/events gives its popular rail the results list, and the rail drops what the list draws', () => {
+    expect(read('src/app/events/page.tsx')).toMatch(/<EventsPopularSection[^>]*listedPromise=\{resultPromise\}/)
+    expect(read('src/components/features/events/m5-events-popular-section.tsx')).toContain('notAlreadyListed(')
+  })
+  it('/events/browse/<city> drops from its popular rail what its results list draws', () => {
+    expect(read('src/app/events/browse/[city]/page.tsx')).toMatch(/notAlreadyListed\(popularEvents, result\.events\)/)
+  })
+})
