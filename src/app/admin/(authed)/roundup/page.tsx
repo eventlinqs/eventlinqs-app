@@ -5,7 +5,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { getCity } from '@/lib/cities/data'
-import { fetchDigestCities, fetchDigestEvents, resolveDigestPeriod } from '@/lib/broadcast/digest'
+import { editionDigestCities, fetchDigestCities, fetchDigestEvents, resolveDigestPeriod } from '@/lib/broadcast/digest'
 import { whatsappEdition, whatsappShareUrl } from '@/lib/broadcast/whatsapp-edition'
 import { roundupApproval } from '@/lib/broadcast/roundup'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
@@ -44,7 +44,7 @@ export default async function AdminRoundupPage({ searchParams }: { searchParams:
   const now = new Date()
   const origin = getSiteUrl()
   const period = resolveDigestPeriod(now)
-  const slugs = await fetchDigestCities(admin)
+  const slugs = editionDigestCities(await fetchDigestCities(admin))
   const editions = await Promise.all(
     slugs.map(async (slug) => {
       const city = getCity(slug)
