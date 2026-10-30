@@ -20,7 +20,7 @@ import { FOUNDING_BADGE_LABEL } from '@/lib/organisers/founding-badge'
 export function FoundingOrganiserBadge({ className = '' }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)]/15 px-3 py-1 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--brand-accent-strong)] ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)]/15 px-3 py-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-[var(--brand-accent-strong)] ${className}`}
     >
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
         <path d="M12 2.6l2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9l6.1-.8L12 2.6z" />

@@ -219,7 +219,7 @@ async function CityTile({
       </div>
       <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
         <p className="text-xs font-medium text-ink-600 sm:text-sm">{entry.state}</p>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           {countLabel}
         </p>
       </div>

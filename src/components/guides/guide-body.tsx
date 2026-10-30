@@ -92,7 +92,7 @@ export function GuideBody({
                   <span className="block text-sm leading-relaxed text-[var(--text-secondary)]">
                     {t(block.shot.caption)}
                   </span>
-                  <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
                     Captured from the live platform
                     {block.shot.viewport ? ` at ${block.shot.viewport}px` : ''}
                   </span>
