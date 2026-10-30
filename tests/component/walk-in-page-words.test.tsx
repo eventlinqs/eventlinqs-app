@@ -381,10 +381,10 @@ describe('the day by day section says more than the hours, or is not drawn (fini
  */
 describe('a walk-in event with four or more of its own photos opens with its photo set', () => {
   const four = [
-    { url: 'https://cdn.example.com/dancers.avif', alt: 'Dancers' },
-    { url: 'https://cdn.example.com/food.avif', alt: 'Food' },
-    { url: 'https://cdn.example.com/drums.avif', alt: 'Drums' },
-    { url: 'https://cdn.example.com/fashion.avif', alt: 'Fashion' },
+    { url: 'https://images.eventlinqs.com/amcf/dancers.jpg', alt: 'Dancers' },
+    { url: 'https://images.eventlinqs.com/amcf/food.jpg', alt: 'Food' },
+    { url: 'https://images.eventlinqs.com/amcf/drums.jpg', alt: 'Drums' },
+    { url: 'https://images.eventlinqs.com/amcf/fashion.jpg', alt: 'Fashion' },
   ]
   const draw = (gallery: { url: string; alt: string }[]) =>
     render(
