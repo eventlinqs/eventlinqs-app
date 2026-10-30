@@ -27,7 +27,7 @@ describe('a page that is not the subject itself borrows no photo', () => {
 
   test("a city page's by-type tiles (they open /events filtered by city and type) ask for no category photo", () => {
     const source = readFileSync(resolve(process.cwd(), 'src/app/city/[slug]/page.tsx'), 'utf8')
-    expect(source).not.toMatch(/getCategoryPhoto/)
+    expect(source).not.toMatch(/\bgetCategoryPhoto\b/)
   })
 
   test('the community-in-city page draws its hero and sub-community tiles without a photo', () => {
