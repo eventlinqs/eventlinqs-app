@@ -1,3 +1,6 @@
+import type { DashboardFigure } from '@/lib/admin/founder-dashboard-math'
+import { nightFiguresFrom } from './four-levels'
+
 /**
  * THE DEMAND LEARNING LOOP (D10 of Lawal's DemandOS directive of 30 October 2026, section 10: "Compare performance by
  * city, category, lead time, channel and creative. Recommend future campaigns based on observed results. Start with
@@ -124,4 +127,26 @@ export function holdoutReading(pairs: readonly { readonly distributedOrders: num
   const on = round(pairs.reduce((s, p) => s + p.distributedOrders, 0) / pairs.length)
   const off = round(pairs.reduce((s, p) => s + p.heldOutOrders, 0) / pairs.length)
   return { state: 'read', pairs: pairs.length, ordersPerNightDistributed: on, ordersPerNightHeldOut: off, words: `${on} bookings a night with our distribution against ${off} without, over ${pairs.length} matched pairs. Directional, not conclusive.` }
+}
+
+/** A kept night report (organiser_night_reports.figures) and its event as an outcome, or null where either cannot be read. */
+export function nightOutcomeFrom(row: { figures: unknown; city: string | null; category: string | null; publishedAt: string | null; startDate: string }): NightOutcome | null {
+  const f = nightFiguresFrom(row.figures)
+  if (f === null || row.publishedAt === null) return null
+  const leadDays = Math.max(0, Math.round((Date.parse(row.startDate) - Date.parse(row.publishedAt)) / 86_400_000))
+  if (!Number.isFinite(leadDays)) return null
+  return { city: row.city, category: row.category, leadDays, people: f.viewers, presses: f.pressesOut.people, orders: f.onEventLinqs?.orders ?? null }
+}
+
+/** D11's recommended next actions: the observed lines, or how few nights there are, never an invented action. */
+export function recommendationFigure(lines: readonly string[], nights: number): DashboardFigure {
+  return {
+    label: 'Recommended next',
+    value: lines.length,
+    asksForAPerson: false,
+    href: null,
+    kind: 'measure',
+    cadence: 'weekly',
+    display: lines.length > 0 ? lines.join(' ') : `Too few nights to compare yet (${nights} reported)`,
+  }
 }

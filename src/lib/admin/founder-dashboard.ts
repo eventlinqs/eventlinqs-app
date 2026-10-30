@@ -4,6 +4,7 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { runAllChecks } from '@/lib/health/checks'
+import { nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
 import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
@@ -191,6 +192,21 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     if (!read) throw new Error('google_spend_state answered no readable row')
     return read
   })
+  // What the nights are teaching (the directive's section 10): every kept report, with its night's place and how far ahead it went up.
+  const learned = await settle(async () => {
+    const rows = await readEveryRow<{ figures: unknown; events: { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null } | { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null }[] | null }>('the kept reports the learning loop reads', (from, to) =>
+      admin.from('organiser_night_reports').select('figures, events(city_primary, published_at, start_date, event_categories(name))').order('id', { ascending: true }).range(from, to),
+    )
+    const nights: NightOutcome[] = []
+    for (const r of rows) {
+      const e = Array.isArray(r.events) ? r.events[0] : r.events
+      if (!e) continue
+      const c = Array.isArray(e.event_categories) ? e.event_categories[0] : e.event_categories
+      const n = nightOutcomeFrom({ figures: r.figures, city: e.city_primary, category: c?.name ?? null, publishedAt: e.published_at, startDate: e.start_date })
+      if (n) nights.push(n)
+    }
+    return recommendationFigure(recommendations(nights), nights.length)
+  })
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
 
@@ -269,6 +285,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'marketing',
       title: 'Marketing',
       figures: [
+        learned.ok ? learned.value : { label: 'Recommended next', value: null, asksForAPerson: false, href: null, kind: 'measure' as const, cadence: 'weekly' as const, note: learned.note },
         ...(notPlanned ? [tag(fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week'), 'approve', 'weekly')] : []),
         tag(fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'), 'approve', 'weekly'),
         tag(fig('Held from posting', m((v) => v.held), true, '/admin/social', 'a check stopped them; open each for its reason'), 'failed', 'daily'),
