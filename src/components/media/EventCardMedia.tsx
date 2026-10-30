@@ -91,6 +91,8 @@ interface Props {
   category?: string | null
   startDate?: string | null
   timeZone?: string | null
+  /** The photograph's credit, as its title attribute: never text on a card image (the project manager's 18:57). */
+  title?: string | null
 }
 
 const SIZES_BY_VARIANT: Record<EventCardMediaVariant, string> = {
@@ -150,6 +152,7 @@ export function EventCardMedia({
   category = null,
   startDate = null,
   timeZone = null,
+  title = null,
 }: Props) {
   // Our composed cover is never drawn on a card: its artwork is the title, the date, the venue and the price, every one
   // printed again beneath the image. Until the organiser's approved photo or an approved photo of the venue exists, the
@@ -167,6 +170,7 @@ export function EventCardMedia({
       <Image
         src={safeSrc}
         alt={alt}
+        title={title ?? undefined}
         fill
         sizes={SIZES_BY_VARIANT[variant]}
         quality={QUALITY_BY_VARIANT[variant]}

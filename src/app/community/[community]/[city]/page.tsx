@@ -27,6 +27,7 @@ import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtc,
@@ -178,12 +179,12 @@ export default async function CommunityByCityPage({ params }: Props) {
       .order('start_date', { ascending: true })
       .limit(120)
 
-    const raw = (data ?? []) as unknown as (EventCardData & {
+    const raw = await withVenuePhotos((data ?? []) as unknown as (EventCardData & {
       venue_latitude?: number | null
       venue_longitude?: number | null
       /** The event's own zone, so its date is not formatted in the reader's. */
       timezone?: string | null
-    })[]
+    })[])
 
     const filtered = raw
     allEvents = filtered

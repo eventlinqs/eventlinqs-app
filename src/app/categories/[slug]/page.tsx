@@ -17,6 +17,7 @@ import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { resolveCategorySlug } from '@/lib/events/search-params'
@@ -167,7 +168,7 @@ export default async function CategoryPage({ params }: Props) {
     { label: `categories/${real!.slug}` },
   )
 
-  const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
+  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
 
   const [photo, all] = await Promise.all([
     getCategoryPhoto(real!.slug),
@@ -240,7 +241,7 @@ async function renderHeroCategory(slug: string) {
     { label: `categories/${slug}` },
   )
 
-  const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
+  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
   const baseUrl = getSiteUrl()
   const collectionUrl = `${baseUrl}/categories/${category.slug}`
 

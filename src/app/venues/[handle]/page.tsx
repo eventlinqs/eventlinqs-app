@@ -16,6 +16,7 @@ import { CityTileImage } from '@/components/media/CityTileImage'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { VenueMap } from '@/components/features/events/venue-map'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
@@ -126,7 +127,7 @@ async function fetchVenueEventsByName(venueName: string) {
     ),
   ])
   return {
-    upcoming: ((upcoming ?? []) as unknown as VenueEventRow[]),
+    upcoming: await withVenuePhotos((upcoming ?? []) as unknown as VenueEventRow[]),
     past: ((past ?? []) as unknown as VenueEventRow[]),
   }
 }

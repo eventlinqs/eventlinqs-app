@@ -94,6 +94,7 @@ import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { creditLine, readPhotoCredits, withCredits } from '@/lib/media/photo-credits'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { captureException } from '@/lib/observability/sentry'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
@@ -674,6 +675,9 @@ export default async function EventDetailPage({ params }: Props) {
    * placement before it knows whether to ask; that pair is started early
    * instead and is documented where it is awaited.
    */
+  // The card image chain's second link on the page: a night with no photograph of its own shows its venue's approved
+  // one, credited under the photo; a failed read leaves the typographic hero (src/lib/images/venue-photo-chain.ts).
+  const [heroCover] = await withVenuePhotos([{ id: event.id, cover_image_url: event.cover_image_url ?? null }], { use: 'event_page' })
   const [
     dynamicPriceMap,
     eventInventory,
@@ -694,7 +698,7 @@ export default async function EventDetailPage({ params }: Props) {
     getEventInventoryStatic(event.id),
     // The SAME resolver generateMetadata used to register the preload, so the
     // raster this renders is the raster the head asked for.
-    getFeaturedHeroBackground(eventHeroMediaInput(event)),
+    getFeaturedHeroBackground(eventHeroMediaInput({ ...event, cover_image_url: heroCover.cover_image_url })),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show
@@ -762,7 +766,7 @@ export default async function EventDetailPage({ params }: Props) {
     return new Map<string, string>()
   })
   const gallery = withCredits(parseGallery(event.gallery_urls), photoCredits)
-  const coverCredit = typographicHero || !event.cover_image_url ? null : creditLine(photoCredits.get(event.cover_image_url))
+  const coverCredit = typographicHero || !heroCover.cover_image_url ? null : creditLine(photoCredits.get(heroCover.cover_image_url))
   const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
   const hasVideo = !!(event.video_url && videoProvider)
 
@@ -1316,12 +1320,28 @@ export default async function EventDetailPage({ params }: Props) {
             public information shows its licensed library shot until the host's own
             photo, and says so, here as on the walk-in page, so it is never read as
             the venue. */}
-        {isLibraryPhoto(event.cover_image_url) && (
+        {isLibraryPhoto(heroCover.cover_image_url) && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs text-ink-600 sm:px-6 lg:px-8">{LIBRARY_PHOTO_CREDIT}</p>
         )}
         {/* The organiser's own cover photograph, credited in the register's words (photo-credits.ts), in the same place
             and style as the library credit above; nothing for our typographic cover or an image not on record. */}
-        {coverCredit && !isLibraryPhoto(event.cover_image_url) && (
+        {/* The venue's photograph, its credit linked to the file page and the licence (the project manager's 18:57). */}
+        {heroCover.image_credit && (
+          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">
+            {heroCover.image_credit_file ? (
+              <a href={heroCover.image_credit_file} rel="noopener nofollow" className="underline underline-offset-2">{heroCover.image_credit}</a>
+            ) : (
+              heroCover.image_credit
+            )}
+            {heroCover.image_credit_licence && (
+              <>
+                {' · '}
+                <a href={heroCover.image_credit_licence} rel="noopener nofollow license" className="underline underline-offset-2">Licence</a>
+              </>
+            )}
+          </p>
+        )}
+        {coverCredit && !isLibraryPhoto(heroCover.cover_image_url) && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{coverCredit}</p>
         )}
 

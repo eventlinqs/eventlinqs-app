@@ -11,6 +11,7 @@ import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
@@ -263,7 +264,7 @@ async function fetchOrganiserEvents(orgId: string) {
   ])
 
   return {
-    upcoming: ((upcoming ?? []) as unknown as OrganiserEventRow[]),
+    upcoming: await withVenuePhotos((upcoming ?? []) as unknown as OrganiserEventRow[]),
     past: ((past ?? []) as unknown as OrganiserEventRow[]),
   }
 }

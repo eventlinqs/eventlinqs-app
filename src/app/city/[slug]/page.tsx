@@ -5,6 +5,7 @@ import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -115,17 +116,18 @@ export default async function CityPage({ params }: Props) {
     { label: `city/${city.slug}` },
   )
 
-  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+  const allRaw = await withVenuePhotos((rows ?? []) as unknown as (EventCardData & {
     end_date?: string
     venue_latitude?: number | null
     venue_longitude?: number | null
     /** The event's own zone, so its date is not formatted in the reader's. */
     timezone?: string | null
-  })[]
+  })[])
 
   const allEvents: EventCardData[] = allRaw.map(r => ({
     id: r.id, slug: r.slug, title: r.title,
     cover_image_url: r.cover_image_url, thumbnail_url: r.thumbnail_url,
+    image_credit: r.image_credit ?? null,
     start_date: r.start_date,
     // Carried through rather than dropped. The raw type above has read this
     // column all along, with a comment saying why, and then the projection

@@ -18,6 +18,7 @@ import { CommunityLandingPage } from '@/components/templates/CommunityLandingPag
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -93,7 +94,7 @@ export default async function CommunityPage({ params }: Props) {
       { label: `community/${community.slug}` },
     )
 
-    liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
+    liveEvents = await withVenuePhotos(((data ?? []) as unknown as EventCardData[]).slice(0, 12))
   }
 
   // Parallelise all image fetches: hero + 6 sub-communities + N cities + cta backdrop + related communities.

@@ -1,4 +1,5 @@
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import type { PublicEventRow } from './types'
 
 // Batch 4: previous Pexels-collision fallback removed.
@@ -38,5 +39,6 @@ function toCardData(e: PublicEventRow): EventCardData {
 }
 
 export async function projectToCardData(events: PublicEventRow[]): Promise<EventCardData[]> {
-  return events.map(toCardData)
+  // The card image chain's second link, one read for the page (src/lib/images/venue-photo-chain.ts).
+  return withVenuePhotos(events.map(toCardData))
 }

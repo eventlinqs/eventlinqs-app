@@ -72,6 +72,7 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
           src={cover}
           alt={event.title ?? 'Event'}
           variant={sizeRole === 'featured' ? 'bento-hero' : 'bento-supporting'}
+          title={event.image_credit ?? null}
           className="transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       ) : (
