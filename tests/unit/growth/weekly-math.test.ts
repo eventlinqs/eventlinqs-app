@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bestOfWeek, figuresFor, lastWeeks, stateScorecard, type Rows } from '@/lib/growth/weekly-math'
+import { bestOfWeek, figuresFor, lastWeeks, refundedOf, stateScorecard, type Rows } from '@/lib/growth/weekly-math'
 
 /*
  * The growth page's arithmetic (src/lib/growth/weekly-math.ts): last week on the platform's clock, the five dimensions
@@ -92,6 +92,25 @@ describe('the state scorecard', () => {
   it('reads recurring listings live in the state against 50, organisers with two or more listings, returning visitors and the margin', () => {
     const vic = new Set(['Geelong', 'Melbourne', 'Ballarat', 'Bendigo'])
     expect(stateScorecard(rows, last, before, vic)).toEqual({ recurringLive: 1, recurringTarget: 50, repeatOrganisers: 1, returningUp: true, marginPositive: true })
+  })
+
+  // The DemandOS audit, 30 October 2026: the retained fee is written once at charge time and a refund never rewrites
+  // it, so a refunded order kept counting the fee the refund gave back. The fee comes back in the refund's share of
+  // the order (refund.ts, a proportional fee refund); Stripe's processing is not returned, so it stays a cost.
+  it('takes the refunded share of the kept fee off the margin, and leaves the processing cost on', () => {
+    const paid = rows.orders[0]
+    const refunded = { ...rows, orders: [{ ...paid, status: 'refunded', refundedCents: 4500 }] }
+    expect(figuresFor(refunded, last).health.marginCents).toBe(300 - 92 - 300)
+    const half = { ...rows, orders: [{ ...paid, status: 'partially_refunded', refundedCents: 2250 }] }
+    expect(figuresFor(half, last).health.marginCents).toBe(300 - 92 - 150)
+    const none = { ...rows, orders: [{ ...paid, refundedCents: 0 }] }
+    expect(figuresFor(none, last).health.marginCents).toBe(208)
+  })
+
+  it("reads an order's refunded cents from its completed refunds only, numbers or numeric strings", () => {
+    expect(refundedOf([{ amount_cents: 1000, status: 'completed' }, { amount_cents: '250', status: 'completed' }, { amount_cents: 999, status: 'failed' }])).toBe(1250)
+    expect(refundedOf(null)).toBe(0)
+    expect(refundedOf([])).toBe(0)
   })
 
   it('leaves an order that does not record what was kept out of the margin, and counts it', () => {
