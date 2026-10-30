@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { inventoryFigures } from '@/lib/admin/founder-dashboard-math'
+import { countFrom, inventoryFigures } from '@/lib/admin/founder-dashboard-math'
 
 /**
  * THE FOUNDER CONTROL CENTRE'S MISSING ROWS (Lawal's DemandOS directive of 30 October 2026, section 11: "upcoming event
@@ -29,5 +29,18 @@ describe('inventory, broken links and venue partnerships on /admin/today', () =>
     const f = inventoryFigures({ ...read, deadLinks: { value: null, note: 'could not be read: timeout' } })[3]
     expect(f.value).toBeNull()
     expect(f.note).toBe('could not be read: timeout')
+  })
+})
+
+// Read on TEST, 30 October 2026: a count on a table the API cannot reach answered status 204, count null, error null.
+// The dashboard turned that into 0, against its own rule that what cannot be read is not counted, never 0.
+describe('a count that came back with no number', () => {
+  test('is not counted, never 0', () => {
+    expect(countFrom({ count: null, error: null })).toEqual({ value: null, note: 'could not be read: the count came back empty' })
+  })
+  test('a real zero stays zero, and an error keeps its words', () => {
+    expect(countFrom({ count: 0, error: null })).toEqual({ value: 0 })
+    expect(countFrom({ count: 7, error: null })).toEqual({ value: 7 })
+    expect(countFrom({ count: null, error: { message: 'permission denied' } })).toEqual({ value: null, note: 'could not be read: permission denied' })
   })
 })
