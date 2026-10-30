@@ -4,7 +4,8 @@ import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
-import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
+import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -27,6 +28,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
+  todayAndTomorrowWindow,
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -115,17 +117,18 @@ export default async function CityPage({ params }: Props) {
     { label: `city/${city.slug}` },
   )
 
-  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+  const allRaw = await withVenuePhotos((rows ?? []) as unknown as (EventCardData & {
     end_date?: string
     venue_latitude?: number | null
     venue_longitude?: number | null
     /** The event's own zone, so its date is not formatted in the reader's. */
     timezone?: string | null
-  })[]
+  })[])
 
   const allEvents: EventCardData[] = allRaw.map(r => ({
     id: r.id, slug: r.slug, title: r.title,
     cover_image_url: r.cover_image_url, thumbnail_url: r.thumbnail_url,
+    image_credit: r.image_credit ?? null,
     start_date: r.start_date,
     // Carried through rather than dropped. The raw type above has read this
     // column all along, with a comment saying why, and then the projection
@@ -136,6 +139,9 @@ export default async function CityPage({ params }: Props) {
     // WI1. Carried for the same reason: without it a walk-in event's city card
     // says "Free" while its own map pin on this page says "Free entry".
     entry_mode: r.entry_mode ?? null,
+    // Carried too: without it a night sold elsewhere read as 'price unknown' and its card showed no price at all
+    // (Kate Ceberano on /city/geelong, step 3 on live after car 14, 30 October 2026).
+    external_ticket_url: r.external_ticket_url ?? null,
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],
   }))
 
@@ -143,6 +149,9 @@ export default async function CityPage({ params }: Props) {
   // morning is still on and still belongs in This week (exclusion audit item 1).
   const thisWeekEvents = allEvents.filter(e => e.start_date >= w.todayStartIso && e.start_date <= w.sevenDaysIso)
   const thisWeekendEvents = allEvents.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
+  // D5's Tonight and Tomorrow on the web, computed at render, so its words are true on every day it shows.
+  const soon = todayAndTomorrowWindow(new Date(w.nowIso), PLATFORM_TIME_ZONE)
+  const todayTomorrowEvents = allEvents.filter(e => e.start_date >= soon.from.toISOString() && e.start_date <= soon.to.toISOString())
   const popularEvents = allEvents.slice(0, 12)
 
   // Map pins: only events with geocoded venues, capped at 100.
@@ -150,7 +159,6 @@ export default async function CityPage({ params }: Props) {
     .filter(r => typeof r.venue_latitude === 'number' && typeof r.venue_longitude === 'number')
     .slice(0, 100)
     .map(r => {
-      const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
       // The EVENT's zone, never the reader's: a 9pm Perth event reads as
       // the next day in Sydney.
       const dateStr = formatEventDateShort(r.start_date, r.timezone)
@@ -158,7 +166,9 @@ export default async function CityPage({ params }: Props) {
         id: r.id, slug: r.slug, title: r.title,
         date: dateStr,
         suburb: r.venue_city,
-        price: isWalkIn(r) ? FREE_ENTRY_LABEL : cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+        // The card's own words from the night's one call to action: a paid night sold elsewhere names its site, never
+        // 'Free'; a night whose price nobody checked says nothing (the map drops an empty price).
+        price: broadcastPriceLabel(r) || null,
         cover: r.cover_image_url,
         latitude: r.venue_latitude as number,
         longitude: r.venue_longitude as number,
@@ -255,6 +265,7 @@ export default async function CityPage({ params }: Props) {
         heroImage={heroImage}
         caption={caption}
         thisWeekEvents={thisWeekEvents}
+        todayTomorrowEvents={todayTomorrowEvents}
         thisWeekendEvents={thisWeekendEvents}
         popularEvents={popularEvents}
         allEvents={allEvents}

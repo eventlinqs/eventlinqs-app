@@ -2,6 +2,7 @@ import type { Cta } from '@/lib/events/cta'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
+import { getCategoryDisplayName } from '@/lib/hero-categories'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -24,7 +25,28 @@ import { carriesBannedWord, quotableSummary } from './words'
 
 export type Audience = 'attendees' | 'organisers' | 'venues' | 'partners'
 export type Objective = 'audience_growth' | 'organiser_growth'
-export type PieceKind = 'week_ahead' | 'discovery_reel' | 'weekend_carousel' | 'venue_spotlight' | 'organiser_campaign' | 'partner_kit' | 'brand_campaign' | 'daily_poster'
+export type PieceKind =
+  | 'week_ahead'
+  | 'discovery_reel'
+  | 'weekend_carousel'
+  | 'venue_spotlight'
+  | 'organiser_campaign'
+  | 'partner_kit'
+  | 'brand_campaign'
+  | 'daily_poster'
+  | 'tonight_tomorrow'
+  | 'category_spotlight'
+
+/**
+ * THE EDITION CITIES, in order (D5 of Lawal's final directive, 30 October 2026: 'Initially support Geelong and
+ * Melbourne, with architecture for Ballarat, Bendigo and future cities'). Friday's Tonight and Tomorrow and the Category
+ * Spotlight plan only for these; a city joins by one line here, on the project manager's word. The week ahead and the
+ * weekend guide still plan for every guide city, as before.
+ */
+export const EDITION_CITIES: readonly string[] = ['geelong', 'melbourne']
+
+/** A Category Spotlight needs this many of one category's nights in a city's week. */
+export const SPOTLIGHT_MIN_NIGHTS = 3
 
 /** The revised samples' compositions (14:08), as slots; the looks wait for Lawal's approval. */
 export type Composition =
@@ -176,7 +198,13 @@ function oncePerTitle(nights: readonly CampaignNight[]): CampaignNight[] {
   return nights.filter((n) => !seen.has(titleKey(n)) && Boolean(seen.add(titleKey(n))))
 }
 
-export function selectNights(candidates: readonly CampaignNight[], max: number): { nights: CampaignNight[]; picks: NightPick[] } {
+export function selectNights(
+  candidates: readonly CampaignNight[],
+  max: number,
+  /** A Category Spotlight is one category by design, so it lifts that cap alone; the venue cap still holds. */
+  opts: { readonly perCategory?: number } = {},
+): { nights: CampaignNight[]; picks: NightPick[] } {
+  const perCategory = opts.perCategory ?? MAX_PER_CATEGORY
   const hostCount = new Map<string, number>()
   for (const n of candidates) if (n.host) hostCount.set(n.host, (hostCount.get(n.host) ?? 0) + 1)
   const scored = candidates.map((n, order) => {
@@ -215,7 +243,7 @@ export function selectNights(candidates: readonly CampaignNight[], max: number):
     const venue = (s.n.venueName ?? '').toLowerCase()
     const category = (s.n.categorySlug ?? '').toLowerCase()
     if (venue && (venues.get(venue) ?? 0) >= MAX_PER_VENUE) continue
-    if (category && (categories.get(category) ?? 0) >= MAX_PER_CATEGORY) continue
+    if (category && (categories.get(category) ?? 0) >= perCategory) continue
     if (venue) venues.set(venue, (venues.get(venue) ?? 0) + 1)
     if (category) categories.set(category, (categories.get(category) ?? 0) + 1)
     titles.add(title)
@@ -533,6 +561,80 @@ export function planCampaign(input: {
         message: null,
       })
       feature(weekend)
+    }
+
+    if (!EDITION_CITIES.includes(city.slug)) continue
+
+    /* Friday: Tonight and Tomorrow, the city's Friday and Saturday nights, to the city page. Its words name the days,
+       never 'tonight', so a piece that posts late is still true; a night that has ended holds it (pieceDependencies). */
+    const { nights: friSat, picks: friSatPicks } = selectNights(inWeek.filter((x) => x.n.citySlug === city.slug && (x.day === 4 || x.day === 5)).map((x) => x.n), MAX_NIGHTS)
+    if (friSat.length >= 2) {
+      const days = `Friday and Saturday in ${city.name}`
+      const hook = `${countWord(friSat.length)} things on ${days}.`
+      const body = [...friSat.map(pickLine), '', creditsOf(friSat)]
+      pieces.push({
+        kind: 'tonight_tomorrow',
+        city: city.slug,
+        audience: 'attendees',
+        objective: 'audience_growth',
+        purpose: `Pick a night out ${days}`,
+        nextStep: `Open ${site}/city/${city.slug} and choose a night`,
+        outcome: outcomeOf(`/city/${city.slug}`),
+        link: `${origin}/city/${city.slug}`,
+        format: 'feed',
+        eventIds: friSat.map((n) => n.eventId),
+        picks: friSatPicks,
+        mode: modeOf(friSat),
+        slides: [
+          { t: 'cover', composition: 'contents_cover', chip: `Friday and Saturday · ${city.name}`, headline: hook, line: splitLine(friSat), contents: friSat.map((n) => `${dayOf(n)} ${n.title}`) },
+          ...friSat.map(nightSlide),
+          { t: 'end', composition: 'close', headline: 'Who are you taking?', line: `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Send this to them now.' },
+        ],
+        caption: join([hook, '', ...body, '', `The whole week: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
+        versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, 'The whole week is at the link in our bio.', 'The whole week:', '4:5', tagsFor(city, null)),
+        partnerName: null,
+        partnerEventId: null,
+        message: null,
+      })
+      feature(friSat)
+    }
+
+    /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */
+    const byCategory = new Map<string, CampaignNight[]>()
+    for (const n of week) if (n.categorySlug) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
+    const strongest = [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]
+    if (strongest && strongest[1].length >= SPOTLIGHT_MIN_NIGHTS) {
+      const [slug, all] = strongest
+      const name = getCategoryDisplayName(slug)
+      const { nights: spot, picks: spotPicks } = selectNights(all, MAX_NIGHTS, { perCategory: MAX_NIGHTS })
+      const path = `/events?city=${city.slug}&category=${slug}`
+      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} nights.`
+      const body = [...spot.map(pickLine), '', creditsOf(spot)]
+      pieces.push({
+        kind: 'category_spotlight',
+        city: city.slug,
+        audience: 'attendees',
+        objective: 'audience_growth',
+        purpose: `Show the ${name.toLowerCase()} on in ${city.name} this week`,
+        nextStep: `Open ${site}${path}`,
+        outcome: outcomeOf(path),
+        link: `${origin}${path}`,
+        format: 'feed',
+        eventIds: spot.map((n) => n.eventId),
+        picks: spotPicks,
+        mode: modeOf(spot),
+        slides: [
+          { t: 'cover', composition: 'contents_cover', chip: `${name} · ${city.name}`, headline: hook, line: splitLine(spot), contents: spot.map((n) => `${dayOf(n)} ${n.title}`) },
+          ...spot.map(nightSlide),
+          { t: 'end', composition: 'close', headline: 'Save the one you want.', line: `All the ${name.toLowerCase()} on in ${city.name}, by day, with times and places:`, url: `${site}${path}`, foot: null },
+        ],
+        caption: join([hook, '', ...body, '', `All of it: ${site}${path}`, '', tagsFor(city, null)]),
+        versions: versionsOf(hook, body, `${origin}${path}`, 'All of it is at the link in our bio.', 'All of it:', '4:5', tagsFor(city, null)),
+        partnerName: null,
+        partnerEventId: null,
+        message: null,
+      })
+      feature(spot)
     }
   }
 

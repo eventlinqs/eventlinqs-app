@@ -208,6 +208,18 @@ export function formatEventDateShort(iso: string, timezone: EventTimeZone): stri
 }
 
 /**
+ * { day: "14", month: "Aug" } for a card's date mark, in the event's own zone, or null for a date it cannot read. The
+ * typographic card cover shows this mark instead of our composed raster, whose artwork repeats the title (the project
+ * manager's 16:42 of 30 October 2026).
+ */
+export function eventDateMark(iso: string | null | undefined, timezone: EventTimeZone): { day: string; month: string } | null {
+  if (typeof iso !== 'string' || Number.isNaN(new Date(iso).getTime())) return null
+  const day = format(iso, timezone, { day: 'numeric' })
+  const month = format(iso, timezone, { month: 'short' })
+  return /^\d{1,2}$/.test(day) && month !== iso ? { day, month } : null
+}
+
+/**
  * "Aug 2026" for an artist credit, in the event's own zone. The credit-list
  * form: a past show is placed by month, not by weekday, so the day itself
  * carries no meaning and showing it would be noise. Still zone-pinned, because

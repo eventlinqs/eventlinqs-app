@@ -64,6 +64,8 @@ export type EventCardData = {
   entry_mode?: string | null
   /** A night sold on another site: the card's price line names the site ("Tickets on ..."), never "Free". */
   external_ticket_url?: string | null
+  /** A venue photograph's credit (src/lib/images/venue-photo-chain.ts), the image's title attribute, never on the image. */
+  image_credit?: string | null
   organisation?: { name: string; slug?: string } | null
   badge?: M5Badge | null
 }
@@ -183,6 +185,11 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             alt={title}
             variant={variant}
             priority={priority}
+            // The typographic cover's facts: the category only where the pill does not already say it on the image.
+            category={m5Mode ? (category?.name ?? null) : null}
+            startDate={start_date}
+            timeZone={timezone ?? null}
+            title={event.image_credit ?? null}
             // Image scale-up per spec card hover: subtle 1.02 (2%).
             // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
             // utility (transform: scale 1.02 under --motion-quick).

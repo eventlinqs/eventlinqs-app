@@ -17,6 +17,7 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -54,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const EVENT_SELECT =
-  'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export default async function FaithPage({ params }: Props) {
   const { faith: faithParam } = await params
@@ -78,7 +79,7 @@ export default async function FaithPage({ params }: Props) {
           .limit(12),
       { label: `faith/${faith.slug}` },
     )
-    liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
+    liveEvents = await withVenuePhotos(((data ?? []) as unknown as EventCardData[]).slice(0, 12))
   }
 
   // Related heritages this faith commonly intersects (cross-link rail).

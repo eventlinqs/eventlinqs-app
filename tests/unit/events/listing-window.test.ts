@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js'
 
 import {
   SUPPORTED_EVENT_ZONES,
+  todayAndTomorrowWindow,
   endOfLocalDayUtc,
   isStillListed,
   listingUntil,
@@ -308,3 +309,11 @@ if (process.env.LISTING_PROOF === '1') {
     }, 60_000)
   })
 }
+
+describe('todayAndTomorrowWindow, the city page rail (D5: Tonight and Tomorrow on the web)', () => {
+  it('runs from the start of today to the end of tomorrow in the zone, whatever the server zone', () => {
+    const { from, to } = todayAndTomorrowWindow(new Date('2026-10-30T03:00:00Z'), 'Australia/Melbourne') // Friday 2pm
+    expect(from.toISOString()).toBe('2026-10-29T13:00:00.000Z') // Friday 00:00 AEDT
+    expect(to.toISOString()).toBe('2026-10-31T12:59:59.999Z') // Saturday 23:59:59.999 AEDT
+  })
+})

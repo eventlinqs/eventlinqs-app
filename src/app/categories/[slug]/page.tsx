@@ -17,6 +17,7 @@ import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { resolveCategorySlug } from '@/lib/events/search-params'
@@ -157,7 +158,7 @@ export default async function CategoryPage({ params }: Props) {
       supabase
         .from('events')
         .select(
-          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))
@@ -167,7 +168,7 @@ export default async function CategoryPage({ params }: Props) {
     { label: `categories/${real!.slug}` },
   )
 
-  const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
+  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
 
   const [photo, all] = await Promise.all([
     getCategoryPhoto(real!.slug),
@@ -230,7 +231,7 @@ async function renderHeroCategory(slug: string) {
       supabase
         .from('events')
         .select(
-          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))
@@ -240,7 +241,7 @@ async function renderHeroCategory(slug: string) {
     { label: `categories/${slug}` },
   )
 
-  const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
+  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
   const baseUrl = getSiteUrl()
   const collectionUrl = `${baseUrl}/categories/${category.slug}`
 

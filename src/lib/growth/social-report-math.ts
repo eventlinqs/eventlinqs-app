@@ -189,6 +189,9 @@ export const KIND_NAMES: Readonly<Record<string, string>> = {
   partner_kit: 'Partner kit',
   // Family F, the daily event poster (window 3's 20261030010001, the founder's decision of 30 October 2026, 00:20).
   daily_poster: 'Daily poster',
+  // D5, the owned editions (window 3's 20261030180401, Lawal's final directive of 30 October 2026).
+  tonight_tomorrow: 'Tonight and Tomorrow',
+  category_spotlight: 'Category Spotlight',
 }
 
 export const LIMITATIONS: readonly string[] = [

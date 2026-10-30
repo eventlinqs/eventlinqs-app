@@ -18,6 +18,7 @@ import { CommunityLandingPage } from '@/components/templates/CommunityLandingPag
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -83,7 +84,7 @@ export default async function CommunityPage({ params }: Props) {
         supabase
           .from('events')
           .select(
-            'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+            'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
           )
           .match(PUBLIC_EVENT_MATCH)
           .or(listingWindowOrPredicate(new Date()))
@@ -93,7 +94,7 @@ export default async function CommunityPage({ params }: Props) {
       { label: `community/${community.slug}` },
     )
 
-    liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
+    liveEvents = await withVenuePhotos(((data ?? []) as unknown as EventCardData[]).slice(0, 12))
   }
 
   // Parallelise all image fetches: hero + 6 sub-communities + N cities + cta backdrop + related communities.
