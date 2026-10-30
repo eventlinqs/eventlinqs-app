@@ -8,7 +8,8 @@ import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
-import { economicsFigures, kitsSentAndUsed, type DashboardFigure, type DashboardSection } from './founder-dashboard-math'
+import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
+import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
@@ -50,6 +51,9 @@ const fig = (label: string, c: Counted, asksForAPerson: boolean, href: string | 
   href,
   ...(c.note || note ? { note: c.note ?? note } : {}),
 })
+
+/** Its place in the view by exception and its cadence (founder-dashboard-math.ts byException and rhythm). */
+const tag = (f: DashboardFigure, kind: FigureKind, cadence: Cadence): DashboardFigure => ({ ...f, kind, cadence })
 
 export async function readFounderDashboard(now: Date = new Date()): Promise<DashboardSection[]> {
   const admin = createAdminClient()
@@ -125,6 +129,34 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     return kitsSentAndUsed(rows, taps.map((t) => ({ linkId: t.link_id, at: new Date(t.occurred_at).toISOString() })), now)
   })
 
+  // The last 28 days' AUD orders, for the monthly contribution (the supreme specification, section 29), through the growth
+  // page's own figuresFor so the month counts sold orders exactly as the week does.
+  const month = await settle(async () => {
+    const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
+    const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null }>(
+      'the orders of the last 28 days',
+      (from, to) =>
+        admin
+          .from('orders')
+          .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents')
+          .eq('currency', 'AUD')
+          .gte('created_at', since)
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    const orders: OrderRow[] = rows.map((o) => ({
+      totalCents: Number(o.total_cents ?? 0),
+      platformFeeCents: Number(o.platform_fee_cents ?? 0),
+      status: o.status,
+      createdAt: new Date(o.created_at).toISOString(),
+      organisationId: o.organisation_id,
+      eventId: o.event_id,
+      retainedCents: o.platform_fee_retained_cents === null ? null : Number(o.platform_fee_retained_cents),
+      processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
+    }))
+    return figuresFor({ listings: [], visits: [], demand: [], saves: [], subscribers: [], orders, refunds: [] }, { from: since, to: now.toISOString(), monday: since.slice(0, 10) }).health
+  })
+
   const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
     supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
   const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
@@ -144,16 +176,44 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   const newNights = sum((c) => c.newThisWeek).value
   const posted = m((v) => v.posted).value
 
+  // S16's measures that only the growth week and the organiser funnel hold (the supreme specification, section 16).
+  const thisMonth = funnel.ok ? funnel.value.months[funnel.value.months.length - 1] ?? null : null
+  const lastMonth = funnel.ok ? funnel.value.months[funnel.value.months.length - 2] ?? null : null
+  const vic = growth.ok ? growth.value.victoria : null
+  const notRead = growth.ok ? undefined : growth.note
+  const money = (label: string, cents: number | null, note?: string): DashboardFigure => ({
+    label,
+    value: cents,
+    asksForAPerson: false,
+    href: '/admin/growth',
+    ...(cents === null ? {} : { display: formatMoneyDisplay(cents, 'AUD') }),
+    ...(note ? { note } : {}),
+  })
+  const economicsKind: Record<string, FigureKind> = {
+    'Gross ticket sales last week': 'value',
+    'Platform fee earned last week': 'value',
+    'Payment cost last week': 'measure',
+    'Contribution last week': 'value',
+    'Break-even volume': 'measure',
+  }
+  const yesNo = (label: string, yes: boolean | null, note: string): DashboardFigure => ({
+    label,
+    value: yes === null ? null : yes ? 1 : 0,
+    asksForAPerson: false,
+    href: '/admin/growth',
+    ...(yes === null ? { note: notRead ?? note } : { display: yes ? 'Yes' : 'No', note }),
+  })
+
   return [
     {
       key: 'events',
       title: 'Events',
       figures: [
-        fig('Expiring in 7 days', sum((c) => c.expiringSoon), true, '/admin/collected', 'their source check lapses; re-check or they leave the site'),
-        fig('Awaiting a check', awaiting, true, '/admin/collected'),
-        fig('Missing a category', sum((c) => c.missingCategory), true, '/admin/events'),
-        fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'),
-        fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'),
+        tag(fig('Expiring in 7 days', sum((c) => c.expiringSoon), true, '/admin/collected', 'their source check lapses; re-check or they leave the site'), 'approve', 'daily'),
+        tag(fig('Awaiting a check', awaiting, true, '/admin/collected'), 'approve', 'daily'),
+        tag(fig('Missing a category', sum((c) => c.missingCategory), true, '/admin/events'), 'approve', 'weekly'),
+        tag(fig('Cancelled this week', sum((c) => c.cancelledThisWeek), false, '/admin/events'), 'measure', 'daily'),
+        tag(fig('Verified upcoming', sum((c) => c.verifiedUpcoming), false, '/admin/growth'), 'measure', 'weekly'),
       ],
       done: newNights === null ? [] : [`${count.format(newNights)} ${newNights === 1 ? 'night' : 'nights'} published this week`],
     },
@@ -161,14 +221,25 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'organisers',
       title: 'Organisers',
       figures: [
-        fig('Submissions waiting', submissions, true, '/admin/submissions'),
-        fig('Claims to decide by hand', claims, true, null, 'listed in the queue above'),
-        fig('Images awaiting approval', media, true, '/admin/social'),
-        fig('Organisers found', step('found'), false, '/admin/growth'),
-        fig('Invited', step('invited'), false, '/admin/growth'),
-        fig('Claimed their listing', step('claimed'), false, '/admin/growth'),
-        fig('Permissions given', permissions, false, null),
-        fig('Recurring partners', sum((c) => c.recurringSuppliers), false, '/admin/growth'),
+        tag(fig('Submissions waiting', submissions, true, '/admin/submissions'), 'approve', 'daily'),
+        tag(fig('Claims to decide by hand', claims, true, null, 'listed in the queue above'), 'approve', 'daily'),
+        tag(fig('Images awaiting approval', media, true, '/admin/social'), 'approve', 'daily'),
+        tag(fig('Organisers found', step('found'), false, '/admin/growth'), 'measure', 'weekly'),
+        tag(fig('Invited', step('invited'), false, '/admin/growth'), 'measure', 'weekly'),
+        tag(fig('Claimed their listing', step('claimed'), false, '/admin/growth'), 'value', 'weekly'),
+        tag(fig('Permissions given', permissions, false, null), 'measure', 'weekly'),
+        tag(fig('Recurring partners', sum((c) => c.recurringSuppliers), false, '/admin/growth'), 'measure', 'weekly'),
+        tag(
+          fig(
+            'Active organisers this month',
+            thisMonth === null ? { value: null, note: funnel.ok ? 'no month read' : funnel.note } : { value: thisMonth.activeOrganisers },
+            false,
+            '/admin/growth',
+            lastMonth === null ? 'an organiser with a public night this month' : `an organiser with a public night this month; ${count.format(lastMonth.activeOrganisers)} last month`,
+          ),
+          'measure',
+          'monthly',
+        ),
       ],
       done: [],
     },
@@ -176,21 +247,25 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'marketing',
       title: 'Marketing',
       figures: [
-        ...(notPlanned ? [fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week')] : []),
-        fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'),
-        fig('Held from posting', m((v) => v.held), true, '/admin/social'),
-        fig('Pieces this week', m((v) => v.pieces), false, '/admin/social'),
-        fig('Scheduled to post', m((v) => v.scheduled), false, '/admin/social'),
-        fig('Partner kits this week', m((v) => v.kits), false, '/admin/social'),
-        fig(`Partner kits sent, ${CREDIT_DAYS} days`, kits.ok ? { value: kits.value.sent } : { value: null, note: kits.note }, false, '/admin/growth/social-report'),
-        fig(
-          'Of those, used',
-          kits.ok ? { value: kits.value.used } : { value: null, note: kits.note },
-          false,
-          '/admin/growth/social-report',
-          kits.ok && kits.value.withoutALink > 0
-            ? `its own link tapped at least once since it went; ${kits.value.withoutALink} sent without a link of its own cannot be judged`
-            : 'its own link tapped at least once since it went; a kit sent is not a kit used',
+        ...(notPlanned ? [tag(fig('This week not planned yet', { value: 1 }, true, '/admin/social', 'press Plan this week'), 'approve', 'weekly')] : []),
+        tag(fig('Pieces to approve', m((v) => v.toApprove), true, '/admin/social'), 'approve', 'weekly'),
+        tag(fig('Held from posting', m((v) => v.held), true, '/admin/social', 'a check stopped them; open each for its reason'), 'failed', 'daily'),
+        tag(fig('Scheduled to post', m((v) => v.scheduled), false, '/admin/social'), 'scheduled', 'daily'),
+        tag(fig('Pieces this week', m((v) => v.pieces), false, '/admin/social'), 'measure', 'weekly'),
+        tag(fig('Partner kits this week', m((v) => v.kits), false, '/admin/social'), 'measure', 'weekly'),
+        tag(fig(`Partner kits sent, ${CREDIT_DAYS} days`, kits.ok ? { value: kits.value.sent } : { value: null, note: kits.note }, false, '/admin/growth/social-report'), 'measure', 'weekly'),
+        tag(
+          fig(
+            'Of those, used',
+            kits.ok ? { value: kits.value.used } : { value: null, note: kits.note },
+            false,
+            '/admin/growth/social-report',
+            kits.ok && kits.value.withoutALink > 0
+              ? `its own link tapped at least once since it went; ${kits.value.withoutALink} sent without a link of its own cannot be judged`
+              : 'its own link tapped at least once since it went; a kit sent is not a kit used',
+          ),
+          'value',
+          'weekly',
         ),
       ],
       done: posted === null || posted === 0 ? [] : [`${count.format(posted)} ${posted === 1 ? 'piece' : 'pieces'} posted this week`],
@@ -199,33 +274,75 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       key: 'conversion',
       title: 'Revenue and conversion',
       figures: [
-        fig('Paid orders last week', g ? { value: g.conversion.orders } : { value: null, note: growth.ok ? undefined : growth.note }, false, '/admin/growth'),
-        {
-          ...fig('Order value last week', g ? { value: g.conversion.orderValueCents } : { value: null }, false, '/admin/growth'),
-          ...(g ? { display: formatMoneyDisplay(g.conversion.orderValueCents, 'AUD') } : {}),
-        },
-        fig('Presses out to booking sites, 7 days', pressesOut, false, '/admin/growth', 'a press is a person heading to the tickets, never a sale'),
-        fig('Claims verified, 7 days', claimsVerified, false, null),
-        fig('New subscribers last week', g ? { value: g.engagement.subscribers } : { value: null }, false, '/admin/growth'),
+        tag(fig('Event page views last week', g ? { value: g.attention.views } : { value: null, note: notRead }, false, '/admin/growth'), 'measure', 'weekly'),
+        tag(fig('Returning visitors last week', g ? { value: g.attention.returning } : { value: null, note: notRead }, false, '/admin/growth', 'seen in the 90 days before the week'), 'value', 'weekly'),
+        tag(fig('Presses out to booking sites, 7 days', pressesOut, false, '/admin/growth', 'a press is a person heading to the tickets, never a sale'), 'value', 'weekly'),
+        tag(fig('Paid orders last week', g ? { value: g.conversion.orders } : { value: null, note: notRead }, false, '/admin/growth'), 'value', 'weekly'),
+        tag(fig('Claims verified, 7 days', claimsVerified, false, null), 'value', 'weekly'),
+        tag(fig('New subscribers last week', g ? { value: g.engagement.subscribers } : { value: null, note: notRead }, false, '/admin/growth'), 'value', 'weekly'),
       ],
       done: [],
     },
     {
       key: 'economics',
       title: 'Economics',
-      figures: g
-        ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health })
-        : [fig('Gross ticket sales last week', { value: null, note: growth.ok ? undefined : growth.note }, false, '/admin/growth')],
+      figures: [
+        ...(g
+          ? economicsFigures({ orderValueCents: g.conversion.orderValueCents, ...g.health }).map((f) => tag(f, economicsKind[f.label] ?? 'measure', f.label === 'Break-even volume' ? 'monthly' : 'weekly'))
+          : [tag(money('Gross ticket sales last week', null, notRead), 'value', 'weekly')]),
+        tag(
+          money(
+            'Net platform revenue last week',
+            g ? g.health.marginCents + g.health.processingCents : null,
+            g ? `the fee the platform kept, as each order records it${g.health.marginUnrecorded > 0 ? `; ${g.health.marginUnrecorded} left out` : ''}` : notRead,
+          ),
+          'value',
+          'weekly',
+        ),
+        tag(money('Refunded to buyers last week', g ? g.health.refundedCents : null, g ? undefined : notRead), 'measure', 'weekly'),
+        tag(
+          money(
+            'Contribution, last 28 days',
+            month.ok ? month.value.marginCents : null,
+            month.ok ? (month.value.marginUnrecorded > 0 ? `${month.value.marginUnrecorded} orders do not record it and are left out` : undefined) : month.note,
+          ),
+          'value',
+          'monthly',
+        ),
+        tag({ label: 'Customer acquisition cost', value: null, asksForAPerson: false, href: null, note: 'not counted: no marketing spend is recorded, so none is assumed' }, 'measure', 'monthly'),
+        tag({ label: 'Cash flow', value: null, asksForAPerson: false, href: null, note: 'not counted: the platform keeps no cash record; Stripe and the bank hold it' }, 'measure', 'monthly'),
+      ],
+      done: [],
+    },
+    {
+      key: 'expansion',
+      title: 'Expansion readiness (Victoria)',
+      figures: [
+        tag(
+          {
+            label: 'Recurring nights live',
+            value: vic ? vic.recurringLive : null,
+            asksForAPerson: false,
+            href: '/admin/growth',
+            ...(vic ? { display: `${count.format(vic.recurringLive)} of ${count.format(vic.recurringTarget)}` } : { note: notRead }),
+          },
+          'measure',
+          'monthly',
+        ),
+        tag(fig('Repeat organisers', vic ? { value: vic.repeatOrganisers } : { value: null, note: notRead }, false, '/admin/growth', 'two or more real listings published in the state'), 'measure', 'monthly'),
+        tag(yesNo('Returning visitors up', vic ? vic.returningUp : null, 'on the week before'), 'measure', 'monthly'),
+        tag(yesNo('Margin positive', vic ? vic.marginPositive : null, 'last week, over the orders that record it'), 'measure', 'monthly'),
+      ],
       done: [],
     },
     {
       key: 'operations',
       title: 'Operations',
       figures: [
-        fig('Health checks failing', failing === null ? { value: null, note: health.ok ? undefined : health.note } : { value: failing.length }, true, '/admin/health', failing && failing.length > 0 ? failing.map((f) => f.label).join(', ') : undefined),
-        fig('Messages that failed to send, 7 days', failedSends, true, null),
-        fig('Admin sign-in failures, 24 hours', loginFailures, true, '/admin/audit'),
-        { label: 'Production', value: 0, asksForAPerson: false, href: null, display: commit ? `${environment}, ${commit}` : environment },
+        tag(fig('Health checks failing', failing === null ? { value: null, note: health.ok ? undefined : health.note } : { value: failing.length }, true, '/admin/health', failing && failing.length > 0 ? failing.map((f) => f.label).join(', ') : undefined), 'failed', 'daily'),
+        tag(fig('Messages that failed to send, 7 days', failedSends, true, null), 'failed', 'daily'),
+        tag(fig('Admin sign-in failures, 24 hours', loginFailures, true, '/admin/audit'), 'failed', 'daily'),
+        tag({ label: 'Production', value: 0, asksForAPerson: false, href: null, display: commit ? `${environment}, ${commit}` : environment }, 'measure', 'daily'),
       ],
       done: [
         ...(reportsKept.value ? [`${count.format(reportsKept.value)} after-the-night ${reportsKept.value === 1 ? 'report' : 'reports'} kept`] : []),

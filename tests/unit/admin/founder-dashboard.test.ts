@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrangeDashboard, economicsFigures, kitsSentAndUsed, type DashboardSection } from '@/lib/admin/founder-dashboard-math'
+import { arrangeDashboard, byException, economicsFigures, kitsSentAndUsed, rhythm, type DashboardSection } from '@/lib/admin/founder-dashboard-math'
 
 /**
  * The founder dashboard of the master mandate of 29 October 2026, section 14: events, organisers, marketing, revenue and
@@ -110,5 +110,98 @@ describe('economicsFigures', () => {
     const f = economicsFigures({ orderValueCents: 4500, feeRevenueCents: 300, processingCents: 0, marginCents: 0, marginUnrecorded: 2 })
     expect(f[2].note).toBe('2 orders do not record it and are left out')
     expect(f[3].note).toBe('2 orders do not record it and are left out')
+  })
+})
+
+/**
+ * THE FOUNDER DASHBOARD BY EXCEPTION (the supreme specification of 30 October 2026, section 28): "what the system
+ * completed, what is scheduled, what failed, what requires approval, what generated measurable value, what needs
+ * attention next". A figure not counted is kept apart and never put in a group as if it were 0.
+ */
+describe('byException', () => {
+  const sections: DashboardSection[] = [
+    section(
+      'events',
+      [
+        { label: 'Awaiting a check', value: 3, asksForAPerson: true, href: '/admin/collected', kind: 'approve', cadence: 'daily' },
+        { label: 'Verified upcoming', value: 280, asksForAPerson: false, href: null, kind: 'measure', cadence: 'weekly' },
+      ],
+      ['12 nights published this week'],
+    ),
+    section('organisers', [{ label: 'Submissions waiting', value: 7, asksForAPerson: true, href: '/admin/submissions', kind: 'approve', cadence: 'daily' }]),
+    section(
+      'marketing',
+      [
+        { label: 'Scheduled to post', value: 4, asksForAPerson: false, href: '/admin/social', kind: 'scheduled', cadence: 'daily' },
+        { label: 'Pieces to approve', value: 0, asksForAPerson: true, href: '/admin/social', kind: 'approve', cadence: 'weekly' },
+      ],
+      ['2 pieces posted this week'],
+    ),
+    section('conversion', [
+      { label: 'Presses out to booking sites, 7 days', value: 21, asksForAPerson: false, href: '/admin/growth', kind: 'value', cadence: 'weekly' },
+      { label: 'Paid orders last week', value: 0, asksForAPerson: false, href: '/admin/growth', kind: 'value', cadence: 'weekly' },
+    ]),
+    section('operations', [
+      { label: 'Health checks failing', value: 2, asksForAPerson: true, href: '/admin/health', kind: 'failed', cadence: 'daily' },
+      { label: 'Messages that failed to send, 7 days', value: null, asksForAPerson: true, href: null, kind: 'failed', cadence: 'daily', note: 'could not be read: x' },
+    ]),
+  ]
+
+  it('gives the six groups of section 28, each from the figures of its kind', () => {
+    const v = byException(sections)
+    expect(v.completed).toEqual(['12 nights published this week', '2 pieces posted this week'])
+    expect(v.scheduled.map((f) => f.label)).toEqual(['Scheduled to post'])
+    expect(v.failed.map((f) => f.label)).toEqual(['Health checks failing'])
+    expect(v.needsApproval.map((f) => f.label)).toEqual(['Submissions waiting', 'Awaiting a check'])
+    expect(v.value.map((f) => f.label)).toEqual(['Presses out to booking sites, 7 days'])
+  })
+
+  it('puts a failure before an approval in what needs attention next, the largest first within each', () => {
+    expect(byException(sections).next?.label).toBe('Health checks failing')
+    const noFailure = sections.filter((s) => s.key !== 'operations')
+    expect(byException(noFailure).next?.label).toBe('Submissions waiting')
+  })
+
+  it('keeps a figure that could not be counted apart, never in a group as 0', () => {
+    const v = byException(sections)
+    expect(v.failed.some((f) => f.value === null)).toBe(false)
+    expect(v.notCounted.map((f) => f.label)).toEqual(['Messages that failed to send, 7 days'])
+  })
+
+  it('says nothing needs attention when nothing failed and nothing waits', () => {
+    const quiet = [section('events', [{ label: 'Verified upcoming', value: 280, asksForAPerson: false, href: null, kind: 'measure', cadence: 'weekly' }])]
+    const v = byException(quiet)
+    expect(v.next).toBeNull()
+    expect(v.failed).toEqual([])
+    expect(v.needsApproval).toEqual([])
+  })
+})
+
+/**
+ * THE OPERATING RHYTHM (the supreme specification, section 29): daily (event accuracy, organiser responses, failed
+ * jobs, upcoming campaigns, ticketing issues), weekly (approvals, acquisition, supply, conversion), monthly (organiser
+ * retention, ticketing contribution, acquisition costs, cash flow, expansion readiness). Each figure once, in its
+ * cadence, in the order the sections give it.
+ */
+describe('rhythm', () => {
+  it('groups every figure by its cadence, each once', () => {
+    const r = rhythm([
+      section('events', [
+        { label: 'Expiring in 7 days', value: 1, asksForAPerson: true, href: null, kind: 'approve', cadence: 'daily' },
+        { label: 'Verified upcoming', value: 280, asksForAPerson: false, href: null, kind: 'measure', cadence: 'weekly' },
+      ]),
+      section('economics', [
+        { label: 'Contribution, last 28 days', value: 0, asksForAPerson: false, href: null, kind: 'value', cadence: 'monthly' },
+        { label: 'Cash flow', value: null, asksForAPerson: false, href: null, kind: 'measure', cadence: 'monthly', note: 'not counted' },
+      ]),
+    ])
+    expect(r.daily.map((f) => f.label)).toEqual(['Expiring in 7 days'])
+    expect(r.weekly.map((f) => f.label)).toEqual(['Verified upcoming'])
+    expect(r.monthly.map((f) => f.label)).toEqual(['Contribution, last 28 days', 'Cash flow'])
+  })
+
+  it('puts a figure with no cadence in the weekly view, where the growth week reads', () => {
+    const r = rhythm([section('events', [{ label: 'Untagged', value: 1, asksForAPerson: false, href: null }])])
+    expect(r.weekly.map((f) => f.label)).toEqual(['Untagged'])
   })
 })
