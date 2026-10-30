@@ -124,7 +124,7 @@ function Venue({ v }: { v: WaitingVenue }) {
         </div>
       </div>
       {rest.length > 0 && (
-        <ul className="mt-4 grid gap-4 border-t border-white/10 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid grid-cols-1 gap-4 border-t border-white/10 pt-4 sm:grid-cols-2 lg:grid-cols-3">
           {rest.map((p) => (
             <li key={p.id} data-photo={p.id} className="flex flex-col gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element -- a staff preview of a photograph waiting for approval, never a public image */}

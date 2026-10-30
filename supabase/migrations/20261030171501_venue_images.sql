@@ -148,9 +148,15 @@ $$;
 
 revoke all on function public.venue_images_guard() from public, anon, authenticated;
 
+-- UPDATE OF the columns it judges, never challenged_by, replaced_by or submitted_by: those are `on delete set null`,
+-- and a row the database rewrites when an account or a photograph goes is not an edit to judge
+-- (scripts/guards/a-referential-null-is-not-an-edit.mjs).
 drop trigger if exists venue_images_guard on public.venue_images;
 create trigger venue_images_guard
-  before insert or update on public.venue_images
+  before insert or update of venue_id, image_url, source, licence, attribution_text, permitted_uses, verified_depicts_venue,
+    verified_by, verified_at, quality_score, approval_state, approved_by, approved_at, is_primary, challenge_reason,
+    challenged_at, withdrawn_at, restrictions
+  on public.venue_images
   for each row execute function public.venue_images_guard();
 
 -- The one photograph of a venue that may be shown for a use, or nothing: approved and verified, the use permitted,
