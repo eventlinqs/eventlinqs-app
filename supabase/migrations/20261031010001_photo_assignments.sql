@@ -12,7 +12,8 @@
 -- P4 a recurring series is one event: a series (events.listing_series_id) holds one photo, assigned to the series, and it
 --    is read for the series' soonest open night only, so no list shows it twice.
 --
--- Additive: two columns on venue_images, one table, four functions. Nothing existing is altered. Proved on TEST by
+-- Additive: two columns on venue_images, one table, its functions, and one trigger on events refusing a video link
+-- already on another event (P10). Nothing existing is altered. Proved on TEST by
 -- scripts/verify/photo-assignments-proof.sql through scripts/verify/replay-under-new-default.mjs, rolled back.
 
 alter table public.venue_images
@@ -42,10 +43,12 @@ create table if not exists public.photo_assignments (
 );
 
 create unique index if not exists photo_assignments_one_event_per_photo on public.photo_assignments (photo_sha256);
+-- One dealt venue photo per night or series; an organiser's rows are locks on its own set, as many as the set holds.
 create unique index if not exists photo_assignments_one_cover_per_night on public.photo_assignments (event_id)
-  where role = 'cover' and event_id is not null and retired_at is null;
+  where role = 'cover' and source = 'venue' and event_id is not null and retired_at is null;
 create unique index if not exists photo_assignments_one_cover_per_series on public.photo_assignments (listing_series_id)
-  where role = 'cover' and listing_series_id is not null and retired_at is null;
+  where role = 'cover' and source = 'venue' and listing_series_id is not null and retired_at is null;
+create index if not exists photo_assignments_by_event on public.photo_assignments (event_id);
 create index if not exists photo_assignments_by_venue_image on public.photo_assignments (venue_image_id);
 
 comment on table public.photo_assignments is
@@ -190,14 +193,24 @@ declare
   v_unit record;
   v_photo record;
 begin
-  -- A photo no longer approved and verified for cards retires from its night; the night may take another.
+  -- A photo no longer approved and verified for cards retires from its night, and so does one whose night (or series)
+  -- now has its own photo: the photo stays used (P11), the night may take another.
   update public.photo_assignments a
      set retired_at = p_now
    where a.retired_at is null and a.source = 'venue'
-     and not exists (
-       select 1 from public.venue_images i
-        where i.id = a.venue_image_id and i.approval_state = 'approved' and i.verified_depicts_venue
-          and 'event_card' = any (i.permitted_uses)
+     and (
+       not exists (
+         select 1 from public.venue_images i
+          where i.id = a.venue_image_id and i.approval_state = 'approved' and i.verified_depicts_venue
+            and 'event_card' = any (i.permitted_uses)
+       )
+       or exists (select 1 from public.events e where e.id = a.event_id and public.event_has_own_photo(e.cover_image_url))
+       or exists (
+         select 1 from public.events e
+          where a.listing_series_id is not null and e.listing_series_id = a.listing_series_id
+            and public.event_has_own_photo(e.cover_image_url)
+            and public.event_is_open_night(e.start_date, e.end_date, p_now)
+       )
      );
 
   for v_unit in
@@ -214,7 +227,7 @@ begin
       ) u
      where not exists (
        select 1 from public.photo_assignments a
-        where a.role = 'cover' and a.retired_at is null
+        where a.role = 'cover' and a.source = 'venue' and a.retired_at is null
           and ((u.listing_series_id is not null and a.listing_series_id = u.listing_series_id)
             or (u.listing_series_id is null and a.event_id = u.event_id))
      )
@@ -250,6 +263,122 @@ $$;
 revoke all on function public.deal_venue_photos(timestamptz) from public, anon, authenticated;
 grant execute on function public.deal_venue_photos(timestamptz) to service_role;
 
+-- P8 and P9: AN EVENT'S SET IS LOCKED TO IT AT UPLOAD. Every photo an organiser adds (the cover and each gallery photo)
+-- is locked to that event the moment it is added; one already locked to another event, or a near copy of it, is refused
+-- in plain words. The same event, or another night of the same series (P4), adds it again freely. An organiser's lock is
+-- a lock only: the night shows the photo its organiser chose (events.cover_image_url and gallery_urls), and nothing is
+-- dealt over it.
+create or replace function public.photo_matches_of(p_sha256 text, p_dhash bigint)
+returns setof public.photo_assignments
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select a.*
+    from public.photo_assignments a
+   where a.photo_sha256 = p_sha256
+      or (p_dhash is not null and a.photo_dhash is not null and bit_count((a.photo_dhash # p_dhash)::bit(64)) <= 6)
+$$;
+
+revoke all on function public.photo_matches_of(text, bigint) from public, anon, authenticated;
+
+-- Whether an assignment belongs to this event: its own night, or a night or the series of the same series.
+create or replace function public.photo_assignment_is_of(p_assignment public.photo_assignments, p_event uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select p_assignment.event_id = p_event
+      or exists (
+        select 1 from public.events me
+         where me.id = p_event and me.listing_series_id is not null
+           and (p_assignment.listing_series_id = me.listing_series_id
+                or exists (select 1 from public.events them where them.id = p_assignment.event_id and them.listing_series_id = me.listing_series_id))
+      )
+$$;
+
+revoke all on function public.photo_assignment_is_of(public.photo_assignments, uuid) from public, anon, authenticated;
+
+-- Whether this photo is locked to an event other than p_event (any event when p_event is null). Venue and admin uploads
+-- ask it before keeping a file (P9); library photos themselves are locked only when dealt (P11).
+create or replace function public.photo_locked_elsewhere(p_sha256 text, p_dhash bigint, p_event uuid default null)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.photo_matches_of(p_sha256, p_dhash) m
+     where p_event is null or not public.photo_assignment_is_of(m, p_event)
+  )
+$$;
+
+revoke all on function public.photo_locked_elsewhere(text, bigint, uuid) from public, anon, authenticated;
+grant execute on function public.photo_locked_elsewhere(text, bigint, uuid) to service_role;
+
+-- Locks an organiser's photo to its event: answers 'locked', or 'already this event' when this event or its series holds
+-- it already; refuses one locked to another event with the words the organiser reads.
+create or replace function public.photo_lock_for_event(p_event uuid, p_sha256 text, p_dhash bigint, p_image_url text, p_role text)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not exists (select 1 from public.events where id = p_event) then
+    raise exception 'refused: no such event' using errcode = '23514';
+  end if;
+  if public.photo_locked_elsewhere(p_sha256, p_dhash, p_event) then
+    raise exception 'This photo is already used for another event. Please add a different one.' using errcode = '23514';
+  end if;
+  if exists (select 1 from public.photo_matches_of(p_sha256, p_dhash)) then
+    return 'already this event';
+  end if;
+  insert into public.photo_assignments (photo_sha256, photo_dhash, image_url, event_id, role, source)
+  values (p_sha256, p_dhash, p_image_url, p_event, p_role, 'organiser');
+  return 'locked';
+end;
+$$;
+
+revoke all on function public.photo_lock_for_event(uuid, text, bigint, text, text) from public, anon, authenticated;
+grant execute on function public.photo_lock_for_event(uuid, text, bigint, text, text) to service_role;
+
+-- P10: one video, one event. A video is a link on the event (events.video_url); the same link, however spaced or
+-- cased, on another event is refused; nights of one series keep it.
+create or replace function public.events_one_video_per_event()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.video_url is null or btrim(new.video_url) = '' then
+    return new;
+  end if;
+  if exists (
+    select 1 from public.events e
+     where e.id <> new.id
+       and e.video_url is not null
+       and lower(btrim(e.video_url)) = lower(btrim(new.video_url))
+       and (new.listing_series_id is null or e.listing_series_id is distinct from new.listing_series_id)
+  ) then
+    raise exception 'This video is already used for another event. Please add a different one.' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.events_one_video_per_event() from public, anon, authenticated;
+
+drop trigger if exists events_one_video_per_event on public.events;
+create trigger events_one_video_per_event
+  before insert or update of video_url, listing_series_id on public.events
+  for each row execute function public.events_one_video_per_event();
+
 -- THE CARD CHAIN'S ONE READ: each night's assigned cover with its credit, for the nights asked. A series' photo is
 -- answered for its soonest open public night only (P4), so a list never shows it twice. A venue photo stops showing
 -- the moment it is no longer approved for the use. source_url only as an https page, as venue_photos_for answers it.
@@ -277,7 +406,7 @@ as $$
          case when i.source_url ~* '^https://' then i.source_url end
     from asked q
     join public.photo_assignments a
-      on a.role = 'cover' and a.retired_at is null
+      on a.role = 'cover' and a.source = 'venue' and a.retired_at is null
      and (a.event_id = q.id
           or (q.listing_series_id is not null and a.listing_series_id = q.listing_series_id
               and exists (select 1 from series_first f where f.listing_series_id = q.listing_series_id and f.id = q.id)))

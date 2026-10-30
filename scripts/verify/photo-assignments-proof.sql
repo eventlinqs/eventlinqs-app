@@ -22,6 +22,8 @@ DECLARE
   v_url text;
   v_ok boolean;
   v_series_n int;
+  v_other uuid;
+  v_sat_next uuid;
 BEGIN
   -- The venue: the first on TEST with two series open and no night of its own photo (Queen Victoria Market today).
   SELECT e.venue_id INTO v_venue
@@ -44,6 +46,9 @@ BEGIN
   SELECT listing_series_id INTO v_sun FROM public.events
    WHERE venue_id = v_venue AND status = 'published' AND visibility = 'public' AND coalesce(end_date, start_date) >= now()
      AND listing_series_id <> v_sat
+   ORDER BY start_date, id LIMIT 1;
+  SELECT id INTO v_sat_next FROM public.events
+   WHERE listing_series_id = v_sat AND id <> v_sat_first AND coalesce(end_date, start_date) >= now()
    ORDER BY start_date, id LIMIT 1;
 
   -- The venue's photographs start clean for the proof: any it holds are set aside inside this transaction.
@@ -190,6 +195,55 @@ BEGIN
       v_out := v_out || ' | A10 a near copy in the pool is passed over and the deal still runs: PASS';
     ELSE v_out := v_out || ' | A10 near copy in the pool: FAIL (' || v_m || ')'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A10 near copy in the pool: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- A11 an organiser's photo is locked to its event at upload: the same event or series adds it again freely, any
+  -- other event is refused in plain words, and a near copy is the same photo (P8, P9).
+  BEGIN
+    SELECT id INTO v_other FROM public.events
+     WHERE venue_id IS DISTINCT FROM v_venue AND listing_series_id IS DISTINCT FROM v_sat AND id <> v_sat_first
+     ORDER BY created_at LIMIT 1;
+    v_url := public.photo_lock_for_event(v_sat_first, repeat('a', 64), 1234567, 'https://images.eventlinqs.com/proof/org-cover.jpg', 'cover');
+    v_ok := v_url = 'locked';
+    v_url := public.photo_lock_for_event(v_sat_first, repeat('a', 64), 1234567, 'https://images.eventlinqs.com/proof/org-cover.jpg', 'gallery');
+    v_ok := v_ok AND v_url = 'already this event';
+    v_url := public.photo_lock_for_event(v_sat_next, repeat('a', 64), 1234567, 'https://images.eventlinqs.com/proof/org-cover.jpg', 'cover');
+    v_ok := v_ok AND v_url = 'already this event';
+    BEGIN
+      PERFORM public.photo_lock_for_event(v_other, repeat('b', 64), 1234566, 'https://images.eventlinqs.com/proof/org-copy.jpg', 'gallery');
+      v_ok := false;
+    EXCEPTION WHEN check_violation THEN
+      v_ok := v_ok AND sqlerrm = 'This photo is already used for another event. Please add a different one.';
+    END;
+    v_ok := v_ok AND public.photo_locked_elsewhere(repeat('a', 64), 1234567, v_other)
+                 AND NOT public.photo_locked_elsewhere(repeat('a', 64), 1234567, v_sat_first)
+                 AND NOT has_function_privilege('anon', 'public.photo_lock_for_event(uuid, text, bigint, text, text)', 'execute');
+    IF v_ok THEN v_out := v_out || ' | A11 an organiser photo is locked at upload, its own event and series add it again, another event is refused in plain words: PASS';
+    ELSE v_out := v_out || ' | A11 organiser lock: FAIL (' || coalesce(v_url, 'null') || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A11 organiser lock: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- A12 one video, one event: the same link on another event is refused; the same series keeps it (P10).
+  BEGIN
+    UPDATE public.events SET video_url = 'https://www.youtube.com/watch?v=proof-one' WHERE id = v_sat_first;
+    UPDATE public.events SET video_url = 'https://www.youtube.com/watch?v=proof-one' WHERE id = v_sat_next;
+    BEGIN
+      UPDATE public.events SET video_url = ' HTTPS://www.youtube.com/watch?v=proof-one ' WHERE id = v_other;
+      v_ok := false;
+    EXCEPTION WHEN check_violation THEN
+      v_ok := sqlerrm = 'This video is already used for another event. Please add a different one.';
+    END;
+    IF v_ok THEN v_out := v_out || ' | A12 the same video link on another event is refused, its own series keeps it: PASS';
+    ELSE v_out := v_out || ' | A12 video: FAIL (accepted)'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A12 video: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- A13 a night that gets its own photo gives up its dealt venue photo at the next deal; the photo stays used (P11).
+  BEGIN
+    UPDATE public.events SET cover_image_url = 'https://images.eventlinqs.com/proof/org-cover.jpg' WHERE listing_series_id = v_sat;
+    v_m := public.deal_venue_photos();
+    IF EXISTS (SELECT 1 FROM public.photo_assignments WHERE venue_image_id = v_p1 AND retired_at IS NOT NULL)
+       AND NOT EXISTS (SELECT 1 FROM public.photo_assignments WHERE venue_image_id = v_p1 AND retired_at IS NULL) THEN
+      v_out := v_out || ' | A13 a night with its own photo gives up its venue photo, which stays used: PASS';
+    ELSE v_out := v_out || ' | A13 own photo: FAIL (' || v_m || ')'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | A13 own photo: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
   -- The runner reads the verdict up to the first double quote, and error messages quote names.
   RAISE EXCEPTION 'PROOF % (% failure(s), rolled back):%',
