@@ -11,7 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *
  * The database decides every one of these (20261030171501_venue_images.sql): venue_image_add, venue_image_replace,
  * venue_image_challenge, venue_image_withdraw and venue_image_approve, each a definer function the service role alone
- * may call, each refusing in its own words. Visitors read only through venue_photo_for. This module is their one
+ * may call, each refusing in its own words. Visitors read only through venue_photos_for. This module is their one
  * caller.
  *
  * ORDER, as the organiser's media: a photograph is re-encoded by the image pipeline and stored first, then
@@ -24,7 +24,15 @@ export const VENUE_MEDIA_FOLDER = 'venues'
 
 export type VenueUse = 'event_card' | 'event_page' | 'venue_page' | 'social'
 export type VenuePhotoAnswer = { readonly state: 'done'; readonly id: string } | { readonly state: 'refused'; readonly reason: string }
-export type VenuePhoto = { readonly imageUrl: string; readonly credit: string; readonly licence: string; readonly licenceUrl: string | null }
+export type VenuePhoto = {
+  readonly imageUrl: string
+  readonly credit: string
+  readonly licence: string
+  readonly licenceUrl: string | null
+  readonly author: string | null
+  /** The file page the event page's credit links to; null when the only source is a private email. */
+  readonly fileUrl: string | null
+}
 
 export type VenueMediaDeps = {
   process(bytes: ArrayBuffer): Promise<{ buffer: Buffer; extension: string; contentType: string }>
@@ -160,11 +168,37 @@ export function venueMediaDeps(): VenueMediaDeps {
 
 /** The one photograph of a venue that may be shown for a use, with its credit, or null: the chain's second link. */
 export async function venuePhotoFor(venueId: string, use: VenueUse, deps: Pick<VenueMediaDeps, 'rpc'>): Promise<VenuePhoto | null> {
-  const answer = await deps.rpc('venue_photo_for', { p_venue: venueId, p_use: use })
-  if (answer.error) throw new Error(`the venue photograph could not be read: ${answer.error.message}`)
-  const row = (Array.isArray(answer.data) ? answer.data[0] : null) as
-    | { image_url: string; attribution_text: string; licence: string; licence_url: string | null }
-    | undefined
-    | null
-  return row ? { imageUrl: row.image_url, credit: row.attribution_text, licence: row.licence, licenceUrl: row.licence_url } : null
+  return (await venuePhotosFor([venueId], use, deps)).get(venueId) ?? null
+}
+
+/**
+ * The page's read: one call for all its cards, each venue's one photograph by venue id. A venue with nothing approved
+ * for the use is simply absent. A failed read is thrown, and the caller falls to its typographic cover.
+ */
+export async function venuePhotosFor(venueIds: readonly string[], use: VenueUse, deps: Pick<VenueMediaDeps, 'rpc'>): Promise<Map<string, VenuePhoto>> {
+  const photos = new Map<string, VenuePhoto>()
+  const venues = [...new Set(venueIds)]
+  if (venues.length === 0) return photos
+  const answer = await deps.rpc('venue_photos_for', { p_venues: venues, p_use: use })
+  if (answer.error) throw new Error(`the venue photographs could not be read: ${answer.error.message}`)
+  const rows = (Array.isArray(answer.data) ? answer.data : []) as ReadonlyArray<{
+    venue_id: string
+    image_url: string
+    attribution_text: string
+    licence: string
+    licence_url: string | null
+    author: string | null
+    source_url: string | null
+  }>
+  for (const row of rows) {
+    photos.set(row.venue_id, {
+      imageUrl: row.image_url,
+      credit: row.attribution_text,
+      licence: row.licence,
+      licenceUrl: row.licence_url,
+      author: row.author,
+      fileUrl: row.source_url,
+    })
+  }
+  return photos
 }
