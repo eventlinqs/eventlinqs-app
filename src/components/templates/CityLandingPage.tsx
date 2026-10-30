@@ -37,6 +37,7 @@ interface Props {
   caption: string
   /** Live events filtered by city + future-dated. Already split by date below. */
   thisWeekEvents: EventCardData[]
+  todayTomorrowEvents: EventCardData[]
   thisWeekendEvents: EventCardData[]
   popularEvents: EventCardData[]
   allEvents: EventCardData[]
@@ -87,6 +88,7 @@ export function CityLandingPage({
   heroImage,
   caption,
   thisWeekEvents,
+  todayTomorrowEvents,
   thisWeekendEvents,
   popularEvents,
   allEvents,
@@ -150,6 +152,26 @@ export function CityLandingPage({
         On a platform still building volume that hid the only event a place had. The
         gate is gone; an empty rail still does not render, because there is nothing
         to show. */}
+      {todayTomorrowEvents.length > 0 ? (
+        <ContentSection surface="alt" width="wide" topBorder reveal>
+          <SnapRailScroller
+            railLabel={`Today and tomorrow in ${city.name}`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'Coming up',
+              title: `Today and tomorrow in ${city.name}`,
+              headerLink: { href: `/events?city=${city.slug}&date=7d`, label: 'View all' },
+            }}
+          >
+            {todayTomorrowEvents.slice(0, 12).map(e => (
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
+              </div>
+            ))}
+          </SnapRailScroller>
+        </ContentSection>
+      ) : null}
+
       {thisWeekendEvents.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller

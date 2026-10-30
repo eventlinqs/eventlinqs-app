@@ -28,6 +28,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
+  todayAndTomorrowWindow,
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -148,6 +149,9 @@ export default async function CityPage({ params }: Props) {
   // morning is still on and still belongs in This week (exclusion audit item 1).
   const thisWeekEvents = allEvents.filter(e => e.start_date >= w.todayStartIso && e.start_date <= w.sevenDaysIso)
   const thisWeekendEvents = allEvents.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
+  // D5's Tonight and Tomorrow on the web, computed at render, so its words are true on every day it shows.
+  const soon = todayAndTomorrowWindow(new Date(w.nowIso), PLATFORM_TIME_ZONE)
+  const todayTomorrowEvents = allEvents.filter(e => e.start_date >= soon.from.toISOString() && e.start_date <= soon.to.toISOString())
   const popularEvents = allEvents.slice(0, 12)
 
   // Map pins: only events with geocoded venues, capped at 100.
@@ -261,6 +265,7 @@ export default async function CityPage({ params }: Props) {
         heroImage={heroImage}
         caption={caption}
         thisWeekEvents={thisWeekEvents}
+        todayTomorrowEvents={todayTomorrowEvents}
         thisWeekendEvents={thisWeekendEvents}
         popularEvents={popularEvents}
         allEvents={allEvents}
