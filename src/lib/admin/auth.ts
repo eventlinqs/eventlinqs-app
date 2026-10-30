@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveCapabilities } from './rbac'
@@ -90,6 +91,9 @@ export async function isAdminUserId(userId: string): Promise<boolean> {
 export async function requireAdminSession(options: AdminSessionOptions = {}): Promise<AdminSession> {
   const session = await getAdminSession(options)
   if (!session) {
+    // AUTH-03: an admin refused only for having no enrolled second factor is sent to finish enrolment, not shown an
+    // error page (car 14's TEST preview, 30 October 2026). Anyone else is refused as before.
+    if (!options.forEnrolment && (await getAdminSession({ forEnrolment: true }))) redirect('/admin/enrol-2fa')
     throw new AdminUnauthorisedError()
   }
   return session
