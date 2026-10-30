@@ -373,3 +373,46 @@ describe('the day by day section says more than the hours, or is not drawn (fini
     expect(headings(draw(withNote).container)).toContain('The program')
   })
 })
+
+/*
+ * THE EXPERIENCE HERO (the CONTROLLER's 31 October 09:47 (2), Lawal: show what was done before): a walk-in event holding
+ * four or more of its own photos opens, on a phone, with its cover large and the rest of its own set as smaller tiles,
+ * one credit for the set; one photo or fewer keeps today's hero. Every tile opens the photos below (no dead-end tiles).
+ */
+describe('a walk-in event with four or more of its own photos opens with its photo set', () => {
+  const four = [
+    { url: 'https://cdn.example.com/dancers.avif', alt: 'Dancers' },
+    { url: 'https://cdn.example.com/food.avif', alt: 'Food' },
+    { url: 'https://cdn.example.com/drums.avif', alt: 'Drums' },
+    { url: 'https://cdn.example.com/fashion.avif', alt: 'Fashion' },
+  ]
+  const draw = (gallery: { url: string; alt: string }[]) =>
+    render(
+      <WalkInEventView
+        event={{ ...(event as object), gallery_urls: gallery } as never}
+        guide={guide.ok ? guide.guide : (null as never)}
+        remindMeOn={false}
+        now={Date.now()}
+        baseUrl="https://www.eventlinqs.com.au"
+        hero={{ image: 'https://cdn.example.com/amcf.avif', alt: 'A drummer on stage' }}
+      />,
+    )
+
+  it('draws the set under the cover on a phone, each tile its own photo and a link to the photos, with one credit', () => {
+    const { container } = draw(four)
+    const mosaic = container.querySelector('[data-hero-mosaic]')
+    expect(mosaic).not.toBeNull()
+    expect(mosaic?.className).toContain('lg:hidden')
+    const tiles = Array.from(mosaic?.querySelectorAll('a') ?? [])
+    expect(tiles.map((a) => a.getAttribute('href'))).toEqual(['#past-photos', '#past-photos', '#past-photos', '#past-photos'])
+    expect(tiles.map((a) => a.querySelector('img')?.getAttribute('alt'))).toEqual(['Dancers', 'Food', 'Drums', 'Fashion'])
+    expect(container.querySelector('#past-photos')).not.toBeNull()
+    expect(container.textContent).toContain('Photos: AMCF, past festivals')
+  })
+
+  it('keeps today\'s hero with fewer than four of its own photos', () => {
+    const { container } = draw(four.slice(0, 2))
+    expect(container.querySelector('[data-hero-mosaic]')).toBeNull()
+    expect(container.textContent).toContain('Photo: AMCF, past festival')
+  })
+})
