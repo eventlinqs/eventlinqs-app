@@ -8,8 +8,9 @@ import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
-import { figuresFor, refundedOf, type OrderRow } from '@/lib/growth/weekly-math'
+import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
+import { refundedOf } from '@/lib/growth/weekly-math'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
