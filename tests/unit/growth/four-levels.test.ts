@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fourLevels, levelLines, venueLevels } from '@/lib/growth/four-levels'
+import { fourLevels, levelFigures, levelLines, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import type { NightFigures } from '@/lib/growth/organiser-report-math'
 
 /**
@@ -22,7 +22,7 @@ const night = (over: Partial<NightFigures> = {}): NightFigures => ({
 })
 
 describe('one night, four levels and never more', () => {
-  test('a night sold on another site: exposure, interest and booking intent counted; the sale not visible to us', () => {
+  test('a night not ticketed on EventLinqs: exposure, interest and booking intent counted; the sale not visible to us', () => {
     expect(fourLevels(night())).toEqual({
       exposure: { posts: 1, goTaps: 5, instagramReachEntered: null },
       interest: { people: 40 },
@@ -57,15 +57,49 @@ describe('a venue, its nights added', () => {
   })
 })
 
+describe('on /admin/today, the distribution results of the nights reported in the last 28 days', () => {
+  test('four figures, weekly, measures that ask nothing of Lawal; booking intent named as never a sale', () => {
+    const figs = levelFigures(venueLevels([fourLevels(night()), fourLevels(night({ onEventLinqs: { orders: 2, tickets: 5 } }))]))
+    expect(figs.map((f) => f.label)).toEqual([
+      'Exposure: posts and taps on their links',
+      'Interest: people who opened the listing',
+      'Booking intent: people sent on to book',
+      'Verified sale: orders on EventLinqs',
+    ])
+    expect(figs.every((f) => f.cadence === 'weekly' && f.kind === 'measure' && f.asksForAPerson === false)).toBe(true)
+    expect(figs[0]).toMatchObject({ value: 2, display: '2 posts, 10 taps' })
+    expect(figs[2]).toMatchObject({ value: 18, note: 'a press to the booking site, never counted as a sale' })
+    expect(figs[3]).toMatchObject({ value: 2, display: '2 orders, 5 tickets; 1 night not ticketed on EventLinqs (free entry or another site), any sale not visible to us' })
+  })
+  test('no reported nights reads as not counted, never as zero sales', () => {
+    const figs = levelFigures(venueLevels([]))
+    expect(figs.every((f) => f.value === null)).toBe(true)
+    expect(figs[0].note).toBe('no night report kept in the last 28 days')
+  })
+})
+
 describe('the words', () => {
   test('booking intent is never called a sale, and an unseen sale says so', () => {
-    const lines = levelLines(venueLevels([fourLevels(night())]), { siteNamed: 'the booking site' })
+    const lines = levelLines(venueLevels([fourLevels(night())]))
     expect(lines).toHaveLength(4)
     expect(lines[2]).toBe('Booking intent: 9 people went on to book (a press to the booking site, never counted as a sale)')
-    expect(lines[3]).toBe('Verified sale: not visible to us for 1 night sold on the booking site')
+    expect(lines[3]).toBe('Verified sale: 1 night not ticketed on EventLinqs (free entry or another site), any sale not visible to us')
   })
   test('our own sales are said as orders and tickets', () => {
-    const lines = levelLines(venueLevels([fourLevels(night({ onEventLinqs: { orders: 3, tickets: 7 } }))]), { siteNamed: 'the booking site' })
+    const lines = levelLines(venueLevels([fourLevels(night({ onEventLinqs: { orders: 3, tickets: 7 } }))]))
     expect(lines[3]).toBe('Verified sale: 3 orders, 7 tickets on EventLinqs')
+  })
+})
+
+describe('a kept report read back from organiser_night_reports.figures', () => {
+  test('a version 1 report reads back as the night it kept', () => {
+    const kept = JSON.parse(JSON.stringify(night({ onEventLinqs: { orders: 1, tickets: 2 } })))
+    expect(fourLevels(nightFiguresFrom(kept) as NightFigures).verifiedSale).toEqual({ orders: 1, tickets: 2 })
+  })
+  test('another version or a broken shape is not read, never guessed', () => {
+    expect(nightFiguresFrom({ ...night(), version: 2 })).toBeNull()
+    expect(nightFiguresFrom({ ...night(), viewers: 'many' })).toBeNull()
+    expect(nightFiguresFrom({ ...night(), posts: null })).toBeNull()
+    expect(nightFiguresFrom(null)).toBeNull()
   })
 })
