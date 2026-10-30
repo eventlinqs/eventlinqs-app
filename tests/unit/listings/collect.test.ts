@@ -125,9 +125,11 @@ describe('the register', () => {
         src('never-checked', {}),
         src('ask', { collection: 'ask' }),
         src('never', { collection: 'never' }),
-        src('checked-yesterday', { lastCheckedAt: '2026-10-26T03:00:00Z' }),
-        src('checked-a-week-ago', { lastCheckedAt: '2026-10-20T03:00:00Z' }),
-        src('monthly-a-week-ago', { changes: 'monthly', lastCheckedAt: '2026-10-20T03:00:00Z' }),
+        /* Each a check that SUCCEEDED (last_success_at with it): a failed one is read again daily, in
+           failed-source-retried.test.ts. */
+        src('checked-yesterday', { lastCheckedAt: '2026-10-26T03:00:00Z', lastSuccessAt: '2026-10-26T03:00:00Z' }),
+        src('checked-a-week-ago', { lastCheckedAt: '2026-10-20T03:00:00Z', lastSuccessAt: '2026-10-20T03:00:00Z' }),
+        src('monthly-a-week-ago', { changes: 'monthly', lastCheckedAt: '2026-10-20T03:00:00Z', lastSuccessAt: '2026-10-20T03:00:00Z' }),
       ],
       now,
     )

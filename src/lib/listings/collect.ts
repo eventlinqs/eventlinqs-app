@@ -472,13 +472,28 @@ export const SOURCE_TYPE_LABELS: Readonly<Record<SourceType, string>> = {
   manual_research: 'Manual research',
 }
 
-/** The sources this run reads: only those whose terms allow it, each when its own pace says it is due. */
+/**
+ * Whether a source's last check failed: it was checked, and no read has succeeded since (last_success_at moves only on
+ * a read that succeeded, and last_checked_at on every check).
+ */
+export function lastCheckFailed(s: Pick<RegisteredSource, 'lastCheckedAt' | 'lastSuccessAt'>): boolean {
+  if (s.lastCheckedAt === null) return false
+  return s.lastSuccessAt === null || new Date(s.lastSuccessAt).getTime() < new Date(s.lastCheckedAt).getTime()
+}
+
+/**
+ * The sources this run reads: only those whose terms allow it, each when its own pace says it is due. A source whose last
+ * check FAILED is due again at the daily pace until a read succeeds, whatever its own pace, so one outage does not cost
+ * a weekly source six days of nights, a monthly one 27 or a rarely one 89 (the Supreme Specification's demonstration 18,
+ * 'a failed job is logged and recoverable'; tests/unit/listings/failed-source-retried.test.ts).
+ */
 export function dueSources(sources: readonly RegisteredSource[], now: Date): RegisteredSource[] {
-  return sources.filter(
-    (s) =>
-      s.collection === 'read' &&
-      (s.lastCheckedAt === null || now.getTime() - new Date(s.lastCheckedAt).getTime() >= RECHECK_DAYS[s.changes] * DAY_MS),
-  )
+  return sources.filter((s) => {
+    if (s.collection !== 'read') return false
+    if (s.lastCheckedAt === null) return true
+    const days = lastCheckFailed(s) ? Math.min(RECHECK_DAYS[s.changes], RECHECK_DAYS.daily) : RECHECK_DAYS[s.changes]
+    return now.getTime() - new Date(s.lastCheckedAt).getTime() >= days * DAY_MS
+  })
 }
 
 export type KnownEvent = ListingKey & { eventId: string }
