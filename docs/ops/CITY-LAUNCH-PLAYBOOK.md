@@ -95,8 +95,9 @@ Done when: the city page lists the city's verified nights and one approved editi
 
 Goal: know what a city costs and earns before scaling it.
 
-1. Every organiser has six months with no platform fee from registration (LAW 24, the constitution); revenue from a
-   city starts after its first organisers' six months.
+1. Every organiser's fee-free months are the founding offer (LAW 24), held in one module and stated nowhere else
+   (src/lib/payments/founding-waiver.ts; the guard offer-is-one-rule); so a city's platform-fee revenue starts only
+   when its first organisers' fee-free months end.
 2. Outside ticketing is a referral, never revenue (spec s13): presses out are counted as presses, not sales.
 3. The founder dashboard's economics read gross ticket sales, platform fee earned, payment cost, contribution and the
    break-even volume at the current fee (the PM's ruling 6).
