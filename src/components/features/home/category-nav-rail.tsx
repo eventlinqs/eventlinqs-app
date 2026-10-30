@@ -1,7 +1,6 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CategoryTile } from '@/components/features/home/cards'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
-import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
@@ -58,9 +57,24 @@ async function curatedCategories(): Promise<{ slug: string; name: string }[]> {
   })
 }
 
+/**
+ * The Communities doorway tile. NO PHOTO IS EVER REUSED (Lawal, 31 October 2026; the photo system's P6): it used to
+ * borrow the African community's own photo, which stands on the African tile and page. The brand library holds no
+ * unused photo for it, so it draws the branded tile (CategoryTileImage, an empty source) until Lawal gives the
+ * Communities surface a photo of its own.
+ */
+export const COMMUNITY_DOOR_TILE = {
+  href: '/communities',
+  imageSrc: '',
+  alt: 'Browse events by community',
+  name: 'Communities',
+  metaLabel: '21 heritages',
+  priority: false,
+}
+
 export async function CategoryNavRail({ counts }: { counts: Record<string, number> }) {
   const CATEGORIES = await curatedCategories()
-  const [tiles, communityDoorImage] = await Promise.all([
+  const [tiles] = await Promise.all([
     Promise.all(
       CATEGORIES.map(async (c) => {
         // Spine-first: licensed category tile photo; Pexels stays the fallback
@@ -88,9 +102,6 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
         }
       }),
     ),
-    // Doorway tile image - a representative community photo (branded fallback in
-    // CategoryTileImage if null), so the doorway is never a broken image.
-    getCommunityHeroPhoto('african'),
   ])
 
   return (
@@ -131,14 +142,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
               and cannot check that the reason still holds. */}
           <div className={COMPACT_TILE_CELL}>
             <CategoryTile
-              category={{
-                href: '/communities',
-                imageSrc: communityDoorImage ?? '',
-                alt: 'Browse events by community',
-                name: 'Communities',
-                metaLabel: '21 heritages',
-                priority: false,
-              }}
+              category={COMMUNITY_DOOR_TILE}
             />
           </div>
           {tiles.map(t => (
