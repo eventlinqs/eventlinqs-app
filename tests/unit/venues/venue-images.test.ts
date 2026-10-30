@@ -230,17 +230,29 @@ describe('the public read, the chain\'s second link', () => {
 })
 
 describe('the photograph an organiser sees on their event, to challenge', () => {
-  const served = { venue_id: 'v1', image_url: 'https://x/hall.webp', attribution_text: 'Photo: Jane', licence: 'cc0', licence_url: null, author: null, source_url: null }
+  // The night's own assignment (event_cover_photos_for), never the venue's library: after the deal a venue's photo is
+  // on one night only, so the dashboard of every other night there must not say its page shows it (WINDOW 1, 00:39).
+  const served = { event_id: 'e1', image_url: 'https://x/hall.webp', attribution_text: 'Photo: Jane', licence: 'cc0', licence_url: null, author: null, source_url: null }
   const deps = (rpc: VenueMediaDeps['rpc'], id: string | null = 'i1') => ({ rpc, idOf: async () => id })
 
-  test('gives the photograph the event page shows, with its id', async () => {
-    const shown = await shownVenuePhoto('v1', deps(async () => ({ data: [served], error: null })))
+  test('gives the photograph dealt to this night, with its id', async () => {
+    const calls: Call[] = []
+    const shown = await shownVenuePhoto(
+      'e1',
+      'v1',
+      deps(async (name, args) => {
+        calls.push({ name, args })
+        return { data: [served], error: null }
+      }),
+    )
     expect(shown).toEqual({ id: 'i1', imageUrl: 'https://x/hall.webp', credit: 'Photo: Jane' })
+    expect(calls[0]).toEqual({ name: 'event_cover_photos_for', args: { p_events: ['e1'], p_use: 'event_page' } })
   })
 
   test('falls to the card photograph when the page has none', async () => {
     const asked: unknown[] = []
     const shown = await shownVenuePhoto(
+      'e1',
       'v1',
       deps(async (_, args) => {
         asked.push(args.p_use)
@@ -251,9 +263,23 @@ describe('the photograph an organiser sees on their event, to challenge', () => 
     expect(shown?.id).toBe('i1')
   })
 
+  test('is null on a night the venue photo was dealt to another night, and never reads the library', async () => {
+    const names: string[] = []
+    const shown = await shownVenuePhoto(
+      'e2',
+      'v1',
+      deps(async (name) => {
+        names.push(name)
+        return { data: name === 'venue_photos_for' ? [{ ...served, venue_id: 'v1' }] : [], error: null }
+      }),
+    )
+    expect(shown).toBeNull()
+    expect(names).not.toContain('venue_photos_for')
+  })
+
   test('is null with no photograph, and a failed read takes only this section away', async () => {
-    expect(await shownVenuePhoto('v1', deps(async () => ({ data: [], error: null })))).toBeNull()
-    expect(await shownVenuePhoto('v1', deps(async () => ({ data: null, error: { code: '42883', message: 'no such function' } })))).toBeNull()
+    expect(await shownVenuePhoto('e1', 'v1', deps(async () => ({ data: [], error: null })))).toBeNull()
+    expect(await shownVenuePhoto('e1', 'v1', deps(async () => ({ data: null, error: { code: '42883', message: 'no such function' } })))).toBeNull()
   })
 })
 
