@@ -6699,7 +6699,7 @@ export type Database = {
           campaign_id: string
           entered_at?: string
           entered_by: string
-          id?: number
+          id?: never
           source_note: string
           spend_day: string
         }
@@ -6708,7 +6708,7 @@ export type Database = {
           campaign_id?: string
           entered_at?: string
           entered_by?: string
-          id?: number
+          id?: never
           source_note?: string
           spend_day?: string
         }
@@ -6781,6 +6781,13 @@ export type Database = {
           status_reason?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "paid_campaigns_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "paid_campaigns_event_id_fkey"
             columns: ["event_id"]
