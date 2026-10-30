@@ -39,6 +39,7 @@ describe('the event page map', () => {
     expect(getGoogleMapsLoader).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'Show map' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Open in Maps' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Get directions' })).toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=-37.818%2C144.9691')
   })
 
   it('places a venue with no stored point by its address', () => {

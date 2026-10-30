@@ -1,16 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import {
-  getGoogleMapsLoader,
-  GOOGLE_MAPS_MAP_ID,
-  googleMapsAuthFailed,
-  onGoogleMapsAuthFailure,
-} from '@/lib/maps/google-maps-loader'
-import { createVenuePin } from '@/lib/maps/brand-pin'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
-import { isAuditRun } from '@/lib/ui/audit-mode'
 import { OsmAttribution } from '@/components/features/events/osm-attribution'
 
 interface Props {
@@ -29,235 +20,50 @@ interface Props {
   bare?: boolean
 }
 
-
-export function VenueMap({
-  venueName,
-  address,
-  city,
-  state,
-  country,
-  latitude,
-  longitude,
-  bare = false,
-}: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<google.maps.Map | null>(null)
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
-  const [interactive, setInteractive] = useState(false)
-  const [inView, setInView] = useState(false)
-  /*
-   * WHEN GOOGLE REFUSES THE KEY, KEEP OUR OWN PLATE UP.
-   *
-   * An auth failure still resolves importLibrary and still constructs a Map, so
-   * `interactive` went true, this component dropped its designed fallback, and
-   * Google painted "Sorry! Something went wrong ... see the JavaScript console"
-   * into the container for a person buying a ticket to read (close-out UX2.5).
-   * The signal is Google's own gm_authFailure, registered once in the loader.
-   *
-   * useSyncExternalStore rather than useEffect + setState, because that is
-   * precisely what this is: a module-level flag outside React, with a subscribe
-   * and a snapshot. The effect form also trips react-hooks/set-state-in-effect,
-   * and the rule is right - it would cascade a render on every mount. The
-   * server snapshot is `false`: nothing has been refused before hydration.
-   */
-  const authFailed = useSyncExternalStore(
-    onGoogleMapsAuthFailure,
-    googleMapsAuthFailed,
-    () => false,
-  )
-
+/**
+ * THE EVENT PAGE MAP, BY GOOGLE'S MAPS EMBED API (Lawal's word through the controller's 08:27 (3), 31 October 2026:
+ * the map SHOWS on every event page). Google serves the map and its pin in an iframe; the Maps Embed API is "free to use
+ * with unlimited requests" with "no daily or usage rate limitations"
+ * (https://developers.google.com/maps/documentation/embed/usage-and-billing, last updated 2026-10-28, fetched
+ * 31 October 2026). So the event page no longer loads the metered Maps JavaScript API at all, and nothing here runs a
+ * script of ours: no loader, no geocoder, no marker. The frame is lazy, so it never competes with the hero for the
+ * first paint, and it takes the place by its stored point, else by its address.
+ *
+ * Without a browser key, or with no place to show, our own plate stands, never an empty frame; 'Open in Maps' is always
+ * a plain link to Google Maps.
+ */
+export function VenueMap({ venueName, address, city, state, country, latitude, longitude, bare = false }: Props) {
   const hasCoords = latitude !== null && longitude !== null
-  // Address string to geocode when the event has no stored coordinates. Most
-  // events never had their venue geocoded on save, so without this fallback the
-  // map would silently show the static card and never load Google at all.
-  const geocodeQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
-  const hasLocation = hasCoords || geocodeQuery.trim().length > 0
-
-  // Defer Google Maps JS download (~290KB) until the venue section enters
-  // the viewport. Map sits well below the fold; eager load wastes mobile
-  // bandwidth and drags Speed Index because the map JS continues painting
-  // tiles after the Lighthouse measurement window starts. In headless/
-  // audit mode, skip auto-load entirely - a real user scrolling to the
-  // venue section still triggers the IntersectionObserver, but the
-  // headless bot never gets there within the PSI 6s measurement window.
-  useEffect(() => {
-    if (!hasLocation) return
-    // Skip entirely in headless audit mode - matches smart-media's pattern.
-    if (isAuditRun()) {
-      return
-    }
-    const el = containerRef.current
-    // Defer setState to the next tick so we don't cascade-render inside
-    // the effect body (react-hooks/set-state-in-effect).
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      const t = setTimeout(() => setInView(true), 0)
-      return () => clearTimeout(t)
-    }
-    const io = new IntersectionObserver(
-      entries => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setInView(true)
-            io.disconnect()
-            break
-          }
-        }
-      },
-      { rootMargin: '200px 0px' },
-    )
-    io.observe(el)
-    return () => {
-      io.disconnect()
-    }
-  }, [hasLocation])
-  const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
+  const placeQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
+  const query = hasCoords ? `${latitude},${longitude}` : placeQuery
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? ''
+  const embedSrc =
+    key && query.trim()
+      ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&zoom=15`
+      : null
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsLinkQuery)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
+  // Google's Maps URLs: 'https://www.google.com/maps/dir/?api=1&parameters', destination 'a place name, address, or
+  // comma-separated latitude/longitude coordinates' (https://developers.google.com/maps/documentation/urls/get-started,
+  // last updated 2026-10-30, fetched 31 October 2026). A plain link: it opens the visitor's own maps, nothing loads here.
+  const directionsLink = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query || placeQuery)}`
   // UX1.2: one formatter composes every venue address on the platform, so a
   // city typed into the address field is not printed twice beside the map.
   const fullAddress = formatVenueAddress({ name: venueName, address, city, state, country }) ?? ''
 
-  useEffect(() => {
-    if (!hasLocation) return
-    if (!inView) return
-    const loader = getGoogleMapsLoader()
-    if (!loader) return
-    if (!containerRef.current) return
-
-    let cancelled = false
-
-    ;(async () => {
-      try {
-        const { Map } = (await loader.importLibrary('maps')) as google.maps.MapsLibrary
-        if (cancelled || !containerRef.current) return
-
-        // Center: stored coordinates when present, otherwise geocode the venue
-        // address in the browser (the referer-restricted key works client-side,
-        // where server-side geocoding cannot). If geocoding yields nothing, keep
-        // the static fallback rather than dropping a pin in the ocean.
-        let center: google.maps.LatLngLiteral
-        if (hasCoords) {
-          center = { lat: latitude, lng: longitude }
-        } else {
-          const { Geocoder } = (await loader.importLibrary('geocoding')) as google.maps.GeocodingLibrary
-          const { results } = await new Geocoder().geocode({ address: geocodeQuery })
-          if (cancelled || !containerRef.current || !results?.[0]) return
-          const loc = results[0].geometry.location
-          center = { lat: loc.lat(), lng: loc.lng() }
-        }
-        const { AdvancedMarkerElement } = (await loader.importLibrary(
-          'marker',
-        )) as google.maps.MarkerLibrary
-        if (cancelled || !containerRef.current) return
-
-        const map = new Map(containerRef.current, {
-          center,
-          zoom: 15,
-          // `mapId` and `styles` are mutually exclusive. Google, MapOptions
-          // reference: "This feature is not available when using a map ID".
-          // The brand style therefore lives on the Map ID as a cloud style;
-          // passing EVENTLINQS_MAP_STYLE here would be silently ignored, which
-          // is worse than not passing it, because it would read as applied.
-          mapId: GOOGLE_MAPS_MAP_ID,
-          disableDefaultUI: true,
-          clickableIcons: false,
-          zoomControl: true,
-          gestureHandling: 'cooperative',
-          keyboardShortcuts: false,
-        })
-        mapRef.current = map
-
-        // AdvancedMarkerElement replaces the deprecated google.maps.Marker.
-        //
-        // UX2.2: this was the shared brand DOT, whose only label was a `title`
-        // attribute, i.e. a hover tooltip that does not exist on a phone. Every
-        // surrounding commercial POI carried a labelled marker, so the one point
-        // the page is about was the least legible thing on the map. It is a
-        // labelled plate now, carrying the venue name as real text.
-        //
-        // collisionBehavior is the PUBLISHED mechanism for outranking the
-        // basemap's own labels, not a guess (Google, Maps JavaScript API,
-        // CollisionBehavior, fetched 2026-09-09):
-        //   REQUIRED_AND_HIDES_OPTIONAL - "Always display the marker regardless
-        //   of collision, and hide any OPTIONAL_AND_HIDES_LOWER_PRIORITY markers
-        //   or labels that would overlap with the marker."
-        markerRef.current = new AdvancedMarkerElement({
-          position: center,
-          map,
-          title: venueName ?? undefined,
-          content: createVenuePin({ name: venueName }),
-          collisionBehavior:
-            google.maps.CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL,
-          zIndex: 10,
-        })
-        setInteractive(true)
-      } catch (err) {
-        console.warn('[VenueMap] google maps init failed:', err)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-      // An advanced marker is detached by clearing `map`, not setMap(null).
-      if (markerRef.current) markerRef.current.map = null
-      markerRef.current = null
-      mapRef.current = null
-    }
-  }, [hasLocation, hasCoords, inView, latitude, longitude, venueName, geocodeQuery])
-
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <div className="relative aspect-[2/1] bg-ink-100">
-        {hasLocation ? (
-          <>
-            <div
-              ref={containerRef}
-              // Hidden rather than unmounted: Google has already written its own
-              // error panel in here, and unmounting mid-callback races the API.
-              className={`absolute inset-0 h-full w-full ${authFailed ? 'invisible' : ''}`}
-            />
-            {/* Native lazy-img sentinel - when the browser decides this
-                pseudo-image is near the viewport it kicks off `onLoad`,
-                giving us a second independent trigger alongside the IO.
-                This is a 1-pixel transparent GIF, not a display image  - 
-                `next/image` is the wrong tool here. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt=""
-              src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
-              loading="lazy"
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
-              onLoad={() => setInView(true)}
-            />
-            {(!interactive || authFailed) && (
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  background:
-                    'radial-gradient(ellipse 60% 60% at 50% 40%, rgba(212,160,23,0.14), transparent 70%), linear-gradient(180deg, #f5f4ef 0%, #e8e6df 100%)',
-                }}
-              >
-                <div className="text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold-500/15">
-                    <svg className="h-6 w-6 text-gold-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  {!bare && (
-                    <>
-                      <p className="mt-3 font-display text-sm font-semibold text-ink-900">
-                        {venueName ?? 'Venue'}
-                      </p>
-                      {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+        {embedSrc ? (
+          <iframe
+            title={`Map of ${venueName ?? 'the venue'}`}
+            src={embedSrc}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+            className="absolute inset-0 h-full w-full border-0"
+          />
         ) : (
           <div
             className="flex h-full w-full items-center justify-center"
@@ -293,16 +99,26 @@ export function VenueMap({
           {!bare && fullAddress && (
             <p className="text-xs text-ink-600 line-clamp-2">{fullAddress}</p>
           )}
-          {hasLocation && <OsmAttribution className="mt-1" />}
+          {(hasCoords || placeQuery.trim().length > 0) && <OsmAttribution className="mt-1" />}
         </div>
-        <Link
-          href={mapsLink}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
-        >
-          Open in Maps
-        </Link>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <Link
+            href={directionsLink}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
+          >
+            Get directions
+          </Link>
+          <Link
+            href={mapsLink}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
+          >
+            Open in Maps
+          </Link>
+        </div>
       </div>
     </div>
   )

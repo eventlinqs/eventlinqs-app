@@ -16,6 +16,7 @@ import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
 import { EventGallery } from '@/components/features/events/event-gallery'
+import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { parseGallery } from '@/lib/media/event-media-model'
@@ -505,6 +506,18 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {(event.venue_name || guide.getting_there || guide.access_notes) && (
                 <Reveal as="section" className="flex flex-col gap-2.5 lg:gap-4">
                   <h2 className="type-rail-heading font-headline text-ink-900">{GETTING_THERE_AND_ACCESS}</h2>
+                  {/* The map with its pin, the same component and facts as the ticketed page (Lawal 08:57 of 31 October
+                      2026: the AMCF page showed no map while Michael's did). */}
+                  <VenueMapLazy
+                    bare
+                    venueName={event.venue_name}
+                    address={event.venue_address}
+                    city={event.venue_city}
+                    state={event.venue_state}
+                    country={event.venue_country}
+                    latitude={event.venue_latitude}
+                    longitude={event.venue_longitude}
+                  />
                   {/* Phone: one card, the link under it (PhoneA). */}
                   <div className="rounded-[var(--radius-card)] bg-white p-4 text-sm leading-[1.6] text-ink-800 lg:hidden">
                     {[event.venue_name, guide.getting_there].filter(Boolean).length > 0 && (
