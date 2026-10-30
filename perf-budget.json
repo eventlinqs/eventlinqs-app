@@ -142,6 +142,7 @@
     "/admin/users": 157306,
     "/admin/users/[id]": 158980,
     "/admin/venues": 157306,
+    "/admin/venues/photos": 157450,
     "/artist/dashboard": 174300,
     "/artists": 173266,
     "/artists/[slug]": 178623,
