@@ -295,6 +295,14 @@ const DRILLS = [
     replace: '  if (true) {',
     expect: 'promises a QR ticket outside if (qrTicket)',
   },
+  {
+    name: "the event page names our own $0 ticket types 'Free entry' again",
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '  return priceLabel(tiers, FREE_REGISTRATION_REQUIRED, allIn)',
+    replace: "  return priceLabel(tiers, 'Free entry', allIn)",
+    expect: "writes 'Free entry' (E1's words)",
+  },
   /*
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
    * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile

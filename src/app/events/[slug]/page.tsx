@@ -106,7 +106,7 @@ import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 import { isWalkIn } from '@/lib/events/entry-mode'
-import { ctaFor, type CtaInput } from '@/lib/events/cta'
+import { ctaFor, FREE_REGISTRATION_REQUIRED, type CtaInput } from '@/lib/events/cta'
 import { eventPagePromises } from '@/lib/events/event-page-promises'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
@@ -367,8 +367,12 @@ function cheapestPrice(
 ): string | null {
   if (!tiers.length) return null
   // The shared price-label rule: free only when EVERY tier is $0, otherwise
-  // the lowest PAID price (see src/lib/events/price-label.ts).
-  return priceLabel(tiers, 'Free entry', allIn)
+  // the lowest PAID price (see src/lib/events/price-label.ts). Every tier $0 is
+  // a REGISTRATION (cta.ts's free_registration), so it says E2's words, never
+  // E1's "Free entry", which belongs to a walk-in night alone: E2 on car 14's
+  // preview found the sticky bar saying "Free entry" under a hero saying
+  // "Free, registration required" (30 October 2026, 15:45).
+  return priceLabel(tiers, FREE_REGISTRATION_REQUIRED, allIn)
 }
 
 export default async function EventDetailPage({ params }: Props) {
