@@ -31,6 +31,37 @@
         "okay to use",
         "ok to use"
       ]
+    },
+    {
+      "recipient": "chair@amcf.org.au",
+      "topic": "NO REQUESTS TO FRED, Lawal 31 Oct 09:18: never ask him for anything (photos, times, confirmations, material); build only with what he has given",
+      "given": "Lawal's ruling, 31 Oct 2026 09:18",
+      "neverAsk": [
+        "\\?",
+        "send (it|them|me|us|through|over)",
+        "could you",
+        "would you",
+        "can you",
+        "please confirm",
+        "\\bconfirm\\b",
+        "let me know (which|if|whether)",
+        "favourite .*shot",
+        "love you to"
+      ]
+    },
+    {
+      "recipient": "media@amcf.org.au",
+      "topic": "NO REQUESTS TO AMCF, Lawal 31 Oct 09:18",
+      "given": "Lawal's ruling, 31 Oct 2026 09:18",
+      "neverAsk": [
+        "\\?",
+        "send (it|them|me|us|through|over)",
+        "could you",
+        "would you",
+        "can you",
+        "\\bconfirm\\b",
+        "love you to"
+      ]
     }
   ]
 }
