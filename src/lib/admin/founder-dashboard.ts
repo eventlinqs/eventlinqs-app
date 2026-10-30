@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { countFrom, inventoryFigures } from './founder-dashboard-math'
 import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
@@ -11,7 +12,7 @@ import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
-import { countFrom, economicsFigures, inventoryFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
+import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
 
 /**
  * The founder dashboard's figures (the master mandate of 29 October 2026, section 14; the order and attention rules
