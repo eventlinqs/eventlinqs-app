@@ -522,9 +522,15 @@ async function newestRevision(db: Db, pieceId: string): Promise<Revision | null>
   return data ? revisionOf(data as Record<string, unknown>) : null
 }
 
+/** D2: a night that sold out after planning stops its pieces, whatever the week's plan said ('Stop ... when an event sells out'). */
+export function soldOutIssue(name: string, e: Record<string, unknown>): string | null {
+  const gone = soldOut((e.ticket_tiers as TierRow[] | null) ?? [], (e.event_booking_links as { availability: string }[] | null) ?? [])
+  return gone ? `${name}: it has sold out.` : null
+}
+
 /**
  * Every reason a piece may not be approved yet, re-read now (J15): each advertised night is still published, public and
- * not ended; its date, time and title are what the slide says; its admission is what the slide's chip says (cta.ts);
+ * not ended and has not sold out; its date, time and title are what the slide says; its admission is what the slide's chip says (cta.ts);
  * its outside ticket page answers; every image on a slide is usable now (K2); the piece's own page answers and lists
  * every night it advertises. siteOrigin is the deployment being checked, so a TEST plan is checked against TEST's pages.
  */
@@ -559,6 +565,8 @@ export async function pieceDependencies(
       }
       const { cta, priceLine } = await admissionOf(e, now)
       issues.push(...posterDrift(facts, e as unknown as NightNow, { state: cta.state, priceLine }, now))
+      const posterGone = soldOutIssue(name, e)
+      if (posterGone) issues.push(posterGone)
       if (found.photo) {
         const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
         if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
@@ -573,6 +581,8 @@ export async function pieceDependencies(
     }
     if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
     if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+    const gone = soldOutIssue(name, e)
+    if (gone) issues.push(gone)
     if (!slide) continue
     if (String(e.title) !== slide.title) issues.push(`${name}: its title is now "${String(e.title)}".`)
     const when = whenOf({ startDate: String(e.start_date), timezone: (e.timezone as string | null) ?? null } as CampaignNight)
@@ -651,7 +661,9 @@ export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
 
 /** The week's public nights in the guide cities, each with its call to action, its price line and any usable image. */
 export async function readCampaignNights(db: Db, cities: readonly CampaignCity[], weekStart: string, now: Date): Promise<CampaignNight[]> {
-  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 8 * DAY_MS)
+  // Three weeks on, for Coming Up's consideration stage; every piece of the week keeps to its week by dayInWeek. The
+  // rows come soonest first, so if the limit below ever cuts, it cuts only the furthest nights.
+  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 21 * DAY_MS)
   const { data, error } = await applyPublicEventVisibility(db.from('events').select(NIGHT_COLUMNS), { now, includeExternal: true })
     .gt('end_date', now.toISOString())
     .lte('start_date', weekEnd.toISOString())
@@ -869,7 +881,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     .order('planned_at', { ascending: true })
     .limit(500)
   if (error) throw new Error(`the week's pieces could not be read: ${error.message}`)
-  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'organiser_campaign', 'brand_campaign', 'partner_kit']
+  const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'coming_up', 'organiser_campaign', 'brand_campaign', 'partner_kit']
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
     const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)
