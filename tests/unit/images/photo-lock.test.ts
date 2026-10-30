@@ -128,7 +128,8 @@ describe('the upload door, as written in src/lib/upload.ts', () => {
   })
 
   it('the create action locks the new event\'s photos right after its row is written', () => {
-    const src = readFileSync(join(process.cwd(), 'src/app/(dashboard)/dashboard/events/actions.ts'), 'utf8')
+    // A checkout with core.autocrlf writes CRLF (the gate's tree does), so the source is read as LF before matching.
+    const src = readFileSync(join(process.cwd(), 'src/app/(dashboard)/dashboard/events/actions.ts'), 'utf8').replace(/\r\n/g, '\n')
     const insert = src.indexOf(".from('events')\n    .insert({")
     const lock = src.indexOf('lockSavedEventPhotos(')
     expect(insert).toBeGreaterThan(-1)
