@@ -77,12 +77,19 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
   }
 }
 
+/** The nights the hero leads with: its own photograph only, the first MAX_SLIDES. The page reads the same choice, so
+ * an event the hero shows is not shown again below it (one card per event per page, the photo system's P5). */
+export function heroSlideEvents<E extends { readonly cover_image_url?: string | null }>(events: readonly E[]): E[] {
+  const featured = events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)
+  return featured
+}
+
 export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
   // ONLY A NIGHT'S OWN PHOTOGRAPH LEADS (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52 directive:
   // authorised photographs, else premium typography; contextual photography only for pieces that name no night). A night
   // on a library photograph, our typographic cover or none is never a slide: its slide would set its name over a
   // stock raster. With none of its own, the curated homepage hero below, which names no night, is drawn instead.
-  const featured = events.filter((e) => isOwnPhoto(e.cover_image_url)).slice(0, MAX_SLIDES)
+  const featured = heroSlideEvents(events)
 
   // NO FEATURED EVENT: THE HERO STILL WEARS A PHOTOGRAPH (close-out C17.2,
   // 7 September 2026). This branch used to render a flat navy banner, and on

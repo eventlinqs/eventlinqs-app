@@ -7144,6 +7144,77 @@ export type Database = {
           },
         ]
       }
+      photo_assignments: {
+        Row: {
+          assigned_at: string
+          event_id: string | null
+          id: string
+          image_url: string
+          listing_series_id: string | null
+          photo_dhash: number | null
+          photo_sha256: string
+          retired_at: string | null
+          role: string
+          source: string
+          venue_image_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          event_id?: string | null
+          id?: string
+          image_url: string
+          listing_series_id?: string | null
+          photo_dhash?: number | null
+          photo_sha256: string
+          retired_at?: string | null
+          role?: string
+          source: string
+          venue_image_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          event_id?: string | null
+          id?: string
+          image_url?: string
+          listing_series_id?: string | null
+          photo_dhash?: number | null
+          photo_sha256?: string
+          retired_at?: string | null
+          role?: string
+          source?: string
+          venue_image_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_assignments_listing_series_id_fkey"
+            columns: ["listing_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_assignments_venue_image_id_fkey"
+            columns: ["venue_image_id"]
+            isOneToOne: false
+            referencedRelation: "venue_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_notifications: {
         Row: {
           actor_label: string | null
@@ -10649,6 +10720,8 @@ export type Database = {
           match_method: string | null
           permission_evidence: string | null
           permitted_uses: string[]
+          photo_dhash: number | null
+          photo_sha256: string | null
           quality_score: number | null
           replaced_by: string | null
           restrictions: string | null
@@ -10687,6 +10760,8 @@ export type Database = {
           match_method?: string | null
           permission_evidence?: string | null
           permitted_uses: string[]
+          photo_dhash?: number | null
+          photo_sha256?: string | null
           quality_score?: number | null
           replaced_by?: string | null
           restrictions?: string | null
@@ -10725,6 +10800,8 @@ export type Database = {
           match_method?: string | null
           permission_evidence?: string | null
           permitted_uses?: string[]
+          photo_dhash?: number | null
+          photo_sha256?: string | null
           quality_score?: number | null
           replaced_by?: string | null
           restrictions?: string | null
@@ -11779,6 +11856,7 @@ export type Database = {
         Args: { p_order_id: string; p_org_id: string }
         Returns: string
       }
+      deal_venue_photos: { Args: { p_now?: string }; Returns: number }
       derive_event_image_rights: {
         Args: { p_event: string }
         Returns: undefined
@@ -11855,6 +11933,19 @@ export type Database = {
       }
       event_booking_button: { Args: { p_event: string }; Returns: string }
       event_booking_provider_of: { Args: { p_url: string }; Returns: string }
+      event_cover_photos_for: {
+        Args: { p_events: string[]; p_now?: string; p_use: string }
+        Returns: {
+          attribution_text: string
+          author: string
+          event_id: string
+          image_url: string
+          licence: string
+          licence_url: string
+          source_url: string
+        }[]
+      }
+      event_has_own_photo: { Args: { p_cover: string }; Returns: boolean }
       event_image_right: {
         Args: { p_at: string; p_event: string; p_org: string; p_url: string }
         Returns: {
@@ -11863,6 +11954,10 @@ export type Database = {
           rights_state: string
           social_asset_id: string
         }[]
+      }
+      event_is_open_night: {
+        Args: { p_end: string; p_now: string; p_start: string }
+        Returns: boolean
       }
       event_lifecycle_guards: { Args: never; Returns: Json }
       event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
@@ -12270,6 +12365,49 @@ export type Database = {
           spent_this_month_cents: number
         }[]
       }
+      photo_assignment_is_of: {
+        Args: {
+          p_assignment: Database["public"]["Tables"]["photo_assignments"]["Row"]
+          p_event: string
+        }
+        Returns: boolean
+      }
+      photo_lock_for_event: {
+        Args: {
+          p_dhash: number
+          p_event: string
+          p_image_url: string
+          p_role: string
+          p_sha256: string
+        }
+        Returns: string
+      }
+      photo_locked_elsewhere: {
+        Args: { p_dhash: number; p_event?: string; p_sha256: string }
+        Returns: boolean
+      }
+      photo_matches_of: {
+        Args: { p_dhash: number; p_sha256: string }
+        Returns: {
+          assigned_at: string
+          event_id: string | null
+          id: string
+          image_url: string
+          listing_series_id: string | null
+          photo_dhash: number | null
+          photo_sha256: string
+          retired_at: string | null
+          role: string
+          source: string
+          venue_image_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "photo_assignments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       platform_notification_guards: { Args: never; Returns: Json }
       platform_trigger_on: {
         Args: { p_table: string; p_trigger: string }
@@ -12571,6 +12709,10 @@ export type Database = {
       }
       venue_image_challenge: {
         Args: { p_image: string; p_reason: string; p_user: string }
+        Returns: undefined
+      }
+      venue_image_fingerprint: {
+        Args: { p_dhash: number; p_image: string; p_sha256: string }
         Returns: undefined
       }
       venue_image_link: {

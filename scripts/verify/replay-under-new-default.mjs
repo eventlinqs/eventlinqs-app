@@ -100,8 +100,15 @@ async function main() {
 
   // Refuse before acting: only empty tables are dropped.
   if (tables.length) {
+    // A table this migration brings for the first time is not on TEST yet: it counts as empty (nothing to lose), read
+    // through query_to_xml so the absent name is never parsed.
     const counts = await run(
-      `select ${tables.map((t) => `(select count(*) from public.${t})::int as ${t}`).join(', ')}`,
+      `select ${tables
+        .map(
+          (t) =>
+            `(case when to_regclass('public.${t}') is null then 0 else (xpath('/row/c/text()', query_to_xml('select count(*) as c from public.${t}', false, true, '')))[1]::text::int end) as ${t}`,
+        )
+        .join(', ')}`,
       true,
     )
     if (!counts.ok) {

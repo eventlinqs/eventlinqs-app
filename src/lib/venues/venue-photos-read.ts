@@ -51,3 +51,37 @@ export async function venuePhotosFor(venueIds: readonly string[], use: VenueUse,
   }
   return photos
 }
+
+/**
+ * EACH NIGHT'S ASSIGNED PHOTO (public.photo_assignments, read through event_cover_photos_for): no photo is ever reused
+ * (Lawal's ruling of 31 October 2026, 00:14), so the database deals a venue's photos one per night and this only reads
+ * which night holds which. A night with none is simply absent. A failed read is thrown, and the caller falls to its
+ * typographic cover.
+ */
+export async function eventCoversFor(eventIds: readonly string[], use: VenueUse, deps: VenuePhotosRpc): Promise<Map<string, VenuePhoto>> {
+  const covers = new Map<string, VenuePhoto>()
+  const events = [...new Set(eventIds)]
+  if (events.length === 0) return covers
+  const answer = await deps.rpc('event_cover_photos_for', { p_events: events, p_use: use })
+  if (answer.error) throw new Error(`the nights' assigned photographs could not be read: ${answer.error.message}`)
+  const rows = (Array.isArray(answer.data) ? answer.data : []) as ReadonlyArray<{
+    event_id: string
+    image_url: string
+    attribution_text: string
+    licence: string
+    licence_url: string | null
+    author: string | null
+    source_url: string | null
+  }>
+  for (const row of rows) {
+    covers.set(row.event_id, {
+      imageUrl: row.image_url,
+      credit: row.attribution_text,
+      licence: row.licence,
+      licenceUrl: row.licence_url,
+      author: row.author,
+      fileUrl: row.source_url,
+    })
+  }
+  return covers
+}

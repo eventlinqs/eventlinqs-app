@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { FeaturedHero } from '@/components/features/home/FeaturedHero'
+import { FeaturedHero, heroSlideEvents } from '@/components/features/home/FeaturedHero'
 import { FeaturedRow } from '@/components/features/promotions/featured-row'
 import { featuredForPage } from '@/lib/promotions/promotions'
 import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
@@ -24,6 +24,7 @@ import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
+import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
 import {
   ThisWeekSkeleton,
   CityRailSkeleton,
@@ -112,8 +113,7 @@ export default async function HomePage() {
 
   // General category breadth: the page leads with these, the way a general
   // ticketing platform does. Each rail self-hides when it has no events.
-  const byCategory = (slug: string, max = 12) =>
-    upcoming.filter(e => e.category?.slug === slug).slice(0, max)
+  const byCategory = (slug: string) => upcoming.filter(e => e.category?.slug === slug)
 
   // ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026, reversing the
   // ruling of 16 August recorded in docs/roast/RAIL-MIN-RULING-2026-08-16.md).
@@ -143,14 +143,14 @@ export default async function HomePage() {
     return acc
   }, {})
 
-  const musicEvents = byCategory('music')
-  const foodEvents = byCategory('food-drink')
-  const festivalEvents = byCategory('festival')
-  const artsEvents = byCategory('arts-community')
-  const nightlifeEvents = byCategory('nightlife')
-  const comedyEvents = byCategory('comedy')
-  const sportsEvents = byCategory('sports')
-  const familyEvents = byCategory('family')
+  const musicCandidates = byCategory('music')
+  const foodCandidates = byCategory('food-drink')
+  const festivalCandidates = byCategory('festival')
+  const artsCandidates = byCategory('arts-community')
+  const nightlifeCandidates = byCategory('nightlife')
+  const comedyCandidates = byCategory('comedy')
+  const sportsCandidates = byCategory('sports')
+  const familyCandidates = byCategory('family')
 
   // The "thin categories" list and the note that rendered it are GONE with the
   // threshold that created them (founder ruling, 23 August 2026). A category
@@ -158,9 +158,8 @@ export default async function HomePage() {
   // there is no such thing as a category that is on but unrailed, and nothing
   // left for a note to name.
 
-  const thisWeek = upcoming
+  const thisWeekCandidates = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
-    .slice(0, 10)
 
   // ── Rail slices ───────────────────────────────────────────────
   /*
@@ -194,26 +193,43 @@ export default async function HomePage() {
    */
   const weekend = weekendWindowUtc(new Date(nowIso), PLATFORM_TIME_ZONE)
 
-  const thisWeekend = upcoming
+  const thisWeekendCandidates = upcoming
     .filter(e => {
       const t = new Date(e.start_date).getTime()
       return t >= weekend.from.getTime() && t <= weekend.to.getTime()
     })
-    .slice(0, 10)
 
-  const freeEvents = upcoming
+  const freeCandidates = upcoming
     .filter(e => e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0))
-    .slice(0, 10)
 
-  const trending = [...upcoming]
+  const trendingCandidates = [...upcoming]
     .filter(e => (e.percent_sold ?? 0) > 0)
     .sort((a, b) => (b.percent_sold ?? 0) - (a.percent_sold ?? 0))
-    .slice(0, 10)
 
-  const justAdded = [...upcomingWithPhotos]
+  const justAddedCandidates = [...upcomingWithPhotos]
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
-    .slice(0, 10)
     .map(toBentoEvent)
+
+  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the hero and the rails in
+  // the order the page draws them, the first to show an event keeping it, each later rail filling its places from the
+  // events not yet shown. Each rail keeps its own number of places.
+  const [, thisWeek, musicEvents, foodEvents, trending, festivalEvents, artsEvents, thisWeekend, nightlifeEvents, comedyEvents, freeEvents, sportsEvents, familyEvents, justAdded] =
+    oneCardPerEvent([
+      { events: heroSlideEvents(heroEvents), cap: Number.MAX_SAFE_INTEGER },
+      { events: thisWeekCandidates, cap: 10 },
+      { events: musicCandidates, cap: 12 },
+      { events: foodCandidates, cap: 12 },
+      { events: trendingCandidates, cap: 10 },
+      { events: festivalCandidates, cap: 12 },
+      { events: artsCandidates, cap: 12 },
+      { events: thisWeekendCandidates, cap: 10 },
+      { events: nightlifeCandidates, cap: 12 },
+      { events: comedyCandidates, cap: 12 },
+      { events: freeCandidates, cap: 10 },
+      { events: sportsCandidates, cap: 12 },
+      { events: familyCandidates, cap: 12 },
+      { events: justAddedCandidates, cap: 10 },
+    ])
 
   const featured = await featuredForPage('homepage')
 

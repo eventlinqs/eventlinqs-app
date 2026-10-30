@@ -4,7 +4,10 @@
 // stored without a real image; a replacement, a challenge and a withdrawal each go to their one database function;
 // staff approve once with a whole quality score; and the public read gives the photograph with its credit, or null.
 
-import { describe, expect, test } from 'vitest'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, test, vi } from 'vitest'
 import {
   addVenuePhoto,
   approveVenuePhoto,
@@ -17,9 +20,14 @@ import {
   type VenueMediaDeps,
 } from '@/lib/venues/venue-images'
 
+const ROOM = readFileSync(resolve(process.cwd(), 'public/images/hero/afrobeats.jpg'))
+
 type Call = { name: string; args: Record<string, unknown> }
 
-function fake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }) {
+const HASHED = { sha256: 'c'.repeat(64), dhash: '-42' }
+
+/** lockedElsewhere: what photo_locked_elsewhere answers; the fingerprint is written without fault. */
+function fake(answer: (call: Call) => { data: unknown; error: { code: string; message: string } | null }, lockedElsewhere = false) {
   const calls: Call[] = []
   const stored: string[] = []
   const removed: string[] = []
@@ -28,6 +36,7 @@ function fake(answer: (call: Call) => { data: unknown; error: { code: string; me
       if (bytes.byteLength === 3) throw new Error('not an image')
       return { buffer: Buffer.from('webp'), extension: 'webp', contentType: 'image/webp' }
     },
+    hash: async () => HASHED,
     store: async (path) => {
       stored.push(path)
       return `https://test.supabase.co/storage/v1/object/public/organiser-media/${path}`
@@ -38,6 +47,8 @@ function fake(answer: (call: Call) => { data: unknown; error: { code: string; me
     rpc: async (name, args) => {
       const call = { name, args }
       calls.push(call)
+      if (name === 'photo_locked_elsewhere') return { data: lockedElsewhere, error: null }
+      if (name === 'venue_image_fingerprint') return { data: null, error: null }
       return answer(call)
     },
   }
@@ -55,6 +66,7 @@ describe('the venue adds a photograph', () => {
     expect(done).toEqual({ state: 'done', id: 'img-1' })
     expect(stored[0]).toMatch(/^venues\/v1\/[0-9a-f-]{36}\.webp$/)
     expect(calls).toEqual([
+      { name: 'photo_locked_elsewhere', args: { p_sha256: HASHED.sha256, p_dhash: HASHED.dhash, p_event: null } },
       {
         name: 'venue_image_add',
         args: {
@@ -67,7 +79,18 @@ describe('the venue adds a photograph', () => {
           p_uses: null,
         },
       },
+      { name: 'venue_image_fingerprint', args: { p_image: 'img-1', p_sha256: HASHED.sha256, p_dhash: HASHED.dhash } },
     ])
+  })
+
+  // No photo is ever reused (Lawal's 00:23 of 31 October 2026, P9): a photo already locked to an event is refused at the
+  // door, in his words, and nothing is stored.
+  test('a photo already used for an event is refused before anything is stored', async () => {
+    const { d, calls, stored } = fake(() => ({ data: 'img-1', error: null }), true)
+    const done = await addVenuePhoto({ userId: 'u1', venueId: 'v1', file: PHOTO, permissionWords: YES, sourceUrl: SOURCE, credit: null }, d)
+    expect(done).toEqual({ state: 'refused', reason: 'This photo is already used for another event. Please add a different one.' })
+    expect(stored).toEqual([])
+    expect(calls.map((c) => c.name)).toEqual(['photo_locked_elsewhere'])
   })
 
   test('refused by the database takes its words, and the stored file is removed', async () => {
@@ -103,7 +126,8 @@ describe('replace, challenge, withdraw and approve each go to their one database
   test('a replacement is a new stored photograph the database links to the one it replaces', async () => {
     const { d, calls, stored } = fake(() => ({ data: 'img-2', error: null }))
     expect(await replaceVenuePhoto({ userId: 'u1', venueId: 'v1', imageId: 'img-1', file: PHOTO, permissionWords: YES, sourceUrl: SOURCE }, d)).toEqual({ state: 'done', id: 'img-2' })
-    expect(calls[0]).toEqual({
+    expect(calls.map((c) => c.name)).toEqual(['photo_locked_elsewhere', 'venue_image_replace', 'venue_image_fingerprint'])
+    expect(calls[1]).toEqual({
       name: 'venue_image_replace',
       args: { p_user: 'u1', p_image: 'img-1', p_image_url: `https://test.supabase.co/storage/v1/object/public/organiser-media/${stored[0]}`, p_source_url: SOURCE, p_permission_words: YES },
     })
@@ -126,17 +150,59 @@ describe('replace, challenge, withdraw and approve each go to their one database
     expect(calls[0]).toEqual({ name: 'venue_image_withdraw', args: { p_user: 'u1', p_image: 'img-1' } })
   })
 
+  // No photo is ever reused (Lawal's ruling of 31 October 2026, 00:14): an approval fingerprints the photo from its own
+  // bytes first, so it can be dealt to one night only, then deals it.
+  const fingerprinting = (fingerprinted = false, bytes: Buffer | null = ROOM) => ({
+    photoOf: vi.fn(async () => ({ imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/r/room.jpg', fingerprinted })),
+    bytesOf: vi.fn(async () => {
+      if (!bytes) throw new Error('HTTP 404')
+      return bytes
+    }),
+  })
+
   test('staff approve once with a whole quality score from 0 to 100, primary on request', async () => {
     const { d, calls } = fake(() => ({ data: null, error: null }))
-    expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 85, primary: true }, d)).toEqual({ state: 'done', id: 'img-1' })
-    expect(calls[0]).toEqual({ name: 'venue_image_approve', args: { p_admin: 'a1', p_image: 'img-1', p_quality: 85, p_primary: true } })
+    const f = fingerprinting()
+    expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 85, primary: true }, { ...d, ...f })).toEqual({ state: 'done', id: 'img-1' })
+    expect(calls.find((c) => c.name === 'venue_image_approve')).toEqual({ name: 'venue_image_approve', args: { p_admin: 'a1', p_image: 'img-1', p_quality: 85, p_primary: true } })
     for (const quality of [-1, 101, 7.5, Number.NaN]) {
-      expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality, primary: false }, d)).toEqual({
+      expect(await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality, primary: false }, { ...d, ...f })).toEqual({
         state: 'refused',
         reason: 'Give the photograph a quality score from 0 to 100.',
       })
     }
-    expect(calls).toHaveLength(1)
+    expect(calls.filter((c) => c.name === 'venue_image_approve')).toHaveLength(1)
+  })
+
+  test('fingerprints the photo from its own bytes, then approves, then deals it to a night', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const f = fingerprinting()
+    await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...f })
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_fingerprint', 'venue_image_approve', 'deal_venue_photos'])
+    expect(f.bytesOf).toHaveBeenCalledWith('https://upload.wikimedia.org/wikipedia/commons/r/room.jpg')
+    expect(calls[0].args).toEqual({ p_image: 'img-1', p_sha256: createHash('sha256').update(ROOM).digest('hex'), p_dhash: expect.stringMatching(/^-?\d+$/) })
+  })
+
+  test('a photo fingerprinted already is not read again', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const f = fingerprinting(true)
+    await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...f })
+    expect(f.bytesOf).not.toHaveBeenCalled()
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_approve', 'deal_venue_photos'])
+  })
+
+  test('a photo whose bytes cannot be read is not approved', async () => {
+    const { d, calls } = fake(() => ({ data: null, error: null }))
+    const answer = await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...fingerprinting(false, null) })
+    expect(answer).toEqual({ state: 'refused', reason: 'The photograph could not be read to fingerprint it, so it was not approved: HTTP 404' })
+    expect(calls).toHaveLength(0)
+  })
+
+  test('an approval the database refuses deals nothing', async () => {
+    const { d, calls } = fake((c) => (c.name === 'venue_image_approve' ? { data: null, error: { code: '23514', message: 'refused: that photograph was withdrawn' } } : { data: null, error: null }))
+    const answer = await approveVenuePhoto({ adminId: 'a1', imageId: 'img-1', quality: 70, primary: false }, { ...d, ...fingerprinting(true) })
+    expect(answer.state).toBe('refused')
+    expect(calls.map((c) => c.name)).toEqual(['venue_image_approve'])
   })
 })
 
@@ -164,17 +230,29 @@ describe('the public read, the chain\'s second link', () => {
 })
 
 describe('the photograph an organiser sees on their event, to challenge', () => {
-  const served = { venue_id: 'v1', image_url: 'https://x/hall.webp', attribution_text: 'Photo: Jane', licence: 'cc0', licence_url: null, author: null, source_url: null }
+  // The night's own assignment (event_cover_photos_for), never the venue's library: after the deal a venue's photo is
+  // on one night only, so the dashboard of every other night there must not say its page shows it (WINDOW 1, 00:39).
+  const served = { event_id: 'e1', image_url: 'https://x/hall.webp', attribution_text: 'Photo: Jane', licence: 'cc0', licence_url: null, author: null, source_url: null }
   const deps = (rpc: VenueMediaDeps['rpc'], id: string | null = 'i1') => ({ rpc, idOf: async () => id })
 
-  test('gives the photograph the event page shows, with its id', async () => {
-    const shown = await shownVenuePhoto('v1', deps(async () => ({ data: [served], error: null })))
+  test('gives the photograph dealt to this night, with its id', async () => {
+    const calls: Call[] = []
+    const shown = await shownVenuePhoto(
+      'e1',
+      'v1',
+      deps(async (name, args) => {
+        calls.push({ name, args })
+        return { data: [served], error: null }
+      }),
+    )
     expect(shown).toEqual({ id: 'i1', imageUrl: 'https://x/hall.webp', credit: 'Photo: Jane' })
+    expect(calls[0]).toEqual({ name: 'event_cover_photos_for', args: { p_events: ['e1'], p_use: 'event_page' } })
   })
 
   test('falls to the card photograph when the page has none', async () => {
     const asked: unknown[] = []
     const shown = await shownVenuePhoto(
+      'e1',
       'v1',
       deps(async (_, args) => {
         asked.push(args.p_use)
@@ -185,9 +263,23 @@ describe('the photograph an organiser sees on their event, to challenge', () => 
     expect(shown?.id).toBe('i1')
   })
 
+  test('is null on a night the venue photo was dealt to another night, and never reads the library', async () => {
+    const names: string[] = []
+    const shown = await shownVenuePhoto(
+      'e2',
+      'v1',
+      deps(async (name) => {
+        names.push(name)
+        return { data: name === 'venue_photos_for' ? [{ ...served, venue_id: 'v1' }] : [], error: null }
+      }),
+    )
+    expect(shown).toBeNull()
+    expect(names).not.toContain('venue_photos_for')
+  })
+
   test('is null with no photograph, and a failed read takes only this section away', async () => {
-    expect(await shownVenuePhoto('v1', deps(async () => ({ data: [], error: null })))).toBeNull()
-    expect(await shownVenuePhoto('v1', deps(async () => ({ data: null, error: { code: '42883', message: 'no such function' } })))).toBeNull()
+    expect(await shownVenuePhoto('e1', 'v1', deps(async () => ({ data: [], error: null })))).toBeNull()
+    expect(await shownVenuePhoto('e1', 'v1', deps(async () => ({ data: null, error: { code: '42883', message: 'no such function' } })))).toBeNull()
   })
 })
 
