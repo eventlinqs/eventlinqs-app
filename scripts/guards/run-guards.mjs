@@ -647,6 +647,8 @@
  *   card-price-from-cta        every card, tile and map pin takes its price words from the
  *                              night's call to action: never 'Free' unless free is stored
  *                              (30 October 2026, Kate Ceberano's paid show read 'Free')
+ *   google-calls-through-the-spend-guard  every billed Places call asks the database's
+ *                              daily quota and monthly cap first; Google starts OFF
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -3309,6 +3311,10 @@ const GUARDS = [
   // only while every read of share_link_events and go_presses leaves is_test rows out: this fails the build on a read
   // that does not, judged on each read's own chain. A read pinned to conversions passes, as no QA press is one.
   'scripts/guards/counted-rows-exclude-tests.mjs',
+  // The cost guard for billed Places calls (the project manager's note of 30 October 2026, 4.52 pm, on Lawal's order:
+  // OFF until he says, he wants the cost first): every Places web service address in src asks google_spend_reserve first, through
+  // withGoogleSpend, and the migration starts with Google OFF and serialises every reservation. Drilled red two ways.
+  'scripts/guards/google-calls-through-the-spend-guard.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

@@ -9,6 +9,7 @@ import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
+import { googleSpendFigure, spendReadFrom } from '@/lib/google/spend-guard-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
 
 /**
@@ -169,6 +170,14 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
   const g = growth.ok ? growth.value.lastFigures : null
   const failing = health.ok ? health.value.filter((r) => !r.ok) : null
+  // The Google cost guard's counter (src/lib/google/spend-guard-math.ts): spend against the cap, calls against the quota.
+  const googleSpend = await settle(async () => {
+    const { data, error } = await admin.rpc('google_spend_state')
+    if (error) throw new Error(error.message)
+    const read = spendReadFrom(data)
+    if (!read) throw new Error('google_spend_state answered no readable row')
+    return read
+  })
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
 
@@ -342,6 +351,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         tag(fig('Health checks failing', failing === null ? { value: null, note: health.ok ? undefined : health.note } : { value: failing.length }, true, '/admin/health', failing && failing.length > 0 ? failing.map((f) => f.label).join(', ') : undefined), 'failed', 'daily'),
         tag(fig('Messages that failed to send, 7 days', failedSends, true, null), 'failed', 'daily'),
         tag(fig('Admin sign-in failures, 24 hours', loginFailures, true, '/admin/audit'), 'failed', 'daily'),
+        googleSpend.ok ? googleSpendFigure(googleSpend.value) : googleSpendFigure(null, googleSpend.note),
         tag({ label: 'Production', value: 0, asksForAPerson: false, href: null, display: commit ? `${environment}, ${commit}` : environment }, 'measure', 'daily'),
       ],
       done: [

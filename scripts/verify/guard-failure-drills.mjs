@@ -11078,6 +11078,26 @@ const DRILLS = [
     replace: '  if (false) {\n',
     expect: 'no longer refuses a host that is a note',
   },
+  /*
+   * google-calls-through-the-spend-guard (the project manager's note of 30 October 2026, 4.52 pm: OFF until Lawal
+   * says): a Places call written in without asking the cost guard, and the guard module no longer asking the database.
+   */
+  {
+    name: 'a Places photo call is written in without the cost guard',
+    guard: `${GUARDS}/google-calls-through-the-spend-guard.mjs`,
+    file: 'src/lib/geo/geocode.ts',
+    find: 'export async function geocodeAddress(',
+    replace: "export const PLACES_PHOTO = 'https://places.googleapis.com/v1/'\nexport async function geocodeAddress(",
+    expect: 'never asks the cost guard',
+  },
+  {
+    name: 'the cost guard makes the call without asking the database',
+    guard: `${GUARDS}/google-calls-through-the-spend-guard.mjs`,
+    file: 'src/lib/google/spend-guard.ts',
+    find: "db.rpc('google_spend_reserve',",
+    replace: "db.rpc('google_spend_noop',",
+    expect: 'no longer asks the database',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
