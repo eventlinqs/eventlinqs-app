@@ -20,7 +20,7 @@ describe('the Sent press', () => {
     expect(src).toMatch(/requireAdminSession\(\)/)
     expect(src).toMatch(/can\(session, 'admin\.network\.manage'\)/)
     expect(src).toMatch(/actionRateLimit\(\s*'admin-outreach-sent',\s*session\.userId\s*\)/)
-    expect(src.indexOf('actionRateLimit')).toBeGreaterThan(src.indexOf('can(session'))
+    expect(src.indexOf("actionRateLimit('admin-outreach-sent'")).toBeGreaterThan(src.indexOf('can(session'))
     expect(POLICIES['admin-outreach-sent'].keyPrefix).toBe('adm-sent')
   })
 

@@ -7,6 +7,10 @@ import { readOrganiserScores } from '@/lib/outreach/organiser-score-read'
 import { PARTS, WEIGHTS, type Part } from '@/lib/outreach/organiser-score'
 import { COHORT_SIZE, pickCohort } from '@/lib/outreach/cohort-pick'
 import { ACQUISITION_STATES, STATE_WORDS, isAcquisitionState, type AcquisitionState } from '@/lib/outreach/acquisition-states'
+import { readDailyQueue } from '@/lib/outreach/daily-queue'
+import { CHANNEL_WORDS, nextStepWords, notReady, openInApp, stepWords, type QueueChannel } from '@/lib/outreach/daily-queue-math'
+import { markSentAction } from './actions'
+import { DailyQueueItem } from './daily-queue-item'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
 /**
@@ -14,7 +18,9 @@ import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, 
  * organiser in the CRM with its acquisition state (decided by the database from its proof, migration 20261030034001),
  * its score out of 100 with each part and the reason for it (src/lib/outreach/organiser-score.ts), and whether the first
  * cohort picks it, by email or another route (src/lib/outreach/cohort-pick.ts). Figures only: what waits for Lawal is
- * on /admin/today. Staff only, never indexed. Nothing here writes or sends.
+ * on /admin/today. Staff only, never indexed. Above them, Lawal's daily outreach queue (the PROJECT MANAGER's 05:00 of
+ * 31 October 2026, src/lib/outreach/daily-queue-math.ts): the one write here is his press of Sent, which records a
+ * message he sent by hand (./actions.ts). Nothing here sends.
  */
 
 export const dynamic = 'force-dynamic'
@@ -34,7 +40,10 @@ const PART_LABEL: Record<Part, string> = {
   partnership: 'Partnership',
 }
 
-export default async function AdminAcquisitionPage() {
+const OPEN_LABEL = { instagram: 'Open in Instagram', facebook: 'Open their Page', website_form: 'Open the form', email: 'Open in mail' } as const
+
+export default async function AdminAcquisitionPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
+  const { said } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.acquisition.view', session })
@@ -51,6 +60,13 @@ export default async function AdminAcquisitionPage() {
   const byEmail = new Set(cohort.email.map((c) => c.id))
   const byOther = new Set(cohort.otherRoutes.map((c) => c.id))
   const counts = ACQUISITION_STATES.map((s) => ({ state: s, n: [...stateOf.values()].filter((v) => v === s).length })).filter((c) => c.n > 0)
+  // A queue that could not be read is said so, never shown as an empty day.
+  let queue: QueueChannel[] | null = null
+  try {
+    queue = await readDailyQueue(db, new Date())
+  } catch (err) {
+    console.warn('[admin/acquisition] the daily queue could not be read', err instanceof Error ? err.message : String(err))
+  }
 
   return (
     <div>
@@ -63,6 +79,62 @@ export default async function AdminAcquisitionPage() {
           it predicts nothing.
         </p>
       </header>
+
+      {said === undefined ? null : (
+        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+          {said}
+        </p>
+      )}
+
+      <section id="queue" data-daily-queue aria-label="Today's queue" className="mb-8">
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Today&apos;s queue</h2>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          Each message you send by hand, channel by channel, never more in a day than the channel allows. Copy it, open where it goes, send it there, then
+          press Sent. Nothing here sends anything.
+        </p>
+        {queue === null ? (
+          <p className="mt-4 text-sm text-white">The queue could not be read just now. Reload in a minute; nothing has been lost.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {queue.map((c) => (
+              <div key={c.channel} data-channel={c.channel} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
+                <h3 className="text-sm font-semibold text-white">{CHANNEL_WORDS[c.channel]}</h3>
+                <p className="mt-1 text-xs text-white/60">
+                  {c.sentToday} of {c.cap} sent today, {c.left} left
+                  {c.waiting > 0 ? `; ${c.waiting} more ${c.waiting === 1 ? 'waits' : 'wait'} for another day` : ''}
+                </p>
+                {c.today.length === 0 ? (
+                  <p className="mt-3 text-sm text-white/70">{c.left === 0 ? 'Done for today on this channel.' : 'Nothing is waiting on this channel.'}</p>
+                ) : (
+                  <ul className="mt-3 divide-y divide-white/[0.06]">
+                    {c.today.map((t) => {
+                      const why = notReady(t)
+                      const href = openInApp(t.channel, t.address, t.subject)
+                      return (
+                        <li key={t.touchId} data-touch={t.touchId} className="py-4">
+                          <p className="text-sm font-semibold text-white">
+                            {t.organiserName} <span className="font-normal text-white/60">| {stepWords(t)}</span>
+                          </p>
+                          {t.subject ? <p className="mt-1 text-xs text-white/60">Subject: {t.subject}</p> : null}
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/80">{t.body}</p>
+                          {why.length > 0 || href === null ? (
+                            <p className="mt-3 text-sm text-white">Not ready: {why.join('; ')}.</p>
+                          ) : (
+                            <>
+                              <DailyQueueItem touchId={t.touchId} body={t.body} openHref={href} openLabel={OPEN_LABEL[t.channel]} action={markSentAction} />
+                              <p className="mt-2 text-xs text-white/50">{nextStepWords(t.step)}</p>
+                            </>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
