@@ -122,6 +122,16 @@ export function approveVenuePhoto(input: { adminId: string; imageId: string; qua
   return decide('venue_image_approve', { p_admin: input.adminId, p_image: input.imageId, p_quality: input.quality, p_primary: input.primary }, input.imageId, deps)
 }
 
+/** Staff refuse a photograph, the reason kept; it never serves. */
+export function refuseVenuePhoto(input: { adminId: string; imageId: string; reason: string }, deps: Pick<VenueMediaDeps, 'rpc'>) {
+  return decide('venue_image_refuse', { p_admin: input.adminId, p_image: input.imageId, p_reason: input.reason.trim() }, input.imageId, deps)
+}
+
+/** Staff match a harvested candidate to one of our venues by hand; it still waits for approval. */
+export function linkVenuePhoto(input: { adminId: string; imageId: string; venueId: string }, deps: Pick<VenueMediaDeps, 'rpc'>) {
+  return decide('venue_image_link', { p_admin: input.adminId, p_image: input.imageId, p_venue: input.venueId }, input.imageId, deps)
+}
+
 /** The real dependencies: the image pipeline, the event-images bucket's venues folder, and the service role. */
 export function venueMediaDeps(): VenueMediaDeps {
   const admin = createAdminClient()

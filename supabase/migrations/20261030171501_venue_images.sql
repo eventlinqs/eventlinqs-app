@@ -352,6 +352,67 @@ begin
 end;
 $$;
 
+-- Staff refuse a photograph, with the reason kept: it never serves.
+create or replace function public.venue_image_refuse(p_admin uuid, p_image uuid, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not exists (select 1 from public.admin_users a where a.id = p_admin) then
+    raise exception 'refused: only staff may refuse a venue photograph' using errcode = '23514';
+  end if;
+  if length(btrim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'refused: say why it is refused' using errcode = '23514';
+  end if;
+  update public.venue_images
+     set approval_state = 'refused', is_primary = false, restrictions = coalesce(restrictions || ' | ', '') || 'Refused: ' || btrim(p_reason)
+   where id = p_image and approval_state in ('candidate', 'pending', 'challenged');
+  if not found then
+    raise exception 'refused: only a waiting or challenged photograph can be refused' using errcode = '23514';
+  end if;
+end;
+$$;
+
+-- Lawal's queue (the PM's 16:52, G): every photograph matched to a venue and waiting for a person, with its venue.
+create or replace function public.venue_photo_queue()
+returns table (
+  id uuid, venue_id uuid, venue_name text, venue_city text, image_url text, source text, source_url text, licence text,
+  attribution_text text, quality_score smallint, width integer, height integer, match_method text, match_distance_m numeric,
+  permission_evidence text
+)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select i.id, i.venue_id, v.name, v.city, i.image_url, i.source, i.source_url, i.licence, i.attribution_text, i.quality_score,
+         i.width, i.height, i.match_method, i.match_distance_m, i.permission_evidence
+    from public.venue_images i
+    join public.venues v on v.id = i.venue_id
+   where i.approval_state in ('candidate', 'pending')
+   order by v.name, i.created_at
+   limit 2000
+$$;
+
+-- How many harvested candidates match none of our venues yet.
+create or replace function public.venue_photo_unmatched_count()
+returns bigint
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select count(*) from public.venue_images where approval_state = 'candidate' and venue_id is null
+$$;
+
+revoke all on function public.venue_image_refuse(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function public.venue_photo_queue() from public, anon, authenticated;
+revoke all on function public.venue_photo_unmatched_count() from public, anon, authenticated;
+grant execute on function public.venue_image_refuse(uuid, uuid, text) to service_role;
+grant execute on function public.venue_photo_queue() to service_role;
+grant execute on function public.venue_photo_unmatched_count() to service_role;
 revoke all on function public.venue_image_link(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.venue_image_link(uuid, uuid, uuid) to service_role;
 revoke all on function public.venue_image_manager(uuid, uuid) from public, anon, authenticated;

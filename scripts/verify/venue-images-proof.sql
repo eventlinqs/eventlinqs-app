@@ -23,6 +23,7 @@ DECLARE
   v_c uuid;
   v_d uuid;
   v_e uuid;
+  v_f uuid;
   v_bucket constant text := 'https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/organiser-media/venue-proof/';
 BEGIN
   SELECT id INTO v_venue FROM public.venues ORDER BY created_at LIMIT 1;
@@ -291,6 +292,31 @@ BEGIN
     IF v_ok AND v_e IS NOT NULL THEN v_out := v_out || ' | C2 Commons under 1200 wide refused, CC0 kept with no author: PASS';
     ELSE v_out := v_out || ' | C2 size and CC0: FAIL'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | C2 size and CC0: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- Q1 Lawal's queue holds a matched waiting photograph with its venue, never an approved or unmatched one; the
+  -- unmatched candidates are counted; no visitor reads the queue.
+  BEGIN
+    v_f := public.venue_image_add(v_manager, v_venue, v_bucket || 'q1.jpg', 'https://www.eventlinqs.com.au/venues/proof', 'Yes, please use this photo of our venue.', null, null);
+    SELECT count(*) INTO v_n FROM public.venue_photo_queue() q WHERE q.id = v_f AND q.venue_name IS NOT NULL;
+    v_ok := v_n = 1;
+    SELECT count(*) INTO v_n FROM public.venue_photo_queue() q WHERE q.image_url IN (v_bucket || 'c1.jpg', v_bucket || 'c2-cc0.jpg');
+    IF v_ok AND v_n = 0 AND public.venue_photo_unmatched_count() >= 1
+       AND NOT has_function_privilege('authenticated', 'public.venue_photo_queue()', 'execute') THEN
+      v_out := v_out || ' | Q1 the queue holds matched waiting photographs only, staff only: PASS';
+    ELSE v_out := v_out || ' | Q1 queue: FAIL'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | Q1 queue: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
+
+  -- R1 staff refuse it with a reason, and it never serves; someone who is not staff may not.
+  BEGIN
+    v_ok := false;
+    BEGIN PERFORM public.venue_image_refuse(v_outsider, v_f, 'Not the venue.');
+    EXCEPTION WHEN check_violation THEN v_ok := true; END;
+    PERFORM public.venue_image_refuse(v_staff, v_f, 'Blurred.');
+    IF v_ok AND (SELECT approval_state FROM public.venue_images WHERE id = v_f) = 'refused'
+       AND NOT EXISTS (SELECT 1 FROM public.venue_photo_queue() q WHERE q.id = v_f) THEN
+      v_out := v_out || ' | R1 staff refuse with a reason, it leaves the queue: PASS';
+    ELSE v_out := v_out || ' | R1 refuse: FAIL'; v_fail := v_fail + 1; END IF;
+  EXCEPTION WHEN others THEN v_out := v_out || ' | R1 refuse: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
   -- The runner reads the verdict up to the first double quote, and error messages quote names.
   RAISE EXCEPTION 'PROOF % (% failure(s), rolled back):%',
