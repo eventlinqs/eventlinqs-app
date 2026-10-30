@@ -112,7 +112,7 @@ export default async function GuidePage({ params }: Props) {
             <span className="block text-sm leading-relaxed text-[var(--text-secondary)]">
               {guide.hero.caption}
             </span>
-            <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
               Captured from the live platform
               {guide.hero.viewport ? ` at ${guide.hero.viewport}px` : ''}
             </span>
