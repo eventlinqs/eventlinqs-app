@@ -6,7 +6,7 @@ import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { contactAddress } from '@/lib/email/sender'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { venuePhotosFor, type VenuePhoto, type VenueUse } from './venue-photos-read'
+import { eventCoversFor, venuePhotosFor, type VenuePhoto, type VenueUse } from './venue-photos-read'
 
 /**
  * THE VENUE'S OWN PHOTOGRAPHS (the project manager's 16:42 of 30 October 2026, venue-first real photography). A
@@ -256,13 +256,15 @@ export type ShownVenuePhoto = { readonly id: string; readonly imageUrl: string; 
 type ShownVenuePhotoDeps = Pick<VenueMediaDeps, 'rpc'> & { idOf(venueId: string, imageUrl: string): Promise<string | null> }
 
 /**
- * The photograph an organiser's nights at this venue show, with the id a challenge needs. Null when there is none. A
- * failed read is null too, so it takes only the challenge section away, never the organiser's event dashboard (this
- * also holds while the migration waits to be applied).
+ * The venue photograph THIS night shows, with the id a challenge needs: the night's own assignment, never the venue's
+ * library, since the deal puts a venue's photo on one night only (no photo is ever reused, Lawal's ruling of
+ * 31 October 2026). Null when the night has none. A failed read is null too, so it takes only the challenge section
+ * away, never the organiser's event dashboard (this also holds while the migration waits to be applied).
  */
-export async function shownVenuePhoto(venueId: string, deps: ShownVenuePhotoDeps): Promise<ShownVenuePhoto | null> {
+export async function shownVenuePhoto(eventId: string, venueId: string, deps: ShownVenuePhotoDeps): Promise<ShownVenuePhoto | null> {
   try {
-    const photo = (await venuePhotoFor(venueId, 'event_page', deps)) ?? (await venuePhotoFor(venueId, 'event_card', deps))
+    const photo =
+      (await eventCoversFor([eventId], 'event_page', deps)).get(eventId) ?? (await eventCoversFor([eventId], 'event_card', deps)).get(eventId)
     if (!photo) return null
     const id = await deps.idOf(venueId, photo.imageUrl)
     return id ? { id, imageUrl: photo.imageUrl, credit: photo.credit } : null

@@ -162,7 +162,7 @@ export default async function EventViewPage({ params }: Props) {
   // Item 15 of the locked plan of 27 October 2026: the event's venue, where it is another organisation's, can be asked to share it.
   const venueAsk = await readVenueAsk(event)
   // The photograph of the venue this event's page shows, so the organiser can say it is wrong (the PM's 16:42).
-  const venuePhoto = event.venue_id ? await shownVenuePhoto(event.venue_id, shownVenuePhotoDeps()) : null
+  const venuePhoto = event.venue_id ? await shownVenuePhoto(event.id, event.venue_id, shownVenuePhotoDeps()) : null
   const [walkInNumbers, walkInGuide] = walkIn
     ? await Promise.all([
         readWalkInNumbers(event.id),
