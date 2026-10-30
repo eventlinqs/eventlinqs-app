@@ -40,7 +40,7 @@ it('renders every TEST organiser with its state, its score parts and its cohort 
   h.client = createClient<Database>(`https://${REF}.supabase.co`, keys.find((k) => k.name === 'service_role' && k.type === 'legacy')?.api_key ?? '', { auth: { persistSession: false } })
 
   const { default: Page } = await import('@/app/admin/(authed)/acquisition/page')
-  const html = renderToStaticMarkup(await Page())
+  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }))
   writeFileSync('C:/dev/EVIDENCE/W6-30OCT/admin-acquisition-TEST.html', html)
 
   const [{ organisers }] = await query('select count(*)::int as organisers from public.organisers')

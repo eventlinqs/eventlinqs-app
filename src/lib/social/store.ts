@@ -5,6 +5,7 @@ import { buildShortUrl } from '@/lib/broadcast/share-codes'
 import { readBookingLinks } from '@/lib/events/booking-links-read'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
+import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
@@ -430,6 +431,28 @@ export async function usableImages(db: Db, eventIds: readonly string[], now: Dat
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     if (isLibraryPhoto(r.asset_url as string)) continue
     usable.set(r.event_id as string, usableOf(r))
+  }
+  // D4 (the DemandOS directive, section 4): a night with no register photo takes the venue photo dealt to it, read
+  // through the one reader for the use 'social', so only a photo whose rights row permits social reaches a post. A
+  // failed read leaves those nights in type, never a post broken.
+  const rest = [...new Set(eventIds)].filter((id) => !usable.has(id))
+  if (rest.length > 0) {
+    try {
+      const covers = await eventCoversFor(rest, 'social', { rpc: (name, args) => db.rpc(name, args) as unknown as ReturnType<Parameters<typeof eventCoversFor>[2]['rpc']> })
+      for (const [eventId, photo] of covers) {
+        usable.set(eventId, {
+          url: photo.imageUrl,
+          // The card prints 'Photo: <credit>' itself.
+          credit: photo.credit.replace(/^Photo:\s*/i, ''),
+          assetId: `venue:${photo.imageUrl}`,
+          focal: null,
+          width: null,
+          height: null,
+        })
+      }
+    } catch (error) {
+      console.error('[social] the venue photos could not be read, those nights stay in type:', error instanceof Error ? error.message : error)
+    }
   }
   return usable
 }

@@ -306,9 +306,14 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }:
                 >
                   Sign in
                 </Link>
-                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
-                  Get Started
-                </Button>
+                {/* From 390 up only. Measured at 320 on live (31 October 2026): the bar needs 382 px with this
+                    button and 273 without, and the menu button is its last item, so below 390 it was pushed off
+                    the right edge and the menu could not be opened. Below 390 'Get Started' is in the menu sheet. */}
+                <div className="hidden min-[390px]:block">
+                  <Button href="/signup" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
+                    Get Started
+                  </Button>
+                </div>
               </>
             )}
 

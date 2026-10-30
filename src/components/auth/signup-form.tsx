@@ -391,7 +391,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
           </div>
         )}
 
-        <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
+        <label htmlFor="digestOptIn" className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
             // Both branches independently gave this checkbox an id and a name
             // (main as digest-opt-in, auth-hardening as digestOptIn) and the

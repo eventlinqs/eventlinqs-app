@@ -13,10 +13,8 @@ import { getCommunityRedirect } from '@/lib/communities/redirects'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSubCommunityPhoto } from '@/lib/images/sub-community-photo'
-import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CommunityLandingPage } from '@/components/templates/CommunityLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
-import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { getSiteUrl } from '@/lib/site-url'
@@ -99,12 +97,10 @@ export default async function CommunityPage({ params }: Props) {
 
   // Parallelise all image fetches: hero + 6 sub-communities + N cities + cta backdrop + related communities.
   const subCommunityKeys = community.subCommunities.map(sc => sc.slug)
-  const citySlugs = community.cities.map(citySlugify)
   const relatedSlugs = community.relatedCommunities
 
   const [
     heroImage,
-    cityCtaImage,
     ...rest
   ] = await Promise.all([
     // allowBundledFallback so the page hero always has a measurable LCP
@@ -112,9 +108,8 @@ export default async function CommunityPage({ params }: Props) {
     // Pexels outage in production). PhotographicCommunityHero's null branch
     // renders a CSS gradient only, which Lighthouse cannot score (NO_LCP).
     getCommunityHeroPhoto(community.slug, { allowBundledFallback: true }),
-    // Use the first city's hero (landscape) as the CTA backdrop. Falls back to null
-    // and the CTA panel renders its dark navy fallback.
-    citySlugs[0] ? getCityHeroPhoto(citySlugs[0]) : Promise.resolve(null),
+    // The organiser panel takes no city photo: a city's photo belongs to that city's own tile and page only, so the
+    // panel draws its navy treatment.
     ...community.subCommunities.map(sc => getSubCommunityPhoto(community.slug, sc.slug)),
     // The city tiles take no photo (CommunitiesByCityRail): each city's photo belongs to its own tile only.
     // Related-community tiles below the fold do not need the fallback - they
@@ -178,7 +173,7 @@ export default async function CommunityPage({ params }: Props) {
         heroImage={heroImage}
         liveEvents={liveEvents}
         subCommunityImages={subCommunityImages}
-        cityCtaImage={cityCtaImage}
+        cityCtaImage={null}
         relatedCommunityImages={relatedCommunityImages}
       />
     </>
