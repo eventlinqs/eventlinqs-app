@@ -4,6 +4,7 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { runAllChecks } from '@/lib/health/checks'
+import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
@@ -110,6 +111,16 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   })
 
   // Partner kits sent in the credit window, and the real taps on each kit's own link since (the blueprint's 4D).
+  // The four honest levels of the nights reported in the last 28 days, read from the kept night reports, never recounted.
+  const reported = await settle(async () => {
+    const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
+    const kept = await readEveryRow<{ figures: unknown }>('the night reports kept in the last 28 days', (from, to) =>
+      admin.from('organiser_night_reports').select('figures').gte('read_at', since).order('id', { ascending: true }).range(from, to),
+    )
+    const nights = kept.map((r) => nightFiguresFrom(r.figures))
+    return { levels: venueLevels(nights.filter((f) => f !== null).map(fourLevels)), unread: nights.filter((f) => f === null).length }
+  })
+
   const kits = await settle(async () => {
     const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
     const sent = await readEveryRow<{ id: string; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] }>('the partner kits sent', (from, to) =>
@@ -267,6 +278,11 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
           'value',
           'weekly',
         ),
+        ...(reported.ok
+          ? levelFigures(reported.value.levels).map((f, i) =>
+              i === 0 && reported.value.unread > 0 ? { ...f, note: `${reported.value.unread} kept report(s) in a shape these levels do not read, left out` } : f,
+            )
+          : levelFigures(venueLevels([])).map((f) => ({ ...f, note: reported.note }))),
       ],
       done: posted === null || posted === 0 ? [] : [`${count.format(posted)} ${posted === 1 ? 'piece' : 'pieces'} posted this week`],
     },
