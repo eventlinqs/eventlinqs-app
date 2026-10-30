@@ -10,7 +10,8 @@ const QUIET =
 
 /**
  * One held message in Lawal's daily queue: copy it, open where it goes in its own app, send it there by hand, then press
- * Sent (a plain server-action form, ./actions.ts markSentAction). Copying is the only thing done in the browser.
+ * Sent with the tick that their page says nothing against messages (a plain server-action form, ./actions.ts
+ * markSentAction). Copying is the only thing done in the browser.
  */
 export function DailyQueueItem({
   touchId,
@@ -48,8 +49,12 @@ export function DailyQueueItem({
       >
         {openLabel}
       </a>
-      <form action={action}>
+      <form action={action} className="flex w-full flex-wrap items-center gap-2">
         <input type="hidden" name="touch" value={touchId} />
+        <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-white/80">
+          <input type="checkbox" name="checked" required className="h-5 w-5 shrink-0" />
+          I opened their page and it says nothing against messages.
+        </label>
         <button type="submit" className={BUTTON}>
           Sent
         </button>
