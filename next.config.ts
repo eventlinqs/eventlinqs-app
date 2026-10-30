@@ -83,7 +83,8 @@ const CSP_REPORT_ONLY = [
   // through 'self' and needs nothing here.
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com" +
     SENTRY_PARITY_CONNECT_SRC,
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
+  // https://www.google.com: the event page map is Google's Maps Embed API iframe (car 21, 31 October 2026).
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com https://www.google.com",
   "worker-src 'self' blob:",
 ].join('; ')
 

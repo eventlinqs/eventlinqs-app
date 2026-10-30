@@ -16,6 +16,8 @@ import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
 import { EventGallery } from '@/components/features/events/event-gallery'
+import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
+import { GalleryImage } from '@/components/media/GalleryImage'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { parseGallery } from '@/lib/media/event-media-model'
@@ -196,6 +198,13 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
   const dates = guide.days.length > 0 ? guide.days.map((d) => d.date) : spanDates(event.start_date, event.end_date, event.timezone)
   const dayCount = dates.length
   const gallery = parseGallery(event.gallery_urls).filter((g) => g.url)
+  // THE EXPERIENCE HERO (the CONTROLLER's 31 October 09:47 (2), Lawal: show what was done before): with four or more
+  // of the event's OWN photos (its cover, never our typographic cover, a library shot or a venue photo, plus three or
+  // more of its gallery), a phone opens on the cover with the rest of the set beneath it, one credit for the set.
+  const heroMosaic =
+    Boolean(hero.image) && !heroIsTypographic({ image: hero.image ?? '' }) && !hero.credit && !isLibraryPhoto(event.cover_image_url) && gallery.length >= 3
+      ? gallery.slice(0, 4)
+      : []
   const directions = directionsHref(event)
   // The venue and its address, for the phone card when the guide says nothing
   // about getting there (one-venue-address-format).
@@ -313,9 +322,25 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />
                 ))}
             </div>
+            {heroMosaic.length > 0 && (
+              <div data-hero-mosaic className="mt-1 grid grid-cols-4 gap-1 lg:hidden">
+                {heroMosaic.map((g) => (
+                  <a key={g.url} href="#past-photos" className="relative block aspect-square overflow-hidden bg-ink-900">
+                    <GalleryImage src={g.url} alt={g.alt ?? ''} />
+                  </a>
+                ))}
+              </div>
+            )}
             {guide.cover_credit && (
               <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
-                Photo: {guide.cover_credit}
+                {heroMosaic.length > 0 ? (
+                  <>
+                    <span className="lg:hidden">Photos: {guide.cover_credit.replace(/\bfestival$/, 'festivals')}</span>
+                    <span className="hidden lg:inline">Photo: {guide.cover_credit}</span>
+                  </>
+                ) : (
+                  <>Photo: {guide.cover_credit}</>
+                )}
               </figcaption>
             )}
             {/* Lawal's ruling of 27 October 2026, 08:33: a listing night without its
@@ -474,11 +499,11 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {gallery.length > 0 && (
                 <Reveal as="section" className="flex flex-col gap-2 lg:gap-4">
                   {guide.photos_heading ? (
-                    <h2 data-text-source={source} className="type-rail-heading font-headline text-ink-900">
+                    <h2 id="past-photos" data-text-source={source} className="type-rail-heading scroll-mt-24 font-headline text-ink-900">
                       {guide.photos_heading}
                     </h2>
                   ) : (
-                    <h2 className="type-rail-heading font-headline text-ink-900">{FROM_PAST_EVENTS}</h2>
+                    <h2 id="past-photos" className="type-rail-heading scroll-mt-24 font-headline text-ink-900">{FROM_PAST_EVENTS}</h2>
                   )}
                   <EventGallery images={gallery} eventTitle={event.title} layout="walk-in" />
                   {guide.photo_credit && (
@@ -505,6 +530,18 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               {(event.venue_name || guide.getting_there || guide.access_notes) && (
                 <Reveal as="section" className="flex flex-col gap-2.5 lg:gap-4">
                   <h2 className="type-rail-heading font-headline text-ink-900">{GETTING_THERE_AND_ACCESS}</h2>
+                  {/* The map with its pin, the same component and facts as the ticketed page (Lawal 08:57 of 31 October
+                      2026: the AMCF page showed no map while Michael's did). */}
+                  <VenueMapLazy
+                    bare
+                    venueName={event.venue_name}
+                    address={event.venue_address}
+                    city={event.venue_city}
+                    state={event.venue_state}
+                    country={event.venue_country}
+                    latitude={event.venue_latitude}
+                    longitude={event.venue_longitude}
+                  />
                   {/* Phone: one card, the link under it (PhoneA). */}
                   <div className="rounded-[var(--radius-card)] bg-white p-4 text-sm leading-[1.6] text-ink-800 lg:hidden">
                     {[event.venue_name, guide.getting_there].filter(Boolean).length > 0 && (
