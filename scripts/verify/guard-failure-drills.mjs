@@ -303,6 +303,14 @@ const DRILLS = [
     replace: "  return priceLabel(tiers, 'Free entry', allIn)",
     expect: "writes 'Free entry' (E1's words)",
   },
+  {
+    name: "the event page's view event records 'Free' where no price is known again",
+    guard: `${GUARDS}/event-page-each-fact-once.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: "        priceRange={heroPriceLabel ?? 'Not stated'}",
+    replace: "        priceRange={priceLabel ?? 'Free'}",
+    expect: "falls back to 'Free' where no price is known",
+  },
   /*
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
    * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile

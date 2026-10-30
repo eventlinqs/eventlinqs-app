@@ -1163,7 +1163,7 @@ export default async function EventDetailPage({ params }: Props) {
         eventTitle={event.title}
         category={event.category?.name ?? 'Uncategorised'}
         venueCity={event.venue_city ?? 'Unknown'}
-        priceRange={priceLabel ?? 'Free'}
+        priceRange={heroPriceLabel ?? 'Not stated'}
         soldOut={isSoldOut}
       />
       <ShareViewBeacon />
