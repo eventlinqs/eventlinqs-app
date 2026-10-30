@@ -191,6 +191,7 @@
     "/dashboard/reports/gst": 228739,
     "/dashboard/tickets": 228739,
     "/dashboard/venues": 233873,
+    "/dashboard/venues/[id]/report": 229202,
     "/dashboard/venues/[id]/seat-maps": 270395,
     "/design/cards": 161870,
     "/dev/logo-preview": 156114,
