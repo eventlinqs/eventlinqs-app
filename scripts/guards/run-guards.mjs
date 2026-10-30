@@ -590,6 +590,9 @@
  *   event-page-each-fact-once  the event page states each fact once and promises a QR ticket,
  *                              our refund policy and the trust row only where EventLinqs
  *                              issues the ticket (the PROJECT MANAGER's 13:10, 30 October 2026)
+ *   event-page-one-spine       every event template draws hero, facts, map, getting there and
+ *                              organiser once, in that order, none behind an admission-state
+ *                              test (the CONTROLLER's 10:05, 31 October 2026)
  *   organiser-prose-one-rule  organiser and artist prose reaches a screen through
  *                              OrganiserProse or stripMarkdown and never raw, because
  *                              the first real outside organiser's bio shipped to
@@ -1927,6 +1930,10 @@ const GUARDS = [
   // refund and the ticket button twice, and an outside night promised a QR ticket, automatic refunds and our booking
   // fee. Each fact once, the ticket promised only where EventLinqs issues it. Drilled red on main 985be4de.
   'scripts/guards/event-page-each-fact-once.mjs',
+  // The CONTROLLER's 10:05 of 31 October 2026: Michael's ticketed page showed its map and the AMCF walk-in page showed
+  // none, because the two templates drifted. Every event template draws hero, facts, map, getting there and organiser
+  // once, in order, none behind an admission-state test. Drilled red on four clauses.
+  'scripts/guards/event-page-one-spine.mjs',
   'scripts/guards/organiser-prose-one-rule.mjs',
   // UX5: /admin/enrol-2fa told every new administrator to "scan the QR code"
   // and drew nothing to scan, so the real instruction was to type a 32
