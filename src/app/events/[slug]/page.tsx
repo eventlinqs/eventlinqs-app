@@ -111,6 +111,7 @@ import { eventPagePromises } from '@/lib/events/event-page-promises'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 import { ReportListingLink } from '@/components/events/report-listing-link'
+import { listingClaimable } from '@/lib/listings/claimable'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -422,6 +423,9 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
   availabilityAndAccessPromise.catch(() => {})
+  // The claim line at the foot (window 6's gap list, item 2), started here for the same reason as the two above.
+  const listingClaimsPromise = isFeatureEnabled('listing_claims')
+  listingClaimsPromise.catch(() => {})
   const event = await readEventForRoute(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
@@ -1108,6 +1112,9 @@ export default async function EventDetailPage({ params }: Props) {
   // An archived page is noindex and shown to a ticket holder only; it carries
   // no structured data because there is nothing for a search engine to list.
   const emitSchema = Boolean(event.organisation) && eventBannerState !== 'archived'
+  // The claim line shows exactly where the claim page would accept the claim (src/lib/listings/claimable.ts).
+  const claimLineShown =
+    (await listingClaimsPromise) && listingClaimable({ listingSource: event.listing_source, hasVenue: Boolean(event.venue_id) })
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -1858,7 +1865,10 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
             No cross-promotion of any other event renders here; discovery
             lives on the city and browse pages only. */}
-        <ReportListingLink slug={event.slug} />
+        <ReportListingLink
+          slug={event.slug}
+          claimable={claimLineShown}
+        />
       </main>
 
       <SiteFooter />
