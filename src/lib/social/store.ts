@@ -14,6 +14,7 @@ import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
+import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -54,7 +55,7 @@ export async function readCandidates(db: Db, now: Date): Promise<PlanCandidate[]
   const { data, error } = await applyPublicEventVisibility(
     db
       .from('events')
-      .select('id, title, start_date, end_date, status, visibility, venue_city, cover_image_url, ticket_tiers(total_capacity, sold_count, reserved_count, is_active), event_booking_links(availability)'),
+      .select('id, title, start_date, end_date, status, visibility, venue_city, venue_id, cover_image_url, ticket_tiers(total_capacity, sold_count, reserved_count, is_active), event_booking_links(availability)'),
     { now, includeExternal: true },
   )
     .gt('end_date', now.toISOString())
@@ -62,7 +63,12 @@ export async function readCandidates(db: Db, now: Date): Promise<PlanCandidate[]
     .order('start_date', { ascending: true })
     .limit(400)
   if (error) throw new Error(`the week's events could not be read: ${error.message}`)
-  return (data ?? []).map((e) => ({
+  /* D3 (6): the nights of a venue that said no to our posts are never candidates (a failed read throws). */
+  const leftOut = nightsLeftOut(
+    (data ?? []).map((e) => ({ eventId: e.id as string, venueId: (e.venue_id as string | null) ?? null })),
+    await venuesOff('our_posts', distributionDeps(db)),
+  )
+  return (data ?? []).filter((e) => !leftOut.has(e.id as string)).map((e) => ({
     eventId: e.id as string,
     title: e.title as string,
     startDate: e.start_date as string,
@@ -461,7 +467,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -551,6 +557,16 @@ export async function pieceDependencies(
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
   const byId = new Map((events ?? []).map((e) => [e.id as string, e as Record<string, unknown>]))
+
+  /* D3 (6): a night whose venue has since said no to our posts is refused; an unread answer refuses too. */
+  try {
+    const off = await venuesOff('our_posts', distributionDeps(db))
+    for (const id of nightsLeftOut([...byId.values()].map((e) => ({ eventId: e.id as string, venueId: (e.venue_id as string | null) ?? null })), off)) {
+      issues.push(`${String(byId.get(id)?.title)}: its venue has asked us not to carry its nights in our posts.`)
+    }
+  } catch (fault) {
+    issues.push(`The venues' answers on our posts could not be read: ${(fault as Error).message}.`)
+  }
 
   for (const id of ids) {
     const e = byId.get(id)
@@ -699,6 +715,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       cta,
       priceLine,
       venueAddress: (e.venue_address as string | null) ?? null,
+      venueId: (e.venue_id as string | null) ?? null,
       isAgeRestricted: (e.is_age_restricted as boolean | null) === true,
       ageMin: (e.age_restriction_min as number | null) ?? null,
     })
@@ -721,7 +738,11 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   const cities = await readCampaignCities(db)
   const nights = await readCampaignNights(db, cities, weekStart, now)
   const brand = await brandImage(db, now)
-  const excluded = await excludedFor(db, campaignId)
+  /* The founder's leave-outs, and D3 (6): the nights of a venue that said no to our posts (a failed read throws). */
+  const excluded = new Set([...(await excludedFor(db, campaignId)), ...nightsLeftOut(
+    nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
+    await venuesOff('our_posts', distributionDeps(db)),
+  )])
   const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   return { ...week, pieces: [...week.pieces, ...dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded })] }

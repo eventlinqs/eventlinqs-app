@@ -111,6 +111,8 @@ export type CampaignNight = {
   venueAddress?: string | null
   isAgeRestricted?: boolean
   ageMin?: number | null
+  /** events.venue_id: a venue that said no to our posts has its nights left out (D3 (6)). */
+  venueId?: string | null
 }
 
 /**

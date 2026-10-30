@@ -9,6 +9,8 @@ import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, Withdra
 import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
 import { AddVenuePhotoForm, ReplaceVenuePhotoForm, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
 import { venuePhotoStateWords } from '@/lib/venues/venue-photo-words'
+import { VenueDistributionForm } from '@/components/listings/venue-distribution-form'
+import { distributionDeps, venueDistributionFor, type VenueDistribution } from '@/lib/venues/venue-distribution'
 
 /**
  * YOUR PHOTOS AND ARTWORK (the engine plan of 28 October 2026, part D; the final directive, section 15: "Upload artwork
@@ -108,6 +110,15 @@ export default async function OrganisationMediaPage({
         },
       )
     : []
+  // D3 (6), where EventLinqs may carry each held venue's nights; a failed read takes only that section away, said
+  // plainly (the table arrives with 20261031033001_venue_distribution_preferences.sql).
+  let distribution: Map<string, VenueDistribution> | null = null
+  if (heldVenues.length) {
+    distribution = await venueDistributionFor(
+      heldVenues.map((v) => v.id),
+      distributionDeps(admin),
+    ).catch(() => null)
+  }
   const venueName = new Map(heldVenues.map((v) => [v.id, v.name]))
   const claimName = new Map<string, string>([
     ...(claimedVenues ?? []).map((v) => [v.id, v.name] as [string, string]),
@@ -281,6 +292,26 @@ export default async function OrganisationMediaPage({
           {venuePhotosUnreadable ? null : (
             <div className="mt-4">
               <AddVenuePhotoForm venues={heldVenues.map((v) => ({ id: v.id, name: v.name }))} />
+            </div>
+          )}
+        </section>
+      ) : null}
+      {heldVenues.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="venue-sharing-heading">
+          <h2 id="venue-sharing-heading" className="text-lg font-semibold text-ink-900">
+            Where we share your nights
+          </h2>
+          <p className="mt-1 text-sm text-ink-600">
+            Your venue page and your event pages stay on EventLinqs either way. These two choices are about our own posts and our weekly round-up.
+          </p>
+          {distribution === null ? (
+            <p className="mt-3 text-sm text-ink-600">Your sharing choices could not be read just now, so none can be changed here yet. Try again later.</p>
+          ) : (
+            <div className="mt-4 space-y-6">
+              {heldVenues.map((v) => {
+                const said = distribution?.get(v.id)
+                return <VenueDistributionForm key={v.id} venue={{ id: v.id, name: v.name }} ourPosts={said?.ourPosts ?? true} weeklyRoundup={said?.weeklyRoundup ?? true} />
+              })}
             </div>
           )}
         </section>
