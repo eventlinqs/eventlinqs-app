@@ -15,7 +15,9 @@
 -- refuse anyone who is not one of the claimed venue's own people (public.venue_image_manager, the venue media rule).
 --
 -- Additive: one new table, granted in this file (the 21 October 2026 grant rule), and three definer functions the
--- service role alone may call. Nothing existing is altered.
+-- service role alone may call. One grant on an existing function: D3 (3), a venue giving its own calendar
+-- (src/lib/venues/venue-calendar.ts), asks public.venue_image_manager as the service role, so the database keeps
+-- deciding who may act for a venue; nothing else existing is altered.
 
 create table if not exists public.venue_distribution_preferences (
   venue_id uuid primary key references public.venues (id) on delete cascade,
@@ -88,3 +90,6 @@ revoke all on function public.venue_distribution_off(text) from public, anon, au
 grant execute on function public.venue_distribution_set(uuid, uuid, boolean, boolean) to service_role;
 grant execute on function public.venue_distribution_for(uuid[]) to service_role;
 grant execute on function public.venue_distribution_off(text) to service_role;
+
+-- D3 (3): the server asks who may act for a venue, the same rule the venue media writers use.
+grant execute on function public.venue_image_manager(uuid, uuid) to service_role;

@@ -32,8 +32,10 @@ BEGIN
        AND NOT has_function_privilege('authenticated', 'public.venue_distribution_off(text)', 'execute')
        AND has_function_privilege('service_role', 'public.venue_distribution_set(uuid, uuid, boolean, boolean)', 'execute')
        AND has_function_privilege('service_role', 'public.venue_distribution_for(uuid[])', 'execute')
-       AND has_function_privilege('service_role', 'public.venue_distribution_off(text)', 'execute') THEN
-      v_out := v_out || ' | D1 only the service role reads the answers and calls the functions: PASS';
+       AND has_function_privilege('service_role', 'public.venue_distribution_off(text)', 'execute')
+       AND has_function_privilege('service_role', 'public.venue_image_manager(uuid, uuid)', 'execute')
+       AND NOT has_function_privilege('authenticated', 'public.venue_image_manager(uuid, uuid)', 'execute') THEN
+      v_out := v_out || ' | D1 only the service role reads the answers and calls the functions, the venue check included: PASS';
     ELSE v_out := v_out || ' | D1 grants: FAIL'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | D1 grants: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 

@@ -10,6 +10,7 @@ import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words
 import { AddVenuePhotoForm, ReplaceVenuePhotoForm, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
 import { venuePhotoStateWords } from '@/lib/venues/venue-photo-words'
 import { VenueDistributionForm } from '@/components/listings/venue-distribution-form'
+import { GiveVenueCalendarForm, StopVenueCalendarForm } from '@/components/listings/venue-calendar-forms'
 import { distributionDeps, venueDistributionFor, type VenueDistribution } from '@/lib/venues/venue-distribution'
 
 /**
@@ -119,6 +120,24 @@ export default async function OrganisationMediaPage({
       distributionDeps(admin),
     ).catch(() => null)
   }
+  // D3 (3), each held venue's own calendar we read, and the kinds of nights a new one may hold; a failed read takes
+  // only that section away, said plainly.
+  const calendars = heldVenues.length
+    ? await Promise.all([
+        readOrThrow('venue calendars', () =>
+          admin
+            .from('listing_sources')
+            .select('id, venue_id, page_url, terms_read_on')
+            .in('venue_id', heldVenues.map((v) => v.id))
+            .eq('source_type', 'venue_partnership')
+            .eq('collection', 'read'),
+        ),
+        readOrThrow('event categories', () => admin.from('event_categories').select('id, name').order('name')),
+      ]).then(
+        ([live, kinds]) => ({ live: live ?? [], kinds: kinds ?? [] }),
+        () => null,
+      )
+    : null
   const venueName = new Map(heldVenues.map((v) => [v.id, v.name]))
   const claimName = new Map<string, string>([
     ...(claimedVenues ?? []).map((v) => [v.id, v.name] as [string, string]),
@@ -293,6 +312,44 @@ export default async function OrganisationMediaPage({
             <div className="mt-4">
               <AddVenuePhotoForm venues={heldVenues.map((v) => ({ id: v.id, name: v.name }))} />
             </div>
+          )}
+        </section>
+      ) : null}
+      {heldVenues.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="venue-calendar-heading">
+          <h2 id="venue-calendar-heading" className="text-lg font-semibold text-ink-900">
+            Your events calendar
+          </h2>
+          <p className="mt-1 text-sm text-ink-600">
+            Give us your calendar&apos;s iCal address and we list your new nights every day, each with a link to book with you. You keep your own ticketing.
+          </p>
+          {calendars === null ? (
+            <p className="mt-3 text-sm text-ink-600">Your calendar could not be read just now, so none can be given here yet. Try again later.</p>
+          ) : (
+            <>
+              {calendars.live.length > 0 ? (
+                <ul className="mt-4 space-y-4">
+                  {calendars.live.map((c) => (
+                    <li key={c.id} data-venue-calendar={c.id} className="text-sm text-ink-600">
+                      <p className="font-semibold text-ink-900">{venueName.get(c.venue_id ?? '') ?? 'Your venue'}</p>
+                      <p className="mt-1 break-all">{c.page_url}</p>
+                      <p className="mt-1">Read every day since {c.terms_read_on}.</p>
+                      <div className="mt-2">
+                        <StopVenueCalendarForm sourceId={c.id} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {heldVenues.some((v) => !calendars.live.some((c) => c.venue_id === v.id)) ? (
+                <div className="mt-4">
+                  <GiveVenueCalendarForm
+                    venues={heldVenues.filter((v) => !calendars.live.some((c) => c.venue_id === v.id)).map((v) => ({ id: v.id, name: v.name }))}
+                    categories={calendars.kinds.map((k) => ({ id: k.id, name: k.name }))}
+                  />
+                </div>
+              ) : null}
+            </>
           )}
         </section>
       ) : null}
