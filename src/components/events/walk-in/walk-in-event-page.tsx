@@ -202,7 +202,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
   // of the event's OWN photos (its cover, never our typographic cover, a library shot or a venue photo, plus three or
   // more of its gallery), a phone opens on the cover with the rest of the set beneath it, one credit for the set.
   const heroMosaic =
-    Boolean(hero.image) && !heroIsTypographic({ image: hero.image }) && !hero.credit && !isLibraryPhoto(event.cover_image_url) && gallery.length >= 3
+    Boolean(hero.image) && !heroIsTypographic({ image: hero.image ?? '' }) && !hero.credit && !isLibraryPhoto(event.cover_image_url) && gallery.length >= 3
       ? gallery.slice(0, 4)
       : []
   const directions = directionsHref(event)
