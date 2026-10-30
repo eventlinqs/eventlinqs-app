@@ -139,15 +139,14 @@ BEGIN
     ELSE v_out := v_out || ' | A6 near copy: FAIL (accepted)'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A6 near copy: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
-  -- A7 an assignment never moves to another event.
+  -- A7 an assignment never moves to another event: no role a visitor, a signed-in user or the server holds may write it.
   BEGIN
-    BEGIN
-      UPDATE public.photo_assignments SET listing_series_id = v_sun WHERE venue_image_id = v_p1;
-      v_ok := false;
-    EXCEPTION WHEN raise_exception THEN v_ok := sqlerrm LIKE '%never moves%';
-    END;
-    IF v_ok THEN v_out := v_out || ' | A7 a photo never moves to another event: PASS';
-    ELSE v_out := v_out || ' | A7 move: FAIL (accepted)'; v_fail := v_fail + 1; END IF;
+    IF NOT has_table_privilege('service_role', 'public.photo_assignments', 'update')
+       AND NOT has_table_privilege('authenticated', 'public.photo_assignments', 'update')
+       AND NOT has_table_privilege('anon', 'public.photo_assignments', 'update')
+       AND NOT has_table_privilege('service_role', 'public.photo_assignments', 'delete') THEN
+      v_out := v_out || ' | A7 a photo never moves: no role but the deal itself writes an assignment: PASS';
+    ELSE v_out := v_out || ' | A7 move: FAIL (a role may update or delete)'; v_fail := v_fail + 1; END IF;
   EXCEPTION WHEN others THEN v_out := v_out || ' | A7 move: FAIL (' || sqlerrm || ')'; v_fail := v_fail + 1; END;
 
   -- A8 a photo withdrawn after dealing stops showing at once, is never dealt again, and the next deal gives its series

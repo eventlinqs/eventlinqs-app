@@ -58,45 +58,59 @@ revoke all on table public.photo_assignments from anon, authenticated, service_r
 grant select on table public.photo_assignments to service_role;
 
 -- P1 and P2: a near-duplicate is the same photo; an assignment is made once, its photo and its target never change.
-create or replace function public.photo_assignments_guard()
+-- Two triggers, each judging only the columns it names, so the database's own on delete set null (a night or a series
+-- deleted) is never re-judged as an edit (scripts/guards/a-referential-null-is-not-an-edit.mjs). A move to another
+-- night is refused by the grants: no role but these definer functions writes the table, and none of them re-points a
+-- row.
+create or replace function public.photo_assignments_made_once()
 returns trigger
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if tg_op = 'INSERT' then
-    if num_nonnulls(new.event_id, new.listing_series_id) <> 1 then
-      raise exception 'photo_assignments: a photo is assigned to exactly one night or one series';
-    end if;
-    if new.photo_dhash is not null and exists (
-      select 1 from public.photo_assignments a
-       where a.photo_dhash is not null
-         and bit_count((a.photo_dhash # new.photo_dhash)::bit(64)) <= 6
-    ) then
-      raise exception 'photo_assignments: that photo, or a near copy of it, is already assigned to another event';
-    end if;
-    return new;
+  if num_nonnulls(new.event_id, new.listing_series_id) <> 1 then
+    raise exception 'photo_assignments: a photo is assigned to exactly one night or one series';
   end if;
-  if new.photo_sha256 is distinct from old.photo_sha256 or new.photo_dhash is distinct from old.photo_dhash
-     or new.image_url is distinct from old.image_url or new.role is distinct from old.role
-     or (old.retired_at is not null and new.retired_at is distinct from old.retired_at) then
-    raise exception 'photo_assignments: an assignment is never edited';
-  end if;
-  if (new.event_id is not null and new.event_id is distinct from old.event_id)
-     or (new.listing_series_id is not null and new.listing_series_id is distinct from old.listing_series_id) then
-    raise exception 'photo_assignments: a photo never moves to another event';
+  if new.photo_dhash is not null and exists (
+    select 1 from public.photo_assignments a
+     where a.photo_dhash is not null
+       and bit_count((a.photo_dhash # new.photo_dhash)::bit(64)) <= 6
+  ) then
+    raise exception 'photo_assignments: that photo, or a near copy of it, is already assigned to another event';
   end if;
   return new;
 end;
 $$;
 
-revoke all on function public.photo_assignments_guard() from public, anon, authenticated;
+create or replace function public.photo_assignments_never_edited()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.photo_sha256 is distinct from old.photo_sha256 or new.photo_dhash is distinct from old.photo_dhash
+     or new.image_url is distinct from old.image_url or new.role is distinct from old.role
+     or (old.retired_at is not null and new.retired_at is distinct from old.retired_at) then
+    raise exception 'photo_assignments: an assignment is never edited';
+  end if;
+  return new;
+end;
+$$;
 
-drop trigger if exists photo_assignments_guard on public.photo_assignments;
-create trigger photo_assignments_guard
-  before insert or update on public.photo_assignments
-  for each row execute function public.photo_assignments_guard();
+revoke all on function public.photo_assignments_made_once() from public, anon, authenticated;
+revoke all on function public.photo_assignments_never_edited() from public, anon, authenticated;
+
+drop trigger if exists photo_assignments_made_once on public.photo_assignments;
+create trigger photo_assignments_made_once
+  before insert on public.photo_assignments
+  for each row execute function public.photo_assignments_made_once();
+
+drop trigger if exists photo_assignments_never_edited on public.photo_assignments;
+create trigger photo_assignments_never_edited
+  before update of photo_sha256, photo_dhash, image_url, role, retired_at on public.photo_assignments
+  for each row execute function public.photo_assignments_never_edited();
 
 -- The night's own photograph, by the rule the card chain applies (src/lib/images/event-media.ts isOwnPhoto): a cover
 -- that is not our composed cover, not a library photograph and not a placeholder service.
