@@ -25,6 +25,8 @@ export function VenueGooglePhoto({ venueId, venueName }: { venueId: string; venu
       .then((j: { photo?: Photo | null } | null) => {
         if (live && j?.photo) setPhoto(j.photo)
       })
+      // A failed or refused look (no key, the day's quota reached, Google down) leaves the section as it was: no photo
+      // is the honest answer, and the route has already said why in its own response.
       .catch(() => {})
     return () => {
       live = false
