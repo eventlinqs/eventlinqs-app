@@ -55,7 +55,7 @@ export type MessageFacts = {
  * greeting on the first line, always).
  */
 const GREETING = 'Hi there,'
-const LETTER_P = 'margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;'
+const LETTER_P = 'margin:16px 0 20px;font-size:15px;line-height:1.6;color:#374151;'
 
 export type ComposedMessage = {
   subject: string

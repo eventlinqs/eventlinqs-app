@@ -103,7 +103,7 @@ export function claimEmail(input: { hostName: string; claimantName: string; clai
     '<html lang="en-AU"><body style="margin:0;background:#FAFAF7;">',
     '  <div style="font-family:Manrope,Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">',
     '    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>',
-    `    ${greetingHtml(null, p)}`,
+    `    ${greetingHtml(null, `margin:16px 0 8px;font-size:15px;line-height:1.6;color:#1A1A1A;`)}`,
     `    <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">Your code for ${escapeHtml(input.hostName)}</h1>`,
     `    <p style="${p}">${escapeHtml(input.claimantName)} (${escapeHtml(input.claimantRole)}) asked to manage ${escapeHtml(input.hostName)} on EventLinqs.</p>`,
     `    <p style="${p}">Their code is <strong style="font-size:22px;letter-spacing:.12em;color:#0A1628;">${escapeHtml(input.code)}</strong>. It works for ${CODE_MINUTES} minutes.</p>`,

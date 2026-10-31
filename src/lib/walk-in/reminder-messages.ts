@@ -123,7 +123,7 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
 <html lang="en-AU"><body style="margin:0;background:#FAFAF7;">
   <div style="font-family:Manrope,Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>
-    ${greetingHtml(null)}
+    ${greetingHtml(null, 'margin:16px 0 16px;font-size:16px;line-height:1.5;color:#0A1628;')}
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#1A1A1A;">${escapeHtml(lead)}</p>
     ${isCalledOff ? '' : `<p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#6F5409;">${escapeHtml(FREE_ENTRY_NO_TICKET_NEEDED)}</p>`}
