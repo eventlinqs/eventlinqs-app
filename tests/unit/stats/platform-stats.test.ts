@@ -28,7 +28,12 @@ const NOW = new Date('2026-10-31T10:00:00.000Z')
 function ceilingClient(
   rows: PlatformStatsRow[],
   opts: { ceiling?: number; failOnCall?: number } = {},
-): StatsReadClient & { calls: Array<{ from: number; to: number }>; orderedBy: string[] } {
+): StatsReadClient & {
+  calls: Array<{ from: number; to: number }>
+  orderedBy: string[]
+  matched: unknown[]
+  windows: string[]
+} {
   const ceiling = opts.ceiling ?? 1000
   const calls: Array<{ from: number; to: number }> = []
   const orderedBy: string[] = []
