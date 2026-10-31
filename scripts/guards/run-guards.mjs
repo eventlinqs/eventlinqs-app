@@ -663,6 +663,9 @@
  *   one-photo-one-event        every photo is assigned to one event: the hash unique on its own,
  *                              a near copy refused, one reader picks a night's photo, one video
  *                              link per event, and the rows agree (31 October 2026)
+ *   no-filler-in-event-collections  no public collection draws an invitation or any card
+ *                              made from a count, and an empty rail is hidden
+ *                              (31 October 2026, Lawal's emergency correction)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2030,6 +2033,10 @@ const GUARDS = [
   // every cover rule refuses one, the home hero leads only with a night with its own photograph, and the city week
   // card draws no backdrop. Drilled red on three clauses.
   'scripts/guards/no-library-photo-on-a-night.mjs',
+  // 31 October 2026, Lawal 17:44 (the CONTROLLER's 17:55 order 1): 'Open slot' invitation cards filled the home rails,
+  // the /events popular rail and the venues rail on production. A public collection draws real events only and an empty
+  // rail is hidden. Drilled red on car 26's tree.
+  'scripts/guards/no-filler-in-event-collections.mjs',
   // 29 October 2026, Lawal 22:17: every community and category tile on a stored photograph (the spine, a bundled
   // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
   // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.
