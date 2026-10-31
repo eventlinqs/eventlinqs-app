@@ -35,7 +35,8 @@ import { buildEmail as buildPayoutEmail } from '@/lib/payouts/email'
 
 type Rendered = { html?: string | null; text?: string | null }
 const NAMED = 'Amara Okafor'
-const URL = 'https://staging.eventlinqs.com/x'
+// Production-shaped links: the voice gate judges every EventLinqs link against https://www.eventlinqs.com.au.
+const URL = 'https://www.eventlinqs.com.au/x'
 
 const refundProps = {
   buyerName: NAMED,
@@ -89,7 +90,7 @@ const RENDERS: Record<string, Record<string, () => Rendered>> = {
       buildDigestEmailHtml({
         cityName: 'Geelong',
         events: [{ title: 'Jazz Night', dateLabel: 'Fri 6 Nov, 8pm', venueLabel: 'The Barwon Club', priceLabel: 'Free entry', url: URL }] as never,
-        origin: 'https://staging.eventlinqs.com',
+        origin: 'https://www.eventlinqs.com.au',
         unsubscribeUrl: URL,
       }),
   },
@@ -133,7 +134,7 @@ const RENDERS: Record<string, Record<string, () => Rendered>> = {
       () =>
         buildReminderEmail({
           kind,
-          origin: 'https://staging.eventlinqs.com',
+          origin: 'https://www.eventlinqs.com.au',
           token: 'tok',
           event: { title: 'Kaze Karaoke', slug: 'kaze', venueName: 'Kaze', venueCity: 'Geelong', directionsUrl: URL },
           organiserName: 'Kaze',
