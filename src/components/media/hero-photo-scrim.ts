@@ -70,7 +70,7 @@ const NAVY = '10,22,40'
  * full strength by the first line of text rather than at it. A length, never a
  * percentage: that is what makes the promise below independent of layout.
  */
-export const HERO_CAPTION_FADE = '2.75rem'
+export const HERO_CAPTION_FADE = '9rem'
 
 /**
  * The floor the caption wash holds from the caption's top edge downward.
@@ -91,14 +91,20 @@ export const HERO_CAPTION_BASE_ALPHA = 0.9
  * short of the base it claims to reach. Both ends of this ramp are absolute, so
  * the whole curve is complete within the caption whatever the element's height.
  */
-export const HERO_CAPTION_DEEPEN = '14rem'
+export const HERO_CAPTION_DEEPEN = '20.25rem'
 
 /**
  * The caption wash. Anchored to the text: transparent above it, at
  * `HERO_CAPTION_MIN_ALPHA` by its first line, settling to the base below.
  */
+/*
+ * EASED, NOT STEPPED (the CONTROLLER's 21:00 of 31 October 2026 (3c), seen at 390 on the live home: a hard band across
+ * the photograph where the wash began). It rose from nothing to 0.82 inside 2.75rem, which reads as an edge. It now
+ * rises over 9rem with two easing stops, so the photograph darkens gradually, and still holds 0.82 from the caption's
+ * first line down: the contrast promise below is unchanged. DEEPEN moved with it, to the same 11.25rem below the text.
+ */
 export const HERO_CAPTION_SCRIM =
-  `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_CAPTION_FADE}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) ${HERO_CAPTION_DEEPEN})`
+  `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},0.18) calc(${HERO_CAPTION_FADE} * 0.4), rgba(${NAVY},0.55) calc(${HERO_CAPTION_FADE} * 0.72), rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_CAPTION_FADE}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) ${HERO_CAPTION_DEEPEN})`
 
 /**
  * The header wash. Top-anchored, so the transparent header's white nav clears a

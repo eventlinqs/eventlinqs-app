@@ -108,6 +108,20 @@ describe('the hero caption wash', () => {
     }
     expect(HERO_CAPTION_SCRIM).not.toMatch(/\d%/)
   })
+
+  it('eases in, never a hard band: no part of the wash rises faster than 0.15 of opacity per rem', () => {
+    // The CONTROLLER's 21:00 of 31 October 2026 (3c), seen at 390 on the live home: the wash rose from nothing to 0.82
+    // inside 2.75rem (0.30 per rem) and drew a hard band across the photograph. Each stop is read as (alpha, rem).
+    const stops = [...HERO_CAPTION_SCRIM.matchAll(/rgba\(10,22,40,([\d.]+)\) (0|calc\(([\d.]+)rem \* ([\d.]+)\)|([\d.]+)rem)/g)].map((m) => ({
+      alpha: Number(m[1]),
+      at: m[2] === '0' ? 0 : m[3] ? Number(m[3]) * Number(m[4]) : Number(m[5]),
+    }))
+    expect(stops.length).toBeGreaterThanOrEqual(4)
+    for (let i = 1; i < stops.length; i++) {
+      const rise = (stops[i].alpha - stops[i - 1].alpha) / (stops[i].at - stops[i - 1].at)
+      expect(rise, `between ${stops[i - 1].at}rem and ${stops[i].at}rem`).toBeLessThanOrEqual(0.15)
+    }
+  })
 })
 
 describe('the hero header wash', () => {
