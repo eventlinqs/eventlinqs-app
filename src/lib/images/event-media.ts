@@ -242,7 +242,9 @@ const HERO_RASTER_SLUGS = new Set([
 // they LEAD the variety pool and are the default. A featured slide with no real
 // cover, and every category-highlight padding slide, now wears the founder's
 // premium photography rather than a generic Pexels category shot.
-const HOMEPAGE_HERO_RASTERS = ['homepage-day-festival', 'homepage-festival-night', 'homepage-rooftop']
+// homepage-rooftop left the pool on 31 October 2026: it is the home page's Communities doorway photograph now, and one
+// page never shows a photo twice (tiles-on-stored-photos clause 9).
+const HOMEPAGE_HERO_RASTERS = ['homepage-day-festival', 'homepage-festival-night']
 
 // LCP law (docs/MEDIA-ARCHITECTURE.md §5; comment below): the homepage hero
 // raster MUST be a LOCAL bundled AVIF for direct CDN delivery - routing it
