@@ -21,6 +21,9 @@
  *   - every message action names lawal@eventlinqs.com as its sender.
  */
 
+import type { AcquisitionState } from './acquisition-states'
+import { addressRank } from './planner'
+
 export const DAILY_TWENTY_SENDER = 'lawal@eventlinqs.com'
 
 /** The four groups, in the checklist's order; the order is also the priority when one organiser is in two. */
@@ -139,4 +142,79 @@ export function buildDailyTwenty(candidates: readonly DailyCandidate[]): DailyTw
   const byName = (a: { organiserName: string; organiserId: string }, b: { organiserName: string; organiserId: string }) =>
     a.organiserName.localeCompare(b.organiserName) || a.organiserId.localeCompare(b.organiserId)
   return { groups, socialFirstTouches: socialFirstTouches.sort(byName), research: research.sort(byName), duplicatesDropped }
+}
+
+/**
+ * THE GROUP AN ORGANISER IS IN TODAY, from the acquisition state the database keeps on each organiser (20261030034001,
+ * its order and words in ./acquisition-states.ts). Window 6's reading of the checklist's four groups, written once here:
+ *   conversion                 qualified by a night in the next 90 days and not yet written to (qualified, lawful basis
+ *                              recorded, or ready in a play): the first ask;
+ *   follow_up                  written to, with the cadence's next step due today or earlier (outreach_pipeline's
+ *                              next_due_on), or a conversation open (replied with interest, invited to claim);
+ *   recurring                  organisers whose nights run with us (active, recurring);
+ *   partnership_reactivation   claimed partners (verified, said yes to their material) and the expired (no reply after
+ *                              three messages; the database refuses a fourth message to a contact, so the reader
+ *                              marks every contact of theirs EXPIRED_REFUSAL and they become a social first touch or
+ *                              research, never a message).
+ * A stop, a no, an open removal request, a take down, or no night ahead (discovered) is never in the day.
+ */
+export function groupOf(state: AcquisitionState, nextDueOn: string | null, today: string): DailyGroup | null {
+  switch (state) {
+    case 'qualified':
+    case 'eligibility_checked':
+    case 'ready':
+      return 'conversion'
+    case 'contacted':
+      return nextDueOn !== null && nextDueOn <= today ? 'follow_up' : null
+    case 'engaged':
+    case 'claim_invited':
+      return 'follow_up'
+    case 'active':
+    case 'recurring':
+      return 'recurring'
+    case 'verified':
+    case 'media_approved':
+    case 'expired':
+      return 'partnership_reactivation'
+    case 'discovered':
+    case 'suppressed':
+    case 'rejected':
+    case 'disputed':
+    case 'withdrawn':
+      return null
+  }
+}
+
+export interface StoredContact {
+  readonly id: string
+  readonly channel: string
+  readonly address: string
+  readonly personName: string | null
+  /** outreach_contact_refusal's answer for this contact now: null when it may be written to. */
+  readonly refusal: string | null
+}
+
+/** Why an expired organiser's contacts are not written to again (outreach_touch_is_lawful refuses a fourth step). */
+export const EXPIRED_REFUSAL = 'three messages sent with no reply; a fourth is refused'
+
+const CHANNEL_ORDER = ['email', 'website_form', 'instagram', 'facebook']
+
+/**
+ * The contact an organiser's action goes to: the contact a running conversation is on, while it may still be written to;
+ * else an eligible email (a named person first, then a bookings address, then a general inbox, planner's addressRank),
+ * else another eligible message channel; with none eligible, the best one with the database's refusal, so the day says
+ * why it became a social first touch or research.
+ */
+export function contactFor(contacts: readonly StoredContact[], conversationContactId: string | null): DailyContact | null {
+  const as = (c: StoredContact): DailyContact => ({ channel: c.channel, address: c.address, eligible: c.refusal === null, refusal: c.refusal })
+  const running = contacts.find((c) => c.id === conversationContactId && c.refusal === null)
+  if (running) return as(running)
+  const ranked = [...contacts].sort((a, b) => {
+    const ca = CHANNEL_ORDER.indexOf(a.channel), cb = CHANNEL_ORDER.indexOf(b.channel)
+    return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb) ||
+      (a.channel === 'email' && b.channel === 'email' ? addressRank(a.address, a.personName) - addressRank(b.address, b.personName) : 0) ||
+      a.address.localeCompare(b.address)
+  })
+  const best = ranked.find((c) => c.refusal === null) ?? ranked[0]
+  return best ? as(best) : null
 }
