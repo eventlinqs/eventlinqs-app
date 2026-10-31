@@ -1893,6 +1893,7 @@ export default async function EventDetailPage({ params }: Props) {
             lives on the city and browse pages only. */}
         <ReportListingLink
           slug={event.slug}
+          listingSource={event.listing_source}
           claimable={claimLineShown}
         />
       </main>

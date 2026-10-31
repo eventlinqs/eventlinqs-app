@@ -2,10 +2,10 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
-import { escapeHtml } from '@/lib/email/escape'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { captureException } from '@/lib/observability/sentry'
 import { resolveOrganisationOwnerEmail } from './organiser-recipient'
+import { renderNotice } from '@/lib/email/notice'
 import { readOrThrow, ReadFailed } from '@/lib/supabase/read-or-throw'
 
 /**
@@ -132,20 +132,17 @@ async function orderAndTitle(
   }
 }
 
-/** The shared shell. Australian English, no dashes of any kind, no exclamation marks. */
-function wrap(title: string, lines: string[], cta?: { label: string; url: string }): { html: string; text: string } {
-  const body = lines.filter(Boolean)
-  const html = [
-    '<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0A1628">',
-    `<h1 style="font-size:20px;line-height:1.3;margin:0 0 16px">${escapeHtml(title)}</h1>`,
-    ...body.map(l => `<p style="font-size:15px;line-height:1.55;margin:0 0 12px">${escapeHtml(l)}</p>`),
-    cta
-      ? `<p style="margin:24px 0"><a href="${cta.url}" style="background:#0A1628;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${escapeHtml(cta.label)}</a></p>`
-      : '',
-    '</div>',
-  ].join('')
-  const text = [title, '', ...body, cta ? `${cta.label}: ${cta.url}` : ''].filter(Boolean).join('\n\n')
-  return { html, text }
+/**
+ * The shared shell. Australian English, no dashes of any kind, no exclamation marks. A letter: it greets the
+ * owner by first name and signs off (src/lib/email/notice.ts); exported so the letter test renders it.
+ */
+export function wrap(
+  firstName: string | null,
+  title: string,
+  lines: string[],
+  cta?: { label: string; url: string },
+): { html: string; text: string } {
+  return renderNotice({ name: firstName, title, lines: lines.filter(Boolean), cta })
 }
 
 const origin = () => getSiteUrl().replace(/\/$/, '')
@@ -181,6 +178,7 @@ export async function notifyOrganiserOfCompletedRefund(
     const tickets = `${input.ticketCount} ticket${input.ticketCount === 1 ? '' : 's'}`
 
     const { html, text } = wrap(
+      recipient.firstName,
       'A refund has settled on your event',
       [
         `${amount} has been refunded to a buyer on ${eventTitle}, order ${subject.orderNumber ?? ''}.`,
@@ -246,6 +244,7 @@ export async function notifyOrganiserOfDispute(
     const amount = formatMoneyDisplay(input.disputeAmountCents, input.currency)
 
     const { html, text } = wrap(
+      recipient.firstName,
       'Urgent: a chargeback has been opened on your event',
       [
         `A buyer's bank has disputed ${amount} on ${eventTitle}, order ${subject.orderNumber ?? ''}.`,
@@ -342,6 +341,7 @@ export async function notifyOrganiserOfPaymentSetupProblem(
         : 'receive payouts'
 
     const { html, text } = wrap(
+      recipient.firstName,
       'Your payment setup needs attention',
       [
         `Stripe has told us that ${recipient.organisationName} can no longer ${what}.`,
@@ -425,6 +425,7 @@ export async function notifyOrganiserRefundDidNotComplete(
     const amount = formatMoneyDisplay(input.amountCents, input.currency)
 
     const { html, text } = wrap(
+      recipient.firstName,
       'A refund on your event did not reach the buyer',
       [
         `A refund of ${amount} on ${eventTitle}, order ${subject.orderNumber ?? ''}, failed at the buyer's bank. The money came back to us and the buyer does not have it.`,

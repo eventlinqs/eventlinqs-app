@@ -2,6 +2,7 @@ import { refundArrivalSentence } from './arrival-timeframe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
+import { greetingHtml, greetingLine, signOffHtml, signOffText } from '@/lib/email/letter'
 
 /**
  * REFUND CORRESPONDENCE.
@@ -70,20 +71,36 @@ async function loadRequest(admin: SupabaseClient, requestId: string) {
     .select('ticket_id', { count: 'exact', head: true })
     .eq('request_id', requestId)
 
-  return { req: req as RequestRow, order, event, org, ticketCount: count ?? 0 }
+  // The owner's name, for the organiser letter's greeting; none held gives 'Hi there,'.
+  const { data: owner } = org?.owner_id
+    ? await admin.from('profiles').select('full_name, display_name').eq('id', org.owner_id).maybeSingle()
+    : { data: null }
+  const ownerName = (owner?.full_name as string | null) ?? (owner?.display_name as string | null) ?? null
+
+  return { req: req as RequestRow, order, event, org, ownerName, ticketCount: count ?? 0 }
 }
 
 const money = (cents: number | null | undefined, currency = 'AUD') =>
   `${currency} $${((cents ?? 0) / 100).toFixed(2)}`
 
-/** Plain-text body plus a minimal HTML twin. No images, no tracking. */
-function wrap(title: string, lines: string[], cta?: { label: string; url: string }): { html: string; text: string } {
-  const text = [title, '', ...lines, ...(cta ? ['', `${cta.label}: ${cta.url}`] : [])].join('\n')
+/**
+ * Plain-text body plus a minimal HTML twin. No images, no tracking. A letter (src/lib/email/letter.ts): it opens with
+ * the greeting and signs off; exported so tests/unit/email/every-letter-greets.test.ts renders it.
+ */
+export function renderRefundNotice(
+  name: string | null,
+  title: string,
+  lines: string[],
+  cta?: { label: string; url: string },
+): { html: string; text: string } {
+  const text = [greetingLine(name), '', title, '', ...lines, ...(cta ? ['', `${cta.label}: ${cta.url}`] : [])].join('\n') + signOffText()
   const html = [
     `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A1628">`,
+    greetingHtml(name),
     `<h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(title)}</h1>`,
     ...lines.map(l => `<p style="font-size:15px;line-height:1.55;margin:0 0 12px">${escapeHtml(l)}</p>`),
     cta ? `<p style="margin:24px 0"><a href="${cta.url}" style="background:#0A1628;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${escapeHtml(cta.label)}</a></p>` : '',
+    signOffHtml(),
     `</div>`,
   ].join('')
   return { html, text }
@@ -97,7 +114,7 @@ function escapeHtml(s: string): string {
 
 /** A buyer has asked. Tell the organiser, and point them at the queue. */
 export async function sendRefundRequestedToOrganiser(admin: SupabaseClient, requestId: string): Promise<void> {
-  const { req, order, event, org, ticketCount } = await loadRequest(admin, requestId)
+  const { req, order, event, org, ownerName, ticketCount } = await loadRequest(admin, requestId)
   const to = org?.email
   if (!to) {
     // Absent and false are different answers. An organisation with no contact
@@ -112,7 +129,7 @@ export async function sendRefundRequestedToOrganiser(admin: SupabaseClient, requ
     req.buyer_message ? `They said: "${req.buyer_message}"` : 'They did not leave a message.',
     'You can approve or decline it. If you decline, give them a reason: a decline with no explanation is the most common cause of a card chargeback, which costs you the money and a fee on top.',
   ]
-  const { html, text } = wrap('A refund has been requested', lines, { label: 'Review the request', url })
+  const { html, text } = renderRefundNotice(ownerName, 'A refund has been requested', lines, { label: 'Review the request', url })
 
   await sendEmail({
     to,
@@ -170,7 +187,8 @@ export async function sendRefundDecisionToBuyer(admin: SupabaseClient, requestId
     ]
   }
 
-  const { html, text } = wrap(title, lines, { label: 'View your order', url: orderUrl })
+  // The request holds the buyer's address, not their name, so the letter says 'Hi there,'.
+  const { html, text } = renderRefundNotice(null, title, lines, { label: 'View your order', url: orderUrl })
   await sendEmail({
     to,
     subject: `${title}: ${event?.title ?? 'your order'}`,

@@ -437,7 +437,7 @@ describe('the digest email', () => {
       origin: 'https://staging.eventlinqs.com',
       unsubscribeUrl: 'https://staging.eventlinqs.com/unsubscribe/digest/tok-8',
     })
-    expect(noVenue.text).toContain('Wed 12 Aug, 6pm: No Venue Night - Free entry')
+    expect(noVenue.text).toContain('Wed 12 Aug, 6pm: No Venue Night · Free entry')
     expect(noVenue.text).not.toContain('-  -')
     expect(noVenue.html).not.toContain('&middot;')
   })

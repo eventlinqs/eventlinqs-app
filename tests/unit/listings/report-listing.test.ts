@@ -63,7 +63,7 @@ vi.mock('@/lib/redis/rate-limit', () => ({ checkRateLimit: (...a: unknown[]) => 
 vi.mock('@/lib/site-url', () => ({ getSiteUrl: () => 'https://www.eventlinqs.com.au' }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: () => ({ insert }) }) }))
 vi.mock('@/app/events/[slug]/report/reportable', () => ({
-  reportableEvent: async (_db: unknown, slug: string) => (slug === 'a-night' ? { id: 'ev-1', title: 'A Night', slug } : null),
+  reportableEvent: async (_db: unknown, slug: string) => (slug === 'a-night' ? { id: 'ev-1', title: 'A Night', slug, listing_source: 'eventlinqs' } : null),
 }))
 
 function form(entries: Record<string, string>): FormData {
@@ -113,9 +113,9 @@ describe('every event page carries the link', () => {
   it('the event page and the walk-in page both draw it, and the form is never indexed', () => {
     for (const file of ['src/app/events/[slug]/page.tsx', 'src/components/events/walk-in/walk-in-event-page.tsx']) {
       // Unconditional on every night; the claim line beside it (claimable) never hides it.
-      expect(readFileSync(file, 'utf8')).toMatch(/<ReportListingLink\s+slug=\{event\.slug\}(\s+claimable=\{\w+\})?\s*\/>/)
+      expect(readFileSync(file, 'utf8')).toMatch(/<ReportListingLink\s+slug=\{event\.slug\}\s+listingSource=\{event\.listing_source\}(\s+claimable=\{\w+\})?\s*\/>/)
     }
-    expect(readFileSync('src/components/events/report-listing-link.tsx', 'utf8')).toMatch(/Report or remove this listing/)
+    expect(readFileSync('src/lib/listings/report-words.ts', 'utf8')).toMatch(/Report or remove this listing/)
     expect(readFileSync('src/app/events/[slug]/report/page.tsx', 'utf8')).toMatch(/robots: \{ index: false, follow: false \}/)
   })
 })

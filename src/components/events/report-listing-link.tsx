@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { CLAIM_LISTING_LINE } from '@/lib/listings/claimable'
+import { reportWords } from '@/lib/listings/report-words'
 
 /**
  * "Report or remove this listing" (the release checklist's I5), on every event page and its walk-in page alike: a quiet
@@ -9,8 +10,19 @@ import { CLAIM_LISTING_LINE } from '@/lib/listings/claimable'
  * the night's own organiser: "Is this your event? Claim it free ..." to /events/[slug]/claim (window 6's gap list of
  * 30 October 2026, item 2: until now only outreach emails carried that link). The claim page is noindex, so the link
  * is nofollow like the report link.
+ *
+ * The words follow the page (src/lib/listings/report-words.ts): a listing EventLinqs wrote is reported or removed; an
+ * organiser's own event is reported as an event. listingSource is required, so no caller can fall into either.
  */
-export function ReportListingLink({ slug, claimable = false }: { slug: string; claimable?: boolean }) {
+export function ReportListingLink({
+  slug,
+  listingSource,
+  claimable = false,
+}: {
+  slug: string
+  listingSource: string | null | undefined
+  claimable?: boolean
+}) {
   return (
     <div className="mx-auto flex max-w-7xl flex-col items-start px-4 pb-10 sm:px-6 lg:px-8">
       {claimable && (
@@ -29,7 +41,7 @@ export function ReportListingLink({ slug, claimable = false }: { slug: string; c
         data-report-listing-link
         className="inline-flex min-h-11 items-center text-sm text-ink-600 underline decoration-ink-300 underline-offset-2 transition-colors hover:text-[var(--brand-accent-strong)]"
       >
-        Report or remove this listing
+        {reportWords(listingSource).link}
       </Link>
     </div>
   )

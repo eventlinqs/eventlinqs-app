@@ -2,6 +2,8 @@ import { getSiteUrl } from '@/lib/site-url'
 import type { WaitlistRole } from './city-waitlist'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { FOUNDING_TERMS } from '@/lib/payments/founding-waiver'
+import { escapeHtml } from '@/lib/email/escape'
+import { firstNameOf, greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 
 /**
  * The local-alerts confirmation email.
@@ -27,7 +29,7 @@ export function buildWaitlistConfirmationEmail(input: {
   marketingOptIn: boolean
 }): { subject: string; html: string; text: string } {
   const { cityName, fullName, role, foundingCandidate, unsubscribeUrl, marketingOptIn } = input
-  const firstName = fullName.split(' ')[0] || fullName
+  const firstName = firstNameOf(fullName)
   // Env-driven base: reuse the SAME origin as the (already env-driven)
   // unsubscribe link instead of a hardcoded apex domain, so this email always
   // carries the right domain (and switches to eventlinqs.com.au automatically).
@@ -52,7 +54,7 @@ export function buildWaitlistConfirmationEmail(input: {
     : 'You will receive local event alerts and nothing else.'
 
   const text = [
-    `Hi ${firstName},`,
+    greetingLine(firstName),
     '',
     `You are set up for ${cityName} alerts.`,
     '',
@@ -60,9 +62,11 @@ export function buildWaitlistConfirmationEmail(input: {
     '',
     optInLine,
     '',
+    SIGN_OFF,
+    SIGNATURE,
+    '',
     `Stop these emails any time with one click: ${unsubscribeUrl}`,
     '',
-    'EventLinqs',
     BRAND_STRAPLINE,
   ].join('\n')
 
@@ -77,9 +81,9 @@ export function buildWaitlistConfirmationEmail(input: {
       </tr>
       <tr>
         <td style="padding:28px;">
+          ${greetingHtml(firstName, 'font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;')}
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#8A6D1E;margin:0 0 10px;">Local alerts</p>
-          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">You are set up for ${cityName} alerts.</h1>
-          <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">Hi ${firstName},</p>
+          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">You are set up for ${escapeHtml(cityName)} alerts.</h1>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">${foundingLine}</p>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#666666;margin:0 0 20px;">${optInLine}</p>
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
@@ -87,6 +91,7 @@ export function buildWaitlistConfirmationEmail(input: {
               <a href="${baseUrl}/events" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0A1628;text-decoration:none;">Browse events across Australia</a>
             </td>
           </tr></table>
+          ${signOffHtml('font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:24px 0 0;')}
         </td>
       </tr>
       <tr>

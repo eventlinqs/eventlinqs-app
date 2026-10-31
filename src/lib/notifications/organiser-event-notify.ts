@@ -2,7 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
-import { escapeHtml } from '@/lib/email/escape'
+import { renderNotice } from '@/lib/email/notice'
 import { captureException } from '@/lib/observability/sentry'
 import { resolveOrganisationOwnerEmail } from './organiser-recipient'
 import { readOrThrow, ReadFailed } from '@/lib/supabase/read-or-throw'
@@ -60,6 +60,7 @@ export async function notifyOrganiserEventPublished(input: {
     const { subject, html, text } = buildEventPublishedEmail({
       eventTitle: (event.title as string) ?? 'Your event',
       eventSlug: (event.slug as string | null) ?? null,
+      firstName: recipient.firstName,
     })
 
     await sendEmail({
@@ -88,6 +89,8 @@ export async function notifyOrganiserEventPublished(input: {
 export function buildEventPublishedEmail(facts: {
   eventTitle: string
   eventSlug: string | null
+  /** The owner's first name for the greeting; null gives 'Hi there,'. */
+  firstName?: string | null
 }): { subject: string; html: string; text: string } {
   const origin = getSiteUrl().replace(/\/$/, '')
   const publicUrl = facts.eventSlug ? `${origin}/events/${facts.eventSlug}` : `${origin}/events`
@@ -101,17 +104,7 @@ export function buildEventPublishedEmail(facts: {
   ]
   const cta = { label: 'View your event page', url: publicUrl }
 
-  const text = [title, '', ...lines, '', `${cta.label}: ${cta.url}`].join('\n')
-
-  const html = [
-    `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A1628">`,
-    `<h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(title)}</h1>`,
-    ...lines.map(
-      (l) => `<p style="font-size:15px;line-height:1.55;margin:0 0 12px">${escapeHtml(l)}</p>`,
-    ),
-    `<p style="margin:24px 0"><a href="${publicUrl}" style="background:#0A1628;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${escapeHtml(cta.label)}</a></p>`,
-    `</div>`,
-  ].join('')
+  const { html, text } = renderNotice({ name: facts.firstName ?? null, title, lines, cta })
 
   return { subject, html, text }
 }

@@ -43,7 +43,19 @@ export type MessageFacts = {
   organiserName: string | null
   /** The one line the source system signs with. Supplied, never imported. */
   signature: string
+  /**
+   * The letter's sign off, line by line ('Kind regards,' then 'The EventLinqs team'), supplied by the adapter for
+   * the same reason as the signature: the engine has no brand (gap 3, 31 October 2026; src/lib/email/letter.ts).
+   */
+  signOff: readonly string[]
 }
+
+/**
+ * The engine's greeting: it holds an address, never a name, so it says 'Hi there,' (communication law 3: a human
+ * greeting on the first line, always).
+ */
+const GREETING = 'Hi there,'
+const LETTER_P = 'margin:16px 0 20px;font-size:15px;line-height:1.6;color:#374151;'
 
 export type ComposedMessage = {
   subject: string
@@ -120,11 +132,15 @@ export function compose(facts: MessageFacts): ComposedMessage {
     : `You started this booking on EventLinqs.`
 
   const text = [
+    GREETING,
+    '',
     lead,
     '',
     ...lines,
     '',
     `Finish here: ${facts.resumeUrl}`,
+    '',
+    ...facts.signOff,
     '',
     from,
     facts.signature,
@@ -135,6 +151,7 @@ export function compose(facts: MessageFacts): ComposedMessage {
 <html lang="en-AU"><body style="margin:0;background:#F7F8FA;">
   <div style="font-family:'Hanken Grotesk',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8A6A12;font-weight:700;">EventLinqs</p>
+    <p style="${LETTER_P}">${GREETING}</p>
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(lead)}</p>
 
@@ -153,6 +170,7 @@ export function compose(facts: MessageFacts): ComposedMessage {
     <p style="margin:0 0 28px;">
       <a href="${escapeHtml(facts.resumeUrl)}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Finish booking</a>
     </p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;">${facts.signOff.map(escapeHtml).join('<br>')}</p>
 
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(from)}</p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(facts.signature)}</p>
@@ -190,6 +208,7 @@ export function composeOffer(facts: {
   unsubscribeUrl: string
   organiserName: string | null
   signature: string
+  signOff: readonly string[]
 }): ComposedMessage {
   const noun = unitWord(facts.category)
   const plural = facts.units === 1 ? noun : unitWordPlural(facts.category, facts.units)
@@ -212,11 +231,15 @@ export function composeOffer(facts: {
   if (className) lines.push(className)
 
   const text = [
+    GREETING,
+    '',
     lead,
     '',
     ...lines,
     '',
     `Claim it here: ${facts.claimUrl}`,
+    '',
+    ...facts.signOff,
     '',
     from,
     facts.signature,
@@ -227,6 +250,7 @@ export function composeOffer(facts: {
 <html lang="en-AU"><body style="margin:0;background:#F7F8FA;">
   <div style="font-family:'Hanken Grotesk',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8A6A12;font-weight:700;">EventLinqs</p>
+    <p style="${LETTER_P}">${GREETING}</p>
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(lead)}</p>
 
@@ -239,6 +263,7 @@ export function composeOffer(facts: {
     <p style="margin:0 0 28px;">
       <a href="${escapeHtml(facts.claimUrl)}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Claim it</a>
     </p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;">${facts.signOff.map(escapeHtml).join('<br>')}</p>
 
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(from)}</p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(facts.signature)}</p>

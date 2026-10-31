@@ -4309,6 +4309,26 @@ const DRILLS = [
     expect: 'pass transferGroup: order_id 2 time(s), not 3',
   },
   /*
+   * every-letter-greets (gap 3, 31 October 2026), two drills: a sender to a person drops off the letter list, so its
+   * words would go unjudged; and a listed file stops sending to a person, so the list would rot.
+   */
+  {
+    name: 'a file emails a person and is off the letter list',
+    guard: `${GUARDS}/every-letter-greets.mjs`,
+    file: 'src/lib/email/letter-senders.json',
+    find: '    "src/lib/launch/kit-email.ts",',
+    replace: '',
+    expect: 'sends email to a person and is not in',
+  },
+  {
+    name: 'a listed file no longer emails a person',
+    guard: `${GUARDS}/every-letter-greets.mjs`,
+    file: 'src/lib/launch/kit-email.ts',
+    find: "    recipientRole: 'organiser',",
+    replace: "    recipientRole: 'platform_owner',",
+    expect: 'no longer sends email to a person',
+  },
+  /*
    * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
    *
    * The first two are the defect itself from both directions: an organiser
