@@ -356,7 +356,7 @@ describe('runAssistant', () => {
       transcript,
       who: 'abc',
     })
-    expect(result).toMatchObject({ ok: true, reply: 'Here - is help', handoff: false })
+    expect(result).toMatchObject({ ok: true, reply: 'Here, is help', handoff: false })
   })
 
   it('records estimated spend after a successful call', async () => {
@@ -468,7 +468,7 @@ describe('runAssistant', () => {
     })
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.suggestions).toEqual([{ kind: 'title', value: 'Good - Title' }])
+      expect(result.suggestions).toEqual([{ kind: 'title', value: 'Good, Title' }])
     }
   })
 })

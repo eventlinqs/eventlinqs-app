@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * GUARD: THE PLATFORM's OWN COPY KEEPS LAWAL's DASH RULE (law 6 in C:\dev\CLAUDE.md, 31 October 2026; the CONTROLLER's
  * 12:33; window 2).

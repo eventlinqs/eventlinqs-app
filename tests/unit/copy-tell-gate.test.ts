@@ -71,8 +71,8 @@ describe('findCopyTells catches every banned pattern', () => {
 })
 
 describe('enforceCopyLaws layer-1 hard strips', () => {
-  it('strips em and en dashes to hyphens', () => {
-    expect(enforceCopyLaws('Doors — 7pm – late')).toBe('Doors - 7pm - late')
+  it('strips em and en dashes to commas, never a spaced hyphen (law 6)', () => {
+    expect(enforceCopyLaws('Doors — 7pm – late')).toBe('Doors, 7pm, late')
   })
 
   it('turns exclamation marks into full stops', () => {
