@@ -36,6 +36,10 @@ export interface HomeCardEvent {
   dateLabel: string
   /** Pre-formatted price, e.g. "From AUD $55" or "Free". */
   priceLabel: string
+  /** The night's start and zone: a night with no photo of its own draws its date mark on our typographic cover,
+   *  never the wordmark alone (the CONTROLLER's 31 October 13:45). */
+  startDate?: string | null
+  timeZone?: string | null
   /** Opt into priority image loading - above-the-fold cards only. */
   priority?: boolean
 }
@@ -95,7 +99,7 @@ export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[16/10]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-4">
         <p className={LABEL}>{event.label}</p>
@@ -117,7 +121,7 @@ export function EventCardSquare({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-square`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-3">
         <p className={LABEL}>{event.label}</p>
@@ -137,7 +141,7 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[16/9]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className={LABEL}>{event.label}</p>

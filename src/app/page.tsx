@@ -25,6 +25,7 @@ import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
+import { photoFirst } from '@/lib/events/photo-first'
 import {
   ThisWeekSkeleton,
   CityRailSkeleton,
@@ -229,7 +230,8 @@ export default async function HomePage() {
       { events: sportsCandidates, cap: 12 },
       { events: familyCandidates, cap: 12 },
       { events: justAddedCandidates, cap: 10 },
-    ])
+      // Each rail leads with its photographed nights, then the rest (the CONTROLLER's 31 October 13:45).
+    ].map((s) => ({ ...s, events: photoFirst(s.events) })))
 
   const featured = await featuredForPage('homepage')
 
