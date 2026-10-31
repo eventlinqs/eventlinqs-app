@@ -1,0 +1,28 @@
+{
+  "about": "Every file in src/ that sends an email to a person (a letter role from src/lib/email/letter.ts). Each letter is rendered with fixture data by tests/unit/email/every-letter-greets.test.ts; scripts/guards/every-letter-greets.mjs fails the build when a file sends to a person and is not listed here. CONTROLLER 08:58 gap 3, 31 October 2026.",
+  "letters": [
+    "src/app/(dashboard)/dashboard/events/[id]/seats/actions.ts",
+    "src/app/actions/transfer-ticket.ts",
+    "src/app/admin/(authed)/network/actions.ts",
+    "src/app/api/cron/weekly-digest/route.ts",
+    "src/app/api/webhooks/stripe/route.ts",
+    "src/app/waitlist/actions.ts",
+    "src/lib/email/auth-emails.ts",
+    "src/lib/email/order-confirmation.ts",
+    "src/lib/fillrate/engine.ts",
+    "src/lib/launch/kit-email.ts",
+    "src/lib/listings/claim.ts",
+    "src/lib/marketplace/notify.ts",
+    "src/lib/notifications/dispatch.ts",
+    "src/lib/notifications/organiser-event-notify.ts",
+    "src/lib/notifications/organiser-money-notify.ts",
+    "src/lib/notifications/organiser-sale-notify.ts",
+    "src/lib/notifications/organiser-sales-digest.ts",
+    "src/lib/payouts/email.ts",
+    "src/lib/refunds/notify.ts",
+    "src/lib/walk-in/reminder-store.ts"
+  ],
+  "notLetters": {
+    "src/lib/campaigner/sink.ts": "an organiser's own campaign, in the organiser's words and signed by the organiser's identity line; signing it 'The EventLinqs team' would put our name on their message"
+  }
+}
