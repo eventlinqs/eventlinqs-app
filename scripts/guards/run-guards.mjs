@@ -668,6 +668,9 @@
  *                              (31 October 2026, Lawal's emergency correction)
  *   organiser-links-have-a-page  every public /organisers/<slug> link asks whether the organiser
  *                              is shown; the listings organisation has no page (31 October 2026)
+ *   empty-collections-are-honest  an empty discovery collection says so plainly, with no
+ *                              promotional card and nothing pointing at it (31 October 2026,
+ *                              Lawal's directive section 11)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
