@@ -57,7 +57,7 @@ describe('the contract that makes the domain flip one edit', () => {
   })
 })
 
-describe('the seven roles the platform publishes', () => {
+describe('the eight roles the platform publishes', () => {
   test('each resolves to its own local part', () => {
     expect(contactAddress('hello')).toMatch(/^hello@/)
     expect(contactAddress('support')).toMatch(/^support@/)
@@ -66,12 +66,13 @@ describe('the seven roles the platform publishes', () => {
     expect(contactAddress('legal')).toMatch(/^legal@/)
     expect(contactAddress('press')).toMatch(/^press@/)
     expect(contactAddress('careers')).toMatch(/^careers@/)
+    expect(contactAddress('founder')).toMatch(/^lawal@/)
   })
 
-  test('all seven are listed, with no duplicates', () => {
+  test('all eight are listed, with no duplicates', () => {
     const all = allContactAddresses()
-    expect(all).toHaveLength(7)
-    expect(new Set(all).size).toBe(7)
+    expect(all).toHaveLength(8)
+    expect(new Set(all).size).toBe(8)
   })
 })
 

@@ -22,9 +22,11 @@
  */
 
 import type { AcquisitionState } from './acquisition-states'
+import { contactAddress } from '@/lib/email/sender'
 import { addressRank } from './planner'
 
-export const DAILY_TWENTY_SENDER = 'lawal@eventlinqs.com'
+/** lawal@ on the one sending domain (src/lib/email/sender.ts), never typed here. */
+export const DAILY_TWENTY_SENDER: string = contactAddress('founder')
 
 /** The four groups, in the checklist's order; the order is also the priority when one organiser is in two. */
 export const DAILY_TWENTY_GROUPS = [
@@ -69,7 +71,7 @@ export interface DailyAction {
   readonly why: string
   readonly channel: string
   readonly address: string
-  readonly sender: typeof DAILY_TWENTY_SENDER
+  readonly sender: string
 }
 
 export interface DailyGroupResult {
