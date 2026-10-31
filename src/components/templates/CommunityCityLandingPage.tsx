@@ -12,9 +12,7 @@ import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
-import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
@@ -123,6 +121,8 @@ export function CommunityCityLandingPage({
   ])
   // The last grid holds what the sections above did not, so it says so when they showed any.
   const shownAbove = thisWeekendEvents.length + thisWeekEvents.length + popularEvents.length > 0
+  // A page with no event at all points nothing at an empty grid (the directive of 31 October 2026, section 11).
+  const pageIsEmpty = !shownAbove && shownEvents.length === 0
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
 
@@ -134,16 +134,19 @@ export function CommunityCityLandingPage({
         title={`${community.displayName} events in ${cityName}`}
         subtitle={heroSubtitle}
         imageSrc={heroImage}
-        primaryCtaLabel={`Browse all ${community.displayName} ${cityName} events`}
+        primaryCtaLabel={pageIsEmpty ? 'See what is on across Australia' : `Browse all ${community.displayName} ${cityName} events`}
+        primaryCtaHref={pageIsEmpty ? '/events' : undefined}
         secondaryCtaLabel={`Sell tickets in ${cityName}`}
         secondaryCtaHref={`/organisers?city=${citySlug}&community=${community.slug}`}
         caption={caption}
       />
 
       {/* S2 Date filter chips */}
-      <Suspense fallback={null}>
-        <DateFilterChips anchorId="all-events" />
-      </Suspense>
+      {pageIsEmpty ? null : (
+        <Suspense fallback={null}>
+          <DateFilterChips anchorId="all-events" />
+        </Suspense>
+      )}
 
       {/* S3 Editorial */}
       <CityEditorialSection
@@ -304,57 +307,42 @@ export function CommunityCityLandingPage({
           19 September 2026, so this one is covered by the drive on the city
           page it is a copy of, and by the guard that holds the two markups
           identical - never by a measurement of itself. */}
-      <ContentSection
-        id="all-events"
-        surface="base"
-        width="wide"
-        topBorder
-        reveal
-        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
-      >
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              {shownAbove ? 'More upcoming' : 'All upcoming'}
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              {shownAbove ? `More ${community.displayName} events in ${cityName}` : `All ${community.displayName} events in ${cityName}`}
-            </h2>
+      {shownEvents.length > 0 ? (
+        <ContentSection
+          id="all-events"
+          surface="base"
+          width="wide"
+          topBorder
+          reveal
+          intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+        >
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                {shownAbove ? 'More upcoming' : 'All upcoming'}
+              </p>
+              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+                {shownAbove ? `More ${community.displayName} events in ${cityName}` : `All ${community.displayName} events in ${cityName}`}
+              </h2>
+            </div>
+            <Link
+              href={`/events?community=${community.slug}&city=${citySlug}`}
+              className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)]"
+            >
+              Open in browse view &rsaquo;
+            </Link>
           </div>
-          <Link
-            href={`/events?community=${community.slug}&city=${citySlug}`}
-            className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)]"
-          >
-            Open in browse view &rsaquo;
-          </Link>
-        </div>
-        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
-        ) : (
-          <CategoryHeroEmpty
-            eyebrow={`${community.displayName.toUpperCase()} · ${cityName.toUpperCase()}`}
-            headline={`The first ${community.displayName} ${cityName} event on EventLinqs could be yours.`}
-            subhead={`${community.tagline} Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
-            primaryAction={{
-              label: 'Talk to us about listing',
-              href: `/contact?topic=organiser&community=${community.slug}&city=${citySlug}`,
-            }}
-            secondaryAction={{
-              label: `Browse all ${cityName} events`,
-              href: `/city/${citySlug}`,
-            }}
-            trustPillars={[
-              { icon: Zap as ComponentType<{ className?: string }>, label: 'Set up in 5 minutes' },
-              { icon: Heart as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts in 7 days' },
-            ]}
-          />
-        )}
-      </ContentSection>
+        </ContentSection>
+      ) : pageIsEmpty ? (
+        <ContentSection id="all-events" surface="base" width="wide" topBorder>
+          <EmptyCollectionNote message={`No ${community.displayName} events are listed in ${cityName} yet.`} />
+        </ContentSection>
+      ) : null}
 
       {/* S11a [Community] in other cities */}
       {relatedCities.length > 0 ? (
@@ -451,11 +439,13 @@ export function CommunityCityLandingPage({
       {/* S13 Mobile sticky bar - keep the community context here since
        *  the bar's CTA copy is "Browse all X events" and the user
        *  benefits from the more specific label. */}
-      <MobileStickyBar
-        cityName={`${community.displayName} ${cityName}`}
-        weekendCount={thisWeekendCandidates.length}
-        anchorId="all-events"
-      />
+      {pageIsEmpty ? null : (
+        <MobileStickyBar
+          cityName={`${community.displayName} ${cityName}`}
+          weekendCount={thisWeekendCandidates.length}
+          anchorId="all-events"
+        />
+      )}
     </PageShell>
   )
 }

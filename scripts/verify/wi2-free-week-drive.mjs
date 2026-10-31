@@ -278,7 +278,7 @@ try {
         const ld = await page.locator('script[type="application/ld+json"]').allTextContents()
         check(`${where}: an ItemList of the occurrences' own pages`, ld.some((j) => j.includes('"ItemList"') && j.includes('/events/')))
       } else {
-        check(`${where}: an empty week shows the designed empty state`, /could be yours/.test(text))
+        check(`${where}: an empty week says plainly that nothing free is listed`, /Nothing free is listed/.test(text) && !/could be yours/.test(text))
       }
       const canonical = await page.locator('link[rel="canonical"]').getAttribute('href')
       check(`${where}: self-canonical`, canonical?.endsWith(path), canonical)

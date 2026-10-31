@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countFaith } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
@@ -159,20 +160,21 @@ export default async function FaithPage({ params }: Props) {
           </ul>
         </section>
 
-        {/* Live events */}
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
-              Live {faith.displayName} events
-            </h2>
-            <Link
-              href={`/events?faith=${faith.slug}`}
-              className="shrink-0 text-sm font-semibold text-[var(--brand-accent-strong)] hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-          {liveEvents.length > 0 ? (
+        {/* Live events. With none, one honest line and a link to real events, no heading over nothing and no
+            invitation (Lawal's directive of 31 October 2026, section 11). */}
+        {liveEvents.length > 0 ? (
+          <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
+                Live {faith.displayName} events
+              </h2>
+              <Link
+                href={`/events?faith=${faith.slug}`}
+                className="shrink-0 text-sm font-semibold text-[var(--brand-accent-strong)] hover:underline"
+              >
+                View all
+              </Link>
+            </div>
             <ul
               role="list"
               className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
@@ -183,24 +185,12 @@ export default async function FaithPage({ params }: Props) {
                 </li>
               ))}
             </ul>
-          ) : (
-            <div className="rounded-2xl border border-ink-200 bg-surface-0 p-8 text-center">
-              <p className="font-display text-lg font-bold text-ink-900">
-                Be the first
-              </p>
-              <p className="mt-2 text-sm text-ink-600">
-                No {faith.displayName} events are listed yet. If you run them,
-                list with us and reach the community directly.
-              </p>
-              <Link
-                href="/organisers"
-                className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-5 py-2 text-sm font-semibold text-ink-900"
-              >
-                List your event
-              </Link>
-            </div>
-          )}
-        </section>
+          </section>
+        ) : (
+          <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+            <EmptyCollectionNote message={`No ${faith.displayName} events are listed yet.`} />
+          </section>
+        )}
 
         {/* Related heritages */}
         {relatedHeritages.length > 0 && (

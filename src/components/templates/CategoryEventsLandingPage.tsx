@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { Zap, Heart, Wallet, ArrowRight } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Prose } from '@/components/ui/Prose'
 import { PhotographicCategoryHero } from '@/components/templates/PhotographicCategoryHero'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import { CommunityOrganiserCtaPanel } from '@/components/features/community/community-organiser-cta'
 import { EventCard } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
@@ -74,9 +73,9 @@ interface Props {
  *   5. The organiser closer      shared with the community landings rather than
  *                                re-rolled, per the one-implementation rule.
  *
- * The zero-event state is the SHARED CategoryHeroEmpty, the same designed empty
- * state behind every community, city and category page, never a bare "no
- * results" (CLAUDE.md, Scene layer). The page still renders, still carries its
+ * The zero-event state is the SHARED EmptyCollectionNote, the same honest line
+ * behind every community, city and category page (the directive of 31 October
+ * 2026, section 11: no large promotional card in an empty collection). The page still renders, still carries its
  * copy and still self-canonicalises; only the robots directive moves, and that
  * is decided in the route, not here.
  */
@@ -142,18 +141,7 @@ export function CategoryEventsLandingPage({ name, editorial, heroImage, events, 
             </div>
           </>
         ) : (
-          <CategoryHeroEmpty
-            eyebrow={eyebrow}
-            headline={`The first ${name} event on EventLinqs could be yours.`}
-            subhead={`${intro} Set up in five minutes, take payments, and keep every attendee relationship.`}
-            primaryAction={{ label: 'Start selling tickets', href: '/organisers/signup' }}
-            secondaryAction={{ label: 'Browse all events', href: '/events' }}
-            trustPillars={[
-              { icon: Zap as ComponentType<{ className?: string }>, label: 'Set up in five minutes' },
-              { icon: Heart as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts after the event' },
-            ]}
-          />
+          <EmptyCollectionNote message={`No ${name} events are listed yet.`} />
         )}
       </ContentSection>
 
