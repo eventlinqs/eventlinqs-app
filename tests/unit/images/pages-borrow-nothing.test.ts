@@ -1,46 +1,53 @@
-// NO PHOTO IS EVER REUSED, the project manager's ruling of 31 October 2026 (05:05 (3), taken by window 6 at 05:00): a
-// brand photo belongs to ONE subject, its tile and its own page only. A page that is not that subject's own page
-// borrows NOTHING and draws the branded navy treatment (each hero's own no-image band, each tile's navy gradient).
-// The crawl of live on 31 October found the borrowers: every community-in-city page took its city's photo (else its
-// community's) and the community's sub-community photos; every browse-by-city page and every free-this-week page took
-// the city's photo; every faith page took a community's photo. Pinned by reading the sources: none of these pages may
-// ask for a city, community or sub-community photo. The crawl on the preview is the proof on pages.
+// ONE PHOTO, ONE SUBJECT (Lawal's standing directive of 31 October 2026, C:\dev\CLAUDE.md, and the photo system's A1):
+// a photo appears wherever it genuinely shows its own subject and never on a different one, and real photography is
+// never swapped for a placeholder to dodge a repeat. Car 20 drew these pages navy under the earlier 05:05 rule, and the
+// live crawl of 31 October counted 420 community-in-city heroes and their sub-community tiles, every browse-by-city and
+// every free-this-week hero, without a photo. So, read from the sources:
+//   a community-in-city page shows its COMMUNITY's own hero and each sub-community's own photo, never its city's photo
+//   (the page's subject is the community; the city is where);
+//   a browse-by-city and a free-this-week page show their own CITY's photo;
+//   a faith page and a community page's organiser panel still borrow nothing: no faith photo of its own exists yet, and
+//   a community or city photo there would show a different subject.
 
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-const BORROWERS = /\b(getCityHeroPhoto|getCommunityHeroPhoto|getSubCommunityPhoto|getSuburbHeroPhoto)\b/
+const read = (page: string) => readFileSync(resolve(process.cwd(), page), 'utf8')
+const COMMUNITY_IN_CITY = 'src/app/community/[community]/[city]/page.tsx'
 
-const PAGES = [
-  'src/app/community/[community]/[city]/page.tsx',
-  'src/app/events/browse/[city]/page.tsx',
-  'src/app/free/[city]/this-week/page.tsx',
-  'src/app/faith/[faith]/page.tsx',
-]
+describe('every page shows the photo of its own subject, and only that', () => {
+  test("a community-in-city page shows its community's own hero and sub-community photos, never its city's", () => {
+    const source = read(COMMUNITY_IN_CITY)
+    expect(source).toMatch(/\bgetCommunityHeroPhoto\b/)
+    expect(source).toMatch(/\bgetSubCommunityPhoto\b/)
+    expect(source).not.toMatch(/\bgetCityHeroPhoto\b/)
+    expect(source).not.toMatch(/heroImage=\{null\}/)
+    expect(source).not.toMatch(/subCommunityImages=\{\{\}\}/)
+  })
 
-describe('a page that is not the subject itself borrows no photo', () => {
-  test.each(PAGES)('%s asks for no city, community or sub-community photo', (page) => {
-    const source = readFileSync(resolve(process.cwd(), page), 'utf8')
-    expect(source).not.toMatch(BORROWERS)
+  test.each(['src/app/events/browse/[city]/page.tsx', 'src/app/free/[city]/this-week/page.tsx'])(
+    "%s shows its own city's photo",
+    (page) => {
+      const source = read(page)
+      expect(source).toMatch(/\bgetCityHeroPhoto\(city\.slug\)/)
+      expect(source).not.toMatch(/const heroImage = null/)
+    },
+  )
+
+  test('a faith page borrows no community photo', () => {
+    expect(read('src/app/faith/[faith]/page.tsx')).not.toMatch(/\b(getCityHeroPhoto|getCommunityHeroPhoto|getSubCommunityPhoto)\b/)
   })
 
   test("a city page's by-type tiles (they open /events filtered by city and type) ask for no category photo", () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/app/city/[slug]/page.tsx'), 'utf8')
-    expect(source).not.toMatch(/\bgetCategoryPhoto\b/)
+    expect(read('src/app/city/[slug]/page.tsx')).not.toMatch(/\bgetCategoryPhoto\b/)
   })
 
   // The crawl found Sydney's harbour photo as the organiser panel's backdrop on 22 community pages (the first city's
   // hero); the community page is not Sydney's, so the panel draws its own navy treatment.
   test("a community page's organiser panel asks for no city photo", () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/app/community/[community]/page.tsx'), 'utf8')
+    const source = read('src/app/community/[community]/page.tsx')
     expect(source).not.toMatch(/\bgetCityHeroPhoto\b/)
     expect(source).toMatch(/cityCtaImage=\{null\}/)
-  })
-
-  test('the community-in-city page draws its hero and sub-community tiles without a photo', () => {
-    const source = readFileSync(resolve(process.cwd(), PAGES[0]), 'utf8')
-    expect(source).toMatch(/heroImage=\{null\}/)
-    expect(source).toMatch(/subCommunityImages=\{\{\}\}/)
   })
 })
