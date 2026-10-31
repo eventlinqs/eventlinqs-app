@@ -97,7 +97,7 @@ const PAST_EVENTS_SHOWN = 12
 async function fetchVenueEventsByName(venueName: string) {
   const supabase = createPublicClient()
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, listing_series_id, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
   /*
    * A FAILED READ IS NOT A VENUE WITH NOTHING ON, for the reason written out on
@@ -114,7 +114,9 @@ async function fetchVenueEventsByName(venueName: string) {
         .ilike('venue_name', venueName)
         .or(listingWindowOrPredicate(new Date(nowIso)))
         .order('start_date', { ascending: true })
-        .limit(24),
+        // 60 nights, not 24: the list shows 12 LISTINGS (collapseListings), and a venue with several weekly series
+        // would lose the listings that start after its 24th night (WINDOW 3, 1 November 2026).
+        .limit(60),
     ),
     readOrThrow('the venue past events', () =>
       supabase

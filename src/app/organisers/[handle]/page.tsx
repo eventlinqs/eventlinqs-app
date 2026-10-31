@@ -250,7 +250,9 @@ async function fetchOrganiserEvents(orgId: string) {
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date(nowIso)))
         .order('start_date', { ascending: true })
-        .limit(24),
+        // 60 nights, not 24: the list shows 12 LISTINGS (collapseListings), and a venue with several weekly series
+        // would lose the listings that start after its 24th night (WINDOW 3, 1 November 2026).
+        .limit(60),
     ),
     readOrThrow('the organiser past events', () =>
       supabase
