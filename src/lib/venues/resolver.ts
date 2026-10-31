@@ -63,6 +63,8 @@ interface VenueRow {
   country: string | null
   address: string | null
   postal_code: string | null
+  /** The handle the venue was first published under; kept when the name changes, so an old address still finds it. */
+  slug: string | null
 }
 
 interface EventRowForVenue {
@@ -91,12 +93,14 @@ async function findVenueRowBySlug(slug: string): Promise<VenueRow | null> {
   const all = await readEveryRow<VenueRow>('the active venues for a venue handle', (from, to) =>
     supabase
       .from('venues')
-      .select('id, name, description, image_url, capacity, city, state, country, address, postal_code')
+      .select('id, name, description, image_url, capacity, city, state, country, address, postal_code, slug')
       .eq('is_active', true)
       .order('id')
       .range(from, to),
   )
-  const match = all.find(v => venueSlugify(v.name) === slug)
+  // The current name's handle first; then the stored slug, so a renamed venue still answers its old address
+  // (1 November 2026: six venues named after an organiser or event were renamed, and their old pages answered 404).
+  const match = all.find(v => venueSlugify(v.name) === slug) ?? all.find(v => v.slug === slug)
   return match ?? null
 }
 
@@ -191,7 +195,9 @@ export async function resolveVenueProfile(handle: string): Promise<VenueProfile 
   const withAddress = events.find(e => e.venue_address)
 
   return {
-    handle,
+    // Always the CURRENT name's handle: a venue found by its old slug hands back where it lives now, and the page
+    // redirects there.
+    handle: row ? venueSlugify(row.name) : handle,
     id: row?.id ?? null,
     name: venueName,
     description: row?.description ?? null,
