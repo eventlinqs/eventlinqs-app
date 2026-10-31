@@ -127,9 +127,9 @@ export async function loadHomeUpcoming(
       .sort((a, b) => a.start_date.localeCompare(b.start_date))
     if (usable.length > 0) return usable
   }
-  const { data } = await supabase
+  const { data, count } = await supabase
     .from('events')
-    .select(EVENT_SELECT)
+    .select(EVENT_SELECT, { count: 'exact' })
     .match(PUBLIC_EVENT_MATCH)
     // LISTED UNTIL IT HAS ENDED. This was `start_date >= now`, which took an
     // event off the homepage the moment it began. src/lib/events/listing-window.ts
@@ -151,7 +151,13 @@ export async function loadHomeUpcoming(
     .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
     .limit(limit)
-  return (data ?? []) as unknown as RawRow[]
+  const rows = (data ?? []) as unknown as RawRow[]
+  // The real count, said when the read is short of it: a rail that silently chose from part of the inventory is how
+  // the home page drew open slots over 318 real nights (31 October 2026).
+  if (typeof count === 'number' && count > rows.length) {
+    console.error(`[home-queries] the home page read ${rows.length} of ${count} visible events; raise the limit`)
+  }
+  return rows
 }
 
 export const COMMUNITY_TABS: { slug: string; label: string; tag: string; href: string }[] = [
