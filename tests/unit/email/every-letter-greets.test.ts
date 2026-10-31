@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import senders from '@/lib/email/letter-senders.json'
 import { firstNameOf, greetingLine, letterProblems, visibleLines } from '@/lib/email/letter'
@@ -189,6 +191,14 @@ describe('every email to a person greets them and signs off', () => {
     for (const [name, render] of Object.entries(variants)) {
       it(`${name} (${file})`, () => {
         const message = render()
+        // LOOK, DO NOT DESCRIBE: with LETTER_DUMP_DIR set, each letter is written out so a person can look at it.
+        const dump = process.env.LETTER_DUMP_DIR
+        if (dump) {
+          mkdirSync(dump, { recursive: true })
+          const slug = `${file}--${name}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+          if (message.html) writeFileSync(join(dump, `${slug}.html`), message.html)
+          if (message.text) writeFileSync(join(dump, `${slug}.txt`), message.text)
+        }
         expect(message.html ?? message.text, 'the template rendered nothing').toBeTruthy()
         expect(letterProblems(message)).toEqual([])
       })
