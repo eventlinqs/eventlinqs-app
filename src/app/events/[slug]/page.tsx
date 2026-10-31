@@ -1745,6 +1745,8 @@ export default async function EventDetailPage({ params }: Props) {
                     also={ticketPanel?.also ?? []}
                     soldOut={ticketPanel?.soldOut ?? null}
                     bookingInHero={outsideBookingHref !== null}
+                    // A free night taking registrations on its own site is told as registration, never tickets sold.
+                    registration={ctaFor(ctaInput).registrationRequired === true}
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">

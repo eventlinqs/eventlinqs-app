@@ -1,8 +1,5 @@
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import {
-  TICKETS_SOLD_ELSEWHERE_BODY,
-  TICKETS_SOLD_ELSEWHERE_HEADING,
-} from '@/lib/payments/sale-status'
+import { outsidePanelWords } from '@/lib/events/outside-panel-words'
 
 /**
  * The ticket column for an event whose ticketing lives on another platform.
@@ -44,6 +41,7 @@ export function ExternalTicketsPanel({
   also = [],
   soldOut = null,
   bookingInHero = false,
+  registration = false,
 }: {
   destinationUrl: string
   /** The destination's hostname, shown so the visitor knows where they land. */
@@ -58,19 +56,20 @@ export function ExternalTicketsPanel({
   soldOut?: string | null
   /** The hero carries this button already (the event page's outside night): draw none here. */
   bookingInHero?: boolean
+  /** A free night whose organiser takes registrations on its own site: the panel says registration, never tickets sold. */
+  registration?: boolean
 }) {
+  const words = outsidePanelWords({ registration, bookingInHero, host })
   return (
     <div className="sticky top-20 space-y-5">
       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
-        <SectionHeader eyebrow="Tickets" title={soldOut ?? TICKETS_SOLD_ELSEWHERE_HEADING} size="sm" className="mb-4" />
+        <SectionHeader eyebrow={registration ? 'Registration' : 'Tickets'} title={soldOut ?? words.heading} size="sm" className="mb-4" />
 
         {soldOut === null ? (
           <>
             {/* With the button in the hero, "the button below" would point at nothing: the site is named instead. */}
             <p className="text-sm leading-relaxed text-ink-600">
-              {bookingInHero
-                ? `This organiser sells tickets for this event on ${host ?? 'another site'}.`
-                : TICKETS_SOLD_ELSEWHERE_BODY}
+              {words.body}
             </p>
 
             {price && (
