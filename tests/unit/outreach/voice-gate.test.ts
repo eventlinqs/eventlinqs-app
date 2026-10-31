@@ -26,11 +26,12 @@ const FIRST = [
   'Kind regards,\n' + SIG.join('\n'),
   OPT,
 ].join('\n\n')
-const DM: VoiceMessage = { channel: 'instagram', category: 'first_contact', to: [], subject: null, greetingName: 'Kaze team', body: FIRST }
+const DM: VoiceMessage = { channel: 'instagram', category: 'first_contact', from: "instagram: Lawal's own account", to: [], subject: null, greetingName: 'Kaze team', body: FIRST }
 const EMAIL: VoiceMessage = { ...DM, channel: 'email', to: ['info@kaze.example'], subject: 'Your karaoke nights, could I ask your advice?' }
 const REPLY: VoiceMessage = {
   channel: 'email',
   category: 'reply',
+  from: 'lawal@eventlinqs.com',
   to: ['someone@example.org'],
   subject: 'Re: Your festival, could I ask your advice?',
   greetingName: 'Sam',
@@ -108,5 +109,22 @@ describe('approval of the exact content, under this policy', () => {
   it('08: a scheduled message is judged again before it goes, and fails if its words now fail', () => {
     const broken = { ...DM, body: DM.body.replace('Kind regards,', 'Best,') }
     expect(approvalProblems({ ...ok, contentHash: voiceContentHash(broken) }, broken, POLICY).length).toBeGreaterThan(0)
+  })
+})
+
+describe("the gateway's rules of 31 October noon (compounds, the sending mailbox, the thread)", () => {
+  it('a compound modifier before a noun takes its hyphen; a compound word always does (law 6)', () => {
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('which three photos', 'the day by day program and which three photos') }, POLICY), 'compound modifier needs its hyphen')).toBe(true)
+    expect(voiceProblems({ ...DM, body: DM.body.replace('which three photos', 'the day-by-day program and which three photos') }, POLICY)).toEqual([])
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('quite a mission', 'quite a mission for a sister in law') }, POLICY), 'compound word needs its hyphen')).toBe(true)
+  })
+  it('names the mailbox it goes from, and a known thread goes from its own mailbox only', () => {
+    expect(has(voiceProblems({ ...DM, from: null }, POLICY), 'no sending mailbox')).toBe(true)
+    expect(has(voiceProblems({ ...REPLY, to: ['chair@amcf.org.au'], from: 'hello@eventlinqs.com' }, POLICY), 'wrong mailbox')).toBe(true)
+  })
+  it('the policy carries the compounds and the threads, or it is refused', () => {
+    expect(POLICY.compounds.mustHyphenateBeforeNoun).toContain('day by day')
+    expect(POLICY.threads.some((t) => t.recipient === 'chair@amcf.org.au')).toBe(true)
+    expect(() => readVoicePolicy({ ...POLICY, compounds: undefined })).toThrow(/POLICY_UNAVAILABLE/)
   })
 })
