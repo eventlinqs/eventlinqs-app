@@ -1,0 +1,50 @@
+{
+  "name": "EventLinqs growth plan",
+  "version": 1,
+  "set_on": "2026-11-01",
+  "set_by": "Lawal Adams (founder); written by the CONTROLLER",
+  "readable_version": "Claude Doc 'EventLinqs: how I would win Australia' (claude.ai artifact MdszSQhvw32PFrfLmhtr9m)",
+  "mission": "Australia's most complete weekly what's-on guide, with fair ticketing through it, in every locality.",
+  "model": {
+    "layers": ["Featured photo cards: real, rights-recorded photos only", "Directory: every checked event, by day, no image box"],
+    "revenue_formula": "Revenue = O x T x 12 x N + P",
+    "O": "frequent paid organisers (sell paid tickets every month)",
+    "T": "paid tickets each sells a month",
+    "N_aud_estimate": 1.18,
+    "N_note": "A$35 ticket, 3.5% + A$0.99 booking fee assumed GST inclusive, less Stripe 1.65% + A$0.30; to be re-measured from real orders (GST, Connect, refunds, chargebacks, fee-free months)",
+    "P": "promoted listings and organiser tools"
+  },
+  "targets": {
+    "plan": [
+      {"year_to": "2027-10", "O": 150, "T": 80, "paid_tickets": 144000, "revenue_aud": 230000},
+      {"year_to": "2028-10", "O": 600, "T": 100, "paid_tickets": 720000, "revenue_aud": 1150000},
+      {"year_to": "2029-10", "O": 2000, "T": 100, "paid_tickets": 2400000, "revenue_aud": 3800000}
+    ],
+    "founder_stretch": {
+      "set": "2026-11-01, Lawal: 10x the three-year plan",
+      "revenue_aud_2029_10": 38000000,
+      "honest_note": "At about A$1.18 a ticket this needs about 32 million paid tickets a year, more than all 31.4 million ticketed live performance attendances in Australia in 2024. It is reachable only with most revenue from promotions, organiser tools (Bookedproof) and markets beyond Australia. Tracked daily beside the plan; the gap is shown, never hidden."
+    }
+  },
+  "scorecard_weekly": [
+    "checked events in the next 14 days, per open city",
+    "share of listings with a real, rights-recorded photo",
+    "organisers who claimed a listing",
+    "frequent paid organisers (O)",
+    "paid tickets this week",
+    "city email subscribers",
+    "search visits to city and category pages"
+  ],
+  "daily_quotas": {
+    "outreach_messages": 20,
+    "outreach_note": "Lawal's minimum since 19 October 2026, replies and follow ups counted; only where the Spam Act's inferred consent holds and the basis is recorded",
+    "social_posts_per_open_city": 1,
+    "listings_rechecked": "every event in the next 7 days and every one-off event, by risk"
+  },
+  "cities": {
+    "open": ["Geelong", "Melbourne", "Ballarat", "Bendigo"],
+    "pilot_benchmark_checked_events_14_days": {"Geelong": 50, "Ballarat": 50, "Bendigo": 50, "Melbourne": 200}
+  },
+  "rollout_gates": "A new state opens only when every open city meets its benchmark, paid tickets and subscribers grow four weeks in a row, and checking keeps up. Earliest: NSW and QLD Feb 2027; SA, WA, ACT Jul 2027; TAS, NT, regional towns 2028.",
+  "rules": ["Every price shown is the total with unavoidable fees", "No fabricated image, ever", "Nothing planned is reported as done", "Every change to this file is a dated version, never an overwrite of history"]
+}
