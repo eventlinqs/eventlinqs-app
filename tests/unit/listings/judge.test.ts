@@ -98,4 +98,23 @@ describe('a changed fact on a night already listed', () => {
   it('the same night unchanged is no fact change (it adds links or is nothing)', () => {
     expect(factChange(found(), [listed()])).toBeNull()
   })
+
+  /*
+   * Production, 1 November 2026: 119 Geelong library nights waited as 'venue_changed' against BENDIGO nights, because
+   * libraries in both cities run 'Toddler Time' at the same hour. Accepting one would have moved a Bendigo night to a
+   * Geelong branch. A venue change is only ever a night of the source's own city.
+   */
+  it("another city's night of the same name is never a venue change; it is a new night here", () => {
+    const bendigo = listed({ venueName: 'Bendigo Library', venueAddress: '251-259 Hargreaves Street', title: 'Toddler Time', citySlug: 'bendigo' })
+    const geelong = found({ title: 'Toddler time', venueName: 'Belmont Library', venueAddress: '163 High Street, Belmont' })
+    expect(factChange(geelong, [bendigo], 'geelong')).toBeNull()
+    const [plan] = planCandidates([geelong], [bendigo], NOW, 'geelong')
+    expect(plan.kind).toBe('new')
+  })
+
+  it("a venue moved inside the source's own city is still a fact change", () => {
+    const k = listed({ citySlug: 'geelong' })
+    const moved = found({ venueName: 'Costa Hall', venueAddress: '1 Gheringhap St, Geelong' })
+    expect(factChange(moved, [k], 'geelong')).toEqual({ eventId: 'e-1', change: 'venue_changed' })
+  })
 })
