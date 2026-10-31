@@ -275,8 +275,7 @@ const DRILLS = [
     guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
     file: 'src/components/listings/venue-calendar-forms.tsx',
     find: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'",
-    replace: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'
-const held = () => useActionState(giveVenueCalendarAction, null)",
+    replace: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'\nconst held = () => useActionState(giveVenueCalendarAction, null)",
     expect: 'venue-calendar-forms.tsx calls useActionState',
   },
   {

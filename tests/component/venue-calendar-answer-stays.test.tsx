@@ -26,6 +26,14 @@ const Section = ((forms as Record<string, unknown>).VenueCalendarAnswers ?? Frag
 const venues = [{ id: '11111111-1111-4111-8111-111111111111', name: 'The Bended Elbow' }]
 const categories = [{ id: '22222222-2222-4222-8222-222222222222', name: 'Live music' }]
 
+/** Every status line in the page: the section's own, and each form's line beside it. */
+function statusWords(): string {
+  return screen
+    .getAllByRole('status')
+    .map((s) => s.textContent ?? '')
+    .join(' ')
+}
+
 afterEach(() => {
   cleanup()
   give.mockReset()
@@ -56,7 +64,7 @@ describe('the venue calendar answer outlives the form it came from', () => {
         </ul>
       </Section>,
     )
-    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/^Thank you\. We read your calendar every day/))
+    await waitFor(() => expect(statusWords()).toMatch(/Thank you\. We read your calendar every day/))
   })
 
   it('stops: after the refresh drops the calendar, the stopped answer is still shown in a status line', async () => {
@@ -74,7 +82,7 @@ describe('the venue calendar answer outlives the form it came from', () => {
         <forms.GiveVenueCalendarForm venues={venues} categories={categories} />
       </Section>,
     )
-    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/^Stopped\. We no longer read this calendar/))
+    await waitFor(() => expect(statusWords()).toMatch(/Stopped\. We no longer read this calendar/))
   })
 
   it('a refusal stays beside its own form, in its own words', async () => {
