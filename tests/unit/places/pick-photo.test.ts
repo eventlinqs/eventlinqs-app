@@ -7,7 +7,7 @@ import type { PhotoRef } from '@/lib/places/google-places'
  * hero and landscape; a narrow or portrait photo is passed over rather than stretched; none fit, none shown.
  */
 
-const p = (name: string, widthPx: number, heightPx: number, authors = [{ displayName: 'A Person', uri: 'https://maps.google.com/maps/contrib/1' }]): PhotoRef => ({ name, widthPx, heightPx, authors })
+const p = (name: string, widthPx: number, heightPx: number, authors = [{ displayName: 'A Person', uri: 'https://maps.google.com/maps/contrib/1', photoUri: null }], mapsUri: string | null = `https://www.google.com/maps/place//data=${name}`): PhotoRef => ({ name, widthPx, heightPx, authors, mapsUri, flagUri: null })
 
 describe('the photo that leads', () => {
   test("the first landscape photo at least 1000 px wide, in Google's order", () => {
@@ -19,5 +19,8 @@ describe('the photo that leads', () => {
   })
   test('a photo with no author to credit is never chosen (Google: credit the author wherever the photo is shown)', () => {
     expect(pickPhoto([p('places/x/photos/a', 2000, 1300, []), p('places/x/photos/b', 1600, 1000)])?.name).toBe('places/x/photos/b')
+  })
+  test('a photo Google gives no Maps link for is never chosen (Google: access to view the source photo on Google Maps)', () => {
+    expect(pickPhoto([p('places/x/photos/a', 2000, 1300, undefined, null), p('places/x/photos/b', 1600, 1000)])?.name).toBe('places/x/photos/b')
   })
 })

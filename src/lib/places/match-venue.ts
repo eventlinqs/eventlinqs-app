@@ -21,6 +21,15 @@ export type VenuePlace =
   | { readonly state: 'no match'; readonly refused: readonly string[] }
   | { readonly state: 'stopped'; readonly reason: string }
 
+/**
+ * What is KEPT of a match: our own evidence only, never Google's name or address ('You must not pre-fetch, cache, or
+ * store Places API content beyond the allowed exceptions'; the place id is the exception, places/web-service/policies,
+ * read 31 October 2026). The metres are ours, worked from our point and Google's, which is not kept.
+ */
+export function keptEvidence(evidence: { readonly metres: number }): { metres: number; agreed: string[] } {
+  return { metres: evidence.metres, agreed: ['name', 'street', 'location'] }
+}
+
 export async function findVenuePlace(venue: OurVenue, ask: PlaceAsker): Promise<VenuePlace> {
   if (!venue.address || !venue.address.trim()) return { state: 'no match', refused: ['our venue has no address, so it is not searched'] }
   const found = await ask.candidates(venue)

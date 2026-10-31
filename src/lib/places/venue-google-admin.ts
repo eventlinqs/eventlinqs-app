@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { candidatePlaceIds, freshPhotos, photoUri, placeForMatch } from './google-places'
-import { findVenuePlace, type VenuePlace } from './match-venue'
+import { findVenuePlace, keptEvidence, type VenuePlace } from './match-venue'
 import { pickPhoto } from './pick-photo'
 import type { OurVenue } from './venue-match'
 import type { VenueGooglePhoto } from './venue-google-photo'
@@ -11,7 +11,12 @@ import type { VenueGooglePhoto } from './venue-google-photo'
  * THE PERSON's SIDE OF GOOGLE VENUE PHOTOS (directive of 31 October, 5.44 pm, section 6: 'per venue confirm identity ...
  * reject unrelated photos ... avoid logos, menus and low-quality screenshots ... check the mobile crop'). Nothing here
  * runs on its own: a person presses Find, looks, and approves or refuses. Every Google call goes through the cost guard
- * in ./google-places.ts. Only the place id, the evidence and the decision are kept (venue_google_places).
+ * in ./google-places.ts. Only the place id, our own evidence (the metres and what agreed) and the decision are kept
+ * (venue_google_places): Google's name and address are shown to the person who pressed Find and never stored, because
+ * 'You must not pre-fetch, cache, or store Places API content beyond the allowed exceptions', and the exceptions are
+ * the place id ('You can therefore store place ID values indefinitely') and latitude and longitude for 30 days
+ * (places/web-service/policies, and Service Specific Terms 14.3, cloud.google.com/maps-platform/terms/maps-service-terms,
+ * read 31 October 2026).
  */
 
 export interface VenueRow {
@@ -20,7 +25,8 @@ export interface VenueRow {
   readonly address: string | null
   readonly upcoming: number
   readonly placeId: string | null
-  readonly evidence: { readonly name?: string; readonly address?: string; readonly metres?: number } | null
+  /** Our own evidence only: how far Google's place stands from our point, and that name, street and location agreed. */
+  readonly evidence: { readonly metres?: number; readonly agreed?: readonly string[] } | null
   readonly approvedAt: string | null
   readonly refusedReason: string | null
 }
@@ -69,7 +75,7 @@ export async function findAndKeep(db: SupabaseClient, venueId: string): Promise<
   const purpose = `venue match, ${v.name}`
   const found = await findVenuePlace(ours, { candidates: (venue) => candidatePlaceIds(db, venue), details: (id) => placeForMatch(db, id, purpose) })
   if (found.state === 'matched') {
-    const { error } = await db.from('venue_google_places').upsert({ venue_id: venueId, place_id: found.placeId, match_evidence: { ...found.evidence, refused: found.refused }, matched_at: new Date().toISOString(), approved_at: null, approved_by: null, refused_reason: null })
+    const { error } = await db.from('venue_google_places').upsert({ venue_id: venueId, place_id: found.placeId, match_evidence: keptEvidence(found.evidence), matched_at: new Date().toISOString(), approved_at: null, approved_by: null, refused_reason: null })
     if (error) throw new Error(`the match could not be kept: ${error.message}`)
   }
   return found
@@ -87,7 +93,7 @@ export async function lookAtVenue(db: SupabaseClient, venueId: string): Promise<
   if (!chosen) return { ok: false, reason: 'Google lists no landscape photo of 1000 px or wider with an author to credit' }
   const uri = await photoUri(db, chosen.name, 1200, purpose)
   if (!uri.ok) return uri
-  return uri.value ? { ok: true, photo: { uri: uri.value, widthPx: chosen.widthPx, heightPx: chosen.heightPx, authors: chosen.authors } } : { ok: false, reason: 'Google gave no photo address' }
+  return uri.value ? { ok: true, photo: { uri: uri.value, widthPx: chosen.widthPx, heightPx: chosen.heightPx, authors: chosen.authors, mapsUri: chosen.mapsUri, flagUri: chosen.flagUri } } : { ok: false, reason: 'Google gave no photo address' }
 }
 
 export async function decide(db: SupabaseClient, venueId: string, by: string, decision: { approve: true } | { approve: false; reason: string }): Promise<void> {

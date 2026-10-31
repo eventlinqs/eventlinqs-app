@@ -103,5 +103,5 @@ export function matchVenue(ours: OurVenue, place: GooglePlace, maxMetres = MAX_M
   if (!addressesAgree(ours.address, place.formattedAddress)) return { ok: false, reason: `the address does not agree: ours '${ours.address}', Google's '${place.formattedAddress}'` }
   const placeWords = new Set([...addressWords(ours.address), ...addressWords(place.formattedAddress)].filter((w) => !/^\d/.test(w)))
   if (!namesAgree(ours.name, place.displayName, placeWords)) return { ok: false, reason: `the name does not agree: ours '${ours.name}', Google's '${place.displayName}'` }
-  return { ok: true, placeId: place.id, evidence: { name: place.displayName, address: addressWords(place.formattedAddress).join(' '), metres } }
+  return { ok: true, placeId: place.id, evidence: { name: place.displayName, address: place.formattedAddress, metres } }
 }

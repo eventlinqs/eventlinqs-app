@@ -36,7 +36,7 @@ const NOTICES: Record<string, string> = {
 function state(v: VenueRow): string {
   if (v.refusedReason) return `Refused: ${v.refusedReason}`
   if (v.approvedAt) return 'Approved'
-  if (v.placeId) return `Matched, waiting for a look (${v.evidence?.name ?? ''}${typeof v.evidence?.metres === 'number' ? `, ${v.evidence.metres} m` : ''})`
+  if (v.placeId) return `Matched: name, street and location agreed${typeof v.evidence?.metres === 'number' ? `, ${v.evidence.metres} m from our point` : ''}. Waiting for a look`
   return 'Not matched'
 }
 
@@ -75,15 +75,29 @@ export default async function GoogleVenuePhotosPage({ searchParams }: { searchPa
                 <figure className="mt-3">
                   {/* eslint-disable-next-line @next/next/no-img-element -- a staff look at a Google photo; next/image would cache it in our optimiser, which Google's terms forbid */}
                   <img src={look.photo.uri} alt={`Google's current lead photo for ${v.name}`} className="h-56 w-full rounded-lg object-cover md:w-96" />
-                  <figcaption className="mt-1 text-xs text-white/60">
-                    Photo:{' '}
-                    {look.photo.authors.map((a, i) => (
-                      <span key={a.displayName + i}>
-                        {i > 0 && <>, </>}
-                        {a.uri ? <a href={a.uri} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{a.displayName}</a> : a.displayName}
-                      </span>
-                    ))}{' '}
-                    via Google Maps
+                  {/* Google's credit rules (places/web-service/policies, read 31 October 2026): the author 'using all available
+                      resources (avatar, name, and profile link) when space allows'; the text 'Google Maps' unmodified, 12 to
+                      16 sp, white, black or gray; and 'access to view the individual source photo ... on Google Maps'. */}
+                  <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white">
+                    <span className="inline-flex items-center gap-2">
+                      {look.photo.authors.map((a, i) => (
+                        <span key={a.displayName + i} className="inline-flex items-center gap-1.5">
+                          {i > 0 && <>, </>}
+                          {a.photoUri ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- the author's Google avatar, shown fresh, never through our optimiser (Google's terms)
+                            <img src={a.photoUri} alt="" width={24} height={24} className="h-6 w-6 rounded-full" />
+                          ) : null}
+                          {a.uri ? <a href={a.uri} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{a.displayName}</a> : a.displayName}
+                        </span>
+                      ))}
+                      <span className="whitespace-nowrap">via Google Maps</span>
+                    </span>
+                    {look.photo.mapsUri ? (
+                      <a href={look.photo.mapsUri} target="_blank" rel="noopener noreferrer" className={`${CONTROL} underline underline-offset-2`}>View on Google Maps</a>
+                    ) : null}
+                    {look.photo.flagUri ? (
+                      <a href={look.photo.flagUri} target="_blank" rel="noopener noreferrer" className={`${CONTROL} underline underline-offset-2`}>Report this photo to Google</a>
+                    ) : null}
                   </figcaption>
                 </figure>
               ) : (

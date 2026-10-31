@@ -24,7 +24,7 @@ describe('the venue Google returns is ours', () => {
     if (m.ok) {
       expect(m.placeId).toBe('ChIJcorner')
       expect(m.evidence.metres).toBeLessThan(20)
-      expect(m.evidence.address).toMatch(/57 swan/)
+      expect(m.evidence.address).toMatch(/57 Swan/)
     }
   })
 

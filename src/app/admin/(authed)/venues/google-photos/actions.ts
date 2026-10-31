@@ -24,7 +24,11 @@ export async function findVenueOnGoogleAction(formData: FormData): Promise<void>
   if (!parsed.success) redirect(`${BACK}?status=invalid`)
   const found = await findAndKeep(createAdminClient(), parsed.data.id)
   await recordAuditEvent({ action: 'admin.venues.google_place.find', targetType: 'venue', targetId: parsed.data.id, metadata: { state: found.state }, session })
-  const why = found.state === 'stopped' ? found.reason : found.state === 'no match' ? found.refused.join(' | ') || 'Google found nothing near' : ''
+  // Google's name and address are shown once, to the person who pressed Find, and never stored (src/lib/places/venue-google-admin.ts).
+  const why =
+    found.state === 'stopped' ? found.reason
+    : found.state === 'no match' ? found.refused.join(' | ') || 'Google found nothing near'
+    : `Google's place: ${found.evidence.name}, ${found.evidence.address}, ${found.evidence.metres} m from our point`
   redirect(`${BACK}?status=${encodeURIComponent(found.state)}&venue=${parsed.data.id}${why ? `&why=${encodeURIComponent(why.slice(0, 400))}` : ''}`)
 }
 

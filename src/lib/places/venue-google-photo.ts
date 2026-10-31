@@ -16,7 +16,10 @@ export interface VenueGooglePhoto {
   readonly widthPx: number
   readonly heightPx: number
   /** Shown under the photo, linked, with 'Google Maps' (Google: credit the author wherever the photo is shown). */
-  readonly authors: readonly { readonly displayName: string; readonly uri: string | null }[]
+  readonly authors: readonly { readonly displayName: string; readonly uri: string | null; readonly photoUri: string | null }[]
+  /** The photo on Google Maps, and where to report it (Google, places/web-service/policies, read 31 October 2026). */
+  readonly mapsUri: string | null
+  readonly flagUri: string | null
 }
 
 export type VenuePhotoAnswer = { readonly ok: true; readonly photo: VenueGooglePhoto } | { readonly ok: false; readonly reason: string }
@@ -35,7 +38,7 @@ export async function venueGooglePhoto(db: SupabaseClient, venueId: string, widt
     const uri = await photoUri(db, chosen.name, widthPx, purpose)
     if (!uri.ok) return uri
     if (!uri.value) return { ok: false, reason: 'Google gave no photo address' }
-    return { ok: true, photo: { uri: uri.value, widthPx: chosen.widthPx, heightPx: chosen.heightPx, authors: chosen.authors } }
+    return { ok: true, photo: { uri: uri.value, widthPx: chosen.widthPx, heightPx: chosen.heightPx, authors: chosen.authors, mapsUri: chosen.mapsUri, flagUri: chosen.flagUri } }
   } catch (err) {
     return { ok: false, reason: `Google could not be asked: ${err instanceof Error ? err.message : String(err)}` }
   }

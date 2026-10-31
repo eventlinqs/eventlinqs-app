@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { findVenuePlace, type PlaceAsker } from '@/lib/places/match-venue'
+import { findVenuePlace, keptEvidence, type PlaceAsker } from '@/lib/places/match-venue'
 import type { GooglePlace, OurVenue } from '@/lib/places/venue-match'
 
 /**
@@ -49,5 +49,17 @@ describe("a venue's Google place", () => {
     const r = await findVenuePlace({ ...corner, address: null }, asker(['corner'], { candidates: async () => { called += 1; return { ok: true, value: [] } } }))
     expect(called).toBe(0)
     expect(r.state).toBe('no match')
+  })
+})
+
+describe('what is kept of a match (Google: no Places content stored beyond the place id)', () => {
+  test("our metres and what agreed, never Google's name or address", async () => {
+    const r = await findVenuePlace(corner, asker(['corner']))
+    expect(r.state).toBe('matched')
+    if (r.state === 'matched') {
+      const kept = JSON.stringify(keptEvidence(r.evidence))
+      expect(kept).not.toMatch(/Corner|Swan|Richmond|Australia/)
+      expect(keptEvidence(r.evidence)).toEqual({ metres: r.evidence.metres, agreed: ['name', 'street', 'location'] })
+    }
   })
 })

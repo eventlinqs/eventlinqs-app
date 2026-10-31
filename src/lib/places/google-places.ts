@@ -28,7 +28,12 @@ export interface PhotoRef {
   readonly name: string
   readonly widthPx: number
   readonly heightPx: number
-  readonly authors: readonly { readonly displayName: string; readonly uri: string | null }[]
+  readonly authors: readonly { readonly displayName: string; readonly uri: string | null; readonly photoUri: string | null }[]
+  /** 'A link to show the photo on Google Maps': end users 'must always have access to view the individual source photo
+   * ... on Google Maps ... using the provided googleMapsUri' (places/web-service/policies, read 31 October 2026). */
+  readonly mapsUri: string | null
+  /** 'A link where users can flag a problem with the photo' (content reporting, recommended by the same page). */
+  readonly flagUri: string | null
 }
 
 const keyOrNull = () => process.env.GOOGLE_MAPS_API_KEY?.trim() || null
@@ -72,14 +77,16 @@ export async function freshPhotos(db: RpcClient, placeId: string, purpose: strin
   return withGoogleSpend(db, { api: 'places_details_ids', units: 1, purpose }, async () => {
     const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, { headers: { 'x-goog-api-key': key, 'x-goog-fieldmask': 'photos' }, cache: 'no-store' })
     const j = await asJson(res, 'Place Details photos')
-    const photos = (j.photos as { name?: string; widthPx?: number; heightPx?: number; authorAttributions?: { displayName?: string; uri?: string }[] }[] | undefined) ?? []
+    const photos = (j.photos as { name?: string; widthPx?: number; heightPx?: number; googleMapsUri?: string; flagContentUri?: string; authorAttributions?: { displayName?: string; uri?: string; photoUri?: string }[] }[] | undefined) ?? []
     return photos
       .filter((p) => typeof p.name === 'string')
       .map((p) => ({
         name: p.name as string,
         widthPx: Number(p.widthPx ?? 0),
         heightPx: Number(p.heightPx ?? 0),
-        authors: (p.authorAttributions ?? []).filter((a) => a.displayName).map((a) => ({ displayName: a.displayName as string, uri: a.uri ?? null })),
+        authors: (p.authorAttributions ?? []).filter((a) => a.displayName).map((a) => ({ displayName: a.displayName as string, uri: a.uri ?? null, photoUri: a.photoUri ?? null })),
+        mapsUri: p.googleMapsUri ?? null,
+        flagUri: p.flagContentUri ?? null,
       }))
   })
 }
