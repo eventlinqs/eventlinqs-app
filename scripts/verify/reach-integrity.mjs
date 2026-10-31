@@ -423,9 +423,9 @@ const CHECKS = [
           'cannot locate searchOrGroups handing the words to buildSearchOrGroups, the single source of the search predicate. Either it was renamed (update this check with it) or search has been scattered across call sites again',
         )
       }
-      const module = code('src/lib/events/search-query.ts') ?? ''
-      const columns = module.match(/const TEXT_COLUMNS = \[[^\]]*\]/)?.[0] ?? ''
-      const wider = /(summary|description|venue_name|venue_city)/.test(columns) && /tags\.cs\./.test(module)
+      const searchQuery = code('src/lib/events/search-query.ts') ?? ''
+      const columns = searchQuery.match(/const TEXT_COLUMNS = \[[^\]]*\]/)?.[0] ?? ''
+      const wider = /(summary|description|venue_name|venue_city)/.test(columns) && /tags\.cs\./.test(searchQuery)
       if (!wider) {
         return FAIL(
           'search is a substring match on the event title and nothing else, so a multi-word Sounds tile such as "afrobeats amapiano" matches only a title containing that literal string. Nine of twelve tiles and three of four search tabs are dead ends',
