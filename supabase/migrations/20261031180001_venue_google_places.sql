@@ -13,6 +13,13 @@
 -- price; Place Details Pro: US$17.00 (free cap 5,000 a month). The photo itself is the existing 'places_photo' row
 -- (US$7.00; Google's free cap 1,000 a month). Rows are added only where missing; existing ones are never changed here.
 
+-- The guard's price check said 'unit_price_micros > 0' (20261030165501), so a call Google lists as FREE could have no
+-- row, and a call with no row is refused ('No price is recorded for this Google call'). A free call is still counted
+-- against the day's quota and logged; it just costs nothing. So the check becomes '>= 0'. (TEST refused the first
+-- version of this file on that check, 31 October 19:02; nothing was kept.)
+alter table public.google_spend_prices drop constraint if exists google_spend_prices_unit_price_micros_check;
+alter table public.google_spend_prices add constraint google_spend_prices_unit_price_micros_check check (unit_price_micros >= 0);
+
 insert into public.google_spend_prices (api, unit_price_micros, sku, source_url, read_on) values
   ('places_text_search_ids', 0, 'Text Search Essentials (IDs Only), free cap Unlimited', 'https://developers.google.com/maps/billing-and-pricing/pricing', '2026-10-31'),
   ('places_details_ids', 0, 'Place Details Essentials (IDs Only): the photos field, free cap Unlimited', 'https://developers.google.com/maps/billing-and-pricing/pricing', '2026-10-31'),
@@ -21,7 +28,7 @@ on conflict (api) do nothing;
 
 create table if not exists public.venue_google_places (
   venue_id uuid primary key references public.venues(id) on delete cascade,
-  place_id text not null check (place_id ~ '^[A-Za-z0-9_-]{10,300}$'),
+  place_id text not null check (place_id ~ '^[A-Za-z0-9_-]{10,255}$'),
   -- Our own record of WHY this place is our venue: the name, address and distance src/lib/places/venue-match.ts read.
   match_evidence jsonb not null,
   matched_at timestamptz not null default now(),
