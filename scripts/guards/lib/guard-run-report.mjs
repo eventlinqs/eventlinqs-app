@@ -178,3 +178,23 @@ export function renderFailures({ failures, total, runtime }) {
   lines.push(`[guards] FAILED: ${failures.map((f) => f.guard).join(', ')}`)
   return lines
 }
+
+/**
+ * A FAILURE THAT IS TRANSPORT ALONE (the controller's 11:04 of 31 October 2026). Car 22's gate went red twice that
+ * morning on 'fetch failed' reading TEST and nothing else, each guard green alone a minute later. Such a failure is
+ * retried ONCE by the runner; this decides which failures qualify, and nothing else does: the guard exited non-zero,
+ * it was started (a spawn error is not the network), its output carries a transport signature, and EVERY line that
+ * says FAIL names one. A real finding printed beside a transport line is not transport alone, and fails at once.
+ * Returns the first transport line, to quote in the log, or null.
+ */
+const TRANSPORT = /fetch failed|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ECONNRESET|EAI_AGAIN/
+
+export function transportOnlyFailure(result) {
+  if (result.error || result.status === 0 || result.status === null) return null
+  const lines = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.split(/\r?\n/)
+  const transport = lines.filter((l) => TRANSPORT.test(l))
+  if (transport.length === 0) return null
+  const fails = lines.filter((l) => /\bFAIL\b/.test(l))
+  if (fails.some((l) => !TRANSPORT.test(l))) return null
+  return transport[0].trim()
+}
