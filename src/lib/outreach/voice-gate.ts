@@ -26,11 +26,17 @@ export interface VoicePolicy {
   readonly replySignature: readonly string[]
   readonly noExit: readonly string[]
   readonly permissions: readonly { recipient: string; topic: string; given: string; neverAsk: readonly string[] }[]
+  /** Law 6, the dash rule: compound modifiers before a noun, and compound words, take the plain hyphen. */
+  readonly compounds: { readonly mustHyphenateBeforeNoun: readonly string[]; readonly nounsAfter: string; readonly compoundWords: readonly string[] }
+  /** A contact already written to on a thread is written to from that thread's own mailbox only. */
+  readonly threads: readonly { recipient: string; mailbox: string; why: string }[]
 }
 
 export interface VoiceMessage {
   readonly channel: VoiceChannel
   readonly category: VoiceCategory
+  /** The mailbox or account it goes from; named before drafting (the gateway's rule). */
+  readonly from: string | null
   /** Email addresses; empty for a direct message. */
   readonly to: readonly string[]
   readonly subject: string | null
@@ -44,7 +50,9 @@ export interface VoiceMessage {
 export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   const p = raw as Partial<VoicePolicy>
   const strings = (a: unknown) => Array.isArray(a) && a.length > 0 && a.every((s) => typeof s === 'string' && s.length > 0)
-  if (typeof p?.version !== 'string' || !/^[0-9a-f]{16}$/.test(p.version) || !strings(p.firstSignature) || !strings(p.replySignature) || !strings(p.noExit) || !Array.isArray(p.permissions)) {
+  const c = p?.compounds
+  const compoundsWhole = Boolean(c) && strings(c?.mustHyphenateBeforeNoun) && typeof c?.nounsAfter === 'string' && c.nounsAfter.length > 0 && strings(c?.compoundWords)
+  if (typeof p?.version !== 'string' || !/^[0-9a-f]{16}$/.test(p.version) || !strings(p.firstSignature) || !strings(p.replySignature) || !strings(p.noExit) || !Array.isArray(p.permissions) || !compoundsWhole || !Array.isArray(p.threads)) {
     throw new Error('POLICY_UNAVAILABLE: the voice policy is missing or incomplete; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   }
   return p as VoicePolicy
@@ -151,6 +159,24 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
     .filter((s) => s.length > 25)
   const dup = sents.filter((s, i) => sents.indexOf(s) !== i)
   if (dup.length > 0) r.push(`repeated sentence: ${JSON.stringify([...new Set(dup)].sort()[0].slice(0, 60))}`)
+  // Law 6 (gateway.py, the dash rule): the phrase and the noun it modifies, any spacing, any case.
+  const spaced = (phrase: string) =>
+    phrase
+      .split(' ')
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('\\s+')
+  for (const c of policy.compounds.mustHyphenateBeforeNoun) {
+    const m = own.match(new RegExp(`\\b${spaced(c)}\\s+(${policy.compounds.nounsAfter})\\b`, 'i'))
+    if (m) r.push(`compound modifier needs its hyphen: "${m[0]}" -> "${c.replace(/ /g, '-')} ${m[1]}" (Lawal's dash rule)`)
+  }
+  for (const c of policy.compounds.compoundWords) {
+    if (new RegExp(`\\b${spaced(c)}\\b`, 'i').test(own)) r.push(`compound word needs its hyphen: "${c}" -> "${c.replace(/ /g, '-')}"`)
+  }
+  const sender = (msg.from ?? '').trim().toLowerCase()
+  if (!sender) r.push('no sending mailbox (from): the right mailbox must be named before drafting')
+  for (const t of policy.threads) {
+    if (to.some((a) => a.toLowerCase() === t.recipient.toLowerCase()) && sender && sender !== t.mailbox.toLowerCase()) r.push(`wrong mailbox: ${t.recipient} is written to from ${t.mailbox} (${t.why}), not ${sender}`)
+  }
   for (const p of policy.permissions) {
     if (!to.some((a) => a.toLowerCase() === p.recipient.toLowerCase())) continue
     for (const pat of p.neverAsk) if (new RegExp(pat, 'i').test(own)) r.push(`asks again for permission already given: ${p.topic} (${p.given})`)
@@ -160,7 +186,7 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
 
 /** gateway.py chash: the exact content an approval is for. */
 export function voiceContentHash(msg: VoiceMessage): string {
-  const keep = { body: msg.body, category: msg.category, channel: msg.channel, greeting_name: msg.greetingName ?? null, subject: msg.subject ?? null, thread_ref: msg.threadRef ?? null, to: [...(msg.to ?? [])] }
+  const keep = { body: msg.body, category: msg.category, channel: msg.channel, from: msg.from ?? null, greeting_name: msg.greetingName ?? null, subject: msg.subject ?? null, thread_ref: msg.threadRef ?? null, to: [...(msg.to ?? [])] }
   return createHash('sha256').update(JSON.stringify(keep)).digest('hex').slice(0, 16)
 }
 

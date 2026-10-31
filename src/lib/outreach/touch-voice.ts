@@ -27,6 +27,19 @@ export function voiceCategoryOf(purpose: string, step: number | null): VoiceCate
   return step <= 1 ? 'first_contact' : 'follow_up'
 }
 
+/**
+ * Where a message by hand goes from: Lawal sends every one himself. An email goes from his own mailbox, the one his
+ * first round of 10 and 11 October went from (the voice file is read from it); the gateway's thread rule then refuses
+ * any contact whose conversation runs on another mailbox. A direct message or a form goes from his own account.
+ */
+export const LAWAL_MAILBOX = 'lawal@eventlinqs.com'
+const FROM: Record<ContactChannel, string> = {
+  email: LAWAL_MAILBOX,
+  instagram: "instagram: Lawal's own account",
+  facebook: "facebook: Lawal's own profile",
+  website_form: 'website form, as Lawal Adams',
+}
+
 export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
   const category = voiceCategoryOf(t.purpose, t.step)
   const person = (t.personName ?? '').trim()
@@ -34,6 +47,7 @@ export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
   return {
     channel: t.channel,
     category,
+    from: FROM[t.channel],
     to: t.channel === 'email' ? [t.address] : [],
     subject: t.subject,
     greetingName: person || (organiser ? `${organiser} team` : null),
