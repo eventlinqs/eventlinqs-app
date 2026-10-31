@@ -28,6 +28,8 @@
  *      photograph exists with its photographer on record.
  *   9  The home page's Communities doorway tile has its own photograph, which exists and is not in the home hero's
  *      raster pool (Lawal, 31 October 2026: the tile drew the placeholder on live; 'lock that in').
+ *  10  Every hero page asks for its own subject's photo and none draws its hero empty on purpose (Lawal, 31 October:
+ *      one defect is a class); the faith pages are printed as NOT YET until they have photographs of their own.
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -167,6 +169,29 @@ else {
   const base = doorSrc[1].replace(/^.*\//, '').replace(/\.[a-z]+$/, '')
   if (pool && pool[1].includes(`'${base}'`)) fail('9', `the Communities doorway photograph '${base}' is also in the home hero raster pool, so one page could show it twice`)
 }
+
+// 10 No hero is drawn empty on purpose (Lawal, 31 October 2026, 11:13 'one defect is a class', through the controller's
+//    11:18; his standing directive: real photography is never swapped for a placeholder). Each hero page names its own
+//    subject's photo and never hard-codes an empty hero. The faith pages have no faith photograph of their own yet
+//    (a community's photo there would show another subject), so they are printed below as NOT YET on every run,
+//    never passed silently; they come off this list the day their photos land.
+const HERO_PAGES = [
+  ['src/app/community/[community]/[city]/page.tsx', /\bgetCommunityHeroPhoto\b/],
+  ['src/app/community/[community]/page.tsx', /\bgetCommunityHeroPhoto\b/],
+  ['src/app/city/[slug]/page.tsx', /\bgetCityHeroPhoto\b/],
+  ['src/app/events/browse/[city]/page.tsx', /\bgetCityHeroPhoto\b/],
+  ['src/app/free/[city]/this-week/page.tsx', /\bgetCityHeroPhoto\b/],
+  ['src/app/categories/[slug]/page.tsx', /\bgetCategoryPhoto\b/],
+]
+const HERO_NOT_YET = ['src/app/faith/[faith]/page.tsx']
+const EMPTY_HERO = /heroImage=\{null\}|const heroImage = null\b/
+for (const [page, resolver] of HERO_PAGES) {
+  const src = code(read(page))
+  if (!src) fail('10', `${page} is missing; the hero scan cannot be trusted`)
+  else if (EMPTY_HERO.test(src)) fail('10', `${page} draws its hero empty on purpose (heroImage null); it shows its own subject's photo`)
+  else if (!resolver.test(src)) fail('10', `${page} no longer asks for its own subject's photo (${resolver.source.replace(/\\b/g, '')})`)
+}
+for (const page of HERO_NOT_YET) console.log(`${TAG} NOT YET (clause 10): ${page} has no photograph of its own subject; it is listed until it does`)
 
 console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} category slugs (${eventTypes.length} city event types, ${strip.length} organiser strip tiles), ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), ${cityFilesChecked} city file(s), ${suburbFilesChecked} suburb file(s) (${suburbSlugs.size} in the city data), and the five photo resolvers`)
 if (FAILURES.length) {
