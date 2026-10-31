@@ -1,5 +1,5 @@
 /**
- * IS THIS GOOGLE PLACE OUR VENUE? (the CONTROLLER's 17:55 (4) of 31 October 2026: 'venue identity by verified name
+ * IS THIS GOOGLE PLACE OUR VENUE? (the CONTROLLER's note of 5.55 pm, item 4, of 31 October 2026: 'venue identity by verified name
  * AND address AND location, never text alone where ambiguous'). A Google photo reaches a page only for a place this
  * says yes to, so a near miss is a no, with its reason, never a guess.
  *

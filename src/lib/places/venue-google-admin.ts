@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { candidatePlaceIds, freshPhotos, photoUri, placeForMatch } from './google-places'
 import { findVenuePlace, type VenuePlace } from './match-venue'
 import { pickPhoto } from './pick-photo'
@@ -7,7 +8,7 @@ import type { OurVenue } from './venue-match'
 import type { VenueGooglePhoto } from './venue-google-photo'
 
 /**
- * THE PERSON's SIDE OF GOOGLE VENUE PHOTOS (directive of 31 October 17:44, section 6: 'per venue confirm identity ...
+ * THE PERSON's SIDE OF GOOGLE VENUE PHOTOS (directive of 31 October, 5.44 pm, section 6: 'per venue confirm identity ...
  * reject unrelated photos ... avoid logos, menus and low-quality screenshots ... check the mobile crop'). Nothing here
  * runs on its own: a person presses Find, looks, and approves or refuses. Every Google call goes through the cost guard
  * in ./google-places.ts. Only the place id, the evidence and the decision are kept (venue_google_places).
@@ -26,11 +27,10 @@ export interface VenueRow {
 
 type Venue = { id: string; name: string; address: string | null; suburb: string | null; state: string | null; postal_code: string | null; latitude: number | null; longitude: number | null }
 
-const fullAddress = (v: Venue): string | null => {
-  const tail = [v.state, v.postal_code].filter(Boolean).join(' ')
-  const parts = [v.address, v.suburb, tail].map((p) => p?.trim()).filter(Boolean)
-  return v.address?.trim() ? parts.join(', ') : null
-}
+// The platform's one address format (src/lib/venues/format-venue-address.ts); a venue with no street address of its own
+// has none here, so it is never searched (src/lib/places/match-venue.ts).
+const fullAddress = (v: Venue): string | null =>
+  v.address?.trim() ? formatVenueAddress({ address: v.address, city: v.suburb, state: v.state, postcode: v.postal_code }) : null
 
 const ourVenue = (v: Venue): OurVenue | null =>
   v.latitude === null || v.longitude === null ? null : { name: v.name, address: fullAddress(v), lat: v.latitude, lng: v.longitude }

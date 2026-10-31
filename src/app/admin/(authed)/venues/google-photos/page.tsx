@@ -15,7 +15,7 @@ export const metadata = {
 }
 
 /**
- * GOOGLE VENUE PHOTOS, A PERSON DECIDES (directive of 31 October 17:44, sections 5 and 6). Find asks Google which place
+ * GOOGLE VENUE PHOTOS, A PERSON DECIDES (directive of 31 October, 5.44 pm, sections 5 and 6). Find asks Google which place
  * is this venue (name, address and location must all agree); Look shows its current lead photo with the credit Google
  * requires; Approve lets its event pages show Google photos; Refuse keeps the reason. Every Google call is through the
  * cost guard. Google's photos are never stored: each look is a fresh, billed call, so it happens only on a press.
@@ -79,7 +79,7 @@ export default async function GoogleVenuePhotosPage({ searchParams }: { searchPa
                     Photo:{' '}
                     {look.photo.authors.map((a, i) => (
                       <span key={a.displayName + i}>
-                        {i > 0 ? ', ' : ''}
+                        {i > 0 && <>, </>}
                         {a.uri ? <a href={a.uri} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{a.displayName}</a> : a.displayName}
                       </span>
                     ))}{' '}

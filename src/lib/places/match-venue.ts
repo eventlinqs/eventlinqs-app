@@ -2,7 +2,7 @@ import type { Spent } from '@/lib/google/spend-guard'
 import { matchVenue, type GooglePlace, type OurVenue } from './venue-match'
 
 /**
- * FINDING ONE VENUE's GOOGLE PLACE (directive of 31 October 17:44, section 6: 'per venue confirm identity'). Google's
+ * FINDING ONE VENUE's GOOGLE PLACE (directive of 31 October, 5.44 pm, section 6: 'per venue confirm identity'). Google's
  * nearby candidates (Text Search IDs only, src/lib/places/google-places.ts) are each read once and judged by
  * ./venue-match.ts; the first that agrees is the venue's. Every refusal is kept as evidence. A cost guard refusal STOPS
  * the search and says so: a quota reached is not a venue without a match. A venue with no address of its own is never

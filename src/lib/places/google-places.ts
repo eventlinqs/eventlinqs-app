@@ -1,5 +1,6 @@
 import 'server-only'
 import { withGoogleSpend, type RpcClient, type Spent } from '@/lib/google/spend-guard'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import type { GooglePlace, OurVenue } from './venue-match'
 
 /**
@@ -43,7 +44,7 @@ export async function candidatePlaceIds(db: RpcClient, venue: OurVenue): Promise
   const key = keyOrNull()
   if (!key) return noKey
   return withGoogleSpend(db, { api: 'places_text_search_ids', units: 1, purpose: `venue match, ${venue.name}` }, async () => {
-    const body = { textQuery: [venue.name, venue.address].filter(Boolean).join(', '), pageSize: 5, locationBias: { circle: { center: { latitude: venue.lat, longitude: venue.lng }, radius: 150 } } }
+    const body = { textQuery: formatVenueWithAddress({ name: venue.name, address: venue.address }) ?? venue.name, pageSize: 5, locationBias: { circle: { center: { latitude: venue.lat, longitude: venue.lng }, radius: 150 } } }
     const res = await fetch(`${BASE}/places:searchText`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key, 'x-goog-fieldmask': 'places.id' }, body: JSON.stringify(body), cache: 'no-store' })
     const j = await asJson(res, 'Text Search')
     return ((j.places as { id?: string }[] | undefined) ?? []).map((p) => p.id).filter((id): id is string => typeof id === 'string')

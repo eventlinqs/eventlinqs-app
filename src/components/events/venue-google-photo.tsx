@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 /**
- * A VENUE's GOOGLE PHOTO ON ITS EVENT PAGE, WITH THE CREDIT GOOGLE REQUIRES (directive of 31 October 17:44, sections 5
+ * A VENUE's GOOGLE PHOTO ON ITS EVENT PAGE, WITH THE CREDIT GOOGLE REQUIRES (directive of 31 October, 5.44 pm, sections 5
  * to 7; Lawal's ruling of 30 October 23:56: event detail pages only, never list cards). Shown only for a night with no
  * photograph of its own, in the getting-there section, never as the hero: the hero stays the page's one server-drawn
  * image (the LCP law), and a Google photo may not be drawn into a cached page or our image optimiser ('You cannot
@@ -41,7 +41,7 @@ export function VenueGooglePhoto({ venueId, venueName }: { venueId: string; venu
         Photo:{' '}
         {photo.authors.map((a, i) => (
           <span key={`${a.displayName}-${i}`}>
-            {i > 0 ? ', ' : ''}
+            {i > 0 && <>, </>}
             {a.uri ? (
               <a href={a.uri} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
                 {a.displayName}
