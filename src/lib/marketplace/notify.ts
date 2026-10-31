@@ -1,6 +1,7 @@
 import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send'
+import { greetingHtml, greetingText, signOffHtml, signOffText } from '@/lib/email/letter'
 import { getSiteUrl } from '@/lib/site-url'
 import { chooseChannel, DEFAULT_PREFS, type NotificationPrefs } from '@/lib/notifications/policy'
 import { isPushConfigured, sendWebPush, type StoredSubscription } from '@/lib/notifications/web-push'
@@ -99,13 +100,13 @@ async function loadPrefs(admin: Admin, userId: string): Promise<Answered<Notific
  * The address. A failed read here used to be reported as `no_email`, which is
  * a statement about a person's account that the code had no evidence for.
  */
-async function resolveEmail(admin: Admin, userId: string): Promise<Answered<string | null>> {
-  const { data, error } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle()
+async function resolveEmail(admin: Admin, userId: string): Promise<Answered<{ email: string | null; name: string | null }>> {
+  const { data, error } = await admin.from('profiles').select('email, full_name, display_name').eq('id', userId).maybeSingle()
   if (error) {
     console.error('[marketplace-notify] could not read the recipient address:', error)
     return { failed: true }
   }
-  return { failed: false, value: data?.email ?? null }
+  return { failed: false, value: { email: data?.email ?? null, name: data?.full_name ?? data?.display_name ?? null } }
 }
 
 /**
@@ -243,7 +244,7 @@ export async function dispatchMarketplaceAlert(
   if (!delivered && prefs.email_enabled) {
     const emailRead = await resolveEmail(admin, userId)
     if (emailRead.failed) return { status: 'skipped', reason: 'read_failed' }
-    const to = emailRead.value
+    const to = emailRead.value.email
     if (!to) return { status: 'skipped', reason: 'no_email' }
     try {
       const manageUrl = `${site}/account/notifications`
@@ -252,8 +253,8 @@ export async function dispatchMarketplaceAlert(
         subject: input.title,
         messageType: 'marketplace_supplier_notice',
         recipientRole: 'organiser',
-        html: marketplaceEmailHtml(payload, input.ctaLabel, manageUrl),
-        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
+        html: marketplaceEmailHtml(payload, input.ctaLabel, manageUrl, emailRead.value.name),
+        text: marketplaceEmailText(payload, manageUrl, emailRead.value.name),
       })
       delivered = 'email'
     } catch {
@@ -332,17 +333,25 @@ export async function notifyMatchingPerformers(admin: Admin, gig: GigRow): Promi
   return sent
 }
 
-function marketplaceEmailHtml(
+/** The plain-text part; a letter (src/lib/email/letter.ts), rendered by tests/unit/email/every-letter-greets.test.ts. */
+export function marketplaceEmailText(payload: { body: string; url: string }, manageUrl: string, name: string | null): string {
+  return `${greetingText(name)}${payload.body}\n\n${payload.url}${signOffText()}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`
+}
+
+export function marketplaceEmailHtml(
   payload: { title: string; body: string; url: string },
   ctaLabel: string,
   manageUrl: string,
+  name: string | null,
 ): string {
   return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px">
     <div style="background:#ffffff;border:1px solid #e7e9ee;border-radius:14px;padding:28px">
+      ${greetingHtml(name)}
       <p style="margin:0 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9a7b1f;font-weight:700">${escapeHtml(payload.title)}</p>
       <p style="margin:0 0 20px;font-size:16px;line-height:1.5;color:#0A1628">${escapeHtml(payload.body)}</p>
       <a href="${escapeAttr(payload.url)}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">${escapeHtml(ctaLabel)}</a>
+      ${signOffHtml()}
     </div>
     <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You are receiving this because of your performer marketplace activity on EventLinqs. <a href="${escapeAttr(manageUrl)}" style="color:#6b7280;text-decoration:underline">Manage or turn off these alerts</a>.</p>
     <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>

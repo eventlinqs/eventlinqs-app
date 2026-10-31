@@ -1,5 +1,6 @@
 import { sendEmail } from './send'
 import { getReplyToAddress } from './sender'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from './letter'
 
 /**
  * Every auth email EventLinqs sends, on ONE transport.
@@ -55,7 +56,7 @@ export function escapeHtmlAttribute(value: string): string {
 }
 
 /** The shared branded shell. One design, four messages. */
-function authEmailHtml(content: AuthEmailContent, actionUrl: string): string {
+function authEmailHtml(content: AuthEmailContent, actionUrl: string, name: string | null = null): string {
   const safeUrl = escapeHtmlAttribute(actionUrl)
   const contact = getReplyToAddress()
   return `<!doctype html>
@@ -77,6 +78,7 @@ function authEmailHtml(content: AuthEmailContent, actionUrl: string): string {
             </tr>
             <tr>
               <td style="padding:32px 40px 24px;">
+                ${greetingHtml(name)}
                 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:600;color:#0A1628;">${content.heading}</h1>
                 <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#0A1628;">
                   ${content.lead}
@@ -97,6 +99,7 @@ function authEmailHtml(content: AuthEmailContent, actionUrl: string): string {
                 <p style="margin:0 0 24px;font-size:13px;line-height:1.55;color:#0A1628;word-break:break-all;">
                   <a href="${safeUrl}" style="color:#0A1628;text-decoration:underline;">${safeUrl}</a>
                 </p>
+                ${signOffHtml('margin:0 0 24px;font-size:16px;line-height:1.55;color:#0A1628;')}
                 <p style="margin:0;font-size:13px;line-height:1.55;color:#6B7280;">
                   ${content.disclaimer}
                 </p>
@@ -121,12 +124,17 @@ function authEmailHtml(content: AuthEmailContent, actionUrl: string): string {
 }
 
 /** Plain-text alternative. Hand-tuned rather than derived: it lifts deliverability. */
-function authEmailText(content: AuthEmailContent, actionUrl: string): string {
+function authEmailText(content: AuthEmailContent, actionUrl: string, name: string | null = null): string {
   return [
+    greetingLine(name),
+    '',
     content.title,
     '',
     `${content.lead.replace(/\s+/g, ' ').trim()}`,
     actionUrl,
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     content.disclaimer,
     '',

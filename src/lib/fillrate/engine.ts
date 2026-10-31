@@ -63,6 +63,8 @@ export type Links = {
    * which is now the adapter rather than the sender.
    */
   signature: string
+  /** The letter's sign off, line by line, supplied for the same reason (src/lib/email/letter.ts). */
+  signOff: readonly string[]
 }
 
 /** Injected so a test can drive the whole sweep without a mail server. */
@@ -227,6 +229,7 @@ async function deliver(
     unsubscribeUrl,
     organiserName: described.organiserName,
     signature: links.signature,
+    signOff: links.signOff,
   })
 
   try {
@@ -394,6 +397,7 @@ export async function activateWaitlist(
       unsubscribeUrl,
       organiserName: described.organiserName,
       signature: links.signature,
+    signOff: links.signOff,
     })
 
     try {

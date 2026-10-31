@@ -2,7 +2,8 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
-import { escapeHtml } from '@/lib/email/escape'
+import { renderNotice } from '@/lib/email/notice'
+import { firstNameOf } from '@/lib/email/letter'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { captureException } from '@/lib/observability/sentry'
 import {
@@ -51,6 +52,8 @@ export type OrganiserSaleNotifyResult =
 interface SaleFacts {
   organisationName: string
   recipientEmail: string
+  /** The owner's first name, for the letter's greeting (src/lib/email/letter.ts). */
+  firstName: string | null
   mode: string | null
   eventTitle: string
   eventSlug: string | null
@@ -204,11 +207,13 @@ async function loadSaleFacts(
   }
 
   let recipientEmail = ''
+  let firstName: string | null = null
   if (org?.owner_id) {
     const profile = await readOrThrow('organiser-sale-profile', () =>
-      admin.from('profiles').select('email').eq('id', org.owner_id as string).maybeSingle(),
+      admin.from('profiles').select('email, full_name, display_name').eq('id', org.owner_id as string).maybeSingle(),
     )
     recipientEmail = (profile?.email as string) ?? ''
+    firstName = firstNameOf((profile?.full_name as string | null) ?? (profile?.display_name as string | null) ?? null)
   }
 
   const ticketCount = countOrRead(
@@ -238,6 +243,7 @@ async function loadSaleFacts(
   return {
     organisationName: (org?.name as string) ?? 'your organisation',
     recipientEmail,
+    firstName,
     mode: (org?.sales_notification_mode as string | null) ?? null,
     eventTitle: (event?.title as string) ?? 'your event',
     eventSlug: (event?.slug as string | null) ?? null,
@@ -259,7 +265,7 @@ export function buildSaleEmail(
   facts: Pick<
     SaleFacts,
     'eventTitle' | 'eventSlug' | 'orderNumber' | 'totalCents' | 'currency' | 'ticketCount'
-  >,
+  > & { firstName?: string | null },
 ): { subject: string; html: string; text: string } {
   const amount = formatMoneyDisplay(facts.totalCents, facts.currency)
   const first = decision === 'send_first_sale'
@@ -286,26 +292,13 @@ export function buildSaleEmail(
   const dashboardUrl = `${getSiteUrl().replace(/\/$/, '')}/dashboard/events`
   const cta = { label: 'Open your dashboard', url: dashboardUrl }
 
-  const text = [
+  const { html, text } = renderNotice({
+    name: facts.firstName ?? null,
     title,
-    '',
-    ...lines,
-    '',
-    `${cta.label}: ${cta.url}`,
-    '',
-    'Change how often you hear about sales in your organiser settings.',
-  ].join('\n')
-
-  const html = [
-    `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A1628">`,
-    `<h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(title)}</h1>`,
-    ...lines.map(
-      (l) => `<p style="font-size:15px;line-height:1.55;margin:0 0 12px">${escapeHtml(l)}</p>`,
-    ),
-    `<p style="margin:24px 0"><a href="${cta.url}" style="background:#0A1628;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${escapeHtml(cta.label)}</a></p>`,
-    `<p style="font-size:13px;line-height:1.5;margin:0;color:#4a5568">Change how often you hear about sales in your organiser settings.</p>`,
-    `</div>`,
-  ].join('')
+    lines,
+    cta,
+    footnote: 'Change how often you hear about sales in your organiser settings.',
+  })
 
   return { subject, html, text }
 }

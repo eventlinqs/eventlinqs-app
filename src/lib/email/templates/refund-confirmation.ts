@@ -21,6 +21,7 @@
 import { refundArrivalSentenceWithReversal } from '@/lib/refunds/arrival-timeframe'
 import { formatMoney } from '@/lib/money/format'
 import { entityFooterLine } from '@/lib/legal/platform-entity'
+import { greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 
 export type RefundConfirmationProps = {
   /** Buyer's display name; null falls back to "there" in the greeting. */
@@ -71,11 +72,7 @@ export function buildRefundTimeframeSentence(
  * matching the existing purchase-confirmation email's defensive default.
  */
 function buildGreeting(buyerName: string | null): string {
-  const trimmed = (buyerName ?? '').trim()
-  if (!trimmed) return 'Hi there,'
-  // First name only when a multi-word name is supplied.
-  const first = trimmed.split(/\s+/)[0]
-  return `Hi ${first},`
+  return greetingLine(buyerName)
 }
 
 /** "1 ticket" vs "N tickets" - AU English style: integer + label only. */
@@ -159,8 +156,8 @@ export function buildRefundConfirmationHtml(props: RefundConfirmationProps): str
         <tr>
           <td style="padding:32px 32px 24px;">
             <p style="margin:0 0 4px;color:#6B7280;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;">EventLinqs</p>
-            <h1 style="margin:0;color:#0A1628;font-size:24px;font-weight:700;line-height:1.25;">Your refund has been processed</h1>
-            <p style="margin:24px 0 12px;color:#1F2937;font-size:16px;line-height:1.55;">${escapeHtml(greeting)}</p>
+            <p style="margin:16px 0 16px;color:#1F2937;font-size:16px;line-height:1.55;">${escapeHtml(greeting)}</p>
+            <h1 style="margin:0 0 12px;color:#0A1628;font-size:24px;font-weight:700;line-height:1.25;">Your refund has been processed</h1>
             <p style="margin:0 0 24px;color:#4B5563;font-size:15px;line-height:1.55;">${timeframe}</p>
 
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
@@ -184,6 +181,7 @@ export function buildRefundConfirmationHtml(props: RefundConfirmationProps): str
 ${customBlock}
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;" />
             <p style="margin:0;color:#4B5563;font-size:14px;line-height:1.55;">${supportLine}</p>
+            ${signOffHtml()}
           </td>
         </tr>
         <tr>
@@ -223,9 +221,9 @@ export function buildRefundConfirmationText(props: RefundConfirmationProps): str
         : `Questions? Reply to this email and our support team will help.`
 
   return [
-    `Your refund has been processed`,
-    ``,
     greeting,
+    ``,
+    `Your refund has been processed`,
     ``,
     timeframe,
     ``,
@@ -235,6 +233,9 @@ export function buildRefundConfirmationText(props: RefundConfirmationProps): str
     `Refund amount: ${amountLabel}`,
     customBlock,
     supportLine,
+    ``,
+    SIGN_OFF,
+    SIGNATURE,
     ``,
     entityFooterLine(),
     `All-in pricing. No surprise fees.`,

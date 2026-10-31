@@ -1,5 +1,6 @@
 import 'server-only'
 import { sendEmail } from '@/lib/email/send'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 
 /**
  * "Send this kit to myself": the optional email on the reveal.
@@ -56,6 +57,7 @@ export function buildKitEmail(input: { title: string; url: string }): {
 <body style="margin:0;padding:0;background:#f6f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
     <div style="background:#ffffff;border:1px solid #e4e6ea;border-radius:14px;padding:28px;">
+      ${greetingHtml(null)}
       <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a6d1f;font-weight:700;">Your launch kit</p>
       <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#0A1628;">${title}</h1>
       <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#414a56;">
@@ -63,18 +65,25 @@ export function buildKitEmail(input: { title: string; url: string }): {
       </p>
       <a href="${url}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;padding:13px 24px;border-radius:999px;font-size:15px;font-weight:600;">Open your kit</a>
       <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#6b7480;word-break:break-all;">${url}</p>
+      ${signOffHtml()}
     </div>
     <p style="margin:18px 0 0;text-align:center;font-size:12px;color:#8b929c;">You asked us to send this to you. We have not added you to anything.</p>
   </div>
 </body>
 </html>`
 
+  // The visitor gives an address and no name, so the letter says 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     `Your launch kit: ${input.title}`,
     '',
     'Everything you built is on this link: your event page, your poster, your cards and your captions. It keeps working for thirty days.',
     '',
     input.url,
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     'You asked us to send this to you. We have not added you to anything.',
   ].join('\n')

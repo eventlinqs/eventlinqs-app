@@ -312,6 +312,9 @@
  *                              declares, no transport escapes the matrix, and no message about
  *                              an organiser's event reaches the platform owner while the
  *                              organiser is told nothing (close-out MONEY FIX B3)
+ *   every-letter-greets        every file that emails a person is on the list the letter test
+ *                              renders, so each letter opens 'Hi <first name>,' and signs off
+ *                              'Kind regards,' then 'The EventLinqs team' (gap 3, 31 October 2026)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -1907,6 +1910,9 @@ const GUARDS = [
   // written cannot be caught by testing the messages that were, so the check has
   // to be a declaration every send is judged against.
   'scripts/guards/every-message-has-a-declared-recipient.mjs',
+  // Gap 3, 31 October 2026 (communication law 3): every email to a person greets them and signs off. The words are
+  // judged by tests/unit/email/every-letter-greets.test.ts; this keeps its list of senders whole on prebuild.
+  'scripts/guards/every-letter-greets.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE

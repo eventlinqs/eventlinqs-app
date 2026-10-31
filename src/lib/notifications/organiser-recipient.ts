@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { firstNameOf } from '@/lib/email/letter'
 
 /**
  * WHO THE ORGANISER IS, AS AN ADDRESS. Close-out MONEY FIX, part B.
@@ -22,6 +23,8 @@ export interface OrganiserRecipient {
   email: string
   organisationName: string
   organisationId: string
+  /** The owner's first name, for the letter's greeting (src/lib/email/letter.ts); null gives 'Hi there,'. */
+  firstName: string | null
 }
 
 export async function resolveOrganisationOwnerEmail(
@@ -46,7 +49,7 @@ export async function resolveOrganisationOwnerEmail(
   if (!org?.owner_id) return null
 
   const profile = await readOrThrow('organiser-recipient-profile', () =>
-    admin.from('profiles').select('email').eq('id', org.owner_id as string).maybeSingle(),
+    admin.from('profiles').select('email, full_name, display_name').eq('id', org.owner_id as string).maybeSingle(),
   )
 
   const email = (profile?.email as string | null) ?? null
@@ -56,5 +59,6 @@ export async function resolveOrganisationOwnerEmail(
     email,
     organisationName: (org.name as string) ?? 'your organisation',
     organisationId: org.id as string,
+    firstName: firstNameOf((profile?.full_name as string | null) ?? (profile?.display_name as string | null) ?? null),
   }
 }

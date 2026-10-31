@@ -29,6 +29,7 @@ const facts = (over: Partial<Parameters<typeof compose>[0]> = {}) => ({
   unsubscribeUrl: 'https://www.eventlinqs.com.au/unsubscribe/recovery/tok-1',
   organiserName: 'MKL Studios',
   signature: 'The EventLinqs team. Where every community celebrates.',
+  signOff: ['Kind regards,', 'The EventLinqs team'],
   ...over,
 })
 
@@ -142,12 +143,14 @@ describe('the offer message, for the waiting list half', () => {
       unsubscribeUrl: 'https://www.eventlinqs.com.au/unsubscribe/recovery/tok-1',
       organiserName: 'MKL Studios',
       signature: 'The EventLinqs team. Where every community celebrates.',
+      signOff: ['Kind regards,', 'The EventLinqs team'],
       ...over,
     })
 
   test('it says when the offer runs out, in the lead rather than in a footnote', () => {
     const m = offer()
-    expect(m.text.split('\n')[0]).toMatch(/until/)
+    // The letter opens 'Hi there,' (communication law 3); the lead is the first line after it.
+    expect(m.text.split('\n').filter(Boolean)[1]).toMatch(/until/)
   })
 
   test('it says the place passes to the next person, which is what actually happens', () => {
