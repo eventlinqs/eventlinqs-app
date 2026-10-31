@@ -4,6 +4,7 @@ import { captureException } from '@/lib/observability/sentry'
 import { getCurrencyForCountry } from './application-fee'
 import { getPayoutScheduleDays } from './pricing-rules'
 import { dueForDisbursement, scanCutoff } from './faster-payouts'
+import { FAILURES_BEFORE_HOLD, retryVerdict, type TransferAttempt } from './payout-retry'
 import type { TransferGateway } from './gateway'
 import { NON_DISBURSABLE_EVENT_STATUSES } from '@/lib/refunds/postponement'
 
@@ -493,6 +494,27 @@ export async function runEventDisbursements(
     if (!destinationAccountId) {
       summary.skipped++
       summary.results.push({ eventId: ev.id, organisationId: ev.organisation_id, status: 'skipped', error: 'no_connected_account' })
+      continue
+    }
+    // RETRIES CAPPED (src/lib/payments/payout-retry.ts): after two failures in a row an event is tried at most once a
+    // day, and the health sentinel tells the founder. A failed read attempts, exactly as before the cap.
+    const { data: attempts, error: attemptsError } = await adminClient
+      .from('payouts')
+      .select('status, created_at')
+      .eq('event_id', ev.id)
+      .eq('kind', 'transfer')
+      .order('created_at', { ascending: false })
+      .limit(FAILURES_BEFORE_HOLD)
+    if (attemptsError) captureException(attemptsError, { scope: 'payments-event-transfer', handler: 'retry-cap-read', event_id: ev.id })
+    const verdict = retryVerdict((attempts ?? []) as TransferAttempt[], now)
+    if (!verdict.attempt) {
+      summary.skipped++
+      summary.results.push({
+        eventId: ev.id,
+        organisationId: ev.organisation_id,
+        status: 'skipped',
+        error: `held after ${verdict.consecutiveFailures} failed transfers; next attempt ${verdict.nextAttemptAt}`,
+      })
       continue
     }
     try {

@@ -11,6 +11,7 @@ import {
   type HealthVerdict,
 } from '@/lib/stripe/account-health'
 import { observePendingVerification } from '@/lib/stripe/requirement-watch'
+import { FAILURES_BEFORE_HOLD, owedAndFailing, type TransferAttempt } from '@/lib/payments/payout-retry'
 
 /**
  * Payment-path health checks, extracted from the original webhook-sentinel
@@ -452,4 +453,80 @@ export async function endpointConfigCheck(origin: string): Promise<PaymentCheckR
   } catch (err) {
     return emit({ name, ok: false, detail: String(err).slice(0, 160), probableCause: 'Stripe API unreachable from sentinel' })
   }
+}
+
+/**
+ * ORGANISERS GET PAID (1 November 2026, C:\dev\EVIDENCE\PAYOUT-MKL-1NOV\cause.md). Two faults, either one critical:
+ *
+ * 1. Stripe's payout schedule for the platform is not 'manual'. Under funds-holding every organiser's money waits in
+ *    the platform balance until after their event, and an automatic payout sends all of it to the platform's bank
+ *    first: on 13 September po_1UFDz7GuiZ9cvxuur9xmUrxZ ('automatic: true') did exactly that, a month before
+ *    MKLStudios' event, and its transfer then failed 448 times.
+ * 2. An event still owed money (its event-scoped available balance above 0) whose last two transfers failed. The cron
+ *    holds it to one attempt a day (src/lib/payments/payout-retry.ts); this is the same-day word to the founder, with
+ *    the event, the amount and Stripe's own reason.
+ */
+export async function payoutHealthCheck(): Promise<PaymentCheckResult> {
+  const name = 'organisers get paid'
+  const problems: string[] = []
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) return emit({ name, ok: false, detail: 'STRIPE_SECRET_KEY missing', probableCause: 'missing Stripe env' })
+  try {
+    const res = await fetch('https://api.stripe.com/v1/account', {
+      headers: { authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    })
+    const account = (await res.json()) as { settings?: { payouts?: { schedule?: { interval?: string } } } }
+    const interval = account.settings?.payouts?.schedule?.interval
+    if (!res.ok || !interval) problems.push(`Stripe's payout schedule could not be read (HTTP ${res.status})`)
+    else if (interval !== 'manual') {
+      problems.push(`Stripe pays the platform balance to the bank automatically ('${interval}'), which takes organisers' held money before their event; set Payout schedule to Manual in Stripe`)
+    }
+
+    const admin = createAdminClient()
+    const since = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString()
+    const { data: failed, error } = await admin
+      .from('payouts')
+      .select('event_id, organisation_id, currency')
+      .eq('kind', 'transfer')
+      .eq('status', 'failed')
+      .gt('created_at', since)
+      .not('event_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1000)
+    if (error) problems.push(`failed transfers could not be read: ${error.message}`)
+    const seen = new Map<string, { organisation_id: string; currency: string }>()
+    for (const f of failed ?? []) if (f.event_id && !seen.has(f.event_id)) seen.set(f.event_id, f)
+    for (const [eventId, f] of [...seen.entries()].slice(0, 50)) {
+      const { data: attempts } = await admin
+        .from('payouts')
+        .select('status, created_at, failure_reason')
+        .eq('event_id', eventId)
+        .eq('kind', 'transfer')
+        .order('created_at', { ascending: false })
+        .limit(FAILURES_BEFORE_HOLD)
+      const { data: available, error: balanceError } = await admin.rpc('organiser_event_available_balance', {
+        p_organisation_id: f.organisation_id,
+        p_event_id: eventId,
+        p_currency: f.currency,
+      })
+      if (balanceError) {
+        problems.push(`event ${eventId}: its balance could not be read (${balanceError.message})`)
+        continue
+      }
+      const v = owedAndFailing({ availableCents: Number(available ?? 0), transfers: (attempts ?? []) as TransferAttempt[] })
+      if (v.alarm) {
+        problems.push(`event ${eventId} is owed ${(Number(available) / 100).toFixed(2)} ${f.currency} and its last ${v.consecutiveFailures} transfers failed: ${v.lastReason ?? 'no reason recorded'}`)
+      }
+    }
+  } catch (err) {
+    return emit({ name, ok: false, detail: String(err).slice(0, 160), probableCause: 'sentinel internal error' })
+  }
+  if (problems.length === 0) return emit({ name, ok: true, detail: "payout schedule manual; no event owed money with failing transfers" })
+  return emit({
+    name,
+    ok: false,
+    detail: problems.join(' | '),
+    probableCause: 'the platform balance does not hold what organisers are owed (an automatic payout, or a balance short of the amount)',
+  })
 }
