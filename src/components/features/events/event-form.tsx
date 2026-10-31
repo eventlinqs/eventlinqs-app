@@ -1,5 +1,6 @@
 'use client'
 
+import { REPEAT_CHOICES } from '@/lib/events/repeat-nights'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
@@ -226,11 +227,8 @@ const TIER_TYPES: { value: TicketTierType; label: string }[] = [
   { value: 'free', label: 'Free' },
 ]
 
-const RECURRENCE_OPTIONS = [
-  { value: 'FREQ=DAILY', label: 'Daily' },
-  { value: 'FREQ=WEEKLY', label: 'Weekly' },
-  { value: 'FREQ=MONTHLY', label: 'Monthly' },
-]
+// The repeats the server can make into real nights (src/lib/events/repeat-nights.ts); a daily choice made none.
+const RECURRENCE_OPTIONS = REPEAT_CHOICES
 
 const STEPS = [
   'Basic Details',
@@ -301,7 +299,7 @@ function getDefaultFormData(prefill?: EventShapePrefill): FormData {
     timezone: DEFAULT_TIMEZONE,
     is_multi_day: false,
     is_recurring: false,
-    recurrence_rule: 'FREQ=WEEKLY',
+    recurrence_rule: 'weekly',
     event_type: 'in_person',
     venue_name: '',
     venue_address: '',
@@ -454,7 +452,7 @@ function fromExistingEvent(
     timezone: event.timezone,
     is_multi_day: event.is_multi_day,
     is_recurring: event.is_recurring,
-    recurrence_rule: event.recurrence_rule ?? 'FREQ=WEEKLY',
+    recurrence_rule: event.recurrence_rule ?? 'weekly',
     event_type: event.event_type,
     venue_name: event.venue_name ?? '',
     venue_address: event.venue_address ?? '',
@@ -1213,12 +1211,12 @@ export function EventForm({
           onChange={e => set('is_recurring', e.target.checked)}
           className="h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
         />
-        <span className="text-sm font-medium text-ink-600">This is a recurring event</span>
+        <span className="text-sm font-medium text-ink-600">This night repeats</span>
       </label>
 
       {formData.is_recurring && (
         <div>
-          <label htmlFor="recurrence-12" className="block text-sm font-medium text-ink-600 mb-1">Recurrence</label>
+          <label htmlFor="recurrence-12" className="block text-sm font-medium text-ink-600 mb-1">How often</label>
           <select id="recurrence-12"
             value={formData.recurrence_rule}
             onChange={e => set('recurrence_rule', e.target.value)}
@@ -1228,6 +1226,9 @@ export function EventForm({
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-ink-600">
+            When this night goes live, its next 7 dates go live too, each with these ticket types.
+          </p>
         </div>
       )}
     </div>
