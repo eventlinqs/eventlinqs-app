@@ -26,7 +26,7 @@ describe('listingClaimable, the claim page and its link alike', () => {
 
 describe('the claim line beside the report link', () => {
   it('links the claim page with its words when the listing is claimable', () => {
-    const { container } = render(<ReportListingLink slug="kate-ceberano-geelong" claimable />)
+    const { container } = render(<ReportListingLink slug="kate-ceberano-geelong" listingSource="eventlinqs" claimable />)
     const claim = container.querySelector('a[data-claim-listing-link]')
     expect(claim?.getAttribute('href')).toBe('/events/kate-ceberano-geelong/claim')
     expect(claim?.textContent).toBe(CLAIM_LISTING_LINE)
@@ -34,7 +34,7 @@ describe('the claim line beside the report link', () => {
   })
 
   it('shows no claim line otherwise, and keeps the report link', () => {
-    const { container } = render(<ReportListingLink slug="kate-ceberano-geelong" />)
+    const { container } = render(<ReportListingLink slug="kate-ceberano-geelong" listingSource="eventlinqs" />)
     expect(container.querySelector('a[data-claim-listing-link]')).toBeNull()
     expect(container.querySelector('a[data-report-listing-link]')).not.toBeNull()
   })

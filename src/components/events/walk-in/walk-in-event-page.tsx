@@ -593,7 +593,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             </aside>
           </div>
         </div>
-        <ReportListingLink slug={event.slug} claimable={claimable} />
+        <ReportListingLink slug={event.slug} listingSource={event.listing_source} claimable={claimable} />
       </main>
 
       <WalkInBottomBar

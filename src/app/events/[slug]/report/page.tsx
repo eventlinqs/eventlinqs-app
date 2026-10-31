@@ -7,7 +7,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { REMOVAL_REASONS } from '@/lib/listings/removal-request'
+import { reportWords } from '@/lib/listings/report-words'
 import { reportListing } from './actions'
 import { reportableEvent } from './reportable'
 
@@ -37,13 +37,14 @@ export default async function ReportListingPage({ params, searchParams }: Props)
   const { sent, problem } = await searchParams
   const event = await reportableEvent(createAdminClient(), slug)
   if (!event) notFound()
+  const words = reportWords(event.listing_source)
 
   return (
     <PageShell>
       <PageHero
-        eyebrow="REPORT OR REMOVE THIS LISTING"
+        eyebrow={words.eyebrow}
         title={event.title}
-        subtitle="Tell us what is wrong with this listing. A person reads every report the same day."
+        subtitle={words.subtitle}
       />
 
       <ContentSection surface="base" width="wide" id="report">
@@ -53,7 +54,7 @@ export default async function ReportListingPage({ params, searchParams }: Props)
               <p>Thank you. Your report has reached us. A person will look at this listing today.</p>
               <p className="mt-3">
                 <Link href={`/events/${event.slug}`} className="font-semibold underline">
-                  Back to the listing
+                  {words.back}
                 </Link>
               </p>
             </div>
@@ -65,10 +66,17 @@ export default async function ReportListingPage({ params, searchParams }: Props)
                 </p>
               )}
               <input type="hidden" name="slug" value={event.slug} />
+              {words.organiserLine && (
+                <p data-organiser-line className="text-sm text-[var(--text-primary)]">
+                  <Link href={words.organiserLine.href} className="font-semibold underline">
+                    {words.organiserLine.words}
+                  </Link>
+                </p>
+              )}
               <fieldset>
                 <legend className={LABEL}>What is wrong?</legend>
                 <div className="mt-2 space-y-1">
-                  {REMOVAL_REASONS.map((r) => (
+                  {words.reasons.map((r) => (
                     <label key={r.key} className="flex min-h-[44px] items-center gap-3 text-sm text-[var(--text-primary)]">
                       <input type="radio" name="reason" value={r.key} required className="h-5 w-5 shrink-0" />
                       {r.words}
@@ -96,7 +104,7 @@ export default async function ReportListingPage({ params, searchParams }: Props)
               </Button>
               <p className="text-sm text-[var(--text-secondary)]">
                 <Link href={`/events/${event.slug}`} className="underline">
-                  Back to the listing
+                  {words.back}
                 </Link>
               </p>
             </form>
