@@ -1,16 +1,13 @@
 import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { EventCard } from '@/components/features/events/event-card'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { EventCardData } from '@/components/features/events/event-card'
-import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 interface Props {
   communitySlug: string
   communityName: string
-  communityTagline: string
   events: EventCardData[]
 }
 
@@ -18,14 +15,13 @@ interface Props {
  * AllEventsGridByCommunity - the main events surface for /community/[slug].
  *
  * Renders up to 12 cards in a responsive grid. When the community
- * scene has no live events on the platform yet, shows the
- * CategoryHeroEmpty CTA card instead (same pattern as the legacy
- * /categories/[slug] page).
+ * scene has no live events on the platform yet, shows one honest line and a
+ * link to real events (EmptyCollectionNote; the directive of 31 October 2026,
+ * section 11), never a promotional card.
  */
 export function AllEventsGridByCommunity({
   communitySlug,
   communityName,
-  communityTagline,
   events,
 }: Props) {
   return (
@@ -66,24 +62,7 @@ export function AllEventsGridByCommunity({
           </div>
         </>
       ) : (
-        <CategoryHeroEmpty
-          eyebrow={communityName.toUpperCase()}
-          headline={`The first ${communityName} event on EventLinqs could be yours.`}
-          subhead={`${communityTagline} Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
-          primaryAction={{
-            label: 'Talk to us about listing',
-            href: `/contact?topic=organiser&interest=${communitySlug}`,
-          }}
-          secondaryAction={{
-            label: 'Browse all events',
-            href: '/events',
-          }}
-          trustPillars={[
-            { icon: Zap as ComponentType<{ className?: string }>, label: 'Set up in 5 minutes' },
-            { icon: Heart as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-            { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts in 7 days' },
-          ]}
-        />
+        <EmptyCollectionNote message={`No ${communityName} events are listed yet.`} />
       )}
     </ContentSection>
   )

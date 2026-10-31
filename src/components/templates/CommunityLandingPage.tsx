@@ -81,7 +81,6 @@ export function CommunityLandingPage({
       <AllEventsGridByCommunity
         communitySlug={community.slug}
         communityName={community.displayName}
-        communityTagline={community.tagline}
         events={liveEvents}
       />
 

@@ -9,9 +9,7 @@ import { CityEditorialSection } from '@/components/features/city/city-editorial-
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
-import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getSuburb } from '@/lib/cities/data'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
@@ -65,6 +63,8 @@ export function SuburbLandingPage({
     { events: weekendEvents, cap: 12 },
     { events, cap: ALL_EVENTS_SHOWN },
   ])
+  // A page with no event at all points nothing at an empty grid (the directive of 31 October 2026, section 11).
+  const pageIsEmpty = railEvents.length === 0 && shownEvents.length === 0
   const relatedItems = suburb.relatedSuburbs
     .map(s => getSuburb(s))
     .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -80,14 +80,17 @@ export function SuburbLandingPage({
         title={`Things to do in ${suburb.name}`}
         subtitle={`${city.name}'s ${suburb.characterDescriptor}`}
         imageSrc={heroImage}
-        primaryCtaLabel={`Browse ${suburb.name} events`}
+        primaryCtaLabel={pageIsEmpty ? 'See what is on across Australia' : `Browse ${suburb.name} events`}
+        primaryCtaHref={pageIsEmpty ? '/events' : undefined}
         secondaryCtaLabel={`Back to ${city.name}`}
         secondaryCtaHref={`/city/${city.slug}`}
       />
 
-      <Suspense fallback={null}>
-        <DateFilterChips anchorId="all-events" />
-      </Suspense>
+      {pageIsEmpty ? null : (
+        <Suspense fallback={null}>
+          <DateFilterChips anchorId="all-events" />
+        </Suspense>
+      )}
 
       <CityEditorialSection
         eyebrow={`About ${suburb.name}`}
@@ -123,55 +126,43 @@ export function SuburbLandingPage({
       {/* 3,535px at 390, against the 480px `cv-section` reserves for a rail.
           The section declares its own height instead: see
           src/lib/ui/event-grid-intrinsic.ts. */}
-      <ContentSection
-        id="all-events"
-        surface="base"
-        width="wide"
-        topBorder
-        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
-      >
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              All upcoming
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              {railEvents.length > 0 ? `More ${suburb.name} events` : `All ${suburb.name} events`}
-            </h2>
+      {shownEvents.length > 0 ? (
+        <ContentSection
+          id="all-events"
+          surface="base"
+          width="wide"
+          topBorder
+          intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+        >
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                All upcoming
+              </p>
+              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+                {railEvents.length > 0 ? `More ${suburb.name} events` : `All ${suburb.name} events`}
+              </h2>
+            </div>
+            {/* gold-800 (--brand-accent-strong) keeps the gold accent
+             *  while clearing AA contrast on white. gold-400 fails 4.5:1. */}
+            <Link
+              href={`/events?city=${city.slug}&suburb=${cityFacingSlug}`}
+              className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
+            >
+              Open in browse view &rsaquo;
+            </Link>
           </div>
-          {/* gold-800 (--brand-accent-strong) keeps the gold accent
-           *  while clearing AA contrast on white. gold-400 fails 4.5:1. */}
-          <Link
-            href={`/events?city=${city.slug}&suburb=${cityFacingSlug}`}
-            className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
-          >
-            Open in browse view &rsaquo;
-          </Link>
-        </div>
-        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
-        ) : (
-          <CategoryHeroEmpty
-            eyebrow={suburb.name.toUpperCase()}
-            headline={`The first ${suburb.name} event on EventLinqs could be yours.`}
-            subhead={`Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
-            primaryAction={{
-              label: 'Talk to us about listing',
-              href: `/contact?topic=organiser&city=${city.slug}&suburb=${cityFacingSlug}`,
-            }}
-            secondaryAction={{ label: `Browse all ${city.name} events`, href: `/city/${city.slug}` }}
-            trustPillars={[
-              { icon: Zap as ComponentType<{ className?: string }>, label: 'Set up in 5 minutes' },
-              { icon: Heart as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts in 7 days' },
-            ]}
-          />
-        )}
-      </ContentSection>
+        </ContentSection>
+      ) : pageIsEmpty ? (
+        <ContentSection id="all-events" surface="base" width="wide" topBorder>
+          <EmptyCollectionNote message={`No events are listed in ${suburb.name} yet.`} />
+        </ContentSection>
+      ) : null}
 
       {relatedItems.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder>
@@ -237,11 +228,13 @@ export function SuburbLandingPage({
         </div>
       </ContentSection>
 
-      <MobileStickyBar
-        cityName={suburb.name}
-        weekendCount={weekendEvents.length}
-        anchorId="all-events"
-      />
+      {pageIsEmpty ? null : (
+        <MobileStickyBar
+          cityName={suburb.name}
+          weekendCount={weekendEvents.length}
+          anchorId="all-events"
+        />
+      )}
     </PageShell>
   )
 }

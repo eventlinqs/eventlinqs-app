@@ -115,16 +115,12 @@ describe('WeekendLandingPage', () => {
     expect(screen.getByText('1 event also on')).toBeInTheDocument()
   })
 
-  it('with no days, renders the shared designed empty state and a next action', () => {
+  it('with no days, says plainly that nothing is listed and links to real events, with no pitch', () => {
+    // Lawal's directive of 31 October 2026, section 11: an empty collection is never a large promotional card.
     render(<WeekendLandingPage {...base} total={0} days={[]} cities={[]} />)
-    expect(
-      screen.getByRole('heading', { name: 'The first event of this weekend could be yours.' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Start selling tickets' })).toHaveAttribute(
-      'href',
-      '/organisers/signup',
-    )
-    expect(screen.getByRole('link', { name: 'Browse all events' })).toHaveAttribute('href', '/events')
+    expect(screen.queryByText(/could be yours/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Start selling tickets' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /See what is on across Australia/ })).toHaveAttribute('href', '/events')
     // And it still says WHICH weekend it is empty for, which is the difference
     // between a designed empty state and a blank band.
     expect(screen.getAllByText(/Saturday 19 and Sunday 20 September/).length).toBeGreaterThan(0)

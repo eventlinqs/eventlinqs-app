@@ -299,7 +299,9 @@ describe('the heroes not yet on the shared wash', () => {
     const callers = allSourceFiles().filter(
       f => !f.endsWith('src/components/ui/CategoryHeroEmpty.tsx') && readFileSync(f, 'utf8').includes('<CategoryHeroEmpty'),
     )
-    expect(callers.length).toBeGreaterThanOrEqual(10)
+    // Four callers remain (the feed and the organiser, venue and artist profiles): the eight discovery templates draw
+    // EmptyCollectionNote instead since the directive of 31 October 2026, section 11.
+    expect(callers.length).toBeGreaterThanOrEqual(4)
     for (const f of callers) {
       for (const call of readFileSync(f, 'utf8').matchAll(/<CategoryHeroEmpty\b[^>]*>/g)) {
         expect(call[0]).not.toMatch(/\bcoverImage\s*=/)

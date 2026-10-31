@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { CalendarDays, Ticket, Wallet, ArrowRight } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Prose } from '@/components/ui/Prose'
 import { PhotographicCategoryHero } from '@/components/templates/PhotographicCategoryHero'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import { CommunityOrganiserCtaPanel } from '@/components/features/community/community-organiser-cta'
 import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
@@ -188,18 +187,7 @@ export function FreeWeekLandingPage({
         days.map((day) => <FreeWeekDaySection key={day.key} day={day} />)
       ) : (
         <ContentSection surface="base" width="wide" topBorder reveal>
-          <CategoryHeroEmpty
-            eyebrow={`Free in ${cityName}`}
-            headline={`The first free event in ${cityName} this week could be yours.`}
-            subhead={`Nothing free is listed for ${week} yet. Free events list for nothing, and every attendee relationship stays yours.`}
-            primaryAction={{ label: 'List a free event', href: '/organisers/signup' }}
-            secondaryAction={cityHref ? { label: `Everything on in ${cityName}`, href: cityHref } : { label: 'Browse all events', href: '/events' }}
-            trustPillars={[
-              { icon: CalendarDays as ComponentType<{ className?: string }>, label: 'Live in five minutes' },
-              { icon: Ticket as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts after the event' },
-            ]}
-          />
+          <EmptyCollectionNote message={`Nothing free is listed in ${cityName} for ${week} yet.`} />
         </ContentSection>
       )}
 

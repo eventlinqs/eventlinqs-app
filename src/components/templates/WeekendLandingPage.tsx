@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { CalendarDays, Ticket, Wallet, ArrowRight } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Prose } from '@/components/ui/Prose'
 import { PhotographicCategoryHero } from '@/components/templates/PhotographicCategoryHero'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import { CommunityOrganiserCtaPanel } from '@/components/features/community/community-organiser-cta'
 import { EventCard } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
@@ -83,8 +82,9 @@ interface Props {
  *                          rather than re-rolled, per the one-implementation
  *                          rule.
  *
- * The zero-event state is the SHARED CategoryHeroEmpty, the same designed empty
- * state behind every community, city and category page. The page still renders,
+ * The zero-event state is the SHARED EmptyCollectionNote, the same honest line
+ * behind every community, city and category page (the directive of 31 October
+ * 2026, section 11). The page still renders,
  * still carries its copy and still self-canonicalises; only the robots directive
  * moves, and that is decided in the route, not here.
  */
@@ -108,7 +108,7 @@ export function WeekendLandingPage({
         subtitle={
           total > 0
             ? `${total} ${plural} on ${weekend}, all-in prices, no fee sprung at checkout.`
-            : `Nothing is on sale for ${weekend} yet. The first event of the weekend could be yours.`
+            : `Nothing is listed for ${weekend} yet.`
         }
         fallbackImage={heroImage}
         fallbackAlt={heroAlt}
@@ -151,18 +151,7 @@ export function WeekendLandingPage({
         ))
       ) : (
         <ContentSection surface="base" width="wide" topBorder reveal>
-          <CategoryHeroEmpty
-            eyebrow="This weekend in Australia"
-            headline="The first event of this weekend could be yours."
-            subhead={`Nothing is on sale for ${weekend} yet. Set up in five minutes, take payments, and keep every attendee relationship.`}
-            primaryAction={{ label: 'Start selling tickets', href: '/organisers/signup' }}
-            secondaryAction={{ label: 'Browse all events', href: '/events' }}
-            trustPillars={[
-              { icon: CalendarDays as ComponentType<{ className?: string }>, label: 'Live in five minutes' },
-              { icon: Ticket as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts after the event' },
-            ]}
-          />
+          <EmptyCollectionNote message={`Nothing is listed for ${weekend} yet.`} />
         </ContentSection>
       )}
 

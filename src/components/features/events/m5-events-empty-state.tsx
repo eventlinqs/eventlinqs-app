@@ -18,7 +18,7 @@ export function EventsEmptyState({ query, filtered = false }: { query?: string; 
         </div>
         <h2 className="font-display text-lg font-bold text-ink-900">No events listed yet</h2>
         <p className="mt-1 max-w-sm text-pretty text-sm text-ink-500">
-          EventLinqs is open right across Australia, so the first one here could be yours. Put your event on for free, or explore what is coming by city.
+          Nothing is listed on EventLinqs right now. Explore what is coming by city.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link

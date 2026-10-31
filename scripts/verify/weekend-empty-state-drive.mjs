@@ -233,9 +233,9 @@ if (html.includes('/events/lane-c-')) {
 
 check('the page still answers with its own copy when nothing is on', html.includes("What's on this weekend"))
 check(
-  'the page renders the shared designed empty state, not a blank band',
-  html.includes('could be yours'),
-  'CategoryHeroEmpty, the same one behind every community, city and category page',
+  'the page says plainly that nothing is listed, not a blank band and not a promotional card',
+  html.includes('is listed for') && html.includes('See what is on across Australia') && !html.includes('could be yours'),
+  'EmptyCollectionNote, the same one behind every community, city and category page (the directive of 31 October 2026, section 11)',
 )
 check(
   'the empty state offers the organiser the next action',

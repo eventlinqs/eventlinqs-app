@@ -28,6 +28,9 @@ interface CityHeroProps {
   /** ID on the in-page events grid that the primary CTA should anchor to. */
   eventsAnchorId?: string
   primaryCtaLabel: string
+  /** Where the primary button leads instead of the in-page grid, when that grid holds no event (the directive of
+   *  31 October 2026, section 11: never point at an empty collection). */
+  primaryCtaHref?: string
   secondaryCtaLabel: string
   secondaryCtaHref: string
   /** Optional small caption above the eyebrow (e.g. "12 upcoming events · 8 organisers"). */
@@ -41,6 +44,7 @@ export function CityHero({
   imageSrc,
   eventsAnchorId = 'all-events',
   primaryCtaLabel,
+  primaryCtaHref,
   secondaryCtaLabel,
   secondaryCtaHref,
   caption,
@@ -98,7 +102,7 @@ export function CityHero({
              *  a clearer primary action. Desktop: inline pill row. */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <a
-                href={`#${eventsAnchorId}`}
+                href={primaryCtaHref ?? `#${eventsAnchorId}`}
                 className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full bg-[var(--brand-accent)] px-6 text-sm font-semibold text-[var(--color-navy-950)] shadow-sm transition hover:bg-[var(--brand-accent-strong)] sm:h-11"
               >
                 {primaryCtaLabel}
