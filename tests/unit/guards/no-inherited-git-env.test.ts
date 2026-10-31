@@ -127,7 +127,11 @@ describe('the mechanism: an inherited GIT_DIR makes cwd decorative', () => {
   })
 })
 
-describe('the guard goes red on a real unguarded call site', () => {
+// EACH TEST HERE RUNS THE WHOLE GUARD, which walks every file under scripts, tests, src and .githooks, and the
+// multi-line test runs it twice. Alone the file took 16.79 s and 25.25 s in total (window 4, 31 October 2026), and on
+// the loaded gate machine one test passed the suite's 30 s default and failed car 28's gate on a timeout, not a
+// finding. The scratch content differs per test, so the runs cannot be shared; the time they need is stated here.
+describe('the guard goes red on a real unguarded call site', { timeout: 120_000 }, () => {
   const SCRATCH = join(ROOT, 'scripts', 'verify', '__gitenv_drill_scratch.mjs')
 
   afterAll(() => {

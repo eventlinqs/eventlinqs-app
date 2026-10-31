@@ -63,7 +63,7 @@ async function pageCount(q) {
     .replace(/\s+/g, ' ')
   const m = text.match(/([\d,]+)\s+events?\s+available/i)
   if (m) return Number(m[1].replace(/,/g, ''))
-  if (/could be yours/i.test(text) || /no events/i.test(text)) return 0
+  if (/could be yours/i.test(text) || /no events/i.test(text) || /no .{1,60} events are listed|nothing .{0,40}is listed/i.test(text)) return 0
   return null
 }
 

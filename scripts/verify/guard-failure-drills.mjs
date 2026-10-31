@@ -419,6 +419,26 @@ const DRILLS = [
     replace: '        heroImage={null}',
     expect: 'draws its hero empty on purpose',
   },
+  /*
+   * empty-collections-are-honest (31 October 2026, Lawal's directive of 17:44, section 11): the large 'could be yours'
+   * card back in an empty community-in-city grid, and a city page's date chips shown over a page with no event.
+   */
+  {
+    name: 'an empty community-in-city grid draws the promo card again',
+    guard: `${GUARDS}/empty-collections-are-honest.mjs`,
+    file: 'src/components/templates/CommunityCityLandingPage.tsx',
+    find: '<EmptyCollectionNote message={`No ${community.displayName} events are listed in ${cityName} yet.`} />',
+    replace: '<p>The first {community.displayName} event could be yours.</p>',
+    expect: "says 'could be yours'",
+  },
+  {
+    name: 'a city page points its chips at an empty grid again',
+    guard: `${GUARDS}/empty-collections-are-honest.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '      {pageIsEmpty ? null : (\n        <Suspense fallback={null}>',
+    replace: '      {false ? null : (\n        <Suspense fallback={null}>',
+    expect: 'shows its date chips over an empty page',
+  },
   {
     name: 'the Communities doorway tile loses its photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
@@ -5689,18 +5709,19 @@ const DRILLS = [
     name: 'the social proof asks for an exact count and takes the rows back as well',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'src/lib/stats/platform-stats.ts',
-    find: "        .select('organisation_id, venue_city')",
-    replace: "        .select('organisation_id, venue_city', { count: 'exact' })",
+    find: "        .select('organisation_id, venue_city, city_primary')",
+    replace: "        .select('organisation_id, venue_city, city_primary', { count: 'exact' })",
     expect: 'with a count: and no head: true',
   },
   {
     name: 'the count beside a sampled body is bought off with a stated limit, and must not be',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'src/lib/stats/platform-stats.ts',
+    // The read follows /events' rule since 31 October 2026 (the controller's 21:12): match, then the listing window.
     find:
-      "        .select('organisation_id, venue_city')\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .range(from, to),",
+      "        .select('organisation_id, venue_city, city_primary')\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(now))\n        .order('id', { ascending: true })\n        .range(from, to),",
     replace:
-      "        .select('organisation_id, venue_city', { count: 'exact' })\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .limit(5000),",
+      "        .select('organisation_id, venue_city, city_primary', { count: 'exact' })\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(now))\n        .order('id', { ascending: true })\n        .limit(5000),",
     expect: 'with a count: and no head: true',
   },
   {
@@ -6341,9 +6362,10 @@ const DRILLS = [
   {
     name: 'the register says the empty state has no photographic caller, and a caller appears',
     guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
-    file: 'src/components/templates/CityLandingPage.tsx',
-    find: '<CategoryHeroEmpty\n            eyebrow={city.name.toUpperCase()}',
-    replace: '<CategoryHeroEmpty\n            coverImage="/images/hero/curated-1.avif"\n            eyebrow={city.name.toUpperCase()}',
+    // The city page no longer draws this card (the directive of 31 October 2026, section 11); the venue page still does.
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: '<CategoryHeroEmpty\n              eyebrow="UPCOMING"',
+    replace: '<CategoryHeroEmpty\n              coverImage="/images/hero/curated-1.avif"\n              eyebrow="UPCOMING"',
     expect: 'has stopped being true',
   },
   {

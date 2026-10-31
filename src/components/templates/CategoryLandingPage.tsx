@@ -17,7 +17,7 @@ import { PhotographicCategoryHero } from '@/components/templates/PhotographicCat
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Prose } from '@/components/ui/Prose'
 import { Button } from '@/components/ui/Button'
-import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { HeroCategory } from '@/lib/hero-categories'
@@ -126,7 +126,7 @@ export function CategoryLandingPage({
         </div>
       </ContentSection>
 
-      {/* ── 4. Live events OR CategoryHeroEmpty ──────────────────── */}
+      {/* ── 4. Live events OR EmptyCollectionNote ────────────────── */}
       {/* 9,043px at 390, against the 480px `cv-section` reserves for a rail.
           The section declares its own height instead, from the number of cards
           it is about to render: src/lib/ui/event-grid-intrinsic.ts. Its
@@ -155,32 +155,7 @@ export function CategoryLandingPage({
             </div>
           </>
         ) : (
-          <CategoryHeroEmpty
-            eyebrow={eyebrowLabel}
-            headline={`The first ${displayName} event on EventLinqs could be yours.`}
-            subhead={`${category.tagline} We're built for this. Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
-            primaryAction={{
-              /*
-               * FINISHED 15 August 2026. This waited on `/auth/signup?role=organiser`,
-               * a route that was never built and is not going to be: the real
-               * organiser entry point is `/organisers/signup`, which every other
-               * surface already uses. So the CTA now goes straight there instead
-               * of parking an interested organiser in a contact form, which is a
-               * step the acquisition loop exists to remove.
-               */
-              label: 'Start selling tickets',
-              href: '/organisers/signup',
-            }}
-            secondaryAction={{
-              label: 'Browse all events',
-              href: '/events',
-            }}
-            trustPillars={[
-              { icon: Zap as ComponentType<{ className?: string }>, label: 'Set up in 5 minutes' },
-              { icon: Heart as ComponentType<{ className?: string }>, label: 'Zero fees on free events' },
-              { icon: Wallet as ComponentType<{ className?: string }>, label: 'Payouts in 7 days' },
-            ]}
-          />
+          <EmptyCollectionNote message={`No ${displayName} events are listed yet.`} />
         )}
       </ContentSection>
 

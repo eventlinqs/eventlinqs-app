@@ -192,6 +192,7 @@ const TICKETING_BLOCKED = /still finishing their payment setup/i
 const EMPTY_MARKERS = [
   /be the first/i,
   /could be yours/i,
+  /no .{1,60} events are listed|nothing .{0,40}is listed/i,
   /events loading soon/i,
   /no results/i,
   /nothing here yet/i,

@@ -21,7 +21,7 @@ export const REFUSALS = {
 } as const
 
 /** The Google calls a price is recorded for (google_spend_prices). Anything else is refused as unpriced. */
-export type GoogleApi = 'places_photo' | 'places_text_search'
+export type GoogleApi = 'places_photo' | 'places_text_search' | 'places_text_search_ids' | 'places_details_ids' | 'places_details_pro'
 
 export interface SpendState {
   readonly enabled: boolean

@@ -170,7 +170,7 @@ export interface CommunityTileData {
   imageSrc: string | null
   alt: string
   name: string
-  /** e.g. "32 events" or "Be the first". */
+  /** e.g. "32 events", or empty for a community with none: a tile says nothing invitational (the CONTROLLER's 21:00). */
   metaLabel: string
   priority?: boolean
   /** Focal point for the cover crop (spine slot imagery). */
@@ -209,9 +209,11 @@ export function CommunityTile({
           className={IMG_MOTION}
         />
       </div>
-      <div className="flex flex-1 items-center justify-between gap-2 p-4">
+      {/* The count under the name, so a long name ('Aboriginal & Torres Strait Islander') never cuts it at the card's
+          edge; no count, no line (the CONTROLLER's 21:00 of 31 October 2026). */}
+      <div className="flex flex-1 flex-col gap-1 p-4">
         <span className={`text-base ${TITLE}`}>{community.name}</span>
-        <span className="shrink-0 text-xs text-[var(--text-secondary)]">{community.metaLabel}</span>
+        {community.metaLabel ? <span className="text-xs text-[var(--text-secondary)]">{community.metaLabel}</span> : null}
       </div>
     </Link>
   )
@@ -224,9 +226,9 @@ export function CityTile({ city }: { city: CityTileData }) {
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CityTileImage src={city.imageSrc} alt={city.alt} layout="rail-city-tile" priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
       </div>
-      <div className="flex flex-1 items-center justify-between gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>
-        <span className="text-xs text-[var(--text-secondary)]">{city.metaLabel}</span>
+        {city.metaLabel ? <span className="text-xs text-[var(--text-secondary)]">{city.metaLabel}</span> : null}
       </div>
     </Link>
   )
@@ -257,9 +259,9 @@ export function CategoryTile({ category }: { category: CategoryTileData }) {
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CategoryTileImage src={category.imageSrc} alt={category.alt} layout="rail-compact-tile" priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
       </div>
-      <div className="flex flex-1 items-center justify-between gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1 p-4">
         <span className={`text-lg ${TITLE}`}>{category.name}</span>
-        <span className="text-xs text-[var(--text-secondary)]">{category.metaLabel}</span>
+        {category.metaLabel ? <span className="text-xs text-[var(--text-secondary)]">{category.metaLabel}</span> : null}
       </div>
     </Link>
   )

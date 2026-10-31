@@ -40,6 +40,8 @@ export interface BentoEvent extends EventMediaInput {
   timezone: string | null
   venue_name?: string | null
   venue_city?: string | null
+  /** The venue's stored address, for the venue line when the venue's name only repeats the title (shownVenueName). */
+  venue_address?: string | null
   /** A venue photograph's credit (src/lib/images/venue-photo-chain.ts), the image's title attribute, never on the image. */
   image_credit?: string | null
   ticket_tiers?: { price: number; currency: string }[] | null

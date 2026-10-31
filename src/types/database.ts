@@ -10762,6 +10762,44 @@ export type Database = {
           },
         ]
       }
+      venue_google_places: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          match_evidence: Json
+          matched_at: string
+          place_id: string
+          refused_reason: string | null
+          venue_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          match_evidence: Json
+          matched_at?: string
+          place_id: string
+          refused_reason?: string | null
+          venue_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          match_evidence?: Json
+          matched_at?: string
+          place_id?: string
+          refused_reason?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_google_places_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_images: {
         Row: {
           approval_state: string

@@ -39,7 +39,7 @@ export async function CommunityRail() {
         slug: e.slug,
         name: e.displayName,
         tagline: e.tagline,
-        metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
+        metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : '',
         imageSrc: spine ? spine.src : await getCommunityHeroPhoto(e.slug),
         objectPosition: spine?.objectPosition,
         priority: false,

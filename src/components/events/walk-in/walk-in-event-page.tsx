@@ -54,6 +54,7 @@ import { CollaboratorsLine } from '@/components/events/collaborators-line'
 import { HoursList } from './hours-list'
 import { ReportListingLink } from '@/components/events/report-listing-link'
 import { listingClaimable } from '@/lib/listings/claimable'
+import { shownVenueName } from '@/lib/venues/shown-venue-name'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -191,7 +192,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
   const host = websiteHost(shown.website)
   const handle = shown.instagram
   const ageLabel = event.is_age_restricted && event.age_restriction_min ? `${event.age_restriction_min}+` : null
-  const eyebrowPlace = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
+  const eyebrowPlace = [shownVenueName(event), event.venue_city].filter(Boolean).join(', ')
   const eyebrowCategory = event.category?.name ?? null
   // Organiser prose goes through the one door (organiser-prose-one-rule): the
   // one-line intro stripped, the description rendered by OrganiserProse.
@@ -373,7 +374,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   {dates.length > 0 && <Chip>{datesChip(dates)}</Chip>}
                   {event.venue_name && (
                     <span className="hidden lg:inline-flex" data-text-source={NAME_SOURCE}>
-                      <Chip>{[event.venue_name, event.venue_city].filter(Boolean).join(', ')}</Chip>
+                      <Chip>{[shownVenueName(event), event.venue_city].filter(Boolean).join(', ')}</Chip>
                     </span>
                   )}
                   <Chip gold>

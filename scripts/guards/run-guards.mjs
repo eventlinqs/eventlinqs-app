@@ -668,6 +668,9 @@
  *                              (31 October 2026, Lawal's emergency correction)
  *   organiser-links-have-a-page  every public /organisers/<slug> link asks whether the organiser
  *                              is shown; the listings organisation has no page (31 October 2026)
+ *   empty-collections-are-honest  an empty discovery collection says so plainly, with no
+ *                              promotional card and nothing pointing at it (31 October 2026,
+ *                              Lawal's directive section 11)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2046,6 +2049,10 @@ const GUARDS = [
   // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
   // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.
   'scripts/guards/tiles-on-stored-photos.mjs',
+  // 31 October 2026, Lawal's directive of 17:44, section 11: an empty discovery collection is one honest line and a
+  // link to real events, never the large 'could be yours' card, and no chip, sticky bar or hero button points at it.
+  // Red on main on eight templates; drilled red on two clauses.
+  'scripts/guards/empty-collections-are-honest.mjs',
   // 30 October 2026, Lawal 16:05 (L14): the First Nations and Indian tiles drew no photograph on production; read from
   // the served HTML, 90 of the 105 sub-community tiles were the navy gradient. Red on main with 91 clauses.
   'scripts/guards/sub-community-tiles-stored.mjs',

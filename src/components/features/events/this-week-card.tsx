@@ -6,6 +6,7 @@ import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
+import { shownVenueName } from '@/lib/venues/shown-venue-name'
 
 /**
  * ThisWeekCard - the shared rail card used across the homepage rails.
@@ -61,7 +62,8 @@ export async function ThisWeekCard({
     alt: imageAlt,
     label: event.category?.name ?? 'Event',
     title: event.title ?? 'Event',
-    venue: event.venue_name ?? '',
+    // Never the title again under the title (shownVenueName: the CONTROLLER's 21:00).
+    venue: shownVenueName(event) ?? '',
     city: event.venue_city ?? '',
     // A series' later nights on this page are named on its one card (the photo system's P4).
     dateLabel: [formatEventDateShort(event.start_date, event.timezone), seriesAlsoOn(event.also_on, event.timezone)?.words]
