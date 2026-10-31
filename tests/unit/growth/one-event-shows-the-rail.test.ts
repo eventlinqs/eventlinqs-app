@@ -22,11 +22,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import {
-  invitationFillCount,
-  INVITATION_ANGLE_ORDER,
-} from '@/components/features/events/invitation-card'
-
 const REPO_ROOT = process.cwd()
 
 /** Every surface that renders an event rail behind a count. */
@@ -108,76 +103,31 @@ describe('no rail surface hides a rail that has one event', () => {
   })
 })
 
-describe('a rail of one still reads as deliberate', () => {
-  it('one real event renders as four cards, not one', () => {
-    // EventRailSection tops a thin rail up with InvitationCards. This is the
-    // reason the gate can be removed without the homepage looking broken.
-    expect(invitationFillCount(1)).toBe(3)
+describe('a rail of one draws one card, and nothing fills it', () => {
+  /*
+   * REVERSED by Lawal's emergency correction of 31 October 2026 (17:44; the CONTROLLER's 17:55 order 1). A thin rail
+   * used to top up with 'Open slot' InvitationCards (invitationFillCount: a rail of one drew four cards, an empty
+   * /events rail three). A public collection now draws only real published events, fewer cards when inventory is thin,
+   * and an empty rail is hidden. The rendered proof is tests/component/home/no-filler-in-rails.test.tsx; the source
+   * proof is scripts/guards/no-filler-in-event-collections.mjs.
+   */
+  const RAIL_FILES = [
+    'src/components/features/home/event-rail-section.tsx',
+    'src/components/features/events/m5-recommended-rail.tsx',
+    'src/components/features/home/featured-venues-section.tsx',
+  ]
+
+  it.each(RAIL_FILES)('%s draws no card from a count', rel => {
+    expect(code(readFileSync(join(REPO_ROOT, rel), 'utf8'))).not.toMatch(/Array\.from\(\s*\{\s*length|InvitationCard|invitationFillCount/)
   })
 
-  it('the fill tapers as real events arrive and vanishes at five', () => {
-    expect(invitationFillCount(2)).toBe(3)
-    expect(invitationFillCount(3)).toBe(2)
-    expect(invitationFillCount(4)).toBe(1)
-    expect(invitationFillCount(5)).toBe(0)
-    expect(invitationFillCount(12)).toBe(0)
+  it('negative control: the detector flags the fill that shipped', () => {
+    expect('{Array.from({ length: invitationFillCount(events.length) }, (_, i) => (').toMatch(/Array\.from\(\s*\{\s*length|InvitationCard|invitationFillCount/)
   })
 
-  it('an empty rail fills with invitations, because it is a sales surface', () => {
-    /*
-     * REVERSED by founder ruling, 26 August 2026: "An empty rail is a sales
-     * surface, not a gap. My homepage already carries 'The next live night here
-     * is yours' and that should exist on every thin rail, not only some."
-     *
-     * This assertion previously locked 0, on the reasoning that a rail of pure
-     * invitations pretends to be a rail. What that produced in practice was the
-     * /events popular rail vanishing entirely, heading and all, the moment the
-     * catalogue emptied.
-     *
-     * Three is the formula's own answer for a count of zero, and it is also
-     * exactly the number of distinct angles in INVITATION_ANGLE_ORDER, so an
-     * empty rail fills without repeating a card.
-     *
-     * THE HOMEPAGE IS UNAFFECTED: EventRailSection still returns null at zero
-     * events, by the founder's instruction of the same day to leave the homepage
-     * alone. This governs the /events rails only.
-     */
-    expect(invitationFillCount(0)).toBe(3)
-    expect(INVITATION_ANGLE_ORDER.length).toBeGreaterThanOrEqual(invitationFillCount(0))
-  })
-})
-
-describe('a filled rail never repeats an invitation', () => {
-  it('offers at least as many distinct angles as a rail of one asks for', () => {
-    // invitationFillCount(1) is 3. With only two angles the fill ran
-    // organiser, performer, organiser and rendered two word-for-word
-    // identical cards in the same rail.
-    expect(new Set(INVITATION_ANGLE_ORDER).size).toBeGreaterThanOrEqual(invitationFillCount(1))
-  })
-
-  it('the angles are distinct, not a padded list', () => {
-    expect(new Set(INVITATION_ANGLE_ORDER).size).toBe(INVITATION_ANGLE_ORDER.length)
-  })
-
-  it('the organiser ask always leads the fill', () => {
-    expect(INVITATION_ANGLE_ORDER[0]).toBe('organiser')
-  })
-
-  it.each([1, 2, 3, 4])('a rail of %i real events fills with no repeated angle', real => {
-    const angles = Array.from(
-      { length: invitationFillCount(real) },
-      (_, i) => INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length],
-    )
-    expect(new Set(angles).size).toBe(angles.length)
-  })
-
-  it('negative control: the two-angle expression that shipped does repeat', () => {
-    // Proves the assertion above measures something real. This is the exact
-    // expression the three rails used, run over the three slots a one-event
-    // rail asks for.
-    const shipped = Array.from({ length: invitationFillCount(1) }, (_, i) =>
-      i === 1 ? 'performer' : 'organiser',
-    )
-    expect(new Set(shipped).size).toBeLessThan(shipped.length)
+  it('the shared rails hide when they have nothing to show', () => {
+    for (const rel of RAIL_FILES.slice(0, 2)) {
+      expect(code(readFileSync(join(REPO_ROOT, rel), 'utf8')), rel).toMatch(/if \(events\.length === 0\) return null/)
+    }
   })
 })

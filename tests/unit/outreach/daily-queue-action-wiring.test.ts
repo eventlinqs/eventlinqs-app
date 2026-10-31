@@ -25,13 +25,13 @@ describe('the Sent press', () => {
   })
 
   test('records the send through markSent as that admin, and audits it', () => {
-    expect(src).toMatch(/markSent\(\s*createAdminClient\(\),\s*\{[^}]*sentBy:\s*session\.userId/)
+    expect(src).toMatch(/markSent\(\s*(?:createAdminClient\(\)|db),\s*\{[^}]*sentBy:\s*session\.userId/)
     expect(src).toMatch(/recordAuditEvent\(\{\s*action:\s*'admin\.outreach\.sent'/)
   })
 
   test("needs Lawal's tick that he checked their page, records that check as him, and only then marks it sent (the CONTROLLER's 05:32 (3))", () => {
     expect(src).toMatch(/formData\.get\('checked'\)/)
-    expect(src).toMatch(/confirmPageChecked\(\s*createAdminClient\(\),\s*\{[^}]*by:\s*session\.userId/)
+    expect(src).toMatch(/confirmPageChecked\(\s*(?:createAdminClient\(\)|db),\s*\{[^}]*by:\s*session\.userId/)
     expect(src.indexOf('confirmPageChecked(')).toBeLessThan(src.indexOf('markSent('))
     expect(read(resolve('src/app/admin/(authed)/acquisition/daily-queue-item.tsx'))).toMatch(/name="checked"[^>]*required/)
   })
@@ -49,5 +49,40 @@ describe('the Sent press', () => {
 
   test('the page shows the queue', () => {
     expect(read(PAGE)).toMatch(/readDailyQueue\(/)
+  })
+})
+
+describe("the communication gateway in the send path (the CONTROLLER's 08:40)", () => {
+  const src = read(FILE)
+  const item = read(resolve('src/app/admin/(authed)/acquisition/daily-queue-item.tsx'))
+  const drafts = read(resolve('src/lib/outreach/drafts.ts'))
+  const queue = read(resolve('src/lib/outreach/daily-queue.ts'))
+
+  test('nothing leaves held by itself: a draft is never written queued', () => {
+    expect(drafts).not.toMatch(/'queued' : 'held'/)
+    expect(drafts).not.toMatch(/state:\s*'queued'/)
+    expect(drafts).toMatch(/const state = 'held' as const/)
+  })
+
+  test('the queue judges every held message by the gateway and hands the page the exact content and policy version', () => {
+    expect(queue).toMatch(/voiceProblems\(/)
+    expect(queue).toMatch(/voiceContentHash\(/)
+    expect(item).toMatch(/name="contentHash"/)
+    expect(item).toMatch(/name="policyVersion"/)
+  })
+
+  test('Sent checks the stored words again, against what Lawal saw, under this policy, by Lawal himself, before anything is recorded', () => {
+    expect(src).toMatch(/approvalProblems\(/)
+    expect(src).toMatch(/byFounder:\s*session\.admin\.role === 'super_admin'/)
+    expect(src).toMatch(/formData\.get\('contentHash'\)/)
+    expect(src.indexOf('approvalProblems(')).toBeLessThan(src.indexOf('confirmPageChecked('))
+    expect(src.indexOf('approvalProblems(')).toBeLessThan(src.indexOf('markSent('))
+    expect(src).toMatch(/metadata:\s*\{[^}]*contentHash/)
+  })
+})
+
+describe('the queue at 390 (looked at on the TEST drive, 31 October 17:30)', () => {
+  test("a message's long link wraps inside its card instead of running off it", () => {
+    expect(read(PAGE)).toMatch(/whitespace-pre-wrap[^"]*\[overflow-wrap:anywhere\][^"]*">\{t\.body\}/)
   })
 })

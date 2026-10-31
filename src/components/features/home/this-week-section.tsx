@@ -10,12 +10,11 @@ interface Props {
  *
  * Surgical fix 2026-07-12: this section used to build its own SnapRail
  * directly (a bespoke sibling that PREDATED the shared EventRailSection),
- * which is exactly why the invitation-card fill and the overflow-driven
- * scroll arrows skipped it - the launch-day sparse-rail wiring landed in
- * the shared component and this duplicate never received it. It now
- * DELEGATES to EventRailSection, so this rail behaves identically to every
- * lineup rail (same cards, same invitation top-up that vanishes at five
- * real events, same canonical arrows) and can never be skipped by a rail
+ * which is exactly why the overflow-driven scroll arrows skipped it - the
+ * rail wiring landed in the shared component and this duplicate never
+ * received it. It now DELEGATES to EventRailSection, so this rail behaves
+ * identically to every lineup rail (same cards, real events only, hidden
+ * when empty, same canonical arrows) and can never be skipped by a rail
  * upgrade again.
  */
 export async function ThisWeekSection({ events }: Props) {
@@ -27,7 +26,6 @@ export async function ThisWeekSection({ events }: Props) {
       railLabel="Events this week"
       events={events}
       viewAllHref="/events?date=week"
-      invitationSubject="big"
     />
   )
 }

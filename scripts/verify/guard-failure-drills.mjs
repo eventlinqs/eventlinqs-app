@@ -270,6 +270,18 @@ const DRILLS = [
    * 'Thank you' lived in a form the refreshed page stopped drawing), two drills, each the way the class comes back: a
    * form holds its own answer again, and a page stops drawing its family's answer holder.
    */
+  /*
+   * no-filler-in-event-collections (Lawal's 17:44 of 31 October 2026: no open-slot cards in any public collection,
+   * ever): the regression is the invitation card fill coming back into a home rail.
+   */
+  {
+    name: 'a home rail draws the invitation card fill again',
+    guard: `${GUARDS}/no-filler-in-event-collections.mjs`,
+    file: 'src/components/features/home/event-rail-section.tsx',
+    find: "import { SnapRail } from '@/components/ui/snap-rail'",
+    replace: "import { SnapRail } from '@/components/ui/snap-rail'\nimport { InvitationCard } from '@/components/features/events/invitation-card'",
+    expect: 'names InvitationCard, the invitation card fill',
+  },
   {
     name: 'the venue calendar forms hold their own answer again',
     guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,

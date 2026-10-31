@@ -1,11 +1,6 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
-import {
-  InvitationCard,
-  invitationFillCount,
-  INVITATION_ANGLE_ORDER,
-} from '@/components/features/events/invitation-card'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -23,16 +18,6 @@ interface Props {
   leadFeature?: boolean
   /** Tailwind gap utility for the scroll track. Defaults to the rhythm gap. */
   cardGap?: string
-  /** Optional empty-state copy. When set and events is empty, renders the empty card; otherwise hides the section. */
-  emptyTitle?: string
-  emptyBody?: string
-  /**
-   * Subject word for the invitation-card copy ("The next {subject} night
-   * here is yours"). Defaults to the railLabel with a trailing "events"
-   * stripped; pass explicitly when the label does not start with the
-   * subject (e.g. "Events this weekend").
-   */
-  invitationSubject?: string
 }
 
 export async function EventRailSection({
@@ -45,11 +30,13 @@ export async function EventRailSection({
   cardVariant = 'landscape',
   leadFeature = false,
   cardGap = RHYTHM_GAP,
-  emptyTitle,
-  emptyBody,
-  invitationSubject,
 }: Props) {
-  if (events.length === 0 && !emptyTitle) return null
+  /*
+   * ONE REAL EVENT, ONE CARD (Lawal's emergency correction, 31 October 2026, 17:44): a rail draws only real published
+   * events, fewer cards when inventory is thin, and an empty rail is hidden. No open-slot card, invitation or empty-state
+   * card ever takes a place in it; scripts/guards/no-filler-in-event-collections.mjs fails the build if one returns.
+   */
+  if (events.length === 0) return null
 
   return (
     <section aria-label={ariaLabel} className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}>
@@ -64,34 +51,13 @@ export async function EventRailSection({
           containerBg="canvas"
           cardGap={cardGap}
         >
-          {events.length > 0 ? (
-            <>
-              {events.map((e, i) => (
-                <ThisWeekCard
-                  key={e.id}
-                  event={e}
-                  variant={leadFeature && i === 0 ? 'feature' : cardVariant}
-                />
-              ))}
-              {/* Launch-day sparse-rail discipline: a thin rail tops up with
-                  invitation cards (visually distinct, auto-vanish once five
-                  or more real events fill the track). The second invitation
-                  carries the performer angle. */}
-              {Array.from({ length: invitationFillCount(events.length) }, (_, i) => (
-                <InvitationCard
-                  key={`invite-${i}`}
-                  variant={cardVariant === 'feature' ? 'landscape' : cardVariant}
-                  angle={INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length]}
-                  subject={invitationSubject ?? (railLabel.toLowerCase().replace(/\s*events?\s*$/i, '') || 'community')}
-                />
-              ))}
-            </>
-          ) : (
-            <div className="flex w-full max-w-md flex-col items-start gap-2 rounded-lg border border-dashed border-[var(--surface-2)] bg-[var(--surface-0)] p-6">
-              <p className="font-headline text-sm font-bold text-[var(--text-primary)]">{emptyTitle}</p>
-              {emptyBody && <p className="text-xs text-[var(--text-secondary)]">{emptyBody}</p>}
-            </div>
-          )}
+          {events.map((e, i) => (
+            <ThisWeekCard
+              key={e.id}
+              event={e}
+              variant={leadFeature && i === 0 ? 'feature' : cardVariant}
+            />
+          ))}
         </SnapRail>
       </Reveal>
     </section>

@@ -12,6 +12,8 @@ const touch = (id: string, channel: QueueTouch['channel'], draftedAt: string, st
   purpose: 'cadence',
   heldBecause: [],
   refusal: null,
+  voiceProblems: [],
+  contentHash: 'abcdef0123456789',
   subject: null,
   body: `Hi team, a message ${id}`,
   trackedLink: null,
@@ -79,5 +81,12 @@ describe('suppression', () => {
   it('a contact the database refuses (a stop, an unsubscribe, a no) is never offered Sent, and says why first', () => {
     const t = { ...touch('s', 'instagram', '2026-10-31T00:00:00Z'), refusal: 'they asked us to stop', heldBecause: ['x'] }
     expect(notReady(t)).toEqual(['they asked us to stop', 'x'])
+  })
+})
+
+describe('the communication gateway in the queue', () => {
+  it("a message whose words fail the gateway is never offered Sent, and says each reason", () => {
+    const t = { ...touch('v', 'instagram', '2026-10-31T00:00:00Z'), voiceProblems: ['closing "Kind regards," missing on its own line'] }
+    expect(notReady(t)).toContain('closing "Kind regards," missing on its own line')
   })
 })

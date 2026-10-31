@@ -288,11 +288,14 @@ standing next to Ticketmaster, Eventbrite and Humanitix from day one.
     so in practice it hid a real organiser's real event for being the only one
     in its category. The organiser we can least afford to lose is the first one
     in a category, and theirs was precisely the event the page refused to show.
-  - **Thinness is answered by filling the rail, never by deleting it.** A rail
-    with one event tops up with `InvitationCard`s (`invitationFillCount`), so it
-    renders four cards: the real event, then three invitations to be next on it.
-    The fill tapers and vanishes by itself at five real events. A sparse rail
-    therefore reads as recruitment, which is growth lever 1 rendered on the page.
+  - **A rail draws real events only (Lawal's emergency correction, 31 October
+    2026, 17:44).** The invitation top-up that used to follow a thin rail ('Open
+    slot', `InvitationCard`, `invitationFillCount`) is REMOVED from every public
+    collection: a rail shows only real published events, fewer cards when
+    inventory is thin, and an empty rail is hidden; no other filler takes its
+    place. /gigs, the performers' own journey, keeps its own words.
+    `scripts/guards/no-filler-in-event-collections.mjs` fails the build if a fill
+    returns.
   - The only legitimate reason not to render a rail is that it has NOTHING to
     show. That decision lives in `EventRailSection` (`events.length === 0`) and
     is never re-derived by a caller. `tests/unit/growth/one-event-shows-the-rail.test.ts`

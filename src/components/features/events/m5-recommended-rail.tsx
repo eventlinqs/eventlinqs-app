@@ -1,7 +1,6 @@
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
-import { InvitationCard, invitationFillCount, INVITATION_ANGLE_ORDER } from './invitation-card'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 
 type Props = {
@@ -34,8 +33,8 @@ const MAX_RAIL_COUNT = 8
  * of 3, on the reasoning that sparse data would not read as a rail. On a
  * platform without volume that gate hid a real organiser's event on the city
  * browse surfaces for being the only one recommended, which is the opposite
- * of what a launch needs. An empty rail is still not rendered, because there
- * is genuinely nothing to show.
+ * of what a launch needs. An empty rail is not rendered, because there is
+ * genuinely nothing to show.
  */
 export async function RecommendedRail({
   events,
@@ -45,11 +44,11 @@ export async function RecommendedRail({
 }: Props) {
   if (headline === null) return null
   /*
-   * `if (events.length === 0) return null` used to sit here. Founder ruling
-   * 26 August 2026: "An empty rail is a sales surface, not a gap." The rail
-   * keeps its heading and its See all link and fills with invitation cards,
-   * exactly as a rail with one event does.
+   * ONE REAL EVENT, ONE CARD (Lawal's emergency correction, 31 October 2026, 17:44). This rail used to fill an empty
+   * or thin track with 'Open slot' invitation cards (the ruling of 26 August, "an empty rail is a sales surface"). It
+   * draws only real published events now, and an empty rail is hidden, heading and all.
    */
+  if (events.length === 0) return null
 
   const top = events.slice(0, MAX_RAIL_COUNT)
   const title = headline === 'recommended' ? 'Recommended for you' : 'Popular this week'
@@ -125,18 +124,6 @@ export async function RecommendedRail({
                 can reach. So the caller decides, and the drive counts.
               */}
               <EventCard event={c} variant="rail-flat" priority={firstCardEager && i === 0} />
-            </div>
-          ))}
-          {/* Launch-day sparse-rail discipline: top up a thin rail with
-              invitation cards; they vanish once five real events exist. */}
-          {Array.from({ length: invitationFillCount(cards.length) }, (_, i) => (
-            <div key={`invite-${i}`} className="w-64 shrink-0 snap-start sm:w-72">
-              <InvitationCard
-                fitParent
-                variant="landscape"
-                angle={INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length]}
-                subject="live"
-              />
             </div>
           ))}
         </SnapRailScroller>

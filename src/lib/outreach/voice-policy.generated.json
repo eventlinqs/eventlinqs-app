@@ -1,0 +1,128 @@
+{
+  "_generated": "by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md and C:/dev/comms-gateway/permissions-granted.json, compounds.json and threads.json; never edited by hand. version is the sha256 of the two policy files together, first 16 hex, as gateway.py computes it.",
+  "version": "6823dffe777dfa1e",
+  "firstSignature": [
+    "Lawal Adams",
+    "Founder, EventLinqs",
+    "eventlinqs.com.au",
+    "ABN 30 837 447 587",
+    "Geelong, VIC, Australia"
+  ],
+  "replySignature": [
+    "Lawal Adams",
+    "Founder, EventLinqs"
+  ],
+  "noExit": [
+    "no pressure",
+    "no thanks is fine",
+    "I won't write again",
+    "if the timing isn't right"
+  ],
+  "permissions": [
+    {
+      "recipient": "chair@amcf.org.au",
+      "topic": "AMCF past festival photos",
+      "given": "Fred Alale AM, 14 Oct 2026 00:52: links to photographs from previous festivals that you are welcome to use to promote AMCF",
+      "neverAsk": [
+        "happy for us to use",
+        "permission to use",
+        "may we use",
+        "can we use",
+        "okay to use",
+        "ok to use"
+      ]
+    },
+    {
+      "recipient": "chair@amcf.org.au",
+      "topic": "NO REQUESTS TO FRED, Lawal 31 Oct 09:18: never ask him for anything (photos, times, confirmations, material); build only with what he has given",
+      "given": "Lawal's ruling, 31 Oct 2026 09:18",
+      "neverAsk": [
+        "\\?",
+        "send (it|them|me|us|through|over)",
+        "could you",
+        "would you",
+        "can you",
+        "please confirm",
+        "\\bconfirm\\b",
+        "let me know (which|if|whether)",
+        "favourite .*shot",
+        "love you to"
+      ]
+    },
+    {
+      "recipient": "media@amcf.org.au",
+      "topic": "NO REQUESTS TO AMCF, Lawal 31 Oct 09:18",
+      "given": "Lawal's ruling, 31 Oct 2026 09:18",
+      "neverAsk": [
+        "\\?",
+        "send (it|them|me|us|through|over)",
+        "could you",
+        "would you",
+        "can you",
+        "\\bconfirm\\b",
+        "love you to"
+      ]
+    }
+  ],
+  "compounds": {
+    "mustHyphenateBeforeNoun": [
+      "day by day",
+      "family friendly",
+      "one line",
+      "short term",
+      "long term",
+      "well known",
+      "up to date",
+      "first hand",
+      "full time",
+      "part time",
+      "free entry only",
+      "world class",
+      "high quality",
+      "last minute",
+      "hands on",
+      "one off",
+      "face to face",
+      "step by step",
+      "behind the scenes",
+      "all ages",
+      "kid friendly",
+      "pet friendly",
+      "small business",
+      "three day",
+      "two day",
+      "one day",
+      "all day",
+      "year round",
+      "much loved",
+      "much needed",
+      "long running",
+      "award winning",
+      "best selling",
+      "self employed",
+      "sister in law",
+      "brother in law",
+      "runner up"
+    ],
+    "nounsAfter": "program|programme|schedule|guide|timetable|event|events|festival|reply|message|plan|view|approach|pass|ticket|tickets|weekend|experience|celebration|session|sessions|show|shows|line|role|job|work|guide",
+    "compoundWords": [
+      "sister in law",
+      "brother in law",
+      "self employed",
+      "runner up"
+    ]
+  },
+  "threads": [
+    {
+      "recipient": "chair@amcf.org.au",
+      "mailbox": "lawal@eventlinqs.com",
+      "why": "the AMCF conversation runs on lawal@eventlinqs.com since 10 Oct 2026; Lawal's rule of 23 Oct: every email to a contact goes from the address the conversation has been on, in the same thread"
+    },
+    {
+      "recipient": "media@amcf.org.au",
+      "mailbox": "lawal@eventlinqs.com",
+      "why": "same AMCF thread"
+    }
+  ],
+  "founderMailbox": "lawal@eventlinqs.com"
+}
