@@ -744,7 +744,12 @@ export function EventForm({
     start_date: fromZonedInputValue(formData.start_date, formData.timezone),
     end_date: fromZonedInputValue(formData.end_date, formData.timezone),
     timezone: formData.timezone,
-    is_multi_day: formData.is_multi_day,
+    // The dates say whether it runs over more than a day. A "This is a multi-day event" box used to ask, was saved,
+    // and changed nothing anywhere (1 November 2026), so the answer is now read from the dates the organiser set.
+    is_multi_day:
+      Date.parse(fromZonedInputValue(formData.end_date, formData.timezone)) -
+        Date.parse(fromZonedInputValue(formData.start_date, formData.timezone)) >=
+      24 * 60 * 60 * 1000,
     is_recurring: formData.is_recurring,
     recurrence_rule: formData.is_recurring ? formData.recurrence_rule : null,
     event_type: formData.event_type,
@@ -1193,16 +1198,6 @@ export function EventForm({
           ))}
         </select>
       </div>
-
-      <label htmlFor="this-is-a-multi-day-event-10" className="flex items-center gap-3 cursor-pointer">
-        <input id="this-is-a-multi-day-event-10"
-          type="checkbox"
-          checked={formData.is_multi_day}
-          onChange={e => set('is_multi_day', e.target.checked)}
-          className="h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
-        />
-        <span className="text-sm font-medium text-ink-600">This is a multi-day event</span>
-      </label>
 
       <label htmlFor="this-is-a-recurring-event-11" className="flex items-center gap-3 cursor-pointer">
         <input id="this-is-a-recurring-event-11"
