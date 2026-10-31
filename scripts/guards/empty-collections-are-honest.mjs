@@ -36,6 +36,8 @@ const DISCOVERY_TEMPLATES = [
   'src/components/templates/CategoryEventsLandingPage.tsx',
   'src/components/templates/FreeWeekLandingPage.tsx',
   'src/components/templates/WeekendLandingPage.tsx',
+  // Found by WINDOW 3 (31 October 20:33): 'Live X events' over nothing, then 'Be the first' and 'List your event'.
+  'src/app/faith/[faith]/page.tsx',
 ]
 const PLACE_PAGES = DISCOVERY_TEMPLATES.slice(0, 4).filter((f) => !f.includes('events-by-community-grid'))
 
