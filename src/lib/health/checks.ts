@@ -4,7 +4,7 @@ import { getRedisClient } from '@/lib/redis/client'
 import { getSiteUrl } from '@/lib/site-url'
 import { isAiConfigured } from '@/lib/ai/client'
 import { isPushConfigured } from '@/lib/notifications/web-push'
-import { selfProbe, driftWatchdog, endpointConfigCheck, connectedAccountHealthCheck } from '@/lib/health/payment-checks'
+import { selfProbe, driftWatchdog, endpointConfigCheck, connectedAccountHealthCheck, payoutHealthCheck } from '@/lib/health/payment-checks'
 import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
@@ -117,6 +117,22 @@ async function checkConnectHealth(): Promise<HealthResult> {
     probableCause: r.probableCause,
     action:
       'Each line above names the organiser, their Stripe account and what Stripe is waiting for. Nothing here is fixed by the platform: the organiser supplies the missing information in their own Stripe dashboard, reached from Payouts in their EventLinqs dashboard. An account that has never finished onboarding is reported and is not a fault.',
+  }
+}
+
+// ORGANISERS GET PAID (1 November 2026): Stripe's payout schedule stays manual, and an event still owed money whose
+// last two transfers failed is named the same day. CRITICAL, so it emails the founder at once.
+async function checkPayouts(): Promise<HealthResult> {
+  const r = await payoutHealthCheck()
+  return {
+    id: 'payouts',
+    label: 'Organisers get paid',
+    severity: 'critical',
+    ok: r.ok,
+    detail: r.detail,
+    probableCause: r.probableCause,
+    action:
+      "Read the event and the reason above. A balance short of what is owed needs money in Stripe's available balance or a decision on that organiser's payment; nothing retries more than once a day until it is fixed. If the payout schedule is named, set it back to Manual in Stripe, Settings, Payouts.",
   }
 }
 
@@ -682,7 +698,7 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
 /** Re-exported above; aliased here so this module's own uses read naturally. */
 void rollUp
 
-export const CHECK_IDS = ['payment', 'connect_health', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
+export const CHECK_IDS = ['payment', 'connect_health', 'payouts', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -697,6 +713,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
   const results = await Promise.all([
     timed('payment', () => checkPayment(origin)),
     timed('connect_health', () => checkConnectHealth()),
+    timed('payouts', () => checkPayouts()),
     timed('database', () => checkDatabase()),
     timed('email', () => checkEmail()),
     timed('storage', () => checkStorage()),

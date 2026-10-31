@@ -790,6 +790,16 @@ body {
 
 html[data-consent='ask'] #el-consent-shell { display: block; }
 
+/* A DIALOG THE VISITOR OPENED STANDS ABOVE THE QUESTION (1 November 2026). The strip sits at z-60, level with or
+   above every dialog a visitor opens (the Remind me sheet z-50, the menu z-50, search and the location picker z-60),
+   so on live at 390 the Remind me sheet opened UNDER it with its email box and button hidden until the banner was
+   answered (C:\dev\EVIDENCE\JOURNEYS-1NOV\remind-03h46\before-390.png). No single layer clears every dialog and stays
+   above every bottom bar, so while an open modal dialog is on the page the strip is not drawn; it returns, still
+   unanswered, the moment the dialog closes. A closed dialog that stays mounted (the menu, the filter drawer) is
+   aria-hidden and does not count. The trailing [id] keeps this rule out of the patterns the guard
+   the-consent-banner-is-in-the-first-paint mutates in its drills. */
+body:has([aria-modal='true']:not([aria-hidden='true'])) #el-consent-shell[id] { display: none; }
+
 /* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */
 /* No border-radius here (close-out C14.12, 6 September 2026). This rule used
    to set 4px, and because it sits outside every layer it beat the element's

@@ -85,10 +85,24 @@ export function buildTokenOrGroup(token: string, organisationIds: string[] = [])
  *
  * `organisationIdsByToken` maps a token to the organisation ids whose name
  * matches it. Absent entries simply mean no organiser matched that token.
+ *
+ * TAGS SATISFY EVERY GROUP. The scene tiles send multi-word queries ("hip hop
+ * rnb") and the events carry the scene as a tag, hyphenated (`hip-hop-rnb`) or
+ * as one of its words (`rnb`). So every group also accepts the hyphenated phrase
+ * tag and each word's tag: an event so tagged passes the whole search, while
+ * free text still has to match every word, which keeps "hop" from pulling in
+ * every "Hopscotch" (the 16 August reason the page had fallen back to matching
+ * the whole phrase as one substring).
  */
 export function buildSearchOrGroups(
   q: string,
   organisationIdsByToken: Map<string, string[]> = new Map(),
 ): string[] {
-  return tokenise(q).map((t) => buildTokenOrGroup(t, organisationIdsByToken.get(t) ?? []))
+  const tokens = tokenise(q)
+  const lower = tokens.map((t) => t.toLowerCase())
+  const tags = [...new Set([...(lower.length > 1 ? [lower.join('-')] : []), ...lower])].map((t) => `tags.cs.["${t}"]`)
+  return tokens.map((t) => {
+    const own = buildTokenOrGroup(t, organisationIdsByToken.get(t) ?? [])
+    return [own, ...tags.filter((tag) => !own.includes(tag))].join(',')
+  })
 }

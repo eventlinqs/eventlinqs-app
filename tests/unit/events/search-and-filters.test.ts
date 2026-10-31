@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   tokenise,
   sanitiseToken,
@@ -89,6 +91,38 @@ describe('search field coverage', () => {
     expect(groups).toHaveLength(2)
     expect(groups[0]).toContain('*jazz*')
     expect(groups[1]).toContain('*soul*')
+  })
+
+  // Measured on live, 1 November 2026 (C:\dev\EVIDENCE\JOURNEYS-1NOV\run-03h29\VERDICTS.txt): the page matched the
+  // typed phrase as ONE substring, so 'Guy Sebastian 100' missed 'Guy Sebastian: 100 X ...' over its colon, and every
+  // word-plus-place search ('live music melbourne', 'comedy geelong', 'trivia ballarat') returned 0.
+  it('finds a title whose words are split by punctuation, every word on its own', () => {
+    const groups = buildSearchOrGroups('Guy Sebastian 100')
+    expect(groups).toHaveLength(3)
+    expect(groups[2]).toContain('title.ilike.*100*')
+  })
+
+  it('lets a genre word and a place word match different fields', () => {
+    const [genre, place] = buildSearchOrGroups('comedy geelong')
+    expect(genre).toContain('title.ilike.*comedy*')
+    expect(place).toContain('venue_city.ilike.*geelong*')
+  })
+
+  it("keeps the scene tiles' reach: every group accepts the hyphenated phrase tag and any word's tag", () => {
+    // The 16 August reason for the phrase search: the Sounds tiles send 'hip hop rnb' and the events are tagged
+    // 'hip-hop-rnb' or 'rnb'. An event carrying either tag satisfies every group, so the tile still reaches it.
+    for (const g of buildSearchOrGroups('hip hop rnb')) {
+      expect(g).toContain('tags.cs.["hip-hop-rnb"]')
+      expect(g).toContain('tags.cs.["rnb"]')
+    }
+  })
+})
+
+describe('the events page searches every word (one source)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/lib/events/fetchers.ts'), 'utf8').replace(/\r\n/g, '\n')
+  it('applies buildSearchOrGroups, one .or() per word, and no whole-phrase substring match', () => {
+    expect(src).toMatch(/buildSearchOrGroups\(/)
+    expect(src).not.toMatch(/ilike\.\$\{escapeOrValue\(`%\$\{phrase\}%`\)\}/)
   })
 })
 
