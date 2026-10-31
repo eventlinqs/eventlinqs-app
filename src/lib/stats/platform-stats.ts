@@ -2,8 +2,19 @@ import 'server-only'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { captureException } from '@/lib/observability/sentry'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 /**
+ * THE STRIP COUNTS WHAT /events COUNTS (the controller's order of 31 October 2026, 21:12, from window 6's finding).
+ * On live the organiser strip said '379 events live right now, across 5 Australian cities' while /events said 327:
+ * this resolver read every PUBLISHED event, 52 of them already ended, and its fifth city was 'west melbourne', the
+ * suburb of an ended night. It now reads the catalogue /events reads, from the same two definitions: published and
+ * public (PUBLIC_EVENT_MATCH, which fetchPublicEvents matches) and still on (listingWindowOrPredicate, which
+ * applyDateWindow always ORs in), outside-ticketed nights included as /events includes them. A city is the event's
+ * city_primary (the import's city, so Torquay counts for Geelong) and only falls back to the venue's city when that
+ * is absent. tests/unit/stats/platform-stats.test.ts holds both pages to the one rule.
+ *
  * HONEST, LIVE PLATFORM SOCIAL PROOF. THREE NUMBERS THAT DESCRIBE ONE
  * CATALOGUE, BECAUSE THEY ARE READ FROM ONE COMPLETE PASS OVER IT.
  *
@@ -61,16 +72,16 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS COSTS, STATED RATHER THAN HIDDEN. One request per thousand
- * published events, of two narrow columns, behind `revalidate = 60` on
+ * visible events, of three narrow columns, behind `revalidate = 60` on
  * /organisers, so at most once a minute per region. A database view computing
  * COUNT(DISTINCT ...) server-side is one request at any size and is the right
  * answer once the catalogue is large; it needs a migration, and it is raised in
  * C:\dev\REVIEW-QUEUE-B.md as an optimisation rather than a correctness gap.
  * This version is exact at every size today.
  *
- * `organisers` counts organisations with at least one published event (an
+ * `organisers` counts organisations with at least one visible event (an
  * organiser you can actually browse to), not raw signups. `cities` counts the
- * distinct venue cities behind those events. The read uses the PUBLIC (anon)
+ * distinct cities (city_primary, else the venue's city) behind those events. The read uses the PUBLIC (anon)
  * client, so RLS decides what is counted and the numbers are the catalogue a
  * stranger can actually browse.
  *
@@ -91,6 +102,7 @@ export interface PlatformStats {
 export interface PlatformStatsRow {
   organisation_id: string | null
   venue_city: string | null
+  city_primary: string | null
 }
 
 /**
@@ -103,26 +115,26 @@ export interface PlatformStatsRow {
 export interface StatsReadClient {
   from(table: string): {
     select(columns: string): {
-      eq(
-        column: string,
-        value: string,
-      ): {
-        order(
-          column: string,
-          opts: { ascending: boolean },
-        ): {
-          range(
-            from: number,
-            to: number,
-          ): PromiseLike<{ data: PlatformStatsRow[] | null; error: { message: string } | null }>
+      match(filter: Record<string, string>): {
+        or(filters: string): {
+          order(
+            column: string,
+            opts: { ascending: boolean },
+          ): {
+            range(
+              from: number,
+              to: number,
+            ): PromiseLike<{ data: PlatformStatsRow[] | null; error: { message: string } | null }>
+          }
         }
       }
     }
   }
 }
 
-export async function getPlatformStats(opts?: { client?: StatsReadClient }): Promise<PlatformStats> {
+export async function getPlatformStats(opts?: { client?: StatsReadClient; now?: Date }): Promise<PlatformStats> {
   try {
+    const now = opts?.now ?? new Date()
     const client = opts?.client ?? (createPublicClient() as unknown as StatsReadClient)
 
     /*
@@ -131,18 +143,19 @@ export async function getPlatformStats(opts?: { client?: StatsReadClient }): Pro
      * tie straddle a page boundary, which duplicates one row and loses another,
      * and a lost row is a lost organiser or a lost city.
      */
-    const rows = await readEveryRow<PlatformStatsRow>('published events for platform stats', (from, to) =>
+    const rows = await readEveryRow<PlatformStatsRow>('visible events for platform stats', (from, to) =>
       client
         .from('events')
-        .select('organisation_id, venue_city')
-        .eq('status', 'published')
+        .select('organisation_id, venue_city, city_primary')
+        .match(PUBLIC_EVENT_MATCH)
+        .or(listingWindowOrPredicate(now))
         .order('id', { ascending: true })
         .range(from, to),
     )
 
     const organisers = new Set(rows.map(r => r.organisation_id).filter(Boolean)).size
     const cities = new Set(
-      rows.map(r => (r.venue_city ?? '').trim().toLowerCase()).filter(Boolean),
+      rows.map(r => (r.city_primary ?? r.venue_city ?? '').trim().toLowerCase()).filter(Boolean),
     ).size
 
     return {
