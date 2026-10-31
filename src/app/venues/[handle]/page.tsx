@@ -244,6 +244,10 @@ export default async function VenueProfilePage({ params }: Props) {
    * declares the height of what it renders, not of what it was handed
    * (close-out C8B.3, 19 September 2026). */
   const pastShown = past.slice(0, PAST_EVENTS_SHOWN)
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const upcomingCards = collapseListings(upcoming, 12)
+  const pastCards = collapseListings(pastShown)
 
   // Aggregate organisers using this venue (top by event count).
   const orgCounts = new Map<string, VenueOrganiserAggregate>()
@@ -424,7 +428,7 @@ export default async function VenueProfilePage({ params }: Props) {
                 headerLink: { href: `/events?venue=${handle}`, label: 'View all' },
               }}
             >
-              {collapseListings(upcoming, 12).map(e => (
+              {upcomingCards.map(e => (
                 <div key={e.id} className={FLAT_RAIL_CELL}>
                   <EventCard event={e} variant="rail-flat" />
                 </div>
@@ -463,7 +467,7 @@ export default async function VenueProfilePage({ params }: Props) {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {collapseListings(pastShown).map(e => (
+              {pastCards.map(e => (
                 <EventCard key={e.id} event={e} />
               ))}
             </div>

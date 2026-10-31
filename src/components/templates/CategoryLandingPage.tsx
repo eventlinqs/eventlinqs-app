@@ -60,6 +60,9 @@ export function CategoryLandingPage({
   liveEvents = [],
   browseHref = '/events',
 }: CategoryLandingPageProps) {
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const liveCards = collapseListings(liveEvents)
   const {
     slug,
     displayName,
@@ -135,7 +138,7 @@ export function CategoryLandingPage({
           than the three templates that carry an eyebrow, which is 0.26% and
           0.19% of this section and is named in the module rather than
           corrected with a second constant. */}
-      <ContentSection surface="base" width="wide" intrinsicSize={eventGridIntrinsicSize(liveEvents.length)}>
+      <ContentSection surface="base" width="wide" intrinsicSize={eventGridIntrinsicSize(liveCards.length)}>
         {liveEvents.length > 0 ? (
           <>
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -150,7 +153,7 @@ export function CategoryLandingPage({
               </Link>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {collapseListings(liveEvents).map(event => (
+              {liveCards.map(event => (
                 <EventCard key={event.id} event={event} variant="grid-one-three" />
               ))}
             </div>

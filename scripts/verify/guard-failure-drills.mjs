@@ -467,8 +467,8 @@ const DRILLS = [
     name: 'a community grid draws its events without collapsing a listing to one card',
     guard: `${GUARDS}/every-card-list-collapses.mjs`,
     file: 'src/components/features/community/events-by-community-grid.tsx',
-    find: '{collapseListings(events).map(event => (',
-    replace: '{events.map(event => (',
+    find: 'const cards = collapseListings(events)',
+    replace: 'const cards = events',
     expect: 'never collapses a listing',
   },
   {

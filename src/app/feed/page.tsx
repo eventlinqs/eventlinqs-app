@@ -58,6 +58,10 @@ export default async function ForYouFeedPage() {
    * feeds both the reserved height and the cards, so the section declares the
    * height of what it renders (close-out C8B.3, 19 September 2026). */
   const moreForYou = events.slice(RAIL_PICKS)
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const railCards = collapseListings(events, RAIL_PICKS)
+  const moreCards = collapseListings(moreForYou)
 
   return (
     <PageShell>
@@ -103,7 +107,7 @@ export default async function ForYouFeedPage() {
                 headerLink: { href: '/events', label: 'Browse all' },
               }}
             >
-              {collapseListings(events, RAIL_PICKS).map(e => (
+              {railCards.map(e => (
                 <div key={e.id} className={FLAT_RAIL_CELL}>
                   <EventCard event={e} variant="rail-flat" />
                 </div>
@@ -116,7 +120,7 @@ export default async function ForYouFeedPage() {
               surface="base"
               width="wide"
               topBorder
-              intrinsicSize={eventGridIntrinsicSize(moreForYou.length)}
+              intrinsicSize={eventGridIntrinsicSize(moreCards.length)}
             >
               <div className="mb-6">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -127,7 +131,7 @@ export default async function ForYouFeedPage() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {collapseListings(moreForYou).map(e => (
+                {moreCards.map(e => (
                   <EventCard key={e.id} event={e} />
                 ))}
               </div>

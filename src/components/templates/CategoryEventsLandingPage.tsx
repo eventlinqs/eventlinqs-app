@@ -82,6 +82,9 @@ interface Props {
  */
 export function CategoryEventsLandingPage({ name, editorial, heroImage, events, siblings }: Props) {
   const { slug, eyebrow, h1, intro, storyHeadline, storyParagraphs, personas, seeAlso } = editorial
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const cards = collapseListings(events)
 
   return (
     <PageShell>
@@ -123,7 +126,7 @@ export function CategoryEventsLandingPage({ name, editorial, heroImage, events, 
         width="wide"
         topBorder
         reveal
-        intrinsicSize={eventGridIntrinsicSize(events.length)}
+        intrinsicSize={eventGridIntrinsicSize(cards.length)}
       >
         {events.length > 0 ? (
           <>
@@ -136,7 +139,7 @@ export function CategoryEventsLandingPage({ name, editorial, heroImage, events, 
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {collapseListings(events).map(event => (
+              {cards.map(event => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
