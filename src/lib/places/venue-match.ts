@@ -6,8 +6,9 @@
  * NAME: the two names carry the same words once case, punctuation, '&' and the articles are set aside; a word one
  * name adds is allowed only when it is a place word from the addresses (a suburb such as 'Richmond'). So 'The Corner
  * Hotel' is the 'Corner Hotel', and 'Forum Fitness Studio' is never 'Forum'.
- * ADDRESS: where our address has a street number, Google's must carry the same number on the same street; where it
- * has none, every word of our first address part (the street or square) must appear in Google's. No address of our
+ * ADDRESS: where our address has a street number, in whichever part it stands, Google's must carry the same number (or
+ * one of our range) on the same street; where it has none, every word of our first address part (the street or square)
+ * must appear in Google's. No address of our
  * own, no match: name and location alone are text and a point, not an identity.
  * LOCATION: within MAX_METRES of our venue's own coordinates.
  *
@@ -61,16 +62,37 @@ function namesAgree(ours: string, theirs: string, placeWords: ReadonlySet<string
   return [...extraInA, ...extraInB].every((w) => placeWords.has(w))
 }
 
+const NUMBER = /^\d+[a-z]?$/
+
+// Our street number (or range) and street: the first address part, by commas, where a number is FOLLOWED by a word.
+// Real venue addresses lead with a building or a floor ('Level 1, 97-99 Ryrie Street', 'Eaglehawk Mechanics Institute,
+// 1 Sailors Gully Road'), and a postcode has no street after it, so it is never taken for a street number.
+function streetOf(address: string): { numbers: string[]; street: string } | null {
+  for (const part of address.split(',').map(addressWords)) {
+    for (let i = 0; i < part.length; i++) {
+      if (!NUMBER.test(part[i])) continue
+      let j = i
+      while (j < part.length && NUMBER.test(part[j])) j++
+      if (j < part.length) return { numbers: part.slice(i, j), street: part[j] }
+      break
+    }
+  }
+  return null
+}
+
 function addressesAgree(ours: string, theirs: string): boolean {
   const t = addressWords(theirs)
-  // The street number is read from the first part only (before the first comma), so a postcode is never taken for it.
-  const firstPart = addressWords(ours.split(',')[0] ?? '')
-  const number = firstPart.find((w) => /^\d+[a-z]?$/.test(w))
-  if (number) {
-    const street = firstPart[firstPart.indexOf(number) + 1]
-    const i = t.indexOf(number)
-    return i >= 0 && street !== undefined && t[i + 1] === street
+  const s = streetOf(ours)
+  if (s) {
+    // Google's address carries one of our numbers (a range '251-259' may be written '259') followed by the same street.
+    return t.some((w, i) => {
+      if (!s.numbers.includes(w)) return false
+      let j = i
+      while (j < t.length && NUMBER.test(t[j])) j++
+      return t[j] === s.street
+    })
   }
+  const firstPart = addressWords(ours.split(',')[0] ?? '')
   return firstPart.length > 0 && firstPart.every((w) => t.includes(w))
 }
 
