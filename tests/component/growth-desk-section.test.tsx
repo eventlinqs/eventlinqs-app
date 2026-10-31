@@ -16,9 +16,10 @@ const card: Scorecard = {
   checked_next_14_days_by_city: { Geelong: 20, Melbourne: 28, Ballarat: 60, Bendigo: 112 },
   photo_rights_recorded: 24, claims_verified: 1, claims_all: 3, venues_claimed: 0, frequent_paid_organisers_30d: 2,
   paid_tickets_7d: 10, remind_me_active: 5, subscribers_confirmed: 4, outreach_sent_yesterday: 12, outreach_replies_yesterday: 1,
+  selling_through_eventlinqs: 0,
 }
 const desk = (trend: TrendRow[] = []): GrowthDesk => ({
-  plan, card, today: '2026-11-01', progress: planAgainstActual(plan, card, '2026-11-01'), tasks: todaysTasks(plan, card), trend,
+  plan, card, today: '2026-11-01', progress: planAgainstActual(plan, card, '2026-11-01'), tasks: todaysTasks(plan, card, '2026-11-01'), trend,
 })
 const html = (d: GrowthDesk) => renderToStaticMarkup(createElement(GrowthDeskSection, { desk: d }))
 
@@ -30,6 +31,8 @@ describe('the growth desk', () => {
     expect(out).toContain('Send 20 outreach messages today (yesterday: 12 sent).')
     expect(out).toContain('Plan against actual, the year to October 2027')
     expect(out).toContain('10x stretch')
+    expect(out).toContain('Upcoming events selling through EventLinqs')
+    expect(out).toMatch(/Send 5 conversion asks today, within the 20 outreach messages/)
     expect(out).toMatch(/The 10x stretch is A\$[\d,]+ a year short on today&#x27;s run rate\./)
   })
 

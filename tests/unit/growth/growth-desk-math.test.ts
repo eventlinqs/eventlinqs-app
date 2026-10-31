@@ -22,6 +22,7 @@ const card: Scorecard = {
   subscribers_confirmed: 4,
   outreach_sent_yesterday: 12,
   outreach_replies_yesterday: 1,
+  selling_through_eventlinqs: 0,
 }
 
 describe('the plan year and plan against actual', () => {
@@ -45,6 +46,33 @@ describe('the plan year and plan against actual', () => {
     const r = planAgainstActual(plan, card, '2026-11-01')
     expect(r.stretch.target).toBe(38000000)
     expect(r.stretchGap).toBe(38000000 - r.lines[2].actual)
+  })
+})
+
+describe('closing the ticketing gap (plan version 2)', () => {
+  const line = (today: string, c: Scorecard = card) =>
+    planAgainstActual(plan, c, today).lines.find((l) => l.label === 'Upcoming events selling through EventLinqs')
+
+  test('the count is shown against the next dated target, each target in turn', () => {
+    expect(line('2026-11-01')).toMatchObject({ actual: 0, target: 5, percent: 0 })
+    expect(line('2026-11-01')?.basis).toBe('by 15 November 2026, counted daily: published upcoming events with a paid EventLinqs ticket tier')
+    expect(line('2026-11-16')).toMatchObject({ target: 20 })
+    expect(line('2027-01-31')).toMatchObject({ target: 50 })
+    expect(line('2027-03-01')).toMatchObject({ target: 50 })
+  })
+
+  test('before the scorecard counts it, the line is left out rather than drawn as a zero', () => {
+    const { selling_through_eventlinqs: _, ...older } = card
+    expect(line('2026-11-01', older as Scorecard)).toBeUndefined()
+  })
+
+  test("today's conversion asks come first, counted from the plan and naming who first", () => {
+    const tasks = todaysTasks(plan, card, '2026-11-01')
+    const ask = tasks.find((t) => t.kind === 'conversion')
+    expect(tasks.findIndex((t) => t.kind === 'conversion')).toBeLessThan(tasks.findIndex((t) => t.kind === 'outreach'))
+    expect(ask?.text).toMatch(/^Send 5 conversion asks today, within the 20 outreach messages, to: /)
+    for (const who of plan.close_the_ticketing_gap!.who_first) expect(ask?.text).toContain(who)
+    expect(ask?.text).toMatch(/Selling through EventLinqs now: 0 of 5 by 15 November 2026\.$/)
   })
 })
 

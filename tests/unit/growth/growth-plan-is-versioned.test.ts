@@ -28,6 +28,21 @@ describe('the growth plan is valid', () => {
     q.daily_quotas.outreach_messages = 'twenty'
     expect(planProblems(q).join(' ')).toMatch(/outreach_messages/)
   })
+
+  test('version 2 carries the ticketing gap: dated targets, who first, and the daily conversion asks as a count', () => {
+    expect(plan().version).toBe(2)
+    const noGap = { ...plan(), close_the_ticketing_gap: undefined }
+    expect(planProblems(noGap).join(' ')).toMatch(/close_the_ticketing_gap/)
+    const p = plan()
+    p.close_the_ticketing_gap.targets[0].by = '15 November'
+    expect(planProblems(p).join(' ')).toMatch(/targets\[0\]\.by/)
+    const q = plan()
+    q.close_the_ticketing_gap.who_first = []
+    expect(planProblems(q).join(' ')).toMatch(/who_first/)
+    const r = plan()
+    r.close_the_ticketing_gap.daily = 'some conversion asks each day'
+    expect(planProblems(r).join(' ')).toMatch(/daily/)
+  })
 })
 
 describe('the growth plan keeps every dated version', () => {
@@ -36,6 +51,13 @@ describe('the growth plan keeps every dated version', () => {
 
   test('the ledger holds, and the plan equals its newest version', () => {
     expect(checkLedger(files())).toEqual([])
+  })
+
+  test('version 1 is still kept whole beside version 2 (Law 8: a new dated version, never an overwrite)', () => {
+    const ledger = JSON.parse(read('growth/versions/LEDGER.json'))
+    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2])
+    expect(JSON.parse(read('growth/versions/2026-11-01.json')).version).toBe(1)
+    expect(sha256Lf(read('growth/versions/2026-11-01.json'))).toBe('2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3')
   })
 
   test('a version changed after it was recorded is caught', () => {
