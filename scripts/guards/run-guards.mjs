@@ -1076,7 +1076,7 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
-import { describeOutcome, renderFailures } from './lib/guard-run-report.mjs'
+import { describeOutcome, renderFailures, transportOnlyFailure } from './lib/guard-run-report.mjs'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -3376,6 +3376,8 @@ const CI_EQUIVALENT = CONTRACT !== null && RUNNING === CONTRACT
  * thousand lines of PASS output. It had the name the whole time. Keep it.
  */
 const failures = []
+/** Guards that failed on transport alone and passed on their one retry (the controller's 11:04). */
+const retriedPasses = []
 
 /*
  * STDERR IS CAPTURED RATHER THAN INHERITED, and that is the whole of close-out
@@ -3401,16 +3403,36 @@ for (const guard of GUARDS) {
   // safe without its author knowing the rule, which is the only kind of safety
   // that survives. The per-guard clearing stays as well: this is the belt, that
   // is the braces, and neither is load-bearing alone.
-  const result = spawnSync(process.execPath, [join(ROOT, guard)], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    encoding: 'utf8',
-    env: gitEnv(),
-    maxBuffer: 64 * 1024 * 1024,
-  })
+  const run = () =>
+    spawnSync(process.execPath, [join(ROOT, guard)], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      encoding: 'utf8',
+      env: gitEnv(),
+      maxBuffer: 64 * 1024 * 1024,
+    })
+  let result = run()
   if (result.stdout) process.stdout.write(result.stdout)
   if (result.stderr) process.stderr.write(result.stderr)
+  // ONE RETRY FOR A FAILURE THAT IS TRANSPORT ALONE (the controller's 11:04 of 31 October 2026): after 30 s, quoted
+  // in the log. A second transport failure, or any other failure, fails as before.
+  const transport = transportOnlyFailure(result)
+  if (transport) {
+    console.log(`[guards] ${guard} failed on transport alone ('${transport}'); retrying ONCE in 30 s`)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30_000)
+    result = run()
+    if (result.stdout) process.stdout.write(result.stdout)
+    if (result.stderr) process.stderr.write(result.stderr)
+    if (describeOutcome(result).ok) retriedPasses.push({ guard, transport })
+  }
   const outcome = describeOutcome(result)
   if (!outcome.ok) failures.push({ guard, reason: outcome.reason, thrown: outcome.thrown })
+}
+
+// The reversal, evaluated here: a guard that passed only on its retry is named, and two in one run stop it, because
+// two network drops in one gate mean the network, not the code, is what the gate would be measuring.
+for (const r of retriedPasses) console.log(`[guards] PASSED ONLY ON ITS RETRY: ${r.guard} (first try: '${r.transport}')`)
+if (retriedPasses.length >= 2) {
+  failures.push({ guard: `${retriedPasses.length} guards passed only on a retry`, reason: 'the network is dropping; the gate stops for a network read' })
 }
 
 const runtime = CI_EQUIVALENT
