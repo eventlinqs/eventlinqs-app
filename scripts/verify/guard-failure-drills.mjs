@@ -1259,6 +1259,26 @@ const DRILLS = [
     expect: 'the refusal names GOOGLE_MAPS_API_KEY',
   },
   /*
+   * compound-modifiers-hyphenated (law 6, 31 October 2026), two drills: a compound modifier written without its
+   * hyphen before its noun, and an em dash in copy.
+   */
+  {
+    name: 'a compound modifier loses its hyphen before its noun',
+    guard: `${GUARDS}/compound-modifiers-hyphenated.mjs`,
+    file: 'src/lib/listings/collect.ts',
+    find: "an all-day event, read as the start of that day in the feed's zone.",
+    replace: "an all day event, read as the start of that day in the feed's zone.",
+    expect: 'needs its hyphen: "all-day event"',
+  },
+  {
+    name: 'an em dash stands in copy',
+    guard: `${GUARDS}/compound-modifiers-hyphenated.mjs`,
+    file: 'src/lib/listings/collect.ts',
+    find: "an all-day event, read as the start of that day in the feed's zone.",
+    replace: "an all-day event — read as the start of that day in the feed's zone.",
+    expect: 'an em or en dash',
+  },
+  /*
    * homepage-hero-never-empty (close-out C17), two drills: the empty branch
    * painting a panel without HeroMedia, and a curated entry with no raster.
    */

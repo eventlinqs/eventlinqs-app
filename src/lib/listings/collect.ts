@@ -297,7 +297,7 @@ function wallClockToIso(y: number, mo: number, d: number, h: number, mi: number,
 
 /**
  * RFC 5545 3.3.5's three forms (FORM #2 "DATE WITH UTC TIME" ends in Z; FORM #3 names a TZID; FORM #1 is floating) and
- * 3.3.4's DATE, an all day event, read as the start of that day in the feed's zone.
+ * 3.3.4's DATE, an all-day event, read as the start of that day in the feed's zone.
  */
 function icsInstant(prop: IcsProp | undefined): string | null {
   if (!prop) return null
