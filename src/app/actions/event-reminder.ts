@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { programToCome } from '@/lib/walk-in/remind-me'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import {
@@ -31,7 +32,7 @@ export async function requestEventReminder(input: ReminderRequestInput): Promise
       readEvent: async (eventId) => {
         const { data, error } = await admin
           .from('events')
-          .select('id, status, visibility, entry_mode, end_date, organisation:organisations(name), guide:event_guides(program_published_at)')
+          .select('id, status, visibility, entry_mode, end_date, organisation:organisations(name), guide:event_guides(program_published_at, program_note)')
           .eq('id', eventId)
           .maybeSingle()
         if (error) {
@@ -41,7 +42,7 @@ export async function requestEventReminder(input: ReminderRequestInput): Promise
         if (!data) return null
         const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null)
         const org = one(data.organisation as { name: string } | { name: string }[] | null)
-        const guide = one(data.guide as { program_published_at: string | null } | { program_published_at: string | null }[] | null)
+        const guide = one(data.guide as { program_published_at: string | null; program_note: string | null } | { program_published_at: string | null; program_note: string | null }[] | null)
         return {
           id: data.id,
           status: String(data.status),
@@ -49,7 +50,8 @@ export async function requestEventReminder(input: ReminderRequestInput): Promise
           entry_mode: data.entry_mode,
           end_date: data.end_date,
           organiser_name: org?.name ?? 'the organiser',
-          program_published: Boolean(guide?.program_published_at),
+          // The same rule the page shows by, so the consent stored is the words read (remind-me.ts programToCome).
+          program_published: !programToCome(guide),
         }
       },
       readReminder: async (eventId, email) => {

@@ -29,7 +29,7 @@ import type { CalendarEvent } from '@/lib/events/calendar-links'
 import { FREE_ENTRY_LABEL, FREE_ENTRY_NO_TICKET_NEEDED, FREE_NO_TICKET_NEEDED, NO_TICKET_NEEDED } from '@/lib/events/entry-mode'
 import { dayHours, spanDates, type Guide } from '@/lib/walk-in/guide'
 import { readPublicGuide } from '@/lib/walk-in/guide-read'
-import { remindMeHeading, remindMePurpose } from '@/lib/walk-in/remind-me'
+import { programToCome, remindMeHeading, remindMePurpose } from '@/lib/walk-in/remind-me'
 import {
   ABOUT_THIS_EVENT,
   CLOSING_THE_NIGHT,
@@ -175,7 +175,8 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
   // WI3's page: a curated listing's one button to its host's own page (Lawal's finding of 27 October 2026).
   // An organiser's own event is its own page here, so it draws none.
   const outbound = isEventLinqsListing(event) ? freeListingOutbound(event.slug, shown.name, pages) : null
-  const programPublished = Boolean(guide.program_published_at)
+  // No program to wait for (published, or none coming) means the words promise only the reminder (remind-me.ts).
+  const programPublished = !programToCome(guide)
   const eventUrl = `${baseUrl}/events/${event.slug}`
   const dates = guide.days.length > 0 ? guide.days.map((d) => d.date) : spanDates(event.start_date, event.end_date, event.timezone)
   const dayCount = dates.length
