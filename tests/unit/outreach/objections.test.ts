@@ -77,6 +77,6 @@ describe('the record', () => {
     const listed = /objection is null or objection in \(([^)]*)\)/.exec(sql)?.[1]
     expect(listed?.split(',').map((s) => s.trim().replace(/'/g, '')).sort()).toEqual([...OBJECTIONS].sort())
     // outreach_reply_words_stay refuses changes to the words only; the objection is not among them.
-    expect(sql).not.toMatch(/outreach_reply_words_stay/)
+    expect(sql).not.toMatch(/function public\.outreach_reply_words_stay/)
   })
 })

@@ -6413,6 +6413,7 @@ export type Database = {
           logged_at: string
           logged_by: string
           needs_lawal: boolean
+          objection: string | null
           outcome: string
           received_at: string
           source_message_id: string | null
@@ -6428,6 +6429,7 @@ export type Database = {
           logged_at?: string
           logged_by: string
           needs_lawal?: boolean
+          objection?: string | null
           outcome: string
           received_at: string
           source_message_id?: string | null
@@ -6443,6 +6445,7 @@ export type Database = {
           logged_at?: string
           logged_by?: string
           needs_lawal?: boolean
+          objection?: string | null
           outcome?: string
           received_at?: string
           source_message_id?: string | null
