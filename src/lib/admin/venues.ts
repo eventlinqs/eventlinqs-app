@@ -7,6 +7,7 @@ import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import { createVenueTransfer } from '@/lib/payments/venue-transfer'
 import { getCurrencyForCountry } from '@/lib/payments/application-fee'
 import type { AdminSession } from '@/lib/admin/types'
+import { paidOutCents, PAID_OUT_SELECT, type PaidOutRow } from '@/lib/payouts/paid-out'
 import type {
   VenueRevenueShareStatus,
   VenueShareLedgerRow,
@@ -194,14 +195,15 @@ interface LedgerAggregate {
   payable: number
 }
 
-function aggregateLedger(rows: Array<Pick<VenueShareLedgerRow, 'delta_cents' | 'reason'>>): LedgerAggregate {
+/** Exported for its test: paid is one rule (src/lib/payouts/paid-out.ts), so a voided venue transfer is not paid. */
+export function aggregateVenueLedger(rows: Array<Pick<VenueShareLedgerRow, 'delta_cents' | 'reason'> & Omit<PaidOutRow, 'reason' | 'delta_cents'>>): LedgerAggregate {
   let earnedNet = 0
   let paid = 0
   let payable = 0
   for (const r of rows) {
     payable += r.delta_cents
     if (r.reason === 'accrual' || r.reason === 'refund_reversal') earnedNet += r.delta_cents
-    if (r.reason === 'payout') paid += Math.abs(r.delta_cents)
+    paid += paidOutCents(r)
   }
   return { earnedNet, paid, payable }
 }
@@ -222,21 +224,22 @@ export async function readVenueAdminList(): Promise<VenueAdminListRow[]> {
   const orgIds = [...new Set(venueRows.map((v) => v.organisation_id as string))]
 
   const [{ data: ledger }, { data: orgs }] = await Promise.all([
-    admin.from('venue_share_ledger').select('venue_id, delta_cents, reason').in('venue_id', venueIds),
+    admin.from('venue_share_ledger').select(`venue_id, delta_cents, reason, ${PAID_OUT_SELECT}`).in('venue_id', venueIds),
     admin.from('organisations').select('id, name').in('id', orgIds),
   ])
   const orgName = new Map<string, string>()
   for (const o of (orgs ?? []) as Array<{ id: string; name: string }>) orgName.set(o.id, o.name)
 
-  const byVenue = new Map<string, Array<Pick<VenueShareLedgerRow, 'delta_cents' | 'reason'>>>()
-  for (const l of (ledger ?? []) as Array<{ venue_id: string; delta_cents: number; reason: VenueShareLedgerRow['reason'] }>) {
+  type VenueLedgerRead = Pick<VenueShareLedgerRow, 'delta_cents' | 'reason'> & Omit<PaidOutRow, 'reason' | 'delta_cents'>
+  const byVenue = new Map<string, VenueLedgerRead[]>()
+  for (const l of (ledger ?? []) as unknown as Array<VenueLedgerRead & { venue_id: string }>) {
     const arr = byVenue.get(l.venue_id) ?? []
-    arr.push({ delta_cents: l.delta_cents, reason: l.reason })
+    arr.push({ delta_cents: l.delta_cents, reason: l.reason, reference_type: l.reference_type, reversal_of_transfer: l.reversal_of_transfer, settlement_part: l.settlement_part })
     byVenue.set(l.venue_id, arr)
   }
 
   return venueRows.map((v) => {
-    const agg = aggregateLedger(byVenue.get(v.id as string) ?? [])
+    const agg = aggregateVenueLedger(byVenue.get(v.id as string) ?? [])
     return {
       id: v.id as string,
       name: v.name as string,
@@ -274,7 +277,14 @@ export async function readVenueAdminDetail(venueId: string): Promise<VenueAdminD
   ])
 
   const ledgerRows = (ledger ?? []) as VenueShareLedgerRow[]
-  const agg = aggregateLedger(ledgerRows.map((r) => ({ delta_cents: r.delta_cents, reason: r.reason })))
+  const paidRead = (r: VenueShareLedgerRow) => ({
+    delta_cents: r.delta_cents,
+    reason: r.reason,
+    reference_type: r.reference_type,
+    reversal_of_transfer: (r.metadata?.reversal_of_transfer as string | boolean | null | undefined) ?? null,
+    settlement_part: (r.metadata?.part as string | null | undefined) ?? null,
+  })
+  const agg = aggregateVenueLedger(ledgerRows.map(paidRead))
 
   // Per-event payable / paid.
   const perEvent = new Map<string, { payable: number; paid: number }>()
@@ -282,7 +292,7 @@ export async function readVenueAdminDetail(venueId: string): Promise<VenueAdminD
     if (!r.event_id) continue
     const e = perEvent.get(r.event_id) ?? { payable: 0, paid: 0 }
     e.payable += r.delta_cents
-    if (r.reason === 'payout') e.paid += Math.abs(r.delta_cents)
+    e.paid += paidOutCents(paidRead(r))
     perEvent.set(r.event_id, e)
   }
   const eventRows = (events ?? []) as Array<{ id: string; title: string | null; end_date: string | null }>
