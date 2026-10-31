@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
@@ -226,6 +226,9 @@ export default async function VenueProfilePage({ params }: Props) {
   const { handle } = await params
   const venue = await venueForRoute(handle)
   if (!venue) notFound()
+  // A renamed venue is found by its old handle and sent to its current one (308), so a shared or indexed link to
+  // the old address never ends in a 404.
+  if (venue.handle !== handle) permanentRedirect(`/venues/${venue.handle}`)
 
   const [{ upcoming, past }, regularNights, showClaim] = await Promise.all([
     fetchVenueEventsByName(venue.name),
