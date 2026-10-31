@@ -15,12 +15,17 @@ const QUIET =
  */
 export function DailyQueueItem({
   touchId,
+  contentHash,
+  policyVersion,
   body,
   openHref,
   openLabel,
   action,
 }: {
   touchId: string
+  /** The exact words shown, so Sent approves these and no others (voice-gate.ts). */
+  contentHash: string
+  policyVersion: string
   body: string
   openHref: string
   openLabel: string
@@ -51,6 +56,8 @@ export function DailyQueueItem({
       </a>
       <form action={action} className="flex w-full flex-wrap items-center gap-2">
         <input type="hidden" name="touch" value={touchId} />
+        <input type="hidden" name="contentHash" value={contentHash} />
+        <input type="hidden" name="policyVersion" value={policyVersion} />
         <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-white/80">
           <input type="checkbox" name="checked" required className="h-5 w-5 shrink-0" />
           I opened their page and it says nothing against messages.

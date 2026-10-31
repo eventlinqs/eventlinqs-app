@@ -37,6 +37,10 @@ export interface QueueTouch {
   /** Why the database will not let this contact be written to now (outreach_contact_refusal): a stop, an unsubscribe,
    *  a no, a lapsed basis. Null when it may. Suppression is the database's, never decided here. */
   readonly refusal: string | null
+  /** The communication gateway's reasons against these words (voice-gate.ts voiceProblems); empty when they pass. */
+  readonly voiceProblems: readonly string[]
+  /** The exact content Lawal is shown, so his Sent approves these words and no others (voice-gate.ts voiceContentHash). */
+  readonly contentHash: string
   readonly subject: string | null
   readonly body: string
   readonly trackedLink: string | null
@@ -85,10 +89,10 @@ export function openInApp(channel: ContactChannel, address: string, subject?: st
   }
 }
 
-/** Why this draft cannot be sent now: the database's refusal of its contact first, the reasons it is held, and an address
- * that will not open safely. */
+/** Why this draft cannot be sent now: the database's refusal of its contact first, the reasons it is held, the
+ * communication gateway's reasons against its words, and an address that will not open safely. */
 export function notReady(t: QueueTouch): string[] {
-  const why = [...(t.refusal ? [t.refusal] : []), ...t.heldBecause]
+  const why = [...(t.refusal ? [t.refusal] : []), ...t.heldBecause, ...t.voiceProblems]
   if (openInApp(t.channel, t.address, t.subject) === null) why.push('its address cannot be opened safely')
   return why
 }
