@@ -1167,6 +1167,15 @@ const DRILLS = [
     expect: 'lane-c-guard-alpha: a PUBLISHED event emitted no structured data at all',
   },
   {
+    // Clause 8 (the markup audit on live, 1 November 2026): the serialiser calls every event free again.
+    name: 'a paid night is called free in the structured data again',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '    ...(walkIn || (offers.length > 0 && offers.every(o => Number(o.price) === 0)) ? { isAccessibleForFree: true } : {}),',
+    replace: '    ...({ isAccessibleForFree: true }),',
+    expect: 'isAccessibleForFree is true but its offers are',
+  },
+  {
     name: 'the offer price is hard coded instead of read from the tier',
     guard: `${GUARDS}/event-structured-data.mjs`,
     file: 'src/lib/seo/event-schema.ts',
