@@ -5668,18 +5668,19 @@ const DRILLS = [
     name: 'the social proof asks for an exact count and takes the rows back as well',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'src/lib/stats/platform-stats.ts',
-    find: "        .select('organisation_id, venue_city')",
-    replace: "        .select('organisation_id, venue_city', { count: 'exact' })",
+    find: "        .select('organisation_id, venue_city, city_primary')",
+    replace: "        .select('organisation_id, venue_city, city_primary', { count: 'exact' })",
     expect: 'with a count: and no head: true',
   },
   {
     name: 'the count beside a sampled body is bought off with a stated limit, and must not be',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'src/lib/stats/platform-stats.ts',
+    // The read follows /events' rule since 31 October 2026 (the controller's 21:12): match, then the listing window.
     find:
-      "        .select('organisation_id, venue_city')\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .range(from, to),",
+      "        .select('organisation_id, venue_city, city_primary')\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(now))\n        .order('id', { ascending: true })\n        .range(from, to),",
     replace:
-      "        .select('organisation_id, venue_city', { count: 'exact' })\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .limit(5000),",
+      "        .select('organisation_id, venue_city, city_primary', { count: 'exact' })\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(now))\n        .order('id', { ascending: true })\n        .limit(5000),",
     expect: 'with a count: and no head: true',
   },
   {
