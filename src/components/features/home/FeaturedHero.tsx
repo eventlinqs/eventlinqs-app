@@ -9,6 +9,7 @@ import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
 import { ctaFor } from '@/lib/events/cta'
+import { shownVenueName } from '@/lib/venues/shown-venue-name'
 
 /**
  * FeaturedHero - the homepage hero. ONE strong, real featured event at a
@@ -34,7 +35,7 @@ const MAX_SLIDES = 5
 
 
 function detailLine(event: BentoEvent): string {
-  const parts = [event.venue_name, event.venue_city, formatEventDate(event.start_date, event.timezone)]
+  const parts = [shownVenueName(event), event.venue_city, formatEventDate(event.start_date, event.timezone)]
     .map(p => (p ?? '').toString().trim())
     .filter(Boolean)
   return parts.join('  |  ')

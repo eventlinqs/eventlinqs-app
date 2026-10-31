@@ -111,6 +111,7 @@ import { isWalkIn } from '@/lib/events/entry-mode'
 import { ctaFor, FREE_REGISTRATION_REQUIRED, type CtaInput } from '@/lib/events/cta'
 import { eventPagePromises } from '@/lib/events/event-page-promises'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
+import { shownVenueName } from '@/lib/venues/shown-venue-name'
 import { WalkInEventPage } from '@/components/events/walk-in/walk-in-event-page'
 import { ReportListingLink } from '@/components/events/report-listing-link'
 import { listingClaimable } from '@/lib/listings/claimable'
@@ -242,7 +243,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
   // Description: city + community/category + date packed into 155 chars for click-through.
   const dateLabel = formatShortDate(event.start_date, event.timezone)
-  const venueLabel = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
+  const venueLabel = [shownVenueName(event), event.venue_city].filter(Boolean).join(', ')
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
   const title = `${titleParts.join(' - ')} - EventLinqs`
 
@@ -872,7 +873,7 @@ export default async function EventDetailPage({ params }: Props) {
   }))
   const priceLabel = cheapestPrice(priceTiersForDisplay, { rates: feeRates, feePassType: eventFeePassType })
   const shortDate = formatShortDate(event.start_date, event.timezone)
-  const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
+  const venueLabelShort = [shownVenueName(event), event.venue_city].filter(Boolean).join(' · ') || null
   // UX1.2: this used to lead with `event.venue_name` and KnowBeforeYouGo then
   // prepended the name AGAIN, which is how production read
   // "Quakers Centre, Quakers Centre, 484 William Street, ...". The composition
@@ -1495,7 +1496,8 @@ export default async function EventDetailPage({ params }: Props) {
                               href={`/venues/${venueSlugify(event.venue_name)}`}
                               className="underline decoration-ink-300 underline-offset-2 transition-colors hover:text-[var(--brand-accent-strong)] hover:decoration-[var(--brand-accent)]"
                             >
-                              {event.venue_name}
+                              {/* Never the title again: an outdoor listing's venue named after the event shows its address. */}
+                              {shownVenueName(event) ?? event.venue_name}
                             </Link>
                           </p>
                         )}
