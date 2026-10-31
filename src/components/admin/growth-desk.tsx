@@ -1,4 +1,5 @@
 import type { GrowthDesk, TrendRow } from '@/lib/growth/desk'
+import { dayWords, monthWords } from '@/lib/growth/desk-math'
 
 /**
  * THE GROWTH DESK, the top of /admin/growth (Law 8, Lawal 1 November 2026 03:27; the CONTROLLER's 03:32 G2): today's
@@ -24,9 +25,9 @@ export function GrowthDeskSection({ desk }: { desk: GrowthDesk }) {
     <div data-section="growth-desk">
       <header className="mb-6">
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth desk</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Today, {today}</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Today, {dayWords(today)}</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Against the growth plan, version {plan.version} set {plan.set_on}: {plan.mission}
+          Against the growth plan, version {plan.version} set {dayWords(plan.set_on)}: {plan.mission}
         </p>
       </header>
 
@@ -40,7 +41,7 @@ export function GrowthDeskSection({ desk }: { desk: GrowthDesk }) {
       </section>
 
       <section data-part="plan" className={CARD}>
-        <h2 className="font-display text-lg font-semibold text-white">Plan against actual, the year to {progress.yearTo}</h2>
+        <h2 className="font-display text-lg font-semibold text-white">Plan against actual, the year to {monthWords(progress.yearTo)}</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-white/50">
@@ -92,7 +93,7 @@ export function GrowthDeskSection({ desk }: { desk: GrowthDesk }) {
               <tbody className="text-white/80">
                 {weeks.map((w) => (
                   <tr key={w.day} className="border-t border-white/[0.06]">
-                    <td className="py-2 pr-4">{w.day}</td>
+                    <td className="py-2 pr-4">{dayWords(w.day)}</td>
                     <td className="py-2 pr-4">{number(w.numbers.visible_events)}</td>
                     <td className="py-2 pr-4">{number(w.numbers.paid_tickets_7d)}</td>
                     <td className="py-2 pr-4">{number(w.numbers.frequent_paid_organisers_30d)}</td>

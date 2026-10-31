@@ -46,6 +46,20 @@ export interface TargetLine {
   basis: string
 }
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** A YYYY-MM month in words, 'October 2027': a person reads the desk, never a code (WINDOW 2 found it in the email). */
+export function monthWords(yyyyMm: string): string {
+  const [y, m] = yyyyMm.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${y}`
+}
+
+/** A YYYY-MM-DD day in words, '1 November 2026'. */
+export function dayWords(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number)
+  return `${d} ${MONTHS[m - 1]} ${y}`
+}
+
 /** The plan year today falls in: the first target whose year_to month has not ended. The last when all have. */
 export function currentPlanYear(plan: GrowthPlan, today: string) {
   const month = today.slice(0, 7)

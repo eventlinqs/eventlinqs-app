@@ -25,10 +25,10 @@ const html = (d: GrowthDesk) => renderToStaticMarkup(createElement(GrowthDeskSec
 describe('the growth desk', () => {
   test("shows today's tasks, the plan against actual, and the stretch's gap", () => {
     const out = html(desk())
-    expect(out).toContain('Today, 2026-11-01')
+    expect(out).toContain('Today, 1 November 2026')
     expect(out).toContain('Add listings in Melbourne: 28 of 200 checked events in the next 14 days, 172 short.')
     expect(out).toContain('Send 20 outreach messages today (yesterday: 12 sent).')
-    expect(out).toContain('Plan against actual, the year to 2027-10')
+    expect(out).toContain('Plan against actual, the year to October 2027')
     expect(out).toContain('10x stretch')
     expect(out).toMatch(/The 10x stretch is A\$[\d,]+ a year short on today&#x27;s run rate\./)
   })
