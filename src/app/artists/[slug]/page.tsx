@@ -28,6 +28,7 @@ import { StructuredRequestButton } from '@/components/marketplace/structured-req
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export const revalidate = 300
 
@@ -321,7 +322,7 @@ export default async function ArtistProfilePage({ params }: Props) {
               title: `Upcoming shows from ${artist.name}`,
             }}
           >
-            {showCards.map((card) => (
+            {collapseListings(showCards).map((card) => (
               <div key={card.id} className={FLAT_RAIL_CELL}>
                 <EventCard event={card} variant="rail-flat" />
               </div>

@@ -12,6 +12,7 @@ import { FreeWeekShareButton } from '@/components/features/listings/free-week-sh
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { FREE_ENTRY_NO_TICKET_NEEDED } from '@/lib/events/entry-mode'
 import { FREE_TICKET_NEEDED, type FreeWeekDay } from '@/lib/listings/free-week'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export interface FreeWeekCategoryLink {
   slug: string
@@ -256,7 +257,7 @@ function FreeWeekDaySection({ day }: { day: FreeWeekDay<EventCardData> }) {
         </h2>
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {events.map((event) => (
+        {collapseListings(events).map((event) => (
           <EventCard key={event.id} event={event} freeLabels />
         ))}
       </div>

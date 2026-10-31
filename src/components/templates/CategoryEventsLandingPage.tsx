@@ -10,6 +10,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { CategoryEditorial } from '@/lib/categories/category-editorial'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export interface CategorySibling {
   slug: string
@@ -135,7 +136,7 @@ export function CategoryEventsLandingPage({ name, editorial, heroImage, events, 
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {events.map(event => (
+              {collapseListings(events).map(event => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>

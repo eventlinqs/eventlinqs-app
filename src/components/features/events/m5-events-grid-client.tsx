@@ -5,6 +5,7 @@ import { loadMoreEventCards } from '@/app/events/actions'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import { EventCard, type EventCardData } from './event-card'
 import { EventCardSkeleton } from './event-card-skeleton'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 type Props = {
   initialCards: EventCardData[]
@@ -83,7 +84,7 @@ export function EventsGridClient({
   return (
     <>
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map((card, i) => (
+        {collapseListings(cards).map((card, i) => (
           <li key={card.id}>
             <EventCard event={card} variant="grid-one-two-three-four" priority={firstCardEager && i === 0} />
           </li>

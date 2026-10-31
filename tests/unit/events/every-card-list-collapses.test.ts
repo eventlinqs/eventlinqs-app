@@ -10,12 +10,25 @@ import { describe, expect, test } from 'vitest'
 import { collapseListings } from '@/lib/events/one-card-per-event'
 
 const root = process.cwd()
-const COLLAPSES = /\b(collapseListings|oneCardPerEvent|notAlreadyListed)\b/
+const COLLAPSES = /\b(collapseListings|oneCardPerEvent|notAlreadyListed)\(/
+
+/** Files that draw ONE card, never a list, so nothing in them can repeat; each with its reason. */
+const ONE_CARD_ONLY: Record<string, string> = {
+  'src/components/templates/OrganisersLandingPage.tsx': 'one example card beside the words that describe it, never a list',
+}
 
 function filesDrawingCards(): string[] {
   const out = execFileSync('git', ['grep', '-l', '<EventCard\\b', '--', 'src'], { cwd: root, encoding: 'utf8' })
-  return out.split(/\r?\n/).filter(Boolean)
+  return out.split(/\r?\n/).filter(Boolean).filter((f) => !(f in ONE_CARD_ONLY))
 }
+
+test('an exemption is only for a file that draws one card, and the file still exists', () => {
+  for (const file of Object.keys(ONE_CARD_ONLY)) {
+    const source = readFileSync(resolve(root, file), 'utf8')
+    expect((source.match(/<EventCard\b/g) ?? []).length).toBe(1)
+    expect(source).not.toMatch(/\.map\([^)]*\)\s*=>\s*\(?\s*<EventCard/)
+  }
+})
 
 describe('every list of event cards collapses a listing to one card', () => {
   test.each(filesDrawingCards())('%s collapses its listings', (file) => {

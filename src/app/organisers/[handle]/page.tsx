@@ -38,6 +38,7 @@ import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { loadDiscoveryRows, countOrganiser } from '@/lib/seo/discovery-counts'
 import { organiserIndexingFor } from '@/lib/seo/discovery-threshold'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export const revalidate = 300
 
@@ -480,7 +481,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
                 headerLink: { href: `/events?organiser=${organisation.slug}`, label: 'View all' },
               }}
             >
-              {upcoming.slice(0, 12).map(e => (
+              {collapseListings(upcoming, 12).map(e => (
                 <div key={e.id} className={FLAT_RAIL_CELL}>
                   <EventCard event={e} variant="rail-flat" />
                 </div>
@@ -519,7 +520,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {pastShown.map(e => (
+              {collapseListings(pastShown).map(e => (
                 <EventCard key={e.id} event={e} />
               ))}
             </div>

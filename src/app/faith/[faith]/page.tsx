@@ -23,6 +23,7 @@ import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { JsonLd } from '@/components/seo/json-ld'
 import { FAITH_PHOTOS } from '@/lib/images/faith-photo'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -179,7 +180,7 @@ export default async function FaithPage({ params }: Props) {
               role="list"
               className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {liveEvents.map(e => (
+              {collapseListings(liveEvents).map(e => (
                 <li key={e.id}>
                   <EventCard event={e} variant="grid-one-two-four" />
                 </li>

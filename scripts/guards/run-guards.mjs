@@ -678,6 +678,8 @@
  *                              Lawal's directive section 11)
  *   growth-plan-is-versioned  growth/plan.json holds what the desk reads and equals its newest
  *                              dated version; no recorded version is changed or gone (Law 8)
+ *   every-card-list-collapses  every list of event cards shows a listing once, its later
+ *                              nights on its one card (1 November 2026, P1-a)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2066,6 +2068,9 @@ const GUARDS = [
   // 1 November 2026, Law 8 (Lawal 03:27) and the CONTROLLER's 03:32 G2: the growth plan is valid and keeps every dated
   // version; drilled red on a version changed after it was kept and on a plan edited in place.
   'scripts/guards/growth-plan-is-versioned.mjs',
+  // 1 November 2026, the CONTROLLER's 03:21 P1-a: WINDOW 6 counted 288 extra cards on 35 live pages; every file
+  // drawing EventCard collapses a listing to one card. Drilled red on the venue page's upcoming list.
+  'scripts/guards/every-card-list-collapses.mjs',
   // 30 October 2026, Lawal 16:05 (L14): the First Nations and Indian tiles drew no photograph on production; read from
   // the served HTML, 90 of the 105 sub-community tiles were the navy gradient. Red on main with 91 clauses.
   'scripts/guards/sub-community-tiles-stored.mjs',

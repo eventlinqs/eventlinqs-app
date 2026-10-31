@@ -22,6 +22,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { HeroCategory } from '@/lib/hero-categories'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 /** Map string icon names (stored in data file) to actual Lucide components. */
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
@@ -149,7 +150,7 @@ export function CategoryLandingPage({
               </Link>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {liveEvents.map(event => (
+              {collapseListings(liveEvents).map(event => (
                 <EventCard key={event.id} event={event} variant="grid-one-three" />
               ))}
             </div>

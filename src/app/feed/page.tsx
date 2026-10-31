@@ -11,6 +11,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 // Per-user surface: never cached, never indexed. Not a public LCP/SEO page.
 export const dynamic = 'force-dynamic'
@@ -102,7 +103,7 @@ export default async function ForYouFeedPage() {
                 headerLink: { href: '/events', label: 'Browse all' },
               }}
             >
-              {events.slice(0, RAIL_PICKS).map(e => (
+              {collapseListings(events, RAIL_PICKS).map(e => (
                 <div key={e.id} className={FLAT_RAIL_CELL}>
                   <EventCard event={e} variant="rail-flat" />
                 </div>
@@ -126,7 +127,7 @@ export default async function ForYouFeedPage() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {moreForYou.map(e => (
+                {collapseListings(moreForYou).map(e => (
                   <EventCard key={e.id} event={e} />
                 ))}
               </div>

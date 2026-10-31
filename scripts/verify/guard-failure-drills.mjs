@@ -459,6 +459,18 @@ const DRILLS = [
     replace: '"outreach_messages": 25,',
     expect: 'differs from its newest version',
   },
+  /*
+   * every-card-list-collapses (1 November 2026, P1-a): a list of event cards drawn again without collapsing a listing
+   * to one card; its import is left in place, because an import alone is not a collapse.
+   */
+  {
+    name: 'a community grid draws its events without collapsing a listing to one card',
+    guard: `${GUARDS}/every-card-list-collapses.mjs`,
+    file: 'src/components/features/community/events-by-community-grid.tsx',
+    find: '{collapseListings(events).map(event => (',
+    replace: '{events.map(event => (',
+    expect: 'never collapses a listing',
+  },
   {
     name: 'the Communities doorway tile loses its photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,

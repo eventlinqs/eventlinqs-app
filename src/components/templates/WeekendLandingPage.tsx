@@ -10,6 +10,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { WeekendDay } from '@/lib/events/weekend-days'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export interface WeekendCityLink {
   slug: string
@@ -252,7 +253,7 @@ function WeekendDaySection({ day, first }: { day: WeekendDay<EventCardData>; fir
         </h2>
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {events.map(event => (
+        {collapseListings(events).map(event => (
           <EventCard key={event.id} event={event} />
         ))}
       </div>

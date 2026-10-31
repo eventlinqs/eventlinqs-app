@@ -63,6 +63,19 @@ export function oneCardPerEvent<E extends Listed & { readonly start_date?: strin
 }
 
 /**
+ * ONE LIST, ONE CARD PER LISTING (the CONTROLLER's 1 November 2026 03:21 P1-a; WINDOW 6 counted 288 extra cards on 35
+ * live pages: venue pages, category grids, the city browse grids). The single-section form of oneCardPerEvent for a
+ * list that is not one of several sections: every listing keeps one card and its later nights are named on it. `cap`
+ * counts CARDS, so a caller that reads more rows than it shows still fills its list.
+ */
+export function collapseListings<E extends Listed & { readonly start_date?: string }>(
+  events: readonly E[],
+  cap: number = Number.POSITIVE_INFINITY,
+): (E & SeriesNights)[] {
+  return oneCardPerEvent([{ events, cap }])[0]
+}
+
+/**
  * A RAIL ABOVE A RESULTS LIST (/events, /events/browse/<city>): the list is the complete answer to the visitor's search
  * and keeps its count and its pages, so it is never thinned; the rail shows only what the list does not already draw,
  * a listing (its series, or its title at its venue) counting as one event. With nothing left the rail draws as the
