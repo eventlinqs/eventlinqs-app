@@ -1273,7 +1273,9 @@ export default async function EventDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {availabilityAndAccessOn && eventInventory && (
+              {/* Not on a night that is over: a cancelled night's page said 'Just Listed' under its own cancellation
+                  notice (live, 1 November 2026; tests/unit/events/no-promise-badge-on-a-night-that-is-over.test.ts). */}
+              {availabilityAndAccessOn && eventInventory && !nightIsOver && (
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
                   {/* Honest social proof: real confirmed sales (total_sold,
