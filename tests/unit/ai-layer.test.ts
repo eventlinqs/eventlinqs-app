@@ -117,9 +117,12 @@ describe('sanitiseTranscript', () => {
 })
 
 describe('enforceCopyLaws', () => {
-  it('replaces em and en dashes with hyphens', () => {
-    expect(enforceCopyLaws('tickets — easy')).toBe('tickets - easy')
-    expect(enforceCopyLaws('9–5')).toBe('9 - 5')
+  it('replaces em and en dashes, and never leaves a spaced hyphen (law 6, 31 October 2026)', () => {
+    expect(enforceCopyLaws('tickets — easy')).toBe('tickets, easy')
+    expect(enforceCopyLaws('9–5')).toBe('9-5')
+    expect(enforceCopyLaws('doors 7 – 11pm')).toBe('doors 7-11pm')
+    expect(enforceCopyLaws('food – and music')).toBe('food, and music')
+    expect(enforceCopyLaws('tickets - easy')).toBe('tickets, easy')
     expect(enforceCopyLaws('non‑breaking')).toBe('non-breaking')
   })
 })
