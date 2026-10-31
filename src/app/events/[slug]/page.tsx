@@ -1186,7 +1186,9 @@ export default async function EventDetailPage({ params }: Props) {
       {eventBannerState ? (
         <EventStateBanner
           state={eventBannerState}
-          organiserHandle={event.organisation?.slug ?? null}
+          // The shown organiser's page or none: an ended EventLinqs listing linked /organisers/eventlinqs-listings, a
+          // 404 (WINDOW 4's car 26 read back, 31 October 2026), so it now offers the upcoming events alone.
+          organiserHandle={event.organisation ? shownOrganiser(event, event.organisation).slug : null}
         />
       ) : null}
 
@@ -1745,6 +1747,8 @@ export default async function EventDetailPage({ params }: Props) {
                     also={ticketPanel?.also ?? []}
                     soldOut={ticketPanel?.soldOut ?? null}
                     bookingInHero={outsideBookingHref !== null}
+                    // A free night taking registrations on its own site is told as registration, never tickets sold.
+                    registration={ctaFor(ctaInput).registrationRequired === true}
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">

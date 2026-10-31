@@ -2,6 +2,7 @@ import { getAllCities } from '@/lib/cities/data'
 import { getAllCommunities } from '@/lib/communities/data'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { ilikeAnyOf } from '@/lib/supabase/or-filter'
+import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import type { SearchTab } from './url-filters'
 
 /**
@@ -79,7 +80,8 @@ export async function searchOrganisers(query: string): Promise<ScopeResult[]> {
     .not('slug', 'is', null)
     .limit(24)
   return ((data ?? []) as { slug: string; name: string; description: string | null }[])
-    .filter((o) => o.slug)
+    // The listings organisation has no public page (WI2 ruling A): a search for 'eventlinqs' never offers its 404.
+    .filter((o) => o.slug && !isListingsOrganisation(o.slug))
     .map((o) => ({
       slug: o.slug,
       name: o.name,

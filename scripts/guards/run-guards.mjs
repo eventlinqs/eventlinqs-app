@@ -666,6 +666,8 @@
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
+ *   organiser-links-have-a-page  every public /organisers/<slug> link asks whether the organiser
+ *                              is shown; the listings organisation has no page (31 October 2026)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2037,6 +2039,9 @@ const GUARDS = [
   // the /events popular rail and the venues rail on production. A public collection draws real events only and an empty
   // rail is hidden. Drilled red on car 26's tree.
   'scripts/guards/no-filler-in-event-collections.mjs',
+  // 31 October 2026, the CONTROLLER's 18:22 from WINDOW 4's car 26 read back: an ended listing linked
+  // /organisers/eventlinqs-listings, a 404. Every public organiser link asks whether the organiser is shown.
+  'scripts/guards/organiser-links-have-a-page.mjs',
   // 29 October 2026, Lawal 22:17: every community and category tile on a stored photograph (the spine, a bundled
   // original, or one kept once with its licence), no request-time Pexels call for a tile, and a refused lookup never
   // kept by unstable_cache. Red on main with 34 clauses, among them the live African card and Comedy tile.

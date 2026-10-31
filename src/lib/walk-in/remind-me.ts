@@ -32,6 +32,17 @@ export function remindMeConsentText(purpose: string): string {
   return `${purpose} ${REMIND_ME_PRIVACY_LINE} ${REMIND_ME_PRIVACY_LINK}`
 }
 
+/**
+ * Whether a program is still to come (the CONTROLLER's 17:55 (6), 31 October 2026): only when the event's guide says
+ * one is coming (its program note) and it is not out yet. A weekly night with no guide, or a guide with no program
+ * note, has no timetable to send, so its words promise only the reminder and the called-off note. The page and the
+ * stored consent judge by this one rule, so the words stored are the words shown.
+ */
+export function programToCome(guide: { program_published_at: string | null; program_note?: string | null } | null): boolean {
+  if (!guide || guide.program_published_at) return false
+  return Boolean(guide.program_note?.trim())
+}
+
 /** The heading above the email box, before and after the organiser publishes the program. */
 export function remindMeHeading(programPublished: boolean): string {
   return programPublished ? 'Get a reminder the day before' : 'Get the program when it lands'

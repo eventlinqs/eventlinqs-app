@@ -282,6 +282,27 @@ const DRILLS = [
     replace: "import { SnapRail } from '@/components/ui/snap-rail'\nimport { InvitationCard } from '@/components/features/events/invitation-card'",
     expect: 'names InvitationCard, the invitation card fill',
   },
+  /*
+   * organiser-links-have-a-page (the CONTROLLER's 18:22 of 31 October 2026: an ended listing linked
+   * /organisers/eventlinqs-listings, a 404), two drills: the event page hands the ended-event banner the raw
+   * organisation's slug again, and the venue page lists the listings organisation among its organisers again.
+   */
+  {
+    name: 'the ended-event banner is handed the raw organisation slug again',
+    guard: `${GUARDS}/organiser-links-have-a-page.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: 'organiserHandle={event.organisation ? shownOrganiser(event, event.organisation).slug : null}',
+    replace: 'organiserHandle={event.organisation?.slug ?? null}',
+    expect: "hands EventStateBanner the raw organisation's slug",
+  },
+  {
+    name: 'the venue page links the listings organisation again',
+    guard: `${GUARDS}/organiser-links-have-a-page.mjs`,
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: '    if (!o?.slug || isListingsOrganisation(o.slug)) continue',
+    replace: '    if (!o?.slug) continue',
+    expect: 'without asking whether the organiser is shown',
+  },
   {
     name: 'the venue calendar forms hold their own answer again',
     guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
