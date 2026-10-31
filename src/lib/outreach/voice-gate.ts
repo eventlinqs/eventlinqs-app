@@ -30,6 +30,8 @@ export interface VoicePolicy {
   readonly compounds: { readonly mustHyphenateBeforeNoun: readonly string[]; readonly nounsAfter: string; readonly compoundWords: readonly string[] }
   /** A contact already written to on a thread is written to from that thread's own mailbox only. */
   readonly threads: readonly { recipient: string; mailbox: string; why: string }[]
+  /** The mailbox the voice file was read from: Lawal's own, which an email by hand goes from. */
+  readonly founderMailbox: string
 }
 
 export interface VoiceMessage {
@@ -52,7 +54,7 @@ export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   const strings = (a: unknown) => Array.isArray(a) && a.length > 0 && a.every((s) => typeof s === 'string' && s.length > 0)
   const c = p?.compounds
   const compoundsWhole = Boolean(c) && strings(c?.mustHyphenateBeforeNoun) && typeof c?.nounsAfter === 'string' && c.nounsAfter.length > 0 && strings(c?.compoundWords)
-  if (typeof p?.version !== 'string' || !/^[0-9a-f]{16}$/.test(p.version) || !strings(p.firstSignature) || !strings(p.replySignature) || !strings(p.noExit) || !Array.isArray(p.permissions) || !compoundsWhole || !Array.isArray(p.threads)) {
+  if (typeof p?.version !== 'string' || !/^[0-9a-f]{16}$/.test(p.version) || !strings(p.firstSignature) || !strings(p.replySignature) || !strings(p.noExit) || !Array.isArray(p.permissions) || !compoundsWhole || !Array.isArray(p.threads) || typeof p.founderMailbox !== 'string' || !EMAIL.test(p.founderMailbox)) {
     throw new Error('POLICY_UNAVAILABLE: the voice policy is missing or incomplete; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   }
   return p as VoicePolicy

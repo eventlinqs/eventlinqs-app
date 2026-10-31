@@ -1,5 +1,5 @@
 import type { ContactChannel } from './crm'
-import type { VoiceCategory, VoiceMessage } from './voice-gate'
+import { readVoicePolicy, type VoiceCategory, type VoiceMessage } from './voice-gate'
 
 /**
  * A held touch as the communication gateway reads a message (voice-gate.ts): its channel, its category from purpose and
@@ -29,16 +29,14 @@ export function voiceCategoryOf(purpose: string, step: number | null): VoiceCate
 
 /**
  * Where a message by hand goes from: Lawal sends every one himself. An email goes from his own mailbox, the one his
- * first round of 10 and 11 October went from (the voice file is read from it); the gateway's thread rule then refuses
- * any contact whose conversation runs on another mailbox. A direct message or a form goes from his own account.
+ * first round of 10 and 11 October went from, read from the voice file into the generated policy (founderMailbox),
+ * never written here (one-contact-domain); the gateway's thread rule then refuses any contact whose conversation runs
+ * on another mailbox. A direct message or a form goes from his own account.
  */
-export const LAWAL_MAILBOX = 'lawal@eventlinqs.com'
-const FROM: Record<ContactChannel, string> = {
-  email: LAWAL_MAILBOX,
-  instagram: "instagram: Lawal's own account",
-  facebook: "facebook: Lawal's own profile",
-  website_form: 'website form, as Lawal Adams',
-}
+const fromFor = (channel: ContactChannel): string =>
+  channel === 'email'
+    ? readVoicePolicy().founderMailbox
+    : { instagram: "instagram: Lawal's own account", facebook: "facebook: Lawal's own profile", website_form: 'website form, as Lawal Adams' }[channel]
 
 export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
   const category = voiceCategoryOf(t.purpose, t.step)
@@ -47,7 +45,7 @@ export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
   return {
     channel: t.channel,
     category,
-    from: FROM[t.channel],
+    from: fromFor(t.channel),
     to: t.channel === 'email' ? [t.address] : [],
     subject: t.subject,
     greetingName: person || (organiser ? `${organiser} team` : null),

@@ -119,7 +119,7 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
                             {t.organiserName} <span className="font-normal text-white/60">| {stepWords(t)}</span>
                           </p>
                           {t.subject ? <p className="mt-1 text-xs text-white/60">Subject: {t.subject}</p> : null}
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/80">{t.body}</p>
+                          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-white/80">{t.body}</p>
                           {why.length > 0 || href === null ? (
                             <p className="mt-3 text-sm text-white">Not ready: {why.join('; ')}.</p>
                           ) : (

@@ -73,6 +73,10 @@ try {
   unavailable(`cannot read ${THREADS}: ${e instanceof Error ? e.message : e}`)
 }
 
+// The mailbox Lawal's own sent mail was read from, as the voice file states it; a message by hand by email goes from it.
+const mailbox = voice.match(/from ([^\s@]+@[^\s@]+\.[A-Za-z]{2,}) \(Microsoft 365\)/)
+if (!mailbox) unavailable('the voice file no longer states the mailbox it was read from')
+
 const replyText = reply[1]
 const comma = replyText.indexOf(', ')
 const policy = {
@@ -85,6 +89,7 @@ const policy = {
   permissions,
   compounds,
   threads,
+  founderMailbox: mailbox[1].toLowerCase(),
 }
 const text = JSON.stringify(policy, null, 2) + '\n'
 
