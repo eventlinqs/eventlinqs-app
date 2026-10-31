@@ -9,12 +9,20 @@ import { submitDisputeEvidence, closeDispute } from '../actions'
  * to Stripe) via the server action, and offers the accept-and-forfeit close path
  * behind an explicit in-form confirmation. Results render inline; no browser
  * alert is used for success.
+ *
+ * The page draws this host whether or not the dispute takes evidence (closedWords says why it does not): a submit or
+ * a close refreshes the page and moves the dispute out of needs_response, and an answer held by a form the page
+ * stopped drawing was never seen or read out (src/components/ui/section-answers.tsx, 31 October 2026). So the host
+ * stays, draws the closed panel in place of the form, and keeps its status line in one place.
  */
 export function DisputeRespondForm({
   disputeId,
   initial,
+  closedWords,
 }: {
   disputeId: string
+  /** Why no evidence can be submitted now, or null while the dispute takes evidence. */
+  closedWords: string | null
   initial: {
     productDescription: string | null
     customerCommunication: string | null
@@ -75,6 +83,13 @@ export function DisputeRespondForm({
 
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+      {closedWords ? (
+        <>
+          <h2 className="font-display text-lg font-semibold">No response required</h2>
+          <p className="mt-2 text-sm text-white/60">{closedWords}</p>
+        </>
+      ) : (
+      <>
       <h2 className="font-display text-lg font-semibold">Respond to this dispute</h2>
       <p className="mt-2 text-sm text-white/60">
         Provide evidence the cardholder authorised this charge and received the tickets. Save a draft to keep
@@ -115,20 +130,24 @@ export function DisputeRespondForm({
           />
         </label>
       </div>
+      </>
+      )}
 
-      {message ? (
-        <p
-          role="status"
-          className={`mt-4 rounded-md border px-3 py-2 text-sm ${
-            message.tone === 'ok'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-              : 'border-red-500/30 bg-red-500/10 text-red-200'
-          }`}
-        >
-          {message.text}
-        </p>
-      ) : null}
+      <p
+        role="status"
+        className={
+          message
+            ? `mt-4 rounded-md border px-3 py-2 text-sm ${
+                message.tone === 'ok' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'
+              }`
+            : ''
+        }
+      >
+        {message?.text ?? ''}
+      </p>
 
+      {closedWords ? null : (
+      <>
       <div className="mt-5 flex flex-wrap gap-3">
         <button
           type="button"
@@ -184,6 +203,8 @@ export function DisputeRespondForm({
           </button>
         )}
       </div>
+      </>
+      )}
     </div>
   )
 }

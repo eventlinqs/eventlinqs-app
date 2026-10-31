@@ -266,6 +266,28 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * form-answers-outlive-the-form (Lawal's 11:13 of 31 October 2026, one defect is a class: the venue calendar's
+   * 'Thank you' lived in a form the refreshed page stopped drawing), two drills, each the way the class comes back: a
+   * form holds its own answer again, and a page stops drawing its family's answer holder.
+   */
+  {
+    name: 'the venue calendar forms hold their own answer again',
+    guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
+    file: 'src/components/listings/venue-calendar-forms.tsx',
+    find: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'",
+    replace: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'
+const held = () => useActionState(giveVenueCalendarAction, null)",
+    expect: 'venue-calendar-forms.tsx calls useActionState',
+  },
+  {
+    name: 'the media page stops drawing the venue calendar answer holder',
+    guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
+    file: 'src/app/(dashboard)/dashboard/organisation/media/page.tsx',
+    find: '<VenueCalendarAnswers>',
+    replace: '<VenueCalendarAnswersGone>',
+    expect: 'no page under src/app draws <VenueCalendarAnswers>',
+  },
+  /*
    * event-page-each-fact-once (the PROJECT MANAGER's 13:10 of 30 October 2026: the event page repeated the date, the
    * address, the refund and the ticket button, and Kate Ceberano's outside night promised a QR ticket, automatic refunds
    * and our booking fee), three drills, each the regression production carried: the refund block shown on every night

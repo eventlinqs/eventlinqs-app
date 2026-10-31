@@ -43,7 +43,7 @@ import { WalkInProgramPanel } from '@/components/features/dashboard/walk-in-prog
 import { readVenueAsk } from '@/lib/events/collaborators'
 import { askVenueAction } from '../../collaborations/actions'
 import { shownVenuePhoto, shownVenuePhotoDeps } from '@/lib/venues/venue-images'
-import { ChallengeVenuePhotoForm } from '@/components/listings/venue-media-forms'
+import { ChallengeVenuePhotoForm, VenuePhotoAnswers } from '@/components/listings/venue-media-forms'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -417,6 +417,9 @@ export default async function EventViewPage({ params }: Props) {
         </section>
       )}
 
+      {/* The holder stands outside the section: a challenged photograph stops showing, so the refresh drops the section
+          and its form, and the thank you shows here in its place (src/components/ui/section-answers.tsx). */}
+      <VenuePhotoAnswers>
       {venuePhoto && (
         <section aria-label="The photograph of your venue" data-venue-photo={venuePhoto.id} className="mt-6 rounded-2xl border border-ink-100 bg-white p-5">
           <p className="font-semibold text-ink-900">Your event page shows a photograph of the venue</p>
@@ -431,6 +434,7 @@ export default async function EventViewPage({ params }: Props) {
           </div>
         </section>
       )}
+      </VenuePhotoAnswers>
 
       {/* ─── WI1: a free walk-in event's numbers ─────────────────────────── */}
       {walkIn && walkInNumbers && (

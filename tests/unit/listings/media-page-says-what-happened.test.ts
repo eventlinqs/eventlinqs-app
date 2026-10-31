@@ -30,9 +30,10 @@ describe('the page and the forms use the one set of words', () => {
 
   it('the forms confirm in the same words', () => {
     const forms = readFileSync('src/components/listings/organiser-media-forms.tsx', 'utf8')
-    expect(forms).toMatch(/done=\{IMAGE_WITHDRAWN_WORDS\}/)
-    expect(forms).toMatch(/done=\{IMAGE_REPLACED_WORDS\}/)
-    expect(forms).toMatch(/done=\{YES_WITHDRAWN_WORDS\}/)
+    // Each kind's done words, held by the section (src/components/ui/section-answers.tsx) since 31 October 2026.
+    expect(forms).toMatch(/done: IMAGE_WITHDRAWN_WORDS/)
+    expect(forms).toMatch(/done: IMAGE_REPLACED_WORDS/)
+    expect(forms).toMatch(/done: YES_WITHDRAWN_WORDS/)
     expect(YES_WITHDRAWN_WORDS).toBe('Withdrawn. Every image under it comes out of every post not yet published within the hour. Your listings stay up.')
   })
 })

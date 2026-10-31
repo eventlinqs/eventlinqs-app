@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { applyToGigAction } from '@/app/actions/gigs'
 
@@ -9,8 +9,13 @@ import { applyToGigAction } from '@/app/actions/gigs'
  * else that travels (profile, draw, credits, showcase) is attached
  * automatically and shown to the performer above, so what they see is
  * exactly what the organiser receives.
+ *
+ * The page draws this host for every performer, applied or not (children: what travels, shown before applying). A
+ * sent application refreshes the page into the applied state, and an answer held by a form the page stopped drawing
+ * was never seen or read out (src/components/ui/section-answers.tsx, 31 October 2026); so the host stays and its
+ * status line, in one place, says what happened.
  */
-export function GigApplyForm({ gigId }: { gigId: string }) {
+export function GigApplyForm({ gigId, applied, children }: { gigId: string; applied: boolean; children?: ReactNode }) {
   const router = useRouter()
   const [note, setNote] = useState('')
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
@@ -31,7 +36,12 @@ export function GigApplyForm({ gigId }: { gigId: string }) {
     })
   }
 
+  const words = message?.text ?? (applied ? 'You applied to this gig. The organiser has your profile and numbers.' : '')
+  const tone = message?.kind !== 'err' ? 'bg-success/10 text-success-strong' : 'bg-error/10 text-error-strong'
   return (
+    <>
+      {applied ? null : children}
+      {applied ? null : (
     <form onSubmit={submit} className="mt-4 space-y-3">
       <label htmlFor="gig-apply-note" className="block text-sm font-semibold text-ink-900">
         Your pitch
@@ -52,14 +62,11 @@ export function GigApplyForm({ gigId }: { gigId: string }) {
       >
         {pending ? 'Sending' : 'Apply with my profile'}
       </button>
-      {message && (
-        <p
-          role="status"
-          className={`rounded-lg px-3 py-2 text-sm ${message.kind === 'ok' ? 'bg-success/10 text-success-strong' : 'bg-error/10 text-error-strong'}`}
-        >
-          {message.text}
-        </p>
-      )}
     </form>
+      )}
+      <p role="status" className={words ? `mt-3 rounded-lg px-3 py-2 text-sm ${tone}` : ''}>
+        {words}
+      </p>
+    </>
   )
 }

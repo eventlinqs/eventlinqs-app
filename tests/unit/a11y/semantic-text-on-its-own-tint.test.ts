@@ -134,7 +134,8 @@ const CORRECTED: [string, RegExp][] = [
   ['src/app/artist/dashboard/page.tsx', /\? 'bg-error\/10 text-ink-900'/],
   ['src/app/events/[slug]/page.tsx', /bg-warning\/15 px-3 py-1\.5 text-xs font-semibold text-ink-900/],
   ['src/app/events/[slug]/page.tsx', /bg-warning\/10 px-4 py-3 text-sm text-ink-900/],
-  ['src/app/gigs/[id]/page.tsx', /bg-success\/10 px-3 py-2 text-sm text-success-strong/],
+  // The gig page's 'You applied' line moved into gig-apply-form.tsx (31 October 2026: the form's host stays after the
+  // refresh so its answer is kept); it is painted with the form's tone, pinned by the gig-apply-form entry below.
   ['src/app/queue/[slug]/queue-room.tsx', /text-xl font-semibold text-success-strong/],
   ['src/components/ai/assistant-panel.tsx', /bg-error\/5 px-4 py-3 text-xs text-error-strong/],
   ['src/components/auth/login-form.tsx', /bg-success\/10 px-4 py-3 text-sm text-success-strong/],

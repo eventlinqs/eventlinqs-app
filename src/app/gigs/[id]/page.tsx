@@ -217,12 +217,8 @@ export default async function GigDetailPage({ params }: Props) {
                     Set up your profile
                   </Link>
                 </>
-              ) : existingApplication && existingApplication.status !== 'withdrawn' ? (
-                <p role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success-strong">
-                  You applied to this gig. The organiser has your profile and numbers.
-                </p>
               ) : (
-                <>
+                <GigApplyForm gigId={gig.id} applied={Boolean(existingApplication && existingApplication.status !== 'withdrawn')}>
                   <p className="mt-3 text-sm text-ink-600">
                     This is what travels with your application, automatically:
                   </p>
@@ -254,8 +250,7 @@ export default async function GigDetailPage({ params }: Props) {
                       View your public profile
                     </Link>
                   </div>
-                  <GigApplyForm gigId={gig.id} />
-                </>
+                </GigApplyForm>
               )}
             </aside>
           </div>
