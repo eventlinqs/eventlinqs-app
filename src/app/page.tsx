@@ -130,12 +130,10 @@ export default async function HomePage() {
   // event, and EventRailSection's own `events.length === 0` guard is the single
   // place that decides a rail has nothing to show, so no caller re-derives it.
   //
-  // A rail of one is NOT left looking broken: EventRailSection tops a thin rail
-  // up with InvitationCards (invitationFillCount), so one real event renders as
-  // four cards, the real one first and three invitations to be next on it. The
-  // fill vanishes by itself at five real events. The sparse rail therefore
-  // reads as recruitment rather than as a gap, which is the growth plan's
-  // first lever rendered on the page.
+  // A rail of one draws one card. Lawal's emergency correction of 31 October
+  // 2026 (17:44) ended the invitation top-up that used to follow it: a rail
+  // shows only real published events, fewer cards when inventory is thin, and
+  // nothing else takes a place in it.
 
   // Live counts per category for the category nav tiles under the hero.
   const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
@@ -379,7 +377,6 @@ export default async function HomePage() {
           title="On this weekend"
           ariaLabel="Events this weekend"
           railLabel="Events this weekend"
-          invitationSubject="weekend"
           events={thisWeekend}
           viewAllHref={WEEKEND_SURFACE_PATH}
         />
@@ -455,7 +452,6 @@ export default async function HomePage() {
           title="Fresh on the platform"
           ariaLabel="Recently added events"
           railLabel="Recently added events"
-          invitationSubject="fresh"
           events={justAdded}
           viewAllHref="/events?sort=date_asc"
         />
