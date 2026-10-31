@@ -9,6 +9,8 @@ interface Props {
   name: string
   /** Optional cover image URL (Pexels-derived from primary community if not set). */
   coverImage: string | null
+  /** Where the cover's subject sits, as a CSS background-position; the centre when not given. */
+  coverPosition?: string
   /** Organisation logo URL or null - falls back to brand initials. */
   logoUrl: string | null
   /** "Throwing X events in Y" or similar subtitle. */
@@ -40,7 +42,7 @@ interface Props {
  * the content stack and slightly overlaps the banner so the page reads
  * as profile-first.
  */
-export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified, founding, actionSlot }: Props) {
+export function OrganiserProfileHero({ name, coverImage, coverPosition, logoUrl, subtitle, stats, verified, founding, actionSlot }: Props) {
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
@@ -48,7 +50,7 @@ export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stat
         {coverImage ? (
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${coverImage})` }}
+            style={{ backgroundImage: `url(${coverImage})`, backgroundPosition: coverPosition }}
             aria-hidden
           />
         ) : (

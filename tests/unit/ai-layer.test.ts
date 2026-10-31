@@ -117,9 +117,12 @@ describe('sanitiseTranscript', () => {
 })
 
 describe('enforceCopyLaws', () => {
-  it('replaces em and en dashes with hyphens', () => {
-    expect(enforceCopyLaws('tickets — easy')).toBe('tickets - easy')
-    expect(enforceCopyLaws('9–5')).toBe('9 - 5')
+  it('replaces em and en dashes, and never leaves a spaced hyphen (law 6, 31 October 2026)', () => {
+    expect(enforceCopyLaws('tickets — easy')).toBe('tickets, easy')
+    expect(enforceCopyLaws('9–5')).toBe('9-5')
+    expect(enforceCopyLaws('doors 7 – 11pm')).toBe('doors 7-11pm')
+    expect(enforceCopyLaws('food – and music')).toBe('food, and music')
+    expect(enforceCopyLaws('tickets - easy')).toBe('tickets, easy')
     expect(enforceCopyLaws('non‑breaking')).toBe('non-breaking')
   })
 })
@@ -353,7 +356,7 @@ describe('runAssistant', () => {
       transcript,
       who: 'abc',
     })
-    expect(result).toMatchObject({ ok: true, reply: 'Here - is help', handoff: false })
+    expect(result).toMatchObject({ ok: true, reply: 'Here, is help', handoff: false })
   })
 
   it('records estimated spend after a successful call', async () => {
@@ -465,7 +468,7 @@ describe('runAssistant', () => {
     })
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.suggestions).toEqual([{ kind: 'title', value: 'Good - Title' }])
+      expect(result.suggestions).toEqual([{ kind: 'title', value: 'Good, Title' }])
     }
   })
 })

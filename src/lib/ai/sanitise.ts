@@ -62,11 +62,16 @@ export function sanitiseTranscript(raw: unknown): ChatMessage[] | null {
   return out
 }
 
-/** Copy-law enforcement on model output: dashes become simple punctuation. */
+/**
+ * Copy-law enforcement on model output: no em dash, no en dash and no spaced hyphen (Lawal's law 6, 31 October 2026,
+ * C:\dev\CLAUDE.md). A range between numbers keeps a plain hyphen (9-5); any other dash or spaced hyphen becomes a comma.
+ */
 export function enforceCopyLaws(text: string): string {
   return text
-    .replace(/\s*—\s*/g, ' - ') // em-dash
-    .replace(/\s*–\s*/g, ' - ') // en-dash
+    .replace(/(\d)\s*[—–]\s*(\d)/g, '$1-$2') // a range between numbers
+    .replace(/(\d)\s+-\s+(\d)/g, '$1-$2') // the same range, spaced
+    .replace(/\s*[—–]\s*/g, ', ') // any other em or en dash
+    .replace(/(\S)\s+-\s+(\S)/g, '$1, $2') // a spaced hyphen
     .replace(/‑/g, '-') // non-breaking hyphen
     // No exclamation marks in user-facing copy (constitution). A bang run
     // after ? drops entirely; any other run becomes a full stop.

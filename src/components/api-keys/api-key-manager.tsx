@@ -113,6 +113,10 @@ export function ApiKeyManager({ organisationId, organisationName, keys }: Props)
             {revoked.message}
           </p>
         ) : null}
+        {/* A revoke's only sign was the row's badge, which nothing reads out; the line is always present, so it is. */}
+        <p role="status" className={revoked.status === 'revoked' ? 'mt-4 text-sm text-ink-600' : 'text-sm text-ink-600'} data-testid="api-key-revoked">
+          {revoked.status === 'revoked' ? 'Revoked. Anything still using that key is refused from now.' : ''}
+        </p>
 
         {keys.length === 0 ? (
           <p className="mt-6 text-sm text-ink-500" data-testid="api-key-empty">

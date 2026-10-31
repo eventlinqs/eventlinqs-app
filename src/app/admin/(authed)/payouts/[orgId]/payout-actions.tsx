@@ -59,32 +59,31 @@ export function DisbursePanel({
     router.refresh()
   }
 
-  if (blockedReason) {
-    return (
-      <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Disburse</h2>
-        <p className="mt-2 text-sm text-white/60">{blockedReason}</p>
-      </div>
-    )
-  }
-
+  // One panel in both states, its status line in one fixed place: a disbursement that empties the balance refreshes
+  // the page into the blocked state, and the line that says what moved must stay and be read out (WCAG 2.2, 4.1.3).
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
       <h2 className="font-display text-lg font-semibold text-white">Disburse</h2>
-      <p className="mt-1 text-sm text-white/60">Held balance {money(availableCents, currency)}</p>
-      <p className="mt-1 text-xs text-white/40">
-        Funds are held by the platform and disburse automatically after each event. This forces
-        a disbursement now for every matured event past its buffer.
-      </p>
+      {blockedReason ? (
+        <p className="mt-2 text-sm text-white/60">{blockedReason}</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-white/60">Held balance {money(availableCents, currency)}</p>
+          <p className="mt-1 text-xs text-white/40">
+            Funds are held by the platform and disburse automatically after each event. This forces
+            a disbursement now for every matured event past its buffer.
+          </p>
+        </>
+      )}
 
-      {done ? (
-        <p role="status" className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{done}</p>
-      ) : null}
+      <p role="status" className={done ? 'mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200' : ''}>
+        {done ?? ''}
+      </p>
       {error ? (
         <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
       ) : null}
 
-      {step === 'idle' ? (
+      {blockedReason ? null : step === 'idle' ? (
         <div className="mt-4">
           <button
             type="button"

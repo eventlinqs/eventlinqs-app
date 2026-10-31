@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState, type ReactNode } from 'react'
-import { addMedia, giveYes, keepSeries, replaceMedia, withdrawMedia, withdrawYes, type MediaState } from '@/app/actions/organiser-media'
+import { useState, type ReactNode } from 'react'
+import { addMedia, giveYes, keepSeries, replaceMedia, withdrawMedia, withdrawYes } from '@/app/actions/organiser-media'
+import { createSectionAnswers, StatusLine, SubmitButton } from '@/components/ui/section-answers'
 import { claimAuthorityWords } from '@/lib/listings/claim-acceptance'
 import { IMAGE_REPLACED_WORDS, IMAGE_WITHDRAWN_WORDS, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
 import { PERMISSION_WORDS } from '@/lib/listings/submission'
@@ -9,7 +10,9 @@ import { PERMISSION_WORDS } from '@/lib/listings/submission'
 /**
  * The organiser's own image forms, on /dashboard/organisation/media and the claim page's upload step, each showing the
  * database's answer in its own words. Classes are the claim form's own (src/components/listings/claim-form.tsx), so
- * nothing here is new to the design system.
+ * nothing here is new to the design system. On the dashboard each answer is held by OrganiserMediaAnswers around its
+ * section (src/components/ui/section-answers.tsx says why): a withdrawn image or permission leaves the list with its
+ * form, and a yes given leaves the unanswered claims. On the claim card, which refreshes nothing, a form holds its own.
  */
 
 const input = 'mt-1 h-11 w-full rounded-lg border border-ink-200 px-3 text-sm text-ink-900'
@@ -17,14 +20,16 @@ const file = 'mt-1 block w-full text-sm text-ink-600 file:mr-3 file:h-11 file:ro
 const button = 'inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500 disabled:opacity-60'
 const quiet = 'inline-flex h-11 items-center rounded-lg border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-100 disabled:opacity-60'
 
-function Answer({ state, done }: { state: MediaState; done: string }) {
-  if (!state) return null
-  return (
-    <p role="status" className="mt-2 text-sm text-ink-600">
-      {state.state === 'done' ? done : state.reason}
-    </p>
-  )
-}
+const { Answers, AnswerLine, useAnswerFor } = createSectionAnswers({
+  add: { act: addMedia, done: 'Added. Our team checks each image before it is used.' },
+  replace: { act: replaceMedia, done: IMAGE_REPLACED_WORDS },
+  withdraw: { act: withdrawMedia, done: IMAGE_WITHDRAWN_WORDS },
+  withdrawYes: { act: withdrawYes, done: YES_WITHDRAWN_WORDS },
+  giveYes: { act: giveYes, done: 'Thank you. Your permission is on record, and you can add your photos and artwork below.' },
+})
+
+export const OrganiserMediaAnswers = Answers
+export const OrganiserMediaAnswerLine = AnswerLine
 
 export function AddMediaForm({
   nights,
@@ -39,9 +44,10 @@ export function AddMediaForm({
   /** On the claim card: the action refreshes no page, so the card's next steps stay (src/app/actions/organiser-media.ts). */
   inClaim?: boolean
 }) {
-  const [state, action, pending] = useActionState<MediaState, FormData>(addMedia, null)
+  const { action, field, line } = useAnswerFor('add')
   return (
     <form action={action} className="text-left">
+      {field}
       {inClaim ? <input type="hidden" name="flow" value="claim" /> : null}
       <label className="block text-sm font-medium text-ink-900">
         Night
@@ -80,11 +86,11 @@ export function AddMediaForm({
         Anything we must not do with it (optional)
         <input name="restrictions" maxLength={500} placeholder="For example, no cropping of the performer" className={input} />
       </label>
-      <Answer state={state} done="Added. Our team checks each image before it is used." />
+      {line}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={button}>
+        <SubmitButton className={button}>
           {submitLabel}
-        </button>
+        </SubmitButton>
         {after}
       </div>
     </form>
@@ -92,57 +98,60 @@ export function AddMediaForm({
 }
 
 export function ReplaceMediaForm({ assetId }: { assetId: string }) {
-  const [state, action, pending] = useActionState<MediaState, FormData>(replaceMedia, null)
+  const { action, field, line } = useAnswerFor('replace', assetId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="assetId" value={assetId} />
       <label className="block text-sm font-medium text-ink-900">
         Replace with
         <input type="file" name="file" accept="image/*" required className={file} />
       </label>
-      <Answer state={state} done={IMAGE_REPLACED_WORDS} />
+      {line}
       <div className="mt-3">
-        <button type="submit" disabled={pending} className={quiet}>
+        <SubmitButton className={quiet}>
           Replace
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )
 }
 
 export function WithdrawMediaForm({ assetId }: { assetId: string }) {
-  const [state, action, pending] = useActionState<MediaState, FormData>(withdrawMedia, null)
+  const { action, field, line } = useAnswerFor('withdraw', assetId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="assetId" value={assetId} />
       <label className="block text-sm font-medium text-ink-900">
         Why are you withdrawing it?
         <input name="reason" required minLength={3} maxLength={500} className={input} />
       </label>
-      <Answer state={state} done={IMAGE_WITHDRAWN_WORDS} />
+      {line}
       <div className="mt-3">
-        <button type="submit" disabled={pending} className={quiet}>
+        <SubmitButton className={quiet}>
           Withdraw this image
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )
 }
 
 export function WithdrawYesForm({ permissionId }: { permissionId: string }) {
-  const [state, action, pending] = useActionState<MediaState, FormData>(withdrawYes, null)
+  const { action, field, line } = useAnswerFor('withdrawYes', permissionId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="permissionId" value={permissionId} />
       <label className="block text-sm font-medium text-ink-900">
         Why are you withdrawing your permission?
         <input name="reason" required minLength={3} maxLength={500} className={input} />
       </label>
-      <Answer state={state} done={YES_WITHDRAWN_WORDS} />
+      {line}
       <div className="mt-3">
-        <button type="submit" disabled={pending} className={quiet}>
+        <SubmitButton className={quiet}>
           Withdraw my permission
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )
@@ -204,11 +213,7 @@ export function RegularNightsForm(props: {
           </li>
         ))}
       </ul>
-      {said ? (
-        <p role="status" className="mt-2 text-sm text-ink-600">
-          {said}
-        </p>
-      ) : null}
+      <StatusLine words={said ?? ''} />
       <div className="mt-6">
         <button type="button" onClick={finish} disabled={saving} className={button}>
           {props.finishLabel}
@@ -220,9 +225,10 @@ export function RegularNightsForm(props: {
 
 /** The yes given from the organiser's page, with the claim page's two ticks (221201: one current yes per claim). */
 export function GiveYesForm({ claimId, kind }: { claimId: string; kind: 'venue' | 'event' }) {
-  const [state, action, pending] = useActionState<MediaState, FormData>(giveYes, null)
+  const { action, field, line } = useAnswerFor('giveYes', claimId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="claimId" value={claimId} />
       <label className="flex min-h-[44px] items-start gap-3 text-sm text-ink-600">
         <input type="checkbox" name="permission" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
@@ -232,11 +238,11 @@ export function GiveYesForm({ claimId, kind }: { claimId: string; kind: 'venue' 
         <input type="checkbox" name="authority" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
         <span data-authority-words>{claimAuthorityWords(kind)}</span>
       </label>
-      <Answer state={state} done="Thank you. Your permission is on record, and you can add your photos and artwork below." />
+      {line}
       <div className="mt-3">
-        <button type="submit" disabled={pending} className={button}>
+        <SubmitButton className={button}>
           Give permission
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )

@@ -25,7 +25,7 @@ describe.each(TEMPLATES)('%s', (path) => {
       const before = source.slice(Math.max(0, (m.index ?? 0) - 8), m.index)
       const after = source.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 9)
       const allowed =
-        /Events: $/.test(before) || /events: $/.test(before) || /const $/.test(before) || after.startsWith('.length') || /^\.map\(\(r[,)]/.test(after)
+        /Events: $/.test(before) || /events: $/.test(before) || /toFirst\($/.test(before) || /const $/.test(before) || after.startsWith('.length') || /^\.map\(\(r[,)]/.test(after)
       expect(allowed, `${m[0]} used as ${before}|${m[0]}|${after}`).toBe(true)
     }
   })

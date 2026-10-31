@@ -23,6 +23,7 @@ import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rh
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { cityHubRails } from '@/lib/cities/city-hubs'
 import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
+import { photoFirst } from '@/lib/events/photo-first'
 
 /**
  * How many of the city's events the grid shows. It was the literal 24 inside
@@ -105,11 +106,12 @@ export function CityLandingPage({
   // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the sections in the order
   // they are drawn, the first to show an event keeping it, each later one filling its places from the rest.
   const [todayTomorrowEvents, thisWeekendEvents, thisWeekEvents, ...laterSections] = oneCardPerEvent([
-    { events: todayTomorrowCandidates, cap: 12 },
-    { events: thisWeekendCandidates, cap: 12 },
-    { events: thisWeekCandidates, cap: 12 },
-    ...hubCandidates.map((r) => ({ events: r.events, cap: 12 })),
-    { events: popularCandidates, cap: 12 },
+    // Each rail leads with its photographed nights (the CONTROLLER's 31 October 13:45); the full list keeps its order.
+    { events: photoFirst(todayTomorrowCandidates), cap: 12 },
+    { events: photoFirst(thisWeekendCandidates), cap: 12 },
+    { events: photoFirst(thisWeekCandidates), cap: 12 },
+    ...hubCandidates.map((r) => ({ events: photoFirst(r.events), cap: 12 })),
+    { events: photoFirst(popularCandidates), cap: 12 },
     { events: allEvents, cap: ALL_EVENTS_SHOWN },
   ])
   const hubRails = hubCandidates.map((r, i) => ({ hub: r.hub, events: laterSections[i] })).filter((r) => r.events.length > 0)

@@ -266,6 +266,27 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * form-answers-outlive-the-form (Lawal's 11:13 of 31 October 2026, one defect is a class: the venue calendar's
+   * 'Thank you' lived in a form the refreshed page stopped drawing), two drills, each the way the class comes back: a
+   * form holds its own answer again, and a page stops drawing its family's answer holder.
+   */
+  {
+    name: 'the venue calendar forms hold their own answer again',
+    guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
+    file: 'src/components/listings/venue-calendar-forms.tsx',
+    find: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'",
+    replace: "import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'\nconst held = () => useActionState(giveVenueCalendarAction, null)",
+    expect: 'venue-calendar-forms.tsx calls useActionState',
+  },
+  {
+    name: 'the media page stops drawing the venue calendar answer holder',
+    guard: `${GUARDS}/form-answers-outlive-the-form.mjs`,
+    file: 'src/app/(dashboard)/dashboard/organisation/media/page.tsx',
+    find: '<VenueCalendarAnswers>',
+    replace: '<VenueCalendarAnswersGone>',
+    expect: 'no page under src/app draws <VenueCalendarAnswers>',
+  },
+  /*
    * event-page-each-fact-once (the PROJECT MANAGER's 13:10 of 30 October 2026: the event page repeated the date, the
    * address, the refund and the ticket button, and Kate Ceberano's outside night promised a QR ticket, automatic refunds
    * and our booking fee), three drills, each the regression production carried: the refund block shown on every night
@@ -1236,6 +1257,26 @@ const DRILLS = [
     find: "        'Pick the venue from the suggestions as you type its name or address, and it saves with its place on the map. ' +",
     replace: "        'GOOGLE_MAPS_API_KEY is not configured. Pick the venue from the suggestions as you type its name or address, and it saves with its place on the map. ' +",
     expect: 'the refusal names GOOGLE_MAPS_API_KEY',
+  },
+  /*
+   * compound-modifiers-hyphenated (law 6, 31 October 2026), two drills: a compound modifier written without its
+   * hyphen before its noun, and an em dash in copy.
+   */
+  {
+    name: 'a compound modifier loses its hyphen before its noun',
+    guard: `${GUARDS}/compound-modifiers-hyphenated.mjs`,
+    file: 'src/lib/listings/collect.ts',
+    find: "an all-day event, read as the start of that day in the feed's zone.",
+    replace: "an all day event, read as the start of that day in the feed's zone.",
+    expect: 'needs its hyphen: "all-day event"',
+  },
+  {
+    name: 'an em dash stands in copy',
+    guard: `${GUARDS}/compound-modifiers-hyphenated.mjs`,
+    file: 'src/lib/listings/collect.ts',
+    find: "an all-day event, read as the start of that day in the feed's zone.",
+    replace: "an all-day event — read as the start of that day in the feed's zone.",
+    expect: 'an em or en dash',
   },
   /*
    * homepage-hero-never-empty (close-out C17), two drills: the empty branch

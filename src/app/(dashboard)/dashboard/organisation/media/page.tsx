@@ -5,12 +5,21 @@ import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { formatEventDateTimeCompact, formatPlatformDate } from '@/lib/dates/event-time'
 import { GalleryImage } from '@/components/media/GalleryImage'
-import { AddMediaForm, GiveYesForm, RegularNightsForm, ReplaceMediaForm, WithdrawMediaForm, WithdrawYesForm } from '@/components/listings/organiser-media-forms'
+import {
+  AddMediaForm,
+  GiveYesForm,
+  OrganiserMediaAnswerLine,
+  OrganiserMediaAnswers,
+  RegularNightsForm,
+  ReplaceMediaForm,
+  WithdrawMediaForm,
+  WithdrawYesForm,
+} from '@/components/listings/organiser-media-forms'
 import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
-import { AddVenuePhotoForm, ReplaceVenuePhotoForm, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
+import { AddVenuePhotoForm, ReplaceVenuePhotoForm, VenuePhotoAnswers, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
 import { venuePhotoStateWords } from '@/lib/venues/venue-photo-words'
 import { VenueDistributionForm } from '@/components/listings/venue-distribution-form'
-import { GiveVenueCalendarForm, StopVenueCalendarForm } from '@/components/listings/venue-calendar-forms'
+import { GiveVenueCalendarForm, StopVenueCalendarForm, VenueCalendarAnswers } from '@/components/listings/venue-calendar-forms'
 import { distributionDeps, venueDistributionFor, type VenueDistribution } from '@/lib/venues/venue-distribution'
 
 /**
@@ -153,10 +162,14 @@ export default async function OrganisationMediaPage({
         within the hour.
       </p>
 
+      {/* One holder for the organiser's answers, around every section its forms sit in, each answer shown in a section
+          that stays after the refresh: a yes given empties 'Give your permission', so its thank you shows here. */}
+      <OrganiserMediaAnswers line={false}>
       <section className="mt-8 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="yes-heading">
         <h2 id="yes-heading" className="text-lg font-semibold text-ink-900">
           Your permission
         </h2>
+        <OrganiserMediaAnswerLine kinds={['giveYes', 'withdrawYes']} />
         {(yeses ?? []).length === 0 ? (
           <p className="mt-2 text-sm text-ink-600">
             There is no permission on record for {scope.active.name}. It is given when you claim a listing with the permission ticked.{' '}
@@ -209,6 +222,7 @@ export default async function OrganisationMediaPage({
             Add a photo or artwork
           </h2>
           <p className="mt-1 text-sm text-ink-600">Only add images you own or have the right to share.</p>
+          <OrganiserMediaAnswerLine kinds={['add']} />
           <div className="mt-4">
             <AddMediaForm
               nights={(nights ?? []).map((n) => ({ id: n.id, label: `${n.title}, ${formatEventDateTimeCompact(n.start_date, n.timezone)}` }))}
@@ -230,6 +244,7 @@ export default async function OrganisationMediaPage({
         <h2 id="images-heading" className="text-lg font-semibold text-ink-900">
           Your images
         </h2>
+        <OrganiserMediaAnswerLine kinds={['replace', 'withdraw']} />
         {(assets ?? []).length === 0 ? (
           <p className="mt-2 text-sm text-ink-600">No images yet. Your listings show their details in our own design until you add one.</p>
         ) : (
@@ -261,6 +276,7 @@ export default async function OrganisationMediaPage({
           </ul>
         )}
       </section>
+      </OrganiserMediaAnswers>
 
       {/* The project manager's 16:42 of 30 October 2026: a claimed venue sends photographs of itself, with its yes; once
           our team approves one, it shows on every night at the venue (public.venue_images). */}
@@ -279,6 +295,7 @@ export default async function OrganisationMediaPage({
           <p className="mt-1 text-sm text-ink-600">
             Send us three photographs of your venue. Once our team approves one, it shows on every night at your venue, with your credit.
           </p>
+          <VenuePhotoAnswers>
           {venuePhotosUnreadable ? (
             <p role="alert" className="mt-3 text-sm text-ink-600">
               Your venue photographs could not be read just now, so none can be sent here yet. Try again later.
@@ -313,6 +330,7 @@ export default async function OrganisationMediaPage({
               <AddVenuePhotoForm venues={heldVenues.map((v) => ({ id: v.id, name: v.name }))} />
             </div>
           )}
+          </VenuePhotoAnswers>
         </section>
       ) : null}
       {heldVenues.length > 0 ? (
@@ -326,7 +344,7 @@ export default async function OrganisationMediaPage({
           {calendars === null ? (
             <p className="mt-3 text-sm text-ink-600">Your calendar could not be read just now, so none can be given here yet. Try again later.</p>
           ) : (
-            <>
+            <VenueCalendarAnswers>
               {calendars.live.length > 0 ? (
                 <ul className="mt-4 space-y-4">
                   {calendars.live.map((c) => (
@@ -349,7 +367,7 @@ export default async function OrganisationMediaPage({
                   />
                 </div>
               ) : null}
-            </>
+            </VenueCalendarAnswers>
           )}
         </section>
       ) : null}

@@ -114,24 +114,19 @@ export default async function AdminDisputeDetailPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <section className="space-y-6">
-          {dispute.isSubmittable ? (
-            <DisputeRespondForm
-              disputeId={dispute.id}
-              initial={{
-                productDescription: dispute.evidence.productDescription,
-                customerCommunication: dispute.evidence.customerCommunication,
-                uncategorizedText: dispute.evidence.uncategorizedText,
-              }}
-            />
-          ) : (
-            <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-              <h2 className="font-display text-lg font-semibold">No response required</h2>
-              <p className="mt-2 text-sm text-white/60">
-                This dispute is in the {dispute.status.replace(/_/g, ' ')} state, so no evidence can be submitted now.
-                Stripe will update the status as the dispute is reviewed.
-              </p>
-            </div>
-          )}
+          <DisputeRespondForm
+            disputeId={dispute.id}
+            initial={{
+              productDescription: dispute.evidence.productDescription,
+              customerCommunication: dispute.evidence.customerCommunication,
+              uncategorizedText: dispute.evidence.uncategorizedText,
+            }}
+            closedWords={
+              dispute.isSubmittable
+                ? null
+                : `This dispute is in the ${dispute.status.replace(/_/g, ' ')} state, so no evidence can be submitted now. Stripe will update the status as the dispute is reviewed.`
+            }
+          />
 
           <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
             <h2 className="font-display text-lg font-semibold">Evidence on file</h2>

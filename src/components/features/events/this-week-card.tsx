@@ -68,6 +68,8 @@ export async function ThisWeekCard({
       .filter(Boolean)
       .join(' · '),
     priceLabel: formatPrice(event),
+    startDate: event.start_date ?? null,
+    timeZone: event.timezone ?? null,
     // Feature cards default to priority=true (built for above-fold hero use).
     // Every homepage feature RAIL is below the fold, so force priority off
     // here - the hero owns LCP and these must not preload as critical.

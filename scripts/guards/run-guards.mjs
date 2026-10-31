@@ -456,6 +456,9 @@
  *   geocoding-never-silent-null a typed address with no coordinates refuses to save on a
  *                              production-like environment, naming the fault, and both
  *                              event actions run that rule (close-out C9)
+ *   compound-modifiers-hyphenated a listed compound modifier before its noun carries its
+ *                              hyphen and no em or en dash stands in the platform's copy
+ *                              (law 6, 31 October 2026)
  *   community-layer-protected the 21 communities, their 20 cities, the faith pages and the
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
@@ -654,6 +657,9 @@
  *                              (30 October 2026, Kate Ceberano's paid show read 'Free')
  *   google-calls-through-the-spend-guard  every billed Places call asks the database's
  *                              daily quota and monthly cap first; Google starts OFF
+ *   form-answers-outlive-the-form  a form's answer is held where it outlives the form: the
+ *                              refreshed page that stops drawing a form no longer takes its
+ *                              'Thank you' with it (31 October 2026, Lawal's one defect is a class)
  *   one-photo-one-event        every photo is assigned to one event: the hash unique on its own,
  *                              a near copy refused, one reader picks a night's photo, one video
  *                              link per event, and the rows agree (31 October 2026)
@@ -2394,6 +2400,10 @@ const GUARDS = [
   // null coordinates on a production-like environment when the server key is
   // absent or refused; the save rule is driven and both actions must call it.
   'scripts/guards/geocoding-never-silent-null.mjs',
+  // Law 6 (31 October 2026, C:\dev\CLAUDE.md): the platform's own copy keeps Lawal's dash rule; a listed compound
+  // modifier before its noun carries its hyphen, and no em or en dash stands in copy. The list is the communication
+  // gateway's own, copied into src/. Drilled red and green.
+  'scripts/guards/compound-modifiers-hyphenated.mjs',
   // Close-out C18 FINAL (7 September 2026): the community layer and the categories
   // are approved and recorded; nothing may be lost from the source or the database,
   // and every addition is recorded in docs/scope/community-layer-approved.json.
@@ -3334,6 +3344,11 @@ const GUARDS = [
   // refuses a second assignment of the same bytes or a near copy, only one reader picks a night's photo, a video link is
   // held by one event, and the rows on the database agree. Registered with the table; drilled red once per clause.
   'scripts/guards/one-photo-one-event.mjs',
+  // Lawal's 11:13 of 31 October 2026, one defect is a class: a venue gave its calendar and saw no 'Thank you', because
+  // the answer lived in a form the refreshed page stopped drawing; six more forms did the same. useActionState only
+  // through src/components/ui/section-answers.tsx or a reviewed form, and every answer holder drawn by a page. Drilled
+  // red twice.
+  'scripts/guards/form-answers-outlive-the-form.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

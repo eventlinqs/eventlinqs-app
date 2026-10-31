@@ -1,13 +1,15 @@
 'use client'
 
-import { useActionState } from 'react'
-import { addVenuePhotoAction, challengeVenuePhotoAction, replaceVenuePhotoAction, withdrawVenuePhotoAction, type VenueMediaState } from '@/app/actions/venue-media'
+import { addVenuePhotoAction, challengeVenuePhotoAction, replaceVenuePhotoAction, withdrawVenuePhotoAction } from '@/app/actions/venue-media'
+import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'
 import { VENUE_PHOTO_YES_WORDS } from '@/lib/venues/venue-photo-words'
 
 /**
  * A claimed venue's own photograph forms on /dashboard/organisation/media, each showing the database's answer in its
  * own words. Classes are the organiser media forms' own (src/components/listings/organiser-media-forms.tsx), so nothing
- * here is new to the design system.
+ * here is new to the design system. Each answer is held by VenuePhotoAnswers around its section
+ * (src/components/ui/section-answers.tsx says why): a withdrawn photograph leaves the list with its forms, and a
+ * challenged one stops showing with its form.
  */
 
 const input = 'mt-1 h-11 w-full rounded-lg border border-ink-200 px-3 text-sm text-ink-900'
@@ -15,14 +17,14 @@ const file = 'mt-1 block w-full text-sm text-ink-600 file:mr-3 file:h-11 file:ro
 const button = 'inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500 disabled:opacity-60'
 const quiet = 'inline-flex h-11 items-center rounded-lg border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-100 disabled:opacity-60'
 
-function Answer({ state, done }: { state: VenueMediaState; done: string }) {
-  if (!state) return null
-  return (
-    <p role="status" className="mt-2 text-sm text-ink-600">
-      {state.state === 'done' ? done : state.reason}
-    </p>
-  )
-}
+const { Answers, useAnswerFor } = createSectionAnswers({
+  add: { act: addVenuePhotoAction, done: 'Added. Our team checks each photograph before it shows on your nights.' },
+  replace: { act: replaceVenuePhotoAction, done: 'Sent. The current photograph stays until our team approves the new one.' },
+  challenge: { act: challengeVenuePhotoAction, done: 'Thank you. It no longer shows while we look at it.' },
+  withdraw: { act: withdrawVenuePhotoAction, done: 'Withdrawn. It no longer shows anywhere on EventLinqs.' },
+})
+
+export const VenuePhotoAnswers = Answers
 
 /** The yes, ticked, with the person's word they can give it; the words are the constant's, shown as they are kept. */
 function YesBoxes() {
@@ -41,9 +43,10 @@ function YesBoxes() {
 }
 
 export function AddVenuePhotoForm({ venues }: { venues: { id: string; name: string }[] }) {
-  const [state, action, pending] = useActionState<VenueMediaState, FormData>(addVenuePhotoAction, null)
+  const { action, field, line } = useAnswerFor('add')
   return (
     <form action={action} className="text-left">
+      {field}
       {venues.length === 1 ? (
         <input type="hidden" name="venueId" value={venues[0].id} />
       ) : (
@@ -70,20 +73,21 @@ export function AddVenuePhotoForm({ venues }: { venues: { id: string; name: stri
         <input name="credit" maxLength={200} placeholder="Photo: your name or the photographer's" className={input} />
       </label>
       <YesBoxes />
-      <Answer state={state} done="Added. Our team checks each photograph before it shows on your nights." />
+      {line}
       <div className="mt-6">
-        <button type="submit" disabled={pending} className={button}>
+        <SubmitButton className={button}>
           Add photograph
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )
 }
 
 export function ReplaceVenuePhotoForm({ venueId, imageId }: { venueId: string; imageId: string }) {
-  const [state, action, pending] = useActionState<VenueMediaState, FormData>(replaceVenuePhotoAction, null)
+  const { action, field, line } = useAnswerFor('replace', imageId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="venueId" value={venueId} />
       <input type="hidden" name="imageId" value={imageId} />
       <label className="block text-sm font-medium text-ink-900">
@@ -91,41 +95,43 @@ export function ReplaceVenuePhotoForm({ venueId, imageId }: { venueId: string; i
         <input type="file" name="file" accept="image/*" required className={file} />
       </label>
       <YesBoxes />
-      <Answer state={state} done="Sent. The current photograph stays until our team approves the new one." />
-      <button type="submit" disabled={pending} className={`mt-3 ${quiet}`}>
+      {line}
+      <SubmitButton className={`mt-3 ${quiet}`}>
         Replace
-      </button>
+      </SubmitButton>
     </form>
   )
 }
 
 export function ChallengeVenuePhotoForm({ imageId, eventId }: { imageId: string; eventId: string }) {
-  const [state, action, pending] = useActionState<VenueMediaState, FormData>(challengeVenuePhotoAction, null)
+  const { action, field, line } = useAnswerFor('challenge', imageId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="imageId" value={imageId} />
       <input type="hidden" name="eventId" value={eventId} />
       <label className="block text-sm font-medium text-ink-900">
         What is wrong with this photograph?
         <input name="reason" required minLength={5} maxLength={300} className={input} />
       </label>
-      <Answer state={state} done="Thank you. It no longer shows while we look at it." />
-      <button type="submit" disabled={pending} className={`mt-3 ${quiet}`}>
+      {line}
+      <SubmitButton className={`mt-3 ${quiet}`}>
         Tell us it is wrong
-      </button>
+      </SubmitButton>
     </form>
   )
 }
 
 export function WithdrawVenuePhotoForm({ imageId }: { imageId: string }) {
-  const [state, action, pending] = useActionState<VenueMediaState, FormData>(withdrawVenuePhotoAction, null)
+  const { action, field, line } = useAnswerFor('withdraw', imageId)
   return (
     <form action={action} className="text-left">
+      {field}
       <input type="hidden" name="imageId" value={imageId} />
-      <Answer state={state} done="Withdrawn. It no longer shows anywhere on EventLinqs." />
-      <button type="submit" disabled={pending} className={`mt-3 ${quiet}`}>
+      {line}
+      <SubmitButton className={`mt-3 ${quiet}`}>
         Withdraw
-      </button>
+      </SubmitButton>
     </form>
   )
 }

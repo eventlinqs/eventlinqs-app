@@ -97,8 +97,14 @@ const EFFECTIVE_FROM = '579e3a6011f5cb27ccaa9da37f7134959b2dca83'
  * the number was typed rather than hoped for afterwards. The scope holds 401
  * commits, so this raise brings exactly ONE previously unexamined commit into
  * the check, and the guard is green on it.
+ *
+ * RAISED AGAIN, from 800 to 1600, on 31 October 2026, by window 4 as release
+ * owner: car 25's pull request went red in CI with 'the scope holds 803 commits
+ * but WINDOW is 800', because each car now joins main's squash as a second
+ * parent. The same response as before, raising the bound rather than narrowing
+ * what is checked, measured first: run on the 804-commit scope, green.
  */
-const WINDOW = 800
+const WINDOW = 1600
 
 /**
  * Commits that carry a trailer, were INHERITED from another branch rather than

@@ -7146,43 +7146,70 @@ export type Database = {
       }
       photo_assignments: {
         Row: {
+          approved_subject: string | null
           assigned_at: string
+          attribution: string | null
           event_id: string | null
           id: string
           image_url: string
+          licence: string | null
+          licence_url: string | null
           listing_series_id: string | null
+          permitted_placements: string[] | null
           photo_dhash: number | null
           photo_sha256: string
           retired_at: string | null
+          review_by: string | null
+          rights_holder: string | null
           role: string
           source: string
+          venue_id: string | null
           venue_image_id: string | null
+          visual_quality: number | null
         }
         Insert: {
+          approved_subject?: string | null
           assigned_at?: string
+          attribution?: string | null
           event_id?: string | null
           id?: string
           image_url: string
+          licence?: string | null
+          licence_url?: string | null
           listing_series_id?: string | null
+          permitted_placements?: string[] | null
           photo_dhash?: number | null
           photo_sha256: string
           retired_at?: string | null
+          review_by?: string | null
+          rights_holder?: string | null
           role?: string
           source: string
+          venue_id?: string | null
           venue_image_id?: string | null
+          visual_quality?: number | null
         }
         Update: {
+          approved_subject?: string | null
           assigned_at?: string
+          attribution?: string | null
           event_id?: string | null
           id?: string
           image_url?: string
+          licence?: string | null
+          licence_url?: string | null
           listing_series_id?: string | null
+          permitted_placements?: string[] | null
           photo_dhash?: number | null
           photo_sha256?: string
           retired_at?: string | null
+          review_by?: string | null
+          rights_holder?: string | null
           role?: string
           source?: string
+          venue_id?: string | null
           venue_image_id?: string | null
+          visual_quality?: number | null
         }
         Relationships: [
           {
@@ -7204,6 +7231,13 @@ export type Database = {
             columns: ["listing_series_id"]
             isOneToOne: false
             referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_assignments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
           {
@@ -12421,17 +12455,26 @@ export type Database = {
       photo_matches_of: {
         Args: { p_dhash: number; p_sha256: string }
         Returns: {
+          approved_subject: string | null
           assigned_at: string
+          attribution: string | null
           event_id: string | null
           id: string
           image_url: string
+          licence: string | null
+          licence_url: string | null
           listing_series_id: string | null
+          permitted_placements: string[] | null
           photo_dhash: number | null
           photo_sha256: string
           retired_at: string | null
+          review_by: string | null
+          rights_holder: string | null
           role: string
           source: string
+          venue_id: string | null
           venue_image_id: string | null
+          visual_quality: number | null
         }[]
         SetofOptions: {
           from: "*"
