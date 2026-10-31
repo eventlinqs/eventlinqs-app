@@ -2833,6 +2833,27 @@ export type Database = {
         }
         Relationships: []
       }
+      growth_scorecard_daily: {
+        Row: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at: string
+        }
+        Insert: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at?: string
+        }
+        Update: {
+          day?: string
+          numbers?: Json
+          plan_version?: number
+          read_at?: string
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -12238,6 +12259,22 @@ export type Database = {
           p_organisation_id: string
         }
         Returns: number
+      }
+      growth_scorecard_read: { Args: never; Returns: Json }
+      growth_scorecard_snapshot: {
+        Args: { p_plan_version: number }
+        Returns: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "growth_scorecard_daily"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       increment_discount_uses: { Args: { p_code_id: string }; Returns: boolean }
       increment_sold_count: {
