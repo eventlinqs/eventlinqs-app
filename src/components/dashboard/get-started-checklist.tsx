@@ -1,57 +1,42 @@
 import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
+import { ACTIVATION_WORDS, type ActivationAnswer } from '@/lib/growth/activation'
 
+/**
+ * THE ORGANISER'S WAY TO THEIR FIRST SALE (V3 item 6, the CONTROLLER's 05:45 of 1 November 2026). The steps after the
+ * email are activationOf's (src/lib/growth/activation.ts), read from the organiser's own records, so this checklist,
+ * the funnel and ticketing_activations always agree; it shows until the first paid ticket sells through EventLinqs.
+ */
 export type ChecklistStatus = {
   verifyEmail: boolean
-  createOrganisation: boolean
-  connectPayouts: boolean
-  publishFirstEvent: boolean
+  activation: ActivationAnswer
 }
 
 type Step = {
-  key: keyof ChecklistStatus
+  key: string
+  done: boolean
   label: string
   description: string
   href: string
   cta: string
 }
 
-const STEPS: Step[] = [
-  {
-    key: 'verifyEmail',
-    label: 'Verify your email',
-    description: 'Confirm your email so we can send you tickets and receipts.',
-    href: '/dashboard/organisation',
-    cta: 'Resend verification',
-  },
-  {
-    key: 'createOrganisation',
-    label: 'Create your organisation',
-    description: 'Add your brand name, logo, and payout details.',
-    href: '/dashboard/organisation/create',
-    cta: 'Set up organisation',
-  },
-  {
-    key: 'connectPayouts',
-    label: 'Connect payouts',
-    description: 'Link Stripe so you can get paid out for ticket sales.',
-    href: '/dashboard/organisation',
-    cta: 'Connect Stripe',
-  },
-  {
-    key: 'publishFirstEvent',
-    label: 'Publish your first event',
-    description: 'Create an event, set ticket tiers, and go live.',
-    href: '/dashboard/events/create',
-    cta: 'Create event',
-  },
-]
-
 export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
-  const completed = STEPS.filter((s) => status[s.key]).length
+  const STEPS: Step[] = [
+    {
+      key: 'verifyEmail',
+      done: status.verifyEmail,
+      label: 'Verify your email',
+      description: 'Confirm your email so we can send you tickets and receipts.',
+      href: '/dashboard/organisation',
+      cta: 'Resend verification',
+    },
+    ...status.activation.steps.map((s) => ({ key: s.step, done: s.done, ...ACTIVATION_WORDS[s.step] })),
+  ]
+  const completed = STEPS.filter((s) => s.done).length
   const total = STEPS.length
   const pct = Math.round((completed / total) * 100)
-  const nextStep = STEPS.find((s) => !status[s.key])
+  const nextStep = STEPS.find((s) => !s.done)
 
   return (
     <section className="panel-elevated rounded-2xl border border-ink-100 bg-white">
@@ -59,7 +44,7 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
         <h2 className="text-base font-semibold text-ink-900">Set up your account</h2>
         <p className="mt-1 text-xs text-ink-600">
           {completed === total
-            ? 'All set. You are ready to sell tickets.'
+            ? 'All set. Your first ticket has sold through EventLinqs.'
             : `${completed} of ${total} steps complete`}
         </p>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink-100">
@@ -77,7 +62,7 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
 
       <ul className="divide-y divide-ink-100">
         {STEPS.map((step) => {
-          const done = status[step.key]
+          const done = step.done
           const isNext = !done && nextStep?.key === step.key
 
           return (

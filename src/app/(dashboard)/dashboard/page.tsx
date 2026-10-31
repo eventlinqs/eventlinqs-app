@@ -28,6 +28,8 @@ import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { computeDashboardKpis, DAY_MS } from '@/lib/dashboard/kpis'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { activationOf } from '@/lib/growth/activation'
+import { readActivationFacts } from '@/lib/growth/activation-read'
 import { getOrganiserMoneySummary } from '@/lib/payouts/money-summary'
 import { MoneyPanel } from '@/components/dashboard/money-panel'
 
@@ -291,23 +293,20 @@ export default async function DashboardPage({
         .eq('organisation_id', org.id)
     : { count: 0 }
 
-  const { count: publishedEventsCount } = org
-    ? await supabase
-        .from('events')
-        .select('id', { count: 'exact', head: true })
-        .eq('organisation_id', org.id)
-        .eq('status', 'published')
-    : { count: 0 }
-
+  // THE WAY TO THE FIRST SALE (V3 item 6): read from the organisation's own records by the service role, after the
+  // scope above verified the caller may see this organisation; an organiser with none yet starts at 'organisation'.
+  const activation = activationOf(
+    org
+      ? await readActivationFacts(createAdminClient(), org.id, renderedAt)
+      : { cameByClaim: false, claimVerifiedAt: null, organisationAt: null, payoutsAt: null, ticketsAt: null, publishedAt: null, checkoutAt: null, firstSaleAt: null },
+  )
   const checklistStatus: ChecklistStatus = {
     verifyEmail: Boolean(user.email_confirmed_at),
-    createOrganisation: Boolean(org),
-    connectPayouts: Boolean(org?.stripe_onboarding_complete),
-    publishFirstEvent: (publishedEventsCount ?? 0) > 0,
+    activation,
   }
 
-  const showChecklist =
-    isOrganiser && (!org || (totalEventsCount ?? 0) === 0 || !checklistStatus.connectPayouts)
+  // Shown until the first paid ticket sells through EventLinqs, not only until a first event exists.
+  const showChecklist = isOrganiser && (!activation.activated || !checklistStatus.verifyEmail)
 
   return (
     <div className="space-y-8">
