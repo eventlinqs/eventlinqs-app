@@ -104,7 +104,7 @@ export default async function HomePage() {
   // catalogue so the page can be built and benchmarked at full density while
   // staging is not yet provisioned.
   // EVERY VISIBLE NIGHT, NOT THE 60 SOONEST (Lawal's emergency correction, 31 October 2026, 17:44; WINDOW 6's audit,
-  // C:\dev\EVIDENCE\INVENTORY-31OCTudit.md). The limit was 60: those ended on 10 November while the 318 visible ran to
+  // C:\dev\EVIDENCE\INVENTORY-31OCT\audit.md). The limit was 60: those ended on 10 November while the 318 visible ran to
   // 26 December, so Music drew 2 of its 46, Food and drink 1 of 8, Festivals 1 of 10, and the rest of each rail was
   // open-slot filler. Each rail below now chooses from the whole visible inventory, by its own category, place and date.
   const upcomingRawTyped = await loadHomeUpcoming(supabase, nowIso, 1000)
