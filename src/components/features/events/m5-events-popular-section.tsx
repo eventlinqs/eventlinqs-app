@@ -1,4 +1,5 @@
 import { fetchPopularThisWeekPublic } from '@/lib/events'
+import { notAlreadyListed } from '@/lib/events/one-card-per-event'
 import { RecommendedRail } from './m5-recommended-rail'
 
 type Props = {
@@ -6,6 +7,8 @@ type Props = {
   city?: string
   /** Override the rail's "See all" link target. Defaults to /events?sort=popular. */
   seeAllHref?: string
+  /** The page's results list: the rail never repeats an event it draws (one card per event per page, P5). */
+  listedPromise?: Promise<{ events: readonly { id: string; listing_series_id?: string | null }[] }>
 }
 
 /**
@@ -20,10 +23,12 @@ type Props = {
  * upgrade to /api/events/recommended via a non-blocking effect later if
  * the product wants the personalised override.
  */
-export async function EventsPopularSection({ filterActive, city, seeAllHref }: Props) {
+export async function EventsPopularSection({ filterActive, city, seeAllHref, listedPromise }: Props) {
   if (filterActive) return null
 
-  const events = await fetchPopularThisWeekPublic(12, city)
+  // Both reads are already under way; the rail waits for the list only to drop what the list draws below it.
+  const [popular, listed] = await Promise.all([fetchPopularThisWeekPublic(12, city), listedPromise ?? Promise.resolve(null)])
+  const events = listed ? notAlreadyListed(popular, listed.events) : popular
   /*
    * `if (events.length === 0) return null` used to sit here, and it was the
    * SECOND gate on the same rail: RecommendedRail carried one too, so /events

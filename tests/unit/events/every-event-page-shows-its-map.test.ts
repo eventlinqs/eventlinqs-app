@@ -14,14 +14,25 @@ const WALK_IN = read('src/components/events/walk-in/walk-in-event-page.tsx')
 
 const MAP_WITH_VENUE = /<VenueMapLazy\s+bare\s+venueName=\{event\.venue_name\}\s+address=\{event\.venue_address\}\s+city=\{event\.venue_city\}\s+state=\{event\.venue_state\}\s+country=\{event\.venue_country\}\s+latitude=\{event\.venue_latitude\}\s+longitude=\{event\.venue_longitude\}\s*\/>/
 
+// Since car 22 (the controller's 10:05 and 10:12) both templates draw the map through ONE shared venue section, so the
+// map is pinned in that section and each template is pinned to draw the section.
+const SECTION = read('src/components/events/event-page/event-venue-section.tsx')
+const DRAWS_SECTION = /<EventVenueSection\b/
+
 describe('every event page shows its map', () => {
-  test('the ticketed template draws the venue map', () => {
-    expect(MAIN).toMatch(MAP_WITH_VENUE)
+  test('the shared venue section draws the venue map with the venue facts', () => {
+    expect(SECTION).toMatch(/import \{ VenueMapLazy \} from '@\/components\/features\/events\/venue-map-lazy'/)
+    expect(SECTION).toMatch(MAP_WITH_VENUE)
   })
 
-  test('the walk-in template draws the same venue map, in Getting there', () => {
-    expect(WALK_IN).toMatch(/import \{ VenueMapLazy \} from '@\/components\/features\/events\/venue-map-lazy'/)
-    const gettingThere = WALK_IN.slice(WALK_IN.indexOf('{/* Getting there and access */}'), WALK_IN.indexOf('{/* Organised by */}'))
-    expect(gettingThere).toMatch(MAP_WITH_VENUE)
+  test('the ticketed template draws the venue section', () => {
+    expect(MAIN).toMatch(DRAWS_SECTION)
+  })
+
+  test('the walk-in template draws the same venue section, in Getting there', () => {
+    const from = WALK_IN.indexOf('{/* Getting there and access')
+    expect(from).toBeGreaterThan(-1)
+    const gettingThere = WALK_IN.slice(from, WALK_IN.indexOf('{/* Organised by */}'))
+    expect(gettingThere).toMatch(DRAWS_SECTION)
   })
 })

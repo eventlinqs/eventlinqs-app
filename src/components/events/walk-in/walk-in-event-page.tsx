@@ -16,14 +16,14 @@ import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
 import { EventGallery } from '@/components/features/events/event-gallery'
-import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
+import { EventSection } from '@/components/events/event-page/event-sections'
+import { EventVenueSection } from '@/components/events/event-page/event-venue-section'
 import { GalleryImage } from '@/components/media/GalleryImage'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { getSiteUrl } from '@/lib/site-url'
-import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import type { FullEvent } from '@/lib/events/event-detail-read'
 import type { CalendarEvent } from '@/lib/events/calendar-links'
 import { FREE_ENTRY_LABEL, FREE_ENTRY_NO_TICKET_NEEDED, FREE_NO_TICKET_NEEDED, NO_TICKET_NEEDED } from '@/lib/events/entry-mode'
@@ -32,11 +32,9 @@ import { readPublicGuide } from '@/lib/walk-in/guide-read'
 import { remindMeHeading, remindMePurpose } from '@/lib/walk-in/remind-me'
 import {
   ABOUT_THIS_EVENT,
-  ACCESS,
   CLOSING_THE_NIGHT,
   FROM_PAST_EVENTS,
   GETTING_THERE_AND_ACCESS,
-  GET_DIRECTIONS,
   ORGANISED_BY,
   PLAN_YOUR_VISIT,
   datesChip,
@@ -97,22 +95,6 @@ function websiteHost(url: string | null | undefined): string | null {
   } catch {
     return null
   }
-}
-
-/** Google Maps directions to the venue (developers.google.com/maps/documentation/urls). */
-function directionsHref(event: FullEvent): string | null {
-  const destination =
-    typeof event.venue_latitude === 'number' && typeof event.venue_longitude === 'number'
-      ? `${event.venue_latitude},${event.venue_longitude}`
-      : formatVenueWithAddress({
-          name: event.venue_name,
-          address: event.venue_address,
-          city: event.venue_city,
-          state: event.venue_state,
-          country: event.venue_country,
-        })
-  if (!destination) return null
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
 }
 
 export async function WalkInEventPage({ event }: { event: FullEvent }) {
@@ -205,10 +187,6 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
     Boolean(hero.image) && !heroIsTypographic({ image: hero.image ?? '' }) && !hero.credit && !isLibraryPhoto(event.cover_image_url) && gallery.length >= 3
       ? gallery.slice(0, 4)
       : []
-  const directions = directionsHref(event)
-  // The venue and its address, for the phone card when the guide says nothing
-  // about getting there (one-venue-address-format).
-  const venueLine = formatVenueWithAddress({ name: event.venue_name, address: event.venue_address })
   const host = websiteHost(shown.website)
   const handle = shown.instagram
   const ageLabel = event.is_age_restricted && event.age_restriction_min ? `${event.age_restriction_min}+` : null
@@ -310,6 +288,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               through <HeroCaption> and its wash (scripts/guards/lib/hero-files.mjs),
               and "image alone, all details below the image" is the lighter way
               to keep it. */}
+          <EventSection name="hero">
           <figure className="m-0">
             <div className="relative aspect-[3/2] overflow-hidden bg-ink-900 lg:aspect-[16/7] lg:rounded-[var(--radius-card)]">
               {/* A night whose only image is our composed cover: its artwork is the title set again under this figure,
@@ -366,10 +345,12 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               <figcaption className="mt-2 px-4 text-xs text-ink-600 sm:px-6 lg:px-0">{LIBRARY_PHOTO_CREDIT}</figcaption>
             )}
           </figure>
+          </EventSection>
 
           <div className="px-4 sm:px-6 lg:mt-10 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12 lg:px-0">
             <div className="flex min-w-0 flex-col gap-8 pt-5 lg:gap-14 lg:pt-0">
               {/* Intro */}
+              <EventSection name="facts">
               <section className="flex flex-col gap-3 lg:gap-4">
                 {(eyebrowCategory || eyebrowPlace) && (
                   <p className="type-eyebrow font-display text-[var(--brand-accent-strong)]">
@@ -403,6 +384,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   {ageLabel && <Chip>{ageLabel}</Chip>}
                 </div>
               </section>
+              </EventSection>
 
               {/* The one button that leaves, near the top on a phone; from lg it lives in the panel. */}
               {outbound && (
@@ -526,67 +508,22 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                 </Reveal>
               )}
 
-              {/* Getting there and access */}
-              {(event.venue_name || guide.getting_there || guide.access_notes) && (
-                <Reveal as="section" className="flex flex-col gap-2.5 lg:gap-4">
-                  <h2 className="type-rail-heading font-headline text-ink-900">{GETTING_THERE_AND_ACCESS}</h2>
-                  {/* The map with its pin, the same component and facts as the ticketed page (Lawal 08:57 of 31 October
-                      2026: the AMCF page showed no map while Michael's did). */}
-                  <VenueMapLazy
-                    bare
-                    venueName={event.venue_name}
-                    address={event.venue_address}
-                    city={event.venue_city}
-                    state={event.venue_state}
-                    country={event.venue_country}
-                    latitude={event.venue_latitude}
-                    longitude={event.venue_longitude}
+              {/* Getting there and access: the ONE venue section every event page draws (the map with its pin, then
+                  getting there; src/components/events/event-page/event-venue-section.tsx). */}
+              {(event.venue_name || event.venue_address || guide.getting_there || guide.access_notes) && (
+                <Reveal as="div">
+                  <EventVenueSection
+                    event={event}
+                    heading={<h2 className="type-rail-heading font-headline text-ink-900">{GETTING_THERE_AND_ACCESS}</h2>}
+                    gettingThere={guide.getting_there}
+                    accessNotes={guide.access_notes}
+                    textSource={source}
                   />
-                  {/* Phone: one card, the link under it (PhoneA). */}
-                  <div className="rounded-[var(--radius-card)] bg-white p-4 text-sm leading-[1.6] text-ink-800 lg:hidden">
-                    {[event.venue_name, guide.getting_there].filter(Boolean).length > 0 && (
-                      <p data-text-source={source} className="m-0">
-                        {[guide.getting_there ?? venueLine, guide.access_notes]
-                          .filter(Boolean)
-                          .join(' ')}
-                      </p>
-                    )}
-                  </div>
-                  {directions && (
-                    <a href={directions} target="_blank" rel="noopener noreferrer" className="text-[15px] font-bold text-ink-900 underline lg:hidden">
-                      {GET_DIRECTIONS}
-                    </a>
-                  )}
-                  {/* lg: two cards (Main). */}
-                  <div className="hidden gap-3 lg:grid lg:grid-cols-2">
-                    <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-white p-6">
-                      <h3 data-text-source={NAME_SOURCE} className="m-0 text-[17px] font-bold text-ink-900">
-                        {[event.venue_name, event.venue_city].filter(Boolean).join(', ')}
-                      </h3>
-                      {(guide.getting_there || event.venue_address) && (
-                        <p data-text-source={source} className="m-0 text-[15px] leading-[1.6] text-ink-600">
-                          {guide.getting_there ?? event.venue_address}
-                        </p>
-                      )}
-                      {directions && (
-                        <a href={directions} target="_blank" rel="noopener noreferrer" className="text-[15px] font-bold text-ink-900 underline">
-                          {GET_DIRECTIONS}
-                        </a>
-                      )}
-                    </div>
-                    {guide.access_notes && (
-                      <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-white p-6">
-                        <h3 className="m-0 text-[17px] font-bold text-ink-900">{ACCESS}</h3>
-                        <p data-text-source={source} className="m-0 text-[15px] leading-[1.6] text-ink-600">
-                          {guide.access_notes}
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </Reveal>
               )}
 
               {/* Organised by */}
+              <EventSection name="organiser">
               {org && (
                 <Reveal as="section" className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-white p-5 lg:flex-wrap lg:gap-4 lg:px-7 lg:py-6">
                   <div className="min-w-0">
@@ -629,6 +566,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   )}
                 </Reveal>
               )}
+              </EventSection>
             </div>
 
             {/* The panel, from lg (Main). Sticky beside the guide. */}

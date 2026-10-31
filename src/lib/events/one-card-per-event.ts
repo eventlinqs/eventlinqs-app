@@ -41,3 +41,17 @@ export function oneCardPerEvent<E extends { readonly id: string; readonly listin
   for (const card of cardOfSeries.values()) if (card.also_on) card.also_on.sort()
   return out
 }
+
+/**
+ * A RAIL ABOVE A RESULTS LIST (/events, /events/browse/<city>): the list is the complete answer to the visitor's search
+ * and keeps its count and its pages, so it is never thinned; the rail shows only what the list does not already draw,
+ * a recurring series counting as one event (P4). With nothing left the rail draws as the founder ruled on 26 August 2026.
+ */
+export function notAlreadyListed<E extends { readonly id: string; readonly listing_series_id?: string | null }>(
+  rail: readonly E[],
+  listed: readonly { readonly id: string; readonly listing_series_id?: string | null }[],
+): E[] {
+  const ids = new Set(listed.map((l) => l.id))
+  const series = new Set(listed.flatMap((l) => (l.listing_series_id ? [l.listing_series_id] : [])))
+  return rail.filter((e) => !ids.has(e.id) && !(e.listing_series_id && series.has(e.listing_series_id)))
+}
