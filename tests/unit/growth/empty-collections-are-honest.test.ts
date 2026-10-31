@@ -22,6 +22,9 @@ const DISCOVERY_TEMPLATES = [
   'src/components/templates/CategoryEventsLandingPage.tsx',
   'src/components/templates/FreeWeekLandingPage.tsx',
   'src/components/templates/WeekendLandingPage.tsx',
+  // Found by WINDOW 3 (31 October 20:33): the faith page drew 'Live X events' over an empty grid, then 'Be the first'
+  // and 'List your event'.
+  'src/app/faith/[faith]/page.tsx',
 ]
 
 const PLACE_PAGES = [
@@ -46,6 +49,14 @@ describe('an empty discovery collection is honest, never a promotional card', ()
     expect(source).toMatch(/\{pageIsEmpty \? null : \(\s*<MobileStickyBar/)
     // The hero's button leads to real inventory when there is none here, never to an empty anchor.
     expect(source).toMatch(/primaryCtaHref=\{pageIsEmpty \? '\/events' : undefined\}/)
+  })
+
+  test('the faith page draws no heading over an empty grid and no invitation', () => {
+    const source = read('src/app/faith/[faith]/page.tsx')
+    expect(source).not.toMatch(/Be the first/)
+    expect(source).not.toMatch(/List your event/)
+    // The 'Live X events' heading and its 'View all' link sit inside the branch that has events.
+    expect(source).toMatch(/\{liveEvents\.length > 0 \? \(\s*<section[^>]*>\s*<div className="mb-6 flex/)
   })
 
   test('the hero button can lead somewhere other than the in-page grid', () => {
