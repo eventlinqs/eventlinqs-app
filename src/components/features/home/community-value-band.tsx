@@ -26,7 +26,7 @@ export async function CommunityValueBand() {
     entries.map(async e => ({
       slug: e.slug,
       name: e.displayName,
-      metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
+      metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : '',
       imageSrc: await getCommunityHeroPhoto(e.slug),
     })),
   )

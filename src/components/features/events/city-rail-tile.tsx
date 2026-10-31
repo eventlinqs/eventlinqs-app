@@ -49,20 +49,15 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
         </TileCaption>
       </div>
 
-      {/* A city with no events read "Coming soon", which Law 1 names as a
-        * defect by definition and which promises a date nobody has committed
-        * to. "Be the first" is the pattern the cities and communities indexes
-        * already use for exactly this state: an invitation, not an apology,
-        * and true either way. */}
+      {/* A city with no events read "Coming soon" (a defect by Law 1), then "Be the first"; a tile now says nothing
+        * invitational (the CONTROLLER's 21:00 of 31 October 2026): no count, only the arrow into the city. */}
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         {typeof eventCount === 'number' && eventCount > 0 ? (
           <p className="text-xs text-[var(--text-secondary)]">
             {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
           </p>
         ) : (
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-            Be the first
-          </p>
+          <span />
         )}
         <span
           className="text-[var(--text-muted)] transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-accent-strong)]"

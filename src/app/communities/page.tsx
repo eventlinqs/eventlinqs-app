@@ -179,14 +179,12 @@ async function CommunityTile({
 }) {
   const image = await getCommunityHeroPhoto(entry.slug)
   const subtitle = entry.tagline
-  // Never render a dead "Coming soon" state. When a community has no live
-  // events yet, the landing is still a real, useful page (sub-communities,
-  // cities, organiser invite), so the tile invites the first organiser
-  // rather than advertising absence.
+  // Never a dead "Coming soon", and never an invitation on a tile (the CONTROLLER's 21:00 of 31 October 2026): a
+  // community with no live events stays reachable through its real landing, and its tile simply says no count.
   const countLabel =
     entry.eventCount > 0
       ? `${entry.eventCount} event${entry.eventCount === 1 ? '' : 's'}`
-      : 'Be the first'
+      : ''
 
   return (
     <Link
@@ -226,9 +224,11 @@ async function CommunityTile({
       </div>
       <div className="flex flex-col gap-1 px-4 py-3 sm:px-5">
         <p className="text-xs font-medium text-ink-600 sm:text-sm">{subtitle}</p>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-          {countLabel}
-        </p>
+        {countLabel ? (
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+            {countLabel}
+          </p>
+        ) : null}
       </div>
     </Link>
   )

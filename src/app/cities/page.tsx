@@ -159,14 +159,12 @@ async function CityTile({
   priority: boolean
 }) {
   const image = await getCityPhoto(entry.slug)
-  // Never render a dead "Coming soon" state. A city with no live events
-  // yet still has a real landing (community rails, formats, organiser
-  // invite), so the tile invites the first organiser instead of
-  // advertising absence.
+  // Never a dead "Coming soon", and never an invitation on a tile (the CONTROLLER's 21:00 of 31 October 2026): a city
+  // with no live events still has a real landing, and its tile simply says no count.
   const countLabel =
     entry.eventCount > 0
       ? `${entry.eventCount} event${entry.eventCount === 1 ? '' : 's'}`
-      : 'Be the first'
+      : ''
 
   return (
     <Link
@@ -219,9 +217,11 @@ async function CityTile({
       </div>
       <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
         <p className="text-xs font-medium text-ink-600 sm:text-sm">{entry.state}</p>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-          {countLabel}
-        </p>
+        {countLabel ? (
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+            {countLabel}
+          </p>
+        ) : null}
       </div>
     </Link>
   )
