@@ -312,11 +312,9 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
             )}
             {guide.cover_credit && (
               <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
+                {/* One credit: for the set when the mosaic is drawn, else for the cover. */}
                 {heroMosaic.length > 0 ? (
-                  <>
-                    <span className="lg:hidden">Photos: {guide.cover_credit.replace(/\bfestival$/, 'festivals')}</span>
-                    <span className="hidden lg:inline">Photo: {guide.cover_credit}</span>
-                  </>
+                  <>Photos: {guide.cover_credit.replace(/\bfestival$/, 'festivals')}</>
                 ) : (
                   <>Photo: {guide.cover_credit}</>
                 )}

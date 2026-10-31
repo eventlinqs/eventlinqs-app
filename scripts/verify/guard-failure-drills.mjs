@@ -353,8 +353,18 @@ const DRILLS = [
    * tiles-on-stored-photos (29 October 2026, Lawal 22:17: the African card, the Communities doorway and the Comedy tile
    * blank on production), five drills: a community losing its stored photograph, a category tile, a sub-community tile
    * or a suburb asking Pexels at request time again, and a city page event type losing its stored photograph (30
-   * October 2026: the Concerts, DJ Sets, Theatre, Workshops and Sports tiles were still a live Pexels call).
+   * October 2026: the Concerts, DJ Sets, Theatre, Workshops and Sports tiles were still a live Pexels call). A sixth,
+   * clause 9 (31 October 2026, Lawal on live: the Communities doorway drew the placeholder): the doorway's photograph
+   * taken away again.
    */
+  {
+    name: 'the Communities doorway tile loses its photograph',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/components/features/home/category-nav-rail.tsx',
+    find: "  imageSrc: '/images/hero/homepage-rooftop.jpg',",
+    replace: "  imageSrc: '',",
+    expect: 'the Communities doorway tile names no photograph',
+  },
   {
     name: 'the African community loses its stored photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,

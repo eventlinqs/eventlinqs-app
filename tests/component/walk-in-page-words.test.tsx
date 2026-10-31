@@ -408,6 +408,8 @@ describe('a walk-in event with four or more of its own photos opens with its pho
     expect(tiles.map((a) => a.querySelector('img')?.getAttribute('alt'))).toEqual(['Dancers', 'Food', 'Drums', 'Fashion'])
     expect(container.querySelector('#past-photos')).not.toBeNull()
     expect(container.textContent).toContain('Photos: AMCF, past festivals')
+    // One credit for the set, never the cover's singular credit beside it (the CONTROLLER's 10:56: the two ran together).
+    expect(container.textContent).not.toContain('Photo: AMCF, past festival')
   })
 
   it('keeps today\'s hero with fewer than four of its own photos', () => {

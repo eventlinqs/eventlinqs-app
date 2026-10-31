@@ -59,14 +59,16 @@ async function curatedCategories(): Promise<{ slug: string; name: string }[]> {
 
 /**
  * The Communities doorway tile. NO PHOTO IS EVER REUSED (Lawal, 31 October 2026; the photo system's P6): it used to
- * borrow the African community's own photo, which stands on the African tile and page. The brand library holds no
- * unused photo for it, so it draws the branded tile (CategoryTileImage, an empty source) until Lawal gives the
- * Communities surface a photo of its own.
+ * borrow the African community's own photo, which stands on the African tile and page, and after that was taken away it
+ * drew the EventLinqs placeholder on live (Lawal, 31 October; the controller's 11:15). It now has its own photograph,
+ * looked at by eye: the founder's rooftop gathering of friends from several backgrounds at golden hour, on record in
+ * public/images/hero/homepage-hero-attribution.json. No community, city or category uses it, and it has left the home
+ * hero's raster pool (src/lib/images/event-media.ts), so the page never shows it twice. tiles-on-stored-photos clause 9.
  */
 export const COMMUNITY_DOOR_TILE = {
   href: '/communities',
-  imageSrc: '',
-  alt: 'Browse events by community',
+  imageSrc: '/images/hero/homepage-rooftop.jpg',
+  alt: 'Friends from different communities laughing together on a rooftop at golden hour',
   name: 'Communities',
   metaLabel: '21 heritages',
   priority: false,
