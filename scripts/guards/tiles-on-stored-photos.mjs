@@ -29,7 +29,7 @@
  *   9  The home page's Communities doorway tile has its own photograph, which exists and is not in the home hero's
  *      raster pool (Lawal, 31 October 2026: the tile drew the placeholder on live; 'lock that in').
  *  10  Every hero page asks for its own subject's photo and none draws its hero empty on purpose (Lawal, 31 October:
- *      one defect is a class); the faith pages are printed as NOT YET until they have photographs of their own.
+ *      one defect is a class), the faith pages included, each with its own faith's photograph.
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -172,9 +172,9 @@ else {
 
 // 10 No hero is drawn empty on purpose (Lawal, 31 October 2026, 11:13 'one defect is a class', through the controller's
 //    11:18; his standing directive: real photography is never swapped for a placeholder). Each hero page names its own
-//    subject's photo and never hard-codes an empty hero. The faith pages have no faith photograph of their own yet
-//    (a community's photo there would show another subject), so they are printed below as NOT YET on every run,
-//    never passed silently; they come off this list the day their photos land.
+//    subject's photo and never hard-codes an empty hero (the faith pages through src/lib/images/faith-photo.ts, their
+//    own faith's photographs). A page that cannot yet have its own photo goes in HERO_NOT_YET, printed on every run,
+//    never passed silently.
 const HERO_PAGES = [
   ['src/app/community/[community]/[city]/page.tsx', /\bgetCommunityHeroPhoto\b/],
   ['src/app/community/[community]/page.tsx', /\bgetCommunityHeroPhoto\b/],
@@ -182,8 +182,9 @@ const HERO_PAGES = [
   ['src/app/events/browse/[city]/page.tsx', /\bgetCityHeroPhoto\b/],
   ['src/app/free/[city]/this-week/page.tsx', /\bgetCityHeroPhoto\b/],
   ['src/app/categories/[slug]/page.tsx', /\bgetCategoryPhoto\b/],
+  ['src/app/faith/[faith]/page.tsx', /\bFAITH_PHOTOS\b/],
 ]
-const HERO_NOT_YET = ['src/app/faith/[faith]/page.tsx']
+const HERO_NOT_YET = []
 const EMPTY_HERO = /heroImage=\{null\}|const heroImage = null\b/
 for (const [page, resolver] of HERO_PAGES) {
   const src = code(read(page))
