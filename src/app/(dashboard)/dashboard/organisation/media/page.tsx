@@ -10,7 +10,7 @@ import { assetStateWords, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words
 import { AddVenuePhotoForm, ReplaceVenuePhotoForm, WithdrawVenuePhotoForm } from '@/components/listings/venue-media-forms'
 import { venuePhotoStateWords } from '@/lib/venues/venue-photo-words'
 import { VenueDistributionForm } from '@/components/listings/venue-distribution-form'
-import { GiveVenueCalendarForm, StopVenueCalendarForm } from '@/components/listings/venue-calendar-forms'
+import { GiveVenueCalendarForm, StopVenueCalendarForm, VenueCalendarAnswers } from '@/components/listings/venue-calendar-forms'
 import { distributionDeps, venueDistributionFor, type VenueDistribution } from '@/lib/venues/venue-distribution'
 
 /**
@@ -326,7 +326,7 @@ export default async function OrganisationMediaPage({
           {calendars === null ? (
             <p className="mt-3 text-sm text-ink-600">Your calendar could not be read just now, so none can be given here yet. Try again later.</p>
           ) : (
-            <>
+            <VenueCalendarAnswers>
               {calendars.live.length > 0 ? (
                 <ul className="mt-4 space-y-4">
                   {calendars.live.map((c) => (
@@ -349,7 +349,7 @@ export default async function OrganisationMediaPage({
                   />
                 </div>
               ) : null}
-            </>
+            </VenueCalendarAnswers>
           )}
         </section>
       ) : null}
