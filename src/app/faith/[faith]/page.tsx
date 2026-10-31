@@ -21,6 +21,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { JsonLd } from '@/components/seo/json-ld'
+import { FAITH_PHOTOS } from '@/lib/images/faith-photo'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -87,9 +88,10 @@ export default async function FaithPage({ params }: Props) {
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map(c => ({ slug: c.slug, displayName: c.displayName }))
 
-  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): a community's photo belongs
-  // to that community's own tile and page, so a faith page borrows none and its hero draws its own navy band.
-  const heroImage = null
+  // ONE PHOTO, ONE SUBJECT (Lawal's standing directive of 31 October 2026; the photo system's A1): the faith's own
+  // photograph (src/lib/images/faith-photo.ts), never a community's, credited under the hero as its licence asks.
+  const heroPhoto = FAITH_PHOTOS[faith.slug]
+  const heroImage = heroPhoto.src
 
   const collectionLd = {
     '@context': 'https://schema.org',
@@ -120,6 +122,9 @@ export default async function FaithPage({ params }: Props) {
           subtitle={faith.heroBody}
           imageSrc={heroImage}
         />
+        <p className="mx-auto mt-2 max-w-7xl px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">
+          Photo: <a href={heroPhoto.filePage} className="underline underline-offset-2 hover:text-ink-900">{heroPhoto.author}</a>, <a href={heroPhoto.licenceUrl} className="underline underline-offset-2 hover:text-ink-900">{heroPhoto.licence}</a>
+        </p>
 
         {/* Story */}
         <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">

@@ -358,6 +358,14 @@ const DRILLS = [
    * taken away again.
    */
   {
+    name: 'a community-in-city hero drawn empty on purpose again',
+    guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
+    file: 'src/app/community/[community]/[city]/page.tsx',
+    find: '        heroImage={heroImage}',
+    replace: '        heroImage={null}',
+    expect: 'draws its hero empty on purpose',
+  },
+  {
     name: 'the Communities doorway tile loses its photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
     file: 'src/components/features/home/category-nav-rail.tsx',

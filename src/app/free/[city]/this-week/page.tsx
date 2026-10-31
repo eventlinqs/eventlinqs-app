@@ -10,6 +10,7 @@ import { loadFreeWeek, readGuideCities, readGuideCity } from '@/lib/listings/fre
 import type { PublicEventRow } from '@/lib/events/types'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { isCitySlug } from '@/lib/cities/data'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 
 /**
  * `/free/<city>/this-week`, the city guide's week (WI2 Part 2,
@@ -71,13 +72,13 @@ export default async function FreeWeekPage({ params, searchParams }: Props) {
   if (!city) notFound()
 
   const now = new Date()
-  const heroImage = null
-  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): the city's photo belongs to
-  // the city's own tile and page, so this page borrows none and its hero draws its own navy band.
-  const [{ from, to, events: rows, total }, guideCities, query] = await Promise.all([
+  // ONE PHOTO, ONE SUBJECT (Lawal's standing directive of 31 October 2026; the photo system's A1): this page is the
+  // city's own free week, so its hero is the city's own photo.
+  const [{ from, to, events: rows, total }, guideCities, query, heroImage] = await Promise.all([
     loadFreeWeek(city),
     readGuideCities(),
     searchParams,
+    getCityHeroPhoto(city.slug),
   ])
   const events = await withVenuePhotos(rows)
   const week = describeFreeWeek(from, to, city.timezone)
