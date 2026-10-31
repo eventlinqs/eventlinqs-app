@@ -35,6 +35,7 @@ import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { readVenueSeries } from '@/lib/listings/venue-series'
 import { VenueRegularNights } from '@/components/features/venues/venue-regular-nights'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
+import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 
 export const revalidate = 300
 
@@ -242,7 +243,8 @@ export default async function VenueProfilePage({ params }: Props) {
   const orgCounts = new Map<string, VenueOrganiserAggregate>()
   for (const e of [...upcoming, ...past]) {
     const o = e.organisation
-    if (!o?.slug) continue
+    // The listings organisation has no public page (WI2 ruling A), so it is never an organiser 'using' a venue.
+    if (!o?.slug || isListingsOrganisation(o.slug)) continue
     const cur = orgCounts.get(o.slug) ?? {
       slug: o.slug,
       name: o.name,
