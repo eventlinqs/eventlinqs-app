@@ -78,7 +78,7 @@ describe('closing the ticketing gap (plan version 2)', () => {
 })
 
 describe("today's tasks, by rule", () => {
-  const tasks = todaysTasks(plan, card)
+  const tasks = todaysTasks(plan, card, '2026-11-01')
 
   test('a city under its 14-day benchmark gets a listings task saying how far short', () => {
     const listings = tasks.filter((t) => t.kind === 'listings').map((t) => t.text)
