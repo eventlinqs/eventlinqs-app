@@ -581,6 +581,14 @@ export function EventForm({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const refusalRef = useRef<HTMLDivElement>(null)
+  // A refused publish is seen where it is said (the CONTROLLER's 12:58 of 31 October 2026): the focus goes to the
+  // refusal itself, scrolled into view clear of the sticky header (its scroll-mt), never to the top of the page.
+  useEffect(() => {
+    if (!error || !refusalRef.current) return
+    refusalRef.current.focus({ preventScroll: true })
+    refusalRef.current.scrollIntoView({ block: 'start' })
+  }, [error])
   /** Where the publish gate says to go next, when it says anything. */
   const [errorAction, setErrorAction] = useState<{ label: string; href: string } | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
@@ -2304,7 +2312,7 @@ export function EventForm({
            * them; the caller used to throw it away, so "Connect Stripe" was
            * advice with no door.
            */
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div ref={refusalRef} tabIndex={-1} role="alert" className="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 focus:outline-none">
             {error}
             {errorAction && (
               <a href={errorAction.href} className="ml-2 font-semibold underline underline-offset-2">
