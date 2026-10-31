@@ -98,4 +98,30 @@ describe('a venue handle resolves every venue', () => {
     tables.events.push(event('Goldfields Libraries (Bendigo Library)'))
     expect(await resolveVenueProfile('goldfields-libraries-heathcote-library')).toBeNull()
   })
+
+  /**
+   * A RENAMED VENUE KEEPS ITS OLD ADDRESS (1 November 2026). Six venue records named after an organiser or an event
+   * were renamed to their place ('Barwon Events' to 'Little Malop Street Central'); the page found venues by their
+   * NAME's handle only, so /venues/barwon-events answered 404 on live while the link was still shared and indexed.
+   * The stored slug keeps the old handle: the profile is found by it and carries the CURRENT name's handle, so the
+   * page can send the visitor there.
+   */
+  it('finds a renamed venue by its stored slug and hands back its current handle', async () => {
+    tables.venues.push({ ...venue(56, 'Little Malop Street Central'), slug: 'barwon-events' })
+    const profile = await resolveVenueProfile('barwon-events')
+    expect(profile?.name).toBe('Little Malop Street Central')
+    expect(profile?.handle).toBe('little-malop-street-central')
+  })
+
+  it('a venue found by its own name keeps the handle it was asked by', async () => {
+    tables.venues.push({ ...venue(57, 'Little Malop Street Central'), slug: 'barwon-events' })
+    const profile = await resolveVenueProfile('little-malop-street-central')
+    expect(profile?.handle).toBe('little-malop-street-central')
+  })
+
+  it('the venue page sends an old handle to the current one, permanently', async () => {
+    const { readFileSync } = await import('node:fs')
+    const page = readFileSync('src/app/venues/[handle]/page.tsx', 'utf8').replace(/\r\n/g, '\n')
+    expect(page).toMatch(/if \(venue\.handle !== handle\) permanentRedirect\(`\/venues\/\$\{venue\.handle\}`\)/)
+  })
 })
