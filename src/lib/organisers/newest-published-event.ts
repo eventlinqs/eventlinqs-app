@@ -24,6 +24,12 @@ import type { EventCardData } from '@/components/features/events/event-card'
  * the same way. It carries the listing window with it, which is what keeps an
  * event that has already finished off a block headed "live now".
  *
+ * ONLY A NIGHT THAT SELLS HERE (1 November 2026). The block is headed 'Live now, real event, real sales' and says
+ * the night is on sale on this platform; on live it showed a free walk-in night (Saturday Live Music at Hop Temple)
+ * while no night sold through EventLinqs. A walk-in night, or one ticketed elsewhere, is not a sale here, so only a
+ * night with EventLinqs ticket tiers, the tickets entry mode and no outside ticket link qualifies; with none, the
+ * block renders nothing (tests/unit/growth/organisers-showcase-sells-here.test.ts).
+ *
  * FAILS TO NULL. The block renders nothing when there is nothing to show or the
  * read fails. An empty catalogue is a real state on a launching platform and
  * an invented event would be the exact fabrication Law 4 forbids.
@@ -42,7 +48,8 @@ export const NEWEST_EVENT_SELECT =
   'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, ' +
   'venue_country, created_at, is_free, entry_mode, published_at, ' +
   'category:event_categories(name, slug), organisation:organisations(name, slug), ' +
-  'ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  // !inner: only a night with EventLinqs ticket tiers is returned (see ONLY A NIGHT THAT SELLS HERE, below).
+  'ticket_tiers!inner(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export async function getNewestPublishedEvent(): Promise<EventCardData | null> {
   try {
@@ -55,6 +62,8 @@ export async function getNewestPublishedEvent(): Promise<EventCardData | null> {
     const { data, error } = await applyPublicEventVisibility(
       supabase.from('events').select(NEWEST_EVENT_SELECT),
     )
+      .is('external_ticket_url', null)
+      .eq('entry_mode', 'tickets')
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(1)
