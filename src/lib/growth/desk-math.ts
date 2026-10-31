@@ -18,6 +18,8 @@ export interface GrowthPlan {
   }
   daily_quotas: { outreach_messages: number; social_posts_per_open_city?: number }
   cities: { open: string[]; pilot_benchmark_checked_events_14_days: Record<string, number> }
+  /** From plan version 4 (Lawal 1 November 2026 05:39): the market outreach, social, the email and the asks go to first. */
+  focus_market?: { name: string; rule: string }
   /** From plan version 2 (the CONTROLLER's 1 November 2026 04:35): revenue starts only when events sell through us. */
   close_the_ticketing_gap?: {
     targets: { by: string; events: number }[]

@@ -45,13 +45,19 @@ describe('the growth plan is valid', () => {
   })
 
   test('version 3 (Lawal 1 November 2026 05:33) carries the end goal, the global stages each with a gate but the last, and the never list', () => {
-    expect(plan().version).toBe(3)
+    expect(plan().version).toBeGreaterThanOrEqual(3)
     expect(planProblems({ ...plan(), end_goal: undefined }).join(' ')).toMatch(/end_goal/)
     expect(planProblems({ ...plan(), global_stages: [] }).join(' ')).toMatch(/global_stages/)
     const p = plan()
     delete p.global_stages[0].gate
     expect(planProblems(p).join(' ')).toMatch(/global_stages\[0\]\.gate/)
     expect(planProblems({ ...plan(), never: [] }).join(' ')).toMatch(/never/)
+  })
+
+  test('version 4 (Lawal 1 November 2026 05:39) names the focus market and its rule', () => {
+    expect(plan().version).toBe(4)
+    expect(planProblems({ ...plan(), focus_market: undefined }).join(' ')).toMatch(/focus_market/)
+    expect(planProblems({ ...plan(), focus_market: { ...plan().focus_market, rule: '' } }).join(' ')).toMatch(/focus_market\.rule/)
   })
 })
 
@@ -65,7 +71,7 @@ describe('the growth plan keeps every dated version', () => {
 
   test('version 1 is still kept whole beside version 2 (Law 8: a new dated version, never an overwrite)', () => {
     const ledger = JSON.parse(read('growth/versions/LEDGER.json'))
-    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3])
+    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3, 4])
     expect(JSON.parse(read('growth/versions/2026-11-01.json')).version).toBe(1)
     expect(sha256Lf(read('growth/versions/2026-11-01.json'))).toBe('2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3')
   })

@@ -44,6 +44,10 @@ export function planProblems(p) {
   else for (const c of open) if (!isNum(bench[c])) out.push(`no 14-day benchmark for the open city ${c}`)
   if (Number.isInteger(p.version) && p.version >= 2) out.push(...ticketingGapProblems(p.close_the_ticketing_gap))
   if (Number.isInteger(p.version) && p.version >= 3) out.push(...globalProblems(p))
+  if (Number.isInteger(p.version) && p.version >= 4) {
+    // Version 4 (Lawal 1 November 2026 05:39): the focus market the desk and the founder email lead with.
+    for (const k of ['name', 'rule']) if (typeof p.focus_market?.[k] !== 'string' || !p.focus_market[k].trim()) out.push(`focus_market.${k} is missing`)
+  }
   return out
 }
 

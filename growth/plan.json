@@ -1,10 +1,10 @@
 {
   "name": "EventLinqs growth plan",
-  "version": 3,
+  "version": 4,
   "set_on": "2026-11-01",
-  "set_by": "Lawal Adams, founder, 05:33 Melbourne time (\"Lock in the winning model now... hardwired into the system\")",
+  "set_by": "Lawal Adams, founder, 05:39 Melbourne time (\"Geelong and Melbourne for now... lock that in\")",
   "readable_version": "https://claude.ai/artifact/NiVfqJUKJZhu57Asoh1HLJ (EventLinqs: A against the Fever path); V3 checklist https://claude.ai/artifact/9ry6uA1DMt5RBGvHn8njnp",
-  "mission": "The place every city finds everything that's on, and buys the ticket there. Start with Australia's most complete weekly what's-on guide with fair ticketing, then the world.",
+  "mission": "The news of events: we know first, we publish first, and we tell people where to get the ticket. Every great event people want to go to, any kind (concerts, festivals, club nights, community and cultural nights, anything), in one place, bought through us. Australia first, then the world.",
   "model": {
     "layers": [
       "Featured photo cards: real, rights-recorded photos only",
@@ -135,15 +135,16 @@
       "every event in the city is listed",
       "the city follows our weekly email and city social account",
       "local organisers sell their tickets through us"
-    ]
+    ],
+    "first_to_know": "We are the first to know about every great event and the first to publish it, with where to buy the ticket."
   },
   "global_stages": [
     {
       "stage": 1,
-      "name": "Win Geelong completely, then Victoria",
+      "name": "Win Geelong and Melbourne together as one weekend market, then the rest of Victoria",
       "when": "now to Oct 2027",
       "work": "V3 items 1 to 13; city email and social account per city; tracked links; waitlists on events not yet on sale; write the city playbook down as it is proven",
-      "gate": "the playbook proven in two cities with real numbers"
+      "gate": "the playbook proven across Geelong and Melbourne with real numbers"
     },
     {
       "stage": 2,
@@ -171,5 +172,12 @@
     "hide ownership of any channel or promoted listing",
     "produce a night that clashes with a listed organiser's event in the same city and week"
   ],
-  "changes_from_v2": "v3 adds end_goal, winning_model, global_stages, never; mission widened to global. Targets, quotas, cities, gates, rules, close_the_ticketing_gap and benchmark_standard are unchanged from v2. The Featured and directory layers stay unapproved until the joint images session."
+  "changes_from_v2": "v3 adds end_goal, winning_model, global_stages, never; mission widened to global. Targets, quotas, cities, gates, rules, close_the_ticketing_gap and benchmark_standard are unchanged from v2. The Featured and directory layers stay unapproved until the joint images session.",
+  "focus_market": {
+    "set_on": "2026-11-01",
+    "name": "Geelong and Melbourne, one weekend market",
+    "why": "People spend their weekends across both cities, an hour apart; Ballarat to Melbourne is about an hour and a half. Geelong alone is too small to be the launch. Melbourne demand is already showing (AMCF contacts).",
+    "rule": "Outreach, social, the weekly email and conversion asks go to Geelong and Melbourne first. Ballarat and Bendigo stay open and listed, and are worked once the pair is won."
+  },
+  "changes_from_v3": "v4 sets the focus market to Geelong and Melbourne together (stage 1), and the mission to the news of events: first to know, first to publish, where to get the ticket, any kind of event. Everything else unchanged."
 }

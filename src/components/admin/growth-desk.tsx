@@ -29,6 +29,11 @@ export function GrowthDeskSection({ desk }: { desk: GrowthDesk }) {
         <p className="mt-2 max-w-2xl text-sm text-white/60">
           Against the growth plan, version {plan.version} set {dayWords(plan.set_on)}: {plan.mission}
         </p>
+        {plan.focus_market ? (
+          <p data-part="focus-market" className="mt-2 max-w-2xl text-sm text-white/60">
+            <span className="text-white">Focus market: {plan.focus_market.name}.</span> {plan.focus_market.rule}
+          </p>
+        ) : null}
       </header>
 
       <section data-part="tasks" className={CARD}>
