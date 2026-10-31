@@ -20,12 +20,18 @@ function likeToRegex(pattern: string): RegExp {
   return new RegExp(`^${escaped.replace(/%/g, '.*').replace(/_/g, '.')}$`, 'i')
 }
 
-function query(table: string) {
+// Production revokes venues.slug from anon (migration 20260808000010 grants named columns only, and slug came later):
+// the public client asking for it gets 'permission denied for column slug', the whole query with it.
+function query(table: string, role: 'anon' | 'service' = 'anon') {
   let rows = [...tables[table]]
+  let denied: string | null = null
   let window: [number, number] | null = null
   let cap: number | null = null
   const q = {
-    select: () => q,
+    select: (cols?: string) => {
+      if (role === 'anon' && table === 'venues' && /\bslug\b/.test(cols ?? '')) denied = 'permission denied for column slug'
+      return q
+    },
     eq: (col: string, val: unknown) => ((rows = rows.filter((r) => r[col] === val)), q),
     match: (m: Row) => ((rows = rows.filter((r) => Object.entries(m).every(([k, v]) => r[k] === v))), q),
     not: (col: string, op: string, val: unknown) => ((rows = rows.filter((r) => !(op === 'is' && val === null && r[col] === null))), q),
@@ -33,7 +39,9 @@ function query(table: string) {
     order: (col: string) => ((rows = [...rows].sort((a, b) => String(a[col]).localeCompare(String(b[col])))), q),
     limit: (n: number) => ((cap = n), q),
     range: (from: number, to: number) => ((window = [from, to]), q),
-    then: (resolve: (v: { data: Row[]; error: null }) => unknown) => {
+    maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
+    then: (resolve: (v: { data: Row[] | null; error: { message: string } | null }) => unknown) => {
+      if (denied) return Promise.resolve({ data: null, error: { message: denied } }).then(resolve)
       let out = rows
       if (window) out = out.slice(window[0], window[1] + 1)
       if (cap !== null) out = out.slice(0, cap)
@@ -44,6 +52,7 @@ function query(table: string) {
 }
 
 vi.mock('@/lib/supabase/public-client', () => ({ createPublicClient: () => ({ from: (t: string) => query(t) }) }))
+vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: (t: string) => query(t, 'service') }) }))
 
 const { resolveVenueProfile } = await import('@/lib/venues/resolver')
 
