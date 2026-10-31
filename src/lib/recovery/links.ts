@@ -15,6 +15,7 @@
  */
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAppUrl } from '@/lib/site-url'
+import { SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import type { Links } from '@/lib/fillrate/engine'
 import type { SlotRow } from '@/lib/fillrate/due'
@@ -66,6 +67,8 @@ export const eventLinqsLinks: Links = {
    * and 'The EventLinqs team' (src/lib/email/letter.ts), so it names the platform rather than signing a second time.
    */
   signature: `EventLinqs. ${BRAND_STRAPLINE}`,
+  // The letter's own sign off, from the one module that holds it (gap 3, 31 October 2026).
+  signOff: [SIGN_OFF, SIGNATURE],
 
   async resumeUrlFor(slot: SlotRow): Promise<string | null> {
     const admin = createAdminClient()

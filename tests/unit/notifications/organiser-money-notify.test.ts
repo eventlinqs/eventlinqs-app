@@ -57,7 +57,7 @@ function stubAdmin(rows: { orders?: Record<string, unknown> | null; events?: Rec
 
 const ORDER = { order_number: 'EL-TEST1234', event_id: 'evt_1', organisation_id: 'org_1' }
 const EVENT = { title: 'Afro-Fusion Music Showcase' }
-const OWNER = { email: 'organiser@example.com', organisationName: 'MKLStudios', organisationId: 'org_1' }
+const OWNER = { email: 'organiser@example.com', organisationName: 'MKLStudios', organisationId: 'org_1', firstName: null }
 
 beforeEach(() => {
   sent.mockReset()

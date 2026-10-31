@@ -87,6 +87,7 @@ const abandonment = {
 
 const links = {
   signature: 'The source system team. A line it supplies.',
+  signOff: ['Kind regards,', 'The source system team'],
   resumeUrlFor: async () => 'https://www.eventlinqs.com.au/events/a-slot#tickets',
   describe: async () => ({ name: 'Afro-Fusion Showcase', organiserName: 'MKL Studios', timezone: 'Australia/Melbourne' }),
 }

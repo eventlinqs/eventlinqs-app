@@ -68,6 +68,7 @@ const fill = {
   unsubscribeUrl: URL,
   organiserName: 'Northside Gym',
   signature: 'EventLinqs, the place events get made',
+  signOff: ['Kind regards,', 'The EventLinqs team'],
 }
 const payout = { amountCents: 40000, currency: 'AUD', arrivalDate: '2026-11-03T00:00:00Z', failureReason: 'closed account', eventTitle: 'Gala' }
 
