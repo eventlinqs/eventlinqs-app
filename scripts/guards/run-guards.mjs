@@ -674,6 +674,8 @@
  *   empty-collections-are-honest  an empty discovery collection says so plainly, with no
  *                              promotional card and nothing pointing at it (31 October 2026,
  *                              Lawal's directive section 11)
+ *   growth-plan-is-versioned  growth/plan.json holds what the desk reads and equals its newest
+ *                              dated version; no recorded version is changed or gone (Law 8)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2059,6 +2061,9 @@ const GUARDS = [
   // link to real events, never the large 'could be yours' card, and no chip, sticky bar or hero button points at it.
   // Red on main on eight templates; drilled red on two clauses.
   'scripts/guards/empty-collections-are-honest.mjs',
+  // 1 November 2026, Law 8 (Lawal 03:27) and the CONTROLLER's 03:32 G2: the growth plan is valid and keeps every dated
+  // version; drilled red on a version changed after it was kept and on a plan edited in place.
+  'scripts/guards/growth-plan-is-versioned.mjs',
   // 30 October 2026, Lawal 16:05 (L14): the First Nations and Indian tiles drew no photograph on production; read from
   // the served HTML, 90 of the 105 sub-community tiles were the navy gradient. Red on main with 91 clauses.
   'scripts/guards/sub-community-tiles-stored.mjs',

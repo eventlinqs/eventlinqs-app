@@ -439,6 +439,26 @@ const DRILLS = [
     replace: '      {false ? null : (\n        <Suspense fallback={null}>',
     expect: 'shows its date chips over an empty page',
   },
+  /*
+   * growth-plan-is-versioned (1 November 2026, Law 8): a version kept in the ledger is changed after it was kept, and
+   * the plan is edited in place without a new dated version.
+   */
+  {
+    name: 'a kept growth plan version is changed',
+    guard: `${GUARDS}/growth-plan-is-versioned.mjs`,
+    file: 'growth/versions/2026-11-01.json',
+    find: '"outreach_messages": 20,',
+    replace: '"outreach_messages": 21,',
+    expect: 'was changed after it was kept',
+  },
+  {
+    name: 'the growth plan is edited in place',
+    guard: `${GUARDS}/growth-plan-is-versioned.mjs`,
+    file: 'growth/plan.json',
+    find: '"outreach_messages": 20,',
+    replace: '"outreach_messages": 25,',
+    expect: 'differs from its newest version',
+  },
   {
     name: 'the Communities doorway tile loses its photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
