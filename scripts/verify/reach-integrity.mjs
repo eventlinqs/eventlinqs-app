@@ -415,13 +415,17 @@ const CHECKS = [
       // went green while the defect was untouched: a false clean bill of health
       // produced by a change that had nothing to do with search. So the check
       // now locates the ONE function that builds the predicate and reads it.
-      const fn = fetchers.match(/function buildSearchOp[\s\S]*?\n}/)
-      if (!fn) {
+      // Since 1 November 2026 the one function is searchOrGroups, which hands every word to buildSearchOrGroups in
+      // src/lib/events/search-query.ts; the columns a word may match are read there.
+      const fn = fetchers.match(/function searchOrGroups[\s\S]*?\n}/)
+      if (!fn || !/buildSearchOrGroups\(/.test(fn[0])) {
         return FAIL(
-          'cannot locate buildSearchOp, the single source of the search predicate. Either it was renamed (update this check with it) or search has been scattered across call sites again',
+          'cannot locate searchOrGroups handing the words to buildSearchOrGroups, the single source of the search predicate. Either it was renamed (update this check with it) or search has been scattered across call sites again',
         )
       }
-      const wider = /(summary|description|venue_name|venue_city|tags)/.test(fn[0])
+      const module = code('src/lib/events/search-query.ts') ?? ''
+      const columns = module.match(/const TEXT_COLUMNS = \[[^\]]*\]/)?.[0] ?? ''
+      const wider = /(summary|description|venue_name|venue_city)/.test(columns) && /tags\.cs\./.test(module)
       if (!wider) {
         return FAIL(
           'search is a substring match on the event title and nothing else, so a multi-word Sounds tile such as "afrobeats amapiano" matches only a title containing that literal string. Nine of twelve tiles and three of four search tabs are dead ends',

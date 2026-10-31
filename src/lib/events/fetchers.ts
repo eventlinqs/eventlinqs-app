@@ -7,7 +7,7 @@ import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import { escapeOrValue } from '@/lib/supabase/or-filter'
 import type { CommunitySlug } from '@/lib/communities/data'
-import { tokenise, sanitiseToken } from './search-query'
+import { tokenise, sanitiseToken, buildSearchOrGroups } from './search-query'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
@@ -73,53 +73,21 @@ const NO_MATCH = '00000000-0000-0000-0000-000000000000'
  * with it.
  */
 
-/** Free-text columns a search reads. Ordered most to least specific. */
-const SEARCH_TEXT_COLUMNS = ['title', 'summary', 'description', 'venue_name', 'venue_city'] as const
-
 /**
- * The free-text search predicate. ONE source for both fetch paths.
+ * THE FREE-TEXT SEARCH, ONE SOURCE FOR BOTH FETCH PATHS: every word must match somewhere (title, summary,
+ * description, venue name or city, an organiser's name, or a tag), each word in its own `.or()` group, the groups
+ * AND-ed; the rule and its reasons are in src/lib/events/search-query.ts (buildSearchOrGroups).
  *
- * WHAT WAS BROKEN. Search was `ilike('title', '%q%')` and nothing else, so it
- * matched a substring of the event title and only that. Two consequences, both
- * of which look like an empty catalogue rather than a broken search:
- *
- *   - the twelve homepage Sounds tiles link to `/events?q=`, and NINE of them
- *     send a multi-word query ("afrobeats amapiano", "hip hop rnb", "folk
- *     acoustic"). No event title contains those literal strings. The events
- *     exist and are tagged `afrobeats-amapiano`, `hip-hop-rnb`, `folk-acoustic`;
- *     the tiles simply could not reach them;
- *   - an organiser who wrote the genre in the description, or a buyer searching
- *     a venue or a suburb name, matched nothing.
- *
- * THE SHAPE OF THE FIX, and why it is not "match any token everywhere". Free
- * text is matched on the WHOLE phrase across the five text columns. Individual
- * tokens are matched ONLY against `tags`, which is a controlled vocabulary, so
- * "hip hop rnb" reaches the `rnb` tag without "hop" also dragging in every
- * event with "Hopscotch" in its title. Matching loose tokens against free text
- * would trade one broken search for a noisy one.
- *
- * The hyphenated form of the phrase is matched against tags too, because that
- * is exactly how the scene taxonomy is stored: the tile says "afrobeats
- * amapiano" and the tag is `afrobeats-amapiano`.
+ * WHAT WAS BROKEN (measured on live, 1 November 2026, C:\dev\EVIDENCE\JOURNEYS-1NOV\run-03h29\VERDICTS.txt). From
+ * 16 August this matched the whole typed phrase as ONE substring of each text column, so 'Guy Sebastian 100' missed
+ * 'Guy Sebastian: 100 X ...' over its colon, and every word-plus-place search ('live music melbourne', 'comedy
+ * geelong', 'trivia ballarat', 'library bendigo') returned no event, while search-query.ts, tested, went unused.
  */
-function buildSearchOp(q: string | undefined): QueryOp | null {
+async function searchOrGroups(supabase: LookupClient, q: string | undefined): Promise<string[]> {
   const phrase = q?.trim()
-  if (!phrase) return null
-
-  const clauses = SEARCH_TEXT_COLUMNS.map(
-    (column) => `${column}.ilike.${escapeOrValue(`%${phrase}%`)}`,
-  )
-
-  const tokens = phrase.toLowerCase().split(/\s+/).filter(Boolean)
-  // The scene taxonomy stores multi-word genres hyphenated.
-  const hyphenated = tokens.join('-')
-  const tagTokens = new Set(tokens.length > 1 ? [hyphenated, ...tokens] : tokens)
-  for (const token of tagTokens) {
-    // Tag containment is exact, so a token can only match a real tag.
-    clauses.push(`tags.cs.${escapeOrValue(`["${token}"]`)}`)
-  }
-
-  return { kind: 'or', filter: clauses.join(',') }
+  if (!phrase) return []
+  const organisationIds = await resolveOrganisationIdsByToken(supabase as unknown as EventsQueryClient, phrase)
+  return buildSearchOrGroups(phrase, organisationIds)
 }
 
 /**
@@ -265,8 +233,7 @@ async function resolveEventFilterOps(
 ): Promise<QueryOp[]> {
   const ops: QueryOp[] = []
 
-  const searchOp = buildSearchOp(filters.q)
-  if (searchOp) ops.push(searchOp)
+  for (const filter of await searchOrGroups(supabase, filters.q)) ops.push({ kind: 'or', filter })
 
   if (filters.category) {
     const id = await lookupId(supabase, 'event_categories', filters.category)
