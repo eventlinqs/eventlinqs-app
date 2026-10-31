@@ -26,6 +26,8 @@
  *      in public/images/library), and every kept city has its tile and its hero with a photographer on record.
  *   8  suburb-photo.ts makes no request-time call, every suburb in src/lib/cities is kept, and every kept suburb's
  *      photograph exists with its photographer on record.
+ *   9  The home page's Communities doorway tile has its own photograph, which exists and is not in the home hero's
+ *      raster pool (Lawal, 31 October 2026: the tile drew the placeholder on live; 'lock that in').
  *
  * Registered in run-guards.mjs; drilled in scripts/verify/guard-failure-drills.mjs.
  */
@@ -148,6 +150,22 @@ for (const slug of keptSuburbs) {
   const name = `suburb-${slug}`
   if (!existsSync(join('public/images/library', `${name}.jpg`))) fail('8', `public/images/library/${name}.jpg is kept by suburb-photo.ts and does not exist`)
   else if (!attribution[name]?.photographer) fail('8', `public/images/library/${name}.jpg has no photographer on record in attribution.json`)
+}
+
+// 9  The home page's Communities doorway tile has its own photograph (Lawal on live, 31 October 2026, through the
+//    controller's 11:15: 'lock that in'; it drew the EventLinqs placeholder after car 18 took its borrowed photo away):
+//    category-nav-rail.tsx COMMUNITY_DOOR_TILE names a stored file that exists, and that file is not in the home hero's
+//    raster pool (src/lib/images/event-media.ts HOMEPAGE_HERO_RASTERS), so it never shows twice on one page.
+const navRail = read('src/components/features/home/category-nav-rail.tsx')
+const door = /export const COMMUNITY_DOOR_TILE\s*=\s*\{([\s\S]*?)\n\}/.exec(navRail)
+const doorSrc = door && /imageSrc:\s*'([^']*)'/.exec(door[1])
+if (!door) fail('9', 'COMMUNITY_DOOR_TILE is not found in src/components/features/home/category-nav-rail.tsx; the scan cannot be trusted')
+else if (!doorSrc || !doorSrc[1]) fail('9', 'the Communities doorway tile names no photograph (COMMUNITY_DOOR_TILE.imageSrc is empty), so it draws the placeholder')
+else if (doorSrc[1].startsWith('/') && !existsSync(join('public', doorSrc[1]))) fail('9', `the Communities doorway photograph public${doorSrc[1]} does not exist`)
+else {
+  const pool = /HOMEPAGE_HERO_RASTERS\s*=\s*\[([^\]]*)\]/.exec(read('src/lib/images/event-media.ts'))
+  const base = doorSrc[1].replace(/^.*\//, '').replace(/\.[a-z]+$/, '')
+  if (pool && pool[1].includes(`'${base}'`)) fail('9', `the Communities doorway photograph '${base}' is also in the home hero raster pool, so one page could show it twice`)
 }
 
 console.log(`${TAG} checked ${communitiesChecked} community route(s), ${categoriesChecked} category slugs (${eventTypes.length} city event types, ${strip.length} organiser strip tiles), ${filesChecked} stored file(s), ${subFilesChecked} sub-community file(s), ${cityFilesChecked} city file(s), ${suburbFilesChecked} suburb file(s) (${suburbSlugs.size} in the city data), and the five photo resolvers`)
