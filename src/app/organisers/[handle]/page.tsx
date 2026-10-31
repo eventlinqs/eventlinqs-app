@@ -26,6 +26,7 @@ import { OrganiserEventTypesBreakdown } from '@/components/features/organisers/o
 import { OrganiserContactPanel } from '@/components/features/organisers/organiser-contact-panel'
 import { OrganiserMobileStickyBar } from '@/components/features/organisers/organiser-mobile-sticky-bar'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { ORGANISER_HERO_PHOTOS } from '@/lib/images/organiser-hero-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
@@ -364,6 +365,10 @@ export default async function OrganiserProfilePage({ params }: Props) {
     ? `Throwing ${primaryCommunity.toLowerCase()} events in ${primaryCity}.`
     : `${organisation.name} on EventLinqs.`
 
+  // The organiser's own photo, chosen by eye from its own events (the controller's 31 October ruling; A1). An
+  // organiser with none keeps its initials on navy.
+  const heroPhoto = ORGANISER_HERO_PHOTOS[organisation.slug] ?? null
+
   // Cities they organise in - photographic tiles (Pexels-backed).
   // Close-out FO1: one of the first fifty, read on the server with the service
   // role so no column is granted to anon. The two reads are independent, so
@@ -435,7 +440,8 @@ export default async function OrganiserProfilePage({ params }: Props) {
         {/* OP1 Hero */}
         <OrganiserProfileHero
           name={organisation.name}
-          coverImage={null}
+          coverImage={heroPhoto?.src ?? null}
+          coverPosition={heroPhoto?.position}
           logoUrl={organisation.logo_url}
           subtitle={subtitle}
           founding={foundingBadge.isFounding}
@@ -451,6 +457,10 @@ export default async function OrganiserProfilePage({ params }: Props) {
             />
           }
         />
+
+        {heroPhoto && (
+          <p className="mx-auto mt-2 max-w-7xl px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{heroPhoto.credit}</p>
+        )}
 
         {/* OP2 Bio */}
         <OrganiserBioSection
