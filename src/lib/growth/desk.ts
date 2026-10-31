@@ -54,7 +54,7 @@ export async function readGrowthDesk(now: Date = new Date()): Promise<GrowthDesk
     card,
     today,
     progress: planAgainstActual(plan, card, today),
-    tasks: todaysTasks(plan, card),
+    tasks: todaysTasks(plan, card, today),
     trend: ((rows ?? []) as unknown as TrendRow[]),
   }
 }

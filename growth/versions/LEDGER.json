@@ -1,6 +1,7 @@
 {
   "note": "Every dated version of growth/plan.json, kept whole (Law 8, Lawal 1 November 2026 03:27: it changes only by a new dated version, never by overwriting history). Append only; sha256_lf is taken over the file with CRLF read as LF, so a checkout on either ending matches; scripts/guards/growth-plan-is-versioned.mjs checks every entry.",
   "versions": [
-    { "file": "growth/versions/2026-11-01.json", "version": 1, "set_on": "2026-11-01", "sha256_lf": "2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3" }
+    { "file": "growth/versions/2026-11-01.json", "version": 1, "set_on": "2026-11-01", "sha256_lf": "2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3" },
+    { "file": "growth/versions/2026-11-01-v2.json", "version": 2, "set_on": "2026-11-01", "sha256_lf": "0373a1ed30bfa710ad85f7d1594fc0b1a6a725f9ed3b80c5bf318c0cf8e3c30e" }
   ]
 }

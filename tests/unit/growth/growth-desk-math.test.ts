@@ -62,8 +62,9 @@ describe('closing the ticketing gap (plan version 2)', () => {
   })
 
   test('before the scorecard counts it, the line is left out rather than drawn as a zero', () => {
-    const { selling_through_eventlinqs: _, ...older } = card
-    expect(line('2026-11-01', older as Scorecard)).toBeUndefined()
+    const older: Scorecard = { ...card }
+    delete older.selling_through_eventlinqs
+    expect(line('2026-11-01', older)).toBeUndefined()
   })
 
   test("today's conversion asks come first, counted from the plan and naming who first", () => {

@@ -18,6 +18,13 @@ export interface GrowthPlan {
   }
   daily_quotas: { outreach_messages: number; social_posts_per_open_city?: number }
   cities: { open: string[]; pilot_benchmark_checked_events_14_days: Record<string, number> }
+  /** From plan version 2 (the CONTROLLER's 1 November 2026 04:35): revenue starts only when events sell through us. */
+  close_the_ticketing_gap?: {
+    targets: { by: string; events: number }[]
+    who_first: string[]
+    /** '5 of the 20 daily outreach messages are conversion asks ...'; the plan guard refuses any other wording. */
+    daily: string
+  }
 }
 
 /** The numbers growth_scorecard_read() returns (the ones the desk reads). */
@@ -35,6 +42,8 @@ export interface Scorecard {
   subscribers_confirmed: number
   outreach_sent_yesterday: number
   outreach_replies_yesterday: number
+  /** Published upcoming events with a paid EventLinqs ticket tier (migration 20261101044501); absent on older reads. */
+  selling_through_eventlinqs?: number
 }
 
 export interface TargetLine {
@@ -81,6 +90,12 @@ export function planAgainstActual(plan: GrowthPlan, card: Scorecard, today: stri
     { label: 'Revenue a year (A$)', actual: revenueYearRate, target: year.revenue_aud, percent: pct(revenueYearRate, year.revenue_aud),
       basis: `run rate: paid tickets a year x A$${plan.model.N_aud_estimate} (the plan's estimate per ticket)` },
   ]
+  const gapTarget = ticketingTarget(plan, today)
+  if (gapTarget && typeof card.selling_through_eventlinqs === 'number') {
+    const selling = card.selling_through_eventlinqs
+    lines.push({ label: 'Upcoming events selling through EventLinqs', actual: selling, target: gapTarget.events, percent: pct(selling, gapTarget.events),
+      basis: `by ${dayWords(gapTarget.by)}, counted daily: published upcoming events with a paid EventLinqs ticket tier` })
+  }
   const stretchTarget = plan.targets.founder_stretch.revenue_aud_2029_10
   const stretch: TargetLine = {
     label: '10x stretch, revenue a year by October 2029 (A$)', actual: revenueYearRate, target: stretchTarget,
@@ -89,13 +104,26 @@ export function planAgainstActual(plan: GrowthPlan, card: Scorecard, today: stri
   return { yearTo: year.year_to, lines, stretch, stretchGap: Math.max(0, stretchTarget - revenueYearRate) }
 }
 
+/** The ticketing gap's target in force today: the first whose date has not passed, the last once all have. */
+export function ticketingTarget(plan: GrowthPlan, today: string) {
+  const targets = plan.close_the_ticketing_gap?.targets ?? []
+  return targets.find((t) => today <= t.by) ?? targets[targets.length - 1]
+}
+
+/** How many of the day's outreach messages are conversion asks, read from the plan's own sentence; the pattern is
+ *  scripts/lib/growth-plan.mjs CONVERSION_ASKS, and the plan guard refuses a plan whose sentence it cannot read. */
+export function conversionAsksADay(plan: GrowthPlan): number | null {
+  const m = /^(\d+) of the (\d+) daily outreach messages are conversion asks\b/.exec(plan.close_the_ticketing_gap?.daily ?? '')
+  return m ? Number(m[1]) : null
+}
+
 export interface Task {
-  kind: 'listings' | 'outreach' | 'replies' | 'claims'
+  kind: 'listings' | 'conversion' | 'outreach' | 'replies' | 'claims'
   text: string
 }
 
 /** TODAY's tasks, by rule, from the plan and the scorecard. Each says what to do and how much. */
-export function todaysTasks(plan: GrowthPlan, card: Scorecard): Task[] {
+export function todaysTasks(plan: GrowthPlan, card: Scorecard, today: string): Task[] {
   const tasks: Task[] = []
   for (const city of plan.cities.open) {
     const benchmark = plan.cities.pilot_benchmark_checked_events_14_days[city]
@@ -103,6 +131,14 @@ export function todaysTasks(plan: GrowthPlan, card: Scorecard): Task[] {
     if (checked < benchmark) {
       tasks.push({ kind: 'listings', text: `Add listings in ${city}: ${checked} of ${benchmark} checked events in the next 14 days, ${benchmark - checked} short.` })
     }
+  }
+  const asks = conversionAsksADay(plan)
+  const gapTarget = ticketingTarget(plan, today)
+  if (asks && gapTarget && plan.close_the_ticketing_gap) {
+    const selling = typeof card.selling_through_eventlinqs === 'number'
+      ? ` Selling through EventLinqs now: ${card.selling_through_eventlinqs} of ${gapTarget.events} by ${dayWords(gapTarget.by)}.` : ''
+    tasks.push({ kind: 'conversion', text:
+      `Send ${asks} conversion asks today, within the ${plan.daily_quotas.outreach_messages} outreach messages, to: ${plan.close_the_ticketing_gap.who_first.join('; ')}.${selling}` })
   }
   const quota = plan.daily_quotas.outreach_messages
   tasks.push({ kind: 'outreach', text: `Send ${quota} outreach messages today (yesterday: ${card.outreach_sent_yesterday} sent).` })
