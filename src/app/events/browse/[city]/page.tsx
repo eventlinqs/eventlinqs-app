@@ -140,6 +140,11 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   const effectiveFilters = { ...filters, city: city.city, country: undefined }
   const filterActive = hasActiveFilters(filters)
+  // The infinite scroll asks loadMoreEventCards for the next pages from these params alone, and the city lives in the
+  // ROUTE, not the query: handed `raw`, Bendigo's scroll loaded every city's nights (live, 1 November 2026: 26 grew to
+  // 323, layout shift 0.20; tests/unit/events/browse-city-scroll-stays-in-city.test.ts). The country goes too, because
+  // the action otherwise defaults it to the visitor's own.
+  const scrollParams = { ...raw, city: city.city, country: city.country }
 
   // Main catalogue fetch stays inline so mobile browsers can start
   // preloading card imagery as soon as the HTML is parsed. Suspense on
@@ -268,7 +273,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
                 <h2 className="sr-only">Events in {city.city}</h2>
                 <EventsGrid
                   events={result.events}
-                  params={raw}
+                  params={scrollParams}
                   page={result.page}
                   totalPages={result.totalPages}
                   /*
