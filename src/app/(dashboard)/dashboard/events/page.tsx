@@ -91,7 +91,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
     let query = supabase
       .from('events')
       .select(
-        'id, slug, title, status, archived_from_status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
+        'id, slug, title, status, archived_from_status, start_date, venue_city, has_reserved_seating, listing_series_id, ticket_tiers(sold_count, total_capacity)',
       )
       .eq('organisation_id', org.id)
       /*

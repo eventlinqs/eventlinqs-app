@@ -42,6 +42,7 @@ import { afterResponse } from '@/lib/after-response'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
 import { normaliseTags } from '@/lib/events/normalise-tags'
 import { readEventTicketTiers } from '@/lib/organisers/event-tier-config'
+import { planSeriesTickets, seriesTierInputs, type SkipReason, type TemplateTier } from '@/lib/events/series-tickets'
 
 /** What the publish gate judges a ticket type on. */
 type SellableTierRow = { price: number; name: string; total_capacity: number; is_active: boolean }
@@ -1357,6 +1358,94 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
   // organiser's own lists must show it at once.
   await revalidateEventSurfacesById(supabase, newEvent.id)
   return { newEventId: newEvent.id }
+}
+
+/**
+ * EVERY NIGHT OF A SERIES TICKETED IN ONE STEP (V3 item 6). The organiser sets the tickets on one night of a weekly
+ * series and puts the same ticket types on every other upcoming night of it, in one press rather than one form per
+ * week. planSeriesTickets (src/lib/events/series-tickets.ts) decides which nights take them; each write goes through
+ * save_event_ticket_tiers, the database function the organiser's own Save uses, and into the same ledger rows.
+ *
+ * That function RECONCILES a night to the list it is given, so it is only ever handed a night with no ticket types at
+ * all, checked again just before the write: a night that gained its own types in the meantime keeps them.
+ */
+export async function ticketEverySeriesNight(
+  eventId: string,
+): Promise<{ error?: string; ticketed?: number; skipped?: { id: string; reason: SkipReason }[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: template } = await supabase
+    .from('events')
+    .select('id, organisation_id, listing_series_id, start_date')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (!template) return { error: 'Event not found' }
+
+  const authority = await assertCallerMayActForOrganisation(user.id, template.organisation_id, 'owner_or_manager')
+  if (!authority.ok) return { error: 'Event not found' }
+  if (!template.listing_series_id) return { error: 'This night is not part of a weekly series.' }
+
+  const admin = createAdminClient()
+  const tiers = await readEventTicketTiers<TemplateTier>(
+    admin,
+    eventId,
+    'name, description, tier_type, access_mode, price, currency, total_capacity, sale_start, sale_end, min_per_order, max_per_order, sort_order, is_active',
+    { activeOnly: true },
+  )
+  if (tiers.length === 0) return { error: 'Add tickets to this night first, then copy them to the rest of the series.' }
+
+  const { data: nights, error: nightsError } = await admin
+    .from('events')
+    .select('id, start_date, end_date, entry_mode, external_ticket_url, ticket_tiers(id)')
+    .eq('listing_series_id', template.listing_series_id)
+    .eq('organisation_id', template.organisation_id)
+    .in('status', ['draft', 'scheduled', 'published', 'paused', 'postponed'])
+    .order('start_date', { ascending: true })
+    .limit(200)
+  if (nightsError || !nights) return { error: 'The nights of this series could not be read. Nothing was changed.' }
+
+  const plan = planSeriesTickets({
+    templateId: eventId,
+    now: new Date(),
+    nights: nights.map((n) => ({ ...n, tierCount: (n.ticket_tiers ?? []).length })),
+  })
+
+  const skipped = [...plan.skipped]
+  let ticketed = 0
+  for (const id of plan.ticket) {
+    const night = nights.find((n) => n.id === id)!
+    const before = await tiersForLedger(admin, id, 'the inventory before a series copy')
+    if (!before || before.length > 0) {
+      skipped.push({ id, reason: 'already has tickets' })
+      continue
+    }
+    const { data: verdictRaw, error: rpcError } = await admin.rpc('save_event_ticket_tiers', {
+      p_event_id: id,
+      p_tiers: tierSavePayload(seriesTierInputs(tiers, template.start_date, night.start_date)),
+    })
+    const verdict = rpcError ? null : readTierSaveVerdict(verdictRaw)
+    if (!verdict || !verdict.ok) {
+      return {
+        error: `${ticketed} of ${plan.ticket.length} nights took the tickets before one could not be saved. Nothing else was changed.`,
+        ticketed,
+        skipped,
+      }
+    }
+    ticketed++
+
+    const after = await tiersForLedger(admin, id, 'the inventory after a series copy')
+    const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', id).maybeSingle()
+    if (slotEvent && after) {
+      afterResponse('the inventory rows for a series copy', () =>
+        recordTierChanges({ event: slotEvent as unknown as EventForLedger, before, after }),
+      )
+    }
+    await revalidateEventSurfacesById(admin, id)
+  }
+
+  return { ticketed, skipped }
 }
 
 /**
