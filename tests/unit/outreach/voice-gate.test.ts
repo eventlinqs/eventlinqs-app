@@ -128,3 +128,13 @@ describe("the gateway's rules of 31 October noon (compounds, the sending mailbox
     expect(() => readVoicePolicy({ ...POLICY, compounds: undefined })).toThrow(/POLICY_UNAVAILABLE/)
   })
 })
+
+describe('the mailbox Lawal sends from is data, never a literal in the code (one-contact-domain)', () => {
+  it('the policy carries the mailbox the voice file was read from, and touch-voice reads it from there', async () => {
+    expect(POLICY.founderMailbox).toMatch(/^lawal@[a-z0-9.-]+\.[a-z]{2,}$/)
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/lib/outreach/touch-voice.ts', 'utf8')
+    expect(src).not.toMatch(/[a-z]+@eventlinqs\.com/)
+    expect(src).toMatch(/founderMailbox/)
+  })
+})

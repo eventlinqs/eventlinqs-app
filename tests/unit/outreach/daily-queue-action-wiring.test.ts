@@ -80,3 +80,9 @@ describe("the communication gateway in the send path (the CONTROLLER's 08:40)", 
     expect(src).toMatch(/metadata:\s*\{[^}]*contentHash/)
   })
 })
+
+describe('the queue at 390 (looked at on the TEST drive, 31 October 17:30)', () => {
+  test("a message's long link wraps inside its card instead of running off it", () => {
+    expect(read(PAGE)).toMatch(/whitespace-pre-wrap[^"]*\[overflow-wrap:anywhere\][^"]*">\{t\.body\}/)
+  })
+})
