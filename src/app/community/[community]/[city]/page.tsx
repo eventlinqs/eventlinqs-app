@@ -12,6 +12,8 @@ import {
 import { getCommunityRedirect } from '@/lib/communities/redirects'
 import { getCity, isCitySlug } from '@/lib/cities/data'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
+import { getSubCommunityPhoto } from '@/lib/images/sub-community-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import {
   getIntersectionEditorial,
@@ -235,9 +237,17 @@ export default async function CommunityByCityPage({ params }: Props) {
     .filter((x): x is NonNullable<typeof x> => x !== null)
     .slice(0, 6)
 
-  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): a city's photo belongs to
-  // the city's tile and page, a community's to the community's, so this page borrows neither. Its hero draws CityHero's
-  // own navy band and its sub-community tiles their navy gradient; the headline is the hero's largest paint.
+  // ONE PHOTO, ONE SUBJECT (Lawal's standing directive of 31 October 2026; the photo system's A1): this page's subject
+  // is the community, so its hero is the community's own photo and each sub-community tile its own; the city's photo
+  // shows a different subject and is never used here. allowBundledFallback keeps a measurable LCP element when the
+  // community has no stored hero (same rationale as src/app/community/[community]/page.tsx).
+  const subCommunitySlugs = community.subCommunities.map(s => s.slug)
+  const [heroImage, subCommunityPhotos] = await Promise.all([
+    getCommunityHeroPhoto(community.slug, { allowBundledFallback: true }),
+    Promise.all(subCommunitySlugs.map(s => getSubCommunityPhoto(community.slug, s))),
+  ])
+  const subCommunityImages: Record<string, string | null> = {}
+  subCommunitySlugs.forEach((s, i) => { subCommunityImages[s] = subCommunityPhotos[i] ?? null })
 
   // The related tiles open other community-in-city pages and take no photo: a city's or a community's photo belongs
   // to its own tile only (NO PHOTO IS EVER REUSED, the photo system's P6).
@@ -298,7 +308,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         cityName={cityName}
         citySlug={cityParam}
         cityRecord={cityRecord}
-        heroImage={null}
+        heroImage={heroImage}
         editorial={editorial}
         heroSubtitle={heroSubtitle}
         caption={caption}
@@ -306,7 +316,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         thisWeekendEvents={thisWeekendEvents}
         popularEvents={popularEvents}
         allEvents={allEvents}
-        subCommunityImages={{}}
+        subCommunityImages={subCommunityImages}
         relatedCities={relatedCities}
         relatedCommunities={relatedCommunities}
         mapPins={mapPins}

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getCity } from '@/lib/cities/data'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import Link from 'next/link'
@@ -155,10 +156,9 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const heroImage = null
-  // NO PHOTO IS EVER REUSED (the project manager's ruling of 31 October 2026, 05:05 (3)): the city's photo belongs to
-  // the city's own tile and page, so this page borrows none and its hero draws its own navy band.
-  const [categories, result, popularEvents] = await Promise.all([
+  // ONE PHOTO, ONE SUBJECT (Lawal's standing directive of 31 October 2026; the photo system's A1): this page is the
+  // city's own events, so its hero is the city's own photo.
+  const [categories, result, popularEvents, heroImage] = await Promise.all([
     fetchActiveCategoriesCached(),
     canUseCached
       ? fetchPublicEventsCached({
@@ -173,6 +173,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           origin,
         }),
     !filterActive ? fetchPopularThisWeekPublic(12, city.city) : Promise.resolve([]),
+    getCityHeroPhoto(city.slug),
   ])
 
   const basePath = `/events/browse/${city.slug}`
