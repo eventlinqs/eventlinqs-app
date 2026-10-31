@@ -43,12 +43,29 @@ export function planProblems(p) {
   if (!Array.isArray(open) || open.length === 0) out.push('cities.open is missing')
   else for (const c of open) if (!isNum(bench[c])) out.push(`no 14-day benchmark for the open city ${c}`)
   if (Number.isInteger(p.version) && p.version >= 2) out.push(...ticketingGapProblems(p.close_the_ticketing_gap))
+  if (Number.isInteger(p.version) && p.version >= 3) out.push(...globalProblems(p))
   return out
 }
 
 /** The daily conversion asks as the plan states them, '5 of the 20 daily outreach messages are conversion asks ...';
  *  src/lib/growth/desk-math.ts reads the count with the same pattern, so the guard refuses any other wording. */
 export const CONVERSION_ASKS = /^(\d+) of the (\d+) daily outreach messages are conversion asks\b/
+
+/** Plan version 3 (Lawal 1 November 2026 05:33, 'hardwired into the system'): the end goal, the global stages the
+ *  founder email reads its current stage and next gate from, and the never list. */
+function globalProblems(p) {
+  const out = []
+  if (typeof p.end_goal !== 'string' || !p.end_goal.trim()) out.push('end_goal is missing')
+  if (!Array.isArray(p.global_stages) || p.global_stages.length === 0) out.push('global_stages is missing')
+  else p.global_stages.forEach((s, i) => {
+    if (!Number.isInteger(s?.stage)) out.push(`global_stages[${i}].stage is not a whole number`)
+    // Every stage but the last opens on a gate; the last stage has none to pass.
+    const needs = i < p.global_stages.length - 1 ? ['name', 'when', 'gate'] : ['name', 'when']
+    for (const k of needs) if (typeof s?.[k] !== 'string' || !s[k].trim()) out.push(`global_stages[${i}].${k} is missing`)
+  })
+  if (!Array.isArray(p.never) || p.never.length === 0) out.push('never is missing')
+  return out
+}
 
 /** Plan version 2 (the CONTROLLER's 1 November 2026 04:35): the gap the desk counts and the asks it sets each day. */
 function ticketingGapProblems(g) {
