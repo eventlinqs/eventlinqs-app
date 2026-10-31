@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 import { describe, expect, test } from 'vitest'
 import { collapseListings } from '@/lib/events/one-card-per-event'
 
@@ -18,7 +19,7 @@ const ONE_CARD_ONLY: Record<string, string> = {
 }
 
 function filesDrawingCards(): string[] {
-  const out = execFileSync('git', ['grep', '-l', '<EventCard\\b', '--', 'src'], { cwd: root, encoding: 'utf8' })
+  const out = execFileSync('git', ['grep', '-l', '<EventCard\\b', '--', 'src'], { cwd: root, encoding: 'utf8', env: gitEnv() })
   return out.split(/\r?\n/).filter(Boolean).filter((f) => !(f in ONE_CARD_ONLY))
 }
 
