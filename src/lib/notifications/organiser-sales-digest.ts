@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
 import { escapeHtml } from '@/lib/email/escape'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { captureException } from '@/lib/observability/sentry'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
@@ -236,7 +237,7 @@ export async function runOrganiserSalesDigest(
         currency: (o.currency as string) ?? 'AUD',
       }))
 
-      const { subject, html, text } = buildDigestEmail({ day, rows, grossCents: gross, currency })
+      const { subject, html, text } = buildDigestEmail({ day, rows, grossCents: gross, currency, firstName: recipient.firstName })
       await sendEmail({
         to: recipient.email,
         subject,
@@ -284,6 +285,8 @@ export function buildDigestEmail(input: {
   rows: DigestSaleRow[]
   grossCents: number
   currency: string
+  /** The owner's first name for the greeting; null gives 'Hi there,'. */
+  firstName?: string | null
 }): { subject: string; html: string; text: string } {
   const total = formatMoneyDisplay(input.grossCents, input.currency)
   const count = input.rows.length
@@ -304,7 +307,10 @@ export function buildDigestEmail(input: {
   const origin = getSiteUrl().replace(/\/$/, '')
   const cta = { label: 'Open your dashboard', url: `${origin}/dashboard/events` }
 
+  const name = input.firstName ?? null
   const text = [
+    greetingLine(name),
+    '',
     title,
     '',
     ...lines,
@@ -313,11 +319,15 @@ export function buildDigestEmail(input: {
     '',
     `${cta.label}: ${cta.url}`,
     '',
+    SIGN_OFF,
+    SIGNATURE,
+    '',
     'Change how often you hear about sales in your organiser settings.',
   ].join('\n')
 
   const html = [
     `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A1628">`,
+    greetingHtml(name),
     `<h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(title)}</h1>`,
     ...lines.map(
       (l) => `<p style="font-size:15px;line-height:1.55;margin:0 0 12px">${escapeHtml(l)}</p>`,
@@ -330,7 +340,8 @@ export function buildDigestEmail(input: {
     ),
     `</table>`,
     `<p style="margin:24px 0"><a href="${cta.url}" style="background:#0A1628;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">${escapeHtml(cta.label)}</a></p>`,
-    `<p style="font-size:13px;line-height:1.5;margin:0;color:#4a5568">Change how often you hear about sales in your organiser settings.</p>`,
+    signOffHtml(),
+    `<p style="font-size:13px;line-height:1.5;margin:24px 0 0;color:#4a5568">Change how often you hear about sales in your organiser settings.</p>`,
     `</div>`,
   ].join('')
 

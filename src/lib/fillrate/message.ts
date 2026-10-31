@@ -23,6 +23,7 @@
  * pay them to come back.
  */
 import { escapeHtml } from '@/lib/email/escape'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import { unitWord, unitWordPlural, money as formatMoney, type UnitWord } from './words'
 
 /** One newline, named once, so every body below composes the same way. */
@@ -119,12 +120,18 @@ export function compose(facts: MessageFacts): ComposedMessage {
     ? `You started this booking with ${facts.organiserName.trim()} on EventLinqs.`
     : `You started this booking on EventLinqs.`
 
+  // A checkout or a waiting list holds an address, not a name, so the letter says 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     lead,
     '',
     ...lines,
     '',
     `Finish here: ${facts.resumeUrl}`,
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     from,
     facts.signature,
@@ -135,6 +142,7 @@ export function compose(facts: MessageFacts): ComposedMessage {
 <html lang="en-AU"><body style="margin:0;background:#F7F8FA;">
   <div style="font-family:'Hanken Grotesk',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8A6A12;font-weight:700;">EventLinqs</p>
+    ${greetingHtml(null, 'margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;')}
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(lead)}</p>
 
@@ -153,6 +161,7 @@ export function compose(facts: MessageFacts): ComposedMessage {
     <p style="margin:0 0 28px;">
       <a href="${escapeHtml(facts.resumeUrl)}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Finish booking</a>
     </p>
+    ${signOffHtml('margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;')}
 
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(from)}</p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(facts.signature)}</p>
@@ -211,12 +220,18 @@ export function composeOffer(facts: {
   if (when) lines.push(when)
   if (className) lines.push(className)
 
+  // A checkout or a waiting list holds an address, not a name, so the letter says 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     lead,
     '',
     ...lines,
     '',
     `Claim it here: ${facts.claimUrl}`,
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     from,
     facts.signature,
@@ -227,6 +242,7 @@ export function composeOffer(facts: {
 <html lang="en-AU"><body style="margin:0;background:#F7F8FA;">
   <div style="font-family:'Hanken Grotesk',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8A6A12;font-weight:700;">EventLinqs</p>
+    ${greetingHtml(null, 'margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;')}
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(lead)}</p>
 
@@ -239,6 +255,7 @@ export function composeOffer(facts: {
     <p style="margin:0 0 28px;">
       <a href="${escapeHtml(facts.claimUrl)}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Claim it</a>
     </p>
+    ${signOffHtml('margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;')}
 
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(from)}</p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6B7280;">${escapeHtml(facts.signature)}</p>

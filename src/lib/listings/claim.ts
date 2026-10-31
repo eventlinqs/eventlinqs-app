@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { sendEmail } from '@/lib/email/send'
 import { escapeHtml } from '@/lib/email/escape'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import type { ClaimYes } from './claim-acceptance'
 
 /**
@@ -80,10 +81,16 @@ export function hashClaimCode(claimId: string, code: string): string {
 /** The code email: who asked, the code, and what to do if it was not them. Nothing else (Spam Act, section 3 of the plan). */
 export function claimEmail(input: { hostName: string; claimantName: string; claimantRole: string; code: string }): { subject: string; html: string; text: string } {
   const subject = `Your EventLinqs code for ${input.hostName}`
+  // The code goes to the venue's own address, whose person we do not know by name: 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     `${input.claimantName} (${input.claimantRole}) asked to manage ${input.hostName} on EventLinqs.`,
     '',
     `Their code is ${input.code}. It works for ${CODE_MINUTES} minutes.`,
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     'If this was not you, or you do not know them, ignore this email and nothing changes.',
   ].join('\n')
@@ -96,9 +103,11 @@ export function claimEmail(input: { hostName: string; claimantName: string; clai
     '<html lang="en-AU"><body style="margin:0;background:#FAFAF7;">',
     '  <div style="font-family:Manrope,Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">',
     '    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>',
+    `    ${greetingHtml(null, p)}`,
     `    <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">Your code for ${escapeHtml(input.hostName)}</h1>`,
     `    <p style="${p}">${escapeHtml(input.claimantName)} (${escapeHtml(input.claimantRole)}) asked to manage ${escapeHtml(input.hostName)} on EventLinqs.</p>`,
     `    <p style="${p}">Their code is <strong style="font-size:22px;letter-spacing:.12em;color:#0A1628;">${escapeHtml(input.code)}</strong>. It works for ${CODE_MINUTES} minutes.</p>`,
+    `    ${signOffHtml(`margin:16px 0 0;font-size:15px;line-height:1.6;color:#1A1A1A;`)}`,
     '    <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#4A4A4A;">If this was not you, or you do not know them, ignore this email and nothing changes.</p>',
     '  </div>',
     '</body></html>',

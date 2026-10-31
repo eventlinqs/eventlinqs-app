@@ -12,6 +12,7 @@ import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { admitsEntry, notValidSentence } from '@/lib/tickets/entry-state'
 import { entityFooterLine } from '@/lib/legal/platform-entity'
@@ -321,9 +322,8 @@ export function buildConfirmationEmailHtml(
   const countLabel = ticketCountLabel(tickets.length)
 
   const title = escapeHtml(event.title)
-  const greeting = firstName
-    ? `You are going to ${title}, ${escapeHtml(firstName)}.`
-    : `You are going to ${title}.`
+  // The letter opens 'Hi <first name>,' (src/lib/email/letter.ts); the heading under it says where they are going.
+  const greeting = `You are going to ${title}.`
 
   const preheader = escapeHtml(
     `Order ${order.order_number}, ${countLabel} for ${eventDateShort}`
@@ -407,6 +407,7 @@ export function buildConfirmationEmailHtml(
 
   <p style="margin:0 0 20px;font-size:18px;font-weight:800;letter-spacing:2px;color:#0A1628;">EVENTLINQS</p>
 
+  ${greetingHtml(firstName, 'margin:0 0 12px;color:#0A1628;font-size:16px;')}
   <h1 style="margin:0 0 8px;color:#0A1628;font-size:22px;">${greeting}</h1>
   <p style="margin:0;color:#374151;font-size:15px;">Your order is confirmed and your ticket is ready below. No app needed.</p>
 
@@ -432,12 +433,13 @@ export function buildConfirmationEmailHtml(
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
   <p style="margin:0;color:#6B7280;font-size:13px;">${lostThisEmailHtml(order, siteUrl, orderUrl)}</p>
+  ${signOffHtml('margin:20px 0 0;color:#0A1628;font-size:15px;')}
 
   ${hr}
 
   <p style="margin:0 0 12px;color:#6B7280;font-size:13px;">This email is your receipt.</p>
 
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. ${BRAND_STRAPLINE}</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">${BRAND_STRAPLINE}</p>
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${orderUrl}" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">${entityFooterLine()}</p>
@@ -469,12 +471,12 @@ export function buildConfirmationEmailText(
    */
   const orderUrl = orderAccessUrl(siteUrl, order.id) ?? `${siteUrl}/orders/${order.id}/confirmation`
   const rule = '='.repeat(60)
-  const greeting = firstName
-    ? `You are going to ${event.title}, ${firstName}.`
-    : `You are going to ${event.title}.`
+  const greeting = `You are going to ${event.title}.`
 
   const lines: string[] = []
   lines.push('EVENTLINQS')
+  lines.push('')
+  lines.push(greetingLine(firstName))
   lines.push('')
   lines.push(greeting)
   lines.push('Your order is confirmed and your ticket is ready below. No app needed.')
@@ -526,11 +528,14 @@ export function buildConfirmationEmailText(
   lines.push('Any questions, just reply to this email and a real person will help you.')
   lines.push(lostThisEmailText(order, siteUrl, orderUrl))
   lines.push('')
+  lines.push(SIGN_OFF)
+  lines.push(SIGNATURE)
+  lines.push('')
   lines.push(rule)
   lines.push('')
   lines.push('This email is your receipt.')
   lines.push('')
-  lines.push(`The EventLinqs team. ${BRAND_STRAPLINE}`)
+  lines.push(BRAND_STRAPLINE)
   lines.push(`Refunds: ${describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}`)
   /*
    * THE EMAIL IS NOT THE TAX INVOICE, AND IT MUST NOT PRETEND TO BE.

@@ -1,4 +1,5 @@
 import { escapeHtml } from '@/lib/email/escape'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import {
   LIST_UNSUBSCRIBE_HEADER,
   LIST_UNSUBSCRIBE_POST_HEADER,
@@ -89,7 +90,10 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
     closer: isProgram && d.closer ? `Closing the night: ${d.closer.name}` : null,
   }))
 
+  // A reminder holds the address the person gave, never a name, so the letter says 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     lead,
     '',
     ...(isCalledOff ? [] : [FREE_ENTRY_NO_TICKET_NEEDED + '.']),
@@ -97,6 +101,9 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
     '',
     `The event: ${eventUrl}`,
     ...(facts.event.directionsUrl && !isCalledOff ? [`Get directions: ${facts.event.directionsUrl}`] : []),
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     why,
     `Stop these reminders: ${stopUrl}`,
@@ -116,6 +123,7 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
 <html lang="en-AU"><body style="margin:0;background:#FAFAF7;">
   <div style="font-family:Manrope,Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#FFFFFF;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F5409;font-weight:700;">EventLinqs</p>
+    ${greetingHtml(null)}
     <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#0A1628;">${escapeHtml(subject)}</h1>
     <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#1A1A1A;">${escapeHtml(lead)}</p>
     ${isCalledOff ? '' : `<p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#6F5409;">${escapeHtml(FREE_ENTRY_NO_TICKET_NEEDED)}</p>`}
@@ -128,7 +136,8 @@ export function buildReminderEmail(facts: ReminderEmailFacts): {
         ? `<p style="margin:0 0 24px;font-size:14px;"><a href="${escapeHtml(facts.event.directionsUrl)}" style="color:#0A1628;font-weight:700;">Get directions</a></p>`
         : ''
     }
-    <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#4A4A4A;">${escapeHtml(why)}</p>
+    ${signOffHtml()}
+    <p style="margin:24px 0 8px;font-size:12px;line-height:1.6;color:#4A4A4A;">${escapeHtml(why)}</p>
     <p style="margin:0;font-size:12px;line-height:1.6;color:#4A4A4A;">
       <a href="${escapeHtml(stopUrl)}" style="color:#4A4A4A;">Stop these reminders</a>
     </p>

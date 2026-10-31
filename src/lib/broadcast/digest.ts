@@ -16,6 +16,7 @@ import {
   type WaitlistAudienceRow,
 } from './digest-audience'
 import { contactAddress } from '@/lib/email/sender'
+import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 
 /**
@@ -460,16 +461,21 @@ export function buildDigestEmailHtml(input: {
   <div style="max-width:560px;margin:0 auto;padding:32px 24px">
     <p style="margin:0 0 14px;font-size:16px;font-weight:800;letter-spacing:.02em;color:#0A1628">EVENTLINQS<span style="color:#D4A017">.</span></p>
     <div style="background:#ffffff;border:1px solid #e7e9ee;border-radius:14px;padding:28px">
+      ${greetingHtml(null)}
       <p style="margin:0 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9a7b1f;font-weight:700">Your weekly local digest</p>
       <p style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0A1628;font-weight:800">This week in ${escapeHtml(input.cityName)}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
       <a href="${escapeAttr(`${input.origin}/events`)}" style="display:inline-block;margin-top:20px;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">See everything on EventLinqs</a>
+      ${signOffHtml()}
     </div>
     <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You asked us to keep you posted on events in your area. <a href="${escapeAttr(input.unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe with one tap</a> and this stops instantly.</p>
     <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>
   </div></body></html>`
 
+  // The digest list holds addresses, never names, so the letter says 'Hi there,'.
   const text = [
+    greetingLine(null),
+    '',
     `This week in ${input.cityName}`,
     '',
     // Joined on the parts that exist. An unconditional separator printed
@@ -478,8 +484,11 @@ export function buildDigestEmailHtml(input: {
     // guarded and this one did not.
     ...input.events.map(
       (e) =>
-        `${e.dateLabel}: ${[e.title, e.venueLabel, e.priceLabel].filter(Boolean).join(' - ')}\n${e.url}`,
+        `${e.dateLabel}: ${[e.title, e.venueLabel, e.priceLabel].filter(Boolean).join(' · ')}\n${e.url}`,
     ),
+    '',
+    SIGN_OFF,
+    SIGNATURE,
     '',
     `Unsubscribe: ${input.unsubscribeUrl}`,
     `EventLinqs, ${contactAddress('hello')}`,

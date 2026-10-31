@@ -62,9 +62,10 @@ export const eventLinqsLinks: Links = {
    * THE LINE THIS PLATFORM SIGNS WITH, read from the one source that defines it.
    * It is supplied to the engine rather than imported by it, because a signature
    * is a statement about a brand and the engine has none: a gym's adapter signs
-   * with the gym's line and no message code changes.
+   * with the gym's line and no message code changes. It sits in the footer, under the letter's own 'Kind regards,'
+   * and 'The EventLinqs team' (src/lib/email/letter.ts), so it names the platform rather than signing a second time.
    */
-  signature: `The EventLinqs team. ${BRAND_STRAPLINE}`,
+  signature: `EventLinqs. ${BRAND_STRAPLINE}`,
 
   async resumeUrlFor(slot: SlotRow): Promise<string | null> {
     const admin = createAdminClient()

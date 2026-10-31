@@ -242,6 +242,8 @@ const CAP_SURFACES = [
   'src/app/join/[code]/page.tsx',
   'src/app/(dashboard)/dashboard/invites/page.tsx',
   'src/app/admin/(authed)/network/actions.ts',
+  // The invitation's words moved here from network/actions.ts on 31 October 2026 (every letter greets and signs off).
+  'src/lib/email/templates/founding-invitation.ts',
   'src/lib/forecast/present.ts',
 ]
 const CAP_WORDING = [

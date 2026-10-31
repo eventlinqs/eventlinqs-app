@@ -7,6 +7,7 @@ import { getAppUrl } from '@/lib/site-url'
 import { getNoReplyFrom } from '@/lib/email/sender'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { firstNameOf, greetingHtml, signOffHtml } from '@/lib/email/letter'
 
 /**
  * M6 Phase 4 organiser payout notifications.
@@ -73,7 +74,7 @@ export async function sendPayoutEmail(
   const recipient = await resolveOwnerEmail(adminClient, organisationId)
   if (!recipient) return
 
-  const { subject, html } = buildEmail(kind, recipient.organisationName, payload)
+  const { subject, html } = buildEmail(kind, recipient.organisationName, payload, recipient.firstName)
 
   // MONEY FIX B3, the fourth transport. The kind maps to a declared type via a
   // TOTAL record, so a fifth payout kind will not compile until somebody has
@@ -105,6 +106,7 @@ interface OwnerLookup {
   email: string
   organisationName: string
   organisationId: string
+  firstName: string | null
 }
 
 async function resolveOwnerEmail(
@@ -120,7 +122,7 @@ async function resolveOwnerEmail(
 
   const { data: profile } = await adminClient
     .from('profiles')
-    .select('email')
+    .select('email, full_name, display_name')
     .eq('id', org.owner_id as string)
     .maybeSingle()
 
@@ -129,14 +131,18 @@ async function resolveOwnerEmail(
     email: profile.email as string,
     organisationName: (org.name as string) ?? 'your organisation',
     organisationId: org.id as string,
+    firstName: firstNameOf((profile.full_name as string | null) ?? (profile.display_name as string | null) ?? null),
   }
 }
 
-function buildEmail(
+/** The four payout notices; each a letter (src/lib/email/letter.ts), rendered by the letter test. */
+export function buildEmail(
   kind: PayoutEmailKind,
   organisationName: string,
-  payload: PayoutEmailPayload
+  payload: PayoutEmailPayload,
+  firstName: string | null = null,
 ): { subject: string; html: string } {
+  const shell = (heading: string, body: string, dashboardUrl: string) => letterShell(firstName, heading, body, dashboardUrl)
   const amount = formatAmount(payload.amountCents, payload.currency)
   const arrival = payload.arrivalDate ? formatDate(payload.arrivalDate) : null
   const dashboardUrl = `${baseUrl()}/dashboard/payouts`
@@ -192,9 +198,10 @@ function buildEmail(
   }
 }
 
-function shell(heading: string, body: string, dashboardUrl: string): string {
+function letterShell(firstName: string | null, heading: string, body: string, dashboardUrl: string): string {
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      ${greetingHtml(firstName, 'margin:0 0 16px;color:#374151;font-size:16px;line-height:1.6;')}
       <h1 style="color:#0A1628;font-size:22px;margin-bottom:8px;">${heading}</h1>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
       <div style="color:#374151;font-size:14px;line-height:1.6;">${body}</div>
@@ -204,8 +211,9 @@ function shell(heading: string, body: string, dashboardUrl: string): string {
           Open payouts dashboard
         </a>
       </p>
+      ${signOffHtml('margin:24px 0 0;color:#374151;font-size:16px;line-height:1.6;')}
       <p style="margin-top:32px;color:#9CA3AF;font-size:12px;">
-        The EventLinqs team. ${BRAND_STRAPLINE}
+        ${BRAND_STRAPLINE}
       </p>
     </div>
   `
