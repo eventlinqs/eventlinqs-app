@@ -15,6 +15,7 @@
  */
 
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { venueSlugify } from './venue-slug'
@@ -63,8 +64,6 @@ interface VenueRow {
   country: string | null
   address: string | null
   postal_code: string | null
-  /** The handle the venue was first published under; kept when the name changes, so an old address still finds it. */
-  slug: string | null
 }
 
 interface EventRowForVenue {
@@ -93,15 +92,26 @@ async function findVenueRowBySlug(slug: string): Promise<VenueRow | null> {
   const all = await readEveryRow<VenueRow>('the active venues for a venue handle', (from, to) =>
     supabase
       .from('venues')
-      .select('id, name, description, image_url, capacity, city, state, country, address, postal_code, slug')
+      .select('id, name, description, image_url, capacity, city, state, country, address, postal_code')
       .eq('is_active', true)
       .order('id')
       .range(from, to),
   )
   // The current name's handle first; then the stored slug, so a renamed venue still answers its old address
   // (1 November 2026: six venues named after an organiser or event were renamed, and their old pages answered 404).
-  const match = all.find(v => venueSlugify(v.name) === slug) ?? all.find(v => v.slug === slug)
-  return match ?? null
+  const byName = all.find(v => venueSlugify(v.name) === slug)
+  if (byName) return byName
+  // No current name has this handle: it may be a venue's FIRST handle, kept in venues.slug when the name changed. The
+  // public client may not read that column (migration 20260808000010 grants named columns only), so one server read
+  // finds the id by the handle and nothing more; the row returned is the public one already read above.
+  const { data: moved, error } = await createAdminClient()
+    .from('venues')
+    .select('id')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (error) throw new Error(`the venue for an earlier handle could not be read: ${error.message}`)
+  return moved ? (all.find(v => v.id === moved.id) ?? null) : null
 }
 
 /** Pull events that name-match a venue; used for both the slug-without-row
