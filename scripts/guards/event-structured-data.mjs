@@ -34,7 +34,7 @@
  * unpublished event emits any block; no listing page emits an Event block; and
  * the string [the attendance-mode property] appears nowhere in the repository."
  *
- * THE SEVEN CLAUSES, because any one alone is defeatable.
+ * THE EIGHT CLAUSES, because any one alone is defeatable.
  *
  *   1. WIRING. The page still renders the emitter, still hands it the lineup,
  *      and still hands it the DISPLAYED tiers rather than the raw rows.
@@ -72,6 +72,8 @@
  *      thought to list. It also reads src/components/seo/json-ld.tsx, the one
  *      point every page type crosses, and fails if it serialises without
  *      pruning.
+ *   8. FREE ONLY WHEN IT IS (added 1 November 2026, from the markup audit on live): isAccessibleForFree stands only
+ *      on a walk-in night or where every Offer is at 0; a paid night sold elsewhere is never called free.
  *
  * WHY CLAUSE 6 BUILDS ITS OWN SEARCH STRING FROM TWO HALVES. The guard has to
  * name the token to look for it, and it scans scripts/, so a literal here would
@@ -430,6 +432,17 @@ function runSerialiser() {
         F.orgA,
         [],
       ),
+      // CLAUSE 8's fixtures: a paid night sold elsewhere (no tiers here) and one free tier among paid ones.
+      soldElsewhere: build(
+        { ...F.rowA, slug: F.rowA.slug + '-sold-elsewhere', external_ticket_url: 'https://events.humanitix.com/a-paid-gig', is_free: false },
+        F.orgA,
+        [],
+      ),
+      mixedFree: build(
+        { ...F.rowA, slug: F.rowA.slug + '-mixed-free' },
+        F.orgA,
+        [{ id: 'tf0', name: 'Companion', price: 0, currency: 'AUD' }, ...F.tiersA],
+      ),
     }
     console.log(JSON.stringify(out))
   `
@@ -759,6 +772,27 @@ try {
     )
   }
   scanned.push(`${RENDERER}: prunes every null and empty string before it serialises`)
+
+  /*
+   * CLAUSE 8. FREE ONLY WHEN IT IS (the markup audit on live, 1 November 2026, the CONTROLLER's 03:21 P1-b). The
+   * serialiser wrote isAccessibleForFree whenever its lowest tier was 0, and an event with no tiers counts as 0, so
+   * every paid night sold elsewhere (Kate Ceberano, Diesel, Spooky Escape on live) told Google it was free: a false
+   * claim in search, against the rule never to call anything free that is not. Judged on every payload this guard
+   * builds: the flag stands only on a walk-in night or where every Offer is at 0.
+   */
+  judged++
+  for (const [key, label] of [['a', 'a'], ['b', 'b'], ['hybrid', 'hybrid'], ['blank', 'blank'], ['soldElsewhere', 'sold-elsewhere'], ['mixedFree', 'mixed-free']]) {
+    const p = result[key]
+    if (!p || p.isAccessibleForFree !== true) continue
+    const offers = Array.isArray(p.offers) ? p.offers : [p.offers].filter(Boolean)
+    if (offers.length === 0 || !offers.every(o => Number(o.price) === 0)) {
+      failures.push(
+        `${FIXTURES.rowA.slug}-${label}: isAccessibleForFree is true but its offers are ${JSON.stringify(p.offers ?? null).slice(0, 160)}. ` +
+          `Free is said only of a walk-in night or where every Offer is at 0 (the markup audit on live, 1 November 2026).`,
+      )
+    }
+  }
+  scanned.push(`${SERIALISER}: isAccessibleForFree only where every offer is 0, or on a walk-in night`)
 } catch (error) {
   failures.push(`the serialiser could not be executed, so nothing below was judged: ${error.message}`)
 }
