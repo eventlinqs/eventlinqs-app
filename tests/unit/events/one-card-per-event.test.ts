@@ -71,3 +71,43 @@ describe('a rail never repeats an event the results list on the same page draws'
     expect(notAlreadyListed([e('a')], [e('a')])).toEqual([])
   })
 })
+
+/*
+ * ONE LISTING, ONE CARD, HOWEVER IT WAS IMPORTED (the CONTROLLER's 20:58 of 31 October 2026, seen on live: 'The
+ * Melbourne Book Market' twice in 'What's happening near you'). The import made a Saturday series and a Sunday series for
+ * the same market (production: d04bee2c and dc8f08e4, 16 nights), and six listings were split so (Colours of Asia into
+ * six). A card stands for the listing: the same title at the same venue is one card, whatever its series ids, and a
+ * series stays one card even when its nights' titles differ.
+ */
+describe('the same title at the same venue is one card, across split series', () => {
+  const night = (id: string, series: string | null, start: string, title = 'The Melbourne Book Market', venue_name = 'Queen Victoria Market') => ({
+    id,
+    listing_series_id: series,
+    start_date: start,
+    title,
+    venue_name,
+  })
+  it('a Saturday series and a Sunday series of one market draw one card naming the other nights', () => {
+    const sun = night('sun1', 'sunday', '2026-10-31T22:00:00Z')
+    const sat = night('sat1', 'saturday', '2026-11-06T22:00:00Z')
+    const sun2 = night('sun2', 'sunday', '2026-11-07T22:00:00Z')
+    const [rail] = oneCardPerEvent([{ events: [sun, sat, sun2], cap: 10 }])
+    expect(rail.map((e) => e.id)).toEqual(['sun1'])
+    expect(rail[0].also_on).toEqual(['2026-11-06T22:00:00Z', '2026-11-07T22:00:00Z'])
+  })
+  it('one-off nights of one listing with no series are one card too (Colours of Asia, six series of one night each)', () => {
+    const [rail] = oneCardPerEvent([{ events: [night('a', null, '2026-11-01T09:00:00Z', 'Colours of Asia', 'Asia Oasis'), night('b', null, '2026-11-02T09:00:00Z', 'Colours of Asia', 'Asia Oasis')], cap: 10 }])
+    expect(rail.map((e) => e.id)).toEqual(['a'])
+  })
+  it('a series stays one card when its nights carry different titles', () => {
+    const [rail] = oneCardPerEvent([{ events: [night('h', 's', '2026-10-31T09:00:00Z', 'Trivia: Halloween'), night('t', 's', '2026-11-07T09:00:00Z', 'Trivia')], cap: 10 }])
+    expect(rail.map((e) => e.id)).toEqual(['h'])
+  })
+  it('the same title at another venue is another listing', () => {
+    const [rail] = oneCardPerEvent([{ events: [night('m', null, '2026-11-01T09:00:00Z', 'Macbeth', 'Geelong Arts Centre'), night('n', null, '2026-11-02T09:00:00Z', 'Macbeth', 'Ballarat Civic Hall')], cap: 10 }])
+    expect(rail.map((e) => e.id)).toEqual(['m', 'n'])
+  })
+  it('a rail above a list leaves out every night of a listing the list draws, across its series', () => {
+    expect(notAlreadyListed([night('sat1', 'saturday', '2026-11-06T22:00:00Z')], [night('sun1', 'sunday', '2026-10-31T22:00:00Z')])).toEqual([])
+  })
+})

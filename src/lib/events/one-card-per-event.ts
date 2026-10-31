@@ -6,31 +6,51 @@
  *
  * A RECURRING SERIES IS ONE EVENT (P4): its first night shown is its one card, and every later night of it the page was
  * given is named on that card (also_on, by start), so no published night leaves the page; it is told, not drawn twice.
+ *
+ * ONE LISTING, ONE CARD (the CONTROLLER's 20:58 of 31 October 2026: 'The Melbourne Book Market' twice in one rail on
+ * live). The import made a Saturday series and a Sunday series of one market, and split six listings so; a card stands
+ * for the listing, so the same title at the same venue is one card whatever its series ids, and a series stays one card
+ * when its nights' titles differ. Every key a night carries finds the same card.
  */
 export type SeriesNights = { readonly also_on?: string[] }
 
-export function oneCardPerEvent<E extends { readonly id: string; readonly listing_series_id?: string | null; readonly start_date?: string }>(
+type Listed = { readonly id: string; readonly listing_series_id?: string | null; readonly title?: string | null; readonly venue_name?: string | null }
+
+/** The keys that make two nights one listing: its series, and its title at its venue. */
+function listingKeys(e: Listed): string[] {
+  const keys: string[] = []
+  if (e.listing_series_id) keys.push(`series:${e.listing_series_id}`)
+  const title = e.title?.trim().toLowerCase()
+  const venue = e.venue_name?.trim().toLowerCase()
+  if (title && venue) keys.push(`listing:${title}|${venue}`)
+  return keys
+}
+
+export function oneCardPerEvent<E extends Listed & { readonly start_date?: string }>(
   sections: readonly { readonly events: readonly E[]; readonly cap: number }[],
 ): (E & SeriesNights)[][] {
   const shownEvents = new Set<string>()
-  const cardOfSeries = new Map<string, E & { also_on?: string[] }>()
+  const cardOfListing = new Map<string, E & { also_on?: string[] }>()
+  const cards = new Set<E & { also_on?: string[] }>()
   const out = sections.map(({ events, cap }) => {
     const kept: (E & SeriesNights)[] = []
     for (const e of events) {
       if (shownEvents.has(e.id)) continue
-      const series = e.listing_series_id ?? null
-      const card = series ? cardOfSeries.get(series) : undefined
+      const keys = listingKeys(e)
+      const card = keys.map((k) => cardOfListing.get(k)).find(Boolean)
       if (card) {
-        // A later night of a series already on the page: named on its card, never drawn again.
+        // A later night of a listing already on the page: named on its card, never drawn again.
         shownEvents.add(e.id)
+        for (const k of keys) if (!cardOfListing.has(k)) cardOfListing.set(k, card)
         if (e.start_date) card.also_on = [...(card.also_on ?? []), e.start_date]
         continue
       }
       if (kept.length >= cap) continue
       shownEvents.add(e.id)
-      if (series) {
+      if (keys.length > 0) {
         const first: E & { also_on?: string[] } = { ...e }
-        cardOfSeries.set(series, first)
+        for (const k of keys) cardOfListing.set(k, first)
+        cards.add(first)
         kept.push(first)
       } else {
         kept.push(e)
@@ -38,20 +58,18 @@ export function oneCardPerEvent<E extends { readonly id: string; readonly listin
     }
     return kept
   })
-  for (const card of cardOfSeries.values()) if (card.also_on) card.also_on.sort()
+  for (const card of cards) if (card.also_on) card.also_on.sort()
   return out
 }
 
 /**
  * A RAIL ABOVE A RESULTS LIST (/events, /events/browse/<city>): the list is the complete answer to the visitor's search
  * and keeps its count and its pages, so it is never thinned; the rail shows only what the list does not already draw,
- * a recurring series counting as one event (P4). With nothing left the rail draws as the founder ruled on 26 August 2026.
+ * a listing (its series, or its title at its venue) counting as one event. With nothing left the rail draws as the
+ * founder ruled on 26 August 2026.
  */
-export function notAlreadyListed<E extends { readonly id: string; readonly listing_series_id?: string | null }>(
-  rail: readonly E[],
-  listed: readonly { readonly id: string; readonly listing_series_id?: string | null }[],
-): E[] {
+export function notAlreadyListed<E extends Listed>(rail: readonly E[], listed: readonly Listed[]): E[] {
   const ids = new Set(listed.map((l) => l.id))
-  const series = new Set(listed.flatMap((l) => (l.listing_series_id ? [l.listing_series_id] : [])))
-  return rail.filter((e) => !ids.has(e.id) && !(e.listing_series_id && series.has(e.listing_series_id)))
+  const keys = new Set(listed.flatMap(listingKeys))
+  return rail.filter((e) => !ids.has(e.id) && !listingKeys(e).some((k) => keys.has(k)))
 }
