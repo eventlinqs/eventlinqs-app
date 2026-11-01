@@ -59,6 +59,8 @@ const ROOT = process.cwd()
 const APP = join(ROOT, 'src', 'app')
 const SITEMAP = join(APP, 'sitemap.ts')
 const EDITORIAL = 'src/lib/categories/category-editorial.ts'
+// Re-included in .vercelignore (community-layer-protected reads it too), so it survives the upload.
+const APPROVED_TAXONOMY = 'docs/scope/community-layer-approved.json'
 const CATEGORY_ROUTE = 'src/app/categories/[slug]/page.tsx'
 const POLICY = 'src/lib/seo/indexing-policy.ts'
 const THRESHOLD_MODULE = 'src/lib/seo/discovery-threshold.ts'
@@ -391,7 +393,26 @@ if (url && !hasRealProject) {
     const live = new Set((data ?? []).map(r => r.slug))
     console.log(`  ${live.size} row(s) in event_categories`)
     const unwritten = [...live].filter(s => !written.includes(s)).sort()
-    const orphaned = written.filter(s => !live.has(s)).sort()
+    // A category recorded in the approved file with the migration that adds it, where this database has none of that
+    // migration's slugs yet (production waits for Lawal's own apply), is AWAITING, not orphaned: the surfaces publish
+    // only live rows joined to their editorial (src/lib/categories/taxonomy.ts getPublishableCategories), so nothing
+    // 404s and the sitemap does not list it. One present and another absent is still a fault.
+    const awaiting = new Set()
+    const approvedRows = existsSync(join(ROOT, APPROVED_TAXONOMY))
+      ? JSON.parse(readFileSync(join(ROOT, APPROVED_TAXONOMY), 'utf8')).categories.rows
+      : []
+    const byMigration = new Map()
+    for (const row of approvedRows) {
+      if (!row.migration || !existsSync(join(ROOT, 'supabase', 'migrations', row.migration))) continue
+      byMigration.set(row.migration, [...(byMigration.get(row.migration) ?? []), row.slug])
+    }
+    for (const [migration, slugs] of byMigration) {
+      if (slugs.every(s => !live.has(s))) {
+        for (const s of slugs) awaiting.add(s)
+        console.log(`  awaiting ${migration} on this database: ${slugs.join(', ')} (editorial written, no row yet, so no page)`)
+      }
+    }
+    const orphaned = written.filter(s => !live.has(s) && !awaiting.has(s)).sort()
     for (const slug of unwritten) {
       fail(
         `the category "${slug}" exists in event_categories and has no editorial in ${EDITORIAL}.\n` +
