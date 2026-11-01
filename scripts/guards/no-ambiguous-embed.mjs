@@ -72,6 +72,8 @@ if (!existsSync(MIGRATIONS)) {
  */
 const migrationFiles = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()
 const fkCount = new Map() // "source>target" -> Set of column names
+const fkColsByTable = new Map() // table -> Map(column -> referenced table)
+const pkByTable = new Map() // table -> its composite primary key columns (two or more)
 
 /*
  * BLOCK-AWARE, and the first version was not, which is why this comment exists.
@@ -117,6 +119,12 @@ for (const file of migrationFiles) {
     }
 
     collect(line, table)
+    // A composite primary key, written on CREATE TABLE or by ALTER ... ADD [CONSTRAINT x] PRIMARY KEY (a, b).
+    const pk = /PRIMARY KEY\s*\(([^)]+)\)/i.exec(line)
+    if (pk && table) {
+      const cols = pk[1].split(',').map((c) => c.trim().replace(/"/g, '').toLowerCase()).filter(Boolean)
+      if (cols.length >= 2) pkByTable.set(table, cols)
+    }
 
     if (inAlter) {
       if (line.includes(';')) { table = null; inAlter = false }
@@ -136,6 +144,8 @@ for (const file of migrationFiles) {
     const key = `${source}>${target}`
     if (!fkCount.has(key)) fkCount.set(key, new Set())
     fkCount.get(key).add(column)
+    if (!fkColsByTable.has(source)) fkColsByTable.set(source, new Map())
+    fkColsByTable.get(source).set(column.toLowerCase(), target)
   }
 }
 
@@ -145,17 +155,22 @@ for (const file of migrationFiles) {
  * event_categories). events has ONE foreign key to event_categories, so the count above found nothing, yet PostgREST
  * now answers every bare `event_categories(...)` embed from events with PGRST201 ('more than one relationship was
  * found'), read on TEST at 20:24 (the city guide's gate stopped on it at its build, C:\dev\EVIDENCE\CITY-FIRST-1NOV\
- * design\gate-push-dc1010fd.log line 6195). PostgREST counts a many-to-many through a junction as a relationship
- * (https://docs.postgrest.org/en/v12/references/api/resource_embedding.html, many-to-many). So every table whose
- * foreign keys reach two or more tables adds one path, `via <junction>`, between each pair of them.
+ * design\gate-push-dc1010fd.log line 6195). PostgREST reads a table as a many-to-many JOIN TABLE only when it "must
+ * contain foreign keys to other two tables and they must be part of its composite key"
+ * (https://docs.postgrest.org/en/v12/references/api/resource_embedding.html, quoted by WINDOW 1 at 20:23, fetched that
+ * day). So a table adds a path, `via <junction>`, between two tables only when its COMPOSITE PRIMARY KEY holds foreign
+ * keys to both. The first version of this extension (cfdc6069) counted any table with two foreign keys and condemned
+ * 40 working pairs (events -> organisations among them) at the gate of 20:37; that is the false positive the header
+ * above warns of, and this is its correction.
  */
 const viaJunction = new Set() // "source>target" pairs whose second path runs through a join table
 {
   const targetsBySource = new Map()
-  for (const [pair] of fkCount) {
-    const [source, target] = pair.split('>')
-    if (!targetsBySource.has(source)) targetsBySource.set(source, new Set())
-    targetsBySource.get(source).add(target)
+  for (const [junctionTable, pkCols] of pkByTable) {
+    const fks = fkColsByTable.get(junctionTable)
+    if (!fks) continue
+    const reached = new Set(pkCols.map((c) => fks.get(c)).filter(Boolean))
+    if (reached.size >= 2) targetsBySource.set(junctionTable, reached)
   }
   for (const [junction, targets] of targetsBySource) {
     const list = [...targets].filter((t) => t !== junction)
