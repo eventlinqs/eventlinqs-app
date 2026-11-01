@@ -57,8 +57,10 @@ end;
 $$;
 
 drop trigger if exists trg_city_editorial_slots_keep_approved on public.city_editorial_slots;
+-- An event list naming the columns the function reads, so blanking spotlight_organisation_id when an organisation is
+-- deleted is never judged as an edit of the slot (scripts/guards/a-referential-null-is-not-an-edit.mjs).
 create trigger trg_city_editorial_slots_keep_approved
-  before update on public.city_editorial_slots
+  before update of status, event_ids, theme on public.city_editorial_slots
   for each row execute function public.city_editorial_slots_keep_approved();
 
 alter table public.city_editorial_slots enable row level security;
