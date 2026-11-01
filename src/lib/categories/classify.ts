@@ -14,23 +14,28 @@
  * Pure. No city is named here.
  */
 
+/**
+ * In the order a visitor looks for them (Lawal, 19:17 1 November; CONTROLLER 19:19 (3)): music, sport, comedy,
+ * nightlife, markets, food and drink, family, arts, then the rest. public.event_categories.guide_order is this order
+ * (migration 20261101192001); a test reads both.
+ */
 export const GUIDE_CATEGORIES = [
-  'music', 'nightlife', 'comedy', 'theatre', 'festival', 'sports', 'food-drink', 'markets',
-  'arts-community', 'family', 'community', 'classes-workshops', 'business-networking', 'health-wellness', 'education',
+  'music', 'sports', 'comedy', 'nightlife', 'markets', 'food-drink', 'family', 'arts-community',
+  'theatre', 'festival', 'community', 'classes-workshops', 'business-networking', 'health-wellness', 'education',
 ] as const
 export type GuideCategory = (typeof GUIDE_CATEGORIES)[number]
 
 export const GUIDE_CATEGORY_WORDS: Readonly<Record<GuideCategory, string>> = {
   music: 'Music and concerts',
-  nightlife: 'Nightlife and DJs',
+  sports: 'Sports',
   comedy: 'Comedy',
+  nightlife: 'Nightlife and DJs',
+  markets: 'Markets',
+  'food-drink': 'Food and drink',
+  family: 'Family and children',
+  'arts-community': 'Arts and exhibitions',
   theatre: 'Theatre and performing arts',
   festival: 'Festivals and community celebrations',
-  sports: 'Sports',
-  'food-drink': 'Food and drink',
-  markets: 'Markets',
-  'arts-community': 'Arts and exhibitions',
-  family: 'Family and children',
   community: 'Community',
   'classes-workshops': 'Classes and workshops',
   'business-networking': 'Business and networking',
