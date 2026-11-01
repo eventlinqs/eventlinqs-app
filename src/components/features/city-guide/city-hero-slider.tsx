@@ -92,17 +92,17 @@ export function CityHeroSlider({ events, cityName }: { events: readonly EventCar
               aria-label={`${i + 1} of ${events.length}: ${e.title}`}
               aria-hidden={!visible}
               tabIndex={visible ? 0 : -1}
-              className={`group grid md:grid-cols-[3fr_2fr] ${visible ? 'relative' : 'pointer-events-none absolute inset-0 opacity-0'} transition-opacity duration-300 ease-out motion-reduce:transition-none`}
+              className={`group grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] ${visible ? 'relative' : 'pointer-events-none absolute inset-0 opacity-0'} transition-opacity duration-300 ease-out motion-reduce:transition-none`}
             >
               <div className="relative aspect-[16/9] overflow-hidden bg-[var(--color-ink-100)]">
                 {e.image_credit ? (
-                  <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" priority={i === 0} title={e.image_credit} />
+                  <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" title={e.image_credit} />
                 ) : (
                   <>
                     <div className="ledger-blur" aria-hidden="true">
                       <EventCardMedia src={e.cover_image_url ?? ''} alt="" variant="rail-feature-card" />
                     </div>
-                    <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" priority={i === 0} objectFit="contain" />
+                    <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" objectFit="contain" />
                   </>
                 )}
               </div>

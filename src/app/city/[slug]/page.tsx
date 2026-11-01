@@ -7,6 +7,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import { JsonLd } from '@/components/seo/json-ld'
 import { CityGuideScreen } from '@/components/features/city-guide/city-guide-screen'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 
 export const revalidate = 300
 
@@ -66,7 +67,7 @@ export default async function CityPage({ params }: Props) {
           { name: city.name, url: `${baseUrl}/city/${city.slug}` },
         ]}
       />
-      <CityGuideScreen citySlug={city.slug} />
+      <CityGuideScreen citySlug={city.slug} heroImage={await getCityHeroPhoto(city.slug)} />
     </>
   )
 }

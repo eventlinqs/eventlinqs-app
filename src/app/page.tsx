@@ -5,6 +5,7 @@ import { featuredForPage } from '@/lib/promotions/promotions'
 import { CommunityRail } from '@/components/features/home/community-rail'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { CityGuideScreen } from '@/components/features/city-guide/city-guide-screen'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CityRailSkeleton } from '@/components/features/home/section-skeletons'
 
 /**
@@ -69,6 +70,7 @@ export default async function HomePage() {
   return (
     <CityGuideScreen
       citySlug="geelong"
+      heroImage={await getCityHeroPhoto('geelong')}
       after={
         <>
           <FeaturedRow items={featured} where="homepage" />

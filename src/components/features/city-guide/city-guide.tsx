@@ -8,6 +8,7 @@ import {
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
+import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -51,9 +52,16 @@ function iconFor(slug: string) {
   return Sparkles
 }
 
+/**
+ * A CHOSEN DATE IS A ZONE-LESS CALENDAR DAY, NOT AN INSTANT: the date field gives 'YYYY-MM-DD', the day the visitor
+ * picked, with no time and no zone. It is read at noon UTC and printed in UTC so it names that same day on every
+ * reader's device; it never formats an event's start (those go through formatEventDateShort in the event's own zone).
+ */
+const CHOSEN_DAY_IS_A_WALL_CALENDAR_DAY_ZONE = 'UTC'
+
 /** '7 November' for a chosen date key (YYYY-MM-DD), read as that calendar day. */
 function dateWords(key: string): string {
-  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${key}T12:00:00Z`))
+  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', timeZone: CHOSEN_DAY_IS_A_WALL_CALENDAR_DAY_ZONE }).format(new Date(`${key}T12:00:00Z`))
 }
 
 function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -80,6 +88,7 @@ export function CityGuide({
   days,
   stateName,
   stateCityNames,
+  featured = [],
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
@@ -90,6 +99,12 @@ export function CityGuide({
   stateName: string
   /** The listed cities of that state, lower case, matched against a row's city as the city itself is. */
   stateCityNames: readonly string[]
+  /**
+   * Featured, when the city holds exactly two nights with a rights recorded photograph (three or more are the slider
+   * above the page): the approved Featured + Directory direction (C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md
+   * s6; Lawal's 11:01 rule, never under two).
+   */
+  featured?: readonly EventCardData[]
 }) {
   const [q, setQ] = useState('')
   const [when, setWhen] = useState<When>('all')
@@ -98,6 +113,7 @@ export function CityGuide({
   const [radius, setRadius] = useState<(typeof RADII)[number]>(0)
   const [cities, setCities] = useState(false)
   const [wholeState, setWholeState] = useState(false)
+  const [freeOnly, setFreeOnly] = useState(false)
 
   const name = city.name.toLowerCase()
   const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
@@ -117,7 +133,22 @@ export function CityGuide({
     (when === 'weekend' && days.weekendKeys.includes(r.dayKey)) ||
     (when === 'week' && days.weekKeys.includes(r.dayKey)) ||
     (when === 'date' && r.dayKey === date)
-  const shown = here.filter((r) => matchesQ(r) && matchesWhen(r) && (category === 'all' || r.categorySlug === category))
+  const shown = here.filter((r) => matchesQ(r) && matchesWhen(r) && (category === 'all' || r.categorySlug === category) && (!freeOnly || r.free))
+  // '+N more dates' (Eventbrite's '+N more', the CONTROLLER's walk of 17:38): a night whose title and venue come again
+  // later in this city says how many more dates it has, so a weekly night reads as one thing, not a wall of repeats.
+  const repeats = new Map<string, number>()
+  for (const r of here) {
+    const k = `${r.title.toLowerCase()}|${(r.venue ?? '').toLowerCase()}`
+    repeats.set(k, (repeats.get(k) ?? 0) + 1)
+  }
+  const seenOnce = new Map<string, number>()
+  const moreDates = new Map<string, number>()
+  for (const r of [...here].sort((a, b) => a.ts - b.ts)) {
+    const k = `${r.title.toLowerCase()}|${(r.venue ?? '').toLowerCase()}`
+    const i = (seenOnce.get(k) ?? 0) + 1
+    seenOnce.set(k, i)
+    moreDates.set(r.id, (repeats.get(k) ?? 1) - i)
+  }
 
   // Explore: the categories this city actually holds, with their counts; a category with nothing is not drawn.
   const counts = new Map<string, { label: string; n: number }>()
@@ -131,7 +162,7 @@ export function CityGuide({
 
   const week = shown.filter((r) => days.weekKeys.includes(r.dayKey))
   const later = shown.filter((r) => !days.weekKeys.includes(r.dayKey))
-  const filtered = when !== 'all' || category !== 'all' || words.length > 0
+  const filtered = when !== 'all' || category !== 'all' || words.length > 0 || freeOnly
   const toList = () => document.getElementById('city-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
@@ -212,7 +243,10 @@ export function CityGuide({
             />
           </label>
         </div>
-        <div className="-mx-4 mt-2 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" role="group" aria-label="Area">
+        <div className="-mx-4 mt-2 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" role="group" aria-label="Price and area">
+          <button type="button" aria-pressed={freeOnly} onClick={() => setFreeOnly(!freeOnly)} className={chip(freeOnly)}>
+            Free
+          </button>
           {(wholeState ? [] : RADII).map((r) => (
             <button key={r} type="button" aria-pressed={radius === r} onClick={() => setRadius(r)} className={chip(radius === r)}>
               {r === 0 ? `In ${city.name}` : `Within ${r} km`}
@@ -255,6 +289,19 @@ export function CityGuide({
           </section>
         ) : null}
 
+        {featured.length === 2 ? (
+          <section aria-label={`Featured in ${placeName}`} className="mt-10">
+            <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">Featured in {placeName}</h2>
+            <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {featured.map((e) => (
+                <li key={e.id}>
+                  <EventCard event={e} variant="grid-one-two-four" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         <section id="city-calendar" aria-label={`Every event in ${placeName}`} className="mt-10 scroll-mt-24">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">
@@ -268,6 +315,7 @@ export function CityGuide({
                   setCategory('all')
                   setQ('')
                   setDate('')
+                  setFreeOnly(false)
                 }}
                 className="inline-flex min-h-11 items-center gap-1 font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
               >
@@ -293,16 +341,16 @@ export function CityGuide({
               Nothing in {placeName} matches these choices yet. Try another date, widen the area, or clear the filters.
             </p>
           ) : filtered ? (
-            <DayList rows={shown} cityName={name} />
+            <DayList rows={shown} cityName={name} more={moreDates} />
           ) : (
             <>
-              {week.length > 0 ? <DayList rows={week} cityName={name} /> : null}
+              {week.length > 0 ? <DayList rows={week} cityName={name} more={moreDates} /> : null}
               {later.length > 0 ? (
                 <>
                   <h2 id="city-calendar-full" className="type-rail-heading mt-10 scroll-mt-24 font-headline font-extrabold text-[var(--text-primary)]">
                     The full calendar
                   </h2>
-                  <DayList rows={later} cityName={name} />
+                  <DayList rows={later} cityName={name} more={moreDates} />
                 </>
               ) : null}
             </>
@@ -317,7 +365,7 @@ export function CityGuide({
   )
 }
 
-function DayList({ rows, cityName }: { rows: readonly DirectoryRow[]; cityName: string }) {
+function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; cityName: string; more: ReadonlyMap<string, number> }) {
   const groups: { key: string; label: string; rows: DirectoryRow[] }[] = []
   for (const r of rows) {
     const last = groups[groups.length - 1]
@@ -332,7 +380,7 @@ function DayList({ rows, cityName }: { rows: readonly DirectoryRow[]; cityName: 
           <ul className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
             {g.rows.map((r) => (
               <li key={r.id} className="border-t border-[var(--color-ink-100)] first:border-t-0">
-                <Row r={r} cityName={cityName} />
+                <Row r={r} cityName={cityName} more={more.get(r.id) ?? 0} />
               </li>
             ))}
           </ul>
@@ -342,7 +390,7 @@ function DayList({ rows, cityName }: { rows: readonly DirectoryRow[]; cityName: 
   )
 }
 
-function Row({ r, cityName }: { r: DirectoryRow; cityName: string }) {
+function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: number }) {
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   return (
@@ -359,7 +407,7 @@ function Row({ r, cityName }: { r: DirectoryRow; cityName: string }) {
           {[r.venue, elsewhere].filter(Boolean).join(', ')}
         </span>
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]">
-          {[r.category, r.source].filter(Boolean).join(' \u00b7 ')}
+          {[r.category, r.source, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' \u00b7 ')}
         </span>
       </span>
       <span className="flex items-center gap-1 pt-0.5">
