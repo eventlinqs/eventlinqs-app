@@ -96,13 +96,13 @@ export function CityHeroSlider({ events, cityName }: { events: readonly EventCar
             >
               <div className="relative aspect-[16/9] overflow-hidden bg-[var(--color-ink-100)]">
                 {e.image_credit ? (
-                  <EventCardMedia src={e.cover_image_url} alt={e.title} variant="rail-feature-card" priority={i === 0} title={e.image_credit} />
+                  <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" priority={i === 0} title={e.image_credit} />
                 ) : (
                   <>
                     <div className="ledger-blur" aria-hidden="true">
-                      <EventCardMedia src={e.cover_image_url} alt="" variant="rail-feature-card" />
+                      <EventCardMedia src={e.cover_image_url ?? ''} alt="" variant="rail-feature-card" />
                     </div>
-                    <EventCardMedia src={e.cover_image_url} alt={e.title} variant="rail-feature-card" priority={i === 0} objectFit="contain" />
+                    <EventCardMedia src={e.cover_image_url ?? ''} alt={e.title} variant="rail-feature-card" priority={i === 0} objectFit="contain" />
                   </>
                 )}
               </div>
