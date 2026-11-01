@@ -95,5 +95,13 @@ const acceptedBefore = Object.entries(before.by).filter(([k]) => k.startsWith('a
 const acceptedAfter = Object.entries(after.by).filter(([k]) => k.startsWith('accepted/')).reduce((n, [, v]) => n + v, 0)
 check('nothing was accepted or published by the run', acceptedAfter === acceptedBefore, `${acceptedBefore} before, ${acceptedAfter} after`)
 
+/* The drive takes away what its own run landed, so the next drive reads the feed afresh (the unique key is the night's
+   page and start, so a second run would otherwise find every night already waiting and land none). */
+const { error: undoCandidates } = await db.from('listing_candidates').delete().eq('source_id', sourceId).gte('found_at', started.toISOString())
+const { error: undoRun } = await db.from('listing_source_runs').delete().eq('source_id', sourceId).gte('ran_at', started.toISOString())
+check("the drive's own rows are taken away", !undoCandidates && !undoRun, undoCandidates?.message ?? undoRun?.message ?? '')
+const left = await countBy()
+console.log(`after the clean up: ${left.total} candidate(s) ${JSON.stringify(left.by)}`)
+
 console.log(failures === 0 ? 'LIBRARIES FEED DRIVE PASSED' : `LIBRARIES FEED DRIVE FAILED: ${failures} check(s)`)
 process.exit(failures === 0 ? 0 : 1)
