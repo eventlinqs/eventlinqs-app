@@ -4,36 +4,46 @@ import { describe, expect, it } from 'vitest'
 import { dueSources, type RegisteredSource } from '@/lib/listings/collect'
 
 /*
- * THIS WEEK FIRST (Lawal, 1 November 2026, 16:13, the controller's 16:14 (2)): a source holding nights in the next seven
- * days is read every hour, so a new, changed, postponed or cancelled night reaches the site within the hour of the
- * next read; every other source keeps its own pace. The run itself therefore runs hourly.
+ * THE RE-READ SCHEDULE (Lawal, 1 November 2026, 16:15, the controller's 16:15 (B)): every registered source is read at
+ * least once a day, in the early morning run, so each day's guide is right before people look; a source's own interval
+ * runs between 6 and 24 hours; one holding nights in the next seven days is read every 6 hours; on the morning of a
+ * night its source is checked once more; a source stopped by a 403 or 429 is not read until a person clears it.
+ * The run is scheduled hourly so each source is read when it falls due.
  */
 
+// 1 November 2026, 06:00 UTC = 17:00 in Melbourne (daylight time, UTC+11).
 const NOW = new Date('2026-11-01T06:00:00Z')
-const ago = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000).toISOString()
+const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString()
 
 const source = (id: string, over: Partial<RegisteredSource> = {}): RegisteredSource => ({
   id, name: id, pageUrl: `https://${id}.example.com.au/whats-on`, collection: 'read', changes: 'weekly',
-  lastCheckedAt: ago(120), lastSuccessAt: ago(120),
+  lastCheckedAt: hoursAgo(2), lastSuccessAt: hoursAgo(2),
   permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, partnerVenue: null, ...over,
 })
+const ids = (s: RegisteredSource[]) => s.map((x) => x.id)
 
-describe('a source with nights this week is read every hour', () => {
-  it('a weekly source last read two hours ago is due when it holds a night in the next seven days, and not otherwise', () => {
-    const s = [source('soon'), source('later')]
-    expect(dueSources(s, NOW, new Set(['soon'])).map((x) => x.id)).toEqual(['soon'])
+describe('every source at least daily, early morning; this week every 6 hours', () => {
+  it('a weekly source not read since before this morning (04:00 Melbourne) is due: every source is read every day', () => {
+    // 14 hours ago = 03:00 Melbourne today: before the morning run.
+    expect(ids(dueSources([source('weekly', { lastCheckedAt: hoursAgo(14), lastSuccessAt: hoursAgo(14) })], NOW))).toEqual(['weekly'])
   })
 
-  it('read within the last hour, even a this-week source waits for its next hour', () => {
-    expect(dueSources([source('soon', { lastCheckedAt: ago(30), lastSuccessAt: ago(30) })], NOW, new Set(['soon']))).toEqual([])
+  it('a weekly source read this morning is not due again today', () => {
+    expect(ids(dueSources([source('weekly', { lastCheckedAt: hoursAgo(10), lastSuccessAt: hoursAgo(10) })], NOW))).toEqual([])
   })
 
-  it('a source that may not be read is never made due by holding nights this week', () => {
-    expect(dueSources([source('ask', { collection: 'ask' })], NOW, new Set(['ask']))).toEqual([])
+  it('a source holding nights in the next seven days is due after 6 hours, and not before', () => {
+    const thisWeek = new Set(['soon'])
+    expect(ids(dueSources([source('soon', { lastCheckedAt: hoursAgo(7), lastSuccessAt: hoursAgo(7) })], NOW, thisWeek))).toEqual(['soon'])
+    expect(ids(dueSources([source('soon', { lastCheckedAt: hoursAgo(5), lastSuccessAt: hoursAgo(5) })], NOW, thisWeek))).toEqual([])
   })
 
-  it('without the set, every source keeps its own pace (the old behaviour)', () => {
-    expect(dueSources([source('soon')], NOW).map((x) => x.id)).toEqual([])
+  it('never more often than every 6 hours, even for a this-week source', () => {
+    expect(ids(dueSources([source('soon', { lastCheckedAt: hoursAgo(2), lastSuccessAt: hoursAgo(2) })], NOW, new Set(['soon'])))).toEqual([])
+  })
+
+  it('a source that may not be read is never made due', () => {
+    expect(ids(dueSources([source('ask', { collection: 'ask', lastCheckedAt: hoursAgo(30) })], NOW, new Set(['ask'])))).toEqual([])
   })
 
   it('the collection run is scheduled every hour', () => {

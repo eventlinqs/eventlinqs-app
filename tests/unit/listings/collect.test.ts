@@ -119,7 +119,7 @@ describe('the register', () => {
     id, name: id, pageUrl: `https://${id}.example.com`, collection: 'read', changes: 'weekly', lastCheckedAt: null, lastSuccessAt: null, permits: { facts: true, descriptions: false, images: false, links: true }, verified: true, partner: false, partnerVenue: null, ...over,
   })
 
-  it('reads only sources whose terms allow it, each at its own pace', () => {
+  it('reads only sources whose terms allow it, each at least once a day (Lawal, 1 November 2026, 16:15)', () => {
     const due = dueSources(
       [
         src('never-checked', {}),
@@ -130,10 +130,12 @@ describe('the register', () => {
         src('checked-yesterday', { lastCheckedAt: '2026-10-26T03:00:00Z', lastSuccessAt: '2026-10-26T03:00:00Z' }),
         src('checked-a-week-ago', { lastCheckedAt: '2026-10-20T03:00:00Z', lastSuccessAt: '2026-10-20T03:00:00Z' }),
         src('monthly-a-week-ago', { changes: 'monthly', lastCheckedAt: '2026-10-20T03:00:00Z', lastSuccessAt: '2026-10-20T03:00:00Z' }),
+        /* 07:00 in Melbourne on 27 October, after that day's morning run: not read again today. */
+        src('checked-this-morning', { lastCheckedAt: '2026-10-26T20:00:00Z', lastSuccessAt: '2026-10-26T20:00:00Z' }),
       ],
       now,
     )
-    expect(due.map((s) => s.id)).toEqual(['never-checked', 'checked-a-week-ago'])
+    expect(due.map((s) => s.id)).toEqual(['never-checked', 'checked-yesterday', 'checked-a-week-ago', 'monthly-a-week-ago'])
   })
 })
 

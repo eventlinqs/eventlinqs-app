@@ -102,7 +102,8 @@ describe('the weekly collection run', () => {
     const { store } = memoryStore([
       source('ask', 'https://ask.example.com/e', { collection: 'ask' }),
       /* A check that SUCCEEDED (last_success_at with it); a failed one is read again daily (failed-source-retried.test.ts). */
-      source('fresh', 'https://fresh.example.com/e', { lastCheckedAt: '2026-10-26T00:00:00Z', lastSuccessAt: '2026-10-26T00:00:00Z' }),
+      /* Read after this morning's 04:00 Melbourne run (every source once a day: Lawal, 1 November 2026, 16:15). */
+      source('fresh', 'https://fresh.example.com/e', { lastCheckedAt: '2026-10-26T20:00:00Z', lastSuccessAt: '2026-10-26T20:00:00Z' }),
     ])
     const { fetcher, asked } = sites({})
     const r = await runCollection(store, fetcher, NOW)

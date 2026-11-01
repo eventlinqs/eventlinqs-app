@@ -32,11 +32,13 @@ describe('a source whose last check failed is read again at the daily pace (demo
     expect(due.map((s) => s.id)).toEqual(['weekly-failed-yesterday', 'monthly-failed-yesterday', 'rarely-never-succeeded'])
   })
 
-  it('a source that SUCCEEDED yesterday keeps its own pace', () => {
+  it('a source that SUCCEEDED this morning is not read again today (every source is read once a day: Lawal, 1 November 2026, 16:15)', () => {
+    // 20:00 UTC on 26 October = 07:00 in Melbourne on 27 October, after that day's 04:00 morning run.
+    const thisMorning = '2026-10-26T20:00:00Z'
     const due = dueSources(
       [
-        src('weekly-read-yesterday', { lastCheckedAt: yesterday, lastSuccessAt: yesterday }),
-        src('monthly-read-yesterday', { changes: 'monthly', lastCheckedAt: yesterday, lastSuccessAt: yesterday }),
+        src('weekly-read-this-morning', { lastCheckedAt: thisMorning, lastSuccessAt: thisMorning }),
+        src('monthly-read-this-morning', { changes: 'monthly', lastCheckedAt: thisMorning, lastSuccessAt: thisMorning }),
       ],
       now,
     )
