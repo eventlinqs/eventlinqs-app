@@ -14,9 +14,9 @@ BEGIN
   SELECT count(*) INTO v_n FROM unnest(array['sources', 'upcoming_in_city', 'upcoming_nearby', 'upcoming_by_label', 'by_category', 'by_date',
     'by_suburb', 'duplicates', 'stale', 'awaiting_verification', 'with_authorised_image', 'with_external_ticketing',
     'selling_through_eventlinqs', 'labelled_here_but_placed_elsewhere', 'candidates_discovered', 'unique_discovered', 'listed',
-    'missing', 'pending_review', 'coverage_percent', 'expired_or_cancelled']) k WHERE v_cov ? k;
-  IF v_n = 21 THEN v_out := v_out || ' | P1 all twenty-one rows: PASS';
-  ELSE v_out := v_out || ' | P1 rows ' || v_n || ' of 21: FAIL'; v_fail := v_fail + 1; END IF;
+    'missing', 'pending_review', 'coverage_percent', 'expired_or_cancelled', 'horizons']) k WHERE v_cov ? k;
+  IF v_n = 22 THEN v_out := v_out || ' | P1 all twenty-two rows, this week first among them: PASS';
+  ELSE v_out := v_out || ' | P1 rows ' || v_n || ' of 22: FAIL'; v_fail := v_fail + 1; END IF;
 
   -- P2 the label count is the events' own: published, public, not ended, labelled with the city.
   SELECT count(*) INTO v_n FROM public.events e WHERE e.status = 'published' AND e.visibility = 'public'

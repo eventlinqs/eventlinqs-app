@@ -66,7 +66,7 @@ labelled as (select * from up where lower(btrim(coalesce(city_primary, ''))) = l
 src as (select * from public.listing_sources where city_slug = p_city),
 cand as (select c.*, lower(btrim(c.title)) || '|' || to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD') || '|' || lower(btrim(c.venue_name)) k
            from public.listing_candidates c join src on src.id = c.source_id where c.starts_at >= now()),
-uniq as (select k, bool_or(published_series_id is not null or event_id is not null) listed from cand where status <> 'refused' group by k),
+uniq as (select k, min(starts_at) starts_at, bool_or(published_series_id is not null or event_id is not null) listed from cand where status <> 'refused' group by k),
 sf as (select distinct on (e.listing_series_id) e.listing_series_id, e.id from public.events e
   where e.listing_series_id is not null and e.status = 'published' and e.visibility = 'public'
     and (case when e.end_date is not null then e.end_date >= now() else e.start_date >= now() end)
@@ -109,6 +109,14 @@ select jsonb_build_object(
   'with_external_ticketing', (select count(*) from mine where external_ticket_url is not null),
   'selling_through_eventlinqs', (select count(*) from mine v where v.external_ticket_url is null
       and exists (select 1 from public.ticket_tiers t where t.event_id = v.id and t.is_active and t.is_visible and t.price > 0)),
+  -- THIS WEEK FIRST (Lawal 16:13): the next 7 days, then the next 30, then beyond, each with its own coverage.
+  'horizons', (select jsonb_agg(jsonb_build_object('horizon', h, 'unique_discovered', u, 'listed', l, 'missing', u - l,
+                 'coverage_percent', case when u = 0 then null else round(100.0 * l / u, 1) end) order by o)
+               from (select h, o, count(*) u, count(*) filter (where listed) l from (
+                       select case when starts_at < now() + interval '7 days' then 'next 7 days'
+                                   when starts_at < now() + interval '30 days' then 'next 30 days' else 'beyond' end h,
+                              case when starts_at < now() + interval '7 days' then 1 when starts_at < now() + interval '30 days' then 2 else 3 end o,
+                              listed from uniq) z group by h, o) y),
   'candidates_discovered', (select count(*) from cand),
   'unique_discovered', (select count(*) from uniq),
   'listed', (select count(*) from uniq where listed),
