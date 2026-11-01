@@ -95,11 +95,11 @@ const acceptedBefore = Object.entries(before.by).filter(([k]) => k.startsWith('a
 const acceptedAfter = Object.entries(after.by).filter(([k]) => k.startsWith('accepted/')).reduce((n, [, v]) => n + v, 0)
 check('nothing was accepted or published by the run', acceptedAfter === acceptedBefore, `${acceptedBefore} before, ${acceptedAfter} after`)
 
-/* The drive takes away what its own run landed, so the next drive reads the feed afresh (the unique key is the night's
-   page and start, so a second run would otherwise find every night already waiting and land none). */
+/* The drive takes away the candidates its own run landed, so the next drive reads the feed afresh (the unique key is
+   the night's page and start, so a second run would otherwise find every night already waiting and land none). Its
+   run row stays: listing_source_runs is a log that no role may delete from (TEST answered 'permission denied'). */
 const { error: undoCandidates } = await db.from('listing_candidates').delete().eq('source_id', sourceId).gte('found_at', started.toISOString())
-const { error: undoRun } = await db.from('listing_source_runs').delete().eq('source_id', sourceId).gte('ran_at', started.toISOString())
-check("the drive's own rows are taken away", !undoCandidates && !undoRun, undoCandidates?.message ?? undoRun?.message ?? '')
+check("the drive's own candidates are taken away (its run row stays in the log)", !undoCandidates, undoCandidates?.message ?? '')
 const left = await countBy()
 console.log(`after the clean up: ${left.total} candidate(s) ${JSON.stringify(left.by)}`)
 
