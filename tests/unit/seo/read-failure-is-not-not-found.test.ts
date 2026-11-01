@@ -60,13 +60,15 @@ describe('the organiser profile separates "not there" from "could not ask"', () 
 
   it('retries the read through the shared primitive rather than a new one', () => {
     expect(source).toContain("from '@/lib/supabase/build-retry'")
-    // both reads: the status gate and the public-column read
-    expect(source.match(/withBuildRetry\(/g) ?? []).toHaveLength(2)
+    // all three reads: the status gate, the read-only preview's anon gate (2 November 2026, b3d78131: the preview holds no
+    // service key, so the gate reads by slug as anon) and the public-column read
+    expect(source.match(/withBuildRetry\(/g) ?? []).toHaveLength(3)
   })
 
   it('throws when a read fails, so the answer is a 500 and not a 404', () => {
     expect(source).toContain('class OrganiserReadFailed')
-    expect(source.match(/throw new OrganiserReadFailed\(/g) ?? []).toHaveLength(2)
+    // one per read above: each failure says 'ask again', never 'not found'
+    expect(source.match(/throw new OrganiserReadFailed\(/g) ?? []).toHaveLength(3)
   })
 
   it('still answers 404 for an organisation that is genuinely absent or inactive', () => {
