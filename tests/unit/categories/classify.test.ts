@@ -11,16 +11,18 @@ describe('the fifteen', () => {
     expect(GUIDE_CATEGORIES).toHaveLength(15)
     expect(Object.values(GUIDE_CATEGORY_WORDS)).toEqual([
       'Music and concerts', 'Sports', 'Comedy', 'Nightlife and DJs', 'Markets', 'Food and drink', 'Family and children',
-      'Arts and exhibitions', 'Theatre and performing arts', 'Festivals and community celebrations', 'Community',
-      'Classes and workshops', 'Business and networking', 'Health and wellness', 'Education and talks',
+      'Arts and exhibitions', 'Theatre and performing arts', 'Festivals and community celebrations',
+      'Classes and workshops', 'Business and networking', 'Health and wellness', 'Education and talks', 'Community',
     ])
   })
 
   // Lawal, 19:17 1 November (CONTROLLER 19:19 (3)): the tiles in the order a visitor looks for them, sport near the top:
-  // music, sport, comedy, nightlife, markets, food and drink, family, arts, then the rest. The database's guide_order is
+  // music, sport, comedy, nightlife, markets, food and drink, family, arts, then the rest, community last (Lawal 01:12,
+  // 2 November). The database's guide_order is
   // the same order as this list, one rule in two places, read from the migration that sets it.
   test("are in the order a visitor looks for them, and the database's guide_order is the same order", () => {
     expect(GUIDE_CATEGORIES.slice(0, 8)).toEqual(['music', 'sports', 'comedy', 'nightlife', 'markets', 'food-drink', 'family', 'arts-community'])
+    expect(GUIDE_CATEGORIES[GUIDE_CATEGORIES.length - 1]).toBe('community')
     const sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261101192001_guide_order_visitor_first.sql'), 'utf8').replace(/\r\n/g, '\n')
     const pairs = [...sql.matchAll(/\('([a-z-]+)', (\d+)\)/g)].map((m) => [m[1], Number(m[2])])
     expect(pairs).toEqual(GUIDE_CATEGORIES.map((slug, i) => [slug, i + 1]))

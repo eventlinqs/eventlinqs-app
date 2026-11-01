@@ -16,12 +16,12 @@
 
 /**
  * In the order a visitor looks for them (Lawal, 19:17 1 November; CONTROLLER 19:19 (3)): music, sport, comedy,
- * nightlife, markets, food and drink, family, arts, then the rest. public.event_categories.guide_order is this order
+ * nightlife, markets, food and drink, family, arts, then the rest, community last (Lawal 01:12, 2 November). public.event_categories.guide_order is this order
  * (migration 20261101192001); a test reads both.
  */
 export const GUIDE_CATEGORIES = [
   'music', 'sports', 'comedy', 'nightlife', 'markets', 'food-drink', 'family', 'arts-community',
-  'theatre', 'festival', 'community', 'classes-workshops', 'business-networking', 'health-wellness', 'education',
+  'theatre', 'festival', 'classes-workshops', 'business-networking', 'health-wellness', 'education', 'community',
 ] as const
 export type GuideCategory = (typeof GUIDE_CATEGORIES)[number]
 
@@ -36,11 +36,11 @@ export const GUIDE_CATEGORY_WORDS: Readonly<Record<GuideCategory, string>> = {
   'arts-community': 'Arts and exhibitions',
   theatre: 'Theatre and performing arts',
   festival: 'Festivals and community celebrations',
-  community: 'Community',
   'classes-workshops': 'Classes and workshops',
   'business-networking': 'Business and networking',
   'health-wellness': 'Health and wellness',
   education: 'Education and talks',
+  community: 'Community',
 }
 
 /**

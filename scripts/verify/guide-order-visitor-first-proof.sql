@@ -20,8 +20,8 @@ BEGIN
   -- O2 the rest in their earlier order.
   SELECT string_agg(slug, ',' ORDER BY guide_order) INTO v_order
     FROM public.event_categories WHERE guide_order BETWEEN 9 AND 15;
-  IF v_order = 'theatre,festival,community,classes-workshops,business-networking,health-wellness,education' THEN
-    v_out := v_out || ' | O2 the rest keep their order: PASS';
+  IF v_order = 'theatre,festival,classes-workshops,business-networking,health-wellness,education,community' THEN
+    v_out := v_out || ' | O2 the rest keep their order, community last: PASS';
   ELSE v_out := v_out || ' | O2 the rest ' || coalesce(v_order, 'none') || ': FAIL'; v_fail := v_fail + 1; END IF;
 
   -- O3 still exactly fifteen, each label unchanged, nothing left aside above 100.
