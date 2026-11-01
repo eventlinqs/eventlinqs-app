@@ -14,7 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 
-const RECORDED = new Set(['organiser_authorised', 'separately_licensed'])
+export const RECORDED = new Set(['organiser_authorised', 'separately_licensed'])
 export const FEATURED_MINIMUM = 2
 
 type Candidate = { readonly id: string; readonly cover_image_url: string | null; readonly image_credit?: string | null }
@@ -40,13 +40,15 @@ export function featuredWithRecordedRights<T extends Candidate>(
  */
 export async function readCoverRights(admin: SupabaseClient, eventIds: readonly string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>()
-  if (eventIds.length === 0) return out
-  const { data, error } = await admin
-    .from('event_image_rights')
-    .select('event_id, rights_state')
-    .eq('image_role', 'cover')
-    .in('event_id', [...eventIds])
-  if (error) throw new Error(`the cover rights could not be read: ${error.message}`)
-  for (const r of (data ?? []) as { event_id: string; rights_state: string }[]) out.set(r.event_id, r.rights_state)
+  // A hundred ids a read, so the request line stays short whatever the week holds.
+  for (let i = 0; i < eventIds.length; i += 100) {
+    const { data, error } = await admin
+      .from('event_image_rights')
+      .select('event_id, rights_state')
+      .eq('image_role', 'cover')
+      .in('event_id', eventIds.slice(i, i + 100))
+    if (error) throw new Error(`the cover rights could not be read: ${error.message}`)
+    for (const r of (data ?? []) as { event_id: string; rights_state: string }[]) out.set(r.event_id, r.rights_state)
+  }
   return out
 }

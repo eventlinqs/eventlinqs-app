@@ -7,7 +7,7 @@
  * keep their time order. The price comes from the one function every card and broadcast asks
  * (src/lib/broadcast/price-line.ts), so a night sold elsewhere is never called Free here either.
  */
-import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
 
 export type DirectoryInput = {
@@ -34,8 +34,18 @@ export type DirectoryRow = {
   readonly category: string | null
   readonly categorySlug: string | null
   readonly price: string
-  readonly time: string
+  /** The start time in the event's own zone, or null where no time is held (a start of exactly 00:00). */
+  readonly time: string | null
   readonly free: boolean
+  /** Where the night is booked, in words: 'Tickets on EventLinqs', 'Tickets on Ticketek', 'Walk in, no ticket needed'. */
+  readonly source: string
+  readonly format: 'walk_in' | 'ticketed' | 'other'
+  readonly cityKey: string
+  readonly dayKey: string
+  readonly dayLabel: string
+  readonly ts: number
+  /** A small image only where an authorised one exists (a credited venue photo or a rights recorded cover). */
+  readonly thumb: string | null
 }
 
 export type DirectoryDay = {
@@ -48,7 +58,7 @@ export type DirectoryDay = {
 /** Plan v4: one weekend market, an hour apart, first in every list it orders. */
 const FOCUS_CITIES = new Set(['geelong', 'melbourne'])
 
-function dayKey(at: Date, zone: string): string {
+export function dayKey(at: Date, zone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
 }
 
@@ -58,20 +68,45 @@ function dayLabel(at: Date, zone: string): string {
     .replace(/,/g, '')
 }
 
-function timeLabel(at: Date, zone: string): string {
+function timeLabel(at: Date, zone: string): string | null {
+  const hm = new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hour12: false }).format(at)
+  // No time is held for a night stored at midnight: say nothing rather than '12:00 am'.
+  if (hm === '00:00' || hm === '24:00') return null
   return new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true })
     .format(at)
     .replace(/\u202f/g, ' ')
     .toLowerCase()
 }
 
-function addDays(key: string, n: number): string {
+/** Brief point 8: the ticket source is always clear. */
+export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_ticket_url' | 'is_free' | 'entry_mode'>): string {
+  const cta = broadcastCta({
+    ticket_tiers: e.ticket_tiers ?? [],
+    external_ticket_url: e.external_ticket_url ?? null,
+    is_free: e.is_free ?? null,
+    entry_mode: e.entry_mode ?? null,
+  })
+  switch (cta.state) {
+    case 'paid_native':
+      return 'Tickets on EventLinqs'
+    case 'paid_external':
+      return cta.where ? `Tickets on ${cta.where}` : 'Tickets on the organiser\u2019s site'
+    case 'free_registration':
+      return cta.where ? `Register on ${cta.where}` : 'Registration required'
+    case 'free_open':
+      return 'Walk in, no ticket needed'
+    default:
+      return 'Details from the venue'
+  }
+}
+
+export function addDays(key: string, n: number): string {
   const d = new Date(`${key}T12:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
 }
 
-export function directoryDays(events: readonly DirectoryInput[], now: Date): DirectoryDay[] {
+export function directoryDays(events: readonly DirectoryInput[], now: Date, thumbs: ReadonlyMap<string, string> = new Map()): DirectoryDay[] {
   const today = dayKey(now, PLATFORM_TIME_ZONE)
   const tomorrow = addDays(today, 1)
   const days = new Map<string, { label: string; rows: { row: DirectoryRow; at: number; focus: boolean }[] }>()
@@ -98,6 +133,13 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date): Dir
       price,
       time: timeLabel(at, zone),
       free: /^free/i.test(price),
+      source: sourceLabel(e),
+      format: e.entry_mode === 'walk_in' ? 'walk_in' : (e.ticket_tiers ?? []).length > 0 || (e.external_ticket_url ?? '').trim() ? 'ticketed' : 'other',
+      cityKey: (e.venue_city ?? '').trim().toLowerCase(),
+      dayKey: key,
+      dayLabel: dayLabel(at, zone),
+      ts: at.getTime(),
+      thumb: thumbs.get(e.id) ?? null,
     }
     const day = days.get(key) ?? { label: dayLabel(at, zone), rows: [] }
     day.rows.push({ row, at: at.getTime(), focus: FOCUS_CITIES.has((e.venue_city ?? '').trim().toLowerCase()) })
@@ -118,7 +160,10 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date): Dir
 
 /** The filter chips: Free first, then each category the directory holds, the most nights first. */
 export function directoryChips(days: readonly DirectoryDay[]): { key: string; label: string }[] {
-  const rows = days.flatMap((d) => d.rows)
+  return chipsOf(days.flatMap((d) => d.rows))
+}
+
+export function chipsOf(rows: readonly DirectoryRow[]): { key: string; label: string }[] {
   const counts = new Map<string, { label: string; n: number }>()
   for (const r of rows) {
     if (!r.categorySlug || !r.category) continue

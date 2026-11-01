@@ -237,6 +237,6 @@ function timeOf(iso: string, timezone: string | null): string | null {
   if (Number.isNaN(at.getTime())) return null
   return new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: resolveZone(timezone) })
     .format(at)
-    .replace(/ /g, ' ')
+    .replace(/\u202f/g, ' ')
     .toLowerCase()
 }

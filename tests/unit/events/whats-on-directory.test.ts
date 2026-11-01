@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { directoryDays, type DirectoryInput } from '@/lib/events/whats-on-directory'
+import { directoryDays, sourceLabel, type DirectoryInput } from '@/lib/events/whats-on-directory'
+import { discoveryDays } from '@/lib/events/discovery-data'
 import { featuredWithRecordedRights } from '@/lib/events/featured-with-recorded-rights'
 
 const base: DirectoryInput = {
@@ -90,5 +91,24 @@ describe('Featured this week: a real photo with its rights on record, or no row'
       4,
     )
     expect(picked).toEqual([])
+  })
+})
+
+describe('the discovery rows say only what is held', () => {
+  const now = new Date('2026-10-31T13:30:00Z')
+  it('shows no time for a night stored at midnight in its own zone', () => {
+    const [day] = directoryDays([ev({ start_date: '2026-11-01T13:00:00Z' })], now) // 00:00 Mon 2 Nov, Melbourne
+    expect(day.rows[0].time).toBeNull()
+  })
+  it('names the ticket source on every row', () => {
+    expect(sourceLabel(ev({}))).toBe('Walk in, no ticket needed')
+    expect(sourceLabel(ev({ is_free: false, entry_mode: 'tickets', ticket_tiers: [{ price: 2500, currency: 'AUD' }] }))).toBe('Tickets on EventLinqs')
+    expect(sourceLabel(ev({ is_free: false, entry_mode: 'tickets', external_ticket_url: 'https://www.ticketek.com.au/x' }))).toMatch(/^Tickets on /)
+  })
+  it('knows this weekend from the platform zone: on a Sunday it is today alone', () => {
+    const d = discoveryDays(new Date('2026-10-31T13:30:00Z')) // Sunday 1 November in Sydney
+    expect(d.todayKey).toBe('2026-11-01')
+    expect(d.weekendKeys).toEqual(['2026-11-01'])
+    expect(d.weekKeys).toHaveLength(7)
   })
 })
