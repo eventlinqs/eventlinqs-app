@@ -391,17 +391,20 @@ export function CityGuide({
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Suburb
-              <select value={suburb} onChange={(e) => setSuburb(e.target.value)} className={SELECT}>
-                <option value="all">Every suburb</option>
-                {suburbs.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* A suburb choice only where the city's own rows name two or more suburbs: a filter with one option is noise. */}
+            {suburbs.length >= 2 ? (
+              <label className="flex flex-col gap-1 font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Suburb
+                <select value={suburb} onChange={(e) => setSuburb(e.target.value)} className={SELECT}>
+                  <option value="all">Every suburb</option>
+                  {suburbs.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <div className="flex flex-col gap-1 font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Price
               <div className="flex gap-2" role="group" aria-label="Price">
@@ -439,7 +442,7 @@ export function CityGuide({
         </section>
 
         {/* 6 HOSTING AN EVENT: existing routes only. */}
-        <section aria-label={`Hosting an event in ${city.name}`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
+        <section aria-label={`Hosting an event in ${city.name}?`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
           <SectionHead eyebrow="For organisers" title={`Hosting an event in ${city.name}?`} />
           <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
             <li>

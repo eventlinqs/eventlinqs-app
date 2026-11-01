@@ -83,7 +83,7 @@ export async function CityGuideScreen({
             {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph). */}
             <HeroCaption>
               <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
-                <Link href="/cities" className="hover:underline">Australia</Link>
+                <Link href="/cities" className="-my-3 inline-flex min-h-11 items-center hover:underline">Australia</Link>
                 <span aria-hidden="true"> / </span>
                 {STATE_NAMES[city.state] ?? city.state}
                 <span aria-hidden="true"> / </span>

@@ -104,6 +104,17 @@ describe('the Geelong reference page, section by section', () => {
     expect(within(all).queryByText('Open Mic Comedy')).toBeNull()
   })
 
+  it('5: a city whose rows name one suburb shows no suburb choice (a filter with one option is noise)', () => {
+    render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
+        rows={[row({ suburb: 'Geelong' }), row({ id: 'x2', href: '/events/x2', suburb: 'Geelong' })]} days={days}
+      />,
+    )
+    expect(screen.queryByLabelText('Suburb')).toBeNull()
+  })
+
   it('6: Hosting an event in Geelong? goes to existing routes only', () => {
     guide()
     const host = screen.getByRole('region', { name: 'Hosting an event in Geelong?' })
