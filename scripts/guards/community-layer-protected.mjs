@@ -51,6 +51,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { selectRest, couldNotLook } from './lib/db-read.mjs'
+import { awaitingCategories } from './lib/awaiting-categories.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[community-layer-protected]'
@@ -152,24 +153,10 @@ if (!REAL_PROJECT.test(url)) {
 }
 if (dbCategories) {
   const dbSlugs = dbCategories.map((c) => c.slug)
-  // A row added after 7 September names the migration that adds it. Until that migration is applied on a database
-  // (production waits for Lawal's own apply) ALL of its slugs are absent there together, and that is reported, not
-  // failed; one present and another absent is a lost category and fails. The migration must be in the tree, or the
-  // field gives no allowance at all.
-  const byMigration = new Map()
-  for (const row of approved.categories.rows) {
-    if (!row.migration) continue
-    // A migration not in this tree gives no allowance: the row must then be present like any other.
-    if (!existsSync(join(ROOT, 'supabase', 'migrations', row.migration))) continue
-    byMigration.set(row.migration, [...(byMigration.get(row.migration) ?? []), row.slug])
-  }
-  const awaiting = new Set()
-  for (const [migration, slugs] of byMigration) {
-    if (slugs.every((s) => !dbSlugs.includes(s))) {
-      for (const s of slugs) awaiting.add(s)
-      console.log(`${TAG} awaiting ${migration} on this database: ${slugs.join(', ')} not yet present (all together, so nothing is lost)`)
-    }
-  }
+  // A row added after 7 September names the migration that adds it; on a database without ALL of that migration's
+  // categories they are awaiting, not lost (one rule, scripts/guards/lib/awaiting-categories.mjs).
+  const { awaiting, lines } = awaitingCategories(approved.categories.rows, dbSlugs)
+  for (const line of lines) console.log(`${TAG} ${line}`)
   for (const slug of approvedCategories) {
     if (awaiting.has(slug)) continue
     if (!dbSlugs.includes(slug)) fail(`categories: the approved ${slug} is missing from public.event_categories on this database; a recorded category has disappeared`)

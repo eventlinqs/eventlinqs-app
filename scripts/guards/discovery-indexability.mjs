@@ -54,6 +54,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
+import { awaitingCategories } from './lib/awaiting-categories.mjs'
 
 const ROOT = process.cwd()
 const APP = join(ROOT, 'src', 'app')
@@ -397,21 +398,11 @@ if (url && !hasRealProject) {
     // migration's slugs yet (production waits for Lawal's own apply), is AWAITING, not orphaned: the surfaces publish
     // only live rows joined to their editorial (src/lib/categories/taxonomy.ts getPublishableCategories), so nothing
     // 404s and the sitemap does not list it. One present and another absent is still a fault.
-    const awaiting = new Set()
     const approvedRows = existsSync(join(ROOT, APPROVED_TAXONOMY))
       ? JSON.parse(readFileSync(join(ROOT, APPROVED_TAXONOMY), 'utf8')).categories.rows
       : []
-    const byMigration = new Map()
-    for (const row of approvedRows) {
-      if (!row.migration || !existsSync(join(ROOT, 'supabase', 'migrations', row.migration))) continue
-      byMigration.set(row.migration, [...(byMigration.get(row.migration) ?? []), row.slug])
-    }
-    for (const [migration, slugs] of byMigration) {
-      if (slugs.every(s => !live.has(s))) {
-        for (const s of slugs) awaiting.add(s)
-        console.log(`  awaiting ${migration} on this database: ${slugs.join(', ')} (editorial written, no row yet, so no page)`)
-      }
-    }
+    const { awaiting, lines } = awaitingCategories(approvedRows, [...live])
+    for (const line of lines) console.log(`  ${line} (editorial written, no row yet, so no page)`)
     const orphaned = written.filter(s => !live.has(s) && !awaiting.has(s)).sort()
     for (const slug of unwritten) {
       fail(
