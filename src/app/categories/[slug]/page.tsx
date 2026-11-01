@@ -73,12 +73,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       category.displayName.toLowerCase(),
     ])
     return {
-      title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
+      title: `${category.displayName} events | ${category.tagline} | EventLinqs`,
       description,
       keywords: category.keywords,
       ...(await discoveryIndexingFor(eventCount, `/categories/${category.slug}`)),
       openGraph: {
-        title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
+        title: `${category.displayName} events | ${category.tagline} | EventLinqs`,
         description,
         url: `/categories/${category.slug}`,
         type: 'website',
