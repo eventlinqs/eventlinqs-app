@@ -1,4 +1,5 @@
 import { wallClockToIso, type FoundEvent } from './collect'
+import { BALLARAT_PAGE_RULES } from './page-rules-ballarat'
 
 /**
  * THE PAGE READER'S RULES (the CONTROLLER's 15:54 of 1 November 2026: a primary page with no schema.org Event data and
@@ -131,7 +132,7 @@ const geelongArtsCentre: PageRule = {
   },
 }
 
-export const PAGE_RULES: readonly PageRule[] = [geelongArtsCentre]
+export const PAGE_RULES: readonly PageRule[] = [geelongArtsCentre, ...BALLARAT_PAGE_RULES]
 
 function hostOf(url: string): string | null {
   try {
