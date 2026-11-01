@@ -30,6 +30,8 @@ const WHEN: { key: When; label: string }[] = [
   { key: 'week', label: 'Next 7 days' },
 ]
 const RADII = [0, 25, 50] as const
+/** The Explore tiles' order, by what a visitor looks for first (Lawal, 1 November 2026, 19:17, (3)). */
+export const EXPLORE_ORDER: readonly string[] = ['music', 'sports', 'comedy', 'nightlife', 'markets', 'food-drink', 'family', 'arts-community']
 
 /** One icon per category, read from the slug's words so a new category still gets a sensible one. */
 function iconFor(slug: string) {
@@ -158,7 +160,15 @@ export function CityGuide({
     c.n += 1
     counts.set(r.categorySlug, c)
   }
-  const tiles = [...counts.entries()].sort((a, b) => b[1].n - a[1].n || a[1].label.localeCompare(b[1].label))
+  // In the order a visitor looks (Lawal's design notes of 1 November 2026, 19:17, (3)): music, sport, comedy, nightlife,
+  // markets, food and drink, family, arts; then the rest by how many nights each holds.
+  const rank = (slug: string) => {
+    const i = EXPLORE_ORDER.indexOf(slug)
+    return i < 0 ? EXPLORE_ORDER.length : i
+  }
+  const tiles = [...counts.entries()].sort(
+    (a, b) => rank(a[0]) - rank(b[0]) || b[1].n - a[1].n || a[1].label.localeCompare(b[1].label),
+  )
 
   const week = shown.filter((r) => days.weekKeys.includes(r.dayKey))
   const later = shown.filter((r) => !days.weekKeys.includes(r.dayKey))

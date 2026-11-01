@@ -7,6 +7,7 @@ import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { CityGuideScreen } from '@/components/features/city-guide/city-guide-screen'
 import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CityRailSkeleton } from '@/components/features/home/section-skeletons'
+import { AFTER_THE_GUIDE } from '@/lib/home/after-the-guide'
 
 /**
  * Homepage - the visceral experience layer.
@@ -38,31 +39,37 @@ export const revalidate = 120
 
 // Batch 9 V2 SEO contract: title format from the brief, full Open Graph
 // and Twitter Card with 1200x630 hero image, and canonical URL. UNSOURCED (Law 7)
+// THE HOME READS AS A WHAT'S ON GUIDE (Lawal's design notes of 1 November 2026, 19:17, (1); the CONTROLLER's 19:19;
+// C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md): the page is the Geelong guide, so its title and cards say
+// what is on, not the community first platform line. The brand tagline itself stays where it is (one source,
+// src/lib/brand/positioning.ts); only this page's own words changed.
 export const metadata: Metadata = {
-  title: 'EventLinqs - Every community. Every event. One platform.',
+  title: 'What’s on in Geelong: gigs, sport, markets and things to do | EventLinqs',
   description:
-    'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. EventLinqs is where events get made.',
+    'Everything on in Geelong, day by day: music, sport, comedy, nightlife, markets, food and drink, family and arts, each with its time, venue, price and where to book. Switch to Melbourne, Ballarat, Bendigo or any Australian city in one tap. EventLinqs is where events get made.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_AU',
-    title: 'EventLinqs - Every community. Every event. One platform.',
+    title: 'What’s on in Geelong: gigs, sport, markets and things to do | EventLinqs',
     description:
-      'Discover live events from communities across Australia. EventLinqs is where events get made: find your suppliers, sell your tickets, run your door and get paid.',
+      'Everything on in Geelong, day by day: music, sport, comedy, nightlife, markets, food and drink, family and arts, each with its time, venue, price and where to book. Switch to Melbourne, Ballarat, Bendigo or any Australian city in one tap. EventLinqs is where events get made.',
     siteName: 'EventLinqs',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EventLinqs - Every community. Every event. One platform.',
+    title: 'What’s on in Geelong: gigs, sport, markets and things to do | EventLinqs',
     description:
-      'Discover live events from communities across Australia. The place events get made.',
+      'Everything on in Geelong, day by day, with the price and where to book. EventLinqs is where events get made.',
   },
 }
 
 /**
  * THE HOME IS THE CITY GUIDE (the city-first directive of 1 November 2026): one city, chosen first, never mixed. It
- * opens on Geelong, the directive's reference city, with every other city one tap away. Below the guide, the paid
- * Featured slots, the community thread (the homepage community moat) and every city.
+ * opens on Geelong, the directive's reference city, with every other city one tap away. Below the guide, in the order
+ * a visitor finding what's on uses them (Lawal's design notes of 19:17, (2)): the paid Featured slots, every city, and
+ * the community thread LAST, never dominating. Each is a flag in src/lib/home/after-the-guide.ts: a section that stops
+ * helping a visitor find what's on is switched off there, never deleted, so it can come back.
  */
 export default async function HomePage() {
   const nowIso = new Date().toISOString()
@@ -73,11 +80,13 @@ export default async function HomePage() {
       heroImage={await getCityHeroPhoto('geelong')}
       after={
         <>
-          <FeaturedRow items={featured} where="homepage" />
-          <CommunityRail />
-          <Suspense fallback={<CityRailSkeleton />}>
-            <CityRailSection nowIso={nowIso} />
-          </Suspense>
+          {AFTER_THE_GUIDE.featuredSlots ? <FeaturedRow items={featured} where="homepage" /> : null}
+          {AFTER_THE_GUIDE.everyCity ? (
+            <Suspense fallback={<CityRailSkeleton />}>
+              <CityRailSection nowIso={nowIso} />
+            </Suspense>
+          ) : null}
+          {AFTER_THE_GUIDE.communities ? <CommunityRail /> : null}
         </>
       }
     />
