@@ -117,7 +117,7 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
 export function suburbOf(address: string | null, city: string | null): string | null {
   const parts = (address ?? '').split(',').map((p) => p.trim()).filter(Boolean)
   for (let i = parts.length - 1; i >= 0; i -= 1) {
-    const m = /^(.*?)\s+(VIC|NSW|QLD|WA|SA|TAS|ACT|NT)/i.exec(parts[i])
+    const m = /^(.*?)\s+(VIC|NSW|QLD|WA|SA|TAS|ACT|NT)\b/i.exec(parts[i])
     if (m && m[1].trim()) return m[1].trim()
   }
   return city && city.trim() ? city.trim() : null

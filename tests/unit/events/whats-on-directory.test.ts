@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { directoryDays, sourceLabel, type DirectoryInput } from '@/lib/events/whats-on-directory'
+import { directoryDays, sourceLabel, suburbOf, type DirectoryInput } from '@/lib/events/whats-on-directory'
 import { discoveryDays, windowDayKeys } from '@/lib/events/discovery-data'
 import { featuredWithRecordedRights } from '@/lib/events/featured-with-recorded-rights'
 
@@ -114,6 +114,15 @@ describe('the discovery rows say only what is held', () => {
   it('on a Monday the weekend is Friday, Saturday AND Sunday: every day of the one window, never its ends alone', () => {
     const d = discoveryDays(new Date('2026-11-02T03:00:00Z')) // Monday 2 November in Sydney
     expect(d.weekendKeys).toEqual(['2026-11-06', '2026-11-07', '2026-11-08'])
+  })
+  it('suburbOf reads the suburb before the state code, and falls back to the city only when no part names one', () => {
+    // 2 November: a heredoc turned this pattern's \b into a BACKSPACE, so every address fell back to the city and the
+    // suburb filter offered one choice; no-control-characters caught it. This pins the reading itself.
+    expect(suburbOf('Costa Hall, 1 Gheringhap St, Geelong VIC 3220', 'Geelong')).toBe('Geelong')
+    expect(suburbOf('12 Bay St, Belmont VIC 3216', 'Geelong')).toBe('Belmont')
+    expect(suburbOf('Pakington St, Geelong West Vic 3218, Australia', 'Geelong')).toBe('Geelong West')
+    expect(suburbOf('The Barwon Club', 'Geelong')).toBe('Geelong')
+    expect(suburbOf(null, null)).toBeNull()
   })
   it('windowDayKeys lists the middle day of a three day window', () => {
     expect(windowDayKeys(new Date('2026-11-05T13:00:00Z'), new Date('2026-11-08T12:59:59.999Z'))).toEqual(['2026-11-06', '2026-11-07', '2026-11-08'])

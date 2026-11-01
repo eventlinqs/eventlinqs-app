@@ -43,7 +43,7 @@ export const WORTH_MINIMUM = 3
  * (the directive, C: 'chip rows cut at the right edge with no cue that they scroll'). From a small tablet up they wrap.
  */
 const SCROLL_ROW =
-  '-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_82%,transparent)] sm:mx-0 sm:flex-wrap sm:px-0 sm:[mask-image:none]'
+  'relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_82%,transparent)] sm:mx-0 sm:flex-wrap sm:px-0 sm:[mask-image:none]'
 const SELECT =
   'min-h-11 rounded-xl border border-[var(--color-ink-200)] bg-white px-3 font-display text-base font-semibold normal-case tracking-normal text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]'
 const ORGANISER_LINK =
@@ -345,7 +345,7 @@ export function CityGuide({
         {worth.length >= WORTH_MINIMUM ? (
           <section aria-label="Worth going out for" className="mt-12">
             <SectionHead eyebrow="Featured" title="Worth going out for" />
-            <ul className="-mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
+            <ul className="relative -mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
               {worth.slice(0, 6).map((e) => (
                 <li key={e.id} className="w-[82%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
                   <EventCard event={e} variant="grid-one-two-four" />
@@ -497,7 +497,7 @@ function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; city
       {groups.map((g) => (
         <section key={g.key} aria-label={g.label}>
           <h3 className="font-headline text-lg font-extrabold text-[var(--text-primary)]">{g.label}</h3>
-          <ul className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+          <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
             {g.rows.map((r) => (
               <li key={r.id} className="border-t border-[var(--color-ink-100)] first:border-t-0">
                 <Row r={r} cityName={cityName} more={more.get(r.id) ?? 0} />
