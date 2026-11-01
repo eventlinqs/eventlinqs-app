@@ -140,6 +140,72 @@ export const CATEGORY_EDITORIAL: readonly CategoryEditorial[] = [
     keywords: ['theatre tickets Australia', 'independent theatre Melbourne', 'gallery opening', 'dance performance tickets', 'exhibition tickets'],
   },
   {
+    slug: 'theatre',
+    eyebrow: 'THEATRE',
+    h1: 'Plays, musicals and the show the whole town talks about',
+    intro:
+      'Main stage seasons, amateur companies, school musicals, pantomimes and the touring show that plays two nights at the regional arts centre. Every date of the run listed, with the seat and the total price shown first.',
+    metaTitle: 'Theatre and performing arts tickets in Australia | EventLinqs',
+    metaDescription:
+      'Plays, musicals, opera, pantomime and dance across Australia, every date of the run listed, with seat choice and the total price shown first.',
+    storyHeadline: 'Every performance of the run, not just opening night',
+    storyParagraphs: [
+      'A season is many nights, and the Thursday matinee needs selling as much as the premiere. Each performance is its own date on the listing, so a visitor who can only come on a Sunday sees the Sunday, and a company sees which nights are filling before the last week arrives.',
+      'Concession, group and preview prices are ordinary ticket tiers, and a seat map is drawn once for the venue and reused for every performance in the season.',
+    ],
+    personas: [
+      'Regional and city arts centres',
+      'Amateur and community theatre companies',
+      'School and youth musical productions',
+      'Touring companies on a regional circuit',
+    ],
+    keywords: ['theatre tickets Australia', 'musical tickets', 'community theatre', 'pantomime tickets', 'arts centre shows'],
+  },
+  {
+    slug: 'markets',
+    eyebrow: 'MARKETS',
+    h1: 'Farmers markets, night markets and the Sunday stalls',
+    intro:
+      'Farmers markets, makers markets, twilight and night markets, and the monthly stalls on the foreshore. Most are free to walk into, so the listing says when, where and what is on rather than asking for a ticket.',
+    metaTitle: 'Markets in Australia: farmers, makers and night markets | EventLinqs',
+    metaDescription:
+      'Farmers, makers, twilight and night markets across Australia, each date listed with the place, the hours and whether entry is free.',
+    storyHeadline: 'A market is a date and a place, every time',
+    storyParagraphs: [
+      'People plan a market morning around three questions: is it on this weekend, where exactly, and when does it open. A market listing answers all three for every date it runs, with the map and directions on the page, so nobody drives to an empty car park.',
+      'A free market stays free here: no ticket is forced on a gate that has none. Where a market does charge entry or sells stall sites, those are ordinary ticket tiers with the total shown first.',
+    ],
+    personas: [
+      'Farmers market associations',
+      'Makers and craft market organisers',
+      'Councils running twilight and night markets',
+      'Schools and clubs holding fundraising markets',
+    ],
+    keywords: ['farmers market near me', 'night markets', 'makers market', 'markets this weekend', 'twilight market'],
+  },
+  {
+    slug: 'classes-workshops',
+    eyebrow: 'CLASSES AND WORKSHOPS',
+    h1: 'Classes, workshops and something new to learn this week',
+    intro:
+      'Library sessions, pottery and painting, cooking classes, coding clubs and the hands-on workshop with twelve places. Many are free, many book out, and every one lists its date, its place and how to join.',
+    metaTitle: 'Classes and workshops in Australia | EventLinqs',
+    metaDescription:
+      'Art, craft, cooking, language, library and hands-on workshops across Australia, with the places left, the date and whether it is free.',
+    storyHeadline: 'Small rooms fill first',
+    storyParagraphs: [
+      'A workshop has a fixed number of places, and the person who finds it a day late finds it full. Each session is listed on its own date, so a visitor sees the next one with room in it, and an organiser sees which sessions to add.',
+      'Free drop-in sessions are shown as free with no booking step, and a class that needs a place booked takes the booking here, with the materials fee, if any, inside the total from the first click.',
+    ],
+    personas: [
+      'Public libraries running free sessions',
+      'Art, craft and pottery studios',
+      'Cooking schools and community kitchens',
+      'Neighbourhood houses and learning centres',
+    ],
+    keywords: ['workshops near me', 'classes this week', 'free library sessions', 'pottery class', 'art workshop'],
+  },
+  {
     slug: 'food-drink',
     eyebrow: 'FOOD AND DRINK',
     h1: 'Long lunches, degustations, markets and brewery yards',

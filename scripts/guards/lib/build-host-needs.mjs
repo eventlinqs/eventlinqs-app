@@ -45,6 +45,9 @@ export const DECLARED = {
   'scripts/guards/community-layer-protected.mjs': {
     docs: 'judges the source and the database against docs/scope/community-layer-approved.json, the approved record of the 21 communities. Re-included; the third lost deployment.',
   },
+  'scripts/guards/discovery-indexability.mjs': {
+    docs: 'reads docs/scope/community-layer-approved.json for the categories a named migration adds, so editorial written ahead of that migration on a database is reported as awaiting rather than orphaned. The same re-included file community-layer-protected reads; absent, every orphan is still a fault.',
+  },
   'scripts/guards/excluded-reads-survive-the-upload.mjs': {
     git: 'a CORRECTION, no longer a dependence (close-out F2.2). The upload is enumerated by walking the filesystem and applying every .gitignore, so it works with no repository at all; where the index IS readable it is asked, because being force-added is a fact only the index holds and 16 shipped rasters under public/ are force-added. This is the FIFTH lost deployment: it ran on the build host, called git ls-files, and threw. It now stands aside there by BUILD SCOPE rather than by failing to find git.',
   },
