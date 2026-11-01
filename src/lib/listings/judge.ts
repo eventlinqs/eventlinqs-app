@@ -60,9 +60,19 @@ function sameDay(a: string, b: string): boolean {
  * start more than two hours away (time_changed), or the same start with a title alike at another venue
  * (venue_changed). Next week's night of a weekly series is a different day, so it is never a moved night.
  */
-export function factChange(e: FoundEvent, known: readonly KnownEvent[]): { eventId: string; change: 'time_changed' | 'venue_changed' } | null {
+export function factChange(
+  e: FoundEvent,
+  known: readonly KnownEvent[],
+  /**
+   * The source's own city. A night of ANOTHER city is never this night moved: on 1 November 2026, 119 Geelong library
+   * nights waited as 'venue_changed' against Bendigo's same-named 'Toddler Time', and accepting one would have moved a
+   * Bendigo night to a Geelong branch. A known night with no recorded city is still compared, as before.
+   */
+  citySlug: string | null = null,
+): { eventId: string; change: 'time_changed' | 'venue_changed' } | null {
   const key = keyOf(e)
   for (const k of known) {
+    if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
     if (titleShare(k.title, e.title) < SAME_TITLE_SHARE) continue
     const apart = Math.abs(new Date(k.startsAt).getTime() - new Date(e.startsAt).getTime())
     const venue = sameVenue(k, key)

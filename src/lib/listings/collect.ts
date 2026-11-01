@@ -410,6 +410,8 @@ export type RegisteredSource = {
   partner: boolean
   /** A partner source's own venue (listing_sources.venue_id): its nights publish there, and only nights held there. */
   partnerVenue: { name: string; address: string | null } | null
+  /** The source's own city (listing_sources.city_slug): its fact changes and its known venues are this city's only. */
+  citySlug?: string | null
 }
 
 /**
@@ -496,7 +498,8 @@ export function dueSources(sources: readonly RegisteredSource[], now: Date): Reg
   })
 }
 
-export type KnownEvent = ListingKey & { eventId: string }
+/** citySlug: the night's own city (events.city_primary), so another city's same-named night is never 'this night moved'. */
+export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null }
 
 export type CandidatePlan =
   | { kind: 'new'; event: FoundEvent }
@@ -519,7 +522,13 @@ function keyOf(e: FoundEvent): ListingKey {
  * (the 12:30 (1): "a second source adds a link, never a second card"). Two pages naming one event in one run are one
  * candidate with both pages' links.
  */
-export function planCandidates(found: readonly FoundEvent[], known: readonly KnownEvent[], now: Date): CandidatePlan[] {
+export function planCandidates(
+  found: readonly FoundEvent[],
+  known: readonly KnownEvent[],
+  now: Date,
+  /** The source's own city (listing_sources.city_slug): a fact change is only ever a night of this city. */
+  citySlug: string | null = null,
+): CandidatePlan[] {
   const plans: CandidatePlan[] = []
   const limit = now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS
   for (const e of found) {
@@ -536,7 +545,7 @@ export function planCandidates(found: readonly FoundEvent[], known: readonly Kno
       plans.push({ kind: 'adds_links', event, eventId: listed.eventId })
       continue
     }
-    const moved = factChange(e, known)
+    const moved = factChange(e, known, citySlug)
     plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
   }
   return plans
