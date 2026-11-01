@@ -33,7 +33,8 @@ describe("Her Majesty's Theatre Ballarat rule", () => {
     expect(rule).not.toBeNull()
     expect(rule!.host).toBe('hermaj.com')
     const xml = `<urlset><url><loc>${HM}/events/bp-proof-tour-2026</loc></url><url><loc>${HM}/whats-on</loc></url><url><loc>${HM}/events/bp-two-2027</loc></url></urlset>`
-    expect(eventPagesFromSitemap(xml, rule!)).toEqual([`${HM}/events/bp-proof-tour-2026`, `${HM}/events/bp-two-2027`])
+    // WINDOW 6's reader (18673099) reads a sitemap newest first: with no lastmod, from the end of the list.
+    expect(eventPagesFromSitemap(xml, rule!)).toEqual([`${HM}/events/bp-two-2027`, `${HM}/events/bp-proof-tour-2026`])
   })
 
   it('reads one night per session, start and finish in Melbourne, the venue with its street, the session booking link', () => {
