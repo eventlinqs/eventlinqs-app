@@ -56,14 +56,6 @@ function firstHeading(html: string): string | null {
 
 const MONTHS: Readonly<Record<string, number>> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
 
-/** 'Fri, 07 Aug 2026' to [2026, 8, 7]. */
-function dayOf(line: string): [number, number, number] | null {
-  const m = /^(?:[A-Za-z]{3},?\s+)?(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/.exec(line)
-  if (!m) return null
-  const mo = MONTHS[m[2].toLowerCase()]
-  return mo ? [Number(m[3]), mo, Number(m[1])] : null
-}
-
 /** '07:00pm' or '7pm' or '19:30' to [19, 0]. */
 function clockOf(line: string): [number, number] | null {
   const m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(line.replace(/\./g, ':'))
@@ -104,16 +96,17 @@ const geelongArtsCentre: PageRule = {
     if (lines.some((l) => /^This is an archived Event$/i.test(l))) return []
     const title = firstHeading(html)
     if (!title) return []
-    const performances: string[] = []
-    const perf = block(lines, 'Performances')
-    for (let i = 0; i < perf.length; i++) {
-      const day = dayOf(perf[i])
-      if (!day) continue
-      const clock = perf[i + 1] ? clockOf(perf[i + 1]) : null
-      if (!clock) continue
-      const at = wallClockToIso(day[0], day[1], day[2], clock[0], clock[1], 0, 'Australia/Melbourne')
-      if (at) performances.push(at)
-      i += 1
+    /* Each performance is a date then its time; the page puts them on one line (inline spans) or two, and may follow a
+       night with 'Sold Out'. Read across the whole block so either layout reads the same. */
+    const performances: { startsAt: string; soldOut: boolean }[] = []
+    const perfText = block(lines, 'Performances').join(' ')
+    const PERF = /(?:[A-Za-z]{3},?\s+)?(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))(\s+Sold Out)?/gi
+    for (const m of perfText.matchAll(PERF)) {
+      const mo = MONTHS[m[2].toLowerCase()]
+      const clock = clockOf(m[4].replace(/\s+/g, ''))
+      if (!mo || !clock) continue
+      const at = wallClockToIso(Number(m[3]), mo, Number(m[1]), clock[0], clock[1], 0, 'Australia/Melbourne')
+      if (at) performances.push({ startsAt: at, soldOut: Boolean(m[5]) })
     }
     if (performances.length === 0) return []
     const prices = block(lines, 'Ticket Prices')
@@ -124,7 +117,7 @@ const geelongArtsCentre: PageRule = {
     const venue = block(lines, 'Venue').filter((l) => !/^venue info$/i.test(l))
     const venueName = venue[0] ?? 'Geelong Arts Centre'
     const street = venue[1] && /\d/.test(venue[1]) ? venue[1] : null
-    return performances.map((startsAt) => ({
+    return performances.map(({ startsAt, soldOut }) => ({
       title,
       startsAt,
       endsAt: null,
@@ -133,7 +126,7 @@ const geelongArtsCentre: PageRule = {
       pageUrl,
       imageUrl: null,
       description: null,
-      links: [{ url: pageUrl, availability: 'on_sale' as const, priceFromCents }],
+      links: [{ url: pageUrl, availability: soldOut ? ('sold_out' as const) : ('on_sale' as const), priceFromCents }],
     }))
   },
 }
