@@ -909,6 +909,108 @@ export type Database = {
           },
         ]
       }
+      conversion_opportunities: {
+        Row: {
+          city_slug: string
+          closed_reason: string | null
+          created_at: string
+          id: string
+          organiser_id: string | null
+          source: string
+          source_ref: string | null
+          state: string
+          updated_at: string
+          venue_id: string | null
+          who_first: string
+        }
+        Insert: {
+          city_slug: string
+          closed_reason?: string | null
+          created_at?: string
+          id?: string
+          organiser_id?: string | null
+          source: string
+          source_ref?: string | null
+          state?: string
+          updated_at?: string
+          venue_id?: string | null
+          who_first: string
+        }
+        Update: {
+          city_slug?: string
+          closed_reason?: string | null
+          created_at?: string
+          id?: string
+          organiser_id?: string | null
+          source?: string
+          source_ref?: string | null
+          state?: string
+          updated_at?: string
+          venue_id?: string | null
+          who_first?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_opportunities_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_opportunities_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+          {
+            foreignKeyName: "conversion_opportunities_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversion_opportunity_changes: {
+        Row: {
+          action: string
+          at: string
+          changed_by: string
+          id: number
+          new_row: Json
+          old_row: Json | null
+          opportunity_id: string
+        }
+        Insert: {
+          action: string
+          at?: string
+          changed_by?: string
+          id?: never
+          new_row: Json
+          old_row?: Json | null
+          opportunity_id: string
+        }
+        Update: {
+          action?: string
+          at?: string
+          changed_by?: string
+          id?: never
+          new_row?: Json
+          old_row?: Json | null
+          opportunity_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_opportunity_changes_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digest_sends: {
         Row: {
           audience_count: number
@@ -10438,6 +10540,78 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticketing_activations: {
+        Row: {
+          at: string
+          event_id: string | null
+          id: string
+          opportunity_id: string | null
+          organiser_id: string
+          proof_id: string
+          proved_by: string
+          source: string
+          step: string
+        }
+        Insert: {
+          at?: string
+          event_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          organiser_id: string
+          proof_id: string
+          proved_by: string
+          source: string
+          step: string
+        }
+        Update: {
+          at?: string
+          event_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          organiser_id?: string
+          proof_id?: string
+          proved_by?: string
+          source?: string
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticketing_activations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
           },
         ]
       }
