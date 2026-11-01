@@ -31,5 +31,5 @@ export async function FeaturedFromCards({ events }: { events: readonly EventCard
     return true
   })
   const rights = await readCoverRights(createAdminClient(), week.filter((e) => !e.image_credit).map((e) => e.id))
-  return <FeaturedThisWeek events={featuredWithRecordedRights(week, rights, 4)} />
+  return <FeaturedThisWeek events={featuredWithRecordedRights(week, rights, 4).map((e) => ({ ...e, cover_rights_recorded: true }))} />
 }

@@ -61,5 +61,5 @@ export async function featuredThisWeek(rows: readonly LedgerRow[], now: Date, pl
     seen.add(key)
     return true
   })
-  return featuredWithRecordedRights(once, rights, places).map(toEventCardData)
+  return featuredWithRecordedRights(once, rights, places).map((r) => ({ ...toEventCardData(r), cover_rights_recorded: true }))
 }

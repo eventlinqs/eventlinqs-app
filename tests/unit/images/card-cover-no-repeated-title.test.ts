@@ -39,10 +39,11 @@ describe('a card whose only image is our composed cover', () => {
     expect(html).not.toContain('Geelong City Market')
   })
 
-  it('shows the category, the date mark in the night\'s own zone and the EventLinqs mark', () => {
-    expect(html).toContain('Food &amp; Drink')
-    expect(html).toContain('data-date-mark="31 Oct"')
-    expect(html).toContain('EventLinqs')
+  // REVERSED by the CONTROLLER's 16:41 of 1 November 2026, (1), Lawal's order of 16:40: the large date block and every
+  // EventLinqs logo tile come off every card. The branded cover with a date mark and the mark is no longer drawn: where
+  // no photograph may be shown, nothing is drawn, and the card that asked is a directory row.
+  it('draws nothing at all: no date mark, no EventLinqs mark, no category tile', () => {
+    expect(html).toBe('')
   })
 })
 
@@ -57,9 +58,10 @@ describe("a card with the night's own photograph", () => {
 })
 
 describe('the walk-in page hero', () => {
-  it('asks heroIsTypographic before drawing the hero raster, as the event page does', () => {
+  it('asks heroIsTypographic before drawing the hero raster, and draws no frame for our composed cover', () => {
     const src = readFileSync('src/components/events/walk-in/walk-in-event-page.tsx', 'utf8')
-    expect(src).toMatch(/heroIsTypographic\(\{ image: hero\.image \}\)\s*\?\s*\(\s*<BrandedPlaceholder/)
+    expect(src).toMatch(/hero\.image && !heroIsTypographic\(\{ image: hero\.image \}\) \?/)
+    expect(src).not.toMatch(/<BrandedPlaceholder/)
   })
 })
 

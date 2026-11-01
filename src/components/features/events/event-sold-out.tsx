@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import type { AuthResponse } from '@supabase/supabase-js'
 import { joinWaitlist } from '@/app/actions/waitlist'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 /**
@@ -210,27 +211,18 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
       href={`/events/${event.slug}`}
       className="group block overflow-hidden rounded-2xl border border-ink-200 bg-white transition-[transform,box-shadow,border-color,background-color] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:border-gold-500/40"
     >
-      <div className="relative aspect-[16/10] bg-ink-100 overflow-hidden">
-        {event.cover_image_url ? (
+      {/* A photograph only where one may be shown; otherwise no frame at all, never an empty grey panel or the branded
+          tile (the CONTROLLER's 16:41 of 1 November 2026, (1)). */}
+      {event.cover_image_url && !isComposedCover(event.cover_image_url) ? (
+        <div className="relative aspect-[16/10] bg-ink-100 overflow-hidden">
           <EventCardMedia
             src={event.cover_image_url}
             alt={event.title}
             variant="grid-one-two-three-sm"
             className="transition-transform duration-500 group-hover:scale-105"
-            startDate={event.start_date}
-            timeZone={event.timezone}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-ink-400">
-            No image
-          </div>
-        )}
-        {event.category_name && (
-          <span className="absolute left-2 top-2 rounded-lg bg-ink-900/95 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
-            {event.category_name}
-          </span>
-        )}
-      </div>
+        </div>
+      ) : null}
       <div className="p-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
           {dateLabel}

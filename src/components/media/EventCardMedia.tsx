@@ -2,10 +2,17 @@ import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
-import { BrandedPlaceholder } from './decorative/branded-placeholder'
 import { HoverWash } from './hover-wash'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
-import { eventDateMark } from '@/lib/dates/event-time'
+
+/**
+ * Whether a card has a photograph to draw: never our composed cover, never an address the image allow-list refuses.
+ * A card asks this before it draws a photo frame, so a night with no photograph shows no empty frame (the CONTROLLER's
+ * 16:41 of 1 November 2026, (1)).
+ */
+export function hasCardPhoto(src: string | null | undefined): boolean {
+  return !isComposedCover(src) && resolveImageSrc(src) !== null
+}
 
 /**
  * EventCardMedia - the only allowed surface for event imagery in card,
@@ -157,14 +164,15 @@ export function EventCardMedia({
   // Our composed cover is never drawn on a card: its artwork is the title, the date, the venue and the price, every one
   // printed again beneath the image. Until the organiser's approved photo or an approved photo of the venue exists, the
   // card shows the typographic cover with no repeated title.
-  if (isComposedCover(src)) {
-    return <BrandedPlaceholder className={className} category={category} dateMark={eventDateMark(startDate, timeZone)} />
-  }
+  // Nor is the branded tile, with its date and the EventLinqs mark, drawn in its place (the CONTROLLER's 16:41 of
+  // 1 November 2026, (1)): where no photograph may be shown, nothing is drawn, and the card that called this is a row.
+  void category
+  void startDate
+  void timeZone
+  if (isComposedCover(src)) return null
   // A bad/missing/disallowed URL must never 500 the card or its rail.
   const safeSrc = resolveImageSrc(src)
-  if (!safeSrc) {
-    return <BrandedPlaceholder className={className} />
-  }
+  if (!safeSrc) return null
   return (
     <>
       <Image

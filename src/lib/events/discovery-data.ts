@@ -60,7 +60,7 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
       return true
     })
     .slice(0, 24)
-    .map(toEventCardData)
+    .map((r) => ({ ...toEventCardData(r), cover_rights_recorded: true }))
 
   return {
     rows: flat,
