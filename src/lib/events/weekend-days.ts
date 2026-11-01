@@ -40,7 +40,7 @@ export const WEEKEND_SURFACE_PATH = '/this-weekend'
 export const WEEKEND_SURFACE_LIMIT = 60
 
 /**
- * The weekend this page is about: Saturday 00:00 to the last instant of Sunday,
+ * The weekend this page is about: Friday 00:00 to the last instant of Sunday,
  * in the PLATFORM zone.
  *
  * It delegates rather than deciding. `weekendWindowUtc` is the one definition on
@@ -112,9 +112,9 @@ function localDayHeading(iso: string, zone: string): string {
  * its card already says.
  *
  * A CONSEQUENCE, written down rather than left to surprise somebody: the
- * platform-zone window opens at Saturday 00:00 AEST, which is Friday 22:00 in
- * Perth, so a late Friday event in Western Australia can legitimately appear
- * under a FRIDAY heading on a page about the weekend. That is honest, it is that
+ * platform-zone window opens at Friday 00:00 AEST, which is Thursday 22:00 in
+ * Perth, so a late Thursday event in Western Australia can legitimately appear
+ * under a THURSDAY heading on a page about the weekend. That is honest, it is that
  * reader's weekend, and it is covered by a test rather than by a comment alone.
  */
 export function groupWeekendByDay<T extends WeekendDatedEvent>(events: T[]): WeekendDay<T>[] {
@@ -133,7 +133,8 @@ export function groupWeekendByDay<T extends WeekendDatedEvent>(events: T[]): Wee
 }
 
 /**
- * "Saturday 19 and Sunday 20 September", the human form of the window.
+ * "Friday 18 to Sunday 20 September", the human form of the window: its first
+ * and last day joined by 'to', because the weekend is three days.
  *
  * It is built from the window rather than from the events, so the page says
  * which weekend it is even when nothing is on. Both dates carry their month when
@@ -152,5 +153,5 @@ export function describeWeekend(from: Date, to: Date): string {
   const month = (d: Date) =>
     new Intl.DateTimeFormat('en-AU', { timeZone: zone, month: 'long' }).format(d)
   const straddles = month(from) !== month(to)
-  return `${part(from, straddles)} and ${part(to, true)}`
+  return `${part(from, straddles)} to ${part(to, true)}`
 }
