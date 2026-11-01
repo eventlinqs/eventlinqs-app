@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  ArrowUpRight, Briefcase, CalendarDays, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
+  ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
-import type { DirectoryRow } from '@/lib/events/whats-on-directory'
+import { OUR_CHECKOUT_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 
 /**
@@ -187,13 +187,9 @@ export function CityGuide({
   // Section 2: the city's own categories, each count read from its real rows, a tile only where events exist, in
   // Lawal's order (music, sport, comedy, nightlife, markets, food and drink, family, arts), the rest by count, community
   // last (the directive, section 2).
+  // A tile counts EVENTS, never dates (the CONTROLLER's 09:13 (3)): a weekly session is one event however many nights.
   const counts = new Map<string, { label: string; n: number }>()
-  for (const r of here) {
-    if (!r.categorySlug || !r.category) continue
-    const c = counts.get(r.categorySlug) ?? { label: r.category, n: 0 }
-    c.n += 1
-    counts.set(r.categorySlug, c)
-  }
+  for (const [slug, label, n] of eventsByCategory(here)) counts.set(slug, { label, n })
   const rank = (slug: string) => {
     if (slug === 'community') return EXPLORE_ORDER.length + 1
     const i = EXPLORE_ORDER.indexOf(slug)
@@ -244,8 +240,10 @@ export function CityGuide({
           </button>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="flex min-h-12 flex-1 items-center gap-3 rounded-full border border-[var(--color-ink-200)] bg-white px-4 focus-within:ring-2 focus-within:ring-[var(--color-gold-400)]">
+        {/* SHORTER ON A PHONE (Lawal, 2 November 2026, 09:00, refinement 3): the whole-country search sits beside the box,
+            not on a line of its own; the dates, Free and the distance share one row below. */}
+        <div className="mt-4 flex items-center gap-3">
+          <label className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-[var(--color-ink-200)] bg-white px-4 focus-within:ring-2 focus-within:ring-[var(--color-gold-400)]">
             <Search className="h-5 w-5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
             <input
               type="search"
@@ -258,13 +256,15 @@ export function CityGuide({
           </label>
           <Link
             href={`/events${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`}
-            className="inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
+            aria-label="Search all of Australia"
+            className="inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
           >
-            Search all of Australia
+            All of Australia
           </Link>
         </div>
 
-        <div className={`mt-3 ${SCROLL_ROW}`} role="group" aria-label="When">
+        <div className={`mt-3 ${SCROLL_ROW}`}>
+        <div className="flex shrink-0 gap-2" role="group" aria-label="When">
           {WHEN.map((w) => (
             <button key={w.key} type="button" aria-pressed={when === w.key} onClick={() => setWhen(when === w.key ? 'all' : w.key)} className={chip(when === w.key)}>
               {w.label}
@@ -294,15 +294,31 @@ export function CityGuide({
             />
           </label>
         </div>
-        <div className={`mt-2 ${SCROLL_ROW}`} role="group" aria-label="Price and area">
+        <div className="flex shrink-0 gap-2" role="group" aria-label="Price and area">
           <button type="button" aria-pressed={price === 'free'} onClick={() => setPrice(price === 'free' ? 'all' : 'free')} className={chip(price === 'free')}>
             Free
           </button>
-          {(wholeState ? [] : RADII).map((r) => (
-            <button key={r} type="button" aria-pressed={radius === r} onClick={() => setRadius(r)} className={chip(radius === r)}>
-              {r === 0 ? `In ${city.name}` : `Within ${r} km`}
-            </button>
-          ))}
+          {/* The distance is ONE chip showing the choice in force; the phone's own compact list opens on a tap. */}
+          {wholeState ? null : (
+            <label className={`relative ${chip(radius > 0)}`}>
+              <MapPin className="h-4 w-4" aria-hidden="true" />
+              <span>{radius === 0 ? `In ${city.name}` : `Within ${radius} km`}</span>
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              <select
+                aria-label="Distance"
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value) as (typeof RADII)[number])}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              >
+                {RADII.map((r) => (
+                  <option key={r} value={r}>
+                    {r === 0 ? `In ${city.name}` : `Within ${r} km`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         </div>
 
         {/* 2 EXPLORE BY INTEREST. */}
@@ -310,7 +326,7 @@ export function CityGuide({
           <section aria-label={`Explore ${placeName}`} className="mt-10">
             <SectionHead eyebrow={`Explore ${placeName}`} title="Discover your kind of event" />
             <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {[...tiles, ['all', { label: 'All events', n: here.length }] as const].map(([slug, c]) => {
+              {[...tiles, ['all', { label: 'All events', n: eventCount(here) }] as const].map(([slug, c]) => {
                 const Icon = slug === 'all' ? CalendarDays : iconFor(slug)
                 const on = slug !== 'all' && category === slug
                 return (
@@ -418,7 +434,7 @@ export function CityGuide({
           </div>
           <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
             <p className="font-display text-sm font-semibold text-[var(--text-muted)]" aria-live="polite">
-              {filtered ? `${shown.length} of ${here.length}` : here.length} {here.length === 1 ? 'event' : 'events'} coming up in{' '}
+              {countLine(filtered ? shown : here, filtered ? here : null)} coming up in{' '}
               {radius && !wholeState ? `${city.name} and within ${radius} km` : placeName}
             </p>
             {filtered ? (
@@ -515,35 +531,67 @@ function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; city
  * night; 'Tickets on <site>' with the outbound mark where another site sells it; 'Free entry' where it is free and walk
  * in. Read from the row's own source words (src/lib/events/whats-on-directory.ts sourceLabel); payment code untouched.
  */
-export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>): { price: string | null; book: string | null; outbound: boolean } {
-  if (r.source === 'Tickets on EventLinqs') return { price: r.price || null, book: 'Book on EventLinqs', outbound: false }
-  if (/^(Tickets|Register) on /.test(r.source)) {
-    return { price: r.price && r.price !== r.source ? r.price : null, book: r.source, outbound: true }
+/**
+ * THE COUNT, TOLD HONESTLY (Lawal, 2 November 2026, 09:00, refinement 6; the CONTROLLER's 09:13 (3); WINDOW 6's table,
+ * C:\dev\EVIDENCE\GEELONG-REFERENCE-2NOV\counts\README.md: 410 dates of 196 events). An EVENT is a title at a venue, the
+ * key that table used; a DATE is one listed night. Both come from the same rows, so the two numbers always agree.
+ */
+export function eventKey(r: Pick<DirectoryRow, 'title' | 'venue'>): string {
+  return `${r.title.trim().toLowerCase()}|${(r.venue ?? '').trim().toLowerCase()}`
+}
+
+export function eventCount(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[]): number {
+  return new Set(rows.map(eventKey)).size
+}
+
+/** 'N events, M dates', and with a filter on, 'N events, M dates of T events'. */
+export function countLine(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[], of: readonly Pick<DirectoryRow, 'title' | 'venue'>[] | null): string {
+  const e = eventCount(rows)
+  const words = `${e} ${e === 1 ? 'event' : 'events'}, ${rows.length} ${rows.length === 1 ? 'date' : 'dates'}`
+  return of ? `${words} of ${eventCount(of)} events` : words
+}
+
+/** Each category's EVENT count, [slug, label, n], from the rows given. */
+export function eventsByCategory(rows: readonly DirectoryRow[]): [string, string, number][] {
+  const seen = new Map<string, { label: string; keys: Set<string> }>()
+  for (const r of rows) {
+    if (!r.categorySlug || !r.category) continue
+    const c = seen.get(r.categorySlug) ?? { label: r.category, keys: new Set<string>() }
+    c.keys.add(eventKey(r))
+    seen.set(r.categorySlug, c)
   }
-  return { price: r.price || null, book: null, outbound: false }
+  return [...seen.entries()].map(([slug, c]) => [slug, c.label, c.keys.size])
+}
+
+/**
+ * ONE ROW, EACH FACT ONCE (Lawal, 2 November 2026, 09:00, refinements 1 and 4). `said` is the row's one meta word for
+ * price: 'Free · Walk in' for a free walk-in night, 'Free' for a free night with a booking, else the price; `book` is
+ * where it is booked ('Book on EventLinqs', 'Tickets at <seller>', 'Register at <seller>', 'Get tickets'), alone on its
+ * line, with the outbound mark when it leaves EventLinqs. Nothing is said twice and no row names a domain.
+ */
+export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>): { said: string | null; book: string | null; outbound: boolean } {
+  if (r.source === WALK_IN_LABEL) return { said: WALK_IN_LABEL, book: null, outbound: false }
+  const said = r.free ? 'Free' : r.price || null
+  if (r.source === OUR_CHECKOUT_LABEL) return { said, book: OUR_CHECKOUT_LABEL, outbound: false }
+  if (OUTBOUND_LABEL.test(r.source)) return { said, book: r.source, outbound: true }
+  return { said, book: null, outbound: false }
 }
 
 function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: number }) {
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   const b = bookingLine(r)
-  const walkIn = r.source && !b.book && r.source !== r.price ? r.source : null
-  const booking = (
-    <>
-      {b.price ? <span className="font-display text-sm font-extrabold text-[var(--text-primary)] [overflow-wrap:anywhere]">{b.price}</span> : null}
-      {b.book ? (
-        <span className="inline-flex items-start gap-1 font-display text-sm font-bold text-[var(--text-primary)] [overflow-wrap:anywhere]">
-          {b.book}
-          {b.outbound ? (
-            <>
-              <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
-              <span className="sr-only"> (another site)</span>
-            </>
-          ) : null}
-        </span>
+  const booking = b.book ? (
+    <span className="inline-flex items-start gap-1 font-display text-sm font-bold text-[var(--text-primary)] [overflow-wrap:anywhere]">
+      {b.book}
+      {b.outbound ? (
+        <>
+          <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+          <span className="sr-only"> (another site)</span>
+        </>
       ) : null}
-    </>
-  )
+    </span>
+  ) : null
   return (
     <Link
       href={r.href}
@@ -557,11 +605,11 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
         <span className="mt-1 block font-display text-sm font-medium text-[var(--text-secondary)] [overflow-wrap:anywhere]">
           {[r.venue, r.suburb && r.suburb !== r.venue && r.suburb.toLowerCase() !== cityName ? r.suburb : null, elsewhere].filter(Boolean).join(', ')}
         </span>
-        <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]">
-          {[r.category, walkIn, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' \u00b7 ')}
+        <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
+          {[r.category, b.said, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' \u00b7 ')}
         </span>
-        {/* On a phone the price and where it is booked sit on their own line under the venue (the directive, C). */}
-        <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:hidden">{booking}</span>
+        {/* On a phone where it is booked sits on its own line under the venue (the directive, C). */}
+        {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:hidden">{booking}</span> : null}
       </span>
       <span className="hidden flex-col items-end gap-1 pt-0.5 text-right md:flex">{booking}</span>
     </Link>

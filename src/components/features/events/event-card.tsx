@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { formatEventDateShort, resolveZone } from '@/lib/dates/event-time'
-import { sourceLabel } from '@/lib/events/whats-on-directory'
+import { OUTBOUND_LABEL, WALK_IN_LABEL, rowPrice, sourceLabel } from '@/lib/events/whats-on-directory'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
@@ -175,6 +175,8 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       is_free: event.is_free ?? null,
       entry_mode: event.entry_mode ?? null,
     })
+    const shownPrice = priceLabel ? rowPrice(priceLabel) : ''
+    const rowPriceShown = source === WALK_IN_LABEL ? '' : /^free/i.test(shownPrice) && OUTBOUND_LABEL.test(source) ? 'Free' : shownPrice
     return (
       <Link href={`/events/${slug}`} className="group event-row">
         <span className="min-w-0">
@@ -183,9 +185,11 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           {venueLine ? <span className="event-row-venue">{venueLine}</span> : null}
           {meta ? <span className="event-row-venue" title={alsoOn?.every}>{meta}</span> : null}
         </span>
+        {/* One fact once, no domain (Lawal, 2 November 2026, refinements 1 and 4): the price line's 'Tickets on <site>'
+            is not a price (the source names the seller), and a free walk-in night says 'Free · Walk in' once. */}
         <span className="event-row-end">
-          {priceLabel ? <span className="event-row-price">{priceLabel}</span> : null}
-          {source && source !== priceLabel ? <span className="event-row-source">{source}</span> : null}
+          {rowPriceShown ? <span className="event-row-price">{rowPriceShown}</span> : null}
+          {source && source !== rowPriceShown ? <span className="event-row-source">{source}</span> : null}
         </span>
       </Link>
     )

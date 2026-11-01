@@ -101,6 +101,45 @@ export function providerOf(url: string): BookingProvider {
   return HOSTS.find(([pattern]) => pattern.test(host))?.[1] ?? 'other'
 }
 
+/**
+ * THE SELLER AN EVENT ROW NAMES (Lawal, 2 November 2026, 09:00, refinement 1: never a domain in a row; one pattern,
+ * 'Tickets at <seller>'). A venue's or organiser's own booking site is named as that site names itself, read from its
+ * own page title on 2 November 2026 (production's upcoming city rows, every host they use); where a site gives no title,
+ * the venue every production row on it names (Bird's Basement) or the platform's own name (Gotix). A platform is named
+ * by PROVIDER_NAMES. A host in neither has no name here: the row says 'Get tickets' and the address stays on the event
+ * page only.
+ */
+const SELLER_HOST_NAMES: ReadonlyArray<[RegExp, string]> = [
+  [/(^|\.)geelongartscentre\.org\.au$/, 'Geelong Arts Centre'],
+  [/(^|\.)events\.grlc\.vic\.gov\.au$/, 'Geelong Regional Libraries'],
+  [/(^|\.)comedyrepublic\.com\.au$/, 'Comedy Republic'],
+  [/(^|\.)gotix\.com\.au$/, 'Gotix'],
+  [/(^|\.)birdsbasement\.com$/, 'Bird’s Basement'],
+  [/(^|\.)ticketsearch\.com$/, 'TicketSearch'],
+  [/(^|\.)nextstopcomedy\.com$/, 'Next Stop Comedy'],
+  [/(^|\.)caravanshow\.com\.au$/, 'Caravan Industry Victoria'],
+  [/(^|\.)stickytickets\.com\.au$/, 'Sticky Tickets'],
+  [/(^|\.)countryracing\.com\.au$/, 'Country Racing Victoria'],
+  [/(^|\.)geelongbeerfestival\.com\.au$/, 'Geelong Beer Festival'],
+  [/(^|\.)raceroster\.com$/, 'Race Roster'],
+  [/(^|\.)sovereignhill\.com\.au$/, 'Sovereign Hill'],
+  [/(^|\.)bendigo\.vic\.gov\.au$/, 'City of Greater Bendigo'],
+  [/(^|\.)tipsysketching\.club$/, 'The Tipsy Sketching Club'],
+  [/^auschoir\.my\.salesforce-sites\.com$/, 'Australian Chamber Choir'],
+]
+
+/** The seller's name for a booking address: the platform's, else the site's own, else null (never the domain). */
+export function sellerName(url: string | null | undefined): string | null {
+  if (typeof url !== 'string' || url.trim() === '') return null
+  let host: string
+  try {
+    host = new URL(url.trim()).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+  return PROVIDER_NAMES[providerOf(url.trim())] ?? SELLER_HOST_NAMES.find(([pattern]) => pattern.test(host))?.[1] ?? null
+}
+
 const AVAILABILITY_ORDER: Readonly<Record<BookingAvailability, number>> = { on_sale: 0, not_yet: 1, sold_out: 2, dead: 3 }
 
 function byButtonOrder(a: BookingLink, b: BookingLink): number {

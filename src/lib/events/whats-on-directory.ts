@@ -8,6 +8,7 @@
  * (src/lib/broadcast/price-line.ts), so a night sold elsewhere is never called Free here either.
  */
 import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
+import { sellerName } from '@/lib/events/booking-links'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
 
 export type DirectoryInput = {
@@ -87,7 +88,17 @@ function timeLabel(at: Date, zone: string): string | null {
     .toLowerCase()
 }
 
-/** Brief point 8: the ticket source is always clear. */
+/**
+ * WHERE A NIGHT IS BOOKED, ONE PATTERN IN EVERY EVENT ROW (Lawal, 2 November 2026, 09:00, refinement 1): our checkout is
+ * 'Book on EventLinqs'; another site is 'Tickets at <seller>' or 'Register at <seller>', the seller named as it names
+ * itself (sellerName, src/lib/events/booking-links.ts), never its domain; a site with no name here is 'Get tickets' or
+ * 'Register'; a free walk-in night is 'Free \u00b7 Walk in'. The full address stays on the event page.
+ */
+export const WALK_IN_LABEL = 'Free \u00b7 Walk in'
+export const OUR_CHECKOUT_LABEL = 'Book on EventLinqs'
+/** A label that sends the visitor to another site (it carries the outbound mark). */
+export const OUTBOUND_LABEL = /^(Tickets at |Register at )|^(Get tickets|Register)$/
+
 export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_ticket_url' | 'is_free' | 'entry_mode'>): string {
   const cta = broadcastCta({
     ticket_tiers: e.ticket_tiers ?? [],
@@ -95,18 +106,27 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
     is_free: e.is_free ?? null,
     entry_mode: e.entry_mode ?? null,
   })
+  const seller = sellerName(e.external_ticket_url ?? null)
   switch (cta.state) {
     case 'paid_native':
-      return 'Tickets on EventLinqs'
+      return OUR_CHECKOUT_LABEL
     case 'paid_external':
-      return cta.where ? `Tickets on ${cta.where}` : 'Tickets on the organiser\u2019s site'
+      return seller ? `Tickets at ${seller}` : 'Get tickets'
     case 'free_registration':
-      return cta.where ? `Register on ${cta.where}` : 'Registration required'
+      return seller ? `Register at ${seller}` : 'Register'
     case 'free_open':
-      return 'Walk in, no ticket needed'
+      return WALK_IN_LABEL
     default:
       return 'Details from the venue'
   }
+}
+
+/**
+ * The price a row may show: never a sentence about where it is sold ('Tickets on <site>' is the price line's words when
+ * no price was checked; the row's booking label already says where), so a row never names a domain.
+ */
+export function rowPrice(priceLine: string): string {
+  return /^Tickets (on |are sold elsewhere)/.test(priceLine) ? '' : priceLine
 }
 
 /**
@@ -139,12 +159,12 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
     if (Number.isNaN(at.getTime())) continue
     const zone = resolveZone(e.timezone)
     const key = dayKey(at, zone)
-    const price = broadcastPriceLabel({
+    const price = rowPrice(broadcastPriceLabel({
       ticket_tiers: e.ticket_tiers ?? [],
       external_ticket_url: e.external_ticket_url ?? null,
       is_free: e.is_free ?? null,
       entry_mode: e.entry_mode ?? null,
-    })
+    }))
     const row: DirectoryRow = {
       id: e.id,
       href: `/events/${e.slug}`,
