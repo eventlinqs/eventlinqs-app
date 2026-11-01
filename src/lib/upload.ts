@@ -322,7 +322,9 @@ export interface StorageSweepResult {
   /** Every prefix that was listed and emptied. */
   prefixes: string[]
   removed: number
-  /** Objects still under those prefixes after the sweep. Anything but 0 is reported by the caller. */
+  /** Objects left on purpose because another event still shows them (a duplicate, a repeat night). */
+  kept: number
+  /** Objects still under those prefixes after the sweep, less those kept. Anything but 0 is reported by the caller. */
   remaining: number
   errors: string[]
 }
@@ -381,6 +383,25 @@ export async function sweepEventStorage(input: {
     for (const name of await listAll(prefix)) paths.add(name)
   }
 
+  /*
+   * NEVER A PHOTO ANOTHER EVENT STILL SHOWS (1 November 2026). duplicateEvent copies the cover and gallery URLs, and a
+   * repeat night shares its night's, so this sweep used to delete the original's cover along with the copy's row: the
+   * original's page and every card it sits on lost its photo, with nothing logged. An object another event names as
+   * its cover or in its gallery is kept; a read that fails keeps it too, because a leftover object costs storage and a
+   * removed one costs an organiser their photo.
+   */
+  const shown = new Set<string>()
+  for (const path of paths) {
+    const url = bucket.getPublicUrl(path).data.publicUrl
+    const [cover, gallery] = await Promise.all([
+      admin.from('events').select('id').neq('id', input.eventId).like('cover_image_url', `%/${path}`).limit(1),
+      admin.from('events').select('id').neq('id', input.eventId).contains('gallery_urls', [{ url }]).limit(1),
+    ])
+    if (cover.error || gallery.error) errors.push(`still shown elsewhere? ${path}: ${(cover.error ?? gallery.error)!.message}`)
+    if (cover.error || gallery.error || (cover.data ?? []).length > 0 || (gallery.data ?? []).length > 0) shown.add(path)
+  }
+  for (const path of shown) paths.delete(path)
+
   let removed = 0
   const all = [...paths]
   for (let i = 0; i < all.length; i += 100) {
@@ -391,8 +412,8 @@ export async function sweepEventStorage(input: {
   }
 
   let remaining = 0
-  for (const prefix of prefixes) remaining += (await listAll(prefix)).length
+  for (const prefix of prefixes) remaining += (await listAll(prefix)).filter((name) => !shown.has(name)).length
 
   if (errors.length > 0) console.error('[upload] storage sweep for event', input.eventId, 'reported:', errors)
-  return { prefixes, removed, remaining, errors }
+  return { prefixes, removed, kept: shown.size, remaining, errors }
 }

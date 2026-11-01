@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { publishEvent, pauseEvent, cancelEvent, duplicateEvent, type ActionResult } from './actions'
+import { publishEvent, pauseEvent, cancelEvent, duplicateEvent, ticketEverySeriesNight, type ActionResult } from './actions'
 import type { Event, EventStatus } from '@/types/database'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import {
@@ -25,6 +25,22 @@ const STATUS_BADGE: Record<EventStatus, string> = {
   cancelled: 'bg-red-100 text-red-700',
   completed: 'bg-purple-100 text-purple-700',
   archived: 'bg-ink-200 text-ink-700',
+}
+
+/**
+ * EVERY NIGHT OF A SERIES TICKETED IN ONE STEP (V3 item 6). The rows that took the tickets show them as soon as the
+ * list refreshes; a press that changed nothing says why, rather than looking as though it worked.
+ */
+async function copyTicketsToSeries(eventId: string): Promise<ActionResult> {
+  const result = await ticketEverySeriesNight(eventId)
+  if (result.error) return { error: result.error }
+  if (!result.ticketed) {
+    return {
+      error:
+        'No other night of this series could take these tickets: each one already has its own, has ended, is sold on another site or is a free walk-in night.',
+    }
+  }
+  return {}
 }
 
 function formatDate(iso: string) {
@@ -93,6 +109,18 @@ function RowActions({
       >
         Duplicate
       </button>
+
+      {event.listing_series_id &&
+        event.ticket_tiers.length > 0 &&
+        ['draft', 'scheduled', 'published', 'paused', 'postponed'].includes(event.status) && (
+          <button
+            disabled={isPending}
+            onClick={() => run(() => copyTicketsToSeries(event.id))}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-ink-600 hover:text-ink-900 disabled:opacity-40"
+          >
+            Copy tickets to every night
+          </button>
+        )}
 
       {(event.status === 'draft' || event.status === 'scheduled') && (
         <button
