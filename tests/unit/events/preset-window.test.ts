@@ -62,10 +62,12 @@ describe('preset windows are bounded in the platform zone, never the server zone
     expect(w.to).toBe('2026-08-13T13:59:59.999Z')
   })
 
-  it('weekend is the upcoming local Saturday and Sunday', () => {
-    // Wednesday 12 August 2026 -> Saturday the 15th and Sunday the 16th.
+  it('weekend is the upcoming local Friday, Saturday and Sunday', () => {
+    // Wednesday 12 August 2026 -> Friday the 14th to Sunday the 16th: the locked Geelong reference directive's
+    // 'Friday-to-Sunday', and Eventbrite's own 'This weekend' counts all of Friday
+    // (C:\dev\EVIDENCE\GEELONG-REFERENCE-2NOV\weekend\leaders-this-weekend.md).
     const w = presetWindow('weekend', MIDWEEK_MORNING)!
-    expect(w.from).toBe('2026-08-14T14:00:00.000Z') // Sat 15 Aug 00:00 AEST
+    expect(w.from).toBe('2026-08-13T14:00:00.000Z') // Fri 14 Aug 00:00 AEST
     expect(w.to).toBe('2026-08-16T13:59:59.999Z') // Sun 16 Aug 23:59:59.999 AEST
   })
 
@@ -73,7 +75,7 @@ describe('preset windows are bounded in the platform zone, never the server zone
     // Sunday 16 August 2026, 10:00 Melbourne.
     const sunday = new Date('2026-08-16T00:00:00Z')
     const w = presetWindow('weekend', sunday)!
-    expect(w.from).toBe('2026-08-14T14:00:00.000Z') // still Saturday the 15th
+    expect(w.from).toBe('2026-08-13T14:00:00.000Z') // still Friday the 14th
     expect(w.to).toBe('2026-08-16T13:59:59.999Z')
   })
 
@@ -83,7 +85,15 @@ describe('preset windows are bounded in the platform zone, never the server zone
     // 10:00 Sunday Melbourne is 00:00Z Sunday. Both are pinned, above and here.
     const saturdayNight = new Date('2026-08-15T12:00:00Z')
     const w = presetWindow('weekend', saturdayNight)!
-    expect(w.from).toBe('2026-08-14T14:00:00.000Z')
+    expect(w.from).toBe('2026-08-13T14:00:00.000Z')
+  })
+
+  it('on a Friday morning the weekend under way starts that same Friday at midnight', () => {
+    // 10:00 Friday 14 August in Melbourne is 00:00Z Friday.
+    const fridayMorning = new Date('2026-08-14T00:00:00Z')
+    const w = presetWindow('weekend', fridayMorning)!
+    expect(w.from).toBe('2026-08-13T14:00:00.000Z')
+    expect(w.to).toBe('2026-08-16T13:59:59.999Z')
   })
 
   it('returns nothing for the presets that are not date windows', () => {
