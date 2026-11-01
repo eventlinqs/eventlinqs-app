@@ -556,6 +556,65 @@ export type Database = {
         }
         Relationships: []
       }
+      city_editorial_slots: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          city: string
+          day: string
+          drafted_at: string
+          empty_note: string | null
+          event_ids: string[]
+          id: string
+          slot_date: string
+          spotlight_organisation_id: string | null
+          status: string
+          theme: string
+          total: number
+          week_start: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city: string
+          day: string
+          drafted_at?: string
+          empty_note?: string | null
+          event_ids?: string[]
+          id?: string
+          slot_date: string
+          spotlight_organisation_id?: string | null
+          status?: string
+          theme: string
+          total?: number
+          week_start: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city?: string
+          day?: string
+          drafted_at?: string
+          empty_note?: string | null
+          event_ids?: string[]
+          id?: string
+          slot_date?: string
+          spotlight_organisation_id?: string | null
+          status?: string
+          theme?: string
+          total?: number
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_editorial_slots_spotlight_organisation_id_fkey"
+            columns: ["spotlight_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       city_geography: {
         Row: {
           checked_on: string
@@ -12431,6 +12490,24 @@ export type Database = {
         }[]
       }
       audience_price_band: { Args: { p_unit_cents: number }; Returns: string }
+      city_editorial_events: {
+        Args: { p_city: string; p_from: string; p_to: string }
+        Returns: {
+          category: string
+          city_relation: string
+          ends_at: string
+          has_authorised_media: boolean
+          id: string
+          organisation_id: string
+          organisation_name: string
+          starts_at: string
+          status: string
+          suburb: string
+          title: string
+          venue_name: string
+          visibility: string
+        }[]
+      }
       claim_discount_use: {
         Args: { p_code_id: string; p_reservation_id: string }
         Returns: boolean
