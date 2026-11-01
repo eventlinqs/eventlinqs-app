@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { previewReadOnlyOn } from '@/lib/preview/read-only'
+import { previewReadOnlyOn } from '@/lib/preview/read-only-flag'
 import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from './env'
 import { undedupedFetch } from './undeduped-fetch'
 

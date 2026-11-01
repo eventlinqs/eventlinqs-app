@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { previewReadOnlyOn } from './read-only-flag'
 
 /**
  * THE DESIGN PREVIEW READS PRODUCTION AND WRITES NOTHING (the CONTROLLER's ruling of 1 November 2026, 11:42, (2)).
@@ -16,9 +17,8 @@ export const PREVIEW_READ_ONLY_MESSAGE = 'Preview only, nothing is saved'
 const READS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const WITHDRAWS_ON_GET = [/^\/remind\/stop\//, /^\/unsubscribe\//, /^\/waitlist\/unsubscribe\//]
 
-export function previewReadOnlyOn(env: Record<string, string | undefined> = process.env): boolean {
-  return env.PREVIEW_READ_ONLY === '1'
-}
+// The switch itself is framework free (./read-only-flag), so plain node can load the admin client that reads it.
+export { previewReadOnlyOn }
 
 export function previewReadOnlyRefusal(
   method: string,

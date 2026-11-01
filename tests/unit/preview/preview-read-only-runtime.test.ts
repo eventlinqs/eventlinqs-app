@@ -48,6 +48,15 @@ describe('the admin client on the read-only preview', () => {
     expect(made.at(-1)?.key).toBe('service-key-of-test')
   })
 
+  it('the admin client reads the switch from the framework-free module, so plain node can load it (07:42 guard run)', () => {
+    const root = join(__dirname, '..', '..', '..')
+    const admin = readFileSync(join(root, 'src', 'lib', 'supabase', 'admin.ts'), 'utf8')
+    const flag = readFileSync(join(root, 'src', 'lib', 'preview', 'read-only-flag.ts'), 'utf8')
+    expect(admin).toContain("from '@/lib/preview/read-only-flag'")
+    expect(admin).not.toContain("from '@/lib/preview/read-only'")
+    expect(flag).not.toMatch(/^import /m)
+  })
+
   it('the organiser profile gates by slug as anon on the read-only preview, the active policy deciding', () => {
     const src = readFileSync(join(__dirname, '..', '..', '..', 'src', 'app', 'organisers', '[handle]', 'page.tsx'), 'utf8').replace(/\r\n/g, '\n')
     expect(src).toContain('previewReadOnlyOn()')
