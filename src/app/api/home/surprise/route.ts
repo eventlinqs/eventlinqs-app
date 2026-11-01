@@ -96,7 +96,7 @@ export async function GET(request: Request) {
       // `timezone` travels with start_date so the modal formats in the EVENT's
       // zone rather than the reader's, which showed the wrong day for an event
       // in another state.
-      'id, slug, title, cover_image_url, start_date, timezone, venue_city, category:event_categories(name, slug)',
+      'id, slug, title, cover_image_url, start_date, timezone, venue_city, category:event_categories!events_category_id_fkey(name, slug)',
     )
     .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(nowIso)))

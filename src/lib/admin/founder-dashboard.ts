@@ -259,7 +259,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   // What the nights are teaching (the directive's section 10): every kept report, with its night's place and how far ahead it went up.
   const learned = await settle(async () => {
     const rows = await readEveryRow<{ figures: unknown; events: { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null } | { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null }[] | null }>('the kept reports the learning loop reads', (from, to) =>
-      admin.from('organiser_night_reports').select('figures, events(city_primary, published_at, start_date, event_categories(name))').order('id', { ascending: true }).range(from, to),
+      admin.from('organiser_night_reports').select('figures, events(city_primary, published_at, start_date, event_categories!events_category_id_fkey(name))').order('id', { ascending: true }).range(from, to),
     )
     const nights: NightOutcome[] = []
     for (const r of rows) {

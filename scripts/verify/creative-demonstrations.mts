@@ -95,7 +95,7 @@ if (PRODUCTION) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   if (!url.includes('vkapkibzokmfaxqogypq')) throw new Error('reads TEST only: pass a TEST env file (or --production)')
   const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '', { auth: { persistSession: false } })
-  const select = 'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, summary, external_ticket_url, category:event_categories(slug)'
+  const select = 'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, is_free, entry_mode, status, summary, external_ticket_url, category:event_categories!events_category_id_fkey(slug)'
   const flat = (ev: Record<string, unknown> | null): EventRow | null => (ev ? ({ ...ev, category_slug: (ev.category as { slug: string } | null)?.slug ?? null } as unknown as EventRow) : null)
   reader = {
     event: async (slug) => flat((await db.from('events').select(select).eq('slug', slug).maybeSingle()).data as Record<string, unknown> | null),

@@ -127,7 +127,7 @@ async function invalidateById(
   invalidate: (event: RevalidatableEvent) => string[],
 ): Promise<string[]> {
   const { data: row, error } = await (db.from('events') as EventReadChain)
-    .select('slug, venue_city, tags, category:event_categories(slug), organisation:organisations(slug)')
+    .select('slug, venue_city, tags, category:event_categories!events_category_id_fkey(slug), organisation:organisations(slug)')
     .eq('id', eventId)
     .maybeSingle()
 

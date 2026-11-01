@@ -139,6 +139,38 @@ for (const file of migrationFiles) {
   }
 }
 
+/*
+ * A SECOND PATH THROUGH A JOIN TABLE IS STILL A SECOND PATH, and this guard could not see it until 1 November 2026.
+ * Migration 20261101161001 created public.event_secondary_categories (event_id -> events, category_id ->
+ * event_categories). events has ONE foreign key to event_categories, so the count above found nothing, yet PostgREST
+ * now answers every bare `event_categories(...)` embed from events with PGRST201 ('more than one relationship was
+ * found'), read on TEST at 20:24 (the city guide's gate stopped on it at its build, C:\dev\EVIDENCE\CITY-FIRST-1NOV\
+ * design\gate-push-dc1010fd.log line 6195). PostgREST counts a many-to-many through a junction as a relationship
+ * (https://docs.postgrest.org/en/v12/references/api/resource_embedding.html, many-to-many). So every table whose
+ * foreign keys reach two or more tables adds one path, `via <junction>`, between each pair of them.
+ */
+const viaJunction = new Set() // "source>target" pairs whose second path runs through a join table
+{
+  const targetsBySource = new Map()
+  for (const [pair] of fkCount) {
+    const [source, target] = pair.split('>')
+    if (!targetsBySource.has(source)) targetsBySource.set(source, new Set())
+    targetsBySource.get(source).add(target)
+  }
+  for (const [junction, targets] of targetsBySource) {
+    const list = [...targets].filter((t) => t !== junction)
+    for (const a of list) {
+      for (const b of list) {
+        if (a === b) continue
+        const key = `${a}>${b}`
+        if (!fkCount.has(key)) continue // a junction alone is one path; it matters only beside another
+        fkCount.get(key).add(`via ${junction}`)
+        viaJunction.add(key)
+      }
+    }
+  }
+}
+
 const ambiguous = [...fkCount.entries()].filter(([, cols]) => cols.size > 1)
 note(`${migrationFiles.length} migration file(s) parsed for foreign keys`)
 note(`${ambiguous.length} table pair(s) have MORE THAN ONE foreign key and are therefore ambiguous to embed by name:`)
@@ -204,6 +236,53 @@ for (const abs of files) {
 }
 note(`${queriesChecked} query/queries selected FROM a table with an ambiguous relationship`)
 note(`${failures.length} of them embed it by bare name`)
+
+/*
+ * A PAIR MADE AMBIGUOUS THROUGH A JOIN TABLE IS CHECKED EVERYWHERE, not only in a select written right after its
+ * .from(): the 1 November case lived in select CONSTANTS (src/lib/events/home-queries.ts EVENT_SELECT) and in embeds
+ * NESTED under events from another table (organiser_night_reports -> events(... category:event_categories(...))),
+ * none of which the per-query clause above can attribute. For such a pair every bare `target(` or `target!inner(` in
+ * src and scripts fails. Safe from the false positives described above because it runs only for a target whose
+ * ambiguity is the join table's; on 1 November every embed of event_categories in the tree hung off events (30, read
+ * one by one).
+ */
+const junctionTargets = new Set([...viaJunction].map((k) => k.split('>')[1]))
+const SCRIPTS = join(ROOT, 'scripts')
+const everyFile = [...files, ...walkAll(SCRIPTS)]
+let junctionEmbedsNamed = 0
+for (const abs of everyFile) {
+  const rel = relative(ROOT, abs).split('\\').join('/')
+  if (rel === 'scripts/guards/no-ambiguous-embed.mjs') continue
+  const text = readFileSync(abs, 'utf8')
+  for (const target of junctionTargets) {
+    const re = new RegExp(`\\b${target}((?:![A-Za-z_]+)*)\\(`, 'g')
+    for (const m of text.matchAll(re)) {
+      const hints = m[1].split('!').filter(Boolean)
+      if (hints.length && hints[0] !== 'inner') { junctionEmbedsNamed += 1; continue }
+      const line = text.slice(0, m.index).split('\n').length
+      failures.push(
+        `${rel}:${line}: embeds \`${target}\` by bare name (\`${m[0]}\`), but a join table gives it a second `
+        + `relationship to the table it hangs off, so PostgREST answers PGRST201. Name the constraint, for example `
+        + `\`${target}!events_category_id_fkey(...)\`, with !inner after it where needed.`,
+      )
+    }
+  }
+}
+note(`${junctionTargets.size} target(s) made ambiguous through a join table (${[...junctionTargets].join(', ') || 'none'}); ${junctionEmbedsNamed} embed(s) of them name their key across ${everyFile.length} file(s) in src and scripts`)
+
+function walkAll(dir, out = []) {
+  let entries
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch (error) {
+    console.warn('[scripts/guards/no-ambiguous-embed:walkAll]', error instanceof Error ? error.message : error)
+    return out }
+  for (const e of entries) {
+    if (e.name === 'node_modules' || e.name.startsWith('.')) continue
+    const full = join(dir, e.name)
+    if (e.isDirectory()) { walkAll(full, out); continue }
+    if (/\.(ts|tsx|mjs|mts|js)$/.test(e.name)) out.push(full)
+  }
+  return out
+}
 
 console.log('[no-ambiguous-embed] what this guard scanned:')
 for (const n of notes) console.log(`    - ${n}`)

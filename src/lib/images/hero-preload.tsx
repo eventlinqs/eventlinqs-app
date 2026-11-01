@@ -189,7 +189,7 @@ export function heroPreloadLink(image: string | null | undefined) {
  * PostgREST, so the two are read together in review.
  */
 export const EVENT_HERO_SELECT =
-  'id, title, cover_image_url, thumbnail_url, gallery_urls, category:event_categories(slug, name)'
+  'id, title, cover_image_url, thumbnail_url, gallery_urls, category:event_categories!events_category_id_fkey(slug, name)'
 
 /**
  * The preload for an event's hero raster, resolved from the event row.

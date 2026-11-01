@@ -126,7 +126,7 @@ async function main() {
   console.log('Fetching events with picsum or null covers...')
   const { data: events, error } = await supabase
     .from('events')
-    .select('id, slug, cover_image_url, category:event_categories(slug)')
+    .select('id, slug, cover_image_url, category:event_categories!events_category_id_fkey(slug)')
     .or('cover_image_url.is.null,cover_image_url.ilike.https://picsum.photos/%')
   if (error) {
     console.error(error)
