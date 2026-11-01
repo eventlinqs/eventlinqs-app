@@ -13,9 +13,10 @@ BEGIN
   -- P1 every row directive 7 asks for is there.
   SELECT count(*) INTO v_n FROM unnest(array['sources', 'upcoming_in_city', 'upcoming_nearby', 'upcoming_by_label', 'by_category', 'by_date',
     'by_suburb', 'duplicates', 'stale', 'awaiting_verification', 'with_authorised_image', 'with_external_ticketing',
-    'selling_through_eventlinqs', 'labelled_here_but_placed_elsewhere']) k WHERE v_cov ? k;
-  IF v_n = 14 THEN v_out := v_out || ' | P1 all fourteen rows: PASS';
-  ELSE v_out := v_out || ' | P1 rows ' || v_n || ' of 14: FAIL'; v_fail := v_fail + 1; END IF;
+    'selling_through_eventlinqs', 'labelled_here_but_placed_elsewhere', 'candidates_discovered', 'unique_discovered', 'listed',
+    'missing', 'pending_review', 'coverage_percent', 'expired_or_cancelled']) k WHERE v_cov ? k;
+  IF v_n = 21 THEN v_out := v_out || ' | P1 all twenty-one rows: PASS';
+  ELSE v_out := v_out || ' | P1 rows ' || v_n || ' of 21: FAIL'; v_fail := v_fail + 1; END IF;
 
   -- P2 the label count is the events' own: published, public, not ended, labelled with the city.
   SELECT count(*) INTO v_n FROM public.events e WHERE e.status = 'published' AND e.visibility = 'public'
@@ -37,10 +38,23 @@ BEGIN
   IF v_n > 0 OR (v_cov ->> 'upcoming_in_city')::int = 0 THEN v_out := v_out || ' | P4 an unplaced venue is never counted in the city: PASS';
   ELSE v_out := v_out || ' | P4 counted in the city without a placement: FAIL'; v_fail := v_fail + 1; END IF;
 
+  -- P6 listed and missing add up to the unique events discovered, and the percent is theirs, or null with none.
+  IF (v_cov ->> 'listed')::int + (v_cov ->> 'missing')::int = (v_cov ->> 'unique_discovered')::int
+     AND ((v_cov ->> 'unique_discovered')::int = 0) = (v_cov -> 'coverage_percent' = 'null'::jsonb) THEN
+    v_out := v_out || ' | P6 listed plus missing is unique discovered (' || (v_cov ->> 'unique_discovered') || '), percent ' || coalesce(v_cov ->> 'coverage_percent', 'none') || ': PASS';
+  ELSE v_out := v_out || ' | P6 the coverage arithmetic does not add up: FAIL'; v_fail := v_fail + 1; END IF;
+
+  -- P7 the drill down lists every registered source with its URL.
+  IF jsonb_array_length(public.growth_city_coverage_detail('geelong', 'sources')) = (v_cov -> 'sources' ->> 'known')::int
+     AND jsonb_typeof(public.growth_city_coverage_detail('geelong', 'missing')) = 'array' THEN
+    v_out := v_out || ' | P7 the drill down names every source: PASS';
+  ELSE v_out := v_out || ' | P7 drill down short: FAIL'; v_fail := v_fail + 1; END IF;
+
   -- P5 service role only.
   IF has_function_privilege('anon', 'public.growth_city_coverage(text)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.growth_city_coverage(text)', 'EXECUTE')
-     OR has_function_privilege('anon', 'public.event_last_checked(uuid)', 'EXECUTE') THEN
+     OR has_function_privilege('anon', 'public.event_last_checked(uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.growth_city_coverage_detail(text, text)', 'EXECUTE') THEN
     v_out := v_out || ' | P5 readable outside the service role: FAIL'; v_fail := v_fail + 1;
   ELSE v_out := v_out || ' | P5 service role only: PASS'; END IF;
 

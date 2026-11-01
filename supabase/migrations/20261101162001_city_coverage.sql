@@ -18,6 +18,16 @@
 --   authorised images     the scorecard's own photo rule (20261101044501), the same predicate.
 --   external ticketing    an outside ticket link.
 --   selling here          the scorecard's own selling rule.
+-- THE ENGINE DIRECTIVE's SECTION 8 (Lawal, 16:05), against MONITORED SOURCES only, never a claim to know every event:
+--   candidates discovered  every upcoming candidate from the city's registered sources.
+--   unique discovered      candidates, refused ones aside, counted once per title, Melbourne day and venue.
+--   listed                 a unique event at least one of whose candidates was published as, or matched to, an
+--                          EventLinqs event (published_series_id or event_id).
+--   missing                unique discovered and not listed.
+--   coverage percent       listed / unique discovered x 100 (null, said as 'no monitored events yet', when none).
+--   expired or cancelled   the city's events cancelled or postponed, and published ones whose end has passed.
+-- growth_city_coverage_detail(city, kind) is the drill down: the source URLs, the missing and pending candidates
+-- with their pages, the published event records, the events labelled here but placed elsewhere, the duplicates.
 -- Plus event_last_checked(event): every event's last check by one rule (a listing: its series' last confirmed day; an
 -- organiser's event: its own last change).
 
@@ -54,6 +64,9 @@ with up as (
 mine as (select * from up where rel in ('city', 'surrounding')),
 labelled as (select * from up where lower(btrim(coalesce(city_primary, ''))) = lower(p_city)),
 src as (select * from public.listing_sources where city_slug = p_city),
+cand as (select c.*, lower(btrim(c.title)) || '|' || to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD') || '|' || lower(btrim(c.venue_name)) k
+           from public.listing_candidates c join src on src.id = c.source_id where c.starts_at >= now()),
+uniq as (select k, bool_or(published_series_id is not null or event_id is not null) listed from cand where status <> 'refused' group by k),
 sf as (select distinct on (e.listing_series_id) e.listing_series_id, e.id from public.events e
   where e.listing_series_id is not null and e.status = 'published' and e.visibility = 'public'
     and (case when e.end_date is not null then e.end_date >= now() else e.start_date >= now() end)
@@ -95,9 +108,54 @@ select jsonb_build_object(
   'with_authorised_image', (select count(*) from photo where own_rights or venue_photo),
   'with_external_ticketing', (select count(*) from mine where external_ticket_url is not null),
   'selling_through_eventlinqs', (select count(*) from mine v where v.external_ticket_url is null
-      and exists (select 1 from public.ticket_tiers t where t.event_id = v.id and t.is_active and t.is_visible and t.price > 0))
+      and exists (select 1 from public.ticket_tiers t where t.event_id = v.id and t.is_active and t.is_visible and t.price > 0)),
+  'candidates_discovered', (select count(*) from cand),
+  'unique_discovered', (select count(*) from uniq),
+  'listed', (select count(*) from uniq where listed),
+  'missing', (select count(*) from uniq where not listed),
+  'pending_review', (select count(*) from cand where status = 'waiting'),
+  'coverage_percent', (select case when count(*) = 0 then null else round(100.0 * count(*) filter (where listed) / count(*), 1) end from uniq),
+  'expired_or_cancelled', (select count(*) from public.events e
+      where (public.venue_city_relation(p_city, e.venue_id) in ('city', 'surrounding') or lower(btrim(coalesce(e.city_primary, ''))) = lower(p_city))
+        and (e.status in ('cancelled', 'postponed') or (e.status = 'published' and coalesce(e.end_date, e.start_date) < now() and coalesce(e.end_date, e.start_date) > now() - interval '30 days')))
 )
 $$;
 
 revoke all on function public.growth_city_coverage(text) from public, anon, authenticated;
 grant execute on function public.growth_city_coverage(text) to service_role;
+
+create or replace function public.growth_city_coverage_detail(p_city text, p_kind text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+with src as (select * from public.listing_sources where city_slug = p_city),
+cand as (select c.*, src.name source_name, lower(btrim(c.title)) || '|' || to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD') || '|' || lower(btrim(c.venue_name)) k
+           from public.listing_candidates c join src on src.id = c.source_id where c.starts_at >= now()),
+listed_keys as (select k from cand where published_series_id is not null or event_id is not null),
+up as (select e.*, public.venue_city_relation(p_city, e.venue_id) rel from public.events e
+        where e.status = 'published' and e.visibility = 'public'
+          and ((e.end_date is not null and e.end_date >= now()) or (e.end_date is null and e.start_date >= date_trunc('day', now())))
+          and (e.listing_fresh_until is null or e.listing_fresh_until >= now()))
+select coalesce((case p_kind
+  when 'sources' then (select jsonb_agg(jsonb_build_object('name', name, 'url', page_url, 'kind', kind, 'collection', collection,
+      'last_success_at', last_success_at, 'last_checked_at', last_checked_at, 'last_outcome', last_outcome) order by name) from src)
+  when 'missing' then (select jsonb_agg(x order by x ->> 'starts_at') from (
+      select distinct on (k) jsonb_build_object('title', title, 'starts_at', starts_at, 'venue', venue_name, 'page', page_url,
+        'status', status, 'source', source_name) x from cand
+       where status <> 'refused' and k not in (select k from listed_keys) order by k, found_at) m)
+  when 'pending' then (select jsonb_agg(jsonb_build_object('title', title, 'starts_at', starts_at, 'venue', venue_name, 'page', page_url,
+      'source', source_name, 'reasons', reasons) order by starts_at) from (select * from cand where status = 'waiting' limit 500) p)
+  when 'published' then (select jsonb_agg(jsonb_build_object('event', slug, 'title', title, 'starts_at', start_date, 'venue', venue_name,
+      'relation', rel) order by start_date) from (select * from up where rel in ('city', 'surrounding') limit 500) e)
+  when 'placed_elsewhere' then (select jsonb_agg(jsonb_build_object('event', slug, 'title', title, 'venue', venue_name, 'relation', rel))
+      from up where lower(btrim(coalesce(city_primary, ''))) = lower(p_city) and rel in ('region', 'outside'))
+  when 'duplicates' then (select jsonb_agg(jsonb_build_object('title', t, 'venue_id', venue_id, 'starts_at', start_date, 'events', n)) from (
+      select lower(btrim(title)) t, venue_id, start_date, count(*) n from up where rel in ('city', 'surrounding') group by 1, 2, 3 having count(*) > 1) d)
+  end), '[]'::jsonb)
+$$;
+
+revoke all on function public.growth_city_coverage_detail(text, text) from public, anon, authenticated;
+grant execute on function public.growth_city_coverage_detail(text, text) to service_role;
