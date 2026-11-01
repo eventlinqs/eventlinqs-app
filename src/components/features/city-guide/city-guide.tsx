@@ -148,11 +148,14 @@ export function CityGuide({
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const matchesQ = (r: DirectoryRow) =>
     words.every((w) => `${r.title} ${r.venue ?? ''} ${r.category ?? ''} ${r.suburb ?? ''}`.toLowerCase().includes(w))
+  // Friday to Sunday (the 2 November directive, section 4): the platform's one weekend and the Friday before it, from today
+  // on; the 'This weekend' chip and section 4 read the same days, so the page never says two different weekends.
+  const weekendDays = [days.fridayKey, ...days.weekendKeys].filter((k, i, all) => all.indexOf(k) === i && k >= days.todayKey)
   const matchesWhen = (r: DirectoryRow) =>
     when === 'all' ||
     (when === 'today' && r.dayKey === days.todayKey) ||
     (when === 'tomorrow' && r.dayKey === days.tomorrowKey) ||
-    (when === 'weekend' && days.weekendKeys.includes(r.dayKey)) ||
+    (when === 'weekend' && weekendDays.includes(r.dayKey)) ||
     (when === 'week' && days.weekKeys.includes(r.dayKey)) ||
     (when === 'date' && r.dayKey === date)
   const matchesPrice = (r: DirectoryRow, p: Price) => p === 'all' || (p === 'free' ? r.free : !r.free)
@@ -200,8 +203,6 @@ export function CityGuide({
     (a, b) => rank(a[0]) - rank(b[0]) || b[1].n - a[1].n || a[1].label.localeCompare(b[1].label),
   )
 
-  // Section 4: Friday to Sunday (the platform's one weekend and the Friday before it), from today on.
-  const weekendDays = [days.fridayKey, ...days.weekendKeys].filter((k, i, all) => all.indexOf(k) === i && k >= days.todayKey)
   const weekendAll = here.filter((r) => weekendDays.includes(r.dayKey))
   const weekend = weekendAll.filter((r) => matchesPrice(r, weekendPrice))
 
