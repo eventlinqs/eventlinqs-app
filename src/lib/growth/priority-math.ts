@@ -14,6 +14,8 @@
  *
  * Pure.
  */
+import { MAJOR_SELLERS, type BookingProvider } from '@/lib/events/booking-links'
+
 
 export type TicketingTies = 'none' | 'independent' | 'major' | 'eventlinqs'
 
@@ -92,11 +94,11 @@ export function priorityOf(f: PriorityFacts): Priority {
   return { score, inputs, reasons, approachToday: f.eligible && f.ties !== 'eventlinqs' && f.nightsLastAndNext90 > 0 }
 }
 
-const MAJOR = new Set(['ticketek', 'ticketmaster', 'moshtix', 'oztix'])
+// The major sellers come from the one table of platform names (booking-links), never named here.
 
 /** An organiser's ticketing ties from the platforms their nights sell on (booking-links providerOf) and their own tiers. */
 export function tiesOf(providers: readonly string[], sellsOnEventLinqs: boolean): TicketingTies {
   if (sellsOnEventLinqs) return 'eventlinqs'
   if (providers.length === 0) return 'none'
-  return providers.some((p) => !MAJOR.has(p)) ? 'independent' : 'major'
+  return providers.some((p) => !MAJOR_SELLERS.has(p as BookingProvider)) ? 'independent' : 'major'
 }
