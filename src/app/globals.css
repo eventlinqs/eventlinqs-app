@@ -595,6 +595,76 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   @apply absolute right-3 top-3 shadow-[var(--shadow-card)];
 }
 
+/*
+ * THE LEDGER CARD (Lawal's order of 1 November 2026, 11:01; his sample is
+ * C:\dev\EVIDENCE\CARD-DESIGNS-31OCT\editorial.js). The sample's hexes are mapped
+ * to the tokens above, never added: canvas, ink and gold only. The sample tinted
+ * the no-photo panel per category; no category colour exists in this system, so
+ * the panel takes one quiet gold-on-canvas tint for every category.
+ */
+@utility ledger-card {
+  @apply flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)]
+    bg-[var(--surface-0)] shadow-[var(--shadow-card)]
+    transition-[transform,box-shadow] duration-200 ease-out
+    hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0;
+}
+@utility ledger-media {
+  @apply relative aspect-[3/2] flex-none overflow-hidden bg-[var(--color-ink-100)];
+}
+/* The organiser's artwork shown whole: a soft blur of itself fills the frame behind it. */
+@utility ledger-blur {
+  @apply absolute -inset-5 opacity-85 blur-[18px] saturate-[1.1];
+}
+@utility ledger-panel {
+  @apply absolute inset-0;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-gold-400) 9%, transparent) 0 1px, transparent 1px 9px),
+    linear-gradient(160deg, var(--color-gold-100) 0%, var(--color-canvas) 100%);
+}
+@utility ledger-panel-chip {
+  @apply absolute bottom-3.5 left-3.5 rounded-full border border-[var(--color-ink-200)] bg-white/85
+    px-2.5 py-1.5 font-display text-xs font-bold uppercase leading-none tracking-wider
+    text-[var(--text-secondary)];
+}
+@utility ledger-body {
+  @apply flex flex-1 gap-3.5 px-4 py-3.5;
+}
+@utility ledger-date {
+  @apply box-content flex w-10 flex-none flex-col items-center border-r border-[var(--color-ink-100)] pr-3 pt-0.5;
+}
+@utility ledger-dw {
+  @apply font-display text-xs font-bold uppercase leading-none tracking-widest text-[var(--text-muted)];
+}
+@utility ledger-dd {
+  @apply mt-1 font-headline text-2xl font-extrabold leading-none tabular-nums text-[var(--text-primary)];
+}
+@utility ledger-dm {
+  @apply mt-1 font-display text-xs font-extrabold uppercase leading-none tracking-widest text-[var(--brand-accent-strong)];
+}
+@utility ledger-info {
+  @apply flex min-w-0 flex-1 flex-col;
+}
+@utility ledger-title {
+  @apply font-headline text-lg font-bold leading-snug tracking-[-0.01em] text-[var(--text-primary)]
+    line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline;
+  transition: text-decoration-color var(--motion-quick);
+}
+@utility ledger-venue {
+  @apply mt-1 truncate font-display text-sm font-medium text-[var(--text-secondary)];
+}
+@utility ledger-row {
+  @apply mt-auto flex items-baseline justify-between gap-2.5 pt-2.5;
+}
+@utility ledger-price {
+  @apply whitespace-nowrap font-display text-sm font-extrabold text-[var(--text-primary)];
+}
+@utility ledger-meta {
+  @apply min-w-0 truncate font-display text-xs font-semibold text-[var(--text-muted)];
+}
+
 /* ─── The shared chrome: the class lists every page repeats per link ─────── */
 /*
  * WHY THESE EXIST, and it is the third measurement of the same shape.

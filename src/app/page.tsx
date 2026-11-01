@@ -4,10 +4,9 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { FeaturedHero, heroSlideEvents } from '@/components/features/home/FeaturedHero'
+import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { FeaturedRow } from '@/components/features/promotions/featured-row'
 import { featuredForPage } from '@/lib/promotions/promotions'
-import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
 import { SoundsRail } from '@/components/features/home/sounds-rail'
 import { CommunityRail } from '@/components/features/home/community-rail'
 import { CommunityValueBand } from '@/components/features/home/community-value-band'
@@ -16,20 +15,13 @@ import {
   loadHomeUpcoming,
   toBentoEvent,
 } from '@/lib/events/home-queries'
-import { weekendWindowUtc } from '@/lib/events/listing-window'
-import { WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
-import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
-import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
-import { EventRailSection } from '@/components/features/home/event-rail-section'
+import { FeaturedThisWeek, WhatsOnSection } from '@/components/features/events/ledger-sections'
+import { directoryDays } from '@/lib/events/whats-on-directory'
+import { featuredThisWeek, thisWeek, type LedgerRow } from '@/lib/events/ledger-data'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
-import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
-import { photoFirst } from '@/lib/events/photo-first'
-import {
-  ThisWeekSkeleton,
-  CityRailSkeleton,
-} from '@/components/features/home/section-skeletons'
+import { CityRailSkeleton } from '@/components/features/home/section-skeletons'
 
 /**
  * Homepage - the visceral experience layer.
@@ -91,7 +83,6 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const supabase = createPublicClient()
   const nowIso = new Date().toISOString()
-  const nowMs = Date.parse(nowIso)
 
   // ── Above-fold data ──────────────────────────────────────────────────
   // One query feeds the hero plus every below-fold rail (each derived by
@@ -111,130 +102,15 @@ export default async function HomePage() {
   // The hero keeps the rows as read: it leads only with a night's own photograph (FeaturedHero, isOwnPhoto), so a
   // venue's photograph never stands under a night's name there. Every rail takes the card image chain.
   const heroEvents = upcomingRawTyped.map(toBentoEvent)
-  const upcomingWithPhotos = await withVenuePhotos(upcomingRawTyped)
-  const upcoming = upcomingWithPhotos.map(toBentoEvent)
+  const upcomingWithPhotos = (await withVenuePhotos(upcomingRawTyped)) as LedgerRow[]
+  const now = new Date(nowIso)
 
-  void nowMs
-
-  // General category breadth: the page leads with these, the way a general
-  // ticketing platform does. Each rail self-hides when it has no events.
-  const byCategory = (slug: string) => upcoming.filter(e => e.category?.slug === slug)
-
-  // ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026, reversing the
-  // ruling of 16 August recorded in docs/roast/RAIL-MIN-RULING-2026-08-16.md).
-  //
-  // `RAIL_MIN = 3` hid any category rail carrying one or two events. That rule
-  // was written for a platform with volume and we do not have volume yet, so in
-  // practice it hid a real organiser's real event for the crime of being the
-  // only one in its category. At this stage that is exactly backwards: the
-  // organiser we most need to keep is the first one in a category, and their
-  // event was the one the homepage refused to show.
-  //
-  // There is no threshold now. A rail renders whenever it has at least one
-  // event, and EventRailSection's own `events.length === 0` guard is the single
-  // place that decides a rail has nothing to show, so no caller re-derives it.
-  //
-  // A rail of one draws one card. Lawal's emergency correction of 31 October
-  // 2026 (17:44) ended the invitation top-up that used to follow it: a rail
-  // shows only real published events, fewer cards when inventory is thin, and
-  // nothing else takes a place in it.
-
-  // Live counts per category for the category nav tiles under the hero.
-  const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
-    const slug = e.category?.slug
-    if (slug) acc[slug] = (acc[slug] ?? 0) + 1
-    return acc
-  }, {})
-
-  const musicCandidates = byCategory('music')
-  const foodCandidates = byCategory('food-drink')
-  const festivalCandidates = byCategory('festival')
-  const artsCandidates = byCategory('arts-community')
-  const nightlifeCandidates = byCategory('nightlife')
-  const comedyCandidates = byCategory('comedy')
-  const sportsCandidates = byCategory('sports')
-  const familyCandidates = byCategory('family')
-
-  // The "thin categories" list and the note that rendered it are GONE with the
-  // threshold that created them (founder ruling, 23 August 2026). A category
-  // with one or two events on now gets the rail it always should have had, so
-  // there is no such thing as a category that is on but unrailed, and nothing
-  // left for a note to name.
-
-  const thisWeekCandidates = upcoming
-    .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
-
-  // ── Rail slices ───────────────────────────────────────────────
-  /*
-   * THE WEEKEND IS THE PLATFORM'S OWN DEFINITION, NOT A FIFTH COPY OF IT.
-   *
-   * What stood here was a Saturday-to-Sunday window built with `getUTCDay()`
-   * and `setUTCHours`, so it described a weekend in UTC on a platform whose
-   * every event happens between UTC+8 and UTC+11. The two edges were wrong by
-   * the size of the offset: on 19 September 2026 the window ran from Saturday
-   * 10:00 to Monday 10:00 Melbourne time, which DROPPED Saturday morning and
-   * ADMITTED Monday morning.
-   *
-   * It was not a rounding error. Measured against the TEST catalogue the same
-   * day, three of the twelve events on next weekend start on Saturday at 09:40
-   * Melbourne, which is Friday 23:40 UTC: a quarter of the weekend was invisible
-   * on the rail whose whole job is to show it.
-   *
-   * `weekendWindowUtc` already existed and its own header says why: "ONE
-   * DEFINITION, because there were FOUR: the /events weekend preset, the city
-   * page, the suburb page and the community-by-city page each carried their own
-   * copy built on `setHours`". This homepage block was a FIFTH copy that
-   * consolidation never reached, and it is the reason the "View all" link under
-   * this rail could answer with a different set of events than the rail above
-   * it: that link went to `/events?preset=weekend`, which has been asking the
-   * shared rule all along. It now goes to `/this-weekend`, the real page built
-   * on the same rule (close-out AQ3), and the rail, the page and the filter are
-   * three views of one query.
-   *
-   * `to` is INCLUSIVE (the last instant of Sunday), which is why the comparison
-   * below is `<=` where the old exclusive bound used `<`.
-   */
-  const weekend = weekendWindowUtc(new Date(nowIso), PLATFORM_TIME_ZONE)
-
-  const thisWeekendCandidates = upcoming
-    .filter(e => {
-      const t = new Date(e.start_date).getTime()
-      return t >= weekend.from.getTime() && t <= weekend.to.getTime()
-    })
-
-  const freeCandidates = upcoming
-    .filter(e => e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0))
-
-  const trendingCandidates = [...upcoming]
-    .filter(e => (e.percent_sold ?? 0) > 0)
-    .sort((a, b) => (b.percent_sold ?? 0) - (a.percent_sold ?? 0))
-
-  const justAddedCandidates = [...upcomingWithPhotos]
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
-    .map(toBentoEvent)
-
-  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the hero and the rails in
-  // the order the page draws them, the first to show an event keeping it, each later rail filling its places from the
-  // events not yet shown. Each rail keeps its own number of places.
-  const [, thisWeek, musicEvents, foodEvents, trending, festivalEvents, artsEvents, thisWeekend, nightlifeEvents, comedyEvents, freeEvents, sportsEvents, familyEvents, justAdded] =
-    oneCardPerEvent([
-      { events: heroSlideEvents(heroEvents), cap: Number.MAX_SAFE_INTEGER },
-      { events: thisWeekCandidates, cap: 10 },
-      { events: musicCandidates, cap: 12 },
-      { events: foodCandidates, cap: 12 },
-      { events: trendingCandidates, cap: 10 },
-      { events: festivalCandidates, cap: 12 },
-      { events: artsCandidates, cap: 12 },
-      { events: thisWeekendCandidates, cap: 10 },
-      { events: nightlifeCandidates, cap: 12 },
-      { events: comedyCandidates, cap: 12 },
-      { events: freeCandidates, cap: 10 },
-      { events: sportsCandidates, cap: 12 },
-      { events: familyCandidates, cap: 12 },
-      { events: justAddedCandidates, cap: 10 },
-      // Each rail leads with its photographed nights, then the rest (the CONTROLLER's 31 October 13:45).
-    ].map((s) => ({ ...s, events: photoFirst(s.events) })))
-
+  // THE LAYERS SAMPLE LAWAL SAW (1 November 2026, 11:01; C:\dev\EVIDENCE\CARD-DESIGNS-31OCT\layers.js): under the
+  // hero, Featured this week (Ledger cards, a rights recorded photograph only, left out under two), then What's on,
+  // every night of the next seven days as one row under its day. They replace the category tiles and the twelve
+  // category rails; the community, sounds, city and venue sections stay below.
+  const featuredCards = await featuredThisWeek(upcomingWithPhotos, now)
+  const week = directoryDays(thisWeek(upcomingWithPhotos, now), now)
   const featured = await featuredForPage('homepage')
 
   return (
@@ -242,51 +118,32 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* H1 - FeaturedHero: one strong, real featured event at a time,
-         *  roughly half the old hero height. SSR priority AVIF raster as
-         *  the LCP layer, restrained scrim, single CTA. With two or three
-         *  featured events the hero auto-rotates every ~6.5s with an eased
-         *  crossfade (Hero Carousel law: pauses on hover/touch/focus, gated
-         *  on the motion flag, manual arrows and dots always available).
-         *  This is the only homepage surface where text sits on a photo. */}
         <FeaturedHero events={heroEvents} />
 
         {/* Paid featured slots (Train C, row 12), headed and labelled Featured, never inside the unpaid rails. */}
         <FeaturedRow items={featured} where="homepage" />
 
-        {/* Trust band removed Batch 11.0. The 2026 contextual-trust
-         *  pattern places trust signals at the purchase-decision moment
-         *  (event detail page + checkout) rather than as a sitewide
-         *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
+        <FeaturedThisWeek events={featuredCards} />
 
-        {/* The placeholder Community Calendar widget and Featured Organisers
-         *  row were removed to keep the homepage reading like a premium
-         *  ticketing platform (real event rails, not editorial placeholders). */}
+        <WhatsOnSection
+          days={week}
+          eyebrow="Every event this week"
+          title={'What’s on'}
+          link={{ href: '/events', label: 'Open the full guide' }}
+        />
 
-        {/* H2 Browse by category: image-tile category entry under the hero,
-         *  in the locked system (separated tile, label below the image, no
-         *  pills). Replaces the early-concept CategoryChipStrip. */}
-        <CategoryNavRail counts={categoryCounts} />
-
-        {/* Empty-state only: with zero upcoming events every rail below
-         *  self-hides, so this stands in for the catalogue. */}
-        {upcoming.length === 0 && (
+        {week.length === 0 && (
           <section aria-label="Featured events" className="border-t border-ink-200 bg-canvas">
             <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
               <div className="flex items-center justify-center rounded-2xl border border-ink-200 bg-white py-16 text-center">
                 <div>
-                  <p className="font-headline tracking-tight text-lg font-bold text-ink-900">
-                    Events loading soon
-                  </p>
-                  <p className="mt-2 text-sm text-ink-400">
-                    The first organisers are getting set up. Check back shortly.
-                  </p>
+                  <p className="font-headline tracking-tight text-lg font-bold text-ink-900">Nothing on this week yet</p>
                   <Link
-                    href="/organisers/signup"
+                    href="/events"
                     prefetch={false}
                     className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[var(--color-navy-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
                   >
-                    List your event
+                    See every event
                   </Link>
                 </div>
               </div>
@@ -294,175 +151,15 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/*
-         * STRUCTURE (strategic correction, 6 June 2026):
-         * EventLinqs sells the whole general catalogue first, the way a general
-         * category breadth LEADS the page, the way Ticketmaster and Eventbrite
-         * do it. Community is one curated thread (SceneRail) placed mid-page,
-         * never the lead. Strip the SceneRail out and the page still stands as
-         * a full general ticketing rival. Each rail self-hides when empty.
-         */}
-
-        {/* Lead rail: This Week (general, time-based) */}
-        <Suspense fallback={<ThisWeekSkeleton />}>
-          <ThisWeekSection events={thisWeek} />
-        </Suspense>
-
-        {/* ── Community moat (HIGH placement, within the first two screens) ──
-         *  The differentiating layer no competitor has, surfaced early but never
-         *  dominant. Real /community/[slug] landings, First Nations first. Self-
-         *  fetches the heritage index; renders nothing if empty. Stripped out,
-         *  the page still stands as a full general ticketing rival. */}
         <CommunityRail />
 
-        {/* General category breadth leads. */}
-        <EventRailSection
-          eyebrow="On the lineup"
-          title="Music"
-          ariaLabel="Music events"
-          railLabel="Music events"
-          events={musicEvents}
-          viewAllHref="/categories/music"
-        />
-
-        <EventRailSection
-          eyebrow="Taste the city"
-          title="Food and drink"
-          ariaLabel="Food and drink events"
-          railLabel="Food and drink events"
-          events={foodEvents}
-          viewAllHref="/categories/food-drink"
-        />
-
-        {/* Trending (general, demand-based) - Variant B: the one larger
-            feature-card row. Uniform feature-sized cards within the rail.
-
-            THE EYEBROW SAID "Selling fast" AND THE RAIL COULD NOT KNOW THAT.
-            `trending` is every upcoming event with percent_sold > 0, ordered by
-            that proportion, so the tenth card can be an event that has sold one
-            ticket out of four hundred. A rail-level scarcity claim is a claim
-            about every card in it, and this one was not true of most of them.
-            The per-card badge engine (src/lib/events/badges.ts) DOES know: it
-            labels a card "Selling fast" only above 70 percent sold, and "Few
-            left" only under ten remaining. The eyebrow now describes the rail,
-            which is what an eyebrow is for, and the stock claim is left to the
-            thing that reads stock. scripts/guards/no-false-urgency.mjs holds it. */}
-        <EventRailSection
-          eyebrow="What the city is booking"
-          title="Trending now"
-          ariaLabel="Trending events"
-          railLabel="Trending events"
-          events={trending}
-          viewAllHref="/events?sort=popularity"
-          cardVariant="feature"
-        />
-
-        <EventRailSection
-          eyebrow="All day, all weekend"
-          title="Festivals"
-          ariaLabel="Festival events"
-          railLabel="Festival events"
-          events={festivalEvents}
-          viewAllHref="/categories/festival"
-        />
-
-        <EventRailSection
-          eyebrow="On stage and in the gallery"
-          title="Arts and theatre"
-          ariaLabel="Arts and theatre events"
-          railLabel="Arts and theatre events"
-          events={artsEvents}
-          viewAllHref="/categories/arts-community"
-        />
-
-        {/* This Weekend (general, time-based) */}
-        <EventRailSection
-          eyebrow="This weekend"
-          title="On this weekend"
-          ariaLabel="Events this weekend"
-          railLabel="Events this weekend"
-          events={thisWeekend}
-          viewAllHref={WEEKEND_SURFACE_PATH}
-        />
-
-        <EventRailSection
-          eyebrow="After dark"
-          title="Nightlife"
-          ariaLabel="Nightlife events"
-          railLabel="Nightlife events"
-          events={nightlifeEvents}
-          viewAllHref="/categories/nightlife"
-        />
-
-        <EventRailSection
-          eyebrow="Have a laugh"
-          title="Comedy"
-          ariaLabel="Comedy events"
-          railLabel="Comedy events"
-          events={comedyEvents}
-          viewAllHref="/categories/comedy"
-        />
-
-        {/* Free (general, price-based) */}
-        <EventRailSection
-          eyebrow="No ticket needed"
-          title="Free events"
-          ariaLabel="Free events"
-          railLabel="Free events"
-          events={freeEvents}
-          viewAllHref="/events?preset=free"
-        />
-
-        {/* Sounds (genres) - the genre half of the old combined scene rail.
-         *  The community half is the higher-placed CommunityRail above. */}
         <SoundsRail />
 
-        {/* The ONE community value band: tinted surface, locked tagline, real
-         *  community tiles into /community/[slug], CTA into the /communities hub. The
-         *  lower bookend of the community moat. */}
         <CommunityValueBand />
 
-        {/* General breadth continues below the community thread. */}
-        <EventRailSection
-          eyebrow="Game on"
-          title="Sport"
-          ariaLabel="Sport events"
-          railLabel="Sport events"
-          events={sportsEvents}
-          viewAllHref="/categories/sports"
-        />
-
-        <EventRailSection
-          eyebrow="Bring everyone"
-          title="Family"
-          ariaLabel="Family events"
-          railLabel="Family events"
-          events={familyEvents}
-          viewAllHref="/categories/family"
-        />
-
-        {/* Business and networking rail removed from the homepage (founder
-         *  ruling): lowest consumer-discovery intent of the category rails. It
-         *  stays a Browse-by-Category tile and keeps its category page. */}
-
-        {/* Browse by City */}
         <Suspense fallback={<CityRailSkeleton />}>
           <CityRailSection nowIso={nowIso} />
         </Suspense>
-
-        {/* Editorial tail */}
-        <EventRailSection
-          eyebrow="Just added"
-          title="Fresh on the platform"
-          ariaLabel="Recently added events"
-          railLabel="Recently added events"
-          events={justAdded}
-          viewAllHref="/events?sort=date_asc"
-        />
-
-        {/* "Editor's picks" rail removed in the community-moat pass: it was a
-         *  dedup-one-per-category set (lowest editorial signal). Cutting it
-         *  offsets the added community rail so the page does not grow longer. */}
 
         <FeaturedVenuesSection upcoming={upcomingRawTyped} />
       </main>

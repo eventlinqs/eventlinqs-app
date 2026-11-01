@@ -1,12 +1,10 @@
 import Link from 'next/link'
-import { formatEventDateShort } from '@/lib/dates/event-time'
+import { eventDateMark, formatEventDateShort, resolveZone } from '@/lib/dates/event-time'
+import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { seriesAlsoOn } from '@/lib/events/series-also-on'
-import { MapPin } from 'lucide-react'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
-import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
-import type { EventInventory } from '@/lib/redis/inventory-cache'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
@@ -127,21 +125,10 @@ function formatPrice(event: EventCardData, dynamicPrices: Map<string, number>): 
   })
 }
 
-function buildInventory(tiers: EventCardTier[]): EventInventory {
-  const total_sold      = tiers.reduce((s, t) => s + t.sold_count, 0)
-  const total_reserved  = tiers.reduce((s, t) => s + t.reserved_count, 0)
-  const total_capacity  = tiers.reduce((s, t) => s + t.total_capacity, 0)
-  const available       = Math.max(0, total_capacity - total_sold - total_reserved)
-  const percent_sold    = total_capacity > 0
-    ? Math.round((total_sold / total_capacity) * 100)
-    : 0
-  return { total_sold, total_reserved, total_capacity, available, percent_sold }
-}
-
 export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three', freeLabels = false }: Props) {
   const {
     id, slug, title, cover_image_url, start_date, timezone,
-    venue_city, venue_country, created_at, category, ticket_tiers,
+    venue_city, venue_country, category,
     organisation, badge, also_on,
   } = event
   const alsoOn = seriesAlsoOn(also_on, timezone)
@@ -155,158 +142,101 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
     freeLabels && (event.is_free === true || isWalkIn({ entry_mode: event.entry_mode ?? null }))
       ? freeEntryLabel(event.entry_mode)
       : formatPrice(event, dynamicPrices)
-  const inventory  = ticket_tiers.length > 0 ? buildInventory(ticket_tiers) : null
 
   // Location display: city if available, else country
   const location = venue_city
     ? venue_city
     : venue_country ?? null
 
+  // THE LEDGER CARD (Lawal's order of 1 November 2026, 11:01; the sample he saw is
+  // C:\dev\EVIDENCE\CARD-DESIGNS-31OCT\editorial.js). A 3:2 photograph with nothing written on it; under it a date
+  // column (weekday, day, month in the event's own zone) beside the title, the venue and its suburb, and the price line
+  // with the time. A venue photograph fills the frame; the organiser's own artwork is shown WHOLE over a soft blur of
+  // itself, never cropped; a night with no photograph gets the quiet tinted panel with one small label. No logo, no
+  // large date, no invented image.
+  const mark = dateColumn(start_date, timezone)
+  const venueLine = [event.venue_name, venue_city].filter(Boolean).join(', ') || location
+  const meta = alsoOn ? alsoOn.words : timeOf(start_date, timezone)
+  const isVenuePhoto = Boolean(event.image_credit)
+  const photo = cover_image_url && !isComposedCover(cover_image_url) ? cover_image_url : null
+
   return (
-    <Link
-      href={`/events/${slug}`}
-      // M5 card hover per docs/M5-DESIGN-SPEC.md / Card design:
-      //   200ms ease-out (--motion-quick), 0 -> 4px navy/8% shadow on hover.
-      //   `transition-all` is explicitly forbidden by the spec; transform and
-      //   box-shadow are named explicitly inside `event-card-surface`, at the
-      //   same 200ms and the same ease-out. Aspect ratio (1:1 per spec) is
-      //   deferred to a follow-up because event-card.tsx ships site-wide;
-      //   see SUMMARY.md.
-      // Close-out C14.12 (6 September 2026): the card radius (16px, the same
-      // as every homepage card; this one was the 8px control radius), the two
-      // elevation tokens, and a 4px lift, so the browse card and the rail card
-      // are one object at two widths.
-      // Close-out C8B.3 (19 September 2026): the 428-character list that used
-      // to be written here is `event-card-surface` in globals.css. It was said
-      // 40 times on /events - in the markup and again in the RSC payload - and
-      // this component renders on eighteen surfaces. `group` stays: it is a
-      // variant marker with no declarations of its own.
-      className="group event-card-surface"
-    >
-      <div className="event-card-media">
-        {cover_image_url ? (
+    <Link href={`/events/${slug}`} className="group ledger-card">
+      <div className="ledger-media">
+        {photo && isVenuePhoto ? (
           <EventCardMedia
-            src={cover_image_url}
+            src={photo}
             alt={title}
             variant={variant}
             priority={priority}
-            // The typographic cover's facts: the category only where the pill does not already say it on the image.
-            category={m5Mode ? (category?.name ?? null) : null}
-            startDate={start_date}
-            timeZone={timezone ?? null}
             title={event.image_credit ?? null}
-            // Image scale-up per spec card hover: subtle 1.02 (2%).
-            // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
-            // utility (transform: scale 1.02 under --motion-quick).
             className="card-hover-img event-card-zoom"
           />
+        ) : photo ? (
+          <>
+            <div className="ledger-blur" aria-hidden="true">
+              <EventCardMedia src={photo} alt="" variant={variant} />
+            </div>
+            <EventCardMedia src={photo} alt={title} variant={variant} priority={priority} objectFit="contain" />
+          </>
         ) : (
-          <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
-            <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+          <div className="ledger-panel">
+            <span className="ledger-panel-chip">
+              {[category?.name, venue_city].filter(Boolean).join(' · ') || 'Event'}
+            </span>
           </div>
         )}
 
-        {m5Mode
-          ? badge && (
-              <span
-                data-m5-badge={badge}
-                className={`event-card-badge ${BADGE_STYLES[badge]}`}
-              >
-                {BADGE_LABELS[badge]}
-              </span>
-            )
-          : category && (
-              <span className="event-card-pill">
-                {category.name}
-              </span>
-            )}
+        {m5Mode && badge ? (
+          <span data-m5-badge={badge} className={`event-card-badge ${BADGE_STYLES[badge]}`}>
+            {BADGE_LABELS[badge]}
+          </span>
+        ) : null}
 
-        <SaveEventButton
-          eventId={id}
-          initiallySaved={initiallySaved}
-          variant="light"
-          className="event-card-save"
-        />
+        <SaveEventButton eventId={id} initiallySaved={initiallySaved} variant="light" className="event-card-save" />
       </div>
 
-      {/* Card body per docs/M5-DESIGN-SPEC.md / Card design:
-       *   20px top padding, left-aligned (never centred), title at
-       *   --type-h4, date/venue at --type-small, price at --type-body
-       *   (17/600). Price kept prominent at the bottom-right of the
-       *   metadata row.
-       *   The four padding declarations were an inline style object, paid per
-       *   card in the markup and serialised again into the RSC payload; they
-       *   are `event-card-body` in globals.css now, set from the same two
-       *   tokens (close-out C8B.3, 19 September 2026). */}
-      <div className="event-card-body">
-        {m5Mode && organisation ? (
-          <p className="type-small text-[var(--text-secondary)]">{organisation.name}</p>
-        ) : (
-          <p
-            /* The 600 stays an inline style on purpose: `.type-micro` is an
-             * UNLAYERED rule setting font-weight 500, and unlayered CSS beats
-             * `@layer utilities`, so a weight folded into the composite would
-             * lose to it silently. */
-            className="type-micro event-card-date"
-            style={{ fontWeight: 600 }}
-            title={alsoOn?.every}
-          >
-            {formatEventDateShort(start_date, timezone)}
-            {alsoOn ? ` · ${alsoOn.words}` : null}
+      <div className="ledger-body">
+        {mark ? (
+          <p className="ledger-date" aria-hidden="true">
+            <span className="ledger-dw">{mark.weekday}</span>
+            <span className="ledger-dd">{mark.day}</span>
+            <span className="ledger-dm">{mark.month}</span>
           </p>
-        )}
-
-        {/* Title at the card step of the one scale, 18px on every viewport
-         *  (Design system: "Card titles 18px"; the homepage rail card is the
-         *  same). It ran at --type-h4, 22px on desktop, which outranked the
-         *  24px section heading above the grid in weight and nearly in size.
-         *  Hover: navy stays, gold underline added (spec). */}
-        <h3 className="event-card-title">
-          {title}
-        </h3>
-
-        {m5Mode ? (
-          /* `gap-1.5` and `gap-1` used to sit on these two rows and neither
-           * ever applied: the inline `gap` token beat both. One row now. */
-          <p className="type-small event-card-meta">
-            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span title={alsoOn?.every}>
-              {formatEventDateShort(start_date, timezone)}
-              {alsoOn ? ` · ${alsoOn.words}` : null}
-            </span>
-            {location && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="truncate">{location}</span>
-              </>
-            )}
-          </p>
-        ) : (
-          location && (
-            <p className="type-small event-card-meta">
-              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-              {location}
-            </p>
-          )
-        )}
-
-        {/* Price row - --type-body 17/600 per spec. mt-auto pushes to
-         *  bottom of the card. */}
-        <div className="event-card-footer">
-          <p className="event-card-price">
-            {priceLabel}
-          </p>
-          {!m5Mode && inventory && (
-            <SocialProofBadge
-              inventory={inventory}
-              createdAt={created_at}
-              compact
-            />
-          )}
+        ) : null}
+        <div className="ledger-info">
+          <h3 className="ledger-title">{title}</h3>
+          <p className="sr-only">{formatEventDateShort(start_date, timezone)}</p>
+          {m5Mode && organisation ? <p className="ledger-venue">{organisation.name}</p> : null}
+          {venueLine ? <p className="ledger-venue">{venueLine}</p> : null}
+          <div className="ledger-row">
+            {priceLabel ? <p className="ledger-price">{priceLabel}</p> : <span />}
+            {meta ? (
+              <span className="ledger-meta" title={alsoOn?.every}>
+                {meta}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </Link>
   )
+}
+
+/** Weekday, day and month for the card's date column, in the event's own zone. */
+function dateColumn(iso: string, timezone: string | null): { weekday: string; day: string; month: string } | null {
+  const mark = eventDateMark(iso, timezone)
+  if (!mark) return null
+  const weekday = new Intl.DateTimeFormat('en-AU', { weekday: 'short', timeZone: resolveZone(timezone) }).format(new Date(iso))
+  return { weekday, day: mark.day, month: mark.month }
+}
+
+/** "7:30 pm" in the event's own zone. */
+function timeOf(iso: string, timezone: string | null): string | null {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return null
+  return new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: resolveZone(timezone) })
+    .format(at)
+    .replace(/ /g, ' ')
+    .toLowerCase()
 }

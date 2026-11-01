@@ -140,6 +140,8 @@ export default async function CityPage({ params }: Props) {
     // (Kate Ceberano on /city/geelong, step 3 on live after car 14, 30 October 2026).
     external_ticket_url: r.external_ticket_url ?? null,
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],
+    // So Featured this week shows a weekly series once (Lawal's order of 1 November 2026, 11:01).
+    listing_series_id: r.listing_series_id ?? null,
   }))
 
   // From the START OF TODAY, not from `now`: an event that started this
