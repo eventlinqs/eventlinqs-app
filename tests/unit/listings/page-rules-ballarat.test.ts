@@ -69,6 +69,15 @@ describe("Her Majesty's Theatre Ballarat rule", () => {
     expect(found[0].venueAddress).toBe('17 Lydiard Street South, Ballarat Central VIC')
   })
 
+  it('a finish at or before the start (past midnight on the page) is no finish, never an end before the start', () => {
+    const found = rule!.read(
+      hmPage({ title: 'Bp Late', location: 'Civic Hall Ballarat', prices: 'Full: $50', sessions: [['Saturday', 'November 07, 2026', '20:30', '00:10']] }),
+      url,
+    )
+    expect(found[0].startsAt).toBe('2026-11-07T09:30:00.000Z')
+    expect(found[0].endsAt).toBeNull()
+  })
+
   it('a page with no session, or no title, lands nothing; a venue it does not know keeps its name and no street', () => {
     expect(rule!.read(hmPage({ title: 'Bp Past', location: 'Civic Hall Ballarat', prices: '', sessions: [] }), url)).toEqual([])
     expect(rule!.read('<html><body><p>nothing</p></body></html>', url)).toEqual([])
