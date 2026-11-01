@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formatEventDateShort, resolveZone } from '@/lib/dates/event-time'
 import { OUTBOUND_LABEL, WALK_IN_LABEL, rowPrice, sourceLabel } from '@/lib/events/whats-on-directory'
+import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
@@ -178,7 +179,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
     const shownPrice = priceLabel ? rowPrice(priceLabel) : ''
     // A free walk-in night says 'Free · Walk in' once, as its price (Lawal 09:00, refinement 4, in place of 'Free entry'
     // beside 'Walk in, no ticket needed'); the source line, the same words, is then not shown again.
-    const rowPriceShown = source === WALK_IN_LABEL ? WALK_IN_LABEL : /^free/i.test(shownPrice) && OUTBOUND_LABEL.test(source) ? 'Free' : shownPrice
+    const rowPriceShown = source === WALK_IN_LABEL ? WALK_IN_LABEL : /^free/i.test(shownPrice) && OUTBOUND_LABEL.test(source) ? ROW_FREE_WITH_BOOKING : shownPrice
     return (
       <Link href={`/events/${slug}`} className="group event-row">
         <span className="min-w-0">

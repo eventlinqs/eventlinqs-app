@@ -8,6 +8,7 @@ import {
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
 import { OUR_CHECKOUT_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
+import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 
 /**
@@ -571,7 +572,7 @@ export function eventsByCategory(rows: readonly DirectoryRow[]): [string, string
  */
 export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>): { said: string | null; book: string | null; outbound: boolean } {
   if (r.source === WALK_IN_LABEL) return { said: WALK_IN_LABEL, book: null, outbound: false }
-  const said = r.free ? 'Free' : r.price || null
+  const said = r.free ? ROW_FREE_WITH_BOOKING : r.price || null
   if (r.source === OUR_CHECKOUT_LABEL) return { said, book: OUR_CHECKOUT_LABEL, outbound: false }
   if (OUTBOUND_LABEL.test(r.source)) return { said, book: r.source, outbound: true }
   return { said, book: null, outbound: false }
