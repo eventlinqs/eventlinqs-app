@@ -276,7 +276,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!organisation) return { title: 'Organiser not found | EventLinqs' }
 
   const baseUrl = getSiteUrl()
-  const title = `${organisation.name} - Events & Profile - EventLinqs`
+  const title = `${organisation.name} | Events & Profile | EventLinqs`
   // A meta description is a PLAIN-TEXT surface: strip the syntax so a bold
   // organiser name never reaches a search result as asterisks (UX1.1).
   const description = (stripMarkdown(organisation.description)
