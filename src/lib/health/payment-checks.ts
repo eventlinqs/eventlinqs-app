@@ -212,7 +212,7 @@ export async function driftWatchdog(): Promise<PaymentCheckResult> {
       return emit({
         name,
         ok: true,
-        detail: `${stuck.length} pending order(s) are abandoned checkouts (no succeeded intent) - no drift`,
+        detail: `${stuck.length} pending order(s) are abandoned checkouts (no succeeded intent): no drift`,
       })
     }
     return emit({
@@ -343,7 +343,7 @@ export async function connectedAccountHealthCheck(): Promise<PaymentCheckResult 
       byAccount.set(org.stripe_account_id, list)
     }
     if (byAccount.size === 0) {
-      return green(`${orgs.length} connected organisation(s), none present in the ${listed.accounts.length} Stripe account(s) read over ${listed.pages} page(s) - nothing assessed`)
+      return green(`${orgs.length} connected organisation(s), none present in the ${listed.accounts.length} Stripe account(s) read over ${listed.pages} page(s): nothing assessed`)
     }
 
     // What is pending verification right now, recorded so the NEXT run can say

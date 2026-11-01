@@ -245,7 +245,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dateLabel = formatShortDate(event.start_date, event.timezone)
   const venueLabel = [shownVenueName(event), event.venue_city].filter(Boolean).join(', ')
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
-  const title = `${titleParts.join(' - ')} - EventLinqs`
+  const title = `${titleParts.join(' | ')} | EventLinqs`
 
   // Always non-empty (root fix for the SEO meta-description failure on events
   // with no summary/description/venue_city - see buildEventMetaDescription).

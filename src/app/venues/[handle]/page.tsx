@@ -174,8 +174,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!venue) return { title: 'Venue not found | EventLinqs' }
 
   const baseUrl = getSiteUrl()
-  const cityPart = venue.city ? ` - ${venue.city}` : ''
-  const title = `${venue.name} - Events & Info${cityPart} - EventLinqs`
+  const cityPart = venue.city ? ` | ${venue.city}` : ''
+  const title = `${venue.name} | Events & Info${cityPart} | EventLinqs`
 
   const capacityPart = venue.capacity ? `Capacity ${venue.capacity.toLocaleString('en-AU')}. ` : ''
   const typePart = venue.venueType ? `${venue.venueType}. ` : ''
