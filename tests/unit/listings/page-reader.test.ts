@@ -55,6 +55,14 @@ describe('the Geelong Arts Centre rule', () => {
     expect(found[0].links).toEqual([{ url: `${GAC}/whats-on/all-events/bp-proof-quartet/`, availability: 'on_sale', priceFromCents: 3000 }])
   })
 
+  it('reads the real layout: date and time on one line, a sold out performance marked sold out', () => {
+    const real = `<html><body><h1>Bp Proof Singer: Live</h1><aside><div><p>Performances:</p><p><span>Mon, 02 Nov 2026</span><span><span>07:30pm</span></span><span>Sold Out</span></p><p><span>Tue, 03 Nov 2026</span><span><span>08:00pm</span></span></p></div><div><p>Ticket Prices:</p><p><span>Admit</span><span>$122.10 - $142.10</span></p><p><span>Companion Card</span><span>$0</span></p><p>*$6.95 transaction fee applies</p></div><div><p>Venue:</p><p>Costa Hall</p><p>1 Gheringhap St</p></div></aside></body></html>`
+    const found = rule!.read(real, `${GAC}/whats-on/all-events/singer/`)
+    expect(found.map((f) => f.startsAt)).toEqual(['2026-11-02T08:30:00.000Z', '2026-11-03T09:00:00.000Z'])
+    expect(found.map((f) => f.links[0].availability)).toEqual(['sold_out', 'on_sale'])
+    expect(found[0].links[0].priceFromCents).toBe(12210)
+  })
+
   it('keeps facts only: never the description, never the image', () => {
     for (const e of rule!.read(SHOW, `${GAC}/whats-on/all-events/bp-proof-quartet/`)) {
       expect(e.description).toBeNull()
