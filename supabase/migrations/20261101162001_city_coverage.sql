@@ -86,7 +86,9 @@ select jsonb_build_object(
     'known', (select count(*) from src),
     'healthy', (select count(*) from src where last_success_at >= now() - interval '2 days'),
     'failing', (select count(*) from src where last_checked_at is not null and (last_success_at is null or last_success_at < now() - interval '2 days')),
-    'not_yet_read', (select count(*) from src where last_checked_at is null)),
+    'not_yet_read', (select count(*) from src where last_checked_at is null),
+    'stopped', (select count(*) from src where stopped_at is not null),
+    'by_refresh_interval_hours', (select coalesce(jsonb_object_agg(h, n), '{}'::jsonb) from (select refresh_interval_hours::text h, count(*) n from src group by 1) x)),
   'upcoming_in_city', (select count(*) from mine where rel = 'city'),
   'upcoming_nearby', (select count(*) from mine where rel = 'surrounding'),
   'upcoming_by_label', (select count(*) from labelled),
@@ -149,7 +151,10 @@ up as (select e.*, public.venue_city_relation(p_city, e.venue_id) rel from publi
           and (e.listing_fresh_until is null or e.listing_fresh_until >= now()))
 select coalesce((case p_kind
   when 'sources' then (select jsonb_agg(jsonb_build_object('name', name, 'url', page_url, 'kind', kind, 'collection', collection,
-      'last_success_at', last_success_at, 'last_checked_at', last_checked_at, 'last_outcome', last_outcome) order by name) from src)
+      'last_success_at', last_success_at, 'last_checked_at', last_checked_at, 'last_outcome', last_outcome,
+      'change_rate', public.listing_source_change_rate(id), 'checks', checks_counted, 'changes', changes_counted,
+      'refresh_interval_hours', refresh_interval_hours, 'refresh_interval_reason', refresh_interval_reason,
+      'next_check_at', next_check_at, 'stopped_at', stopped_at, 'stopped_because', stopped_because) order by name) from src)
   when 'missing' then (select jsonb_agg(x order by x ->> 'starts_at') from (
       select distinct on (k) jsonb_build_object('title', title, 'starts_at', starts_at, 'venue', venue_name, 'page', page_url,
         'status', status, 'source', source_name) x from cand
