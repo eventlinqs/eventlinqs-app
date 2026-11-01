@@ -171,8 +171,8 @@ describe('an empty slot says so, never filler', () => {
     const week = draftWeek({ city: 'geelong', cityName: 'Geelong', zone: ZONE, weekStart: '2026-11-02', events: [ev({ startsAt: at(3), category: 'family' })], now: NOW })
     const tue = week[1]
     expect(tue.picks).toEqual([])
-    expect(tue.empty).toBe('No verified live music, nightlife or comedy in Geelong from Tue 3 Nov to Sun 8 Nov.')
+    expect(tue.empty).toBe('No verified live music, nightlife or comedy in Geelong from Tue, 3 Nov to Sun, 8 Nov.')
     expect(week[6].spotlight).toBeNull()
-    expect(week[6].empty).toMatch(/^No verified events in Geelong from Mon 9 Nov to Sun 15 Nov\.$/)
+    expect(week[6].empty).toMatch(/^No verified events in Geelong from Mon, 9 Nov to Sun, 15 Nov\.$/)
   })
 })
