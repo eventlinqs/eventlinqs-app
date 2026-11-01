@@ -84,7 +84,7 @@ describe('the Geelong Arts Centre rule', () => {
 describe('the sitemap leads to the event pages', () => {
   it('lists only the pages the rule reads', () => {
     const xml = `<?xml version="1.0"?><urlset><url><loc>${GAC}/whats-on/all-events/a/</loc></url><url><loc>${GAC}/about-us/</loc></url><url><loc>${GAC}/whats-on/all-events/b/</loc></url></urlset>`
-    expect(eventPagesFromSitemap(xml, pageRuleFor(`${GAC}/whats-on/all-events/a/`)!)).toEqual([`${GAC}/whats-on/all-events/a/`, `${GAC}/whats-on/all-events/b/`])
+    expect(eventPagesFromSitemap(xml, pageRuleFor(`${GAC}/whats-on/all-events/a/`)!)).toEqual([`${GAC}/whats-on/all-events/b/`, `${GAC}/whats-on/all-events/a/`])
   })
 })
 
@@ -104,7 +104,7 @@ describe('the run reads a page-rule source through its sitemap', () => {
     }
     const pages: Record<string, string> = {
       [`${GAC}/robots.txt`]: 'User-agent: *\nDisallow: /whats-on/all-events/private/\n\nUser-agent: GPTBot\nDisallow: /',
-      [SITEMAP]: `<urlset><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url><url><loc>${GAC}/whats-on/all-events/private/</loc></url><url><loc>${GAC}/whats-on/all-events/old/</loc></url></urlset>`,
+      [SITEMAP]: `<urlset><url><loc>${GAC}/whats-on/all-events/old/</loc></url><url><loc>${GAC}/whats-on/all-events/private/</loc></url><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url></urlset>`,
       [`${GAC}/whats-on/all-events/quartet/`]: SHOW,
       [`${GAC}/whats-on/all-events/old/`]: page({ title: 'Old Show', performances: [['Fri, 07 Aug 2026', '07:00pm']], prices: ['$30'], venue: ['Costa Hall', '1 Gheringhap St'], archived: true }),
     }
@@ -136,7 +136,7 @@ describe('the run reads a page-rule source through its sitemap', () => {
     const fetcher: Fetcher = async (url) => {
       asked.push(url)
       if (url === `${GAC}/robots.txt`) return { status: 200, text: async () => 'User-agent: *\nDisallow: /cpresources/' }
-      if (url === SITEMAP) return { status: 200, text: async () => `<urlset><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url><url><loc>${GAC}/whats-on/all-events/two/</loc></url><url><loc>${GAC}/whats-on/all-events/three/</loc></url></urlset>` }
+      if (url === SITEMAP) return { status: 200, text: async () => `<urlset><url><loc>${GAC}/whats-on/all-events/three/</loc></url><url><loc>${GAC}/whats-on/all-events/two/</loc></url><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url></urlset>` }
       if (url === `${GAC}/whats-on/all-events/quartet/`) return { status: 200, text: async () => SHOW }
       return { status: 429, text: async () => 'slow down' }
     }

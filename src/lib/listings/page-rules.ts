@@ -148,10 +148,18 @@ export function pageRuleFor(url: string): PageRule | null {
 }
 
 /** The event pages a sitemap lists for a rule: same host, a path the rule reads, each once, in the sitemap's order. */
+/**
+ * A rule's event pages from a sitemap, NEWEST FIRST, so a read capped at PAGE_READ_CAP reaches the current program:
+ * hermaj.com lists its 145 event pages oldest first and eurekacentreballarat.com.au its 237 (WINDOW 2, 1 November
+ * 2026), so sitemap order left the Eureka Centre's newest 37 unread. By lastmod (sitemaps.org's W3C date) where every
+ * page carries one, else from the end of the list, where a site that appends its new shows puts them.
+ */
 export function eventPagesFromSitemap(xml: string, rule: PageRule): string[] {
-  const out: string[] = []
-  for (const m of xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
-    const loc = decode(m[1])
+  const found: Array<{ loc: string; at: number | null }> = []
+  for (const m of xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const locMatch = /<loc>\s*([^<\s]+)\s*<\/loc>/i.exec(m[1])
+    if (!locMatch) continue
+    const loc = decode(locMatch[1])
     let u: URL
     try {
       u = new URL(loc)
@@ -159,9 +167,16 @@ export function eventPagesFromSitemap(xml: string, rule: PageRule): string[] {
       continue
     }
     if (u.hostname.replace(/^www\./, '') !== rule.host || !rule.eventPath.test(u.pathname)) continue
-    if (!out.includes(loc)) out.push(loc)
+    if (found.some((f) => f.loc === loc)) continue
+    const lastmod = /<lastmod>\s*([^<\s]+)\s*<\/lastmod>/i.exec(m[1])
+    const at = lastmod ? Date.parse(lastmod[1]) : NaN
+    found.push({ loc, at: Number.isNaN(at) ? null : at })
   }
-  return out
+  const newestLast = [...found].reverse()
+  if (found.length > 0 && found.every((f) => f.at !== null)) {
+    return newestLast.sort((a, b) => (b.at as number) - (a.at as number)).map((f) => f.loc)
+  }
+  return newestLast.map((f) => f.loc)
 }
 
 /** Whether a body is a sitemap (a urlset), not a page. */
