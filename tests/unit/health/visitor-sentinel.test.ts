@@ -43,6 +43,21 @@ describe('what the page shows, judged against the database', () => {
     expect(failing(r)).toEqual(['visitor-other-city:/city/geelong'])
   })
 
+  // WINDOW 1's 16:50: the label is what put Aireys Inlet (41 km, Surf Coast) under Geelong, so the venue's own placement
+  // (public.venue_city_relation, 20261101160001) judges where one is known; the label only where it is not.
+  it('a night labelled with the city whose venue stands outside it fails, by the venue, not the label', () => {
+    const aireys = fact({ slug: 'aireys-gig', citySlug: 'geelong', cityRelation: 'outside' })
+    const r = judgeVisitorPage({ path: '/city/geelong', citySlug: 'geelong', html: html('aireys-gig'), facts: [aireys], now: NOW })
+    expect(failing(r)).toEqual(['visitor-other-city:/city/geelong'])
+  })
+
+  it('a night whose venue is in the city or its surrounds reads clean whatever its label says', () => {
+    for (const rel of ['city', 'surrounding']) {
+      const f = fact({ slug: 'lara-gig', citySlug: 'melbourne', cityRelation: rel })
+      expect(failing(judgeVisitorPage({ path: '/city/geelong', citySlug: 'geelong', html: html('lara-gig'), facts: [f], now: NOW }))).toEqual([])
+    }
+  })
+
   it('a night whose every booking link is dead fails', () => {
     const r = judgeVisitorPage({ path: '/city/geelong', citySlug: 'geelong', html: html('trivia-night'), facts: [fact({ deadBookingLinks: 1, liveBookingLinks: 0 })], now: NOW })
     expect(failing(r)).toEqual(['visitor-dead-booking:/city/geelong'])
