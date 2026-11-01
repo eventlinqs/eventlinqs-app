@@ -37,6 +37,10 @@ for (const url of pages) {
   }
   await new Promise((r) => setTimeout(r, 1000))
   const one = await get(url)
+  if (one.status === 403 || one.status === 429) {
+    skipped.push({ url, why: `HTTP ${one.status}: the site asked us to stop; reading stopped` })
+    break
+  }
   if (one.status < 200 || one.status >= 300) {
     skipped.push({ url, why: `HTTP ${one.status}` })
     continue

@@ -230,6 +230,9 @@ export async function runCollection(
                for its own Event data or feed, as before. */
             const rule = pageRuleFor(source.pageUrl)
             let raw: FoundEvent[]
+            /* A site that answers 403 or 429 is asking us to stop: no further page of it is asked this run, and the run
+               says so (WINDOW 5's finding of 16:05, 1 November 2026: a city calendar began refusing after 21 pages). */
+            let stoppedBy: string | null = null
             if (rule && isSitemap(res.body)) {
               raw = []
               for (const url of eventPagesFromSitemap(res.body, rule).slice(0, PAGE_READ_CAP)) {
@@ -243,6 +246,10 @@ export async function runCollection(
                 if (robotsVerdict(siteRobots.status, siteRobots.body, at.pathname + at.search) === 'disallowed') continue
                 if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs))
                 const one = await get(fetcher, url)
+                if (one.status === 403 || one.status === 429) {
+                  stoppedBy = `the site answered ${one.status} on ${url}: reading stopped`
+                  break
+                }
                 if (one.status !== null && one.status >= 200 && one.status < 300) raw.push(...rule.read(one.body, url))
               }
             } else {
@@ -311,6 +318,7 @@ export async function runCollection(
                 ? `read: ${found} event(s) found, ${landed} new for review`
                 : `read: ${found} event(s) found, ${landed} new: ${ruled} accepted by the partner rule, ${queued} for review`
             if (unpublished.length > 0) outcome += `; ${unpublished.length} accepted night(s) not yet published: ${unpublished[0]}`
+            if (stoppedBy) outcome += `; ${stoppedBy}`
           }
         }
       }
