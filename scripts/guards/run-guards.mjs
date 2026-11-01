@@ -1095,7 +1095,12 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { announceWithheld, withholdServiceKeyOnReadOnlyPreview } from '../lib/preview-read-only-build.mjs'
 import { describeOutcome, renderFailures, transportOnlyFailure } from './lib/guard-run-report.mjs'
+
+// The read-only preview builds with no service key (scripts/lib/preview-read-only-build.mjs); every spawned guard's env
+// derives from this process's, so withholding it here withholds it from all of them.
+announceWithheld('guards', withholdServiceKeyOnReadOnlyPreview(process.env))
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'

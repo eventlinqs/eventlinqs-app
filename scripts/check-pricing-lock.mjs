@@ -28,7 +28,9 @@ console.warn(`${message}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING
  */
 import { PRICING_LOCK_RULE, PRICING_DOC } from '../src/lib/health/pricing-lock.mjs'
 import { describeBuildScope, resolveBuildScope } from '../src/lib/health/build-scope.mjs'
+import { announceWithheld, withholdServiceKeyOnReadOnlyPreview } from './lib/preview-read-only-build.mjs'
 
+announceWithheld('pricing-lock', withholdServiceKeyOnReadOnlyPreview(process.env))
 const { scope, blocks } = resolveBuildScope(process.env)
 const bypass = process.env.ALLOW_PRICING_DRIFT === '1'
 
