@@ -7,7 +7,7 @@ import { discoveryData } from '@/lib/events/discovery-data'
 import type { LedgerRow } from '@/lib/events/ledger-data'
 import { getAllCities, getCity, getSuburbsForCity, type CitySlug } from '@/lib/cities/data'
 import { readGuideCity } from '@/lib/listings/free-week-surface'
-import { Suspense, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
@@ -30,7 +30,7 @@ const STATE_NAMES: Record<string, string> = {
   TAS: 'Tasmania', ACT: 'Australian Capital Territory', NT: 'Northern Territory',
 }
 
-export function CityGuideScreen({
+export async function CityGuideScreen({
   citySlug,
   heroImage,
   after = null,
@@ -46,6 +46,29 @@ export function CityGuideScreen({
 }) {
   const city = getCity(citySlug)
   if (!city) return null
+  const now = new Date()
+  const rows = (await withVenuePhotos(await loadGuideUpcoming(createPublicClient(), now))) as LedgerRow[]
+  const data = await discoveryData(rows, now)
+  const quickCities = QUICK.map((s) => getCity(s)).filter((c): c is NonNullable<typeof c> => c !== null)
+  const every = getAllCities()
+  const allCities = every.filter((c) => !c.slug.includes('-') || c.tier === 1).map((c) => ({ slug: c.slug, name: c.name, state: c.state }))
+  const stateCityNames = every.filter((c) => c.state === city.state).map((c) => c.name.toLowerCase())
+  const name = city.name.toLowerCase()
+  // 'Worth going out for' (the 2 November directive, section 3): ORGANISER artwork with its rights on record only, never a
+  // venue photograph (image_credit) or a logo; the guide draws it at three or more and the count goes to the gap report.
+  const worth = data.featured.filter(
+    (e) => (e.venue_city ?? '').toLowerCase().includes(name) && !e.image_credit && e.cover_rights_recorded === true,
+  )
+  // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
+  const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
+  // A failed read only leaves the link off, and says so (the old city page's own handling).
+  const freeWeek = await readGuideCity(city.slug).then(
+    (c) => c !== null,
+    (err: unknown) => {
+      console.error('[city-guide] the free guide could not be read:', err instanceof Error ? err.message : err)
+      return false
+    },
+  )
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -76,49 +99,6 @@ export function CityGuideScreen({
             </HeroCaption>
           </div>
         </section>
-        {/* STREAMED (2 November 2026, Lighthouse on the preview: every request, the preloaded hero image included, began
-            only after about 1.9 s, because the page sent nothing until all of the city's nights were read). The header and
-            the hero above go out at once; the guide, which needs every night, streams in behind this boundary (Next's own
-            pattern: node_modules/next/dist/docs/01-app/01-getting-started/06-fetching-data.md, 'With <Suspense>'). The
-            fallback holds the screen below the hero, so nothing the visitor already sees moves when the guide arrives. */}
-        <Suspense fallback={<div className="min-h-screen" aria-busy="true" />}>
-          <CityGuideBody city={city} />
-        </Suspense>
-        {after}
-      </main>
-      <SiteFooter />
-    </div>
-  )
-}
-
-/** Everything that needs the city's nights: read once, then the guide and the city's own ranked pages. */
-async function CityGuideBody({ city }: { city: NonNullable<ReturnType<typeof getCity>> }) {
-  const now = new Date()
-  const rows = (await withVenuePhotos(await loadGuideUpcoming(createPublicClient(), now))) as LedgerRow[]
-  const data = await discoveryData(rows, now)
-  const quickCities = QUICK.map((s) => getCity(s)).filter((c): c is NonNullable<typeof c> => c !== null)
-  const every = getAllCities()
-  const allCities = every.filter((c) => !c.slug.includes('-') || c.tier === 1).map((c) => ({ slug: c.slug, name: c.name, state: c.state }))
-  const stateCityNames = every.filter((c) => c.state === city.state).map((c) => c.name.toLowerCase())
-  const name = city.name.toLowerCase()
-  // 'Worth going out for' (the 2 November directive, section 3): ORGANISER artwork with its rights on record only, never a
-  // venue photograph (image_credit) or a logo; the guide draws it at three or more and the count goes to the gap report.
-  const worth = data.featured.filter(
-    (e) => (e.venue_city ?? '').toLowerCase().includes(name) && !e.image_credit && e.cover_rights_recorded === true,
-  )
-  // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
-  const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
-  // A failed read only leaves the link off, and says so (the old city page's own handling).
-  const freeWeek = await readGuideCity(city.slug).then(
-    (c) => c !== null,
-    (err: unknown) => {
-      console.error('[city-guide] the free guide could not be read:', err instanceof Error ? err.message : err)
-      return false
-    },
-  )
-
-  return (
-    <>
         <CityGuide
           city={{ slug: city.slug, name: city.name, state: city.state, lat: city.latitude, lng: city.longitude }}
           stateName={STATE_NAMES[city.state] ?? city.state}
@@ -163,6 +143,9 @@ async function CityGuideBody({ city }: { city: NonNullable<ReturnType<typeof get
             </>
           ) : null}
         </section>
-    </>
+        {after}
+      </main>
+      <SiteFooter />
+    </div>
   )
 }
