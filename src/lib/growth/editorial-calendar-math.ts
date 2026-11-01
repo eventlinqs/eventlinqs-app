@@ -15,7 +15,7 @@
  * THE RULES, each the directive's own words for its day:
  *   mon  This week's events: every verified night Monday to Sunday.
  *   tue  Live music, nightlife and comedy: those three guide categories, Tuesday to Sunday.
- *   wed  Weekend planning guide: the coming weekend, the platform's one definition (Saturday and Sunday).
+ *   wed  Weekend planning guide: the coming weekend, the platform's one definition (weekendWindowUtc).
  *   thu  Five worthwhile things happening this weekend: the same weekend; at most five, one of each kind first.
  *   fri  Tonight and tomorrow: Friday and Saturday, the platform's own today and tomorrow window.
  *   sat  Real event coverage and community highlights: community, festivals, markets and family, Saturday and Sunday; coverage only where a

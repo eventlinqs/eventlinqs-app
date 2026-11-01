@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftWeek, RHYTHM, type CalendarEvent } from '@/lib/growth/editorial-calendar-math'
 import { GUIDE_CATEGORIES } from '@/lib/categories/classify'
+import { weekendWindowUtc } from '@/lib/events/listing-window'
 
 /**
  * ONE EDITORIAL CALENDAR PER CITY (C:\dev\GROWTH\GROWTH-SYSTEM-DIRECTIVE-1NOV.md s5 and its rhythm table; the accepted
@@ -124,13 +125,17 @@ describe('each slot by its rule', () => {
     expect(thu.picks[0].id).toBe(events[0].id)
   })
 
-  it("'this weekend' is the platform's one weekend, Saturday and Sunday: a Friday night is in Friday's slot, never Thursday's five", () => {
+  it("'this weekend' is exactly the platform's one weekend (weekendWindowUtc), never a second definition: Wednesday and Thursday hold what it holds", () => {
+    // Whatever the one definition says (Saturday and Sunday today; the locked Geelong reference directive asks Friday
+    // to Sunday, C:\dev\DESIGN\CITY-FIRST-1NOV\GEELONG-REFERENCE-DIRECTIVE-2NOV.md), the calendar follows it by import.
     const friday = ev({ startsAt: at(6, '20:00'), category: 'music' })
     const saturday = ev({ startsAt: at(7, '20:00'), category: 'comedy' })
     const week = draftWeek({ city: 'geelong', cityName: 'Geelong', zone: ZONE, weekStart: '2026-11-02', events: [friday, saturday], now: NOW })
-    expect(week[2].picks.map((p) => p.id)).toEqual([saturday.id])
-    expect(week[3].picks.map((p) => p.id)).toEqual([saturday.id])
-    expect([week[3].windowFrom, week[3].windowTo]).toEqual(['2026-11-07', '2026-11-08'])
+    const weekend = weekendWindowUtc(new Date(at(5, '09:00')), ZONE)
+    const inWeekend = [friday, saturday].filter((e) => Date.parse(e.startsAt) >= weekend.from.getTime() && Date.parse(e.startsAt) <= weekend.to.getTime())
+    expect(inWeekend.map((e) => e.id)).toContain(saturday.id)
+    expect(week[2].picks.map((p) => p.id)).toEqual(inWeekend.map((e) => e.id))
+    expect(week[3].picks.map((p) => p.id)).toEqual(inWeekend.map((e) => e.id))
     expect(week[4].picks.map((p) => p.id)).toEqual([friday.id, saturday.id])
   })
 
