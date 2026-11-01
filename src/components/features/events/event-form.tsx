@@ -2039,7 +2039,7 @@ export function EventForm({
       <div>
         <label htmlFor="max-event-capacity-optional-leave-blank--38" className="block text-sm font-medium text-ink-600 mb-1">
           Max Event Capacity
-          <span className="ml-2 text-xs text-ink-400">Optional - leave blank if unlimited</span>
+          <span className="ml-2 text-xs text-ink-400">Optional: leave blank if unlimited</span>
         </label>
         <input id="max-event-capacity-optional-leave-blank--38"
           type="number"

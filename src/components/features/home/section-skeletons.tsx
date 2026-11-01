@@ -67,7 +67,7 @@ function RailHeaderSkeleton({ eyebrow, title }: { eyebrow: string; title: string
 
 export function ThisWeekSkeleton() {
   return (
-    <section aria-label="This week - loading" className={`bg-canvas ${SECTION_RAIL}`}>
+    <section aria-label="This week, loading" className={`bg-canvas ${SECTION_RAIL}`}>
       <div className={CONTAINER}>
         <RailHeaderSkeleton eyebrow="This week" title="What's happening near you" />
         <div className={`mt-3 flex ${RHYTHM_GAP} overflow-hidden`}>
@@ -82,7 +82,7 @@ export function ThisWeekSkeleton() {
 
 export function CommunityPicksSkeleton() {
   return (
-    <section aria-label="Community picks - loading" className={`bg-canvas ${SECTION_RAIL}`}>
+    <section aria-label="Community picks, loading" className={`bg-canvas ${SECTION_RAIL}`}>
       <div className={CONTAINER}>
         <RailHeaderSkeleton eyebrow="Made for every community" title="Community picks" />
         <div className={`mt-3 flex ${RHYTHM_GAP} overflow-hidden`}>
@@ -97,7 +97,7 @@ export function CommunityPicksSkeleton() {
 
 export function CityRailSkeleton() {
   return (
-    <section aria-label="Browse by city - loading" className={`bg-canvas ${SECTION_RAIL}`}>
+    <section aria-label="Browse by city, loading" className={`bg-canvas ${SECTION_RAIL}`}>
       <div className={CONTAINER}>
         <RailHeaderSkeleton eyebrow="By city" title="Browse by city" />
         <div className={`mt-3 flex ${RHYTHM_GAP} overflow-hidden`}>

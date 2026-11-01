@@ -68,21 +68,21 @@ export const revalidate = 120
 // Batch 9 V2 SEO contract: title format from the brief, full Open Graph
 // and Twitter Card with 1200x630 hero image, and canonical URL. UNSOURCED (Law 7)
 export const metadata: Metadata = {
-  title: 'EventLinqs - Every community. Every event. One platform.',
+  title: 'EventLinqs: Every community. Every event. One platform.',
   description:
     'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. EventLinqs is where events get made.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_AU',
-    title: 'EventLinqs - Every community. Every event. One platform.',
+    title: 'EventLinqs: Every community. Every event. One platform.',
     description:
       'Discover live events from communities across Australia. EventLinqs is where events get made: find your suppliers, sell your tickets, run your door and get paid.',
     siteName: 'EventLinqs',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EventLinqs - Every community. Every event. One platform.',
+    title: 'EventLinqs: Every community. Every event. One platform.',
     description:
       'Discover live events from communities across Australia. The place events get made.',
   },
