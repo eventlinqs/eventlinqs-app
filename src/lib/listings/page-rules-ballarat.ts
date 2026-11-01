@@ -80,7 +80,9 @@ export const herMajestysBallarat: PageRule = {
       if (!d || !mo || !tm) continue
       const startsAt = wallClockToIso(Number(d[3]), mo, Number(d[2]), Number(tm[1]), Number(tm[2]), 0, ZONE)
       if (!startsAt) continue
-      const endsAt = tm[3] ? wallClockToIso(Number(d[3]), mo, Number(d[2]), Number(tm[3]), Number(tm[4]), 0, ZONE) : null
+      const finish = tm[3] ? wallClockToIso(Number(d[3]), mo, Number(d[2]), Number(tm[3]), Number(tm[4]), 0, ZONE) : null
+      // A finish past midnight reads as an earlier clock on the same date: no finish rather than an end before the start.
+      const endsAt = finish && Date.parse(finish) > Date.parse(startsAt) ? finish : null
       const link = /href="([^"]+)"/i.exec(block)
       out.push({
         title,
@@ -154,10 +156,11 @@ export const eurekaCentreBallarat: PageRule = {
     return nights.flatMap(({ start, end }) => {
       const startsAt = at(start)
       if (!startsAt) return []
+      const finish = end ? at(end) : null
       return [{
         title,
         startsAt,
-        endsAt: end ? at(end) : null,
+        endsAt: finish && Date.parse(finish) > Date.parse(startsAt) ? finish : null,
         venueName,
         venueAddress: /eureka centre|at eureka/i.test(venueName) ? EUREKA_STREET : null,
         pageUrl,
