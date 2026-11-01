@@ -18,7 +18,7 @@
  *   wed  Weekend planning guide: Friday to Sunday.
  *   thu  Five worthwhile things happening this weekend: at most five, one of each kind first, earliest first.
  *   fri  Tonight and tomorrow: Friday and Saturday.
- *   sat  Real event coverage and community highlights: the community kinds, Saturday and Sunday; coverage only where a
+ *   sat  Real event coverage and community highlights: community, festivals, markets and family, Saturday and Sunday; coverage only where a
  *        night carries authorised media, because coverage is never invented.
  *   sun  Next week's preview and organiser spotlight: next Monday to Sunday, and the organiser with the most verified
  *        nights in it.
@@ -28,7 +28,9 @@
  * Every slot is a DRAFT until a person approves it (the directive: review before publication).
  */
 
-export type CityRelation = 'city' | 'surrounding' | 'region' | 'outside' | 'unplaced'
+import type { GuideCategory } from '@/lib/categories/classify'
+
+export type CityRelation ='city' | 'surrounding' | 'region' | 'outside' | 'unplaced'
 
 export interface CalendarEvent {
   readonly id: string
@@ -61,8 +63,10 @@ interface Rhythm {
   readonly noun: string
 }
 
-const NIGHT_OUT: ReadonlySet<string> = new Set(['music', 'nightlife', 'comedy'])
-const COMMUNITY: ReadonlySet<string> = new Set(['community', 'arts-community', 'festival', 'family', 'charity', 'pride', 'religion', 'european', 'middle-eastern', 'pacific'])
+// The 15 guide categories only (src/lib/categories/classify.ts; law 13: the new system supersedes the old). Typed, so a
+// retired slug cannot come back into a slot without failing the compile.
+const NIGHT_OUT: ReadonlySet<string> = new Set<GuideCategory>(['music', 'nightlife', 'comedy'])
+const COMMUNITY: ReadonlySet<string> = new Set<GuideCategory>(['community', 'festival', 'markets', 'family'])
 
 export const RHYTHM: readonly Rhythm[] = [
   { day: 'mon', theme: "This week's events", from: 0, to: 6, categories: null, noun: 'events' },
