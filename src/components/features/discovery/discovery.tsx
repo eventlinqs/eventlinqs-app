@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
+import { DISCOVERY_CITIES, type DiscoveryVariant } from '@/lib/events/discovery-cities'
 
 /**
  * THE DISCOVERY DESIGN, THREE VARIANTS ON ONE FOUNDATION (Lawal's order of 1 November 2026, 11:14; the brief is
@@ -19,16 +20,6 @@ import type { DirectoryRow } from '@/lib/events/whats-on-directory'
  *     every eight rows of the full list (a real image only); on a desktop the intent lists left, Featured right.
  */
 
-export type DiscoveryVariant = 'a' | 'b' | 'c'
-type When = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'date'
-
-export const DISCOVERY_CITIES = [
-  { key: 'victoria', label: 'Victoria' },
-  { key: 'geelong', label: 'Geelong' },
-  { key: 'melbourne', label: 'Melbourne' },
-  { key: 'ballarat', label: 'Ballarat' },
-  { key: 'bendigo', label: 'Bendigo' },
-] as const
 
 const WHEN: { key: When; label: string }[] = [
   { key: 'all', label: 'All dates' },

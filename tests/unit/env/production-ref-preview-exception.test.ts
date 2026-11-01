@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-// @ts-expect-error a plain .mjs module without declarations
 import { evaluateProcessEnv } from '@/lib/env/manifest-checks.mjs'
 
 /*
@@ -10,7 +9,7 @@ import { evaluateProcessEnv } from '@/lib/env/manifest-checks.mjs'
  */
 const PROD_URL = 'https://gndnldyfudbytbboxesk.supabase.co'
 const jwt = (ref: string, role: string) =>
-  ['e30', Buffer.from(JSON.stringify({ ref, role })).toString('base64url'), 'sig'].join('.')
+  ['eyJhbGciOiJIUzI1NiJ9', Buffer.from(JSON.stringify({ ref, role })).toString('base64url'), 'sig'].join('.')
 const isolation = (env: Record<string, string>) =>
   (evaluateProcessEnv(env).findings as { name: string }[]).filter((f) => f.name === 'SUPABASE_PRODUCTION_REF_ISOLATION')
 

@@ -11,7 +11,8 @@ import { CommunityValueBand } from '@/components/features/home/community-value-b
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { loadHomeUpcoming } from '@/lib/events/home-queries'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
-import { Discovery, DISCOVERY_CITIES, type DiscoveryVariant } from '@/components/features/discovery/discovery'
+import { Discovery } from '@/components/features/discovery/discovery'
+import { DISCOVERY_CITIES, type DiscoveryVariant } from '@/lib/events/discovery-cities'
 import { discoveryData } from '@/lib/events/discovery-data'
 import type { LedgerRow } from '@/lib/events/ledger-data'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
@@ -75,10 +76,12 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ v?: string; city?: string }> }) {
+type HomeProps = { searchParams: Promise<{ v?: string; city?: string }> }
+
+export default async function HomePage(props: HomeProps) {
   // THE THREE DISCOVERY VARIANTS ON ONE LINK (the brief of 1 November 2026, section 6): ?v=a|b|c, and ?city= for the
   // city the page opens on (Victoria, the overview, when none is named).
-  const sp = await searchParams
+  const sp = await props.searchParams
   const variant: DiscoveryVariant = sp.v === 'b' || sp.v === 'c' ? sp.v : 'a'
   const initialCity = DISCOVERY_CITIES.some((c) => c.key === sp.city) ? (sp.city as string) : 'victoria'
   const supabase = createPublicClient()

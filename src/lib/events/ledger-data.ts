@@ -48,7 +48,7 @@ export function thisWeek<T extends LedgerRow>(rows: readonly T[], now: Date): T[
 
 /** Up to four Featured nights this week with a rights recorded photograph, soonest first; [] when fewer than two. */
 export async function featuredThisWeek(rows: readonly LedgerRow[], now: Date, places = 4): Promise<EventCardData[]> {
-  const week = thisWeek(rows, now).filter((r) => r.cover_image_url)
+  const week = thisWeek(rows, now)
   const rights = await readCoverRights(
     createAdminClient(),
     week.filter((r) => !r.image_credit).map((r) => r.id),
