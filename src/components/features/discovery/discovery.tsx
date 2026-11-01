@@ -21,6 +21,8 @@ import { DISCOVERY_CITIES, type DiscoveryVariant } from '@/lib/events/discovery-
  */
 
 
+type When = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'date'
+
 const WHEN: { key: When; label: string }[] = [
   { key: 'all', label: 'All dates' },
   { key: 'today', label: 'Today' },
