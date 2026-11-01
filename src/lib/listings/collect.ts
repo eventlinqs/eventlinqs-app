@@ -275,7 +275,7 @@ function propOf(line: string): { name: string; prop: IcsProp } | null {
 }
 
 /** A wall clock in a zone to its instant: two passes, as the offset depends on the instant being solved for. */
-function wallClockToIso(y: number, mo: number, d: number, h: number, mi: number, s: number, zone: string): string | null {
+export function wallClockToIso(y: number, mo: number, d: number, h: number, mi: number, s: number, zone: string): string | null {
   const offsetAt = (instant: number): number | null => {
     try {
       const at: Record<string, number> = {}
