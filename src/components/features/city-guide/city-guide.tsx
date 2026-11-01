@@ -495,7 +495,7 @@ function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; city
   return (
     <div className="mt-4 space-y-6">
       {groups.map((g) => (
-        <section key={g.key} aria-label={g.label}>
+        <section key={g.key} aria-label={g.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
           <h3 className="font-headline text-lg font-extrabold text-[var(--text-primary)]">{g.label}</h3>
           <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
             {g.rows.map((r) => (
