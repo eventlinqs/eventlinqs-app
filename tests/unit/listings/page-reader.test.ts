@@ -115,4 +115,27 @@ describe('the run reads a page-rule source through its sitemap', () => {
     ])
     expect(landed.every((l) => l.description === null && l.imageUrl === null)).toBe(true)
   })
+
+  it('a page that answers 403 or 429 stops the source at once: no further page of it is asked, and the run says why', async () => {
+    const landed: CandidateRow[] = []
+    const recorded: Record<string, string> = {}
+    const store: CollectionStore = {
+      sources: async () => [source], known: async () => [], heldLinks: async () => new Set(),
+      land: async (row) => { landed.push(row); return true }, record: async (id, outcome) => { recorded[id] = outcome }, addLinks: async () => {}, logRun: async () => {},
+      publishPartnerNight: async () => {}, expirePassed: async () => 0,
+    }
+    const asked: string[] = []
+    const fetcher: Fetcher = async (url) => {
+      asked.push(url)
+      if (url === `${GAC}/robots.txt`) return { status: 200, text: async () => 'User-agent: *
+Disallow: /cpresources/' }
+      if (url === SITEMAP) return { status: 200, text: async () => `<urlset><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url><url><loc>${GAC}/whats-on/all-events/two/</loc></url><url><loc>${GAC}/whats-on/all-events/three/</loc></url></urlset>` }
+      if (url === `${GAC}/whats-on/all-events/quartet/`) return { status: 200, text: async () => SHOW }
+      return { status: 429, text: async () => 'slow down' }
+    }
+    await runCollection(store, fetcher, NOW, Infinity, { pauseMs: 0 })
+    expect(asked).toEqual([`${GAC}/robots.txt`, SITEMAP, `${GAC}/whats-on/all-events/quartet/`, `${GAC}/whats-on/all-events/two/`])
+    expect(landed).toHaveLength(2)
+    expect(recorded.gac).toMatch(/answered 429 .*reading stopped/)
+  })
 })
