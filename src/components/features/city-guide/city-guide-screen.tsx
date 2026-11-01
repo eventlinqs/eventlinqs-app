@@ -1,7 +1,7 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { loadHomeUpcoming } from '@/lib/events/home-queries'
+import { loadGuideUpcoming } from '@/lib/events/guide-queries'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { discoveryData } from '@/lib/events/discovery-data'
 import type { LedgerRow } from '@/lib/events/ledger-data'
@@ -44,7 +44,7 @@ export async function CityGuideScreen({
   const city = getCity(citySlug)
   if (!city) return null
   const now = new Date()
-  const rows = (await withVenuePhotos(await loadHomeUpcoming(createPublicClient(), now.toISOString(), 1000))) as LedgerRow[]
+  const rows = (await withVenuePhotos(await loadGuideUpcoming(createPublicClient(), now))) as LedgerRow[]
   const data = await discoveryData(rows, now)
   const quickCities = QUICK.map((s) => getCity(s)).filter((c): c is NonNullable<typeof c> => c !== null)
   const every = getAllCities()
