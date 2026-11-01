@@ -250,9 +250,74 @@ function unfold(ics: string): string[] {
   return ics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n[ \t]/g, '').split('\n')
 }
 
-/** RFC 5545 3.3.11: ESCAPED-CHAR = ("\\" / "\;" / "\," / "\N" / "\n"). */
+/** RFC 5545 3.3.11: ESCAPED-CHAR = ("\\" / "\;" / "\," / "\N" / "\n"). Text encoded twice is repaired as it is read. */
 function unescapeText(v: string): string {
-  return v.replace(/\\([\\;,nN])/g,(_, c: string) => (c === 'n' || c === 'N' ? '\n' : c)).trim()
+  return repairDoubleEncoded(v.replace(/\\([\\;,nN])/g, (_, c: string) => (c === 'n' || c === 'N' ? '\n' : c)).trim())
+}
+
+/* Windows-1252's characters at 0x80 to 0x9F, by code point (https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1252.TXT),
+   the bytes a twice encoded text most often shows as. Written as numbers, so the source holds no such character. */
+const CP1252_HIGH = new Map<number, number>([
+  [0x20ac, 0x80], [0x201a, 0x82], [0x0192, 0x83], [0x201e, 0x84], [0x2026, 0x85], [0x2020, 0x86], [0x2021, 0x87],
+  [0x02c6, 0x88], [0x2030, 0x89], [0x0160, 0x8a], [0x2039, 0x8b], [0x0152, 0x8c], [0x017d, 0x8e], [0x2018, 0x91],
+  [0x2019, 0x92], [0x201c, 0x93], [0x201d, 0x94], [0x2022, 0x95], [0x2013, 0x96], [0x2014, 0x97], [0x02dc, 0x98],
+  [0x2122, 0x99], [0x0161, 0x9a], [0x203a, 0x9b], [0x0153, 0x9c], [0x017e, 0x9e], [0x0178, 0x9f],
+])
+
+/** The byte a character stands for when UTF-8 was read as Windows-1252, or null. */
+function byteOf(code: number): number | null {
+  if (code < 0x100) return code
+  return CP1252_HIGH.get(code) ?? null
+}
+
+/** A UTF-8 lead byte read as one character, followed by a continuation byte read as another. */
+function looksTwiceEncoded(text: string): boolean {
+  for (let i = 0; i + 1 < text.length; i++) {
+    const lead = text.charCodeAt(i)
+    const next = byteOf(text.charCodeAt(i + 1))
+    if (lead >= 0xc2 && lead <= 0xf4 && next !== null && next >= 0x80 && next <= 0xbf) return true
+  }
+  return false
+}
+
+/**
+ * Text a source encoded as UTF-8 twice (the registered trade mark sign arriving as the two characters U+00C2 U+00AE;
+ * Geelong Regional Libraries' feed of 1 November 2026), read back as the source meant it: every character taken as its
+ * Windows-1252 byte and the bytes read as UTF-8. Only where that reading is valid UTF-8 throughout; anything else, a
+ * real accent included, is left alone.
+ */
+export function repairDoubleEncoded(text: string): string {
+  if (!looksTwiceEncoded(text)) return text
+  const bytes: number[] = []
+  for (const ch of text) {
+    const b = byteOf(ch.codePointAt(0)!)
+    if (b === null) return text
+    bytes.push(b)
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
+  } catch {
+    return text
+  }
+}
+
+/**
+ * A night's own page where its feed names none (RFC 5545 has URL, and not every feed writes it): a host whose event
+ * pages are known by the feed's UID. Geelong Regional Libraries' events site serves each night at /event/<UID>
+ * (https://events.grlc.vic.gov.au/event/17563312 read 200 on 1 November 2026, the UID of that night in its feed).
+ */
+const OWN_PAGE_BY_UID: Record<string, (uid: string) => string> = {
+  'events.grlc.vic.gov.au': (uid) => `https://events.grlc.vic.gov.au/event/${encodeURIComponent(uid)}`,
+}
+
+function ownPageOf(feedUrl: string, uid: string | undefined): string | null {
+  if (!uid || !/^[A-Za-z0-9._-]+$/.test(uid)) return null
+  try {
+    const rule = OWN_PAGE_BY_UID[new URL(feedUrl).hostname]
+    return rule ? rule(uid) : null
+  } catch {
+    return null
+  }
 }
 
 type IcsProp = { value: string; params: Record<string, string> }
@@ -343,9 +408,9 @@ export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
       const location = e.get('LOCATION') ? unescapeText(e.get('LOCATION')!.value).replace(/\s*\n\s*/g, ', ') : ''
       const venueName = venueOfLocation(location)
       if (!title || !startsAt || !venueName) continue
-      const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : null
-      /* No address of its own: the feed's, told apart by the event's UID, so two events at one instant stay two. */
       const uid = e.get('UID')?.value.trim()
+      const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : ownPageOf(pageUrl, uid)
+      /* No address of its own: the feed's, told apart by the event's UID, so two events at one instant stay two. */
       const fallback = uid ? `${pageUrl.split('#')[0]}#${encodeURIComponent(uid)}` : pageUrl
       const image = e.get('ATTACH') && /^image\//i.test(e.get('ATTACH')!.params['FMTTYPE'] ?? '') ? absolute(e.get('ATTACH')!.value.trim(), pageUrl) : null
       found.push({
