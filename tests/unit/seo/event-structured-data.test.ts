@@ -634,6 +634,64 @@ describe('an event sold on another site (WI3)', () => {
   })
 })
 
+/*
+ * THE CONTROLLER's 03:21 P1-b, 1 November 2026: twenty-three live event pages read against Google's Event page
+ * (developers.google.com/search/docs/appearance/structured-data/event, updated 2026-09-08). Two gaps that are not
+ * rulings: the free registration elsewhere (Bendigo workshop) wrote no Offer although the page says 'Free' and Google
+ * asks 'If there is no charge, set offers.price to 0'; and Melbourne Diwali's location.name repeated the event's name,
+ * where Google asks for 'the venue name, not the event title'.
+ */
+describe('the markup audit on live, 1 November 2026', () => {
+  const NOW = new Date('2026-11-01T03:00:00+11:00')
+  const reg = {
+    id: 'r', provider: 'other' as const, url: 'https://www.bendigo.vic.gov.au/workshop', kind: 'free_register' as const,
+    availability: 'on_sale' as const, priceFromCents: null, priceCheckedAt: null, isPrimary: true, setBy: 'curated' as const,
+    pointedToByOrganiser: false, position: 0, createdAt: '2026-10-30T00:00:00Z',
+  }
+
+  it('a free registration on another site offers its registration page at 0.00 AUD, and stays valid', () => {
+    const payload = build(
+      { external_ticket_url: reg.url, is_free: true },
+      { ticketTiers: [], bookingLinks: [reg], now: NOW },
+    ) as Record<string, unknown>
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect(offers[0]).toMatchObject({ price: '0.00', priceCurrency: 'AUD', url: reg.url })
+    expect(payload.isAccessibleForFree).toBe(true)
+    expect(validate(payload).errors).toEqual([])
+  })
+
+  it('a paid link with no fresh price still writes no offer: a free registration is the only price known without a read', () => {
+    const payload = build(
+      { external_ticket_url: 'https://events.humanitix.com/gig' },
+      { ticketTiers: [], bookingLinks: [{ ...reg, kind: 'tickets' as const, url: 'https://events.humanitix.com/gig' }], now: NOW },
+    ) as Record<string, unknown>
+    expect(payload.offers).toBeUndefined()
+  })
+
+  it('a paid night sold elsewhere is never called free (Kate Ceberano, Diesel and Spooky Escape on live said isAccessibleForFree)', () => {
+    const payload = build({ external_ticket_url: 'https://events.humanitix.com/gig', is_free: false }, { ticketTiers: [], now: NOW }) as Record<string, unknown>
+    expect(payload.isAccessibleForFree).toBeUndefined()
+  })
+
+  it('an event with one free tier among paid ones is not free', () => {
+    const payload = build({}, {
+      ticketTiers: [
+        { id: 't0', name: 'Companion', price: 0, currency: 'AUD', sort_order: 0 },
+        { id: 't1', name: 'General', price: 3500, currency: 'AUD', sort_order: 1 },
+      ],
+    }) as Record<string, unknown>
+    expect(payload.isAccessibleForFree).toBeUndefined()
+  })
+
+  it('the venue name never repeats the event name: the place is named by its address, as the page does', () => {
+    const payload = build({ title: 'Melbourne Diwali', venue_name: 'Melbourne Diwali', venue_address: '740 Bourke Street, Docklands' }) as Record<string, unknown>
+    const place = payload.location as Record<string, unknown>
+    expect(place.name).toBe('740 Bourke Street')
+    expect(validate(payload).errors).toEqual([])
+  })
+})
+
 describe('an event sold on several sites (WI3, the 12:30 point 8)', () => {
   const NOW = new Date('2026-10-27T12:00:00+11:00')
   const base = { isPrimary: false, setBy: 'curated' as const, pointedToByOrganiser: false, createdAt: '2026-10-26T00:00:00Z' }

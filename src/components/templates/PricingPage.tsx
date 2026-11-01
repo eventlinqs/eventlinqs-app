@@ -172,11 +172,9 @@ export async function PricingPage() {
                   : 'border-[var(--surface-2)] bg-[var(--surface-0)]',
               ].join(' ')}
             >
-              {tier.highlighted && (
-                <div className="mb-4 inline-flex items-center rounded-full bg-[var(--brand-accent)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-                  Most popular
-                </div>
-              )}
+              {/* No 'Most popular' badge: it claimed a popularity no number supports (live, 1 November 2026, while no
+                  event sold through EventLinqs; Law 4, social proof from real platform truths only;
+                  tests/unit/growth/no-claim-the-numbers-do-not-hold.test.ts). The highlight stays. */}
 
               <h3 className="font-display text-lg font-bold text-[var(--text-primary)]">
                 {tier.name}
