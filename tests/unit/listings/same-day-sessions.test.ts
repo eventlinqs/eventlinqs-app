@@ -65,9 +65,23 @@ describe('two sessions of one show on one day', () => {
     expect(p.rows.map((r) => r.verdict)).toEqual(['write', 'refused'])
   })
 
-  it('a stored matinee does not swallow a new evening: the evening writes as its own night', () => {
-    const p = plan([row({ startsAt: '19:00' })], state([stored()]))
-    expect(p.rows.map((r) => r.verdict)).toEqual(['write'])
+  // A LONE night whose start moved is that night, changed: never a second listing beside it (2 November, after
+  // 787d59b7 keyed a night by its start and would have listed a 7pm show moved to 7:30pm twice).
+  it('a lone held night whose start moves is the same night, changed: no new night is created', () => {
+    const p = plan([row({ startsAt: '14:00', sourceDate: '2026-11-02' })], state([stored()]))
+    expect(p.rows).toHaveLength(1)
+    const r = p.rows[0]
+    expect(r.verdict).toBe('write')
+    if (r.verdict !== 'write') return
+    expect(r.series).toMatchObject({ kind: 'update', id: 's-1' })
+    expect(r.changed).toContain('starts_at')
+  })
+
+  it('when the file carries two starts for the day, the held matinee keeps its own and the evening is a new night', () => {
+    const p = plan([row({ sourceDate: '2026-11-02' }), row({ startsAt: '19:00', sourceDate: '2026-11-02' })], state([stored()]))
+    const steps = p.rows.map((r) => (r.verdict === 'write' ? r.series : null))
+    expect(steps[0]?.kind === 'create').toBe(false)
+    expect(steps[1]?.kind).toBe('create')
   })
 
   it('a second session gets its own address when it is given its start; the first keeps the plain one', () => {
