@@ -21,7 +21,7 @@ import type { DirectoryRow } from '@/lib/events/whats-on-directory'
  */
 const row = (id: string, slug: string, label: string): DirectoryRow => ({
   id, href: `/events/${id}`, title: `Night ${id}`, venue: 'Somewhere', city: 'Geelong', category: label, categorySlug: slug,
-  price: 'Free entry', time: '7:00 pm', free: true, source: 'Walk in, no ticket needed', format: 'walk_in',
+  price: 'Free entry', time: '7:00 pm', free: true, source: 'Free · Walk in', format: 'walk_in',
   cityKey: 'geelong', dayKey: '2026-11-03', dayLabel: 'Tuesday 3 November', ts: Number(id.replace(/\D/g, '')) || 0,
   thumb: null, lat: null, lng: null, suburb: null,
 })

@@ -21,8 +21,9 @@ describe('a price or ticket source is never clipped', () => {
     }
   })
 
-  it('the guide row’s price and booking words break anywhere; on a phone they sit on their own line', () => {
-    expect(lineWith('{b.price}</span>')).toContain('[overflow-wrap:anywhere]')
+  it('the guide row’s price and booking words break anywhere; on a phone the booking sits on its own line', () => {
+    // Since 2 November 09:00 (refinement 4) the price is said once, in the row's one meta line.
+    expect(lineWith('text-xs font-semibold text-[var(--text-muted)]')).toContain('[overflow-wrap:anywhere]')
     expect(lineWith('inline-flex items-start gap-1')).toContain('[overflow-wrap:anywhere]')
     expect(guide).toContain('md:hidden">{booking}</span>')
     expect(guide).toContain('hidden flex-col items-end gap-1 pt-0.5 text-right md:flex">{booking}</span>')

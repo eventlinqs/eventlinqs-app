@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { directoryDays, sourceLabel, suburbOf, type DirectoryInput } from '@/lib/events/whats-on-directory'
+import { directoryDays, rowPrice, sourceLabel, suburbOf, type DirectoryInput } from '@/lib/events/whats-on-directory'
 import { discoveryDays, windowDayKeys } from '@/lib/events/discovery-data'
 import { featuredWithRecordedRights } from '@/lib/events/featured-with-recorded-rights'
 
@@ -100,10 +100,24 @@ describe('the discovery rows say only what is held', () => {
     const [day] = directoryDays([ev({ start_date: '2026-11-01T13:00:00Z' })], now) // 00:00 Mon 2 Nov, Melbourne
     expect(day.rows[0].time).toBeNull()
   })
-  it('names the ticket source on every row', () => {
-    expect(sourceLabel(ev({}))).toBe('Walk in, no ticket needed')
-    expect(sourceLabel(ev({ is_free: false, entry_mode: 'tickets', ticket_tiers: [{ price: 2500, currency: 'AUD' }] }))).toBe('Tickets on EventLinqs')
-    expect(sourceLabel(ev({ is_free: false, entry_mode: 'tickets', external_ticket_url: 'https://www.ticketek.com.au/x' }))).toMatch(/^Tickets on /)
+  it('names where every row is booked by the seller, never by a domain (Lawal 2 November 09:00, refinement 1)', () => {
+    const paid = (url: string) => sourceLabel(ev({ is_free: false, entry_mode: 'tickets', external_ticket_url: url }))
+    expect(sourceLabel(ev({}))).toBe('Free · Walk in')
+    expect(sourceLabel(ev({ is_free: false, entry_mode: 'tickets', ticket_tiers: [{ price: 2500, currency: 'AUD' }] }))).toBe('Book on EventLinqs')
+    expect(paid('https://premier.ticketek.com.au/shows/x')).toBe('Tickets at Ticketek')
+    expect(paid('https://geelongartscentre.org.au/whats-on/all-events/kate-ceberano/')).toBe('Tickets at Geelong Arts Centre')
+    expect(paid('https://tickets.birdsbasement.com/4/?x=EV1')).toBe('Tickets at Bird’s Basement')
+    expect(paid('https://tickets.myguestlist.com/x/')).toBe('Get tickets')
+    expect(sourceLabel(ev({ is_free: true, entry_mode: 'registration', external_ticket_url: 'https://events.grlc.vic.gov.au/event/1' }))).toMatch(/^(Register at Geelong Regional Libraries|Free · Walk in)$/)
+    for (const url of ['https://geelongartscentre.org.au/x', 'https://events.grlc.vic.gov.au/x', 'https://boxoffice.gotix.com.au/x', 'https://tickets.myguestlist.com/x']) {
+      expect(paid(url)).not.toMatch(/\.(com|org|au)\b/)
+    }
+  })
+  it('a row never shows the price line’s words about where it is sold as its price', () => {
+    expect(rowPrice('Tickets on geelongartscentre.org.au')).toBe('')
+    expect(rowPrice('Tickets are sold elsewhere')).toBe('')
+    expect(rowPrice('From AUD $15')).toBe('From AUD $15')
+    expect(rowPrice('Free entry')).toBe('Free entry')
   })
   it('knows this weekend from the platform zone: on a Sunday it is today alone', () => {
     const d = discoveryDays(new Date('2026-10-31T13:30:00Z')) // Sunday 1 November in Sydney

@@ -46,10 +46,14 @@ const tier = (id: string, price: number) => ({ id, price, currency: 'AUD', sold_
 const priceOf = (c: HTMLElement) => c.querySelector('.ledger-price, .event-row-price')?.textContent?.trim() ?? ''
 
 describe('the card price line is the night\'s own call to action', () => {
-  it('a paid night sold on another site names that site, never "Free" (Kate Ceberano at Costa Hall)', () => {
+  it('a paid night sold on another site names that seller, never "Free" and never a domain (Kate Ceberano at Costa Hall)', () => {
     const { container } = render(<EventCard event={ceberano} />)
-    expect(screen.getByText('Tickets on geelongartscentre.org.au')).toBeInTheDocument()
-    expect(priceOf(container)).toBe('Tickets on geelongartscentre.org.au')
+    // Lawal, 2 November 2026, 09:00, refinement 1: the row names the seller; its price line's 'Tickets on <site>' is not
+    // a price, so the row shows none rather than the domain.
+    expect(screen.getByText('Tickets at Geelong Arts Centre')).toBeInTheDocument()
+    expect(priceOf(container)).toBe('')
+    expect(container.textContent).not.toContain('geelongartscentre.org.au')
+    expect(container.textContent).not.toMatch(/\bFree\b/)
   })
 
   it('a night whose price nobody has checked says no price at all, never "Free"', () => {

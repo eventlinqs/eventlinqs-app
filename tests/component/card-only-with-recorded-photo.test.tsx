@@ -65,7 +65,9 @@ describe('a card only where a rights recorded photograph exists', () => {
     expect(t).toContain('The Beagles')
     expect(t).toContain("Bird's Basement")
     expect(t).toContain('Melbourne')
-    expect(t).toContain('Tickets on tickets.birdsbasement.com')
+    // Where it is sold, by the seller's own name, never its domain (Lawal, 2 November 2026, 09:00, refinement 1).
+    expect(t).toContain('Tickets at Bird’s Basement')
+    expect(t).not.toContain('birdsbasement.com')
   })
 
   it('our composed cover and a night with no image are rows too, and a free night says Free', () => {

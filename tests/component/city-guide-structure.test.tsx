@@ -6,7 +6,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/city/geelong',
 }))
 
-import { CityGuide, bookingLine, WORTH_MINIMUM } from '@/components/features/city-guide/city-guide'
+import { CityGuide, bookingLine, countLine, eventCount, WORTH_MINIMUM } from '@/components/features/city-guide/city-guide'
 import { CityHeroSlider, SLIDER_MINIMUM } from '@/components/features/city-guide/city-hero-slider'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
@@ -20,7 +20,7 @@ import type { DirectoryRow } from '@/lib/events/whats-on-directory'
  */
 const row = (o: Partial<DirectoryRow>): DirectoryRow => ({
   id: 'r1', href: '/events/r1', title: 'Open Mic Comedy', venue: 'The Barwon Club', city: 'Geelong', category: 'Comedy',
-  categorySlug: 'comedy', price: 'Free entry', time: '6:00 pm', free: true, source: 'Walk in, no ticket needed',
+  categorySlug: 'comedy', price: 'Free entry', time: '6:00 pm', free: true, source: 'Free · Walk in',
   format: 'walk_in', cityKey: 'geelong', suburb: 'South Geelong', dayKey: '2026-11-03', dayLabel: 'Tuesday 3 November',
   ts: 1, thumb: null, lat: null, lng: null, ...o,
 })
@@ -30,10 +30,10 @@ const days = {
 }
 const rows = [
   row({}),
-  row({ id: 'r2', href: '/events/r2', title: 'Katie Noonan', categorySlug: 'music', category: 'Music', price: 'Tickets on geelongartscentre.org.au', source: 'Tickets on geelongartscentre.org.au', free: false, format: 'ticketed', suburb: 'Geelong', dayKey: '2026-11-06', dayLabel: 'Friday 6 November', time: '7:30 pm', ts: 2 }),
+  row({ id: 'r2', href: '/events/r2', title: 'Katie Noonan', categorySlug: 'music', category: 'Music', price: '', source: 'Tickets at Geelong Arts Centre', free: false, format: 'ticketed', suburb: 'Geelong', dayKey: '2026-11-06', dayLabel: 'Friday 6 November', time: '7:30 pm', ts: 2 }),
   row({ id: 'r3', href: '/events/r3', title: 'Comedy Republic Main Stage', city: 'Melbourne', cityKey: 'melbourne', suburb: 'Melbourne' }),
   row({ id: 'r4', href: '/events/r4', title: 'Saturday Market', categorySlug: 'markets', category: 'Markets', suburb: 'Belmont', dayKey: '2026-11-07', dayLabel: 'Saturday 7 November', ts: 3 }),
-  row({ id: 'r5', href: '/events/r5', title: 'Our Own Night', categorySlug: 'community', category: 'Community', price: 'From AUD $15', source: 'Tickets on EventLinqs', free: false, format: 'ticketed', suburb: 'Geelong West', dayKey: '2026-12-04', dayLabel: 'Friday 4 December', ts: 4 }),
+  row({ id: 'r5', href: '/events/r5', title: 'Our Own Night', categorySlug: 'community', category: 'Community', price: 'From AUD $15', source: 'Book on EventLinqs', free: false, format: 'ticketed', suburb: 'Geelong West', dayKey: '2026-12-04', dayLabel: 'Friday 4 December', ts: 4 }),
 ]
 const guide = (worth: EventCardData[] = []) =>
   render(
@@ -97,7 +97,7 @@ describe('the Geelong reference page, section by section', () => {
     fireEvent.change(within(all).getByLabelText('Suburb'), { target: { value: 'Belmont' } })
     expect(within(all).getByText('Saturday Market')).toBeInTheDocument()
     expect(within(all).queryByText('Open Mic Comedy')).toBeNull()
-    expect(within(all).getByText(/1 of 4/)).toBeInTheDocument()
+    expect(within(all).getByText(/1 event, 1 date of 4 events/)).toBeInTheDocument()
     fireEvent.click(within(all).getByRole('button', { name: /Clear/ }))
     fireEvent.click(within(within(all).getByRole('group', { name: 'Price' })).getByRole('button', { name: 'Paid' }))
     expect(within(all).getByText('Katie Noonan')).toBeInTheDocument()
@@ -140,21 +140,68 @@ describe('a long city is cheap to lay out (2 November 2026, Lighthouse on the pr
   })
 })
 
-describe('booking, one rule (the directive, D)', () => {
-  it('our checkout says Book on EventLinqs; another site says Tickets on <site> with the outbound mark; free walk-in says Free entry', () => {
-    expect(bookingLine({ price: 'From AUD $15', source: 'Tickets on EventLinqs', free: false })).toEqual({ price: 'From AUD $15', book: 'Book on EventLinqs', outbound: false })
-    expect(bookingLine({ price: 'Tickets on geelongartscentre.org.au', source: 'Tickets on geelongartscentre.org.au', free: false })).toEqual({ price: null, book: 'Tickets on geelongartscentre.org.au', outbound: true })
-    expect(bookingLine({ price: 'Free entry', source: 'Walk in, no ticket needed', free: true })).toEqual({ price: 'Free entry', book: null, outbound: false })
+describe('booking, one rule, each fact once, never a domain (the directive, D; Lawal 2 November 09:00, refinements 1 and 4)', () => {
+  it('our checkout says Book on EventLinqs; another site Tickets at <seller> with the outbound mark; free walk-in Free · Walk in, said once', () => {
+    expect(bookingLine({ price: 'From AUD $15', source: 'Book on EventLinqs', free: false })).toEqual({ said: 'From AUD $15', book: 'Book on EventLinqs', outbound: false })
+    expect(bookingLine({ price: '', source: 'Tickets at Geelong Arts Centre', free: false })).toEqual({ said: null, book: 'Tickets at Geelong Arts Centre', outbound: true })
+    expect(bookingLine({ price: 'Free, registration required', source: 'Register at Geelong Regional Libraries', free: true })).toEqual({ said: 'Free', book: 'Register at Geelong Regional Libraries', outbound: true })
+    expect(bookingLine({ price: '', source: 'Get tickets', free: false })).toEqual({ said: null, book: 'Get tickets', outbound: true })
+    expect(bookingLine({ price: 'Free entry', source: 'Free · Walk in', free: true })).toEqual({ said: 'Free · Walk in', book: null, outbound: false })
   })
 
-  it('a night sold elsewhere names its site once on its row, with a mark that says another site', () => {
+  it('a night sold elsewhere names its seller once on its row, with a mark that says another site', () => {
     guide()
     const all = screen.getByRole('region', { name: 'All events in Geelong' })
-    const link = all.querySelector('a[href="/events/r2"]')
-    const text = link?.textContent ?? ''
+    const text = all.querySelector('a[href="/events/r2"]')?.textContent ?? ''
     // The phone line and the wide column are the same words in two places; one is hidden by width, never both shown.
-    expect(text.split('Tickets on geelongartscentre.org.au').length - 1).toBe(2)
+    expect(text.split('Tickets at Geelong Arts Centre').length - 1).toBe(2)
     expect(text).toContain('(another site)')
+  })
+
+  it('a free walk-in row says Free · Walk in once, in its one meta line, and nothing else about price', () => {
+    guide()
+    const all = screen.getByRole('region', { name: 'All events in Geelong' })
+    const text = all.querySelector('a[href="/events/r1"]')?.textContent ?? ''
+    expect(text).toContain('Comedy · Free · Walk in')
+    expect(text.split('Free').length - 1).toBe(1)
+    expect(text).not.toContain('Free entry')
+  })
+
+  it('no row anywhere on the page names a domain', () => {
+    guide()
+    for (const a of document.querySelectorAll('a[href^="/events/"]')) {
+      expect(a.textContent ?? '').not.toMatch(/\b[a-z0-9-]+\.(com|org|net|au|club)\b/i)
+    }
+  })
+})
+
+describe('the count is told honestly, events and dates (the CONTROLLER 09:13 (3))', () => {
+  it('a weekly night is one event on many dates; the line and the tiles count events', () => {
+    const weekly = [row({ id: 'w1', dayKey: '2026-11-03' }), row({ id: 'w2', href: '/events/w2', dayKey: '2026-11-10', dayLabel: 'Tuesday 10 November' }), row({ id: 'w3', href: '/events/w3', dayKey: '2026-11-17', dayLabel: 'Tuesday 17 November' })]
+    expect(eventCount(weekly)).toBe(1)
+    expect(countLine(weekly, null)).toBe('1 event, 3 dates')
+    render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
+        rows={weekly} days={days}
+      />,
+    )
+    expect(screen.getByText(/1 event, 3 dates coming up in Geelong/)).toBeInTheDocument()
+    const explore = screen.getByRole('region', { name: 'Explore Geelong' })
+    expect(within(explore).getAllByRole('button').map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Comedy1 event', 'All events1 event'])
+  })
+})
+
+describe('the filters are shorter on a phone, every control kept (Lawal 2 November 09:00, refinement 3)', () => {
+  it('the whole-country search sits on the search row; the distance is one chip with the choice in force', () => {
+    guide()
+    const link = screen.getByRole('link', { name: 'Search all of Australia' })
+    expect(link.textContent).toBe('All of Australia')
+    const distance = screen.getByLabelText('Distance') as HTMLSelectElement
+    expect([...distance.options].map((o) => o.textContent)).toEqual(['In Geelong', 'Within 25 km', 'Within 50 km'])
+    fireEvent.change(distance, { target: { value: '25' } })
+    expect(screen.getByText(/coming up in Geelong and within 25 km/)).toBeInTheDocument()
   })
 })
 
