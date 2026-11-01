@@ -40,3 +40,17 @@ describe('the design preview exception', () => {
     ).toHaveLength(1)
   })
 })
+
+describe('the build check SUPABASE_ENV_ISOLATION honours the same exception', () => {
+  it('excuses the URL on the branch before the date, refuses it after and elsewhere', async () => {
+    const { CRITICAL_ENV_RULES, evalEnvRule } = await import('@/lib/health/critical-env.mjs')
+    const rule = CRITICAL_ENV_RULES.find((r: { name: string }) => r.name === 'SUPABASE_ENV_ISOLATION')
+    const env = (branch: string) => ({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL_PREVIEW: PROD_URL, VERCEL_GIT_COMMIT_REF: branch })
+    const ok = (e: Record<string, string>) => (evalEnvRule(rule, e) as { ok: boolean }).ok
+    vi.useFakeTimers({ now: new Date('2026-11-02T00:00:00Z') })
+    expect(ok(env('feat/w5-design-preview'))).toBe(true)
+    expect(ok(env('feat/other'))).toBe(false)
+    vi.setSystemTime(new Date('2026-11-08T13:00:00Z'))
+    expect(ok(env('feat/w5-design-preview'))).toBe(false)
+  })
+})
