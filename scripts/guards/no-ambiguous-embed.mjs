@@ -72,8 +72,6 @@ if (!existsSync(MIGRATIONS)) {
  */
 const migrationFiles = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()
 const fkCount = new Map() // "source>target" -> Set of column names
-const columnTarget = new Map() // table -> Map(column -> referenced table)
-const primaryKey = new Map() // table -> its primary key columns, final state
 
 /*
  * BLOCK-AWARE, and the first version was not, which is why this comment exists.
@@ -130,13 +128,6 @@ for (const file of migrationFiles) {
 
   function collect(line, source) {
     if (!source) return
-    // The table's PRIMARY KEY, in its final state across the migrations (the join-table half, below).
-    const tablePk = /^\s*(?:CONSTRAINT\s+[a-z0-9_]+\s+)?PRIMARY KEY\s*\(([^)]+)\)/i.exec(line)
-      ?? /ADD CONSTRAINT\s+[a-z0-9_]+\s+PRIMARY KEY\s*\(([^)]+)\)/i.exec(line)
-    if (tablePk) primaryKey.set(source, tablePk[1].split(',').map((c) => c.trim().toLowerCase()))
-    const columnPk = /^\s*([a-z_][a-z0-9_]*)\s+[a-z]+[^,;]*\bPRIMARY KEY\b/i.exec(line)
-    if (columnPk && !['add', 'alter', 'constraint', 'primary'].includes(columnPk[1].toLowerCase())) primaryKey.set(source, [columnPk[1].toLowerCase()])
-    if (/DROP CONSTRAINT\s+(?:IF EXISTS\s+)?[a-z0-9_]*_pkey\b/i.test(line)) primaryKey.delete(source)
     // `col UUID ... REFERENCES public.target(...)`, inline or via ADD COLUMN.
     const ref = /(?:ADD COLUMN\s+(?:IF NOT EXISTS\s+)?)?\b([a-z_][a-z0-9_]*)\s+UUID\b[^,;]*?REFERENCES\s+public\.([a-z_]+)/i.exec(line)
     if (!ref) return
@@ -145,36 +136,7 @@ for (const file of migrationFiles) {
     const key = `${source}>${target}`
     if (!fkCount.has(key)) fkCount.set(key, new Set())
     fkCount.get(key).add(column)
-    if (!columnTarget.has(source)) columnTarget.set(source, new Map())
-    columnTarget.get(source).set(column.toLowerCase(), target)
   }
-}
-
-/*
- * THE SECOND SHAPE, 1 November 2026 (CONTROLLER 20:20). A JOIN TABLE is a second path too. PostgREST reads a table as
- * a many to many join table when it "must contain foreign keys to other two tables and they must be part of its
- * composite key" (https://docs.postgrest.org/en/v12/references/api/resource_embedding.html, fetched 1 November 2026).
- * 20261101161001 gave event_secondary_categories the primary key (event_id, category_id); events already had
- * events_category_id_fkey, so 'category:event_categories(...)' from events became ambiguous (PGRST201) and WINDOW 5's
- * build of /city/[slug] failed on TEST. The counting above saw ONE key from events to event_categories and passed.
- * So: every table whose final primary key holds foreign keys to two tables makes a path between them, and where those
- * two are also joined directly, both directions are ambiguous by bare name. 20261101203001 gave that table its own id.
- */
-const joinPaths = new Map() // "a>b" -> join tables
-for (const [table, cols] of primaryKey) {
-  const targets = [...new Set(cols.map((c) => columnTarget.get(table)?.get(c)).filter(Boolean))]
-  for (const a of targets) for (const b of targets) {
-    if (a === b) continue
-    const key = `${a}>${b}`
-    if (!joinPaths.has(key)) joinPaths.set(key, new Set())
-    joinPaths.get(key).add(table)
-  }
-}
-for (const [key, tables] of joinPaths) {
-  const [a, b] = key.split('>')
-  if (!fkCount.has(key) && !fkCount.has(`${b}>${a}`)) continue // no direct key: the join table is the only path
-  if (!fkCount.has(key)) fkCount.set(key, new Set())
-  for (const t of tables) fkCount.get(key).add(`the join table ${t}`)
 }
 
 const ambiguous = [...fkCount.entries()].filter(([, cols]) => cols.size > 1)
@@ -233,8 +195,7 @@ for (const abs of files) {
           `${rel}: \`from('${source}')\` embeds \`${target}\` by bare name, but ${source} has `
           + `${cols.length} foreign keys to ${target} (${cols.join(', ')}), so PostgREST fails the WHOLE `
           + `query with "Could not embed because more than one relationship was found". `
-          + `Name the constraint, for example \`${target}!${source}_${cols.filter((c) => !c.startsWith('the join table ')).pop() ?? 'id'}_fkey(...)\`, `
-          + `or, where a join table makes the second path, give that table its own id as primary key (20261101203001). `
+          + `Name the constraint, for example \`${target}!${source}_${cols[cols.length - 1]}_fkey(...)\`. `
           + `select: ${selectBody.trim().slice(0, 160)}`,
         )
       }
