@@ -185,7 +185,9 @@ const SPACED_HYPHEN_RE = /[A-Za-z0-9.,)] - [A-Za-z0-9(]/
 /** The copy a visitor reads on one line: JSX text, aria-label values, and a title or description given as a literal. */
 function visibleCopy(line) {
   const out = []
-  for (const m of line.matchAll(/>([^<>{}]*[A-Za-z]{3,}[^<>{}]*)</g)) out.push(m[1])
+  // A `>` that closes an arrow (`=>`) or a pointer (`->`) is code, not a tag: `() => page(from, from + pageSize - 1) as
+  // PromiseLike<...>` read as JSX text once (read-every-row.ts:105, 2 November 2026). JSX text holds no `=` or `;`.
+  for (const m of line.matchAll(/(?<![=-])>([^<>{}=;]*[A-Za-z]{3,}[^<>{}=;]*)</g)) out.push(m[1])
   for (const m of line.matchAll(/aria-label=["']([^"']+)["']/g)) out.push(m[1])
   for (const m of line.matchAll(/\b(?:title|description|subtitle)\s*[:=]\s*["'`]([^"'`]+)["'`]/g)) out.push(m[1])
   return out
