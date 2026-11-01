@@ -42,7 +42,7 @@ function City({ c }: { c: CityDesk }) {
           : `${v.coverage_percent}% of the events our monitored sources list are on EventLinqs (${n(v.listed)} of ${n(v.unique_discovered)}). This is not every event in ${c.name}.`}
       </p>
 
-      <div className="mt-4 grid gap-6 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div data-part="sources">
           <h3 className="font-display text-sm font-semibold text-white">Sources</h3>
           <Row label="Registered" value={n(v.sources.known)} />

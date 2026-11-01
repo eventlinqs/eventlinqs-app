@@ -5,10 +5,11 @@
 -- C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md governs the page; src/lib/categories/classify.ts holds the
 -- same order and tests/unit/categories/classify.test.ts reads both.
 --
--- The partial unique index on guide_order is checked row by row, so the fifteen step aside to 101..115 first, then
--- take their new places, in one transaction.
+-- The partial unique index on guide_order (where guide_order is not null) is checked row by row, so the fifteen are
+-- cleared first (null is outside the index), then take their new places, in one transaction. A plain clear, never an
+-- in-place increment of the column (maintained-aggregates).
 
-update public.event_categories set guide_order = guide_order + 100 where guide_order between 1 and 15;
+update public.event_categories set guide_order = null where guide_order between 1 and 15;
 
 update public.event_categories c
    set guide_order = g.n
@@ -21,7 +22,7 @@ update public.event_categories c
 do $$
 begin
   if (select count(*) from public.event_categories where guide_order between 1 and 15) <> 15
-     or exists (select 1 from public.event_categories where guide_order > 100) then
+     or exists (select 1 from public.event_categories where guide_order > 15) then
     raise exception 'the guide must have exactly fifteen categories in guide_order 1 to 15';
   end if;
 end $$;

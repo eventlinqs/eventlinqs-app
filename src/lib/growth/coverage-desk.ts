@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 
 /**
  * THE DESK's CITY SECTIONS (the engine directive, C:\dev\DESIGN\CITY-FIRST-1NOV\ENGINE-FINAL-DIRECTIVE-1NOV.md s8; the
@@ -91,8 +92,9 @@ export interface CoverageDesk {
 
 export async function readCoverageDesk(): Promise<CoverageDesk> {
   const db = createAdminClient()
-  const geo = await readOrThrow('the guide cities', () =>
-    db.from('city_geography').select('city_slug, region_name, cities(name)').order('city_slug', { ascending: true }),
+  // Paged, never one read: Supabase stops at 1,000 rows and says nothing (no-silent-row-ceiling).
+  const geo = await readEveryRow('the guide cities', (from, to) =>
+    db.from('city_geography').select('city_slug, region_name, cities(name)').order('city_slug', { ascending: true }).range(from, to),
   )
   const cities: CityDesk[] = []
   for (const g of (geo ?? []) as unknown as { city_slug: string; region_name: string; cities: { name: string } | null }[]) {
