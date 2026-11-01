@@ -5,7 +5,8 @@ import { loadGuideUpcoming } from '@/lib/events/guide-queries'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { discoveryData } from '@/lib/events/discovery-data'
 import type { LedgerRow } from '@/lib/events/ledger-data'
-import { getAllCities, getCity } from '@/lib/cities/data'
+import { getAllCities, getCity, getSuburbsForCity, type CitySlug } from '@/lib/cities/data'
+import { readGuideCity } from '@/lib/listings/free-week-surface'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
@@ -23,6 +24,8 @@ import { CityHeroSlider, SLIDER_MINIMUM } from './city-hero-slider'
  * visitor chooses, without another request.
  */
 const QUICK = ['geelong', 'melbourne', 'ballarat', 'bendigo'] as const
+const MORE_LINK =
+  'inline-flex min-h-11 items-center rounded-full border border-[var(--color-ink-200)] bg-white px-4 font-display text-sm font-bold text-[var(--text-primary)] hover:border-[var(--color-ink-400)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
 const STATE_NAMES: Record<string, string> = {
   VIC: 'Victoria', NSW: 'New South Wales', QLD: 'Queensland', WA: 'Western Australia', SA: 'South Australia',
   TAS: 'Tasmania', ACT: 'Australian Capital Territory', NT: 'Northern Territory',
@@ -53,6 +56,16 @@ export async function CityGuideScreen({
   const stateCityNames = every.filter((c) => c.state === city.state).map((c) => c.name.toLowerCase())
   const name = city.name.toLowerCase()
   const slides = data.featured.filter((e) => (e.venue_city ?? '').toLowerCase().includes(name)).slice(0, 6)
+  // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
+  const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
+  // A failed read only leaves the link off, and says so (the old city page's own handling).
+  const freeWeek = await readGuideCity(city.slug).then(
+    (c) => c !== null,
+    (err: unknown) => {
+      console.error('[city-guide] the free guide could not be read:', err instanceof Error ? err.message : err)
+      return false
+    },
+  )
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -91,6 +104,40 @@ export async function CityGuideScreen({
           days={data.days}
           featured={slides.length === 2 ? slides : []}
         />
+        {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
+            21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in
+            (C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md s1). Words only; nothing here is an event. */}
+        <section aria-label={`More of ${city.name}`} className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+          <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">More of {city.name}</h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            <li>
+              <Link href={`/events/browse/${city.slug}`} className={MORE_LINK}>
+                Browse every event in {city.name}
+              </Link>
+            </li>
+            {freeWeek ? (
+              <li>
+                <Link href={`/free/${city.slug}/this-week`} className={MORE_LINK}>
+                  Free in {city.name} this week
+                </Link>
+              </li>
+            ) : null}
+          </ul>
+          {suburbs.length > 0 ? (
+            <>
+              <h3 className="mt-6 font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">By suburb</h3>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {suburbs.map((s) => (
+                  <li key={s.slug}>
+                    <Link href={`/city/${city.slug}/${s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug}`} className={MORE_LINK}>
+                      {s.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
         {after}
       </main>
       <SiteFooter />
