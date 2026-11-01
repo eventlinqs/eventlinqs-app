@@ -327,7 +327,7 @@ function Row({ r, style, withDay = false }: { r: DirectoryRow; style: RowStyle; 
           </span>
         ) : null}
         <span className="min-w-0">
-          <span className="mb-1 block truncate font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+          <span className="mb-1 block font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] line-clamp-2">
             {[withDay ? r.dayLabel : null, style === 'guide' ? r.time : null, place].filter(Boolean).join(' \u00b7 ')}
           </span>
           <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline">
@@ -338,7 +338,7 @@ function Row({ r, style, withDay = false }: { r: DirectoryRow; style: RowStyle; 
         </span>
         <span className="flex items-center gap-3">
           <span className="text-right">
-            <span className="block whitespace-nowrap font-display text-sm font-extrabold text-[var(--text-primary)]">{r.price}</span>
+            <span className="block max-w-28 font-display text-sm font-extrabold text-[var(--text-primary)] md:max-w-none md:whitespace-nowrap">{r.price}</span>
           </span>
           {style === 'swipe' && r.thumb ? (
             // A small square only where an authorised image exists, through the shared media component's list-thumb.
