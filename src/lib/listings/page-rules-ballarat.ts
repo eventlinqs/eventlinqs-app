@@ -75,7 +75,7 @@ export const herMajestysBallarat: PageRule = {
     for (const s of html.matchAll(/<div class="event-ticket[ "][^>]*>([\s\S]*?)<\/a>/gi)) {
       const block = s[1]
       const d = /<span class="bold upcase">\s*[A-Za-z]+<br>\s*([A-Za-z]+) (\d{1,2}), (\d{4})\s*<\/span>/i.exec(block)
-      const tm = /<span>(\d{1,2}):(\d{2})<\/span>(?:\s*(?:&ndash;|&#8211;|–|-)\s*(\d{1,2}):(\d{2}))?/i.exec(block)
+      const tm = /<span>(\d{1,2}):(\d{2})<\/span>(?:\s*(?:&ndash;|&#8211;|\u2013|-)\s*(\d{1,2}):(\d{2}))?/i.exec(block)
       const mo = d ? MONTHS[d[1].slice(0, 3).toLowerCase()] : undefined
       if (!d || !mo || !tm) continue
       const startsAt = wallClockToIso(Number(d[3]), mo, Number(d[2]), Number(tm[1]), Number(tm[2]), 0, ZONE)
