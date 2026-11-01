@@ -77,8 +77,16 @@ begin
   v_out := v_out || ' | R2 no category refused: ' || v_r; if v_r <> 'PASS' then v_fail := v_fail + 1; end if;
   v_r := pg_temp.refused(format('select public.listing_publish_accepted_night(%L, %L, %L, %L)', v_c3, v_venue, v_cat, v_user), 'still waiting');
   v_out := v_out || ' | R3 a candidate no longer waiting refused: ' || v_r; if v_r <> 'PASS' then v_fail := v_fail + 1; end if;
-  v_r := pg_temp.refused(format('select public.listing_publish_accepted_night(%L, %L, %L, %L)', v_c2, v_venue, v_cat, v_user), 'another time');
-  v_out := v_out || ' | R4 a second session the same day is refused in words until the session key lands: ' || v_r; if v_r <> 'PASS' then v_fail := v_fail + 1; end if;
+  -- A second session the same day: refused in words under the old key; its own night under WINDOW 3's session key.
+  if exists (select 1 from pg_indexes where indexname = 'event_series_once_per_session')
+     or exists (select 1 from pg_constraint where conname = 'event_series_once_per_session') then
+    v_r := case when public.listing_publish_accepted_night(v_c2, v_venue, v_cat, v_user) is distinct from v_s1 then 'PASS' else 'FAIL' end;
+    v_out := v_out || ' | R4 a second session the same day is its own night (session key present): ' || v_r;
+  else
+    v_r := pg_temp.refused(format('select public.listing_publish_accepted_night(%L, %L, %L, %L)', v_c2, v_venue, v_cat, v_user), 'another time');
+    v_out := v_out || ' | R4 a second session the same day is refused in words until the session key lands: ' || v_r;
+  end if;
+  if v_r <> 'PASS' then v_fail := v_fail + 1; end if;
 
   v_r := case when not has_function_privilege('anon', 'public.listing_publish_accepted_night(uuid,uuid,uuid,uuid)', 'execute')
                    and not has_function_privilege('authenticated', 'public.listing_publish_accepted_night(uuid,uuid,uuid,uuid)', 'execute')

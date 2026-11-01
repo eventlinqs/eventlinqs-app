@@ -16,12 +16,16 @@ import { REFUSAL_REASONS } from './reasons'
  * A PERSON'S REVIEW OF WHAT THE COLLECTION RUN FOUND (item 19: "everything reviewed before publishing").
  *
  * Accept on a candidate that adds links writes them to the event as curated links (WI3's event_booking_links; the
- * database picks the button and never lets a curated link be the organiser's own). Accept on a new listing marks it
- * for the import (scripts/ops/import-city-listings.mjs), which publishes every listing. Refuse says why. Each is
- * written only while the candidate still waits, so two people pressing at once review it once.
+ * database picks the button and never lets a curated link be the organiser's own). Accept on a new listing PUBLISHES
+ * it (listing_publish_accepted_night, 20261101171501): a dated EventLinqs listing at the held venue and in the category
+ * the person confirmed, facts only, with a listing check citing the candidate's page. (Until 1 November 2026 this said
+ * the import published accepted listings; scripts/ops/import-city-listings.mjs never read a candidate, so an accept
+ * published nothing.) Refuse says why. Each is written only while the candidate still waits, so two people pressing at
+ * once review it once.
  */
 
 const ReviewSchema = z.object({ id: z.string().uuid() })
+const PublishSchema = z.object({ venue: z.string().uuid(), category: z.string().uuid() })
 const RefuseSchema = z.object({ id: z.string().uuid(), reason: z.enum(REFUSAL_REASONS) })
 
 export async function acceptCandidateAction(formData: FormData): Promise<void> {
@@ -37,6 +41,15 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
     .eq('id', parsed.data.id)
     .maybeSingle()
   if (error || !c || c.status !== 'waiting') redirect('/admin/collected?status=gone')
+
+  if (c.kind === 'new') {
+    const chosen = PublishSchema.safeParse({ venue: formData.get('venue'), category: formData.get('category') })
+    if (!chosen.success) redirect('/admin/collected?status=needs-venue-and-category')
+    const { error: perr } = await db.rpc('listing_publish_accepted_night', { p_candidate: parsed.data.id, p_venue: chosen.data.venue, p_category: chosen.data.category, p_reviewer: session.userId })
+    if (perr) redirect(`/admin/collected?status=error&why=${encodeURIComponent(perr.message.replace(/^refused: /, ''))}`)
+    await recordAuditEvent({ action: 'admin.collected.accept', targetType: 'listing_candidate', targetId: parsed.data.id, session })
+    redirect('/admin/collected?status=published')
+  }
 
   if (c.kind === 'adds_links' && c.event_id) {
     try {
