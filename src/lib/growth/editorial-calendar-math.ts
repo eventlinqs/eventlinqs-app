@@ -15,13 +15,15 @@
  * THE RULES, each the directive's own words for its day:
  *   mon  This week's events: every verified night Monday to Sunday.
  *   tue  Live music, nightlife and comedy: those three guide categories, Tuesday to Sunday.
- *   wed  Weekend planning guide: Friday to Sunday.
- *   thu  Five worthwhile things happening this weekend: at most five, one of each kind first, earliest first.
- *   fri  Tonight and tomorrow: Friday and Saturday.
+ *   wed  Weekend planning guide: the coming weekend, the platform's one definition (Saturday and Sunday).
+ *   thu  Five worthwhile things happening this weekend: the same weekend; at most five, one of each kind first.
+ *   fri  Tonight and tomorrow: Friday and Saturday, the platform's own today and tomorrow window.
  *   sat  Real event coverage and community highlights: community, festivals, markets and family, Saturday and Sunday; coverage only where a
  *        night carries authorised media, because coverage is never invented.
  *   sun  Next week's preview and organiser spotlight: next Monday to Sunday, and the organiser with the most verified
  *        nights in it.
+ * Every window comes from src/lib/events/listing-window.ts (startOfLocalDayUtcOffset, weekendWindowUtc,
+ * todayAndTomorrowWindow) on the city's own clock: one definition of a day and of a weekend, never a second.
  * A night counts only when it is published, public, at a venue IN the city (never surrounding, region, outside or
  * unplaced), not over by the time the week is drafted, and starts inside the slot's window on the city's own clock.
  * The only limit is Thursday's five, because the directive says five; every other slot holds every night it finds.
@@ -29,8 +31,11 @@
  */
 
 import type { GuideCategory } from '@/lib/categories/classify'
+import { formatEventDateShort } from '@/lib/dates/event-time'
+import { localDayOfWeek, startOfLocalDayUtcOffset, todayAndTomorrowWindow, weekendWindowUtc } from '@/lib/events/listing-window'
+import { localDate } from '@/lib/walk-in/dates'
 
-export type CityRelation ='city' | 'surrounding' | 'region' | 'outside' | 'unplaced'
+export type CityRelation = 'city' | 'surrounding' | 'region' | 'outside' | 'unplaced'
 
 export interface CalendarEvent {
   readonly id: string
@@ -54,9 +59,8 @@ export type SlotDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 interface Rhythm {
   readonly day: SlotDay
   readonly theme: string
-  /** The window, in days from the week's Monday, inclusive. */
-  readonly from: number
-  readonly to: number
+  /** The window, from the week's Monday on the city's clock: two instants, both inclusive. */
+  readonly window: (monday: Date, zone: string) => { from: Date; to: Date }
   /** The guide categories it holds; null is every kind. */
   readonly categories: ReadonlySet<string> | null
   /** What an empty slot says it found none of. */
@@ -68,14 +72,22 @@ interface Rhythm {
 const NIGHT_OUT: ReadonlySet<string> = new Set<GuideCategory>(['music', 'nightlife', 'comedy'])
 const COMMUNITY: ReadonlySet<string> = new Set<GuideCategory>(['community', 'festival', 'markets', 'family'])
 
+/** Whole local days from the week's Monday, first to last inclusive. */
+const days = (first: number, last: number) => (monday: Date, zone: string) => ({
+  from: startOfLocalDayUtcOffset(monday, zone, first),
+  to: new Date(startOfLocalDayUtcOffset(monday, zone, last + 1).getTime() - 1),
+})
+/** The platform's one weekend, as seen from the slot's own day. */
+const weekendFrom = (offset: number) => (monday: Date, zone: string) => weekendWindowUtc(startOfLocalDayUtcOffset(monday, zone, offset), zone)
+
 export const RHYTHM: readonly Rhythm[] = [
-  { day: 'mon', theme: "This week's events", from: 0, to: 6, categories: null, noun: 'events' },
-  { day: 'tue', theme: 'Live music, nightlife and comedy', from: 1, to: 6, categories: NIGHT_OUT, noun: 'live music, nightlife or comedy' },
-  { day: 'wed', theme: 'Weekend planning guide', from: 4, to: 6, categories: null, noun: 'events' },
-  { day: 'thu', theme: 'Five worthwhile things happening this weekend', from: 4, to: 6, categories: null, noun: 'events' },
-  { day: 'fri', theme: 'Tonight and tomorrow', from: 4, to: 5, categories: null, noun: 'events' },
-  { day: 'sat', theme: 'Real event coverage and community highlights', from: 5, to: 6, categories: COMMUNITY, noun: 'community events' },
-  { day: 'sun', theme: "Next week's preview and organiser spotlight", from: 7, to: 13, categories: null, noun: 'events' },
+  { day: 'mon', theme: "This week's events", window: days(0, 6), categories: null, noun: 'events' },
+  { day: 'tue', theme: 'Live music, nightlife and comedy', window: days(1, 6), categories: NIGHT_OUT, noun: 'live music, nightlife or comedy' },
+  { day: 'wed', theme: 'Weekend planning guide', window: weekendFrom(2), categories: null, noun: 'events' },
+  { day: 'thu', theme: 'Five worthwhile things happening this weekend', window: weekendFrom(3), categories: null, noun: 'events' },
+  { day: 'fri', theme: 'Tonight and tomorrow', window: (monday, zone) => todayAndTomorrowWindow(startOfLocalDayUtcOffset(monday, zone, 4), zone), categories: null, noun: 'events' },
+  { day: 'sat', theme: 'Real event coverage and community highlights', window: weekendFrom(5), categories: COMMUNITY, noun: 'community events' },
+  { day: 'sun', theme: "Next week's preview and organiser spotlight", window: days(7, 13), categories: null, noun: 'events' },
 ]
 
 export const FIVE_THINGS = 5
@@ -115,25 +127,9 @@ export interface DraftInput {
   readonly now: Date
 }
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** A YYYY-MM-DD plus whole days, as YYYY-MM-DD (calendar arithmetic, no clock). */
-function addDays(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-
-/** 'Tue 3 Nov' for a YYYY-MM-DD. */
-function spoken(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`)
-  return `${DAY_NAMES[d.getUTCDay()]} ${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]}`
-}
-
-/** An instant's date on a zone's clock, YYYY-MM-DD. */
-export function localDate(iso: string, zone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+/** An instant's date on the city's clock, YYYY-MM-DD (the shared helper; it answers for any valid instant). */
+function dayOf(at: Date, zone: string): string {
+  return localDate(at.toISOString(), zone) ?? ''
 }
 
 function verified(e: CalendarEvent, now: Date): boolean {
@@ -181,30 +177,35 @@ function spotlightOf(found: readonly CalendarEvent[]): Spotlight | null {
 
 /** The week's seven draft slots for one city. */
 export function draftWeek(input: DraftInput): Slot[] {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart) || new Date(`${input.weekStart}T00:00:00Z`).getUTCDay() !== 1) {
+  // Noon UTC of the named date is that same date on every Australian clock (UTC+8 to UTC+11), so its local midnight is
+  // the week's Monday.
+  const named = new Date(`${input.weekStart}T12:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart) || Number.isNaN(named.getTime()) || localDayOfWeek(named, input.zone) !== 1) {
     throw new Error(`weekStart must be a Monday (YYYY-MM-DD), got '${input.weekStart}'`)
   }
+  const monday = startOfLocalDayUtcOffset(named, input.zone, 0)
   const nights = input.events
     .filter((e) => verified(e, input.now))
-    .map((e) => ({ e, day: localDate(e.startsAt, input.zone) }))
-    .sort((a, b) => Date.parse(a.e.startsAt) - Date.parse(b.e.startsAt))
+    .map((e) => ({ e, at: Date.parse(e.startsAt) }))
+    .sort((a, b) => a.at - b.at)
   return RHYTHM.map((r, i) => {
-    const windowFrom = addDays(input.weekStart, r.from)
-    const windowTo = addDays(input.weekStart, r.to)
+    const { from, to } = r.window(monday, input.zone)
+    const windowFrom = dayOf(from, input.zone)
+    const windowTo = dayOf(to, input.zone)
     const found = nights
-      .filter(({ e, day }) => day >= windowFrom && day <= windowTo && (r.categories === null || (e.category !== null && r.categories.has(e.category))))
+      .filter(({ e, at }) => at >= from.getTime() && at <= to.getTime() && (r.categories === null || (e.category !== null && r.categories.has(e.category))))
       .map(({ e }) => e)
     const picks = r.day === 'thu' ? fiveThings(found) : found
     return {
       day: r.day,
-      date: addDays(input.weekStart, i),
+      date: dayOf(startOfLocalDayUtcOffset(monday, input.zone, i), input.zone),
       theme: r.theme,
       status: 'draft' as const,
       windowFrom,
       windowTo,
       picks,
       total: found.length,
-      empty: found.length === 0 ? `No verified ${r.noun} in ${input.cityName} from ${spoken(windowFrom)} to ${spoken(windowTo)}.` : null,
+      empty: found.length === 0 ? `No verified ${r.noun} in ${input.cityName} from ${formatEventDateShort(from.toISOString(), input.zone)} to ${formatEventDateShort(to.toISOString(), input.zone)}.` : null,
       coverageReady: r.day === 'sat' ? picks.filter((e) => e.hasAuthorisedMedia) : [],
       spotlight: r.day === 'sun' ? spotlightOf(found) : null,
     }
