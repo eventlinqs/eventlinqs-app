@@ -12,7 +12,7 @@ export const EVENT_SELECT =
   // in the EVENT's zone. Without it the homepage formats in the runtime zone,
   // which is UTC on the server and the reader's in the browser, so a Perth
   // event at 9pm shows the wrong DAY to someone in Sydney.
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, listing_series_id, venue_name, venue_address, venue_city, venue_state, venue_country, is_free, entry_mode, external_ticket_url, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, listing_series_id, venue_name, venue_address, venue_city, venue_state, venue_country, venue_latitude, venue_longitude, is_free, entry_mode, external_ticket_url, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string
@@ -32,6 +32,9 @@ export type RawRow = {
   venue_city: string | null
   venue_state: string | null
   venue_country: string | null
+  /** The venue's point, so the city guide can widen to nearby places by distance (1 November 2026). */
+  venue_latitude?: number | null
+  venue_longitude?: number | null
   is_free: boolean | null
   /** WI1. Carried to the card so a walk-in event says "Free entry". */
   entry_mode: string | null

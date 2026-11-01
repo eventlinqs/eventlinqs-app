@@ -18,6 +18,8 @@ export type DirectoryInput = {
   readonly timezone: string | null
   readonly venue_name: string | null
   readonly venue_city: string | null
+  readonly venue_latitude?: number | null
+  readonly venue_longitude?: number | null
   readonly category: { readonly name: string; readonly slug: string } | null
   readonly is_free?: boolean | null
   readonly entry_mode?: string | null
@@ -46,6 +48,9 @@ export type DirectoryRow = {
   readonly ts: number
   /** A small image only where an authorised one exists (a credited venue photo or a rights recorded cover). */
   readonly thumb: string | null
+  /** The venue's point where held, for the city guide's deliberate widening by distance. */
+  readonly lat: number | null
+  readonly lng: number | null
 }
 
 export type DirectoryDay = {
@@ -140,6 +145,8 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
       dayLabel: dayLabel(at, zone),
       ts: at.getTime(),
       thumb: thumbs.get(e.id) ?? null,
+      lat: typeof e.venue_latitude === 'number' ? e.venue_latitude : null,
+      lng: typeof e.venue_longitude === 'number' ? e.venue_longitude : null,
     }
     const day = days.get(key) ?? { label: dayLabel(at, zone), rows: [] }
     day.rows.push({ row, at: at.getTime(), focus: FOCUS_CITIES.has((e.venue_city ?? '').trim().toLowerCase()) })

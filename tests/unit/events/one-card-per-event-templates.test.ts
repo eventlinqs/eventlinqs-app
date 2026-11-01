@@ -50,10 +50,11 @@ describe('the discovery pages draw cards only in Featured this week, one per ser
     expect(src).not.toMatch(/<EventCard[\s>]/)
     expect(read('src/components/features/events/featured-this-week-loader.tsx')).toMatch(/listing_series_id \?\? e\.id/)
   })
-  it('the homepage draws the discovery block and no rail', () => {
-    const src = read('src/app/page.tsx')
-    expect(src).toMatch(/<Discovery\s/)
-    expect(src).not.toMatch(/<EventRailSection/)
+  it('the homepage and every city page draw the city guide, whose only cards are Featured, one per series', () => {
+    const home = read('src/app/page.tsx')
+    expect(home).toMatch(/<CityGuideScreen\s/)
+    expect(home).not.toMatch(/<EventRailSection/)
+    expect(read('src/app/city/[slug]/page.tsx')).toMatch(/<CityGuideScreen\s/)
     expect(read('src/lib/events/discovery-data.ts')).toMatch(/listing_series_id \?\? r\.id/)
   })
 })

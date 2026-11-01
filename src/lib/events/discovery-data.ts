@@ -37,13 +37,9 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
   days: DiscoveryDays
   categories: { key: string; label: string }[]
 }> {
-  // The discovery page is Victoria's guide (the brief, point 6): a night whose venue state is held and is not Victoria
-  // is left to its own city's page; a night with no state held stays, so a missing field never hides a night.
-  const victorian = (r: LedgerRow) => {
-    const st = (r.venue_state ?? '').trim().toLowerCase()
-    return st === '' || st === 'vic' || st === 'victoria'
-  }
-  const listed = rows.filter((r) => isStillListed(r, now) && victorian(r))
+  // Every listed night of every city: the city guide shows ONE city at a time, by the name its venue holds, and widens
+  // to nearby places only when the visitor chooses (the city-first directive of 1 November 2026, section 3).
+  const listed = rows.filter((r) => isStillListed(r, now))
   const photo = (r: LedgerRow) => Boolean(r.cover_image_url) && !isComposedCover(r.cover_image_url)
   const rights = await readCoverRights(
     createAdminClient(),
