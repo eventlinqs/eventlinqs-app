@@ -129,6 +129,17 @@ describe('the Geelong reference page, section by section', () => {
   })
 })
 
+describe('a long city is cheap to lay out (2 November 2026, Lighthouse on the preview: TBT 250 to 306 ms over 7,965 elements)', () => {
+  it('every day group of the list skips layout until it nears the screen, keeping its place (content-visibility auto)', () => {
+    guide()
+    const all = screen.getByRole('region', { name: 'All events in Geelong' })
+    const days = [...all.querySelectorAll('section[aria-label]')]
+    expect(days.length).toBeGreaterThan(0)
+    for (const d of days) expect(d.className).toContain('[content-visibility:auto]')
+    for (const d of days) expect(d.className).toContain('[contain-intrinsic-size:auto_480px]')
+  })
+})
+
 describe('booking, one rule (the directive, D)', () => {
   it('our checkout says Book on EventLinqs; another site says Tickets on <site> with the outbound mark; free walk-in says Free entry', () => {
     expect(bookingLine({ price: 'From AUD $15', source: 'Tickets on EventLinqs', free: false })).toEqual({ price: 'From AUD $15', book: 'Book on EventLinqs', outbound: false })
