@@ -42,6 +42,10 @@
       "schedule": "17 * * * *"
     },
     {
+      "path": "/api/cron/growth-scorecard",
+      "schedule": "15 0 * * *"
+    },
+    {
       "path": "/api/cron/event-disbursement",
       "schedule": "0 * * * *"
     },

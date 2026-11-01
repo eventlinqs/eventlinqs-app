@@ -16,6 +16,12 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { HORIZON_DAYS, WEEK_DAYS } from '@/lib/growth/supply-scorecard-math'
 import { monthOf } from '@/lib/growth/organiser-funnel-math'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { readGrowthDesk } from '@/lib/growth/desk'
+import { GrowthDeskSection } from '@/components/admin/growth-desk'
+import { readAcquisitionDesk } from '@/lib/growth/acquisition'
+import { AcquisitionDeskSection } from '@/components/admin/acquisition-desk'
+import { readCoverageDesk } from '@/lib/growth/coverage-desk'
+import { CoverageDeskSection } from '@/components/admin/coverage-desk'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -72,7 +78,7 @@ export default async function AdminGrowthPage() {
   if (!can(session, 'admin.network.manage') || !can(session, 'admin.pricing.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.growth.view', session })
 
-  const [g, funnel, qa, supply] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard()])
+  const [g, funnel, qa, supply, desk, acq, coverage] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard(), readGrowthDesk(), readAcquisitionDesk(), readCoverageDesk()])
   const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
@@ -80,6 +86,11 @@ export default async function AdminGrowthPage() {
 
   return (
     <div>
+      {/* The growth desk first (Law 8): today's tasks and the plan against the actual, then last week's detail. */}
+      <GrowthDeskSection desk={desk} />
+      <AcquisitionDeskSection acq={acq} />
+      <CoverageDeskSection desk={coverage} />
+
       <header className="mb-8">
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Last week</h1>
