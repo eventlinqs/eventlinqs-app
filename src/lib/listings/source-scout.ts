@@ -38,7 +38,7 @@ export type ScoutVerdict = {
   readonly eventSitemaps: readonly string[]
 }
 
-const FEED_HREF = /href\s*=\s*["']([^"']*(?:\.ics\b|[?&]ical=1|^webcal:)[^"']*)["']/gi
+const FEED_HREF = /href\s*=\s*["']((?:webcal:[^"']*)|(?:[^"']*(?:\.ics\b|[?&]ical=1)[^"']*))["']/gi
 
 function hostOf(url: string): string {
   try {
