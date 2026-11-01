@@ -7,7 +7,6 @@ import {
   Briefcase, CalendarDays, ChevronRight, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
-import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
 
 /**
@@ -52,6 +51,11 @@ function iconFor(slug: string) {
   return Sparkles
 }
 
+/** '7 November' for a chosen date key (YYYY-MM-DD), read as that calendar day. */
+function dateWords(key: string): string {
+  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${key}T12:00:00Z`))
+}
+
 function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const r = (d: number) => (d * Math.PI) / 180
   const dLat = r(bLat - aLat)
@@ -73,15 +77,19 @@ export function CityGuide({
   quickCities,
   allCities,
   rows,
-  featured,
   days,
+  stateName,
+  stateCityNames,
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
   allCities: readonly { slug: string; name: string; state: string }[]
   rows: readonly DirectoryRow[]
-  featured: readonly EventCardData[]
   days: Days
+  /** The city's state in words ('Victoria'), the first chip: every night in that state's listed cities. */
+  stateName: string
+  /** The listed cities of that state, lower case, matched against a row's city as the city itself is. */
+  stateCityNames: readonly string[]
 }) {
   const [q, setQ] = useState('')
   const [when, setWhen] = useState<When>('all')
@@ -89,12 +97,15 @@ export function CityGuide({
   const [category, setCategory] = useState('all')
   const [radius, setRadius] = useState<(typeof RADII)[number]>(0)
   const [cities, setCities] = useState(false)
+  const [wholeState, setWholeState] = useState(false)
 
   const name = city.name.toLowerCase()
   const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
   const near = (r: DirectoryRow) =>
     radius > 0 && r.lat !== null && r.lng !== null && km(city.lat, city.lng, r.lat, r.lng) <= radius
-  const here = rows.filter((r) => inCity(r) || near(r))
+  const inState = (r: DirectoryRow) => stateCityNames.some((n) => r.cityKey.includes(n))
+  const here = rows.filter((r) => (wholeState ? inState(r) : inCity(r) || near(r)))
+  const placeName = wholeState ? stateName : city.name
 
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const matchesQ = (r: DirectoryRow) =>
@@ -118,9 +129,6 @@ export function CityGuide({
   }
   const tiles = [...counts.entries()].sort((a, b) => b[1].n - a[1].n || a[1].label.localeCompare(b[1].label))
 
-  const featuredHere = featured.filter((e) => (e.venue_city ?? '').toLowerCase().includes(name))
-  const featuredShown = featuredHere.length >= 2 ? featuredHere.slice(0, 8) : []
-
   const week = shown.filter((r) => days.weekKeys.includes(r.dayKey))
   const later = shown.filter((r) => !days.weekKeys.includes(r.dayKey))
   const filtered = when !== 'all' || category !== 'all' || words.length > 0
@@ -131,11 +139,20 @@ export function CityGuide({
       <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8 md:pt-6">
         {/* WHERE: the city first (its name and photograph head the page), switched in one tap; every other city one more. */}
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Choose a city">
-          {quickCities.map((c) => (
-            <Link key={c.slug} href={`/city/${c.slug}`} aria-current={c.slug === city.slug ? 'page' : undefined} className={chip(c.slug === city.slug)}>
-              {c.name}
-            </Link>
-          ))}
+          <button type="button" aria-pressed={wholeState} onClick={() => setWholeState(!wholeState)} className={chip(wholeState)}>
+            {stateName}
+          </button>
+          {quickCities.map((c) =>
+            c.slug === city.slug ? (
+              <button key={c.slug} type="button" aria-pressed={!wholeState} onClick={() => setWholeState(false)} className={chip(!wholeState)}>
+                {c.name}
+              </button>
+            ) : (
+              <Link key={c.slug} href={`/city/${c.slug}`} className={chip(false)}>
+                {c.name}
+              </Link>
+            ),
+          )}
           <button type="button" onClick={() => setCities(true)} className={chip(false)} aria-haspopup="dialog">
             <MapPin className="h-4 w-4" aria-hidden="true" />
             Change city
@@ -150,8 +167,8 @@ export function CityGuide({
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={`Search events, artists, venues in ${city.name}`}
-              aria-label={`Search events in ${city.name}`}
+              placeholder={`Search events, artists, venues in ${placeName}`}
+              aria-label={`Search events in ${placeName}`}
               className="min-w-0 flex-1 bg-transparent font-display text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
           </label>
@@ -170,57 +187,65 @@ export function CityGuide({
               {w.label}
             </button>
           ))}
-          <label className={chip(when === 'date')}>
+          {/* 'Choose dates' reads as a chip, as Lawal's structure draws it; the date field covers it and opens the
+              browser's own calendar on a tap. */}
+          <label className={`relative ${chip(when === 'date')}`}>
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            <span className="sr-only">Choose dates</span>
+            <span>{when === 'date' && date ? dateWords(date) : 'Choose dates'}</span>
             <input
               type="date"
               value={date}
               min={days.todayKey}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.()
+                } catch {
+                  // A browser that will not open its picker from script still takes the tap on the field itself.
+                }
+              }}
               onChange={(e) => {
                 setDate(e.target.value)
                 setWhen(e.target.value ? 'date' : 'all')
               }}
-              className="w-36 bg-transparent text-base"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               aria-label="Choose a date"
             />
           </label>
         </div>
         <div className="-mx-4 mt-2 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" role="group" aria-label="Area">
-          {RADII.map((r) => (
+          {(wholeState ? [] : RADII).map((r) => (
             <button key={r} type="button" aria-pressed={radius === r} onClick={() => setRadius(r)} className={chip(radius === r)}>
               {r === 0 ? `In ${city.name}` : `Within ${r} km`}
             </button>
           ))}
         </div>
 
-        {/* Explore: the city's own categories, each with the number it holds. */}
+        {/* Explore: the city's own categories as Lawal's structure draws them (the icon over the name, three across from
+            a small tablet up), each with the number it holds; a category with nothing is not drawn; 'All events' last. */}
         {tiles.length > 0 ? (
-          <section aria-label={`Explore ${city.name}`} className="mt-8">
-            <h2 className="font-headline text-2xl font-extrabold text-[var(--text-primary)]">Explore {city.name}</h2>
-            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {tiles.map(([slug, c]) => {
-                const Icon = iconFor(slug)
-                const on = category === slug
+          <section aria-label={`Explore ${placeName}`} className="mt-8">
+            <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">Explore {placeName}</h2>
+            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[...tiles, ['all', { label: 'All events', n: here.length }] as const].map(([slug, c]) => {
+                const Icon = slug === 'all' ? CalendarDays : iconFor(slug)
+                const on = slug !== 'all' && category === slug
                 return (
                   <li key={slug}>
                     <button
                       type="button"
-                      aria-pressed={on}
+                      aria-pressed={slug === 'all' ? undefined : on}
                       onClick={() => {
-                        setCategory(on ? 'all' : slug)
+                        setCategory(on || slug === 'all' ? 'all' : slug)
                         toList()
                       }}
-                      className={`flex min-h-24 w-full flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] ${
+                      className={`flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] ${
                         on ? 'border-[var(--color-ink-900)] bg-[var(--color-ink-900)] text-white' : 'border-[var(--surface-2)] bg-white text-[var(--text-primary)] hover:border-[var(--color-ink-400)]'
                       }`}
                     >
-                      <Icon className={`h-6 w-6 ${on ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}`} aria-hidden="true" />
-                      <span>
-                        <span className="block font-headline text-base font-bold leading-tight">{c.label}</span>
-                        <span className={`mt-0.5 block font-display text-xs font-semibold ${on ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
-                          {c.n} {c.n === 1 ? 'event' : 'events'}
-                        </span>
+                      <Icon className={`h-6 w-6 ${on ? 'text-[var(--brand-accent)]' : 'text-[var(--text-primary)]'}`} aria-hidden="true" />
+                      <span className="font-display text-base font-bold leading-tight">{c.label}</span>
+                      <span className={`font-display text-xs font-semibold ${on ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+                        {c.n} {c.n === 1 ? 'event' : 'events'}
                       </span>
                     </button>
                   </li>
@@ -230,22 +255,9 @@ export function CityGuide({
           </section>
         ) : null}
 
-        {featuredShown.length > 0 ? (
-          <section aria-label="Featured" className="mt-10">
-            <h2 className="font-headline text-2xl font-extrabold text-[var(--text-primary)]">Featured in {city.name}</h2>
-            <ul className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-4 xl:overflow-visible">
-              {featuredShown.map((e) => (
-                <li key={e.id} className="w-5/6 shrink-0 sm:w-5/12 xl:w-auto">
-                  <EventCard event={e} variant="grid-one-two-four" />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <section id="city-calendar" aria-label={`Every event in ${city.name}`} className="mt-10 scroll-mt-24">
+        <section id="city-calendar" aria-label={`Every event in ${placeName}`} className="mt-10 scroll-mt-24">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="font-headline text-2xl font-extrabold text-[var(--text-primary)]">
+            <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">
               {filtered ? `${shown.length} ${shown.length === 1 ? 'event' : 'events'} found` : 'Happening this week'}
             </h2>
             {filtered ? (
@@ -264,13 +276,21 @@ export function CityGuide({
               </button>
             ) : (
               <p className="font-display text-sm font-semibold text-[var(--text-muted)]">
-                {here.length} {here.length === 1 ? 'event' : 'events'} coming up in {radius ? `${city.name} and within ${radius} km` : city.name}
+                {here.length} {here.length === 1 ? 'event' : 'events'} coming up in {radius && !wholeState ? `${city.name} and within ${radius} km` : placeName}
+                {later.length > 0 ? (
+                  <>
+                    {' \u00b7 '}
+                    <a href="#city-calendar-full" className="font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4">
+                      View calendar
+                    </a>
+                  </>
+                ) : null}
               </p>
             )}
           </div>
           {shown.length === 0 ? (
             <p className="mt-4 rounded-2xl border border-[var(--surface-2)] bg-white px-5 py-8 font-display text-base text-[var(--text-secondary)]">
-              Nothing in {city.name} matches these choices yet. Try another date, widen the area, or clear the filters.
+              Nothing in {placeName} matches these choices yet. Try another date, widen the area, or clear the filters.
             </p>
           ) : filtered ? (
             <DayList rows={shown} cityName={name} />
@@ -279,7 +299,9 @@ export function CityGuide({
               {week.length > 0 ? <DayList rows={week} cityName={name} /> : null}
               {later.length > 0 ? (
                 <>
-                  <h2 className="mt-10 font-headline text-2xl font-extrabold text-[var(--text-primary)]">Coming up</h2>
+                  <h2 id="city-calendar-full" className="type-rail-heading mt-10 scroll-mt-24 font-headline font-extrabold text-[var(--text-primary)]">
+                    The full calendar
+                  </h2>
                   <DayList rows={later} cityName={name} />
                 </>
               ) : null}

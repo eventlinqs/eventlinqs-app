@@ -9,7 +9,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { RECORDED, readCoverRights } from '@/lib/events/featured-with-recorded-rights'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
-import { thisWeek, toEventCardData, type LedgerRow } from '@/lib/events/ledger-data'
+import { toEventCardData, type LedgerRow } from '@/lib/events/ledger-data'
 import { isStillListed, weekendWindowUtc } from '@/lib/events/listing-window'
 import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -49,9 +49,12 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
   const thumbs = new Map(listed.filter(authorised).map((r) => [r.id, r.cover_image_url as string]))
   const flat = directoryDays(listed, now, thumbs).flatMap((d) => d.rows)
 
-  // Featured: the next seven days, an authorised photograph, one night of a series, soonest first.
+  // Featured, for the city's slider: the next FORTNIGHT (the CONTROLLER's 16:41 (3)), an authorised photograph, one night
+  // of a series, soonest first.
   const seen = new Set<string>()
-  const featured = thisWeek(listed, now)
+  const fortnightEnd = now.getTime() + 14 * 24 * 60 * 60 * 1000
+  const featured = listed
+    .filter((r) => Date.parse(r.start_date) <= fortnightEnd)
     .filter(authorised)
     .filter((r) => {
       const key = r.listing_series_id ?? r.id
