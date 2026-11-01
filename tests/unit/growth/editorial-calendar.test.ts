@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftWeek, RHYTHM, type CalendarEvent } from '@/lib/growth/editorial-calendar-math'
+import { GUIDE_CATEGORIES } from '@/lib/categories/classify'
 
 /**
  * ONE EDITORIAL CALENDAR PER CITY (C:\dev\GROWTH\GROWTH-SYSTEM-DIRECTIVE-1NOV.md s5 and its rhythm table; the accepted
@@ -141,6 +142,17 @@ describe('each slot by its rule', () => {
     expect(sun.windowTo).toBe('2026-11-15')
     expect(sun.picks.map((p) => p.id)).toEqual([b1.id, a1.id, b2.id])
     expect(sun.spotlight).toEqual({ organiserId: 'org-b', organiserName: 'Bp Organiser B', nights: 2 })
+  })
+})
+
+describe('the slots speak the guide categories (law 13: the new system supersedes the old)', () => {
+  it('every category a slot names is one of the 15 guide categories, and Saturday holds markets', () => {
+    for (const r of RHYTHM) {
+      for (const c of r.categories ?? []) expect(GUIDE_CATEGORIES as readonly string[]).toContain(c)
+    }
+    const market = ev({ startsAt: at(7, '09:00'), category: 'markets' })
+    const sat = draftWeek({ city: 'geelong', cityName: 'Geelong', zone: ZONE, weekStart: '2026-11-02', events: [market], now: NOW })[5]
+    expect(sat.picks.map((p) => p.id)).toEqual([market.id])
   })
 })
 
