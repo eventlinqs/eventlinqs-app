@@ -1,7 +1,7 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { loadHomeUpcoming } from '@/lib/events/home-queries'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
-import { featuredThisWeek, WEEK_MS, type LedgerRow } from '@/lib/events/ledger-data'
+import { featuredThisWeek, weekEndMs, type LedgerRow } from '@/lib/events/ledger-data'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { featuredWithRecordedRights, readCoverRights } from '@/lib/events/featured-with-recorded-rights'
 import type { EventCardData } from './event-card'
@@ -21,7 +21,7 @@ export async function FeaturedThisWeekLoader({ city, link }: { city?: string; li
 
 /** The same rule over cards a page already holds (a city page): this week's nights, one per series. */
 export async function FeaturedFromCards({ events }: { events: readonly EventCardData[] }) {
-  const end = Date.now() + WEEK_MS
+  const end = weekEndMs()
   const seen = new Set<string>()
   const week = events.filter((e) => {
     if (!e.cover_image_url || Date.parse(e.start_date) > end) return false

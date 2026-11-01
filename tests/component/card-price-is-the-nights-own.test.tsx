@@ -41,7 +41,7 @@ const tier = (id: string, price: number) => ({ id, price, currency: 'AUD', sold_
  * ('GeelongFree'), where a word-boundary match on the whole card misses 'Free': the first version of this test passed
  * on the old card for that reason, and was caught by running it there.
  */
-const priceOf = (c: HTMLElement) => c.querySelector('.event-card-price')?.textContent?.trim() ?? ''
+const priceOf = (c: HTMLElement) => c.querySelector('.ledger-price')?.textContent?.trim() ?? ''
 
 describe('the card price line is the night\'s own call to action', () => {
   it('a paid night sold on another site names that site, never "Free" (Kate Ceberano at Costa Hall)', () => {

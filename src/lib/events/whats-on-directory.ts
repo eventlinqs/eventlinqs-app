@@ -55,7 +55,7 @@ export type DirectoryDay = {
   readonly rows: readonly DirectoryRow[]
 }
 
-/** Plan v4: one weekend market, an hour apart, first in every list it orders. */
+/** Plan v4's focus market: Geelong and Melbourne, an hour apart, first in every list it orders. */
 const FOCUS_CITIES = new Set(['geelong', 'melbourne'])
 
 export function dayKey(at: Date, zone: string): string {

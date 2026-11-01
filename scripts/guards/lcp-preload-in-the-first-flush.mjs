@@ -92,8 +92,11 @@ const ROOT = process.cwd()
 export const LCP_FIRST_FLUSH_ROUTES = [
   {
     file: 'src/app/page.tsx',
-    hero: 'FeaturedHero',
-    heroFile: 'src/components/features/home/FeaturedHero.tsx',
+    // The discovery design (Lawal's orders of 1 November 2026, 11:01 and 11:14): the homepage opens on the city
+    // heading and Featured this week, whose first Ledger card is the image LCP; Discovery is rendered directly by the
+    // page and never behind a boundary, for the reason measured below.
+    hero: 'Discovery',
+    heroFile: 'src/components/features/discovery/discovery.tsx',
     why: 'the homepage: putting this hero behind a streaming boundary moved its discovery from 20 ms to 527 ms and cost 597 ms of LCP and six points of performance score, measured median of 5 at matched machine speed (close-out C8B.3, 18 September 2026)',
   },
 ]

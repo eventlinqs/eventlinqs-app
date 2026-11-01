@@ -67,7 +67,7 @@ export function WhatsOnDirectory({
                 <li key={r.id} className="border-t border-[var(--color-ink-100)]">
                   <Link
                     href={r.href}
-                    className="group grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:grid-cols-[150px_minmax(0,1fr)_150px_130px_18px] md:gap-[18px] md:px-5 md:py-3.5"
+                    className="group grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:grid-cols-[150px_minmax(0,1fr)_150px_130px_18px] md:gap-5 md:px-5 md:py-3.5"
                   >
                     <span className="hidden font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] md:block">
                       {r.category ?? ''}

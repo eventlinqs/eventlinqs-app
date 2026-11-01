@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
@@ -89,7 +90,7 @@ export function Discovery({
     (w === 'week' && days.weekKeys.includes(r.dayKey)) ||
     (w === 'date' && r.dayKey === date)
 
-  const shown = useMemo(() => rows.filter((r) => passesFilters(r) && passesWhen(r)), [rows, city, category, price, format, when, date]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = rows.filter((r) => passesFilters(r) && passesWhen(r))
   const cityFeatured = featured.filter((e) => inCity((e.venue_city ?? '').trim().toLowerCase(), city))
   const featuredShown = cityFeatured.length >= 2 ? cityFeatured : []
 
@@ -126,7 +127,7 @@ export function Discovery({
                   setDate(e.target.value)
                   setWhen(e.target.value ? 'date' : 'all')
                 }}
-                className="w-[8.5rem] bg-transparent text-base"
+                className="w-36 bg-transparent text-base"
                 aria-label="Pick a date"
               />
             </label>
@@ -145,53 +146,47 @@ export function Discovery({
           What&rsquo;s on in {cityLabel}
         </h1>
 
-        {variant === 'a' ? (
+        {variant === 'a' || variant === 'b' ? (
           <>
             {featuredShown.length > 0 ? (
               <section aria-label="Featured this week" className="mt-6">
                 <FeaturedHeading />
-                <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 xl:grid-cols-4">
-                  {featuredShown.slice(0, 4).map((e, i) => (
-                    <li key={e.id} className={!allFeatured && i >= 2 ? 'hidden md:block' : undefined}>
+                {/* A stacks two on a phone (four across from xl); B is one rail, the next card peeking (no static
+                    scroll snap: the Hero and LCP law). The first card is the page's LCP candidate in both. */}
+                <ul
+                  className={
+                    variant === 'a'
+                      ? 'grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 xl:grid-cols-4'
+                      : '-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-4 xl:gap-5 xl:overflow-visible'
+                  }
+                >
+                  {(variant === 'a' && !allFeatured ? featuredShown.slice(0, 4) : featuredShown).map((e, i) => (
+                    <li
+                      key={e.id}
+                      className={
+                        variant === 'b'
+                          ? 'w-5/6 shrink-0 sm:w-5/12 xl:w-auto'
+                          : !allFeatured && i >= 2
+                            ? 'hidden md:block'
+                            : undefined
+                      }
+                    >
                       <EventCard event={e} variant="grid-one-two-four" priority={i === 0} />
                     </li>
                   ))}
-                  {allFeatured
-                    ? featuredShown.slice(4).map((e) => (
-                        <li key={e.id}>
-                          <EventCard event={e} variant="grid-one-two-four" />
-                        </li>
-                      ))
-                    : null}
                 </ul>
-                {featuredShown.length > 2 && !allFeatured ? (
-                  <button type="button" onClick={() => setAllFeatured(true)} className="mt-3 inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-[6px]">
+                {variant === 'a' && featuredShown.length > 2 && !allFeatured ? (
+                  <button type="button" onClick={() => setAllFeatured(true)} className="mt-3 inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4">
                     See all featured ({featuredShown.length})
                   </button>
                 ) : null}
               </section>
             ) : null}
-            <List id="discovery-list" rows={shown} style="guide" />
-          </>
-        ) : variant === 'b' ? (
-          <>
-            {featuredShown.length > 0 ? (
-              <section aria-label="Featured this week" className="mt-5">
-                <FeaturedHeading />
-                <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-4 xl:gap-5 xl:overflow-visible">
-                  {featuredShown.map((e, i) => (
-                    <li key={e.id} className="w-[84%] shrink-0 snap-start sm:w-[46%] xl:w-auto">
-                      <EventCard event={e} variant="grid-one-two-four" priority={i === 0} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-            <List id="discovery-list" rows={shown} style="swipe" />
+            <List id="discovery-list" rows={shown} style={variant === 'a' ? 'guide' : 'swipe'} />
           </>
         ) : (
           <>
-            <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
               <div className="min-w-0 space-y-6">
                 {(
                   [
@@ -208,7 +203,7 @@ export function Discovery({
                         <h2 className="font-headline text-xl font-extrabold text-[var(--text-primary)]">
                           {title} <span className="font-display text-sm font-bold text-[var(--text-muted)]">{list.length}</span>
                         </h2>
-                        <button type="button" onClick={() => pickWhen(w)} className="inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-[6px]">
+                        <button type="button" onClick={() => pickWhen(w)} className="inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4">
                           See all
                         </button>
                       </div>
@@ -335,13 +330,12 @@ function Row({ r, style, withDay = false }: { r: DirectoryRow; style: RowStyle; 
       >
         {style === 'swipe' ? (
           <span className="self-start pt-0.5 font-display text-sm font-extrabold text-[var(--text-primary)]">
-            {r.time ?? <span className="font-semibold text-[var(--text-muted)]">Any time</span>}
+            {r.time ?? ''}
           </span>
         ) : null}
         <span className="min-w-0">
           <span className="mb-1 block truncate font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-            {withDay ? `${r.dayLabel} \u00b7 ` : ''}
-            {place}
+            {[withDay ? r.dayLabel : null, style === 'guide' ? r.time : null, place].filter(Boolean).join(' \u00b7 ')}
           </span>
           <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline">
             {r.title}
@@ -352,9 +346,6 @@ function Row({ r, style, withDay = false }: { r: DirectoryRow; style: RowStyle; 
         <span className="flex items-center gap-3">
           <span className="text-right">
             <span className="block whitespace-nowrap font-display text-sm font-extrabold text-[var(--text-primary)]">{r.price}</span>
-            {style === 'guide' && r.time ? (
-              <span className="mt-0.5 block whitespace-nowrap font-display text-xs font-semibold text-[var(--text-muted)]">{r.time}</span>
-            ) : null}
           </span>
           {style === 'swipe' && r.thumb ? (
             // A small square only where an authorised image exists, through the shared media component's list-thumb.
@@ -391,7 +382,7 @@ function FilterSheet({
   onClose: () => void
   count: number
 }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[var(--color-ink-900)]/40 md:items-center" onClick={onClose}>
       <div
         role="dialog"
@@ -443,7 +434,8 @@ function FilterSheet({
           Show {count} {count === 1 ? 'event' : 'events'}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

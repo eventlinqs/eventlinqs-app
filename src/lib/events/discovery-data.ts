@@ -10,7 +10,7 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { RECORDED, readCoverRights } from '@/lib/events/featured-with-recorded-rights'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { thisWeek, toEventCardData, type LedgerRow } from '@/lib/events/ledger-data'
-import { isStillListed } from '@/lib/events/listing-window'
+import { isStillListed, weekendWindowUtc } from '@/lib/events/listing-window'
 import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -18,8 +18,11 @@ export type DiscoveryDays = { todayKey: string; tomorrowKey: string; weekendKeys
 
 export function discoveryDays(now: Date): DiscoveryDays {
   const todayKey = dayKey(now, PLATFORM_TIME_ZONE)
-  const dow = new Date(`${todayKey}T12:00:00Z`).getUTCDay() // 0 Sunday .. 6 Saturday, of the platform's today
-  const weekendKeys = dow === 0 ? [todayKey] : dow === 6 ? [todayKey, addDays(todayKey, 1)] : [addDays(todayKey, 6 - dow), addDays(todayKey, 7 - dow)]
+  // The platform's ONE weekend (src/lib/events/listing-window.ts), its days from today on.
+  const weekend = weekendWindowUtc(now, PLATFORM_TIME_ZONE)
+  const weekendKeys = [dayKey(weekend.from, PLATFORM_TIME_ZONE), dayKey(weekend.to, PLATFORM_TIME_ZONE)]
+    .filter((k, i, all) => all.indexOf(k) === i)
+    .filter((k) => k >= todayKey)
   return {
     todayKey,
     tomorrowKey: addDays(todayKey, 1),

@@ -60,9 +60,9 @@ export function FeaturedThisWeek({ events, link }: { events: readonly EventCardD
   return (
     <LedgerSection eyebrow="Featured this week" title="Worth leaving the house for" ariaLabel="Featured this week" link={link}>
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 xl:grid-cols-4">
-        {events.map((e, i) => (
+        {events.map((e) => (
           <li key={e.id}>
-            <EventCard event={e} variant="grid-one-two-four" priority={i === 0} />
+            <EventCard event={e} variant="grid-one-two-four" />
           </li>
         ))}
       </ul>

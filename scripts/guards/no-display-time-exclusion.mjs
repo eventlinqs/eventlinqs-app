@@ -84,6 +84,18 @@ const ALLOWANCES = [
     reason:
       "Exclusion audit item 12. The home hero is a showcase of at most five slides, never a listing: it always sliced the catalogue to five. Only a night's own photograph may carry its name there (the project manager's 18:38 of 29 October 2026, under Lawal's 19:52 directive), so a night on a library photograph, a typographic cover or none is not a slide; it stays on every rail, every listing, search and its own page, so published still means visible. Ruled (a) by the project manager at 21:01 on 29 October 2026, for the hero only, by file.",
   },
+  {
+    file: 'src/lib/events/featured-with-recorded-rights.ts',
+    rule: 3,
+    reason:
+      "Lawal's order of 1 November 2026, 11:01, restated by the discovery brief of 11:14 (C:/dev/DESIGN/DISCOVERY-DESIGN-BRIEF-1NOV.md, points 1, 3 and 4): Featured this week is a showcase of real photographs whose rights are on record, never a listing; a night without one stays in What's on, the full directory beside it, in search and on its own page, so published still means visible. The same shape as the hero's allowance, by file.",
+  },
+  {
+    file: 'src/components/features/events/featured-this-week-loader.tsx',
+    rule: 3,
+    reason:
+      "Lawal's order of 1 November 2026, 11:01, restated by the discovery brief of 11:14 (C:/dev/DESIGN/DISCOVERY-DESIGN-BRIEF-1NOV.md, points 1, 3 and 4): Featured this week is a showcase of real photographs whose rights are on record, never a listing; a night without one stays in What's on, the full directory beside it, in search and on its own page, so published still means visible. The same shape as the hero's allowance, by file.",
+  },
 ]
 
 const files = []

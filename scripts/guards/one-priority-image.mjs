@@ -46,6 +46,7 @@ const EXCLUDED_PREFIXES = ['src/lib/broadcast/', 'src/app/dev/', 'src/app/design
  * per LCP candidate per document; the reason says which document and why.
  */
 export const ALLOWED_GRANTS = [
+  { file: 'src/components/features/discovery/discovery.tsx', match: 'priority={i === 0}', why: 'homepage discovery (1 November 2026): the first Featured card is the image LCP under the city heading, in variants A and B' },
   { file: 'src/components/features/home/FeaturedHeroClient.tsx', match: 'priority={idx === 0}', why: 'homepage: slide 0 of the hero is the LCP; later slides never preload' },
   { file: 'src/components/features/home/FeaturedHero.tsx', match: 'alt={curated.alt} priority />', why: 'homepage with no featured event (close-out C17): the curated hero raster is the LCP' },
   { file: 'src/components/features/events/m5-recommended-rail.tsx', match: 'priority={firstCardEager && i === 0}', why: '/events only, where the hero strip is text-only: the first rail card is the LCP. The grant was an unconditional priority={i === 0} until close-out C8B.5 (15 September 2026), and /events/browse/[city] paints a PhotographicCityHero above this rail, so every city page shipped TWO image preloads. This guard passed the whole time and could not have done otherwise: the grant is one line in one file and the truth is per ROUTE. The caller now decides; scripts/verify/scope-10-3-audit.mjs counts the eager images per served page, which is the reading this static one cannot reach.' },

@@ -78,6 +78,7 @@ export function CityLandingPage({
   city,
   heroImage,
   caption,
+  thisWeekendEvents: thisWeekendCandidates,
   allEvents,
   eventTypeImages,
   relatedCityImages,

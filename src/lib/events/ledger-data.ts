@@ -12,6 +12,11 @@ export type LedgerRow = RawRow & { readonly image_credit?: string | null; readon
 
 export const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
+/** The end of the next seven days, read once per render by the caller. */
+export function weekEndMs(now: Date = new Date()): number {
+  return now.getTime() + WEEK_MS
+}
+
 export function toEventCardData(r: LedgerRow): EventCardData {
   return {
     id: r.id,
