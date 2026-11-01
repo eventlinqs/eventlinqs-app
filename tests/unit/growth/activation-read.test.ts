@@ -44,7 +44,18 @@ function fakeClient(tables: Record<string, Row[]>) {
   return { client: { from } as unknown as SupabaseClient, from }
 }
 
-const ORG = { id: 'org-1', owner_id: 'user-1', created_at: '2026-10-01T00:00:00Z', stripe_status_verified_at: null }
+/* Every field the sale gate reads is present, as the reader selects them: absent is not false. */
+const ORG = {
+  id: 'org-1',
+  owner_id: 'user-1',
+  created_at: '2026-10-01T00:00:00Z',
+  stripe_status_verified_at: null,
+  stripe_account_id: null,
+  stripe_charges_enabled: false,
+  stripe_payouts_enabled: false,
+  stripe_account_country: null,
+  payout_status: null,
+}
 const night = (i: number, extra: Partial<Row> = {}) => ({
   id: `night-${String(i).padStart(5, '0')}`,
   status: 'draft',
