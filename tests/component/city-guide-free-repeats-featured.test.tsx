@@ -68,6 +68,19 @@ describe('what we take from the leaders', () => {
     expect(screen.getByText('Featured night 2')).toBeInTheDocument()
   })
 
+  it('a night sold elsewhere names its site once, in the price position, never again under the title', () => {
+    const sold = row({ id: 'r9', href: '/events/r9', title: 'Macbeth', price: 'Tickets on geelongartscentre.org.au', source: 'Tickets on geelongartscentre.org.au', free: false })
+    const { container } = render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
+        rows={[sold]} days={days}
+      />,
+    )
+    const link = container.querySelector('a[href="/events/r9"]')
+    expect((link?.textContent ?? '').split('Tickets on geelongartscentre.org.au').length - 1).toBe(1)
+  })
+
   it('one rights photographed night draws no Featured row', () => {
     guide([card(1)])
     expect(screen.queryByRole('region', { name: 'Featured in Geelong' })).toBeNull()

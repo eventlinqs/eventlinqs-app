@@ -417,7 +417,11 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
           {[r.venue, elsewhere].filter(Boolean).join(', ')}
         </span>
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]">
-          {[r.category, r.source, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' \u00b7 ')}
+          {/* The source only where it adds to the price: a night sold elsewhere already says 'Tickets on <site>' in
+              the price position, so the line under the title never repeats it (seen on the preview, 22:40). */}
+          {[r.category, r.source !== r.price ? r.source : null, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null]
+            .filter(Boolean)
+            .join(' \u00b7 ')}
         </span>
       </span>
       <span className="flex items-center gap-1 pt-0.5">
