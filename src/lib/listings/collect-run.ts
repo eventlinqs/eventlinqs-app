@@ -13,7 +13,7 @@ import {
 } from './collect'
 import { sameVenue } from '@/lib/events/booking-links'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
-import { eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
+import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -233,9 +233,13 @@ export async function runCollection(
             /* A site that answers 403 or 429 is asking us to stop: no further page of it is asked this run, and the run
                says so (WINDOW 5's finding of 16:05, 1 November 2026: a city calendar began refusing after 21 pages). */
             let stoppedBy: string | null = null
-            if (rule && isSitemap(res.body)) {
+            /* A rule's source is its sitemap, or its own list page where the sitemap does not carry the current program
+               (WINDOW 2's Forum finding, 1 November 2026); a page the rule itself reads is read below as any page is. */
+            const listPage = rule !== null && !isSitemap(res.body) && !rule.eventPath.test(new URL(source.pageUrl).pathname)
+            if (rule && (isSitemap(res.body) || listPage)) {
               raw = []
-              for (const url of eventPagesFromSitemap(res.body, rule).slice(0, PAGE_READ_CAP)) {
+              const pages = listPage ? eventPagesFromListPage(res.body, source.pageUrl, rule) : eventPagesFromSitemap(res.body, rule)
+              for (const url of pages.slice(0, PAGE_READ_CAP)) {
                 if (Date.now() >= deadline) break
                 const at = new URL(url)
                 let siteRobots = robotsByOrigin.get(at.origin)

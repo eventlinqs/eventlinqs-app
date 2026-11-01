@@ -147,7 +147,6 @@ export function pageRuleFor(url: string): PageRule | null {
   return host ? PAGE_RULES.find((r) => r.host === host) ?? null : null
 }
 
-/** The event pages a sitemap lists for a rule: same host, a path the rule reads, each once, in the sitemap's order. */
 /**
  * A rule's event pages from a sitemap, NEWEST FIRST, so a read capped at PAGE_READ_CAP reaches the current program:
  * hermaj.com lists its 145 event pages oldest first and eurekacentreballarat.com.au its 237 (WINDOW 2, 1 November
@@ -177,6 +176,27 @@ export function eventPagesFromSitemap(xml: string, rule: PageRule): string[] {
     return newestLast.sort((a, b) => (b.at as number) - (a.at as number)).map((f) => f.loc)
   }
   return newestLast.map((f) => f.loc)
+}
+
+/**
+ * A rule's event pages linked from the site's own list page, for a site whose sitemap does not carry its current
+ * program (forummelbourne.com.au's lists 39 old shows and none current: WINDOW 2, 1 November 2026). Same host, a path
+ * the rule reads, each once, in the page's own order (a program page lists its soonest shows first).
+ */
+export function eventPagesFromListPage(html: string, pageUrl: string, rule: PageRule): string[] {
+  const out: string[] = []
+  for (const m of html.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
+    let u: URL
+    try {
+      u = new URL(decode(m[1]), pageUrl)
+    } catch {
+      continue
+    }
+    if (u.hostname.replace(/^www\./, '') !== rule.host || !rule.eventPath.test(u.pathname)) continue
+    const href = u.toString()
+    if (!out.includes(href)) out.push(href)
+  }
+  return out
 }
 
 /** Whether a body is a sitemap (a urlset), not a page. */
