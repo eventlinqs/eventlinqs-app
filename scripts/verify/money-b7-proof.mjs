@@ -249,13 +249,17 @@ try {
   /* ---- 4. THE HOME SCREEN, JUDGED AGAINST THE LEDGER ---- */
   const { data: ledger } = await db
     .from('organiser_balance_ledger')
-    .select('delta_cents, reason, event_id, reference_id, metadata')
+    .select('delta_cents, reason, reference_type, event_id, reference_id, metadata')
     .eq('organisation_id', fixture.org.id)
   const sum = (reasons) => (ledger ?? []).filter((r) => reasons.includes(r.reason)).reduce((s, r) => s + Number(r.delta_cents), 0)
   const expectSales = sum(['order_confirmed'])
   // Written as 0 - x so an empty sum is 0 and never -0, which Intl prints as -$0.00.
   const expectRefunds = 0 - sum(['refund_from_balance', 'refund_from_reserve', 'refund_from_gateway', 'refund_platform_float']) || 0
-  const expectPaid = 0 - sum(['payout']) || 0
+  // Paid out nets what undoes a claim (V3 item 8, 1 November 2026): a void of a failed claim (adjustment on a payout),
+  // a transfer pulled back for a refund, and adds a settlement paid outside. Written here independently of
+  // src/lib/payouts/paid-out.ts, so this proof is a second reading and not the module agreeing with itself.
+  const undoesPayout = (r) => r.reason === 'adjustment' && (r.reference_type === 'payout' || r.metadata?.reversal_of_transfer === true || r.metadata?.part === 'paid-outside-the-platform')
+  const expectPaid = 0 - sum(['payout']) - (ledger ?? []).filter(undoesPayout).reduce((s, r) => s + Number(r.delta_cents), 0) || 0
   const REFUND_REASONS = ['refund_from_balance', 'refund_from_reserve', 'refund_from_gateway', 'refund_platform_float']
   const orderCount = new Set((ledger ?? []).filter((r) => r.reason === 'order_confirmed').map((r) => r.reference_id)).size
   const refundIds = new Set((ledger ?? []).filter((r) => REFUND_REASONS.includes(r.reason)).map((r) => r.metadata?.refund_id))
