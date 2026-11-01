@@ -37,6 +37,11 @@ describe('text encoded twice is read as the source meant it', () => {
     expect(repairDoubleEncoded('Toddler time')).toBe('Toddler time')
     expect(repairDoubleEncoded('M\u0101ori and Pasifika night')).toBe('M\u0101ori and Pasifika night')
   })
+  it('a twice encoded no-break space at the end is repaired before the title is trimmed, leaving no stray letter', () => {
+    // The feed's own bytes, read again on 1 November: 'Cosy Knit & Crochet Circle' then C3 82 C2 A0.
+    const [e] = eventsFromIcs(ics('Cosy Knit & Crochet CircleÂ ', 'Belmont Library - Meeting Room'), FEED)
+    expect(e.title).toBe('Cosy Knit & Crochet Circle')
+  })
   it('the feed reader repairs the title and the venue it reads', () => {
     const [e] = eventsFromIcs(ics('LEGO\u00c2\u00ae club', 'Belmont Library - Meeting Room'), FEED)
     expect(e.title).toBe('LEGO\u00ae club')

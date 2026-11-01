@@ -117,4 +117,25 @@ describe('a changed fact on a night already listed', () => {
     const moved = found({ venueName: 'Costa Hall', venueAddress: '1 Gheringhap St, Geelong' })
     expect(factChange(moved, [k], 'geelong')).toEqual({ eventId: 'e-1', change: 'venue_changed' })
   })
+
+  /*
+   * TEST, 1 November 2026 (the Libraries feed drive, run-checks-5.log): three nights of the children's art club
+   * 'Artists Assemble!' at Newcomb Library, 4pm, waited as 'venue_changed' against 'Community Night for Artists &
+   * Creatives' at The House Geelong, 5pm. One shared word ('artists') of a two word title was read as the same event.
+   * A moved night is claimed only when the titles share two words, or a one word title whole.
+   */
+  it('one shared word of a two word title is not the same night moved', () => {
+    const house = listed({ title: 'Community Night for Artists & Creatives', venueName: 'The House Geelong', venueAddress: '20 James St, Geelong', startsAt: '2026-11-05T17:00:00+11:00', citySlug: 'geelong' })
+    const club = found({ title: 'Artists Assemble!', venueName: 'Newcomb Library', venueAddress: 'Bellarine Highway, Newcomb', startsAt: '2026-11-05T16:00:00+11:00', endsAt: null })
+    expect(factChange(club, [house], 'geelong')).toBeNull()
+    const sameVenueLater = found({ title: 'Artists Assemble!', venueName: 'The House Geelong', venueAddress: '20 James St, Geelong', startsAt: '2026-11-05T21:00:00+11:00', endsAt: null })
+    expect(factChange(sameVenueLater, [house], 'geelong')).toBeNull()
+  })
+
+  it('a two word title shared whole, and a one word title shared whole, are still the same night', () => {
+    const k = listed({ title: 'Toddler Time', venueName: 'Belmont Library', venueAddress: '163 High Street, Belmont', citySlug: 'geelong' })
+    expect(factChange(found({ title: 'Toddler time', venueName: 'Corio Library', venueAddress: 'Cox Road, Norlane' }), [k], 'geelong')).toEqual({ eventId: 'e-1', change: 'venue_changed' })
+    const one = listed({ title: 'Wicked', citySlug: 'geelong' })
+    expect(factChange(found({ title: 'WICKED', venueName: 'Costa Hall', venueAddress: '1 Gheringhap St, Geelong' }), [one], 'geelong')).toEqual({ eventId: 'e-1', change: 'venue_changed' })
+  })
 })
