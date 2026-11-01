@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-// @ts-expect-error a plain .mjs build script module, no declaration file
 import { SERVICE_KEY_NAMES, withholdServiceKeyOnReadOnlyPreview } from '../../../scripts/lib/preview-read-only-build.mjs'
 
 /*

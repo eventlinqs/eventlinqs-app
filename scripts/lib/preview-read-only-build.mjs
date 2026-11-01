@@ -18,7 +18,10 @@
  */
 export const SERVICE_KEY_NAMES = ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY_PREVIEW']
 
-/** @returns {string[]} the variable names withheld (empty when the switch is off or none was set) */
+/**
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {string[]} the variable names withheld (empty when the switch is off or none was set)
+ */
 export function withholdServiceKeyOnReadOnlyPreview(env = process.env) {
   if (env.PREVIEW_READ_ONLY !== '1') return []
   const withheld = SERVICE_KEY_NAMES.filter((n) => typeof env[n] === 'string' && env[n] !== '')
@@ -26,6 +29,10 @@ export function withholdServiceKeyOnReadOnlyPreview(env = process.env) {
   return withheld
 }
 
+/**
+ * @param {string} tag
+ * @param {string[]} withheld
+ */
 export function announceWithheld(tag, withheld) {
   if (withheld.length) {
     console.log(`[${tag}] PREVIEW_READ_ONLY=1: ${withheld.join(' and ')} withheld from this read-only preview build; reading as anon`)
