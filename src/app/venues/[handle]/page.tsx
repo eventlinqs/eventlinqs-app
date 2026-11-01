@@ -456,7 +456,7 @@ export default async function VenueProfilePage({ params }: Props) {
             surface="alt"
             width="wide"
             topBorder
-            intrinsicSize={eventGridIntrinsicSize(pastShown.length)}
+            intrinsicSize={eventGridIntrinsicSize(pastCards.length)}
           >
             <div className="mb-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
