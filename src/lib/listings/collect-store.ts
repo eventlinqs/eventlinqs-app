@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { COLLECT_AHEAD_DAYS, type KnownEvent, type RegisteredSource } from './collect'
+import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSource } from './collect'
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
@@ -178,6 +178,21 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
       const { error: perr } = await db.rpc('listing_publish_partner_night', { p_candidate: c.id })
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
+    },
+
+    async thisWeekSources(now: Date): Promise<Set<string>> {
+      /* The sources whose own found nights start in the next seven days (any candidate it has found and not refused). */
+      const rows = await readEveryRow<{ source_id: string }>('the sources with nights this week', (from, to) =>
+        db
+          .from('listing_candidates')
+          .select('source_id')
+          .neq('status', 'refused')
+          .gte('starts_at', now.toISOString())
+          .lte('starts_at', new Date(now.getTime() + THIS_WEEK_DAYS * DAY_MS).toISOString())
+          .order('id')
+          .range(from, to),
+      )
+      return new Set(rows.map((r) => r.source_id))
     },
 
     async expirePassed(now: Date, onlySources?: readonly string[]): Promise<number> {

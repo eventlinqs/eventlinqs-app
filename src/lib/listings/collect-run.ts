@@ -99,6 +99,8 @@ export type CollectionStore = {
    * terms allow it, so its basis is 'licensed_source'.
    */
   confirmSeries?(rows: SeriesConfirmationRow[]): Promise<void>
+  /** The ids of the sources whose found nights start in the next seven days: each is read every hour. */
+  thisWeekSources?(now: Date): Promise<ReadonlySet<string>>
 }
 
 export type SeriesConfirmationRow = {
@@ -180,7 +182,17 @@ export function acceptedByRule(source: Pick<RegisteredSource, 'partner' | 'verif
 
 /** deadline: no source is started after it; one not reached stays due and the next run reads it first. */
 export async function runCollection(store: CollectionStore, fetcher: Fetcher, now: Date, deadline = Infinity): Promise<CollectionResult> {
-  const due = dueSources(await store.sources(), now)
+  /* This week first: a source holding nights in the next seven days is due every hour. A failed read of that set never
+     stops the run; every source then keeps its own pace. */
+  let thisWeek: ReadonlySet<string> = new Set()
+  if (store.thisWeekSources) {
+    try {
+      thisWeek = await store.thisWeekSources(now)
+    } catch (err) {
+      console.error('[collection] the sources with nights this week could not be read:', err instanceof Error ? err.message : err)
+    }
+  }
+  const due = dueSources(await store.sources(), now, thisWeek)
   const known = due.length > 0 ? await store.known(now) : []
   const robotsByOrigin = new Map<string, { status: number | null; body: string }>()
   const result: CollectionResult = { read: 0, skipped: 0, landed: 0, queued: 0, acceptedByRule: 0, notReached: 0, expired: 0, sources: [] }

@@ -48,8 +48,9 @@ C. Candidates as draft events. Loses on 5 and on the lifecycle: drafts are the o
   (WI3's `sameEvent`: a second source adds a link).
 - `src/lib/listings/collect-run.ts` and `collect-store.ts`: one run, robots.txt before the page, one page per source,
   each outcome on the source's row, a budget inside Vercel's 300 seconds.
-- `src/app/api/cron/collection-run`: daily from the engine plan of 28 October 2026, 19:00 UTC (6 am in Melbourne in
-  daylight time); each source is still read only on its own pace (daily, weekly, monthly or rarely).
+- `src/app/api/cron/collection-run`: every hour at 25 past (Lawal, 1 November 2026, 16:13: this week first); a source
+  holding nights in the next seven days is read each hour, every other source only on its own pace (daily, weekly,
+  monthly or rarely). It was daily at 19:00 UTC from the engine plan of 28 October 2026.
 - `/admin/collected`: what waits, each Accept or Refuse with a reason, and the register with each source's last
   outcome. Accepting an `adds_links` find writes its links to the event as curated links (WI3); accepting a new
   listing marks it for the import, which publishes every listing.
