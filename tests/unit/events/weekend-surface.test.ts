@@ -130,18 +130,18 @@ describe('a date preset narrows the listing window, it does not replace it', () 
 describe('the weekend is described from the window, not from the events', () => {
   test('a_weekend_inside_one_month_names_the_month_once', () => {
     const { from, to } = weekendWindowUtc(new Date('2026-09-19T05:56:00.000Z'), PLATFORM_TIME_ZONE)
-    expect(describeWeekend(from, to)).toBe('Saturday 19 and Sunday 20 September')
+    expect(describeWeekend(from, to)).toBe('Friday 18 to Sunday 20 September')
   })
 
   test('a_weekend_that_straddles_a_month_names_both', () => {
-    // 31 October 2026 is a Saturday, so this weekend runs into November.
+    // 30 October 2026 is a Friday, so this weekend runs into November.
     const { from, to } = weekendWindowUtc(new Date('2026-10-29T03:00:00.000Z'), PLATFORM_TIME_ZONE)
-    expect(describeWeekend(from, to)).toBe('Saturday 31 October and Sunday 1 November')
+    expect(describeWeekend(from, to)).toBe('Friday 30 October to Sunday 1 November')
   })
 
   test('it_says_which_weekend_even_when_nothing_is_on', () => {
     const { from, to } = weekendWindowUtc(new Date('2026-09-19T05:56:00.000Z'), PLATFORM_TIME_ZONE)
-    expect(describeWeekend(from, to)).toContain('Saturday')
+    expect(describeWeekend(from, to)).toContain('Friday')
     expect(groupWeekendByDay([])).toEqual([])
   })
 })
@@ -181,19 +181,19 @@ describe('an event is filed under the day it happens in its own zone', () => {
     expect(sydney).toBe('2026-09-20')
   })
 
-  test('a_late_friday_in_perth_is_inside_the_window_and_says_friday', () => {
+  test('a_late_thursday_in_perth_is_inside_the_window_and_says_thursday', () => {
     /*
-     * The window opens at Saturday 00:00 AEST, which is Friday 22:00 AWST. A
+     * The window opens at Friday 00:00 AEST, which is Thursday 22:00 AWST. A
      * Perth event at that instant is genuinely inside the national weekend and
-     * genuinely happens on a Friday, and the page says so rather than relabelling
+     * genuinely happens on a Thursday, and the page says so rather than relabelling
      * it. Stated in the module header as a consequence; pinned here so it cannot
      * be "fixed" into a contradiction with the card.
      */
     const { from } = weekendWindowUtc(new Date('2026-09-19T05:56:00.000Z'), PLATFORM_TIME_ZONE)
     const [day] = groupWeekendByDay([
-      row({ id: 'perth-fri', start_date: from.toISOString(), timezone: 'Australia/Perth' }),
+      row({ id: 'perth-thu', start_date: from.toISOString(), timezone: 'Australia/Perth' }),
     ])
-    expect(day.heading).toBe('Friday 18 September')
+    expect(day.heading).toBe('Thursday 17 September')
   })
 
   test('a_null_zone_falls_back_to_the_platform_zone_and_is_never_dropped', () => {

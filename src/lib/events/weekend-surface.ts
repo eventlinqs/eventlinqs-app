@@ -64,7 +64,7 @@ import type { PublicEventRow } from './types'
 export * from './weekend-days'
 
 export interface WeekendSurface {
-  /** Saturday 00:00 in the platform zone. */
+  /** Friday 00:00 in the platform zone. */
   from: Date
   /** The last instant of Sunday in the platform zone. Inclusive. */
   to: Date
