@@ -41,6 +41,13 @@ export const BOOKING_PROVIDERS = [
 ] as const
 export type BookingProvider = (typeof BOOKING_PROVIDERS)[number]
 
+/**
+ * The major ticketing sellers, as provider ids. The growth priority math (src/lib/growth/priority-math.ts) weighs an
+ * organiser tied to these differently from one on an independent seller; it reads this set rather than naming them, so
+ * this file stays the one table of platform names (copy-tell-gate's allowlist).
+ */
+export const MAJOR_SELLERS: ReadonlySet<BookingProvider> = new Set<BookingProvider>(['ticketek', 'ticketmaster', 'moshtix', 'oztix'])
+
 /** Bandsintown's own set: "Tickets, Presale, VIP, Free and Sold Out" (Free read as free with registration). */
 export const BOOKING_KINDS = ['tickets', 'presale', 'vip', 'free_register', 'sold_out'] as const
 export type BookingKind = (typeof BOOKING_KINDS)[number]
