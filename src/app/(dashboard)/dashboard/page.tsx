@@ -297,7 +297,7 @@ export default async function DashboardPage({
   // scope above verified the caller may see this organisation; an organiser with none yet starts at 'organisation'.
   const activation = activationOf(
     org
-      ? await readActivationFacts(createAdminClient(), org.id, renderedAt)
+      ? await readActivationFacts(createAdminClient(), org.id, user.id, renderedAt)
       : { cameByClaim: false, claimVerifiedAt: null, organisationAt: null, payoutsAt: null, ticketsAt: null, publishedAt: null, checkoutAt: null, firstSaleAt: null },
   )
   const checklistStatus: ChecklistStatus = {

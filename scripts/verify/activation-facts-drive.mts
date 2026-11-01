@@ -9,6 +9,8 @@
  *   node --conditions=react-server --env-file=<a TEST .env.local> --import tsx scripts/verify/activation-facts-drive.mts
  */
 import { writeFileSync, mkdirSync } from 'node:fs'
+import Module from 'node:module'
+import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import type * as ReadModule from '@/lib/growth/activation-read'
 import type * as ActivationModule from '@/lib/growth/activation'
@@ -20,17 +22,25 @@ if (!url.includes(TEST_REF) || process.env.VERCEL_ENV === 'production') {
   console.error('activation-facts-drive runs on TEST only')
   process.exit(2)
 }
+/* 'server-only' is a Next build marker with no package outside Next; outside it, it resolves to the empty stub, as in
+   campaign-slides-render.mts. */
+const EMPTY = fileURLToPath(new URL('../../tests/stubs/empty.ts', import.meta.url))
+const cjs = Module as unknown as { _resolveFilename: (request: string, ...rest: unknown[]) => string }
+const resolveFilename = cjs._resolveFilename
+cjs._resolveFilename = (request: string, ...rest: unknown[]) =>
+  request === 'server-only' || request === 'client-only' ? EMPTY : resolveFilename(request, ...rest)
+
 /* src is CommonJS to tsx; read each module's exports whichever way the loader hands them over. */
 const readMod = (await import('@/lib/growth/activation-read')) as typeof ReadModule & { default?: typeof ReadModule }
 const actMod = (await import('@/lib/growth/activation')) as typeof ActivationModule & { default?: typeof ActivationModule }
-const { readActivationFacts } = readMod.readActivationFacts ? readMod : readMod.default!
-const { activationOf, ACTIVATION_STEPS } = actMod.activationOf ? actMod : actMod.default!
+const { readActivationFacts } = (readMod.default ?? readMod) as typeof ReadModule
+const { activationOf, ACTIVATION_STEPS } = (actMod.default ?? actMod) as typeof ActivationModule
 
 const db = createClient(url, key, { auth: { persistSession: false } })
 const OUT = 'C:\\dev\\EVIDENCE\\ACTIVATION-1NOV'
 mkdirSync(OUT, { recursive: true })
 
-const { data: orgs, error } = await db.from('organisations').select('id, name').order('created_at', { ascending: true }).limit(200)
+const { data: orgs, error } = await db.from('organisations').select('id, name, owner_id').order('created_at', { ascending: true }).limit(200)
 if (error || !orgs) {
   console.error(`organisations could not be read: ${error?.message}`)
   process.exit(1)
@@ -41,7 +51,7 @@ const tally = new Map<string, number>()
 let failed = 0
 for (const org of orgs) {
   try {
-    const facts = await readActivationFacts(db, org.id)
+    const facts = await readActivationFacts(db, org.id, org.owner_id)
     const answer = activationOf(facts)
     const done = answer.steps.filter((s) => s.done).map((s) => s.step)
     // Ordered: no step done after one that is not.

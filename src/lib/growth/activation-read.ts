@@ -1,5 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertCallerMayActForOrganisation } from '@/lib/organisations/act-for'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { ORG_SALE_FIELDS_SELECT, ticketsOnSale, verifyOrgSaleFields } from '@/lib/payments/sale-status'
 import type { ActivationFacts } from './activation'
 
@@ -16,8 +18,20 @@ import type { ActivationFacts } from './activation'
  *   first_sale     the first confirmed order with a total above zero
  *
  * A read that fails throws: an organiser's checklist must never say "not done" because a socket dropped.
+ *
+ * The client is the service role (the sale fields are column locked), so the reader proves for itself that the viewer
+ * may act for the organisation before it reads a row, whatever its caller already checked. The lists are read whole
+ * (readEveryRow): an organiser with more than a thousand nights must not lose the one that decides a step.
  */
-export async function readActivationFacts(client: SupabaseClient, organisationId: string, now: Date = new Date()): Promise<ActivationFacts> {
+export async function readActivationFacts(
+  client: SupabaseClient,
+  organisationId: string,
+  viewerUserId: string,
+  now: Date = new Date(),
+): Promise<ActivationFacts> {
+  const authority = await assertCallerMayActForOrganisation(viewerUserId, organisationId, 'owner_or_manager')
+  if (!authority.ok) throw new Error(`activation: not your organisation ${organisationId}`)
+
   const must = <T>(label: string, r: { data: T; error: { message: string } | null }): T => {
     if (r.error) throw new Error(`activation: ${label}: ${r.error.message}`)
     return r.data
@@ -28,13 +42,32 @@ export async function readActivationFacts(client: SupabaseClient, organisationId
   ) as { id: string; owner_id: string; created_at: string; stripe_status_verified_at: string | null } | null
   if (!org) throw new Error(`activation: no organisation ${organisationId}`)
 
-  const [claims, nights, sale] = await Promise.all([
-    client.from('listing_claims').select('status, verified_at').eq('claimant_user_id', org.owner_id).order('created_at'),
-    client
-      .from('events')
-      .select('id, status, published_at, end_date, external_ticket_url, ticket_tiers(price, is_active, created_at)')
-      .eq('organisation_id', organisationId)
-      .gte('end_date', now.toISOString()),
+  const [claimRows, nightRows, sale] = await Promise.all([
+    readEveryRow<{ status: string; verified_at: string | null }>('activation: the claims', (from, to) =>
+      client
+        .from('listing_claims')
+        .select('status, verified_at')
+        .eq('claimant_user_id', org.owner_id)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    ),
+    readEveryRow<{
+      id: string
+      status: string
+      published_at: string | null
+      end_date: string
+      external_ticket_url: string | null
+      ticket_tiers: { price: number; is_active: boolean; created_at: string }[] | null
+    }>('activation: the upcoming nights', (from, to) =>
+      client
+        .from('events')
+        .select('id, status, published_at, end_date, external_ticket_url, ticket_tiers(price, is_active, created_at)')
+        .eq('organisation_id', organisationId)
+        .gte('end_date', now.toISOString())
+        .order('id')
+        .range(from, to),
+    ),
     client
       .from('orders')
       .select('confirmed_at')
@@ -44,15 +77,6 @@ export async function readActivationFacts(client: SupabaseClient, organisationId
       .order('confirmed_at')
       .limit(1),
   ])
-  const claimRows = must('the claims', claims) as { status: string; verified_at: string | null }[]
-  const nightRows = must('the upcoming nights', nights) as {
-    id: string
-    status: string
-    published_at: string | null
-    end_date: string
-    external_ticket_url: string | null
-    ticket_tiers: { price: number; is_active: boolean; created_at: string }[] | null
-  }[]
   const saleRows = must('the first sale', sale) as { confirmed_at: string }[]
 
   const verdict = verifyOrgSaleFields(org)
