@@ -66,7 +66,7 @@ describe('checkInserts finds both shapes of writer, and sees a missing basis', (
 })
 
 describe('a template literal inside the insert', () => {
-  it('does not end the insert early, so a reuse_basis after it is still seen', () => {
+  test('does not end the insert early, so a reuse_basis after it is still seen', () => {
     const planted =
       "await db.from('listing_checks').insert(rows.map((r) => ({ series_id: r.s, import_file: `collection run, source ${r.sourceId}`, reuse_basis: r.reuseBasis })))"
     const inserts = checkInserts(planted)

@@ -46,9 +46,12 @@ describe('every source at least daily, early morning; this week every 6 hours', 
     expect(ids(dueSources([source('ask', { collection: 'ask', lastCheckedAt: hoursAgo(30) })], NOW, new Set(['ask'])))).toEqual([])
   })
 
-  it('the collection run is scheduled every hour', () => {
+  // Every 6 hours, not hourly (Lawal's Vercel cost order, CONTROLLER 01:04 of 2 November 2026: '25 */6 * * *', 4 runs a
+  // day instead of 24). It still meets the ruled schedule: the 05:25 Sydney run is the first after the 04:00 morning
+  // boundary (the daily floor), and this week's sources fall due every 6 hours.
+  it('the collection run is scheduled every 6 hours', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as { crons: { path: string; schedule: string }[] }
     const run = vercel.crons.find((c) => c.path === '/api/cron/collection-run')
-    expect(run?.schedule).toMatch(/^\d{1,2} \* \* \* \*$/)
+    expect(run?.schedule).toBe('25 */6 * * *')
   })
 })
