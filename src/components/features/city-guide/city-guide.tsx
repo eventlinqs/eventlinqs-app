@@ -136,7 +136,7 @@ export function CityGuide({
     (when === 'week' && days.weekKeys.includes(r.dayKey)) ||
     (when === 'date' && r.dayKey === date)
   const shown = here.filter((r) => matchesQ(r) && matchesWhen(r) && (category === 'all' || r.categorySlug === category) && (!freeOnly || r.free))
-  // '+N more dates' (Eventbrite's '+N more', the CONTROLLER's walk of 17:38): a night whose title and venue come again
+  // More dates (seen on a leader's city page in the CONTROLLER's walk of 17:38, C:\dev\EVIDENCE\CITY-FIRST-1NOV\design\leaders-city-guide.md): a night whose title and venue come again
   // later in this city says how many more dates it has, so a weekly night reads as one thing, not a wall of repeats.
   const repeats = new Map<string, number>()
   for (const r of here) {

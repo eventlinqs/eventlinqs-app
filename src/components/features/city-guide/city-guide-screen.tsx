@@ -9,6 +9,7 @@ import { getAllCities, getCity } from '@/lib/cities/data'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { CityGuide } from './city-guide'
 import { CityHeroSlider, SLIDER_MINIMUM } from './city-hero-slider'
 
@@ -63,17 +64,20 @@ export async function CityGuideScreen({
           {heroImage ? <HeroMedia image={heroImage} alt={`${city.name}, ${city.state}`} objectPosition="50% 45%" /> : null}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/85 via-[var(--color-navy-950)]/45 to-transparent" aria-hidden="true" />
           <div className="relative mx-auto flex h-44 max-w-7xl flex-col justify-end px-4 pb-5 sm:px-6 md:h-64 md:pb-8 lg:px-8">
-            <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
-              <Link href="/cities" className="hover:underline">Australia</Link>
-              <span aria-hidden="true"> / </span>
-              {STATE_NAMES[city.state] ?? city.state}
-              <span aria-hidden="true"> / </span>
-              {city.name}
-            </p>
-            <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-              What&rsquo;s on in {city.name}
-            </h1>
-            <p className="mt-1.5 font-display text-sm text-white/85 sm:text-base">Choose a city. Discover everything happening there.</p>
+            {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph). */}
+            <HeroCaption>
+              <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
+                <Link href="/cities" className="hover:underline">Australia</Link>
+                <span aria-hidden="true"> / </span>
+                {STATE_NAMES[city.state] ?? city.state}
+                <span aria-hidden="true"> / </span>
+                {city.name}
+              </p>
+              <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                What&rsquo;s on in {city.name}
+              </h1>
+              <p className="mt-1.5 font-display text-sm text-white/85 sm:text-base">Choose a city. Discover everything happening there.</p>
+            </HeroCaption>
           </div>
         </section>
         {slides.length >= SLIDER_MINIMUM ? <CityHeroSlider events={slides} cityName={city.name} /> : null}
