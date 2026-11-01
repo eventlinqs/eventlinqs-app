@@ -136,7 +136,7 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
             ` Their ticket and the door scan already show the new seat.` +
             (result.moved.emailed
               ? ' They have been emailed about the change.'
-              : ' The email notification could not be sent - let them know directly.'),
+              : ' The email notification could not be sent; let them know directly.'),
         )
       }
     })
@@ -177,7 +177,7 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
             ` Their ticket and the door scan already show the seat.` +
             (result.moved.emailed
               ? ' They have been emailed their seat.'
-              : ' The email notification could not be sent - let them know directly.'),
+              : ' The email notification could not be sent; let them know directly.'),
         )
       }
     })

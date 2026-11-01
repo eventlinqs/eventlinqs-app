@@ -58,7 +58,7 @@ export default function ShellPreviewPage() {
       <PageHero
         eyebrow="PREVIEW"
         title="Page Hero Component"
-        subtitle="Every interior page starts with this dark hero band - consistent height, consistent type scale."
+        subtitle="Every interior page starts with this dark hero band: consistent height, consistent type scale."
       />
 
       {/* ── Block 2: Prose typography ─────────────────────────────────── */}
@@ -103,7 +103,7 @@ export default function ShellPreviewPage() {
           <ol>
             <li>Leader creates the squad and selects the number of tickets.</li>
             <li>An invite link is generated and shared with friends.</li>
-            <li>Each friend pays their own share - no awkward reimbursements.</li>
+            <li>Each friend pays their own share, no awkward reimbursements.</li>
             <li>All tickets are issued once the squad is complete.</li>
           </ol>
 
@@ -255,7 +255,7 @@ export default function ShellPreviewPage() {
 
       {/* ── Block 8: Dark surface ──────────────────────────────────────── */}
       <ContentSection surface="dark" aria-labelledby="block-8-heading">
-        <BlockLabel number={8} name="Dark Surface - Text + Buttons" />
+        <BlockLabel number={8} name="Dark Surface: Text + Buttons" />
 
         <div className="space-y-8 max-w-2xl">
           <div>
