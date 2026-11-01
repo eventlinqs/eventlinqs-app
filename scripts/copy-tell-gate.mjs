@@ -187,7 +187,9 @@ function visibleCopy(line) {
   const out = []
   // A `>` that closes an arrow (`=>`) or a pointer (`->`) is code, not a tag: `() => page(from, from + pageSize - 1) as
   // PromiseLike<...>` read as JSX text once (read-every-row.ts:105, 2 November 2026). JSX text holds no `=` or `;`.
-  for (const m of line.matchAll(/(?<![=-])>([^<>{}=;]*[A-Za-z]{3,}[^<>{}=;]*)</g)) out.push(m[1])
+  // And a comparison is code: a tag's '>' follows a name, a quote, a brace or a slash (never a space), and the '<' that
+  // ends JSX text starts a tag ('</' or a letter), never '< margin' (the engine train's gate, 2 November 06:38).
+  for (const m of line.matchAll(/(?<=[A-Za-z0-9"'}/])(?<![=-])>([^<>{}=;]*[A-Za-z]{3,}[^<>{}=;]*)<(?=[/A-Za-z])/g)) out.push(m[1])
   for (const m of line.matchAll(/aria-label=["']([^"']+)["']/g)) out.push(m[1])
   for (const m of line.matchAll(/\b(?:title|description|subtitle)\s*[:=]\s*["'`]([^"'`]+)["'`]/g)) out.push(m[1])
   return out

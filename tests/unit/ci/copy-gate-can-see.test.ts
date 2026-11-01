@@ -160,6 +160,30 @@ describe('the copy gate can see wrapped JSX copy', () => {
     expect(failed, `a block comment was treated as copy:\n${output}`).toBe(false)
   }, GATE_TIMEOUT_MS)
 
+  // The engine train's gate, 2 November 06:38: comparisons read as JSX text gave the spaced-hyphen rule two false hits
+  // ('sx > width - margin || sy < margin', 'reveal > now && a - b < c'). A tag's '>' never follows a space, and the
+  // '<' that closes JSX text starts a tag.
+  it('does NOT read comparison operators as JSX text', () => {
+    plant(
+      [
+        'export function scratch(sx: number, sy: number, width: number, height: number, margin: number) {',
+        '  if (sx < margin || sx > width - margin || sy < margin || sy > height - margin) return 1',
+        '  return 0',
+        '}',
+        '',
+      ].join('\n'),
+    )
+    const { failed, output } = runGate()
+    expect(failed, `a comparison was treated as copy:\n${output}`).toBe(false)
+  }, GATE_TIMEOUT_MS)
+
+  it('still catches a spaced hyphen in real JSX text', () => {
+    plant(['export function Scratch() {', '  return <p>One thing - then another</p>', '}', ''].join('\n'))
+    const { failed, output } = runGate()
+    expect(failed, 'a spaced hyphen in JSX text was missed').toBe(true)
+    expect(output).toMatch(/spaced-hyphen/)
+  }, GATE_TIMEOUT_MS)
+
   it('is clean again once the scratch file is gone', () => {
     plant(['export function Scratch() {', '  return <p>Fine copy here.</p>', '}', ''].join('\n'))
     rmSync(SCRATCH_DIR, { recursive: true, force: true })
