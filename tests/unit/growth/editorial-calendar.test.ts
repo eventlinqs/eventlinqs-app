@@ -108,9 +108,9 @@ describe('each slot by its rule', () => {
 
   it('Thursday is at most five, one of each kind first, earliest first', () => {
     const events = [
-      ev({ startsAt: at(6, '18:00'), category: 'music' }),
-      ev({ startsAt: at(6, '19:00'), category: 'music' }),
-      ev({ startsAt: at(6, '20:00'), category: 'music' }),
+      ev({ startsAt: at(7, '08:00'), category: 'music' }),
+      ev({ startsAt: at(7, '09:00'), category: 'music' }),
+      ev({ startsAt: at(7, '09:30'), category: 'music' }),
       ev({ startsAt: at(7, '10:00'), category: 'family' }),
       ev({ startsAt: at(7, '20:00'), category: 'comedy' }),
       ev({ startsAt: at(8, '09:00'), category: 'food-drink' }),
@@ -122,6 +122,16 @@ describe('each slot by its rule', () => {
     expect(new Set(thu.picks.map((p) => p.category)).size).toBe(5)
     expect(thu.total).toBe(8)
     expect(thu.picks[0].id).toBe(events[0].id)
+  })
+
+  it("'this weekend' is the platform's one weekend, Saturday and Sunday: a Friday night is in Friday's slot, never Thursday's five", () => {
+    const friday = ev({ startsAt: at(6, '20:00'), category: 'music' })
+    const saturday = ev({ startsAt: at(7, '20:00'), category: 'comedy' })
+    const week = draftWeek({ city: 'geelong', cityName: 'Geelong', zone: ZONE, weekStart: '2026-11-02', events: [friday, saturday], now: NOW })
+    expect(week[2].picks.map((p) => p.id)).toEqual([saturday.id])
+    expect(week[3].picks.map((p) => p.id)).toEqual([saturday.id])
+    expect([week[3].windowFrom, week[3].windowTo]).toEqual(['2026-11-07', '2026-11-08'])
+    expect(week[4].picks.map((p) => p.id)).toEqual([friday.id, saturday.id])
   })
 
   it('Saturday names coverage honestly: a night with authorised media can be covered, none is invented', () => {
