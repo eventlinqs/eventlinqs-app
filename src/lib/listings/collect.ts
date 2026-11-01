@@ -252,7 +252,9 @@ function unfold(ics: string): string[] {
 
 /** RFC 5545 3.3.11: ESCAPED-CHAR = ("\\" / "\;" / "\," / "\N" / "\n"). Text encoded twice is repaired as it is read. */
 function unescapeText(v: string): string {
-  return repairDoubleEncoded(v.replace(/\\([\\;,nN])/g, (_, c: string) => (c === 'n' || c === 'N' ? '\n' : c)).trim())
+  /* Repaired before the trim: a twice-encoded no-break space at the end would otherwise lose its second half to trim()
+     and leave its first character behind (Geelong Regional Libraries' feed, 1 November 2026). */
+  return repairDoubleEncoded(v.replace(/\\([\\;,nN])/g, (_, c: string) => (c === 'n' || c === 'N' ? '\n' : c))).trim()
 }
 
 /* Windows-1252's characters at 0x80 to 0x9F, by code point (https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1252.TXT),

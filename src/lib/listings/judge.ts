@@ -1,4 +1,4 @@
-import { SAME_START_WITHIN_MS, SAME_TITLE_SHARE, sameVenue, titleShare, type ListingKey } from '@/lib/events/booking-links'
+import { SAME_START_WITHIN_MS, SAME_TITLE_SHARE, sameVenue, titleShare, titleWords, type ListingKey } from '@/lib/events/booking-links'
 import { daysAhead, HORIZON_ZONE } from './horizon'
 import type { CandidatePlan, FoundEvent, KnownEvent } from './collect'
 
@@ -56,6 +56,20 @@ function sameDay(a: string, b: string): boolean {
 }
 
 /**
+ * A moved night is a strong claim, so its titles share at least two words, or a one-word title whole. titleShare alone
+ * divides by the shorter title, and on 1 November 2026 the two-word 'Artists Assemble!' (a children's art club at
+ * Newcomb Library) shared only 'artists' with 'Community Night for Artists & Creatives' at another Geelong venue an hour
+ * later, scored a half and was read as that night moved.
+ */
+function sharesEnoughWords(a: string, b: string): boolean {
+  const wa = titleWords(a)
+  const wb = titleWords(b)
+  let shared = 0
+  for (const w of wa) if (wb.has(w)) shared += 1
+  return shared >= Math.min(2, wa.size, wb.size) && shared > 0
+}
+
+/**
  * A changed fact on a night EventLinqs already lists: the same venue the same Melbourne day with a title alike but a
  * start more than two hours away (time_changed), or the same start with a title alike at another venue
  * (venue_changed). Next week's night of a weekly series is a different day, so it is never a moved night.
@@ -73,7 +87,7 @@ export function factChange(
   const key = keyOf(e)
   for (const k of known) {
     if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
-    if (titleShare(k.title, e.title) < SAME_TITLE_SHARE) continue
+    if (titleShare(k.title, e.title) < SAME_TITLE_SHARE || !sharesEnoughWords(k.title, e.title)) continue
     const apart = Math.abs(new Date(k.startsAt).getTime() - new Date(e.startsAt).getTime())
     const venue = sameVenue(k, key)
     if (venue && apart > SAME_START_WITHIN_MS && sameDay(k.startsAt, e.startsAt)) return { eventId: k.eventId, change: 'time_changed' }
