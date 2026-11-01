@@ -268,6 +268,8 @@
  *                              reads its figures and decisions
  *   counted-rows-exclude-tests  every read of share_link_events or go_presses names
  *                              is_test, so a QA press is counted nowhere (R3)
+ *   paid-out-is-one-rule       paid out is decided by paidOutCents alone, so a voided or
+ *                              pulled back payout never reads as money paid (V3 item 8)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
@@ -3361,6 +3363,10 @@ const GUARDS = [
   // only while every read of share_link_events and go_presses leaves is_test rows out: this fails the build on a read
   // that does not, judged on each read's own chain. A read pinned to conversions passes, as no QA press is one.
   'scripts/guards/counted-rows-exclude-tests.mjs',
+  // A failed payout claim is voided by a +adjustment and a refund can pull a transfer back; three readers summed
+  // reason 'payout' alone and showed MKLStudios' 448 voided claims as about A$22,019 paid out (1 November 2026). Paid
+  // out is one rule, src/lib/payouts/paid-out.ts; this fails the build where src/ judges a payout row by hand.
+  'scripts/guards/paid-out-is-one-rule.mjs',
   // The cost guard for billed Places calls (the project manager's note of 30 October 2026, 4.52 pm, on Lawal's order:
   // OFF until he says, he wants the cost first): every Places web service address in src asks google_spend_reserve first, through
   // withGoogleSpend, and the migration starts with Google OFF and serialises every reservation. Drilled red two ways.

@@ -34,6 +34,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 import { NON_DISBURSABLE_EVENT_STATUSES } from '@/lib/refunds/postponement'
+import { paidOutCents, PAID_OUT_SELECT, type PaidOutRow } from '@/lib/payouts/paid-out'
 
 /** v1 is AUD-only, mirrored from src/lib/payouts/queries.ts LEDGER_CURRENCY. */
 export const MONEY_CURRENCY = 'AUD'
@@ -50,9 +51,7 @@ export const REFUND_REASONS = [
   'refund_from_gateway',
   'refund_platform_float',
 ] as const
-export const PAYOUT_REASONS = ['payout'] as const
-
-export interface MoneyLedgerRow {
+export interface MoneyLedgerRow extends Partial<Omit<PaidOutRow, 'reason' | 'delta_cents'>> {
   event_id: string | null
   delta_cents: number
   reason: string
@@ -90,7 +89,7 @@ export interface OrganiserMoneySummary {
   /** What refunds took back out of the organiser's share, as a positive amount. */
   refundedCents: number
   refundCount: number
-  /** What has been claimed for transfer to the organiser, as a positive amount. */
+  /** What has reached the organiser: claims for transfer, less any voided or pulled back, plus settlements paid outside. */
   paidOutCents: number
   /** Everything the platform still holds for the organiser, all events. */
   heldCents: number
@@ -121,7 +120,7 @@ export function summariseMoney(input: {
   const { rows, events, bufferDays, canBePaid, now } = input
   let salesCents = 0
   let refundedCents = 0
-  let paidOutCents = 0
+  let paidOut = 0
   const refunds = new Set<string>()
   const saleOrders = new Set<string>()
   const perEvent = new Map<string, number>()
@@ -138,9 +137,9 @@ export function summariseMoney(input: {
       refundedCents -= delta
       // A row with no refund id still counts once, under its own key.
       refunds.add(row.refund_id ?? `row:${refunds.size}:${row.reason}:${delta}`)
-    } else if ((PAYOUT_REASONS as readonly string[]).includes(row.reason)) {
-      paidOutCents -= delta
     }
+    // Paid out is one rule (src/lib/payouts/paid-out.ts): a claim counts, its void and a reversal take it back.
+    paidOut += paidOutCents(row)
   }
 
   const byId = new Map(events.map((e) => [e.id, e]))
@@ -191,7 +190,7 @@ export function summariseMoney(input: {
     salesCount: saleOrders.size,
     refundedCents,
     refundCount: refunds.size,
-    paidOutCents,
+    paidOutCents: paidOut,
     heldCents,
     nextPayout,
   }
@@ -221,7 +220,7 @@ export async function getOrganiserMoneySummary(
     (from, to) =>
       admin
         .from('organiser_balance_ledger')
-        .select('event_id, delta_cents, reason, reference_id, refund_id:metadata->>refund_id')
+        .select(`event_id, delta_cents, reason, reference_id, refund_id:metadata->>refund_id, ${PAID_OUT_SELECT}`)
         .eq('organisation_id', organisationId)
         .eq('currency', MONEY_CURRENCY)
         .order('id', { ascending: true })

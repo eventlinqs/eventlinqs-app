@@ -26,7 +26,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const { data, error } = await db
         .from('listing_sources')
         .select(
-          'id, name, page_url, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
+          'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
         )
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       return (data ?? []).map((s) => {
@@ -52,6 +52,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
              could not be published. */
           partner: PARTNER_TYPES.has(s.source_type as string) && owned && venue !== null && venue.city_slug !== null && s.category_id !== null,
           partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
+          citySlug: (s.city_slug as string | null) ?? null,
         }
       })
     },
@@ -59,7 +60,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
     async known(now: Date): Promise<KnownEvent[]> {
       const { data, error } = await db
         .from('events')
-        .select('id, title, start_date, venue_id, venue_name, venue_address')
+        .select('id, title, start_date, venue_id, venue_name, venue_address, city_primary')
         .gte('start_date', new Date(now.getTime() - DAY_MS).toISOString())
         .lte('start_date', new Date(now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS).toISOString())
         .not('venue_name', 'is', null)
@@ -71,7 +72,25 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         venueAddress: (e.venue_address as string | null) ?? null,
         title: e.title as string,
         startsAt: e.start_date as string,
+        citySlug: (e.city_primary as string | null) ?? null,
       }))
+    },
+
+    async venueAddresses(citySlug: string): Promise<ReadonlyMap<string, string>> {
+      const { data, error } = await db
+        .from('venues')
+        .select('name, address')
+        .eq('city_slug', citySlug)
+        .is('removed_at', null)
+        .not('address', 'is', null)
+      if (error) throw new Error(`venues could not be read: ${error.message}`)
+      const out = new Map<string, string>()
+      for (const v of data ?? []) {
+        const name = String(v.name ?? '').trim().toLowerCase()
+        const address = String(v.address ?? '').trim()
+        if (name && address) out.set(name, address)
+      }
+      return out
     },
 
     async heldLinks(eventId: string): Promise<Set<string>> {

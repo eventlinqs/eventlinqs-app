@@ -6,7 +6,12 @@ import type { KnownEvent, RegisteredSource } from '@/lib/listings/collect'
 
 const NOW = new Date('2026-10-27T03:00:00Z')
 
-function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held: Record<string, string[]> = {}) {
+function memoryStore(
+  sources: RegisteredSource[],
+  known: KnownEvent[] = [],
+  held: Record<string, string[]> = {},
+  venues: Record<string, Record<string, string>> = {},
+) {
   const landed: CandidateRow[] = []
   const recorded: Record<string, string> = {}
   const added: { eventId: string; urls: string[] }[] = []
@@ -15,6 +20,7 @@ function memoryStore(sources: RegisteredSource[], known: KnownEvent[] = [], held
   const store: CollectionStore = {
     sources: async () => sources,
     known: async () => known,
+    venueAddresses: async (citySlug) => new Map(Object.entries(venues[citySlug] ?? {})),
     heldLinks: async (id) => new Set(held[id] ?? []),
     land: async (row) => {
       if (landed.some((r) => r.sourceId === row.sourceId && r.pageUrl === row.pageUrl && r.startsAt === row.startsAt)) return false
@@ -143,6 +149,37 @@ describe('the weekly collection run', () => {
 })
 
 /* The engine plan's parts A and E (28 October 2026): a run log per source, and the partner rule. */
+/*
+ * Production, 1 November 2026: Geelong Regional Libraries' calendar names the branch ('Corio Library') with no street,
+ * so 404 nights waited with 'no_venue_address' although the branch is a known place with a published address. The
+ * run takes a KNOWN venue's address, of the source's own city only, and never invents one.
+ */
+describe("a feed that names a known venue of its own city", () => {
+  const library = (location: string) =>
+    ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:17245503', 'DTSTART:20261103T230000Z', 'DTEND:20261104T000000Z',
+      'SUMMARY:Toddler time', `LOCATION:${location}`, 'GEO:-38.0896;144.3576', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n')
+  const feed = 'https://events.example.vic.gov.au/feeds/ical'
+  const pages = (body: string) => ({ 'https://events.example.vic.gov.au/robots.txt': { status: 200, body: '' }, [feed]: { status: 200, body } })
+
+  it("lands the night with that venue's address, and it passes the address check", async () => {
+    const { store, landed } = memoryStore([source('grl', feed, { citySlug: 'geelong' })], [], {}, {
+      geelong: { 'corio library': 'Cox Road (corner Moa Street), Norlane VIC 3214' },
+    })
+    await runCollection(store, sites(pages(library('Corio Library'))).fetcher, NOW)
+    expect(landed[0]).toMatchObject({ venueName: 'Corio Library', venueAddress: 'Cox Road (corner Moa Street), Norlane VIC 3214' })
+    expect(landed[0].reasons).not.toContain('no_venue_address')
+  })
+
+  it("never takes a venue of another city, and leaves the address empty when the place is unknown", async () => {
+    const { store, landed } = memoryStore([source('grl', feed, { citySlug: 'geelong' })], [], {}, {
+      bendigo: { 'corio library': '1 Somewhere Street, Bendigo' },
+    })
+    await runCollection(store, sites(pages(library('Corio Library'))).fetcher, NOW)
+    expect(landed[0].venueAddress).toBeNull()
+    expect(landed[0].reasons).toContain('no_venue_address')
+  })
+})
+
 describe('the run log and the partner rule', () => {
   const club = 'https://club.example.com.au/gigs'
   const open = { 'https://club.example.com.au/robots.txt': { status: 404 } }

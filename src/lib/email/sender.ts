@@ -130,6 +130,9 @@ const CONTACT_LOCAL_PARTS = {
   press: 'press',
   /** Hiring. */
   careers: 'careers',
+  /** The founder's own mailbox: Lawal sends every organiser outreach message from it himself (Growth Engine V3
+   * checklist, item 5: "Sender named on every message (lawal@eventlinqs.com)"). */
+  founder: 'lawal',
 } as const
 
 export type ContactRole = keyof typeof CONTACT_LOCAL_PARTS

@@ -6,6 +6,7 @@ import {
   robotsVerdict,
   withPermittedContent,
   type CandidatePlan,
+  type FoundEvent,
   type FoundLink,
   type KnownEvent,
   type RegisteredSource,
@@ -85,6 +86,24 @@ export type CollectionStore = {
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
    */
   expirePassed(now: Date, onlySources?: readonly string[]): Promise<number>
+  /**
+   * The published street address of every venue EventLinqs records in one city, keyed by its name in lower case
+   * (public.venues.name, address, city_slug). A feed that names such a venue and gives no street takes this one.
+   */
+  venueAddresses?(citySlug: string): Promise<ReadonlyMap<string, string>>
+}
+
+/**
+ * A found night with no address of its own takes the address of the venue it names, when EventLinqs records a venue of
+ * exactly that name in the source's own city; otherwise it stays empty and the reviewer's address check holds it. The
+ * names are compared trimmed and in lower case, never partly, so a near name never borrows another place's street.
+ */
+export function withKnownVenueAddress(events: readonly FoundEvent[], addresses: ReadonlyMap<string, string>): FoundEvent[] {
+  return events.map((e) => {
+    if (e.venueAddress && e.venueAddress.trim()) return e
+    const known = addresses.get(e.venueName.trim().toLowerCase())
+    return known ? { ...e, venueAddress: known } : e
+  })
 }
 
 export type SourceOutcome = { sourceId: string; name: string; outcome: string; landed: number; queued: number; acceptedByRule: number }
@@ -189,8 +208,19 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
             result.read += 1
             succeeded = true
             /* Only what the source permits (D4): a facts only source lands no image, no description and no link. */
-            const events = eventsFromBody(res.body, source.pageUrl).flatMap((e) => withPermittedContent(e, source.permits) ?? [])
-            const plans = planCandidates(events, known, now)
+            const permitted = eventsFromBody(res.body, source.pageUrl).flatMap((e) => withPermittedContent(e, source.permits) ?? [])
+            const city = source.citySlug ?? null
+            /* A venue read that fails never stops the source: its nights land as found, and the address check holds them. */
+            let addresses: ReadonlyMap<string, string> = new Map()
+            if (city && store.venueAddresses) {
+              try {
+                addresses = await store.venueAddresses(city)
+              } catch (err) {
+                console.error('[collection] known venue addresses could not be read:', err instanceof Error ? err.message : err)
+              }
+            }
+            const events = withKnownVenueAddress(permitted, addresses)
+            const plans = planCandidates(events, known, now, city)
             found = plans.length
             for (const p of plans) {
               const plan = await stillNew(store, p)

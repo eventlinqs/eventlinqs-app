@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getVenueRevenueSharePercentage } from '@/lib/payments/pricing-rules'
 import { getCurrencyForCountry } from '@/lib/payments/application-fee'
 import type { VenueRevenueShareStatus, VenueShareLedgerRow } from '@/lib/venues/types'
+import { paidOutCents, PAID_OUT_SELECT, type PaidOutRow } from '@/lib/payouts/paid-out'
 
 /**
  * Venue-facing dashboard data for the Venue Revenue Sharing Program. Scoped to
@@ -83,14 +84,15 @@ export async function readVenueDashboardForUser(userId: string): Promise<VenueDa
 
   const venueIds = venueRows.map((v) => v.id as string)
   const [{ data: ledger }, { data: events }] = await Promise.all([
-    admin.from('venue_share_ledger').select('venue_id, event_id, delta_cents, reason').in('venue_id', venueIds),
+    admin.from('venue_share_ledger').select(`venue_id, event_id, delta_cents, reason, ${PAID_OUT_SELECT}`).in('venue_id', venueIds),
     admin.from('events').select('id, title, end_date, venue_id').in('venue_id', venueIds).order('end_date', { ascending: false }).limit(500),
   ])
 
-  const ledgerByVenue = new Map<string, Array<{ event_id: string | null; delta_cents: number; reason: VenueShareLedgerRow['reason'] }>>()
-  for (const l of (ledger ?? []) as Array<{ venue_id: string; event_id: string | null; delta_cents: number; reason: VenueShareLedgerRow['reason'] }>) {
+  type LedgerRead = { event_id: string | null; delta_cents: number; reason: VenueShareLedgerRow['reason'] } & Omit<PaidOutRow, 'reason' | 'delta_cents'>
+  const ledgerByVenue = new Map<string, LedgerRead[]>()
+  for (const l of (ledger ?? []) as unknown as Array<LedgerRead & { venue_id: string }>) {
     const arr = ledgerByVenue.get(l.venue_id) ?? []
-    arr.push({ event_id: l.event_id, delta_cents: l.delta_cents, reason: l.reason })
+    arr.push({ event_id: l.event_id, delta_cents: l.delta_cents, reason: l.reason, reference_type: l.reference_type, reversal_of_transfer: l.reversal_of_transfer, settlement_part: l.settlement_part })
     ledgerByVenue.set(l.venue_id, arr)
   }
   const eventsByVenue = new Map<string, Array<{ id: string; title: string | null; end_date: string | null }>>()
@@ -110,11 +112,12 @@ export async function readVenueDashboardForUser(userId: string): Promise<VenueDa
     for (const r of rows) {
       payable += r.delta_cents
       if (r.reason === 'accrual' || r.reason === 'refund_reversal') earnedNet += r.delta_cents
-      if (r.reason === 'payout') paid += Math.abs(r.delta_cents)
+      // Paid is one rule (src/lib/payouts/paid-out.ts): a voided venue transfer is not paid.
+      paid += paidOutCents(r)
       if (r.event_id) {
         const pe = perEvent.get(r.event_id) ?? { payable: 0, paid: 0 }
         pe.payable += r.delta_cents
-        if (r.reason === 'payout') pe.paid += Math.abs(r.delta_cents)
+        pe.paid += paidOutCents(r)
         perEvent.set(r.event_id, pe)
       }
     }
