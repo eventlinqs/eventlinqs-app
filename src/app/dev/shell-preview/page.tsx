@@ -58,7 +58,7 @@ export default function ShellPreviewPage() {
       <PageHero
         eyebrow="PREVIEW"
         title="Page Hero Component"
-        subtitle="Every interior page starts with this dark hero band - consistent height, consistent type scale."
+        subtitle="Every interior page starts with this dark hero band: consistent height, consistent type scale."
       />
 
       {/* ── Block 2: Prose typography ─────────────────────────────────── */}
