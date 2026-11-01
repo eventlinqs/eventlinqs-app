@@ -19,6 +19,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import type { Objection } from './objections'
 
 type Admin = SupabaseClient<Database>
 type Tables = Database['public']['Tables']
@@ -260,7 +261,7 @@ export async function voidTouch(db: Admin, input: { touchId: string; reason: str
 /** What came back, verbatim. Any reply stops the cadence; a stop joins outreach_unsubscribes; a no stops the organiser. */
 export async function logReply(
   db: Admin,
-  input: { contactId: string; touchId?: string | null; receivedAt: string; wording: string; outcome: ReplyOutcome; loggedBy: string },
+  input: { contactId: string; touchId?: string | null; receivedAt: string; wording: string; outcome: ReplyOutcome; objection?: Objection | null; loggedBy: string },
 ): Promise<Done<{ id: string }>> {
   return result(await db.from('outreach_replies').insert({
     contact_id: input.contactId,
@@ -268,6 +269,7 @@ export async function logReply(
     received_at: input.receivedAt,
     wording: input.wording,
     outcome: input.outcome,
+    objection: input.objection ?? null,
     logged_by: input.loggedBy,
   }).select('id').single())
 }

@@ -18,6 +18,7 @@ import type { Database } from '@/types/database'
 import { PROVIDER_NAMES } from '@/lib/events/booking-links'
 import type { InboundMessage } from './graph'
 import { draftFromTemplate } from './drafts'
+import { objectionOf } from './objections'
 
 type Admin = SupabaseClient<Database>
 
@@ -150,6 +151,7 @@ export async function handleInbox(
         received_at: m.receivedAt,
         wording: (m.text.trim() || m.subject || '(empty)').slice(0, 5000),
         outcome: kind.outcome,
+        objection: objectionOf(kind),
         classified_by: 'rules',
         confidence: kind.confidence,
         needs_lawal: !clear || kind.outcome === 'take_down',
