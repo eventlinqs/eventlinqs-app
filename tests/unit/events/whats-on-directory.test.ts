@@ -1,0 +1,94 @@
+import { describe, expect, it } from 'vitest'
+import { directoryDays, type DirectoryInput } from '@/lib/events/whats-on-directory'
+import { featuredWithRecordedRights } from '@/lib/events/featured-with-recorded-rights'
+
+const base: DirectoryInput = {
+  id: 'x',
+  slug: 'x',
+  title: 'X',
+  start_date: '2026-11-01T09:00:00Z',
+  timezone: 'Australia/Melbourne',
+  venue_name: 'A Hall',
+  venue_city: 'Ballarat',
+  category: { name: 'Comedy', slug: 'comedy' },
+  is_free: true,
+  entry_mode: 'walk_in',
+  external_ticket_url: null,
+  ticket_tiers: [],
+}
+const ev = (o: Partial<DirectoryInput>): DirectoryInput => ({ ...base, ...o })
+
+describe("What's on: a day grouped directory", () => {
+  const now = new Date('2026-10-31T13:30:00Z') // Sunday 1 November, 00:30 in Melbourne
+
+  it('groups nights by the day they happen in their own zone, labelled in words, today and tomorrow tagged', () => {
+    const days = directoryDays(
+      [
+        ev({ id: 'a', slug: 'a', start_date: '2026-11-01T09:00:00Z' }), // Sun 1 Nov 8 pm
+        ev({ id: 'b', slug: 'b', start_date: '2026-11-01T14:00:00Z' }), // Mon 2 Nov 1 am
+        ev({ id: 'c', slug: 'c', start_date: '2026-11-03T08:30:00Z' }), // Tue 3 Nov
+      ],
+      now,
+    )
+    expect(days.map((d) => d.label)).toEqual(['Sunday 1 November', 'Monday 2 November', 'Tuesday 3 November'])
+    expect(days.map((d) => d.tag)).toEqual(['Today', 'Tomorrow', null])
+    expect(days[0].rows[0]).toMatchObject({ href: '/events/a', time: '8:00 pm', city: 'Ballarat', category: 'Comedy', free: true })
+  })
+
+  it('puts Geelong and Melbourne first within a day (plan v4), each part in time order', () => {
+    const [day] = directoryDays(
+      [
+        ev({ id: 'b1', slug: 'b1', venue_city: 'Bendigo', start_date: '2026-11-01T01:00:00Z' }),
+        ev({ id: 'm1', slug: 'm1', venue_city: 'Melbourne', start_date: '2026-11-01T08:00:00Z' }),
+        ev({ id: 'g1', slug: 'g1', venue_city: 'Geelong', start_date: '2026-11-01T03:00:00Z' }),
+      ],
+      now,
+    )
+    expect(day.rows.map((r) => r.href)).toEqual(['/events/g1', '/events/m1', '/events/b1'])
+  })
+
+  it('says the price the card says: a night sold elsewhere is never Free', () => {
+    const [day] = directoryDays(
+      [ev({ is_free: false, entry_mode: 'tickets', external_ticket_url: 'https://www.ticketek.com.au/x' })],
+      now,
+    )
+    expect(day.rows[0].free).toBe(false)
+    expect(day.rows[0].price).not.toMatch(/^Free/)
+  })
+})
+
+describe('Featured this week: a real photo with its rights on record, or no row', () => {
+  const row = (id: string, o: { cover?: string | null; credit?: string | null }) => ({
+    id,
+    cover_image_url: o.cover ?? null,
+    image_credit: o.credit ?? null,
+  })
+
+  it('takes approved venue photos (credited) and organiser photos recorded as authorised or licensed, nothing else', () => {
+    const picked = featuredWithRecordedRights(
+      [
+        row('venue', { cover: 'https://upload.wikimedia.org/a.jpg', credit: 'Photo: A, CC BY 4.0' }),
+        row('authorised', { cover: 'https://x.supabase.co/storage/v1/object/public/event-images/b.jpg' }),
+        row('unrecorded', { cover: 'https://x.supabase.co/storage/v1/object/public/event-images/c.jpg' }),
+        row('library', { cover: 'https://images.pexels.com/d.jpg' }),
+        row('none', {}),
+      ],
+      new Map([
+        ['authorised', 'organiser_authorised'],
+        ['unrecorded', 'unrecorded'],
+        ['library', 'platform_library'],
+      ]),
+      4,
+    )
+    expect(picked.map((r) => r.id)).toEqual(['venue', 'authorised'])
+  })
+
+  it('leaves the row out when fewer than two qualify', () => {
+    const picked = featuredWithRecordedRights(
+      [row('venue', { cover: 'https://upload.wikimedia.org/a.jpg', credit: 'Photo: A' })],
+      new Map(),
+      4,
+    )
+    expect(picked).toEqual([])
+  })
+})
