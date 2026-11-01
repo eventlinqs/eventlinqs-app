@@ -86,7 +86,7 @@ export async function sendCriticalAlert(toAlert: HealthResult[], recovered: stri
       messageType: 'platform_health_alert',
       recipientRole: 'platform_owner',
       text: `Good news. The following systems have recovered:\n\n${recovered.map(r => `- ${r}`).join('\n')}\n\nEnvironment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\nEventLinqs health sentinel`,
-      html: `<p><strong>Good news - systems recovered.</strong></p><ul>${recovered.map(r => `<li>${r}</li>`).join('')}</ul><p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p><p>EventLinqs health sentinel</p>`,
+      html: `<p><strong>Good news: systems recovered.</strong></p><ul>${recovered.map(r => `<li>${r}</li>`).join('')}</ul><p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p><p>EventLinqs health sentinel</p>`,
     })
     return true
   }
@@ -135,7 +135,7 @@ export function heartbeatEmail(
 
   return {
     subject: `EventLinqs daily heartbeat: ${headline}`,
-    text: `EventLinqs daily heartbeat.\n\nStatus: ${headline}\nEnvironment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\n${rows}\n\nLive status: ${getSiteUrl()}/admin/health\nRunbook: docs/ops/HEALTH-ALERTS.md\n\n(If you ever stop receiving this daily note, the monitor itself may be down - treat a MISSING heartbeat as a signal.)`,
+    text: `EventLinqs daily heartbeat.\n\nStatus: ${headline}\nEnvironment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\n${rows}\n\nLive status: ${getSiteUrl()}/admin/health\nRunbook: docs/ops/HEALTH-ALERTS.md\n\n(If you ever stop receiving this daily note, the monitor itself may be down: treat a MISSING heartbeat as a signal.)`,
     /*
      * THE DETAIL COLUMN IS NOW LONG, AND THAT IS WHY THIS WRAPS.
      *
@@ -157,7 +157,7 @@ export function heartbeatEmail(
       `<p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p>` +
       `<table cellpadding="4" style="width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse">${htmlRows}</table>` +
       `<p>Live status: <a href="${getSiteUrl()}/admin/health">${getSiteUrl()}/admin/health</a><br/>Runbook: docs/ops/HEALTH-ALERTS.md</p>` +
-      `<p style="color:#666">If you ever stop receiving this daily note, the monitor itself may be down - treat a missing heartbeat as a signal.</p>` +
+      `<p style="color:#666">If you ever stop receiving this daily note, the monitor itself may be down: treat a missing heartbeat as a signal.</p>` +
       `</div>`,
   }
 }
