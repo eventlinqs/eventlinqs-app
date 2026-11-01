@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest'
+import {
+  DAILY_TWENTY_GROUPS,
+  DAILY_TWENTY_SENDER,
+  buildDailyTwenty,
+  type DailyCandidate,
+} from '@/lib/outreach/daily-twenty'
+
+/*
+ * The Growth Engine V3 checklist, item 5 (Lawal's 'A, build it as written', 1 November 2026, 05:12): "A daily queue of
+ * 20 reviewed actions: 5 conversion, 5 follow-ups, 5 recurring venues and community organisers, 5 partnerships and
+ * reactivation"; "Eligibility checked before any message; ineligible contacts become research or a social first
+ * touch"; "Duplicates prevented"; "Sender named on every message (lawal@eventlinqs.com)".
+ */
+
+const candidate = (over: Partial<DailyCandidate> & Pick<DailyCandidate, 'organiserId' | 'group'>): DailyCandidate => ({
+  organiserName: over.organiserId,
+  score: 50,
+  why: 'test',
+  contact: { channel: 'email', address: `${over.organiserId}@example.com.au`, eligible: true, refusal: null },
+  socialHandle: null,
+  ...over,
+})
+
+const many = (group: DailyCandidate['group'], n: number, prefix = group) =>
+  Array.from({ length: n }, (_, i) => candidate({ organiserId: `${prefix}-${i}`, group, score: 100 - i }))
+
+describe('the daily twenty', () => {
+  it('is five of each of the four groups, twenty in all, the highest score first', () => {
+    const day = buildDailyTwenty([...many('conversion', 8), ...many('follow_up', 8), ...many('recurring', 8), ...many('partnership_reactivation', 8)])
+    expect(DAILY_TWENTY_GROUPS.map((g) => g.key)).toEqual(['conversion', 'follow_up', 'recurring', 'partnership_reactivation'])
+    for (const g of day.groups) {
+      expect(g.actions).toHaveLength(5)
+      expect(g.short).toBe(0)
+      expect(g.actions.map((a) => a.organiserId)).toEqual([0, 1, 2, 3, 4].map((i) => `${g.key}-${i}`))
+    }
+    expect(day.groups.flatMap((g) => g.actions)).toHaveLength(20)
+  })
+
+  it('never tops up a short group from another, and says how many it is short', () => {
+    const day = buildDailyTwenty([...many('conversion', 2), ...many('follow_up', 9)])
+    const by = Object.fromEntries(day.groups.map((g) => [g.key, g]))
+    expect(by.conversion.actions).toHaveLength(2)
+    expect(by.conversion.short).toBe(3)
+    expect(by.follow_up.actions).toHaveLength(5)
+    expect(by.recurring.short).toBe(5)
+  })
+
+  it('takes one action per organiser a day: a follow up first, then a conversion ask, never both', () => {
+    const day = buildDailyTwenty([
+      candidate({ organiserId: 'barwon-club', group: 'conversion', score: 99 }),
+      candidate({ organiserId: 'barwon-club', group: 'follow_up', score: 10 }),
+      candidate({ organiserId: 'barwon-club', group: 'recurring', score: 90 }),
+    ])
+    const all = day.groups.flatMap((g) => g.actions)
+    expect(all).toHaveLength(1)
+    expect(all[0]).toMatchObject({ organiserId: 'barwon-club', group: 'follow_up' })
+    expect(day.duplicatesDropped).toBe(2)
+  })
+
+  it('names lawal@eventlinqs.com as the sender of every message', () => {
+    const day = buildDailyTwenty(many('conversion', 3))
+    expect(DAILY_TWENTY_SENDER).toBe('lawal@eventlinqs.com')
+    for (const a of day.groups.flatMap((g) => g.actions)) expect(a.sender).toBe('lawal@eventlinqs.com')
+  })
+
+  it('an ineligible contact is never a message: it becomes a social first touch when a public handle exists, else research', () => {
+    const day = buildDailyTwenty([
+      candidate({ organiserId: 'tagged', group: 'conversion', contact: { channel: 'email', address: 'a@b.com.au', eligible: false, refusal: 'no recorded basis' }, socialHandle: 'taggedvenue' }),
+      candidate({ organiserId: 'unknown', group: 'recurring', contact: null }),
+      candidate({ organiserId: 'fine', group: 'conversion' }),
+    ])
+    expect(day.groups.flatMap((g) => g.actions).map((a) => a.organiserId)).toEqual(['fine'])
+    expect(day.socialFirstTouches).toEqual([expect.objectContaining({ organiserId: 'tagged', handle: 'taggedvenue', because: 'no recorded basis' })])
+    expect(day.research).toEqual([expect.objectContaining({ organiserId: 'unknown', because: 'no contact recorded' })])
+  })
+
+  it('is the same queue for the same input, whatever order it arrives in', () => {
+    const input = [...many('conversion', 6), ...many('recurring', 6)]
+    expect(buildDailyTwenty([...input].reverse())).toEqual(buildDailyTwenty(input))
+  })
+})

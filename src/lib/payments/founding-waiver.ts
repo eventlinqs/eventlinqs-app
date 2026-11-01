@@ -247,6 +247,12 @@ export interface OrganisationReadClient {
  * free platform fee. It degrades to charging the standard rate, which is the
  * safe side of the error for the business and is visible in reporting, whereas
  * silently waiving fees would not be.
+ *
+ * INSIDE THE WINDOW THAT STANDARD RATE IS NEVER CHARGED (LAW 24, 1 November
+ * 2026): migration 20261101062001 refuses, at the order insert, any platform fee
+ * on an order written inside its organisation's six fee-free months. So a failed
+ * read here can no longer charge a fee-free organiser: the order is refused and
+ * the buyer is asked to try again.
  */
 export async function getFoundingWaiver(
   client: OrganisationReadClient,

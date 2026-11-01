@@ -11109,6 +11109,26 @@ const DRILLS = [
     expect: 'reads share_link_events with no is_test filter',
   },
   /*
+   * paid-out-is-one-rule (V3 item 8, 1 November 2026; WINDOW 4's class of 06:40). The two shapes the
+   * three readers had: a comparison of reason with 'payout' and a reason list of 'payout' alone.
+   */
+  {
+    name: 'paid out: the venue dashboard counts a voided venue transfer as paid',
+    guard: `${GUARDS}/paid-out-is-one-rule.mjs`,
+    file: 'src/lib/venues/dashboard.ts',
+    find: '      paid += paidOutCents(r)',
+    replace: "      if (r.reason === 'payout') paid += Math.abs(r.delta_cents)",
+    expect: "compares reason with 'payout'",
+  },
+  {
+    name: 'paid out: the organiser money summary sums payout rows alone',
+    guard: `${GUARDS}/paid-out-is-one-rule.mjs`,
+    file: 'src/lib/payouts/money-summary.ts',
+    find: '    paidOut += paidOutCents(row)',
+    replace: "    if (['payout'].includes(row.reason)) paidOut -= delta",
+    expect: "keeps a reason list of 'payout' alone",
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the
