@@ -29,6 +29,7 @@ import { FREE_ENTRY_LABEL, isWalkIn } from '@/lib/events/entry-mode'
 import { isExternallyTicketed } from '@/lib/payments/sale-status'
 import { alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
+import { shownVenueName } from '@/lib/venues/shown-venue-name'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -287,7 +288,6 @@ export function buildEventSchemaPayload({
    */
   const priceOf = (tier: SchemaTier) => tier.display_price_cents ?? tier.price
   const sortedTiers = [...ticketTiers].sort((a, b) => priceOf(a) - priceOf(b))
-  const lowestPrice = sortedTiers.length > 0 ? priceOf(sortedTiers[0]) / 100 : 0
 
   /*
    * A FREE WALK-IN EVENT (WI1) has no ticket type, and is still described with
@@ -332,7 +332,9 @@ export function buildEventSchemaPayload({
     ? [buttonOf(bookingLinks), ...alsoOn(bookingLinks)]
         .filter((l): l is BookingLink => l !== null)
         .map(l => {
-          const cents = priceToShow(l, now)
+          // A free registration is the one price known without a read: the link itself says no charge, and Google asks
+          // 'If there is no charge, set offers.price to 0' (the markup audit on live, 1 November 2026).
+          const cents = l.kind === 'free_register' ? 0 : priceToShow(l, now)
           return {
             '@type': 'Offer',
             ...(cents !== null ? { price: (cents / 100).toFixed(2), priceCurrency: 'AUD' } : {}),
@@ -422,7 +424,8 @@ export function buildEventSchemaPayload({
      */
     location: {
       '@type': 'Place',
-      ...compact({ name: event.venue_name }),
+      // The venue's name, never the event's own (Google: 'the venue name, not the event title'); the page's own rule.
+      ...compact({ name: shownVenueName(event) }),
       address: compact({
         '@type': 'PostalAddress',
         streetAddress: event.venue_address,
@@ -486,7 +489,10 @@ export function buildEventSchemaPayload({
     // An array of one is still an array, so every event describes its tickets in
     // the same shape and a reader never has to branch on how many there are.
     offers: offers.length > 0 ? offers : undefined,
-    ...(walkIn || lowestPrice === 0 ? { isAccessibleForFree: true } : {}),
+    // Free only when it is: a walk-in night, or every offer written at 0.00. 'lowestPrice === 0' read an event with no
+    // tiers (every night sold elsewhere) and a single free tier among paid ones as free, so Kate Ceberano, Diesel and
+    // Spooky Escape told Google they were free (the markup audit on live, 1 November 2026).
+    ...(walkIn || (offers.length > 0 && offers.every(o => Number(o.price) === 0)) ? { isAccessibleForFree: true } : {}),
     url: eventUrl,
   }
 
