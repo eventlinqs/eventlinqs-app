@@ -499,7 +499,8 @@ export function dueSources(sources: readonly RegisteredSource[], now: Date): Reg
 }
 
 /** citySlug: the night's own city (events.city_primary), so another city's same-named night is never 'this night moved'. */
-export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null }
+/** seriesId: the regular night it is one date of (events.listing_series_id), null for an organiser's own night. */
+export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null; seriesId?: string | null }
 
 export type CandidatePlan =
   | { kind: 'new'; event: FoundEvent }
@@ -549,6 +550,25 @@ export function planCandidates(
     plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
   }
   return plans
+}
+
+/**
+ * THE CLIFF (the controller's 15:40 of 1 November 2026). A night a source lists again, that EventLinqs already holds as
+ * one date of a regular series, confirms that series: one check per series per read, from the page it was found on.
+ * Only a plain re-find counts; a night found with different facts (changes_facts) goes to a person and confirms nothing.
+ */
+export function seriesConfirmations(
+  plans: readonly { kind: string; eventId?: string; event: { pageUrl: string } }[],
+  known: readonly KnownEvent[],
+): { seriesId: string; sourceUrl: string }[] {
+  const out: { seriesId: string; sourceUrl: string }[] = []
+  for (const p of plans) {
+    if (p.kind !== 'adds_links' || !p.eventId) continue
+    const seriesId = known.find((k) => k.eventId === p.eventId)?.seriesId
+    if (!seriesId || out.some((c) => c.seriesId === seriesId)) continue
+    out.push({ seriesId, sourceUrl: p.event.pageUrl })
+  }
+  return out
 }
 
 /** The provider of every link, for the review screen ("Humanitix, Eventbrite"). */

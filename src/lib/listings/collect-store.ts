@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COLLECT_AHEAD_DAYS, type KnownEvent, type RegisteredSource } from './collect'
 import { addCuratedLinks } from './collect-accept'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
 
 /**
@@ -58,14 +59,19 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
     },
 
     async known(now: Date): Promise<KnownEvent[]> {
-      const { data, error } = await db
-        .from('events')
-        .select('id, title, start_date, venue_id, venue_name, venue_address, city_primary')
-        .gte('start_date', new Date(now.getTime() - DAY_MS).toISOString())
-        .lte('start_date', new Date(now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS).toISOString())
-        .not('venue_name', 'is', null)
-      if (error) throw new Error(`events could not be read: ${error.message}`)
-      return (data ?? []).map((e) => ({
+      /* Read whole: a night past Supabase's silent thousand-row cap would never be matched, so its series would never
+         be confirmed and would fall off the guides (the cliff). */
+      const data = await readEveryRow<Record<string, unknown>>('the held nights', (from, to) =>
+        db
+          .from('events')
+          .select('id, title, start_date, venue_id, venue_name, venue_address, city_primary, listing_series_id')
+          .gte('start_date', new Date(now.getTime() - DAY_MS).toISOString())
+          .lte('start_date', new Date(now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS).toISOString())
+          .not('venue_name', 'is', null)
+          .order('id')
+          .range(from, to),
+      )
+      return data.map((e) => ({
         eventId: e.id as string,
         venueId: (e.venue_id as string | null) ?? null,
         venueName: e.venue_name as string,
@@ -73,7 +79,22 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         title: e.title as string,
         startsAt: e.start_date as string,
         citySlug: (e.city_primary as string | null) ?? null,
+        seriesId: (e.listing_series_id as string | null) ?? null,
       }))
+    },
+
+    async confirmSeries(rows): Promise<void> {
+      const { error } = await db.from('listing_checks').insert(
+        rows.map((r) => ({
+          series_id: r.seriesId,
+          source_url: r.sourceUrl,
+          source_date: r.sourceDate,
+          import_file: `collection run, source ${r.sourceId}`,
+          outcome: r.outcome,
+          reuse_basis: r.reuseBasis,
+        })),
+      )
+      if (error) throw new Error(`listing checks could not be written: ${error.message}`)
     },
 
     async venueAddresses(citySlug: string): Promise<ReadonlyMap<string, string>> {

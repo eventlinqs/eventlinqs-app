@@ -35,12 +35,20 @@ export function checkInserts(text: string): string[] {
   const found: string[] = []
   const sql = /insert into public\.listing_checks[\s\S]{0,600}?\)\s*`?\s*\+?[\s\S]{0,400}?values[\s\S]{0,600}?\)/gi
   for (const m of text.matchAll(sql)) found.push(m[0])
-  const client = /\.from\(\s*['"]listing_checks['"]\s*\)\s*\.(insert|upsert)\(\s*\{[\s\S]{0,800}?\}/g
+  /* Any argument: an object literal, or rows mapped into one (the collection run's confirmations, 1 November 2026). */
+  const client = /\.from\(\s*['"]listing_checks['"]\s*\)\s*\.(insert|upsert)\([\s\S]{0,800}?\}/g
   for (const m of text.matchAll(client)) found.push(m[0])
   return found
 }
 
 describe('checkInserts finds both shapes of writer, and sees a missing basis', () => {
+  test('a client insert of mapped rows is found too, and its basis read', () => {
+    const planted = "db.from('listing_checks').insert(\n  rows.map((r) => ({ series_id: r.id, outcome: 'confirmed' })),\n)"
+    const inserts = checkInserts(planted)
+    expect(inserts).toHaveLength(1)
+    expect(inserts[0].includes('reuse_basis')).toBe(false)
+  })
+
   test('a SQL insert without the column is found, and lacks it', () => {
     const planted = "x(`insert into public.listing_checks (series_id, source_url, source_date, import_file, outcome)` + ` values (a, b, c, d, e);`)"
     const inserts = checkInserts(planted)
