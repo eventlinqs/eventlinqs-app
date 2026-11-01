@@ -639,8 +639,10 @@ html[data-motion="1"] .group:hover .card-hover-wash {
 @utility ledger-row {
   @apply mt-auto flex items-baseline justify-between gap-2.5 pt-2.5;
 }
+/* A long seller's name ('Tickets on geelongartscentre.org.au') wraps inside its box, never clipped (the CONTROLLER's
+ * look at the preview, 22:39 on 1 November 2026). */
 @utility ledger-price {
-  @apply whitespace-nowrap font-display text-sm font-extrabold text-[var(--text-primary)];
+  @apply min-w-0 font-display text-sm font-extrabold text-[var(--text-primary)] [overflow-wrap:anywhere];
 }
 @utility ledger-meta {
   @apply min-w-0 truncate font-display text-xs font-semibold text-[var(--text-muted)];
@@ -671,10 +673,10 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   @apply max-w-[9rem] text-right md:max-w-[12rem];
 }
 @utility event-row-price {
-  @apply block font-display text-sm font-extrabold text-[var(--text-primary)];
+  @apply block font-display text-sm font-extrabold text-[var(--text-primary)] [overflow-wrap:anywhere];
 }
 @utility event-row-source {
-  @apply mt-0.5 block font-display text-xs font-semibold text-[var(--text-muted)];
+  @apply mt-0.5 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere];
 }
 
 /* ─── The shared chrome: the class lists every page repeats per link ─────── */

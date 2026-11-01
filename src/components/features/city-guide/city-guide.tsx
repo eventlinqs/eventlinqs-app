@@ -425,7 +425,7 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
         </span>
       </span>
       <span className="flex items-center gap-1 pt-0.5">
-        <span className="max-w-28 text-right font-display text-sm font-extrabold text-[var(--text-primary)] md:max-w-none md:whitespace-nowrap">{r.price}</span>
+        <span className="max-w-28 text-right font-display text-sm font-extrabold text-[var(--text-primary)] [overflow-wrap:anywhere] md:max-w-56">{r.price}</span>
         <ChevronRight className="hidden h-4 w-4 text-[var(--color-ink-400)] md:block" aria-hidden="true" />
       </span>
     </Link>
