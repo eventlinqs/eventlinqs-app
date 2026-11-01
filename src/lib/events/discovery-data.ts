@@ -14,7 +14,12 @@ import { isStillListed, weekendWindowUtc } from '@/lib/events/listing-window'
 import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export type DiscoveryDays = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[] }
+/**
+ * The day keys the guide's chips and sections use. weekendKeys is the platform's ONE weekend (listing-window.ts: Saturday
+ * and Sunday); fridayKey is the Friday right before it, so 'This weekend' on the Geelong reference page runs Friday to
+ * Sunday (Lawal's 2 November directive, section 4) without a second weekend definition.
+ */
+export type DiscoveryDays = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[]; fridayKey: string }
 
 export function discoveryDays(now: Date): DiscoveryDays {
   const todayKey = dayKey(now, PLATFORM_TIME_ZONE)
@@ -28,6 +33,7 @@ export function discoveryDays(now: Date): DiscoveryDays {
     tomorrowKey: addDays(todayKey, 1),
     weekendKeys,
     weekKeys: Array.from({ length: 7 }, (_, i) => addDays(todayKey, i)),
+    fridayKey: addDays(dayKey(weekend.from, PLATFORM_TIME_ZONE), -1),
   }
 }
 

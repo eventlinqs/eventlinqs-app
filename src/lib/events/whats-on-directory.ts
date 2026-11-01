@@ -18,6 +18,8 @@ export type DirectoryInput = {
   readonly timezone: string | null
   readonly venue_name: string | null
   readonly venue_city: string | null
+  /** The venue's street address, from which a row reads its suburb ('..., Belmont VIC 3216'). */
+  readonly venue_address?: string | null
   readonly venue_latitude?: number | null
   readonly venue_longitude?: number | null
   readonly category: { readonly name: string; readonly slug: string } | null
@@ -48,6 +50,8 @@ export type DirectoryRow = {
   readonly ts: number
   /** A small image only where an authorised one exists (a credited venue photo or a rights recorded cover). */
   readonly thumb: string | null
+  /** The suburb, read from the venue's address ('..., Belmont VIC 3216' is Belmont), else the venue's city. */
+  readonly suburb: string | null
   /** The venue's point where held, for the city guide's deliberate widening by distance. */
   readonly lat: number | null
   readonly lng: number | null
@@ -105,6 +109,20 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
   }
 }
 
+/**
+ * The suburb of a venue, read from its own address: the last part that carries an Australian state ('Level 1, 231 Bourke
+ * St, Melbourne VIC 3000' is Melbourne; '82 The Terrace, Ocean Grove VIC 3226' is Ocean Grove). Where the address names
+ * no state, the venue's city stands; nothing is invented.
+ */
+export function suburbOf(address: string | null, city: string | null): string | null {
+  const parts = (address ?? '').split(',').map((p) => p.trim()).filter(Boolean)
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    const m = /^(.*?)\s+(VIC|NSW|QLD|WA|SA|TAS|ACT|NT)/i.exec(parts[i])
+    if (m && m[1].trim()) return m[1].trim()
+  }
+  return city && city.trim() ? city.trim() : null
+}
+
 export function addDays(key: string, n: number): string {
   const d = new Date(`${key}T12:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)
@@ -141,6 +159,7 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
       source: sourceLabel(e),
       format: e.entry_mode === 'walk_in' ? 'walk_in' : (e.ticket_tiers ?? []).length > 0 || (e.external_ticket_url ?? '').trim() ? 'ticketed' : 'other',
       cityKey: (e.venue_city ?? '').trim().toLowerCase(),
+      suburb: suburbOf(e.venue_address ?? null, e.venue_city),
       dayKey: key,
       dayLabel: dayLabel(at, zone),
       ts: at.getTime(),

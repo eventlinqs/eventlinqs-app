@@ -23,9 +23,9 @@ const row = (id: string, slug: string, label: string): DirectoryRow => ({
   id, href: `/events/${id}`, title: `Night ${id}`, venue: 'Somewhere', city: 'Geelong', category: label, categorySlug: slug,
   price: 'Free entry', time: '7:00 pm', free: true, source: 'Walk in, no ticket needed', format: 'walk_in',
   cityKey: 'geelong', dayKey: '2026-11-03', dayLabel: 'Tuesday 3 November', ts: Number(id.replace(/\D/g, '')) || 0,
-  thumb: null, lat: null, lng: null,
+  thumb: null, lat: null, lng: null, suburb: null,
 })
-const days = { todayKey: '2026-11-01', tomorrowKey: '2026-11-02', weekendKeys: ['2026-11-01'], weekKeys: ['2026-11-01', '2026-11-02', '2026-11-03'] }
+const days = { todayKey: '2026-11-01', tomorrowKey: '2026-11-02', weekendKeys: ['2026-11-01'], weekKeys: ['2026-11-01', '2026-11-02', '2026-11-03'], fridayKey: '2026-10-30' }
 
 describe('Lawal\u2019s 19:17 notes', () => {
   it('the Explore tiles run music, sport, comedy, nightlife, markets, food and drink, family, arts, then the rest by count', () => {
@@ -46,8 +46,9 @@ describe('Lawal\u2019s 19:17 notes', () => {
     )
     const names = within(screen.getByRole('region', { name: 'Explore Geelong' }))
       .getAllByRole('button')
-      .map((b) => b.querySelector('span')?.textContent)
-    expect(names).toEqual(['Music', 'Sports', 'Nightlife', 'Community', 'Education', 'All events'])
+      .map((b) => b.querySelectorAll('span')[1]?.textContent)
+    // Community last since the Geelong reference directive of 2 November 2026, section 2.
+    expect(names).toEqual(['Music', 'Sports', 'Nightlife', 'Education', 'Community', 'All events'])
   })
 
   it('after the guide: the Featured slots, every city, then the communities LAST, each a flag that is on', () => {

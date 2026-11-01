@@ -12,7 +12,6 @@ import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { CityGuide } from './city-guide'
-import { CityHeroSlider, SLIDER_MINIMUM } from './city-hero-slider'
 
 /**
  * The city guide as a whole page: the header (its city chip names THIS city), the guide for ONE city, the footer (the
@@ -55,7 +54,11 @@ export async function CityGuideScreen({
   const allCities = every.filter((c) => !c.slug.includes('-') || c.tier === 1).map((c) => ({ slug: c.slug, name: c.name, state: c.state }))
   const stateCityNames = every.filter((c) => c.state === city.state).map((c) => c.name.toLowerCase())
   const name = city.name.toLowerCase()
-  const slides = data.featured.filter((e) => (e.venue_city ?? '').toLowerCase().includes(name)).slice(0, 6)
+  // 'Worth going out for' (the 2 November directive, section 3): ORGANISER artwork with its rights on record only, never a
+  // venue photograph (image_credit) or a logo; the guide draws it at three or more and the count goes to the gap report.
+  const worth = data.featured.filter(
+    (e) => (e.venue_city ?? '').toLowerCase().includes(name) && !e.image_credit && e.cover_rights_recorded === true,
+  )
   // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
   const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
   // A failed read only leaves the link off, and says so (the old city page's own handling).
@@ -76,7 +79,7 @@ export async function CityGuideScreen({
         <section aria-label={`What's on in ${city.name}`} className="relative isolate overflow-hidden bg-[var(--color-navy-950)]">
           {heroImage ? <HeroMedia image={heroImage} alt={`${city.name}, ${city.state}`} objectPosition="50% 45%" /> : null}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/85 via-[var(--color-navy-950)]/45 to-transparent" aria-hidden="true" />
-          <div className="relative mx-auto flex h-44 max-w-7xl flex-col justify-end px-4 pb-5 sm:px-6 md:h-64 md:pb-8 lg:px-8">
+          <div className="relative mx-auto flex h-60 max-w-7xl flex-col justify-end px-4 pb-6 sm:px-6 md:h-80 md:pb-10 lg:px-8">
             {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph). */}
             <HeroCaption>
               <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
@@ -89,11 +92,13 @@ export async function CityGuideScreen({
               <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
                 What&rsquo;s on in {city.name}
               </h1>
-              <p className="mt-1.5 font-display text-sm text-white/85 sm:text-base">Choose a city. Discover everything happening there.</p>
+              {/* The city's own line from our city data (src/lib/cities/data.ts descriptor), never one written for the page. */}
+              {city.descriptor ? (
+                <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{city.descriptor}</p>
+              ) : null}
             </HeroCaption>
           </div>
         </section>
-        {slides.length >= SLIDER_MINIMUM ? <CityHeroSlider events={slides} cityName={city.name} /> : null}
         <CityGuide
           city={{ slug: city.slug, name: city.name, state: city.state, lat: city.latitude, lng: city.longitude }}
           stateName={STATE_NAMES[city.state] ?? city.state}
@@ -102,7 +107,7 @@ export async function CityGuideScreen({
           allCities={allCities}
           rows={data.rows}
           days={data.days}
-          featured={slides.length === 2 ? slides : []}
+          worth={worth}
         />
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
             21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in
