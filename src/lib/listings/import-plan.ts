@@ -217,7 +217,9 @@ export function planImport(
     takenSlugs.add(venueSlugify(v.name))
   }
   const seriesByKey = new Map(
-    state.series.map((s) => [`${s.venueId}|${s.name}|${s.rule}|${s.anchorDate}`, s]),
+    /* The start is part of a night's identity: a matinee and an evening of one show on one day are two nights
+       (directive 6, 1 November 2026; event_series_once_per_session). */
+    state.series.map((s) => [`${s.venueId}|${s.name}|${s.rule}|${s.anchorDate}|${clock5(s.startsAt)}`, s]),
   )
 
   const planned = new Map<string, PlannedVenue>()
@@ -265,7 +267,7 @@ export function planImport(
       donation_optional: row.donationOptional,
       booking_links: bookingLinksJson(row.bookingLinks),
     }
-    const seriesKey = `${venueRef}|${row.name}|${row.rule}|${row.date}`
+    const seriesKey = `${venueRef}|${row.name}|${row.rule}|${row.date}|${clock5(row.startsAt)}`
     const repeat = plannedSeries.get(seriesKey)
     if (repeat !== undefined) {
       refuse(`repeats line ${repeat}: the same night of the same host`)
