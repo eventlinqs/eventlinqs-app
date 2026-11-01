@@ -12279,6 +12279,15 @@ export type Database = {
         Args: { p_now?: string; p_starts_at: string }
         Returns: string
       }
+      listing_publish_accepted_night: {
+        Args: {
+          p_candidate: string
+          p_category: string
+          p_reviewer: string
+          p_venue: string
+        }
+        Returns: string
+      }
       listing_publish_partner_night: {
         Args: { p_candidate: string }
         Returns: string
