@@ -135,8 +135,7 @@ describe('the run reads a page-rule source through its sitemap', () => {
     const asked: string[] = []
     const fetcher: Fetcher = async (url) => {
       asked.push(url)
-      if (url === `${GAC}/robots.txt`) return { status: 200, text: async () => 'User-agent: *
-Disallow: /cpresources/' }
+      if (url === `${GAC}/robots.txt`) return { status: 200, text: async () => 'User-agent: *\nDisallow: /cpresources/' }
       if (url === SITEMAP) return { status: 200, text: async () => `<urlset><url><loc>${GAC}/whats-on/all-events/quartet/</loc></url><url><loc>${GAC}/whats-on/all-events/two/</loc></url><url><loc>${GAC}/whats-on/all-events/three/</loc></url></urlset>` }
       if (url === `${GAC}/whats-on/all-events/quartet/`) return { status: 200, text: async () => SHOW }
       return { status: 429, text: async () => 'slow down' }

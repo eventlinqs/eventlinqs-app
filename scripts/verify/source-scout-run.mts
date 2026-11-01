@@ -8,8 +8,14 @@
  *   node node_modules/tsx/dist/cli.mjs scripts/verify/source-scout-run.mts <sites.json> <out.json>
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { COLLECTOR_AGENT, robotsVerdict } from '@/lib/listings/collect'
-import { proposedSource, scoutSite } from '@/lib/listings/source-scout'
+import type * as CollectModule from '@/lib/listings/collect'
+import type * as ScoutModule from '@/lib/listings/source-scout'
+
+/* src is CommonJS to tsx; read each module's exports whichever way the loader hands them over. */
+const collectMod = (await import('@/lib/listings/collect')) as typeof CollectModule & { default?: typeof CollectModule }
+const scoutMod = (await import('@/lib/listings/source-scout')) as typeof ScoutModule & { default?: typeof ScoutModule }
+const { COLLECTOR_AGENT, robotsVerdict } = collectMod.default ?? collectMod
+const { proposedSource, scoutSite } = scoutMod.default ?? scoutMod
 
 type Site = { name: string; url: string; citySlug: string; kind: string }
 const [sitesFile, out] = process.argv.slice(2)

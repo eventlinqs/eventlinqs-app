@@ -6,8 +6,14 @@
  *   node node_modules/tsx/dist/cli.mjs scripts/verify/page-reader-drive.mts <sitemap url> <out.json> [max pages]
  */
 import { writeFileSync } from 'node:fs'
-import { COLLECTOR_AGENT, robotsVerdict } from '@/lib/listings/collect'
-import { eventPagesFromSitemap, isSitemap, pageRuleFor } from '@/lib/listings/page-rules'
+import type * as CollectModule from '@/lib/listings/collect'
+import type * as RulesModule from '@/lib/listings/page-rules'
+
+/* src is CommonJS to tsx; read each module's exports whichever way the loader hands them over. */
+const collectMod = (await import('@/lib/listings/collect')) as typeof CollectModule & { default?: typeof CollectModule }
+const rulesMod = (await import('@/lib/listings/page-rules')) as typeof RulesModule & { default?: typeof RulesModule }
+const { COLLECTOR_AGENT, robotsVerdict } = collectMod.default ?? collectMod
+const { eventPagesFromSitemap, isSitemap, pageRuleFor } = rulesMod.default ?? rulesMod
 
 const [sitemapUrl, out, maxArg] = process.argv.slice(2)
 if (!sitemapUrl || !out) throw new Error('usage: page-reader-drive.mts <sitemap url> <out.json> [max pages]')
