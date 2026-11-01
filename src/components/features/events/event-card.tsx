@@ -176,7 +176,9 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       entry_mode: event.entry_mode ?? null,
     })
     const shownPrice = priceLabel ? rowPrice(priceLabel) : ''
-    const rowPriceShown = source === WALK_IN_LABEL ? '' : /^free/i.test(shownPrice) && OUTBOUND_LABEL.test(source) ? 'Free' : shownPrice
+    // A free walk-in night says 'Free · Walk in' once, as its price (Lawal 09:00, refinement 4, in place of 'Free entry'
+    // beside 'Walk in, no ticket needed'); the source line, the same words, is then not shown again.
+    const rowPriceShown = source === WALK_IN_LABEL ? WALK_IN_LABEL : /^free/i.test(shownPrice) && OUTBOUND_LABEL.test(source) ? 'Free' : shownPrice
     return (
       <Link href={`/events/${slug}`} className="group event-row">
         <span className="min-w-0">

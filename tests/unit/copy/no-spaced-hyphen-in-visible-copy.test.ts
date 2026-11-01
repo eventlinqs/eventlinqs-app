@@ -41,12 +41,14 @@ describe('visible copy carries no spaced hyphen', () => {
     // match), and the founder's health email said 'Good news - systems recovered'. These read the whole line.
     const found: string[] = []
     const JOIN = /\.join\(\s*['"`] - ['"`]\s*\)/
-    const TEMPLATE_TEXT = /`[^`]*[A-Za-z0-9.,)] - [A-Za-z(][^`]*`/
     for (const file of files) {
       readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
         // A comment is not copy, and arithmetic inside ${...} ('a - b') is code: both are taken out before judging.
         const code = line.replace(/^\s*(\/\/|\*).*$/, '').replace(/\$\{[^}]*\}/g, 'X')
-        if (JOIN.test(code) || TEMPLATE_TEXT.test(code)) found.push(`${file.slice(ROOT.length + 1)}:${i + 1} ${line.trim().slice(0, 120)}`)
+        // Each template literal is read on its own, its backticks paired in order, so the code BETWEEN two templates
+        // (`${a}T00:00Z`) - Date.parse(`${b}...`) is never read as one template's text.
+        const templates = [...code.matchAll(/`([^`]*)`/g)].map((m) => m[1])
+        if (JOIN.test(code) || templates.some((t) => SPACED_HYPHEN.test(t))) found.push(`${file.slice(ROOT.length + 1)}:${i + 1} ${line.trim().slice(0, 120)}`)
       })
     }
     expect(found).toEqual([])

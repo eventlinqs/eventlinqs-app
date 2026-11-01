@@ -58,7 +58,8 @@ describe('the /events projection and the walk-in card', () => {
   it('a projected walk-in row renders "Free entry", never "Free"', async () => {
     const [card] = await projectToCardData([row({})])
     render(<EventCard event={card} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    // Lawal, 2 November 2026, 09:00, refinement 4: 'Free · Walk in', one wording, never a bare 'Free'.
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
     expect(screen.queryByText('Free')).toBeNull()
   })
 
@@ -67,7 +68,8 @@ describe('the /events projection and the walk-in card', () => {
   it('a projected ticketed row stored as free renders "Free entry", the one wording', async () => {
     const [card] = await projectToCardData([row({ entry_mode: 'tickets' })])
     render(<EventCard event={card} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    // Lawal, 2 November 2026, 09:00, refinement 4: 'Free · Walk in', one wording, never a bare 'Free'.
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
     expect(screen.queryByText('Free')).toBeNull()
   })
 })

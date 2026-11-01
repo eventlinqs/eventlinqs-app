@@ -113,6 +113,8 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
     case 'paid_external':
       return seller ? `Tickets at ${seller}` : 'Get tickets'
     case 'free_registration':
+      // Free, registered on our own checkout (no outside address): it never leaves EventLinqs, so no outbound label.
+      if (!(e.external_ticket_url ?? '').trim()) return OUR_CHECKOUT_LABEL
       return seller ? `Register at ${seller}` : 'Register'
     case 'free_open':
       return WALK_IN_LABEL

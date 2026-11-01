@@ -185,7 +185,7 @@ export function SuburbLandingPage({
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} layout="rail-wide-tile" />
+                      <CityTileImage src={img} alt={`${s.name}, ${city.name}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden

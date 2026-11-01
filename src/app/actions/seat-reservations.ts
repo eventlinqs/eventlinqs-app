@@ -28,7 +28,7 @@ export async function createSeatReservation(
     console.error(
       '[seat-reservations] invalid reservation input:',
       parsed.error.issues
-        .map((i) => `${i.path.join('.') || '(root)'}: ${i.code} - ${i.message}`)
+        .map((i) => `${i.path.join('.') || '(root)'}: ${i.code}, ${i.message}`)
         .join('; '),
     )
     return { error: 'Invalid reservation data' }

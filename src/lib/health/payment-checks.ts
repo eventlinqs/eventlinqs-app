@@ -95,7 +95,7 @@ async function probeOnce(
       return emit(
         res.status === 400
           ? { name, ok: false, detail: 'mis-signed probe correctly rejected (400) - drill alert follows', probableCause: 'signature mismatch (drill)' }
-          : { name, ok: false, detail: `mis-signed probe returned ${res.status} - verification may be OFF`, probableCause: 'signature verification not enforcing' },
+          : { name, ok: false, detail: `mis-signed probe returned ${res.status}: verification may be OFF`, probableCause: 'signature verification not enforcing' },
       )
     }
     if (res.ok) return emit({ name, ok: true, detail: `signed probe accepted (${res.status})` })
@@ -423,7 +423,7 @@ export async function endpointConfigCheck(origin: string): Promise<PaymentCheckR
     if (accountEps.length > 1) dupes.push(`${accountEps.length} account`)
     if (connectEps.length > 1) dupes.push(`${connectEps.length} connected-account`)
     if (dupes.length > 0) {
-      return emit({ name, ok: false, detail: `${dupes.join(' and ')} enabled endpoints at ${canonicalHost} - two signers on one channel invite drift`, probableCause: 'duplicate endpoints on the same delivery channel (the historical two-secret failure)' })
+      return emit({ name, ok: false, detail: `${dupes.join(' and ')} enabled endpoints at ${canonicalHost}: two signers on one channel invite drift`, probableCause: 'duplicate endpoints on the same delivery channel (the historical two-secret failure)' })
     }
 
     // SECRET COVERAGE (2026-07-26). Stripe mints one signing secret per

@@ -72,8 +72,8 @@ describe('the card price line is the night\'s own call to action', () => {
     expect(screen.getByText('Free, registration required')).toBeInTheDocument()
   })
 
-  it('a night stored as free with no tickets says "Free entry"', () => {
+  it('a night stored as free with no tickets says "Free · Walk in" (Lawal 2 November 09:00, refinement 4)', () => {
     render(<EventCard event={{ ...ceberano, external_ticket_url: null, is_free: true }} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
   })
 })
