@@ -19,13 +19,33 @@ const fail = (id: string, label: string, detail: string, action: string): Health
   id, label, severity: 'critical', ok: false, detail, action,
 })
 
-async function factsFor(db: SupabaseClient, slugs: string[]): Promise<PageEventFacts[]> {
+/**
+ * How each venue stands to the page's city, by public.venue_city_relation (20261101160001), ten at a time. An empty map
+ * where the database does not have that function yet (PostgREST PGRST202), so the label judges until it lands; any
+ * other failure is thrown and reported, never read as clean.
+ */
+async function relationsFor(db: SupabaseClient, citySlug: string, venueIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  for (let i = 0; i < venueIds.length; i += 10) {
+    const answers = await Promise.all(
+      venueIds.slice(i, i + 10).map(async (id) => ({ id, ...(await db.rpc('venue_city_relation', { p_city: citySlug, p_venue: id })) })),
+    )
+    for (const a of answers) {
+      if (a.error?.code === 'PGRST202') return new Map()
+      if (a.error) throw new Error(`a venue's placement could not be read: ${a.error.message}`)
+      if (typeof a.data === 'string') out.set(a.id, a.data)
+    }
+  }
+  return out
+}
+
+async function factsFor(db: SupabaseClient, slugs: string[], citySlug: string | null): Promise<PageEventFacts[]> {
   const out: PageEventFacts[] = []
   for (let i = 0; i < slugs.length; i += 100) {
     const chunk = slugs.slice(i, i + 100)
     const { data: events, error } = await db
       .from('events')
-      .select('id, slug, city_primary, start_date, end_date, timezone, status')
+      .select('id, slug, venue_id, city_primary, start_date, end_date, timezone, status')
       .in('slug', chunk)
       .limit(chunk.length)
     if (error) throw new Error(`the nights could not be read: ${error.message}`)
@@ -34,6 +54,8 @@ async function factsFor(db: SupabaseClient, slugs: string[]): Promise<PageEventF
       ? await db.from('event_booking_links').select('event_id, availability').in('event_id', ids).limit(ids.length * 20)
       : { data: [], error: null }
     if (linkError) throw new Error(`the booking links could not be read: ${linkError.message}`)
+    const venueIds = [...new Set((events ?? []).map((e) => e.venue_id as string | null).filter((v): v is string => !!v))]
+    const relation = citySlug ? await relationsFor(db, citySlug, venueIds) : new Map<string, string>()
     for (const e of events ?? []) {
       const own = (links ?? []).filter((l) => l.event_id === e.id)
       out.push({
@@ -45,6 +67,7 @@ async function factsFor(db: SupabaseClient, slugs: string[]): Promise<PageEventF
         status: e.status as string,
         deadBookingLinks: own.filter((l) => l.availability === 'dead').length,
         liveBookingLinks: own.filter((l) => l.availability !== 'dead').length,
+        cityRelation: e.venue_id ? (relation.get(e.venue_id as string) ?? null) : null,
       })
     }
   }
@@ -79,7 +102,7 @@ export async function runVisitorSentinel(opts: { db: SupabaseClient; base: strin
     const links = linksOnPage(html)
     for (const l of links.internal) internal.add(l)
     try {
-      const facts = await factsFor(db, links.events)
+      const facts = await factsFor(db, links.events, page.citySlug)
       results.push(...judgeVisitorPage({ path: page.path, citySlug: page.citySlug, html, facts, now }))
     } catch (err) {
       results.push(fail(`visitor-facts:${page.path}`, `Facts behind ${page.path}`, err instanceof Error ? err.message : String(err), 'The page could not be judged; check the database answers.'))

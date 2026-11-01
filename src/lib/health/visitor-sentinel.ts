@@ -21,7 +21,16 @@ export type PageEventFacts = {
   status: string
   deadBookingLinks: number
   liveBookingLinks: number
+  /**
+   * How the night's venue stands to the page's city, from public.venue_city_relation (city, surrounding, region,
+   * outside, unplaced). Absent where that function is not on the database, and then the city label judges.
+   */
+  cityRelation?: string | null
 }
+
+/** A venue placed in the city or its surrounds belongs on the city's page; region and outside do not. */
+const BELONGS = new Set(['city', 'surrounding'])
+const PLACED_ELSEWHERE = new Set(['region', 'outside'])
 
 /** The routes a visit COUNTS (an outbound click, a share, a go link): the sentinel never follows them. */
 const COUNTED = /^\/(out|e|s|go)(\/|$)/
@@ -64,7 +73,18 @@ export function judgeVisitorPage(input: {
   })
 
   const ended = onPage.filter((f) => !isStillListed({ start_date: f.startDate, end_date: f.endDate, timezone: f.timezone }, now)).map((f) => f.slug)
-  const otherCity = citySlug === null ? [] : onPage.filter((f) => f.citySlug !== null && f.citySlug !== citySlug).map((f) => `${f.slug} (${f.citySlug})`)
+  // The venue's placement judges where it is known (the label is what put Aireys Inlet under Geelong); an unplaced
+  // venue, or a database without the placement function, falls back to the label.
+  const otherCity =
+    citySlug === null
+      ? []
+      : onPage
+          .filter((f) =>
+            f.cityRelation && (BELONGS.has(f.cityRelation) || PLACED_ELSEWHERE.has(f.cityRelation))
+              ? PLACED_ELSEWHERE.has(f.cityRelation)
+              : f.citySlug !== null && f.citySlug !== citySlug,
+          )
+          .map((f) => `${f.slug} (${f.cityRelation && PLACED_ELSEWHERE.has(f.cityRelation) ? `venue ${f.cityRelation}` : f.citySlug})`)
   const deadBooking = onPage.filter((f) => f.deadBookingLinks > 0 && f.liveBookingLinks === 0).map((f) => f.slug)
   const placeholders = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map((m) => m[1]).filter((src) => PLACEHOLDER_IMAGE.test(src))
 
