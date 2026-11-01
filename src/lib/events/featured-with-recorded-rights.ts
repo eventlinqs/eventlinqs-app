@@ -13,6 +13,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
+import { previewReadOnlyOn } from '@/lib/preview/read-only'
 
 export const RECORDED = new Set(['organiser_authorised', 'separately_licensed'])
 export const FEATURED_MINIMUM = 2
@@ -40,6 +41,9 @@ export function featuredWithRecordedRights<T extends Candidate>(
  */
 export async function readCoverRights(admin: SupabaseClient, eventIds: readonly string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>()
+  // THE DESIGN PREVIEW HAS NO SERVICE ROLE (the CONTROLLER's ruling of 1 November 2026, 11:57, (B)): the read is
+  // SKIPPED, not guessed, so Featured there shows only a venue photograph with its credit. Never on production.
+  if (previewReadOnlyOn()) return out
   // A hundred ids a read, so the request line stays short whatever the week holds.
   for (let i = 0; i < eventIds.length; i += 100) {
     const { data, error } = await admin

@@ -51,3 +51,19 @@ describe('the preview switch', () => {
     expect(src).toContain("'X-Robots-Tag', 'noindex, nofollow'")
   })
 })
+
+describe('Featured on the preview', () => {
+  it('skips the rights read (no service role there), so only a credited venue photo can feature', async () => {
+    const { readCoverRights } = await import('@/lib/events/featured-with-recorded-rights')
+    const prior = process.env.PREVIEW_READ_ONLY
+    process.env.PREVIEW_READ_ONLY = '1'
+    try {
+      const never = { from: () => { throw new Error('the rights table was read on the preview') } }
+      const rights = await readCoverRights(never as never, ['a', 'b'])
+      expect(rights.size).toBe(0)
+    } finally {
+      if (prior === undefined) delete process.env.PREVIEW_READ_ONLY
+      else process.env.PREVIEW_READ_ONLY = prior
+    }
+  })
+})
