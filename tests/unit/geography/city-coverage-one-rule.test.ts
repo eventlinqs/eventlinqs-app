@@ -19,6 +19,12 @@ describe('one photo rule for the scorecard and the city coverage', () => {
     expect(photoRule(read('20261101162001_city_coverage.sql'))).toBe(photoRule(read('20261101044501_growth_scorecard_selling.sql')))
   })
 
+  test('a matinee and an evening of one show are two unique events: candidates key on the local start, to the minute', () => {
+    const sql = read('20261101162001_city_coverage.sql')
+    expect(sql).toContain("to_char(c.starts_at at time zone 'Australia/Sydney', 'YYYY-MM-DD HH24:MI')")
+    expect(sql).not.toContain("to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD')")
+  })
+
   test('the coverage counts a city only by placement, never by the label alone', () => {
     const sql = read('20261101162001_city_coverage.sql')
     expect(sql).toMatch(/mine as \(select \* from up where rel in \('city', 'surrounding'\)\)/)

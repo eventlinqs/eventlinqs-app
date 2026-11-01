@@ -25,7 +25,7 @@ export const GUIDE_CATEGORY_WORDS: Readonly<Record<GuideCategory, string>> = {
   nightlife: 'Nightlife and DJs',
   comedy: 'Comedy',
   theatre: 'Theatre and performing arts',
-  festival: 'Festivals and cultural events',
+  festival: 'Festivals and community celebrations',
   sports: 'Sports',
   'food-drink': 'Food and drink',
   markets: 'Markets',

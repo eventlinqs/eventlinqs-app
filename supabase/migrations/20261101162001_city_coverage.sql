@@ -20,7 +20,8 @@
 --   selling here          the scorecard's own selling rule.
 -- THE ENGINE DIRECTIVE's SECTION 8 (Lawal, 16:05), against MONITORED SOURCES only, never a claim to know every event:
 --   candidates discovered  every upcoming candidate from the city's registered sources.
---   unique discovered      candidates, refused ones aside, counted once per title, Melbourne day and venue.
+--   unique discovered      candidates, refused ones aside, counted once per title, local START (to the minute) and venue,
+--                          so a matinee and an evening of one show are two (WINDOW 3, 1 November 16:30).
 --   listed                 a unique event at least one of whose candidates was published as, or matched to, an
 --                          EventLinqs event (published_series_id or event_id).
 --   missing                unique discovered and not listed.
@@ -64,7 +65,7 @@ with up as (
 mine as (select * from up where rel in ('city', 'surrounding')),
 labelled as (select * from up where lower(btrim(coalesce(city_primary, ''))) = lower(p_city)),
 src as (select * from public.listing_sources where city_slug = p_city),
-cand as (select c.*, lower(btrim(c.title)) || '|' || to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD') || '|' || lower(btrim(c.venue_name)) k
+cand as (select c.*, lower(btrim(c.title)) || '|' || to_char(c.starts_at at time zone 'Australia/Sydney', 'YYYY-MM-DD HH24:MI') || '|' || lower(btrim(c.venue_name)) k
            from public.listing_candidates c join src on src.id = c.source_id where c.starts_at >= now()),
 uniq as (select k, min(starts_at) starts_at, bool_or(published_series_id is not null or event_id is not null) listed from cand where status <> 'refused' group by k),
 sf as (select distinct on (e.listing_series_id) e.listing_series_id, e.id from public.events e
@@ -142,7 +143,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 with src as (select * from public.listing_sources where city_slug = p_city),
-cand as (select c.*, src.name source_name, lower(btrim(c.title)) || '|' || to_char((c.starts_at at time zone 'Australia/Sydney')::date, 'YYYY-MM-DD') || '|' || lower(btrim(c.venue_name)) k
+cand as (select c.*, src.name source_name, lower(btrim(c.title)) || '|' || to_char(c.starts_at at time zone 'Australia/Sydney', 'YYYY-MM-DD HH24:MI') || '|' || lower(btrim(c.venue_name)) k
            from public.listing_candidates c join src on src.id = c.source_id where c.starts_at >= now()),
 listed_keys as (select k from cand where published_series_id is not null or event_id is not null),
 up as (select e.*, public.venue_city_relation(p_city, e.venue_id) rel from public.events e

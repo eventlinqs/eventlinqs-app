@@ -10,7 +10,7 @@ describe('the fifteen', () => {
   test("are exactly the directive's, in its words, with the existing slugs kept", () => {
     expect(GUIDE_CATEGORIES).toHaveLength(15)
     expect(Object.values(GUIDE_CATEGORY_WORDS)).toEqual([
-      'Music and concerts', 'Nightlife and DJs', 'Comedy', 'Theatre and performing arts', 'Festivals and cultural events',
+      'Music and concerts', 'Nightlife and DJs', 'Comedy', 'Theatre and performing arts', 'Festivals and community celebrations',
       'Sports', 'Food and drink', 'Markets', 'Arts and exhibitions', 'Family and children', 'Community',
       'Classes and workshops', 'Business and networking', 'Health and wellness', 'Education and talks',
     ])

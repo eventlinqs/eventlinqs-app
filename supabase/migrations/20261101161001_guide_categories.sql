@@ -23,7 +23,7 @@ alter table public.event_categories add column if not exists guide_label text;
 update public.event_categories c
    set guide_order = g.n, guide_label = g.label
   from (values ('music', 1, 'Music and concerts'), ('nightlife', 2, 'Nightlife and DJs'), ('comedy', 3, 'Comedy'),
-               ('theatre', 4, 'Theatre and performing arts'), ('festival', 5, 'Festivals and cultural events'),
+               ('theatre', 4, 'Theatre and performing arts'), ('festival', 5, 'Festivals and community celebrations'),
                ('sports', 6, 'Sports'), ('food-drink', 7, 'Food and drink'), ('markets', 8, 'Markets'),
                ('arts-community', 9, 'Arts and exhibitions'), ('family', 10, 'Family and children'),
                ('community', 11, 'Community'), ('classes-workshops', 12, 'Classes and workshops'),
