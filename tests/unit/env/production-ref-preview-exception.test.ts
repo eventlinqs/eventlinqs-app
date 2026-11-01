@@ -44,7 +44,9 @@ describe('the design preview exception', () => {
 describe('the build check SUPABASE_ENV_ISOLATION honours the same exception', () => {
   it('excuses the URL on the branch before the date, refuses it after and elsewhere', async () => {
     const { CRITICAL_ENV_RULES, evalEnvRule } = await import('@/lib/health/critical-env.mjs')
-    const rule = CRITICAL_ENV_RULES.find((r: { name: string }) => r.name === 'SUPABASE_ENV_ISOLATION')
+    const found = CRITICAL_ENV_RULES.find((r: { name: string }) => r.name === 'SUPABASE_ENV_ISOLATION')
+    if (!found) throw new Error('SUPABASE_ENV_ISOLATION is not among CRITICAL_ENV_RULES')
+    const rule = found
     const env = (branch: string) => ({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL_PREVIEW: PROD_URL, VERCEL_GIT_COMMIT_REF: branch })
     const ok = (e: Record<string, string>) => (evalEnvRule(rule, e) as { ok: boolean }).ok
     vi.useFakeTimers({ now: new Date('2026-11-02T00:00:00Z') })
