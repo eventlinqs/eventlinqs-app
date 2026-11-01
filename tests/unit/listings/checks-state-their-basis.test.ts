@@ -37,7 +37,8 @@ export function checkInserts(text: string): string[] {
   for (const m of text.matchAll(sql)) found.push(m[0])
   /* Any argument: an object literal, or rows mapped into one (the collection run's confirmations, 1 November 2026). */
   const client = /\.from\(\s*['"]listing_checks['"]\s*\)\s*\.(insert|upsert)\([\s\S]{0,800}?\}/g
-  for (const m of text.matchAll(client)) found.push(m[0])
+  // A template literal's ${...} carries a brace that is not the object's end; it is read without its interpolations.
+  for (const m of text.replace(/\$\{[^{}]*\}/g, '').matchAll(client)) found.push(m[0])
   return found
 }
 
@@ -61,6 +62,16 @@ describe('checkInserts finds both shapes of writer, and sees a missing basis', (
     const inserts = checkInserts(planted)
     expect(inserts).toHaveLength(1)
     expect(inserts[0]).not.toContain('reuse_basis')
+  })
+})
+
+describe('a template literal inside the insert', () => {
+  it('does not end the insert early, so a reuse_basis after it is still seen', () => {
+    const planted =
+      "await db.from('listing_checks').insert(rows.map((r) => ({ series_id: r.s, import_file: `collection run, source ${r.sourceId}`, reuse_basis: r.reuseBasis })))"
+    const inserts = checkInserts(planted)
+    expect(inserts).toHaveLength(1)
+    expect(inserts[0]).toContain('reuse_basis')
   })
 })
 
