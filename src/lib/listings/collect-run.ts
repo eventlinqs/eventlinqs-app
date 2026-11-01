@@ -13,6 +13,12 @@ import {
 } from './collect'
 import { sameVenue } from '@/lib/events/booking-links'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
+import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
+
+/** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
+export const PAGE_PAUSE_MS = 1000
+/** At most this many event pages of one source in one run; the next run reads the rest. */
+export const PAGE_READ_CAP = 200
 
 /**
  * ONE COLLECTION RUN (item 19; the rules in ./collect.ts, the reasons in docs/walk-in/COLLECTION-RUN.md). Daily from
@@ -156,7 +162,18 @@ export function acceptedByRule(source: Pick<RegisteredSource, 'partner' | 'verif
 }
 
 /** deadline: no source is started after it; one not reached stays due and the next run reads it first. */
-export async function runCollection(store: CollectionStore, fetcher: Fetcher, now: Date, deadline = Infinity): Promise<CollectionResult> {
+/**
+ * pauseMs: the wait between two pages of one site when a page rule follows a sitemap (one request a second, the
+ * CONTROLLER's 15:54); tests pass 0.
+ */
+export async function runCollection(
+  store: CollectionStore,
+  fetcher: Fetcher,
+  now: Date,
+  deadline = Infinity,
+  options: { pauseMs?: number } = {},
+): Promise<CollectionResult> {
+  const pauseMs = options.pauseMs ?? PAGE_PAUSE_MS
   const due = dueSources(await store.sources(), now)
   const known = due.length > 0 ? await store.known(now) : []
   const robotsByOrigin = new Map<string, { status: number | null; body: string }>()
@@ -208,7 +225,41 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
             result.read += 1
             succeeded = true
             /* Only what the source permits (D4): a facts only source lands no image, no description and no link. */
-            const permitted = eventsFromBody(res.body, source.pageUrl).flatMap((e) => withPermittedContent(e, source.permits) ?? [])
+            /* A source with a page rule and a sitemap: the rule reads each event page the sitemap lists, robots.txt asked for
+               every page, one page a second, never past the run's deadline (./page-rules.ts). Any other answer is read
+               for its own Event data or feed, as before. */
+            const rule = pageRuleFor(source.pageUrl)
+            let raw: FoundEvent[]
+            /* A site that answers 403 or 429 is asking us to stop: no further page of it is asked this run, and the run
+               says so (WINDOW 5's finding of 16:05, 1 November 2026: a city calendar began refusing after 21 pages). */
+            let stoppedBy: string | null = null
+            /* A rule's source is its sitemap, or its own list page where the sitemap does not carry the current program
+               (WINDOW 2's Forum finding, 1 November 2026); a page the rule itself reads is read below as any page is. */
+            const listPage = rule !== null && !isSitemap(res.body) && !rule.eventPath.test(new URL(source.pageUrl).pathname)
+            if (rule && (isSitemap(res.body) || listPage)) {
+              raw = []
+              const pages = listPage ? eventPagesFromListPage(res.body, source.pageUrl, rule) : eventPagesFromSitemap(res.body, rule)
+              for (const url of pages.slice(0, PAGE_READ_CAP)) {
+                if (Date.now() >= deadline) break
+                const at = new URL(url)
+                let siteRobots = robotsByOrigin.get(at.origin)
+                if (!siteRobots) {
+                  siteRobots = await get(fetcher, `${at.origin}/robots.txt`)
+                  robotsByOrigin.set(at.origin, siteRobots)
+                }
+                if (robotsVerdict(siteRobots.status, siteRobots.body, at.pathname + at.search) === 'disallowed') continue
+                if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs))
+                const one = await get(fetcher, url)
+                if (one.status === 403 || one.status === 429) {
+                  stoppedBy = `the site answered ${one.status} on ${url}: reading stopped`
+                  break
+                }
+                if (one.status !== null && one.status >= 200 && one.status < 300) raw.push(...rule.read(one.body, url))
+              }
+            } else {
+              raw = eventsFromBody(res.body, source.pageUrl)
+            }
+            const permitted = raw.flatMap((e) => withPermittedContent(e, source.permits) ?? [])
             const city = source.citySlug ?? null
             /* A venue read that fails never stops the source: its nights land as found, and the address check holds them. */
             let addresses: ReadonlyMap<string, string> = new Map()
@@ -271,6 +322,7 @@ export async function runCollection(store: CollectionStore, fetcher: Fetcher, no
                 ? `read: ${found} event(s) found, ${landed} new for review`
                 : `read: ${found} event(s) found, ${landed} new: ${ruled} accepted by the partner rule, ${queued} for review`
             if (unpublished.length > 0) outcome += `; ${unpublished.length} accepted night(s) not yet published: ${unpublished[0]}`
+            if (stoppedBy) outcome += `; ${stoppedBy}`
           }
         }
       }
