@@ -25,7 +25,7 @@ const row = (o: Partial<DirectoryRow>): DirectoryRow => ({
   ts: 1, thumb: null, lat: null, lng: null, ...o,
 })
 const days = {
-  todayKey: '2026-11-02', tomorrowKey: '2026-11-03', weekendKeys: ['2026-11-07', '2026-11-08'], fridayKey: '2026-11-06',
+  todayKey: '2026-11-02', tomorrowKey: '2026-11-03', weekendKeys: ['2026-11-06', '2026-11-07', '2026-11-08'],
   weekKeys: ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'],
 }
 const rows = [

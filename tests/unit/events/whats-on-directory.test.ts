@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { directoryDays, sourceLabel, type DirectoryInput } from '@/lib/events/whats-on-directory'
-import { discoveryDays } from '@/lib/events/discovery-data'
+import { discoveryDays, windowDayKeys } from '@/lib/events/discovery-data'
 import { featuredWithRecordedRights } from '@/lib/events/featured-with-recorded-rights'
 
 const base: DirectoryInput = {
@@ -110,5 +110,12 @@ describe('the discovery rows say only what is held', () => {
     expect(d.todayKey).toBe('2026-11-01')
     expect(d.weekendKeys).toEqual(['2026-11-01'])
     expect(d.weekKeys).toHaveLength(7)
+  })
+  it('on a Monday the weekend is Friday, Saturday AND Sunday: every day of the one window, never its ends alone', () => {
+    const d = discoveryDays(new Date('2026-11-02T03:00:00Z')) // Monday 2 November in Sydney
+    expect(d.weekendKeys).toEqual(['2026-11-06', '2026-11-07', '2026-11-08'])
+  })
+  it('windowDayKeys lists the middle day of a three day window', () => {
+    expect(windowDayKeys(new Date('2026-11-05T13:00:00Z'), new Date('2026-11-08T12:59:59.999Z'))).toEqual(['2026-11-06', '2026-11-07', '2026-11-08'])
   })
 })

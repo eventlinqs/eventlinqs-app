@@ -15,25 +15,28 @@ import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/li
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
- * The day keys the guide's chips and sections use. weekendKeys is the platform's ONE weekend (listing-window.ts: Saturday
- * and Sunday); fridayKey is the Friday right before it, so 'This weekend' on the Geelong reference page runs Friday to
- * Sunday (Lawal's 2 November directive, section 4) without a second weekend definition.
+ * The day keys the guide's chips and sections use. weekendKeys is EVERY day of the platform's ONE weekend
+ * (listing-window.ts weekendWindowUtc, Friday to Sunday since 2 November: Lawal's directive, section 4), from today on,
+ * read from the window itself, never a second definition and never only its first and last day.
  */
-export type DiscoveryDays = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[]; fridayKey: string }
+export type DiscoveryDays = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[] }
+
+/** Every day key from the window's first to its last, inclusive, in the platform zone. */
+export function windowDayKeys(from: Date, to: Date): string[] {
+  const last = dayKey(to, PLATFORM_TIME_ZONE)
+  const keys: string[] = []
+  for (let k = dayKey(from, PLATFORM_TIME_ZONE); k <= last && keys.length < 7; k = addDays(k, 1)) keys.push(k)
+  return keys
+}
 
 export function discoveryDays(now: Date): DiscoveryDays {
   const todayKey = dayKey(now, PLATFORM_TIME_ZONE)
-  // The platform's ONE weekend (src/lib/events/listing-window.ts), its days from today on.
   const weekend = weekendWindowUtc(now, PLATFORM_TIME_ZONE)
-  const weekendKeys = [dayKey(weekend.from, PLATFORM_TIME_ZONE), dayKey(weekend.to, PLATFORM_TIME_ZONE)]
-    .filter((k, i, all) => all.indexOf(k) === i)
-    .filter((k) => k >= todayKey)
   return {
     todayKey,
     tomorrowKey: addDays(todayKey, 1),
-    weekendKeys,
+    weekendKeys: windowDayKeys(weekend.from, weekend.to).filter((k) => k >= todayKey),
     weekKeys: Array.from({ length: 7 }, (_, i) => addDays(todayKey, i)),
-    fridayKey: addDays(dayKey(weekend.from, PLATFORM_TIME_ZONE), -1),
   }
 }
 

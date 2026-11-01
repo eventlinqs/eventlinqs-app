@@ -25,7 +25,7 @@ const row = (id: string, slug: string, label: string): DirectoryRow => ({
   cityKey: 'geelong', dayKey: '2026-11-03', dayLabel: 'Tuesday 3 November', ts: Number(id.replace(/\D/g, '')) || 0,
   thumb: null, lat: null, lng: null, suburb: null,
 })
-const days = { todayKey: '2026-11-01', tomorrowKey: '2026-11-02', weekendKeys: ['2026-11-01'], weekKeys: ['2026-11-01', '2026-11-02', '2026-11-03'], fridayKey: '2026-10-30' }
+const days = { todayKey: '2026-11-01', tomorrowKey: '2026-11-02', weekendKeys: ['2026-11-01'], weekKeys: ['2026-11-01', '2026-11-02', '2026-11-03'] }
 
 describe('Lawal\u2019s 19:17 notes', () => {
   it('the Explore tiles run music, sport, comedy, nightlife, markets, food and drink, family, arts, then the rest by count', () => {

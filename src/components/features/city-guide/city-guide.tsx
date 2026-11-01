@@ -21,7 +21,7 @@ import { EventCard, type EventCardData } from '@/components/features/events/even
 
 export type GuideCity = { slug: string; name: string; state: string; lat: number; lng: number }
 type When = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'date'
-type Days = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[]; fridayKey: string }
+type Days = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[] }
 type Price = 'all' | 'free' | 'paid'
 
 const WHEN: { key: When; label: string }[] = [
@@ -148,9 +148,9 @@ export function CityGuide({
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const matchesQ = (r: DirectoryRow) =>
     words.every((w) => `${r.title} ${r.venue ?? ''} ${r.category ?? ''} ${r.suburb ?? ''}`.toLowerCase().includes(w))
-  // Friday to Sunday (the 2 November directive, section 4): the platform's one weekend and the Friday before it, from today
-  // on; the 'This weekend' chip and section 4 read the same days, so the page never says two different weekends.
-  const weekendDays = [days.fridayKey, ...days.weekendKeys].filter((k, i, all) => all.indexOf(k) === i && k >= days.todayKey)
+  // Friday to Sunday (the 2 November directive, section 4): the platform's one weekend, every day of it from today on
+  // (discoveryDays); the 'This weekend' chip and section 4 read the same days, so the page never says two weekends.
+  const weekendDays = days.weekendKeys
   const matchesWhen = (r: DirectoryRow) =>
     when === 'all' ||
     (when === 'today' && r.dayKey === days.todayKey) ||
