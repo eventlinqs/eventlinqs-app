@@ -1,5 +1,6 @@
 import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from '@/lib/events/booking-links'
 import { HORIZON_DAYS } from './horizon'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 import { factChange } from './judge'
 
 /**
@@ -495,9 +496,21 @@ export function withPermittedContent(e: FoundEvent, permits: PermittedContent): 
   }
 }
 
-/* A daily source is due again after 18 hours, so a run that starts a little early or late still reads it each day. */
-const RECHECK_DAYS: Readonly<Record<SourceChanges, number>> = { daily: 0.75, weekly: 6, monthly: 27, rarely: 89 }
 const DAY_MS = 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
+/** The pace, in hours, of a source holding nights in the next seven days (the ruling's floor of 6). */
+const THIS_WEEK_RECHECK_HOURS = 6
+/** How far ahead a night makes its source a this-week source. */
+export const THIS_WEEK_DAYS = 7
+/** The early morning run's hour, in the platform's zone: every source is read at least once a day from here. */
+export const MORNING_RUN_HOUR = 4
+
+/** The instant the current day's morning run began: today's 04:00 in the platform's zone, or yesterday's before it. */
+export function morningRunStart(now: Date): number {
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: PLATFORM_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const today = new Date(fromZonedInputValue(`${day}T0${MORNING_RUN_HOUR}:00`, PLATFORM_TIME_ZONE)).getTime()
+  return today <= now.getTime() ? today : today - DAY_MS
+}
 
 /** A source's pace, in days: how often its own page changes. */
 export const PACE_DAYS: Readonly<Record<SourceChanges, number>> = { daily: 1, weekly: 7, monthly: 30, rarely: 90 }
@@ -551,22 +564,28 @@ export function lastCheckFailed(s: Pick<RegisteredSource, 'lastCheckedAt' | 'las
 }
 
 /**
- * The sources this run reads: only those whose terms allow it, each when its own pace says it is due. A source whose last
- * check FAILED is due again at the daily pace until a read succeeds, whatever its own pace, so one outage does not cost
- * a weekly source six days of nights, a monthly one 27 or a rarely one 89 (the Supreme Specification's demonstration 18,
- * 'a failed job is logged and recoverable'; tests/unit/listings/failed-source-retried.test.ts).
+ * The sources this run reads: only those whose terms allow it, each when the re-read schedule says it is due: every
+ * source once a day from the morning run, one holding nights in the next seven days every 6 hours
+ * (tests/unit/listings/this-week-read-hourly.test.ts). A source whose last check FAILED is therefore read again within
+ * the day (the Supreme Specification's demonstration 18, 'a failed job is logged and recoverable';
+ * tests/unit/listings/failed-source-retried.test.ts). The pace a source declares (changes) no longer stretches past a day.
  */
-export function dueSources(sources: readonly RegisteredSource[], now: Date): RegisteredSource[] {
+export function dueSources(sources: readonly RegisteredSource[], now: Date, thisWeek: ReadonlySet<string> = new Set()): RegisteredSource[] {
   return sources.filter((s) => {
     if (s.collection !== 'read') return false
     if (s.lastCheckedAt === null) return true
-    const days = lastCheckFailed(s) ? Math.min(RECHECK_DAYS[s.changes], RECHECK_DAYS.daily) : RECHECK_DAYS[s.changes]
-    return now.getTime() - new Date(s.lastCheckedAt).getTime() >= days * DAY_MS
+    /* THE RE-READ SCHEDULE (Lawal, 1 November 2026, 16:15; the controller's 16:15 (B)). Every source at least once a
+       day, in the first run after 04:00 in the platform's zone, so each day's guide is right before people look; a
+       source holding nights in the next seven days every 6 hours. A failed check is therefore retried within the day. */
+    const last = new Date(s.lastCheckedAt).getTime()
+    if (last < morningRunStart(now)) return true
+    return thisWeek.has(s.id) && now.getTime() - last >= THIS_WEEK_RECHECK_HOURS * HOUR_MS
   })
 }
 
 /** citySlug: the night's own city (events.city_primary), so another city's same-named night is never 'this night moved'. */
-export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null }
+/** seriesId: the regular night it is one date of (events.listing_series_id), null for an organiser's own night. */
+export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null; seriesId?: string | null }
 
 export type CandidatePlan =
   | { kind: 'new'; event: FoundEvent }
@@ -616,6 +635,25 @@ export function planCandidates(
     plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
   }
   return plans
+}
+
+/**
+ * THE CLIFF (the controller's 15:40 of 1 November 2026). A night a source lists again, that EventLinqs already holds as
+ * one date of a regular series, confirms that series: one check per series per read, from the page it was found on.
+ * Only a plain re-find counts; a night found with different facts (changes_facts) goes to a person and confirms nothing.
+ */
+export function seriesConfirmations(
+  plans: readonly { kind: string; eventId?: string; event: { pageUrl: string } }[],
+  known: readonly KnownEvent[],
+): { seriesId: string; sourceUrl: string }[] {
+  const out: { seriesId: string; sourceUrl: string }[] = []
+  for (const p of plans) {
+    if (p.kind !== 'adds_links' || !p.eventId) continue
+    const seriesId = known.find((k) => k.eventId === p.eventId)?.seriesId
+    if (!seriesId || out.some((c) => c.seriesId === seriesId)) continue
+    out.push({ seriesId, sourceUrl: p.event.pageUrl })
+  }
+  return out
 }
 
 /** The provider of every link, for the review screen ("Humanitix, Eventbrite"). */

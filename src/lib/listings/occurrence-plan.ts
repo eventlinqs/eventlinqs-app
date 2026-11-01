@@ -113,11 +113,16 @@ const sameInstant = (a: string, b: string) => Date.parse(a) === Date.parse(b)
  * always has the same address, and two hosts' nights of one name never meet.
  * The host part is left out when the night's name already carries it.
  */
-export function occurrenceSlug(nightName: string, hostSlug: string, date: string): string {
+/**
+ * A dated night's address. startsAt ('HH:MM') is given only for a second session of one show on one day, whose plain
+ * address the first session already holds: it then ends in its start ('-1900'). Every existing address is unchanged.
+ */
+export function occurrenceSlug(nightName: string, hostSlug: string, date: string, startsAt?: string): string {
   const night = venueSlugify(nightName).slice(0, 60).replace(/-+$/, '')
   const host = hostSlug.slice(0, 40).replace(/-+$/, '')
   const parts = night.includes(host) || host === '' ? [night, date] : [night, host, date]
-  return parts.filter(Boolean).join('-')
+  const session = startsAt && /^\d{2}:\d{2}/.test(startsAt) ? startsAt.slice(0, 5).replace(':', '') : null
+  return [...parts, session].filter(Boolean).join('-')
 }
 
 function fieldsFor(night: NightForOccurrences, date: string): { fields: OccurrenceFields; guideDay: OccurrenceGuideDay } {

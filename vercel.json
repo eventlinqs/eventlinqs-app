@@ -127,7 +127,7 @@
     },
     {
       "path": "/api/cron/collection-run",
-      "schedule": "0 19 * * *"
+      "schedule": "25 */6 * * *"
     },
     {
       "path": "/api/cron/outreach-run",

@@ -4,6 +4,7 @@ import {
   eventsFromBody,
   planCandidates,
   robotsVerdict,
+  seriesConfirmations,
   withPermittedContent,
   type CandidatePlan,
   type FoundEvent,
@@ -12,6 +13,7 @@ import {
   type RegisteredSource,
 } from './collect'
 import { sameVenue } from '@/lib/events/booking-links'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 
@@ -97,6 +99,29 @@ export type CollectionStore = {
    * (public.venues.name, address, city_slug). A feed that names such a venue and gives no street takes this one.
    */
   venueAddresses?(citySlug: string): Promise<ReadonlyMap<string, string>>
+  /**
+   * Writes one confirmed listing check per series this read found again (public.listing_checks; its trigger moves the
+   * series' last confirmed day and every night's listing_fresh_until). The collection run reads only sources whose
+   * terms allow it, so its basis is 'licensed_source'.
+   */
+  confirmSeries?(rows: SeriesConfirmationRow[]): Promise<void>
+  /** The ids of the sources whose found nights start in the next seven days: each is read every hour. */
+  thisWeekSources?(now: Date): Promise<ReadonlySet<string>>
+}
+
+export type SeriesConfirmationRow = {
+  seriesId: string
+  sourceUrl: string
+  /** The day of the read in the platform's zone, YYYY-MM-DD. */
+  sourceDate: string
+  sourceId: string
+  outcome: 'confirmed'
+  reuseBasis: 'licensed_source'
+}
+
+/** The calendar day of an instant in the platform's zone, YYYY-MM-DD. */
+function platformDay(at: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: PLATFORM_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
 }
 
 /**
@@ -174,7 +199,18 @@ export async function runCollection(
   options: { pauseMs?: number } = {},
 ): Promise<CollectionResult> {
   const pauseMs = options.pauseMs ?? PAGE_PAUSE_MS
-  const due = dueSources(await store.sources(), now)
+  /* This week first: a source holding nights in the next seven days falls due again 6 hours after its last read (the
+     run itself every 6 hours, CONTROLLER 01:04). A failed read of that set never stops the run; every source then keeps
+     the daily floor. */
+  let thisWeek: ReadonlySet<string> = new Set()
+  if (store.thisWeekSources) {
+    try {
+      thisWeek = await store.thisWeekSources(now)
+    } catch (err) {
+      console.error('[collection] the sources with nights this week could not be read:', err instanceof Error ? err.message : err)
+    }
+  }
+  const due = dueSources(await store.sources(), now, thisWeek)
   const known = due.length > 0 ? await store.known(now) : []
   const robotsByOrigin = new Map<string, { status: number | null; body: string }>()
   const result: CollectionResult = { read: 0, skipped: 0, landed: 0, queued: 0, acceptedByRule: 0, notReached: 0, expired: 0, sources: [] }
@@ -273,6 +309,19 @@ export async function runCollection(
             const events = withKnownVenueAddress(permitted, addresses)
             const plans = planCandidates(events, known, now, city)
             found = plans.length
+            /* Before stillNew drops the re-finds whose links are already held: a re-find is exactly what confirms. */
+            const confirmations = seriesConfirmations(plans, known)
+            if (confirmations.length > 0 && store.confirmSeries) {
+              const sourceDate = platformDay(now)
+              try {
+                await store.confirmSeries(
+                  confirmations.map((c) => ({ ...c, sourceDate, sourceId: source.id, outcome: 'confirmed' as const, reuseBasis: 'licensed_source' as const })),
+                )
+              } catch (err) {
+                /* A failed confirmation never stops the read; the night simply keeps its old freshness. */
+                console.error('[collection] series confirmations could not be written:', err instanceof Error ? err.message : err)
+              }
+            }
             for (const p of plans) {
               const plan = await stillNew(store, p)
               if (!plan) continue
