@@ -342,6 +342,53 @@ if (caption) {
   }
 }
 
+/* ── CLAUSE 6. THE TEXT-SIDE WASH KEEPS THE SAME PROMISE BEHIND THE WORDS ──
+ * Added 3 November 2026 for the city guide's banners (the CONTROLLER's 07:12:
+ * 'the wash buries the photographs'; adjust this guard to measure the new
+ * wash, never to drop under AA). The text-side wash lifts the navy only where
+ * no word sits, so what this clause holds is that, behind the words, it is
+ * still the band wash's own alpha, which clause 2 has already recomputed over
+ * a white photograph: the phone ramp reaches HERO_CAPTION_MIN_ALPHA at the
+ * caption's first line (HERO_SIDE_LIFT) and the wide ramp holds it from the
+ * caption's left edge across HERO_SIDE_TEXT. Every stop is an absolute
+ * length, for clause 3's reason. The ratio against the real photographs is
+ * measured by scripts/verify/hero-text-over-photograph-drive.mjs. */
+if (scrim && /HERO_SIDE_SCRIM_(PHONE|WIDE)/.test(scrim)) {
+  const decl = name => (scrim.match(new RegExp(`export const ${name}\\s*=\\s*\\n?\\s*\`([^\`]+)\``)) ?? [])[1]
+  const phone = decl('HERO_SIDE_SCRIM_PHONE')
+  const wide = decl('HERO_SIDE_SCRIM_WIDE')
+  if (!phone || !wide) fail('6', `${SCRIM_MODULE} declares the text-side wash but not both ramps as template literals this guard can read`)
+  for (const [name, body] of [['HERO_SIDE_SCRIM_PHONE', phone], ['HERO_SIDE_SCRIM_WIDE', wide]]) {
+    if (!body) continue
+    if (/\d%/.test(body)) fail('6', `${name} carries a percentage stop; the text-side wash must be anchored to the text by absolute lengths`)
+  }
+  if (phone && !/rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) \$\{HERO_SIDE_LIFT\}/.test(phone)) {
+    fail('6', 'HERO_SIDE_SCRIM_PHONE no longer reaches HERO_CAPTION_MIN_ALPHA at the caption\'s first line (HERO_SIDE_LIFT)')
+  }
+  if (wide && !/rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) 0, rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) calc\(100vw \+ \$\{HERO_SIDE_TEXT\}\)/.test(wide)) {
+    fail('6', 'HERO_SIDE_SCRIM_WIDE no longer holds HERO_CAPTION_MIN_ALPHA from the bleed across the caption column (HERO_SIDE_TEXT)')
+  }
+  for (const name of ['HERO_SIDE_LIFT', 'HERO_SIDE_TEXT', 'HERO_SIDE_FADE']) {
+    const v = (scrim.match(new RegExp(`${name}\\s*=\\s*'([^']+)'`)) ?? [])[1]
+    if (!v || !/^[0-9.]+(rem|px|em)$/.test(v)) fail('6', `${name} is '${v}', which is not an absolute length`)
+  }
+  /* The column the wide ramp protects is 36rem plus 1rem, so every caption on the text-side wash is held to max-w-xl
+   * (36rem): a long city name wraps inside the dark column instead of running into the fade. */
+  for (const f of HERO_FILES) {
+    const src = read(f)
+    if (src === null) continue
+    for (const tag of asCode(src).matchAll(/<HeroCaption\b[^>]*wash="text-side"[^>]*>/g)) {
+      if (!/className="[^"]*\bmax-w-xl\b/.test(tag[0])) fail('6', `${f} puts a caption on the text-side wash without className="max-w-xl", so its text can run past the dark column into the fade`)
+    }
+  }
+  if (caption) {
+    const body = withoutImports(caption)
+    if (!/background: HERO_SIDE_SCRIM_PHONE/.test(body) || !/background: HERO_SIDE_SCRIM_WIDE/.test(body)) {
+      fail('6', `${CAPTION_COMPONENT} declares the text-side wash but does not paint both ramps`)
+    }
+  }
+}
+
 /* THE REGISTER IS PRINTED, ALWAYS, PASS OR FAIL. A debt that is only visible
  * by opening this file is a debt nobody sees. */
 if (NOT_YET_ON_THE_SHARED_WASH.length) {

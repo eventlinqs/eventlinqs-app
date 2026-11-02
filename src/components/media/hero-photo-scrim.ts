@@ -107,6 +107,30 @@ export const HERO_CAPTION_SCRIM =
   `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},0.18) calc(${HERO_CAPTION_FADE} * 0.4), rgba(${NAVY},0.55) calc(${HERO_CAPTION_FADE} * 0.72), rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_CAPTION_FADE}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) ${HERO_CAPTION_DEEPEN})`
 
 /**
+ * THE TEXT-SIDE WASH (the CONTROLLER, 3 November 2026, 07:12, on the city guide's banners: 'the wash buries the
+ * photographs ... Lawal asked for photos that pop'). The band wash above darkens the whole band, because it bleeds full
+ * width and starts 9rem above the text. This one keeps EXACTLY the same promise behind the words, HERO_CAPTION_MIN_ALPHA
+ * from the caption's first line down, and lifts only where no word sits:
+ *   PHONES: above the caption it fades from MIN_ALPHA to HERO_SIDE_TOP_ALPHA over HERO_SIDE_LIFT, and above that the
+ *     photograph is bare; the caption fills most of a phone's band, so the lift is the band's top.
+ *   FROM md UP: it runs left to right, MIN_ALPHA over the caption column (HERO_SIDE_TEXT, the 36rem max-w-xl plus 1rem
+ *     from the caption's left edge, which lies 100vw into the bleed), fading to HERO_SIDE_TOP_ALPHA by HERO_SIDE_FADE
+ *     further on and to nothing after; at 1440 that is clear by the right third of the band.
+ * Every stop is an absolute length, so it holds wherever the text lands (clause 3's rule). The ratio against the real
+ * photographs is measured by scripts/verify/hero-text-over-photograph-drive.mjs at 320, 390 and 1440.
+ */
+export const HERO_SIDE_LIFT = '2.5rem'
+export const HERO_SIDE_TOP_ALPHA = 0.12
+export const HERO_SIDE_TEXT = '37rem'
+export const HERO_SIDE_FADE = '18rem'
+
+export const HERO_SIDE_SCRIM_PHONE =
+  `linear-gradient(to bottom, rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_SIDE_LIFT}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) calc(${HERO_SIDE_LIFT} + 11.25rem))`
+
+export const HERO_SIDE_SCRIM_WIDE =
+  `linear-gradient(to right, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT}), rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE}), rgba(${NAVY},0) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE} + 8rem))`
+
+/**
  * The header wash. Top-anchored, so the transparent header's white nav clears a
  * bright sky band.
  *

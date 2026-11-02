@@ -2051,15 +2051,15 @@
     },
     "city-banner-bendigo": {
       "file": "/images/library/city-banner-bendigo.jpg",
-      "photographer": "DenisFrolow",
-      "photographer_url": "https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg",
-      "page": "https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg",
-      "title": "Bendigo trams.jpg",
-      "licence": "CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+      "photographer": "not named on Wikimedia Commons (public domain)",
+      "photographer_url": "https://commons.wikimedia.org/wiki/File:Central_bendigo_from_botanic_gardens.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File:Central_bendigo_from_botanic_gardens.jpg",
+      "title": "Central bendigo from botanic gardens.jpg",
+      "licence": "Public domain (Wikimedia Commons); no credit required",
       "changes": "Resized to 2400 px wide; nothing else changed.",
-      "alt": "A heritage Bendigo tram, green and orange, number 808, in sunshine under plane trees.",
+      "alt": "Central Bendigo from the Botanic Gardens: the town hall and post office clock towers among the sandstone buildings, the hills behind.",
       "source": "Wikimedia Commons",
-      "picked_by": "the CONTROLLER, 3 November 2026 02:20 and 02:53, from contact sheets",
+      "picked_by": "the CONTROLLER, 3 November 2026 07:12 (Bendigo A, replacing the tram)",
       "downloaded_on": "2026-11-03"
     }
   }

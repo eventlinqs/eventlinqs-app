@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
-import { HERO_CAPTION_FADE, HERO_CAPTION_SCRIM } from './hero-photo-scrim'
+import {
+  HERO_CAPTION_FADE,
+  HERO_CAPTION_SCRIM,
+  HERO_SIDE_LIFT,
+  HERO_SIDE_SCRIM_PHONE,
+  HERO_SIDE_SCRIM_WIDE,
+} from './hero-photo-scrim'
 
 /**
  * HERO CAPTION. The text block a hero paints on top of its photograph, sitting
@@ -21,6 +27,7 @@ export function HeroCaption({
   children,
   className = '',
   contentClassName = '',
+  wash = 'band',
 }: {
   children: ReactNode
   /** Layout classes for the text column itself, e.g. `max-w-2xl`. */
@@ -42,22 +49,45 @@ export function HeroCaption({
    * if a caller puts a stagger class on `className`.
    */
   contentClassName?: string
+  /**
+   * 'band' (every hero until 3 November 2026): the wash darkens the band from 9rem above the text. 'text-side' (the
+   * city guide's banners, the CONTROLLER's 07:12): the same alpha behind every word, lifted where no word sits, so
+   * the photograph shows (hero-photo-scrim.ts, HERO_SIDE_SCRIM_PHONE and HERO_SIDE_SCRIM_WIDE).
+   */
+  wash?: 'band' | 'text-side'
 }) {
   return (
     <div className={`relative ${className}`}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute"
-        style={{
-          top: `calc(-1 * ${HERO_CAPTION_FADE})`,
-          /* Past the foot of the band and both edges of the viewport; the
-           * band's own `overflow-hidden` is what trims it. */
-          bottom: '-100vh',
-          left: '-100vw',
-          right: '-100vw',
-          background: HERO_CAPTION_SCRIM,
-        }}
-      />
+      {wash === 'text-side' ? (
+        <>
+          {/* Phones: from just above the first line down, fading out above it. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute md:hidden"
+            style={{ top: `calc(-1 * ${HERO_SIDE_LIFT})`, bottom: '-100vh', left: '-100vw', right: '-100vw', background: HERO_SIDE_SCRIM_PHONE }}
+          />
+          {/* From md up: full height, dark over the caption column, fading out to the right. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute hidden md:block"
+            style={{ top: '-100vh', bottom: '-100vh', left: '-100vw', right: '-100vw', background: HERO_SIDE_SCRIM_WIDE }}
+          />
+        </>
+      ) : (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute"
+          style={{
+            top: `calc(-1 * ${HERO_CAPTION_FADE})`,
+            /* Past the foot of the band and both edges of the viewport; the
+             * band's own `overflow-hidden` is what trims it. */
+            bottom: '-100vh',
+            left: '-100vw',
+            right: '-100vw',
+            background: HERO_CAPTION_SCRIM,
+          }}
+        />
+      )}
       {/* The text rides above its own wash. */}
       <div className={`relative ${contentClassName}`}>{children}</div>
     </div>

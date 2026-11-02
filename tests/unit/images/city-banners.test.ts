@@ -22,26 +22,37 @@ describe('the city banners', () => {
     expect(getCityBanner('melbourne')).toBeNull()
   })
 
-  it('every banner file exists, with its author, page and licence on record matching the credit the page draws', () => {
+  it('every banner file exists, with its page and licence on record; a CC BY-SA photo carries its author, public domain none', () => {
     for (const slug of ['geelong', 'ballarat', 'bendigo']) {
       const b = getCityBanner(slug)!
       expect(existsSync(join(root, 'public', b.src)), b.src).toBe(true)
       const rec = attribution[`city-banner-${slug}`]
       expect(rec?.file).toBe(b.src)
-      expect(rec?.photographer).toBe(b.author)
       expect(rec?.page).toBe(b.page)
-      expect(rec?.licence).toContain('CC BY-SA 4.0')
       expect(b.page).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
-      expect(b.licenceUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/')
+      expect(rec?.licence).toContain(b.licence)
       expect(b.position).toMatch(/^\d+% \d+%$/)
+      if (b.licence === 'CC BY-SA 4.0') {
+        expect(b.credit?.author).toBe(rec?.photographer)
+        expect(b.credit?.licenceUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/')
+      } else {
+        expect(b.credit).toBeNull()
+      }
     }
+    // The CONTROLLER's 07:12: Bendigo is A, central Bendigo from the Botanic Gardens, public domain.
+    expect(getCityBanner('bendigo')?.licence).toBe('Public domain')
+    expect(getCityBanner('bendigo')?.page).toContain('Central_bendigo_from_botanic_gardens')
   })
 
-  it('the guide draws the banner first, at its focal point, and its credit with links to the source and the licence', () => {
+  it('the guide draws the banner first, at its focal point, its credit only where the licence asks, on the text-side wash', () => {
     expect(screen).toMatch(/const photo = banner\?\.src \?\? heroImage/)
     expect(screen).toMatch(/objectPosition=\{banner\?\.position \?\? '50% 45%'\}/)
+    expect(screen).toMatch(/\{banner\?\.credit \? \(/)
     expect(screen).toMatch(/data-banner-credit/)
     expect(screen).toMatch(/href=\{banner\.page\}/)
-    expect(screen).toMatch(/href=\{banner\.licenceUrl\} rel="license noopener"/)
+    expect(screen).toMatch(/href=\{banner\.credit\.licenceUrl\} rel="license noopener"/)
+    expect(screen).toMatch(/<HeroCaption wash="text-side" className="max-w-xl">/)
+    // No band-wide gradient of its own: the caption's wash is the only one (hero-text-over-a-photograph clause 1).
+    expect(screen).not.toMatch(/bg-gradient-to-t/)
   })
 })
