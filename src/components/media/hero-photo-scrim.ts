@@ -111,8 +111,9 @@ export const HERO_CAPTION_SCRIM =
  * photographs ... Lawal asked for photos that pop'). The band wash above darkens the whole band, because it bleeds full
  * width and starts 9rem above the text. This one keeps EXACTLY the same promise behind the words, HERO_CAPTION_MIN_ALPHA
  * from the caption's first line down, and lifts only where no word sits:
- *   PHONES: above the caption it fades from MIN_ALPHA to HERO_SIDE_TOP_ALPHA over HERO_SIDE_LIFT, and above that the
- *     photograph is bare; the caption fills most of a phone's band, so the lift is the band's top.
+ *   PHONES: above the caption it fades from MIN_ALPHA through HERO_SIDE_TOP_ALPHA to nothing over HERO_SIDE_LIFT (from
+ *     nothing, so its top edge draws no line across the photo), and above that the photograph is bare; the caption fills
+ *     most of a phone's band, so the lift is the band's top.
  *   FROM md UP: it runs left to right, MIN_ALPHA over the caption column (HERO_SIDE_TEXT, the 36rem max-w-xl plus 1rem
  *     from the caption's left edge, which lies 100vw into the bleed), fading to HERO_SIDE_TOP_ALPHA by HERO_SIDE_FADE
  *     further on and to nothing after; at 1440 that is clear by the right third of the band.
@@ -125,7 +126,7 @@ export const HERO_SIDE_TEXT = '37rem'
 export const HERO_SIDE_FADE = '18rem'
 
 export const HERO_SIDE_SCRIM_PHONE =
-  `linear-gradient(to bottom, rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_SIDE_LIFT}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) calc(${HERO_SIDE_LIFT} + 11.25rem))`
+  `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(${HERO_SIDE_LIFT} * 0.3), rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_SIDE_LIFT}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) calc(${HERO_SIDE_LIFT} + 11.25rem))`
 
 export const HERO_SIDE_SCRIM_WIDE =
   `linear-gradient(to right, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT}), rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE}), rgba(${NAVY},0) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE} + 8rem))`
