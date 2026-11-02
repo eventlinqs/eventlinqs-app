@@ -16,6 +16,8 @@ export function useFootBarClearance(px: number): void {
   useEffect(() => {
     const style = document.documentElement.style
     style.setProperty(FOOT_BAR_VAR, `${px}px`)
-    return () => style.removeProperty(FOOT_BAR_VAR)
+    return () => {
+      style.removeProperty(FOOT_BAR_VAR)
+    }
   }, [px])
 }
