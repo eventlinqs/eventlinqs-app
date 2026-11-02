@@ -12712,7 +12712,10 @@ export type Database = {
           archived_from_status:
             | Database["public"]["Enums"]["event_status"]
             | null
+          category_assigned_by: string | null
           category_id: string | null
+          category_review: string
+          category_rule: string | null
           city_primary: string | null
           community_primary: string | null
           cover_image_alt: string | null
