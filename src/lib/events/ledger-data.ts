@@ -50,7 +50,7 @@ export function thisWeek<T extends LedgerRow>(rows: readonly T[], now: Date): T[
 export async function featuredThisWeek(rows: readonly LedgerRow[], now: Date, places = 4): Promise<EventCardData[]> {
   const week = thisWeek(rows, now)
   const rights = await readCoverRights(
-    createAdminClient(),
+    createAdminClient,
     week.filter((r) => !r.image_credit).map((r) => r.id),
   )
   // One night of a weekly series, not four of the same.

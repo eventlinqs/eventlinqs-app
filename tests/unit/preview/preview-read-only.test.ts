@@ -58,7 +58,7 @@ describe('Featured on the preview', () => {
     const prior = process.env.PREVIEW_READ_ONLY
     process.env.PREVIEW_READ_ONLY = '1'
     try {
-      const never = { from: () => { throw new Error('the rights table was read on the preview') } }
+      const never = () => { throw new Error('the admin client was made on the preview') }
       const rights = await readCoverRights(never as never, ['a', 'b'])
       expect(rights.size).toBe(0)
     } finally {

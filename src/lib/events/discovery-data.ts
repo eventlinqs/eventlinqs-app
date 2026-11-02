@@ -51,7 +51,7 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
   const listed = rows.filter((r) => isStillListed(r, now))
   const photo = (r: LedgerRow) => Boolean(r.cover_image_url) && !isComposedCover(r.cover_image_url)
   const rights = await readCoverRights(
-    createAdminClient(),
+    createAdminClient,
     listed.filter((r) => photo(r) && !r.image_credit).map((r) => r.id),
   )
   const authorised = (r: LedgerRow) => photo(r) && (Boolean(r.image_credit) || RECORDED.has(rights.get(r.id) ?? ''))
