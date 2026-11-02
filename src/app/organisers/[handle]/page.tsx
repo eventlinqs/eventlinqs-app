@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { previewReadOnlyOn } from '@/lib/preview/read-only'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PageShell } from '@/components/layout/PageShell'
@@ -170,6 +171,21 @@ const fetchOrganiser = cache(async function fetchOrganiser(slug: string): Promis
   // WI2 ruling A: the organisation that holds EventLinqs listings has no public
   // page; its listings name their hosts (src/lib/listings/shown-organiser.ts).
   if (isListingsOrganisation(slug)) return null
+  if (previewReadOnlyOn()) {
+    // THE READ-ONLY PREVIEW (no service key; src/lib/supabase/admin.ts): the status column is not granted to anon, so
+    // the gate reads the id by slug as anon, and production's policy 'Active organisations are publicly browsable'
+    // (status = 'active') returns a row only for an active organisation: the same gate, decided by the policy.
+    const { data: active, error: activeError } = await withBuildRetry(
+      () => createPublicClient().from('organisations').select('id').eq('slug', slug).maybeSingle(),
+      { label: `organiser active gate ${slug} (read-only preview)` },
+    )
+    if (activeError) {
+      console.error('[organiser-profile] read-only preview gate failed for %s:', slug, activeError)
+      throw new OrganiserReadFailed(slug, activeError)
+    }
+    if (!active) return null
+    return readPublicOrganisation(slug, (active as { id: string }).id)
+  }
   const admin = createAdminClient()
   const { data: gate, error: gateError } = await withBuildRetry(
     () =>
@@ -187,14 +203,18 @@ const fetchOrganiser = cache(async function fetchOrganiser(slug: string): Promis
   }
   const row = gate as { id: string; status: string } | null
   if (!row || row.status !== 'active') return null
+  return readPublicOrganisation(slug, row.id)
+})
 
+/** The public columns of one organisation, read as anon once its gate has passed. */
+async function readPublicOrganisation(slug: string, id: string): Promise<PublicOrganisation | null> {
   const supabase = createPublicClient()
   const { data, error } = await withBuildRetry(
     () =>
       supabase
         .from('organisations')
         .select(PUBLIC_ORGANISATION_COLUMNS)
-        .eq('id', row.id)
+        .eq('id', id)
         .maybeSingle(),
     { label: `organiser public columns ${slug}` },
   )
@@ -206,7 +226,7 @@ const fetchOrganiser = cache(async function fetchOrganiser(slug: string): Promis
     throw new OrganiserReadFailed(slug, error)
   }
   return (data as PublicOrganisation | null) ?? null
-})
+}
 
 /**
  * How many past events the archive grid shows. It was the literal 12 inside
@@ -218,7 +238,7 @@ const PAST_EVENTS_SHOWN = 12
 async function fetchOrganiserEvents(orgId: string) {
   const supabase = createPublicClient()
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories!events_category_id_fkey(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
 
   /*

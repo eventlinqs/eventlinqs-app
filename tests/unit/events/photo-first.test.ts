@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { photoFirst } from '@/lib/events/photo-first'
 
@@ -32,19 +30,25 @@ describe('a rail leads with its photographed nights', () => {
   })
 })
 
-describe('the home and city pages put every rail photo-first before dealing their cards', () => {
-  const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
-  it('src/app/page.tsx: every rail', () => {
-    const src = read('src/app/page.tsx')
-    expect(src).toContain("import { photoFirst } from '@/lib/events/photo-first'")
-    expect(src).toMatch(/oneCardPerEvent\(\s*\[[\s\S]*?\]\.map\(\(s\) => \(\{ \.\.\.s, events: photoFirst\(s\.events\) \}\)\)/)
-  })
-  it('src/components/templates/CityLandingPage.tsx: every rail, and the full list keeps its date order', () => {
-    const src = read('src/components/templates/CityLandingPage.tsx')
-    expect(src).toContain("import { photoFirst } from '@/lib/events/photo-first'")
-    for (const rail of ['todayTomorrowCandidates', 'thisWeekendCandidates', 'thisWeekCandidates', 'r.events', 'popularCandidates']) {
-      expect(src).toContain(`events: photoFirst(${rail})`)
+/*
+ * THE DISCOVERY DESIGN (Lawal's orders of 1 November 2026, 11:01 and 11:14) replaced the home and city rails. The
+ * photographs now lead in ONE place, Featured this week; What's on, the directory, keeps EVERY night in date order,
+ * with or without a photograph (the brief's point 4: a night with no authorised image stays fully findable).
+ */
+describe('the directory keeps every night in date order, photographed or not', () => {
+  it('lists a night with no cover beside one with a cover, by day', async () => {
+    const { directoryDays } = await import('@/lib/events/whats-on-directory')
+    const base = {
+      timezone: 'Australia/Melbourne', venue_name: 'Hall', venue_city: 'Bendigo', category: null,
+      is_free: true, entry_mode: 'walk_in', external_ticket_url: null, ticket_tiers: [],
     }
-    expect(src).toContain('{ events: allEvents, cap: ALL_EVENTS_SHOWN }')
+    const days = directoryDays(
+      [
+        { ...base, id: 'later', slug: 'later', title: 'Later', start_date: '2026-11-03T08:00:00Z' },
+        { ...base, id: 'sooner', slug: 'sooner', title: 'Sooner', start_date: '2026-11-02T08:00:00Z' },
+      ],
+      new Date('2026-11-01T00:00:00Z'),
+    )
+    expect(days.flatMap((d) => d.rows.map((r) => r.id))).toEqual(['sooner', 'later'])
   })
 })

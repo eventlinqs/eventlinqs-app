@@ -33,7 +33,7 @@ const nonEmpty = v => (v && v.trim().length > 0)
 // manifest, the manifest evaluators and these rules all share one definition.
 import { PRODUCTION_SUPABASE_REF, refFromUrl, refFromJwt, stripeKeyMode, stripeAccountRef } from '../env/refs.mjs'
 import { evaluateProcessEnv, formatFinding } from '../env/manifest-checks.mjs'
-import { ENV_MANIFEST } from '../env/manifest.mjs'
+import { ENV_MANIFEST, CROSS_RULES } from '../env/manifest.mjs'
 
 export { PRODUCTION_SUPABASE_REF }
 
@@ -202,6 +202,10 @@ export const CRITICAL_ENV_RULES = [
       const resolvedKey = e.SUPABASE_SERVICE_ROLE_KEY_PREVIEW || e.SUPABASE_SERVICE_ROLE_KEY || ''
       const rawKey = e.SUPABASE_SERVICE_ROLE_KEY || ''
       const override = e.ALLOW_PRODUCTION_SUPABASE === '1' ? 'override' : 'guarded'
+      // The ONE named, time limited exception, kept in the manifest rule beside its ruling (the CONTROLLER's 1 November
+      // 2026, 11:57 (A)): it excuses the production URL on one branch's preview until its own date, never a key.
+      const rule = CROSS_RULES.find(r => r.id === 'SUPABASE_PRODUCTION_REF_ISOLATION')
+      const excused = (rule?.exceptions ?? []).some(x => x.branch === (e.VERCEL_GIT_COMMIT_REF || '') && Date.now() <= Date.parse(x.until))
       // Packed into one string because the shared evaluator hands validate() a
       // single resolved value. Order is fixed and parsed below.
       return [
@@ -210,16 +214,17 @@ export const CRITICAL_ENV_RULES = [
         refFromJwt(resolvedKey),
         refFromJwt(rawKey),
         override,
+        excused ? 'excused' : 'none',
       ].join('|')
     },
     validate: v => {
-      const [target, urlRef, keyRef, rawKeyRef, override] = v.split('|')
+      const [target, urlRef, keyRef, rawKeyRef, override, excused] = v.split('|')
       // Production resolving production is the entire point of production.
       if (target === 'production') return { ok: true }
       // The deliberate, named escape hatch.
       if (override === 'override') return { ok: true }
       const offenders = []
-      if (urlRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved NEXT_PUBLIC_SUPABASE_URL')
+      if (excused !== 'excused' && urlRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved NEXT_PUBLIC_SUPABASE_URL')
       if (keyRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved SUPABASE_SERVICE_ROLE_KEY')
       if (rawKeyRef === PRODUCTION_SUPABASE_REF) offenders.push('raw SUPABASE_SERVICE_ROLE_KEY (reachable via a direct process.env read)')
       if (offenders.length === 0) return { ok: true }

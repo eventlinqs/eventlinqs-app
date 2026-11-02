@@ -1669,6 +1669,17 @@ export const CROSS_RULES = [
     urlVars: ['NEXT_PUBLIC_SUPABASE_URL_PREVIEW', 'NEXT_PUBLIC_SUPABASE_URL'],
     keyVars: ['SUPABASE_SERVICE_ROLE_KEY_PREVIEW', 'SUPABASE_SERVICE_ROLE_KEY'],
     rawKeyVar: 'SUPABASE_SERVICE_ROLE_KEY',
+    exceptions: [
+      {
+        branch: 'feat/w5-design-preview',
+        until: '2026-11-08T23:59:00+11:00',
+        ruling:
+          "The CONTROLLER's ruling of 1 November 2026, 11:57 (A): Lawal's discovery design preview reads production's " +
+          'URL and ANON key, branch scoped, with PREVIEW_READ_ONLY=1 refusing every write; the service role stays ' +
+          "TEST's. It lapses by itself at the date above; removed sooner the hour Lawal picks, or at once if any " +
+          'production row count changes during the preview.',
+      },
+    ],
     appliesTo: ['preview', 'development', 'local'],
     needs: 'value',
   },

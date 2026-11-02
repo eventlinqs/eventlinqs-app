@@ -184,7 +184,7 @@ try {
   created.orgId = org.id
 
   const donor = must(
-    await admin.from('events').select('cover_image_url, category_id, category:event_categories(slug)').eq('status', 'published').eq('visibility', 'public').not('cover_image_url', 'is', null).not('category_id', 'is', null).limit(1).single(),
+    await admin.from('events').select('cover_image_url, category_id, category:event_categories!events_category_id_fkey(slug)').eq('status', 'published').eq('visibility', 'public').not('cover_image_url', 'is', null).not('category_id', 'is', null).limit(1).single(),
     'borrow a real cover from a published TEST event',
   )
   const category = Array.isArray(donor.category) ? donor.category[0] : donor.category

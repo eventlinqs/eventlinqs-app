@@ -101,7 +101,7 @@ export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<
       (from, to) =>
         admin
           .from('events')
-          .select('id, city_primary, status, published_at, start_date, is_seed_data, is_recurring, listing_series_id, organisation_id, event_categories(name)')
+          .select('id, city_primary, status, published_at, start_date, is_seed_data, is_recurring, listing_series_id, organisation_id, event_categories!events_category_id_fkey(name)')
           .order('id', { ascending: true })
           .range(from, to),
     ),

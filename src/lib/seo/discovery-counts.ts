@@ -37,7 +37,7 @@ import type { DiscoveryEventRow } from './discovery-matchers'
  * disagreement. tests/unit/seo/discovery-counts.test.ts holds the shapes.
  */
 
-const SELECT = 'tags, venue_city, suburb_primary, venue_latitude, venue_longitude, organisation_id, category:event_categories(slug)'
+const SELECT = 'tags, venue_city, suburb_primary, venue_latitude, venue_longitude, organisation_id, category:event_categories!events_category_id_fkey(slug)'
 
 async function loadRaw(): Promise<DiscoveryEventRow[]> {
   const supabase = createPublicClient()

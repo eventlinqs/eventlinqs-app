@@ -22,12 +22,13 @@ describe('the later nights of a series, on its card', () => {
     expect(seriesAlsoOn([], TZ)).toBeNull()
   })
 
-  it('the card carries it on both of its date lines, with every date in the title', () => {
-    // EventCard needs a mounted app router to render, so its source is read: both date lines (the plain card and the
-    // badge card) carry the words and the title.
+  it('the photo card and the directory row each carry it as one meta line, with every date in the title', () => {
+    // EventCard needs a mounted app router to render, so its source is read. Since the CONTROLLER's 16:41 of
+    // 1 November 2026 the day and time are one line above the title on both, so the later nights' words are their own
+    // line, every date in the title: once on the photo card, once on the row.
     const source = readFileSync(join(process.cwd(), 'src/components/features/events/event-card.tsx'), 'utf8')
     expect(source).toContain('const alsoOn = seriesAlsoOn(also_on, timezone)')
-    expect(source.match(/\{alsoOn \? ` · \$\{alsoOn\.words\}` : null\}/g)).toHaveLength(2)
+    expect(source).toContain('const meta = alsoOn ? alsoOn.words : null')
     expect(source.match(/title=\{alsoOn\?\.every\}/g)).toHaveLength(2)
   })
 })

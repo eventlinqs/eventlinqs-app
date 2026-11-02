@@ -69,7 +69,7 @@ export async function deleteEventEverywhere(input: {
   const { data: row, error: readError } = await admin
     .from('events')
     .select(
-      'id, slug, title, status, organisation_id, created_by, cover_image_url, gallery_urls, venue_city, tags, archived_from_status, category:event_categories(slug), organisation:organisations(slug)',
+      'id, slug, title, status, organisation_id, created_by, cover_image_url, gallery_urls, venue_city, tags, archived_from_status, category:event_categories!events_category_id_fkey(slug), organisation:organisations(slug)',
     )
     .eq('id', input.eventId)
     .maybeSingle()

@@ -27,9 +27,15 @@ describe('a home card with no photo of its own', () => {
     ['square', EventCardSquare],
     ['feature', EventCardFeature],
   ] as const) {
-    it(`${name}: draws the date mark on its cover, never the wordmark alone`, () => {
+    // REVERSED by the CONTROLLER's 16:41 of 1 November 2026, (1): no date mark and no wordmark on any card. A night with
+    // no photograph of its own draws no photo frame at all; its title, venue, date and price stay, once.
+    it(`${name}: draws no cover at all: no date mark, no wordmark, no empty frame; the facts stay`, () => {
       const { container } = render(<Card event={NIGHT} />)
-      expect(container.querySelector('[data-date-mark="6 NOV"], [data-date-mark="6 Nov"]')).not.toBeNull()
+      expect(container.querySelector('[data-date-mark]')).toBeNull()
+      expect(container.querySelector('img')).toBeNull()
+      expect(container.textContent ?? '').not.toMatch(/EventLinqs/i)
+      expect(container.textContent ?? '').toContain('Live Music Garden Session with Ben Dew')
+      expect(container.textContent ?? '').toContain('Fri 6 Nov')
     })
   }
 })

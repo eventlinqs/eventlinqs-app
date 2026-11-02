@@ -127,7 +127,7 @@ export function heartbeatEmail(
 ): { subject: string; text: string; html: string } {
   const { deployment, environment, when } = identity
   const status = overallStatus(results)
-  const rows = results.map(r => `${r.ok ? 'OK  ' : (r.severity === 'critical' ? 'DOWN' : 'WARN')}  ${r.label}${r.ok ? '' : ` - ${r.detail}`}`).join('\n')
+  const rows = results.map(r => `${r.ok ? 'OK  ' : (r.severity === 'critical' ? 'DOWN' : 'WARN')}  ${r.label}${r.ok ? '' : `: ${r.detail}`}`).join('\n')
   const htmlRows = results
     .map(r => `<tr><td>${r.ok ? '🟢' : r.severity === 'critical' ? '🔴' : '🟡'}</td><td>${r.label}</td><td>${r.ok ? 'OK' : r.detail}</td></tr>`)
     .join('')

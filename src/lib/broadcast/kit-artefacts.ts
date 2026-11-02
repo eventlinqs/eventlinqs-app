@@ -125,7 +125,7 @@ export async function loadArtefactContext(
     admin
       .from('events')
       .select(
-        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, external_ticket_url, is_free, entry_mode, category:event_categories(name, slug), ticket_tiers(price, currency, is_active), organisation:organisations(name, logo_url)',
+        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, listing_source, external_ticket_url, is_free, entry_mode, category:event_categories!events_category_id_fkey(name, slug), ticket_tiers(price, currency, is_active), organisation:organisations(name, logo_url)',
       )
       .eq('id', eventId)
       .maybeSingle(),

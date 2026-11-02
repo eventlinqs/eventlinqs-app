@@ -109,7 +109,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, vari
    */
   const urlFor = (channel: ShareChannel): string => withShareSource(trackedLinks[channel] ?? fallbackUrl)
 
-  const shareText = messageOverride ?? `${eventTitle} - ${eventDate}`
+  const shareText = messageOverride ?? `${eventTitle}, ${eventDate}`
   const encodedText = encodeURIComponent(shareText)
 
   // Background colours below are tuned for AA contrast against the

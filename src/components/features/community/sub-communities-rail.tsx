@@ -53,7 +53,7 @@ export function SubCommunitiesRail({ communitySlug, communityName, subCommunitie
                   {img ? (
                     <SubCommunityTileImage
                       src={img}
-                      alt={`${sc.label} - ${communityName}`}
+                      alt={`${sc.label}, ${communityName}`}
                       className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                     />
                   ) : (

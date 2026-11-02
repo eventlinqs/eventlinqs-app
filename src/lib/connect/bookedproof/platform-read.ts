@@ -153,7 +153,7 @@ export async function readEventsPage(admin: Admin, req: PlatformPageRequest): Pr
   let q = admin
     .from('events')
     .select(
-      'id, organisation_id, slug, title, status, visibility, entry_mode, is_free, start_date, end_date, timezone, venue_city, published_at, created_at, category:event_categories(slug), ticket_tiers(id, name, price, total_capacity, sold_count)',
+      'id, organisation_id, slug, title, status, visibility, entry_mode, is_free, start_date, end_date, timezone, venue_city, published_at, created_at, category:event_categories!events_category_id_fkey(slug), ticket_tiers(id, name, price, total_capacity, sold_count)',
     )
     .eq('is_seed_data', false)
     .order('id', { ascending: true })

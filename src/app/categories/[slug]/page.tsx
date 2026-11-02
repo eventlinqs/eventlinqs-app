@@ -77,12 +77,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       category.displayName.toLowerCase(),
     ])
     return {
-      title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
+      title: `${category.displayName} events | ${category.tagline} | EventLinqs`,
       description,
       keywords: category.keywords,
       ...(await discoveryIndexingFor(eventCount, `/categories/${category.slug}`)),
       openGraph: {
-        title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
+        title: `${category.displayName} events | ${category.tagline} | EventLinqs`,
         description,
         url: `/categories/${category.slug}`,
         type: 'website',
@@ -162,7 +162,7 @@ export default async function CategoryPage({ params }: Props) {
       supabase
         .from('events')
         .select(
-          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!events_category_id_fkey!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))
@@ -235,7 +235,7 @@ async function renderHeroCategory(slug: string) {
       supabase
         .from('events')
         .select(
-          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, entry_mode, is_free, external_ticket_url, category:event_categories!events_category_id_fkey!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))

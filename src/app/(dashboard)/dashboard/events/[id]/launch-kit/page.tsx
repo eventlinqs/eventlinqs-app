@@ -424,7 +424,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           <div className="px-6 py-5">
             <LaunchShareRow
               links={kitLinks}
-              shareText={`${organiserEvent.title} - ${dateLabel}`}
+              shareText={`${organiserEvent.title}, ${dateLabel}`}
             />
           </div>
         </div>

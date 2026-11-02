@@ -490,7 +490,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {

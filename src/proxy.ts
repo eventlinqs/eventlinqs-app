@@ -6,6 +6,7 @@ import { validateAdmissionToken } from '@/lib/queue/tokens'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 import { GONE_HEADERS, GONE_STATUS, renderGoneHtml } from '@/lib/events/gone-page'
 import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
+import { previewReadOnlyOn, previewReadOnlyRefusal } from '@/lib/preview/read-only'
 
 /**
  * /dev/* production gate.
@@ -279,9 +280,15 @@ export async function proxy(request: NextRequest) {
   const devGate = gateDevRoutes(request)
   if (devGate) return devGate
 
+  // The design preview writes nothing (the CONTROLLER's ruling of 1 November 2026, 11:42): asked before the session
+  // is refreshed and before any client is made. Unset everywhere but that one branch's preview.
+  const previewRefusal = previewReadOnlyRefusal(request.method, request.nextUrl.pathname)
+  if (previewRefusal) return previewRefusal
+
   const gate = await gateHighDemandEvent(request)
   if (gate instanceof NextResponse) return gate
   const response = attachShareCookie(request, await updateSession(request))
+  if (previewReadOnlyOn()) response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   if (gate === HOLDER_VIEW) {
     return holderViewRewrite(request, request.nextUrl.pathname.slice('/events/'.length), response)
   }

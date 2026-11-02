@@ -41,13 +41,19 @@ const tier = (id: string, price: number) => ({ id, price, currency: 'AUD', sold_
  * ('GeelongFree'), where a word-boundary match on the whole card misses 'Free': the first version of this test passed
  * on the old card for that reason, and was caught by running it there.
  */
-const priceOf = (c: HTMLElement) => c.querySelector('.event-card-price')?.textContent?.trim() ?? ''
+// A night without a rights recorded photograph is a directory row (the CONTROLLER's 16:41 of 1 November 2026, (1)):
+// its price element is .event-row-price; a photo card's is .ledger-price.
+const priceOf = (c: HTMLElement) => c.querySelector('.ledger-price, .event-row-price')?.textContent?.trim() ?? ''
 
 describe('the card price line is the night\'s own call to action', () => {
-  it('a paid night sold on another site names that site, never "Free" (Kate Ceberano at Costa Hall)', () => {
+  it('a paid night sold on another site names that seller, never "Free" and never a domain (Kate Ceberano at Costa Hall)', () => {
     const { container } = render(<EventCard event={ceberano} />)
-    expect(screen.getByText('Tickets on geelongartscentre.org.au')).toBeInTheDocument()
-    expect(priceOf(container)).toBe('Tickets on geelongartscentre.org.au')
+    // Lawal, 2 November 2026, 09:00, refinement 1: the row names the seller; its price line's 'Tickets on <site>' is not
+    // a price, so the row shows none rather than the domain.
+    expect(screen.getByText('Tickets at Geelong Arts Centre')).toBeInTheDocument()
+    expect(priceOf(container)).toBe('')
+    expect(container.textContent).not.toContain('geelongartscentre.org.au')
+    expect(container.textContent).not.toMatch(/\bFree\b/)
   })
 
   it('a night whose price nobody has checked says no price at all, never "Free"', () => {
@@ -66,8 +72,8 @@ describe('the card price line is the night\'s own call to action', () => {
     expect(screen.getByText('Free, registration required')).toBeInTheDocument()
   })
 
-  it('a night stored as free with no tickets says "Free entry"', () => {
+  it('a night stored as free with no tickets says "Free · Walk in" (Lawal 2 November 09:00, refinement 4)', () => {
     render(<EventCard event={{ ...ceberano, external_ticket_url: null, is_free: true }} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
   })
 })

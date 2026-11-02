@@ -47,7 +47,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 export const NEWEST_EVENT_SELECT =
   'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, ' +
   'venue_country, created_at, is_free, entry_mode, published_at, ' +
-  'category:event_categories(name, slug), organisation:organisations(name, slug), ' +
+  'category:event_categories!events_category_id_fkey(name, slug), organisation:organisations(name, slug), ' +
   // !inner: only a night with EventLinqs ticket tiers is returned (see ONLY A NIGHT THAT SELLS HERE, below).
   'ticket_tiers!inner(id, price, currency, sold_count, reserved_count, total_capacity)'
 

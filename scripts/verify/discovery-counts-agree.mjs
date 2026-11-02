@@ -39,7 +39,7 @@ const now = new Date()
 // The rows the matchers work over, fetched exactly as loadDiscoveryRows does.
 const { data, error } = await supabase
   .from('events')
-  .select('tags, venue_city, suburb_primary, venue_latitude, venue_longitude, category:event_categories(slug)')
+  .select('tags, venue_city, suburb_primary, venue_latitude, venue_longitude, category:event_categories!events_category_id_fkey(slug)')
   .match(PUBLIC_EVENT_MATCH)
   .or(listingWindowOrPredicate(now))
   .limit(5000)
@@ -83,7 +83,7 @@ for (const cat of getAllHeroCategories()) {
   const slugs = [cat.slug, cat.displayName.toLowerCase()]
   const { count, error } = await supabase
     .from('events')
-    .select('id, category:event_categories!inner(slug)', { count: 'exact', head: true })
+    .select('id, category:event_categories!events_category_id_fkey!inner(slug)', { count: 'exact', head: true })
     .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(now))
     .in('category.slug', slugs)

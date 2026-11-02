@@ -11,26 +11,18 @@ import { CityOrganiserCtaPanel } from '@/components/features/city/city-organiser
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
 import { BrowseByCommunityRail } from '@/components/features/city/browse-by-community-rail'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
-import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import type { EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { ReactNode } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getAllCities, getCity } from '@/lib/cities/data'
-import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
-import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
-import { cityHubRails } from '@/lib/cities/city-hubs'
-import { oneCardPerEvent } from '@/lib/events/one-card-per-event'
-import { photoFirst } from '@/lib/events/photo-first'
+import { STANDARD_TILE_CELL, WIDE_TILE_CELL } from '@/lib/ui/rhythm'
+import { directoryDays } from '@/lib/events/whats-on-directory'
+import { WhatsOnSection } from '@/components/features/events/ledger-sections'
+import { FeaturedFromCards } from '@/components/features/events/featured-this-week-loader'
 
-/**
- * How many of the city's events the grid shows. It was the literal 24 inside
- * `.slice(0, 24)`; it is named because the reserved height is now derived
- * from the same number and a ceiling two things depend on should be one
- * thing (close-out C8B.3, 19 September 2026).
- */
-const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   city: CityContent
@@ -86,10 +78,7 @@ export function CityLandingPage({
   city,
   heroImage,
   caption,
-  thisWeekEvents: thisWeekCandidates,
-  todayTomorrowEvents: todayTomorrowCandidates,
   thisWeekendEvents: thisWeekendCandidates,
-  popularEvents: popularCandidates,
   allEvents,
   eventTypeImages,
   relatedCityImages,
@@ -99,30 +88,10 @@ export function CityLandingPage({
   hasFreeGuide = false,
   featuredRow = null,
 }: Props) {
-  // The city's hubs (the locked plan of 27 October 2026, item 10): free, music, family and nightlife, each a rail
-  // only where it holds an event (src/lib/cities/city-hubs.ts).
-  const hubCandidates = cityHubRails(allEvents, Number.MAX_SAFE_INTEGER)
-  // ONE CARD PER EVENT PER PAGE (Lawal's ruling of 31 October 2026; the photo system's P5): the sections in the order
-  // they are drawn, the first to show an event keeping it, each later one filling its places from the rest.
-  const [todayTomorrowEvents, thisWeekendEvents, thisWeekEvents, ...laterSections] = oneCardPerEvent([
-    // Each rail leads with its photographed nights (the CONTROLLER's 31 October 13:45); the full list keeps its order.
-    { events: photoFirst(todayTomorrowCandidates), cap: 12 },
-    { events: photoFirst(thisWeekendCandidates), cap: 12 },
-    { events: photoFirst(thisWeekCandidates), cap: 12 },
-    ...hubCandidates.map((r) => ({ events: photoFirst(r.events), cap: 12 })),
-    { events: photoFirst(popularCandidates), cap: 12 },
-    { events: allEvents, cap: ALL_EVENTS_SHOWN },
-  ])
-  const hubRails = hubCandidates.map((r, i) => ({ hub: r.hub, events: laterSections[i] })).filter((r) => r.events.length > 0)
-  const popularEvents = laterSections[hubCandidates.length]
-  /* ONE array feeds both the reserved height and the cards, so the two can
-   * never disagree: the section declares the height of what it renders, not
-   * the height of what it was handed. */
-  const shownEvents = laterSections[hubCandidates.length + 1]
-  // The last grid holds what the sections above did not, so it says so when they showed any.
-  const shownAbove = [todayTomorrowEvents, thisWeekendEvents, thisWeekEvents, ...laterSections.slice(0, -1)].some((s) => s.length > 0)
-  // A page with no event at all points nothing at an empty grid (the directive of 31 October 2026, section 11).
-  const pageIsEmpty = !shownAbove && shownEvents.length === 0
+  // WHAT'S ON FIRST, FEATURED ABOVE IT (Lawal's order of 1 November 2026, 11:01): every upcoming night in the city
+  // as one row under its day, in place of the date, hub and popular rails and the all events grid.
+  const pageIsEmpty = allEvents.length === 0
+  const directory = directoryDays(allEvents, new Date())
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
@@ -164,90 +133,18 @@ export function CityLandingPage({
 
       {featuredRow}
 
-      {/* ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). These curated
-        rails were gated at `>= 4`, so a city or community with one, two or three
-        events on showed none of them here and fell through to the full grid below.
-        On a platform still building volume that hid the only event a place had. The
-        gate is gone; an empty rail still does not render, because there is nothing
-        to show. */}
-      {todayTomorrowEvents.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder reveal>
-          <SnapRailScroller
-            railLabel={`Today and tomorrow in ${city.name}`}
-            containerBg="ink-100"
-            header={{
-              eyebrow: 'Coming up',
-              title: `Today and tomorrow in ${city.name}`,
-              headerLink: { href: `/events?city=${city.slug}&date=7d`, label: 'View all' },
-            }}
-          >
-            {todayTomorrowEvents.slice(0, 12).map(e => (
-              <div key={e.id} className={FLAT_RAIL_CELL}>
-                <EventCard event={e} variant="rail-flat" />
-              </div>
-            ))}
-          </SnapRailScroller>
-        </ContentSection>
-      ) : null}
+      <FeaturedFromCards events={allEvents} />
 
-      {thisWeekendEvents.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder reveal>
-          <SnapRailScroller
-            railLabel={`Out this weekend in ${city.name}`}
-            containerBg="ink-100"
-            header={{
-              eyebrow: 'This weekend',
-              title: `Out this weekend in ${city.name}`,
-              headerLink: { href: `/events?city=${city.slug}&date=weekend`, label: 'View all' },
-            }}
-          >
-            {thisWeekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className={FLAT_RAIL_CELL}>
-                <EventCard event={e} variant="rail-flat" />
-              </div>
-            ))}
-          </SnapRailScroller>
-        </ContentSection>
+      {directory.length > 0 ? (
+        <div id="all-events" className="scroll-mt-40">
+          <WhatsOnSection
+            days={directory}
+            eyebrow={`Every event in ${city.name}`}
+            title={`What’s on in ${city.name}`}
+            link={{ href: `/events?city=${city.slug}`, label: 'Open in browse view' }}
+          />
+        </div>
       ) : null}
-
-      {thisWeekEvents.length > 0 ? (
-        <ContentSection surface="base" width="wide" topBorder reveal>
-          <SnapRailScroller
-            railLabel={`On this week in ${city.name}`}
-            header={{
-              eyebrow: 'This week',
-              title: `On this week in ${city.name}`,
-              headerLink: { href: `/events?city=${city.slug}&date=7d`, label: 'View all' },
-            }}
-          >
-            {thisWeekEvents.slice(0, 12).map(e => (
-              <div key={e.id} className={FLAT_RAIL_CELL}>
-                <EventCard event={e} variant="rail-flat" />
-              </div>
-            ))}
-          </SnapRailScroller>
-        </ContentSection>
-      ) : null}
-
-      {hubRails.map(({ hub, events }, i) => (
-        <ContentSection key={hub.key} surface={i % 2 === 0 ? 'alt' : 'base'} width="wide" topBorder reveal>
-          <SnapRailScroller
-            railLabel={hub.title(city.name)}
-            containerBg={i % 2 === 0 ? 'ink-100' : undefined}
-            header={{
-              eyebrow: hub.eyebrow,
-              title: hub.title(city.name),
-              headerLink: { href: hub.href(city.slug), label: 'View all' },
-            }}
-          >
-            {events.map(e => (
-              <div key={e.id} className={FLAT_RAIL_CELL}>
-                <EventCard event={e} variant="rail-flat" />
-              </div>
-            ))}
-          </SnapRailScroller>
-        </ContentSection>
-      ))}
 
       {/* S5 Browse by Community rail - 14 photographic community tiles routing
           to /community/[community]/[city] for the cross-community-city
@@ -283,25 +180,6 @@ export function CityLandingPage({
         </ContentSection>
       ) : null}
 
-      {popularEvents.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder reveal>
-          <SnapRailScroller
-            railLabel={`${city.name} highlights`}
-            containerBg="ink-100"
-            header={{
-              eyebrow: 'Popular this month',
-              title: `${city.name} highlights`,
-            }}
-          >
-            {popularEvents.slice(0, 12).map(e => (
-              <div key={e.id} className={FLAT_RAIL_CELL}>
-                <EventCard event={e} variant="rail-flat" />
-              </div>
-            ))}
-          </SnapRailScroller>
-        </ContentSection>
-      ) : null}
-
       {/* S9 By suburb rail - Tier 1 only. */}
       {city.tier === 1 && suburbs.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder reveal>
@@ -323,7 +201,7 @@ export function CityLandingPage({
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} layout="rail-wide-tile" />
+                      <CityTileImage src={img} alt={`${s.name}, ${city.name}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -356,40 +234,7 @@ export function CityLandingPage({
           height instead. 24 cards in 1, 2 or 3 columns is arithmetic, not a
           guess: src/lib/ui/event-grid-intrinsic.ts, proven to the pixel by
           scripts/verify/event-grid-intrinsic-drive.mjs. */}
-      {shownEvents.length > 0 ? (
-        <ContentSection
-          id="all-events"
-          surface="base"
-          width="wide"
-          topBorder
-          reveal
-          intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
-        >
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                {shownAbove ? 'More upcoming' : 'All upcoming'}
-              </p>
-              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-                {shownAbove ? `More ${city.name} events` : `All ${city.name} events`}
-              </h2>
-            </div>
-            {/* gold-800 (--brand-accent-strong) keeps the gold accent
-             *  while clearing AA contrast on white. gold-400 fails 4.5:1. */}
-            <Link
-              href={`/events?city=${city.slug}`}
-              className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
-            >
-              Open in browse view &rsaquo;
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {shownEvents.map(e => (
-              <EventCard key={e.id} event={e} />
-            ))}
-          </div>
-        </ContentSection>
-      ) : pageIsEmpty ? (
+      {pageIsEmpty ? (
         <ContentSection id="all-events" surface="base" width="wide" topBorder>
           <EmptyCollectionNote message={`No events are listed in ${city.name} yet.`} />
         </ContentSection>
