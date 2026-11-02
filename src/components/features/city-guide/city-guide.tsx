@@ -393,7 +393,7 @@ export function CityGuide({
                         setCategory(on || slug === 'all' ? 'all' : slug)
                         toList()
                       }}
-                      className={`flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-center shadow-[var(--shadow-card)] transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
+                      className={`guide-tile ${
                         on ? 'border-[var(--color-ink-900)] bg-[var(--color-ink-900)] text-white' : 'border-[var(--surface-2)] bg-white text-[var(--text-primary)] hover:border-[var(--color-ink-400)]'
                       }`}
                     >
@@ -784,7 +784,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   const b = bookingLine(r)
   const booking = b.book ? (
-    <span className="inline-flex items-start gap-1 font-display text-sm font-bold text-[var(--text-primary)] [overflow-wrap:anywhere]">
+    <span className="guide-row-book">
       {b.book}
       {b.outbound ? (
         <>
@@ -799,19 +799,19 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
   return (
     <Link
       href={r.href}
-      className="group flex min-h-11 items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:px-5"
+      className="group guide-row"
     >
       <span className="min-w-0 flex-1">
         {/* A time is one line, '10:30 am' and '12:30 pm' alike (round 2, item 3): the when line never breaks. */}
-        <span className="block whitespace-nowrap font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
-        <span className="mt-1 block font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
+        <span className="guide-row-when">{whenLine(e)}</span>
+        <span className="guide-row-title">
           {r.title}
         </span>
         {/* Round 3 (4): the event's own one line, where it says more than the row does (rowTeaser), two lines at most. */}
         {r.teaser ? (
           <span className="mt-1 line-clamp-2 block font-body text-sm text-[var(--text-secondary)] [overflow-wrap:anywhere]">{r.teaser}</span>
         ) : null}
-        <span className="mt-1 block font-display text-sm font-medium text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+        <span className="guide-row-line">
           {[r.venue, r.suburb && r.suburb !== r.venue && r.suburb.toLowerCase() !== cityName ? r.suburb : null, elsewhere].filter(Boolean).join(', ')}
         </span>
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">

@@ -10,6 +10,11 @@ import { bookingLine } from '@/components/features/city-guide/city-guide'
  * GEELONG-REFERENCE-DIRECTIVE-2NOV.md, the newest section). Finishing only; the layout is approved.
  */
 const src = (f: string) => readFileSync(join(process.cwd(), f), 'utf8').replace(/\r\n/g, '\n')
+const utility = (name: string) => {
+  const css = src('src/app/globals.css')
+  const at = css.indexOf(`@utility ${name} {`)
+  return at < 0 ? '' : css.slice(at, css.indexOf('}', at))
+}
 
 describe('item 4: the hero line', () => {
   it("is Lawal's sentence, word for word, for Geelong", () => {
@@ -35,7 +40,9 @@ describe('item 3: the time column', () => {
   it("holds '10:30 am' on one line: never broken at its space, and wide enough at 320 for '12:30 pm'", () => {
     const guide = src('src/components/features/city-guide/city-guide.tsx')
     // Round 3 moved the time into the gold 'when' line on top of the row; that line never breaks.
-    expect(guide).toMatch(/<span className="block whitespace-nowrap [^"]*">\{whenLine\(e\)\}<\/span>/)
+    // Car 38 collapsed the row's lists into globals.css utilities (class-lists-are-not-repeated-per-card); the rule holds there.
+    expect(guide).toContain('<span className="guide-row-when">{whenLine(e)}</span>')
+    expect(utility('guide-row-when')).toContain('whitespace-nowrap')
   })
 })
 
@@ -43,13 +50,11 @@ describe('item 7: titles, venues and booking labels wrap on a phone, never past 
   it('the row title, the venue line, the meta line and the booking label each break a long unbroken word', () => {
     const guide = src('src/components/features/city-guide/city-guide.tsx')
     const classOf = (marker: string) => guide.split('\n').find((l) => l.includes(marker)) ?? ''
-    for (const marker of [
-      'block font-headline text-base font-bold leading-snug',
-      'mt-1 block font-display text-sm font-medium text-[var(--text-secondary)]',
-      'mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]',
-      'inline-flex items-start gap-1 font-display text-sm font-bold',
-    ]) {
-      expect(classOf(marker), marker).toContain('[overflow-wrap:anywhere]')
+    expect(classOf('mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]')).toContain('[overflow-wrap:anywhere]')
+    // The title, venue and booking lists live in globals.css since car 38; each is used by the row and still breaks anywhere.
+    for (const name of ['guide-row-title', 'guide-row-line', 'guide-row-book']) {
+      expect(guide, name).toContain(`className="${name}"`)
+      expect(utility(name), name).toContain('[overflow-wrap:anywhere]')
     }
   })
 })

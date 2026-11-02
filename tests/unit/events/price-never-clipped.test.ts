@@ -24,14 +24,17 @@ describe('a price or ticket source is never clipped', () => {
   it('the guide row’s price and booking words break anywhere; on a phone the booking sits on its own line', () => {
     // Since 2 November 09:00 (refinement 4) the price is said once, in the row's one meta line.
     expect(lineWith('text-xs font-semibold text-[var(--text-muted)]')).toContain('[overflow-wrap:anywhere]')
-    expect(lineWith('inline-flex items-start gap-1')).toContain('[overflow-wrap:anywhere]')
+    // Car 38: the booking label's list is the guide-row-book utility.
+    expect(guide).toContain('className="guide-row-book"')
+    expect(rule('guide-row-book')).toContain('[overflow-wrap:anywhere]')
     // Round 3 (Lawal 17:00): the booking sits on its own line under the row at every width, said once.
     expect(guide).toContain('mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span>')
     expect(guide.split('>{booking}</span>').length - 1).toBe(1)
   })
 
   it('a venue name wraps, never cut with an ellipsis (the directive, C)', () => {
-    const venue = lineWith('text-sm font-medium text-[var(--text-secondary)]')
+    expect(guide).toContain('<span className="guide-row-line">')
+    const venue = rule('guide-row-line')
     expect(venue).toContain('[overflow-wrap:anywhere]')
     expect(venue).not.toContain('truncate')
   })

@@ -400,6 +400,44 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   @apply font-headline font-bold text-[var(--text-primary)];
 }
 
+/* ─── The city guide's row (car 38, 3 November 2026) ──────────────────────────
+ * Production's first build of the edge cached guide was refused by
+ * class-lists-are-not-repeated-per-card, quoted: '.next/server/app/city/bendigo.html
+ * repeats one 220-character class value 32 times, costing 6820 B beyond the
+ * first (budget 6000)', and the 207-character title list the same. A row renders
+ * once per listing, so every list it carries is collapsed here. `group` stays on
+ * the link at the call site (a variant marker, see the card family above). */
+@utility guide-row {
+  @apply flex min-h-11 items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset
+    focus-visible:ring-[var(--color-gold-400)] md:px-5;
+}
+@utility guide-row-when {
+  @apply block whitespace-nowrap font-display text-xs font-extrabold uppercase tracking-wider
+    text-[var(--brand-accent-strong)];
+}
+@utility guide-row-title {
+  @apply mt-1 block font-headline text-base font-bold leading-snug text-[var(--text-primary)]
+    [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2
+    group-hover:underline md:text-lg;
+}
+@utility guide-row-line {
+  @apply mt-1 block font-display text-sm font-medium text-[var(--text-secondary)] [overflow-wrap:anywhere];
+}
+/* The guide's Explore tile, one per category with events: 474 characters said 12 times on live Geelong (5214 B of
+ * the 6000 B budget), so a thirteenth category would have refused the build. Its on and off colours stay at the call
+ * site. */
+@utility guide-tile {
+  @apply flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-center
+    shadow-[var(--shadow-card)] transition-[transform,border-color,background-color] duration-200
+    hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0;
+}
+@utility guide-row-book {
+  @apply inline-flex items-start gap-1 font-display text-sm font-bold text-[var(--text-primary)]
+    [overflow-wrap:anywhere];
+}
+
 /* ─── The one rail control ────────────────────────────────────────────────── */
 /*
  * `ARROW_BTN` from src/components/ui/snap-rail.tsx: 642 characters, and the
