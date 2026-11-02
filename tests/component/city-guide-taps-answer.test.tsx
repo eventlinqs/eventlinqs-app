@@ -31,6 +31,27 @@ beforeAll(() => {
 })
 
 describe('every place chip answers the tap', () => {
+  it('a date chip and a place chip repaint on pointerdown, before the page works (the CONTROLLER 22:16 (2))', () => {
+    render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong', 'melbourne']}
+        quickCities={[{ slug: 'geelong', name: 'Geelong' }, { slug: 'melbourne', name: 'Melbourne' }]} allCities={[]}
+        rows={[row({})]} days={days}
+      />,
+    )
+    const today = within(screen.getByRole('group', { name: 'When' })).getByRole('button', { name: 'Today' })
+    expect(today.className).toContain('bg-white')
+    fireEvent.pointerDown(today)
+    expect(today.getAttribute('data-snap')).toBe('touched')
+    expect(today.className).toContain('bg-[var(--color-ink-900)]')
+    const victoria = within(screen.getByRole('group', { name: 'Choose a city' })).getByRole('button', { name: 'Victoria' })
+    fireEvent.pointerDown(victoria)
+    expect(victoria.className).toContain('bg-[var(--color-ink-900)]')
+    fireEvent.pointerCancel(victoria)
+    expect(victoria.className).toContain('bg-white')
+  })
+
   it('the current city chip takes the visitor to its events', () => {
     render(
       <CityGuide
@@ -49,7 +70,8 @@ describe('every place chip answers the tap', () => {
     const g = readFileSync(join(process.cwd(), 'src/components/features/city-guide/city-guide.tsx'), 'utf8').replace(/\r\n/g, '\n')
     expect(g).toMatch(/import Link, \{ useLinkStatus \} from 'next\/link'/)
     expect(g).toMatch(/function TapAnswer\([\s\S]*?const \{ pending \} = useLinkStatus\(\)/)
-    expect(g).toMatch(/<Link key=\{c\.slug\} href=\{`\/city\/\$\{c\.slug\}`\}[^>]*>\s*<TapAnswer label=\{c\.name\}/)
-    expect(g).toMatch(/aria-label="Search all of Australia"[\s\S]{0,400}<TapAnswer label="All of Australia"/)
+    expect(g).toMatch(/<SnapLink key=\{c\.slug\} href=\{`\/city\/\$\{c\.slug\}`\}[^>]*label=\{c\.name\}/)
+    expect(g).toMatch(/aria-label="Search all of Australia"[\s\S]{0,400}label="All of Australia"/)
+    expect(g).toMatch(/function SnapLink\([\s\S]*?onPointerDown=\{\(\) => setGoing\(true\)\}/)
   })
 })
