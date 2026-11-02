@@ -94,11 +94,25 @@ export async function runOccurrences(store: OccurrenceStore, now: Date, options:
   const clock = options.clock ?? Date.now
   const outOfTime = () => options.deadline !== undefined && clock() >= options.deadline
   const nights = await store.nights(now)
+  const record = (seriesId: string, date: string, result: StoreResult, counted: () => void) => {
+    if (result.ok) counted()
+    else summary.failed.push({ seriesId, date, why: result.reason })
+  }
+
+  /*
+   * TWO PASSES, so no night is written while another series' retiring night still holds its address (2 November
+   * 2026: a weekly series paused and its posted dates held as one-off series; the one-offs that sorted before their
+   * weekly sibling met 'duplicate key value violates unique constraint "events_organisation_id_slug_key"' and the real
+   * nights were missing for an hour). PASS 1 plans every night and retires what each plan retires; PASS 2 then
+   * updates and creates. Within one series the order is unchanged: its retirements still come before its writes.
+   */
+  const planned: { night: ListingNight; plan: ReturnType<typeof planOccurrences> }[] = []
   for (let i = 0; i < nights.length; i += 1) {
     const night = nights[i]
+    // Stopped in the first pass: no night has had its writes yet, so none is finished.
     const stop = () => {
       summary.stoppedEarly = true
-      summary.nightsNotReached = nights.length - i
+      summary.nightsNotReached = nights.length
       return summary
     }
     if (outOfTime()) return stop()
@@ -112,23 +126,29 @@ export async function runOccurrences(store: OccurrenceStore, now: Date, options:
     }
     summary.unchanged += plan.unchanged
     for (const h of plan.held) summary.held.push({ seriesId: night.id, ...h })
-
-    const record = (date: string, result: StoreResult, counted: () => void) => {
-      if (result.ok) counted()
-      else summary.failed.push({ seriesId: night.id, date, why: result.reason })
-    }
     for (const r of plan.retire) {
       if (outOfTime()) return stop()
       const result = r.action === 'cancel' ? await store.cancel(r.id) : await store.delete(r.id)
-      record(r.date, result, () => (r.action === 'cancel' ? (summary.cancelled += 1) : (summary.deleted += 1)))
+      record(night.id, r.date, result, () => (r.action === 'cancel' ? (summary.cancelled += 1) : (summary.deleted += 1)))
+    }
+    planned.push({ night, plan })
+  }
+
+  for (let j = 0; j < planned.length; j += 1) {
+    const { night, plan } = planned[j]
+    // Stopped in the second pass: this night and every one after it still owes its writes.
+    const stop = () => {
+      summary.stoppedEarly = true
+      summary.nightsNotReached = planned.length - j
+      return summary
     }
     for (const u of plan.update) {
       if (outOfTime()) return stop()
-      record(u.date, await store.update({ id: u.id, changes: u.changes, guideDay: u.guideDay }), () => (summary.updated += 1))
+      record(night.id, u.date, await store.update({ id: u.id, changes: u.changes, guideDay: u.guideDay }), () => (summary.updated += 1))
     }
     for (const c of plan.create) {
       if (outOfTime()) return stop()
-      record(c.date, await store.create({ night, ...c }), () => (summary.created += 1))
+      record(night.id, c.date, await store.create({ night, ...c }), () => (summary.created += 1))
     }
   }
   return summary
