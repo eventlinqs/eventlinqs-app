@@ -9,8 +9,8 @@ import { describe, expect, it } from 'vitest'
  */
 describe('the city guide links the city’s own pages', () => {
   const src = readFileSync(join(process.cwd(), 'src/components/features/city-guide/city-guide-screen.tsx'), 'utf8')
-  it('browse every event, the free week where it exists, and every suburb of a tier 1 city', () => {
-    expect(src).toContain('href={`/events/browse/${city.slug}`}')
+  it('the free week where it exists and every suburb of a tier 1 city; never the old listing, which is a 301 to this page', () => {
+    expect(src).not.toContain('href={`/events/browse/${city.slug}`}')
     expect(src).toMatch(/freeWeek \? \([\s\S]*href=\{`\/free\/\$\{city\.slug\}\/this-week`\}/)
     expect(src).toMatch(/href=\{`\/city\/\$\{city\.slug\}\/\$\{/)
     expect(src).toContain('getSuburbsForCity(')

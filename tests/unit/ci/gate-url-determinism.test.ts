@@ -92,7 +92,7 @@ describe('the gate is not quietly narrowed to make it pass', () => {
     for (const path of [
       '/',
       '/events',
-      '/events/browse/melbourne',
+      '/city/melbourne',
       '/community/african',
       '/organisers',
       '/pricing',
