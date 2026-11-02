@@ -152,7 +152,13 @@ describe('readOrganiserFunnel', () => {
   })
 
   it('carries a missing organisers table as NOT COUNTED through every stage read through it, never 0', async () => {
-    h.resolve = world({ organisers: MISSING })
+    // With no organisers table there is no platform organisers row either (20261101132001 writes it), so no contact of one.
+    const contacts = ok([
+      { id: 'c1', organiser_id: 'o1', basis_recorded_at: '2026-10-28T01:00:00Z' },
+      { id: 'c2', organiser_id: 'o2', basis_recorded_at: null },
+      { id: 'c3', organiser_id: 'o3', basis_recorded_at: '2026-10-28T02:00:00Z' },
+    ])
+    h.resolve = world({ organisers: MISSING, organiser_contacts: contacts })
     const f = await readOrganiserFunnel(NOW)
     for (const stage of ['found', 'claimed', 'yes', 'photos', 'publishing', 'reported']) expect(stageCount(f, stage)).toBeNull()
     // Contacts do not need the organisers table.

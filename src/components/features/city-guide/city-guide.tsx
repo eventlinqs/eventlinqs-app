@@ -10,6 +10,7 @@ import {
 import { OUR_CHECKOUT_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -138,6 +139,8 @@ export function CityGuide({
   const [cities, setCities] = useState(false)
   const [wholeState, setWholeState] = useState(false)
 
+  // One card per event: a listing's later nights are named on its first card, never a second card (one-card-per-event.ts).
+  const worthCards = collapseListings(worth, 6)
   const name = city.name.toLowerCase()
   const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
   const near = (r: DirectoryRow) =>
@@ -359,11 +362,11 @@ export function CityGuide({
         ) : null}
 
         {/* 3 WORTH GOING OUT FOR: organiser artwork with its rights on record, whole; not drawn under three. */}
-        {worth.length >= WORTH_MINIMUM ? (
+        {worthCards.length >= WORTH_MINIMUM ? (
           <section aria-label="Worth going out for" className="mt-12">
             <SectionHead eyebrow="Featured" title="Worth going out for" />
             <ul className="relative -mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
-              {worth.slice(0, 6).map((e) => (
+              {worthCards.map((e) => (
                 <li key={e.id} className="w-[82%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
                   <EventCard event={e} variant="grid-one-two-four" />
                 </li>

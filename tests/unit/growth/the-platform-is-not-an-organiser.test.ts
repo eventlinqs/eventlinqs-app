@@ -18,19 +18,21 @@ function fakeDb(orgs: { id: string; slug: string }[], organisers: { id: string; 
     from(table: string) {
       const call: Call = { table, filters: [] }
       calls.push(call)
+      let window: [number, number] = [0, Infinity]
       const rows = () => {
         let out: Record<string, unknown>[] = table === 'organisations' ? orgs : organisers
         for (const [op, col, value] of call.filters) {
           if (op === 'eq') out = out.filter((r) => r[col] === value)
           if (op === 'in') out = out.filter((r) => (value as unknown[]).includes(r[col]))
         }
-        return out.map((r) => ({ id: r.id }))
+        return out.map((r) => ({ id: r.id })).slice(window[0], window[1] + 1)
       }
       const q = {
         select: () => q,
         eq: (col: string, value: unknown) => (call.filters.push(['eq', col, value]), q),
         in: (col: string, value: unknown) => (call.filters.push(['in', col, value]), q),
-        limit: () => q,
+        order: () => q,
+        range: (from: number, to: number) => ((window = [from, to]), q),
         then: (resolve: (r: { data: unknown; error: null }) => unknown) => resolve({ data: rows(), error: null }),
       }
       return q
