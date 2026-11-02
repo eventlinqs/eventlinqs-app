@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
-import { PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
+import { GUIDED_CITY_SLUGS, PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -412,7 +412,16 @@ const nextConfig: NextConfig = {
     // that this very table 308s away. A sitemap entry that redirects is exactly
     // what Google's build-a-sitemap page tells you not to publish. One copy of
     // the fact, read by the config, the sitemap and the guard.
-    return PERMANENT_REDIRECTS
+    return [
+      ...PERMANENT_REDIRECTS,
+      // /events?city=<city> for a city with a guide goes to the guide (round 3, item 7); other query words pass through.
+      {
+        source: '/events',
+        has: [{ type: 'query', key: 'city', value: `(?<city>${GUIDED_CITY_SLUGS.join('|')})` }],
+        destination: '/city/:city',
+        permanent: true,
+      },
+    ]
   },
   async headers() {
     return [

@@ -38,6 +38,8 @@
  * verbatim.
  */
 
+import { getAllCities } from '../cities/data'
+
 export interface PermanentRedirect {
   source: string
   destination: string
@@ -83,9 +85,23 @@ export const LEGACY_COMMUNITY_REDIRECTS: PermanentRedirect[] = [
 ]
 
 /** Every permanent redirect this application serves. */
+/**
+ * THE OLD CITY LISTING, forwarded to the city guide (round 3, item 7; Lawal, 2 November 2026; the CONTROLLER's 18:09
+ * and 00:01). /events/browse/<city> counted DATES as events ('383 events available' where Geelong holds 191). Every
+ * city that has a guide (/city/<city>, src/app/city/[slug]/page.tsx) takes a 301 there; a browse city with no guide keeps
+ * its page, so nothing becomes a 404. Relative import: next.config.ts reads this file too.
+ */
+export const GUIDED_CITY_SLUGS: readonly string[] = getAllCities().map((c) => c.slug)
+export const CITY_BROWSE_REDIRECTS: PermanentRedirect[] = GUIDED_CITY_SLUGS.map((slug) => ({
+  source: `/events/browse/${slug}`,
+  destination: `/city/${slug}`,
+  permanent: true,
+}))
+
 export const PERMANENT_REDIRECTS: PermanentRedirect[] = [
   ...LEGACY_CATEGORY_REDIRECTS,
   ...LEGACY_COMMUNITY_REDIRECTS,
+  ...CITY_BROWSE_REDIRECTS,
 ]
 
 /**

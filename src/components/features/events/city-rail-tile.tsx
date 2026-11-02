@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirectFor } from '@/lib/seo/permanent-redirects'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
 import { COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
@@ -26,9 +27,11 @@ interface Props {
 }
 
 export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
+  // A guided city goes straight to its guide, never through the old listing's 301 (round 3, item 7).
+  const browse = `/events/browse/${encodeURIComponent(slug)}`
   return (
     <Link
-      href={`/events/browse/${encodeURIComponent(slug)}`}
+      href={redirectFor(browse)?.destination ?? browse}
       className={`group flex ${COMPACT_TILE_CELL} flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2`}
     >
       <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">

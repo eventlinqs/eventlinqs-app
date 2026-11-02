@@ -372,6 +372,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   for (const c of allCities) {
+    // A guided city's browse page is a 301 to its guide (round 3, item 7): never publish a redirect.
+    if (isRedirected(`/events/browse/${c.slug}`)) continue
     if (!isDiscoveryIndexable(countCity(discoveryRows, c.city), threshold)) continue
     entries.push({
       url: `${baseUrl}/events/browse/${c.slug}`,

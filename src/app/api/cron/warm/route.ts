@@ -6,9 +6,10 @@ export const dynamic = 'force-dynamic'
 const WARM_PATHS = [
   '/',
   '/events',
-  '/events/browse/melbourne',
-  '/events/browse/sydney',
-  '/events/browse/brisbane',
+  // The city guides (round 3, item 7: the old city listing is a 301 to them).
+  '/city/melbourne',
+  '/city/sydney',
+  '/city/brisbane',
 ]
 
 /**
