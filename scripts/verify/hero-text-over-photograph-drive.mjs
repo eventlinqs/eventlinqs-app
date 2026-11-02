@@ -259,6 +259,9 @@ const TEMPLATE_ROUTES = {
   /* The community organiser CTA band, which renders under every community
    * page and was measured for the first time on 20 September 2026. */
   'src/components/features/community/community-organiser-cta.tsx': '/community/',
+  /* The city guide (round 3, then the banner head of 3 November 2026), which /
+   * and every /city/[slug] render; the drive refused to run without it. */
+  'src/components/features/city-guide/city-guide-screen.tsx': '/city/',
 }
 /*
  * TWO FAMILIES THIS TABLE CANNOT COVER FROM SOURCE, said here rather than left
