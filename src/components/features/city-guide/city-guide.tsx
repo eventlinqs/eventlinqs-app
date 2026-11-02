@@ -110,6 +110,7 @@ export function CityGuide({
   stateName,
   stateCityNames,
   worth = [],
+  claimsOn = false,
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
@@ -126,6 +127,11 @@ export function CityGuide({
    * rights on record; the section is drawn at WORTH_MINIMUM or more, never padded, never a venue photo or a logo.
    */
   worth?: readonly EventCardData[]
+  /**
+   * Whether listing claims are open (feature_flags.listing_claims). The organiser block offers a claim ONLY then: the
+   * claim pages answer 404 while it is off, so the offer would be false (round 2 (d), Lawal 2 November 12:05).
+   */
+  claimsOn?: boolean
 }) {
   const [q, setQ] = useState('')
   const [when, setWhen] = useState<When>('all')
@@ -459,18 +465,20 @@ export function CityGuide({
           )}
         </section>
 
-        {/* 6 HOSTING AN EVENT: existing routes only. */}
+        {/* 6 HOSTING AN EVENT: existing routes only, and only offers the platform really makes (a claim only while claims are open). */}
         <section aria-label={`Hosting an event in ${city.name}?`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
           <SectionHead eyebrow="For organisers" title={`Hosting an event in ${city.name}?`} />
-          <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <li>
-              <a href="#city-calendar" className={ORGANISER_LINK}>
-                <span className="font-display text-base font-bold text-[var(--text-primary)]">Claim your listing</span>
-                <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">
-                  Find your event in the list above, open it and choose to claim it.
-                </span>
-              </a>
-            </li>
+          <ul className={`mt-4 grid grid-cols-1 gap-3 ${claimsOn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+            {claimsOn ? (
+              <li>
+                <a href="#city-calendar" className={ORGANISER_LINK}>
+                  <span className="font-display text-base font-bold text-[var(--text-primary)]">Claim your listing</span>
+                  <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">
+                    Find your event in the list above, open it and choose to claim it.
+                  </span>
+                </a>
+              </li>
+            ) : null}
             <li>
               <Link href="/submit-event" className={ORGANISER_LINK}>
                 <span className="font-display text-base font-bold text-[var(--text-primary)]">List your event</span>

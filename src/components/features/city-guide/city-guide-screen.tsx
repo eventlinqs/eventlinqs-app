@@ -8,6 +8,7 @@ import type { LedgerRow } from '@/lib/events/ledger-data'
 import { getAllCities, getCity, getSuburbsForCity, type CitySlug } from '@/lib/cities/data'
 import { cityGuideSubtitle } from '@/lib/cities/guide-subtitle'
 import { readGuideCity } from '@/lib/listings/free-week-surface'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
@@ -62,6 +63,9 @@ export async function CityGuideScreen({
   )
   // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
   const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
+  // Claims open only on the flag (feature_flags.listing_claims; its default and any failed read are OFF), so the organiser
+  // block never offers a claim the claim page would refuse (round 2 (d)).
+  const claimsOn = await isFeatureEnabled('listing_claims')
   // A failed read only leaves the link off, and says so (the old city page's own handling).
   const freeWeek = await readGuideCity(city.slug).then(
     (c) => c !== null,
@@ -107,6 +111,7 @@ export async function CityGuideScreen({
           rows={data.rows}
           days={data.days}
           worth={worth}
+          claimsOn={claimsOn}
         />
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
             21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in
