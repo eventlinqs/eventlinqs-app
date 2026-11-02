@@ -45,6 +45,11 @@ interface SiteHeaderClientProps {
   userEmail?: string | null
   /** Founder/admin: surface the role-gated Admin entry in the account menu. */
   isAdmin?: boolean
+  /**
+   * The city a city page is about. Its chip names that city, before any remembered one: the Geelong page read
+   * 'MELBOURNE' in the header (the CONTROLLER's walk of 16:35, 1 November 2026, (2)).
+   */
+  pageCity?: DetectedLocation | null
 }
 
 /**
@@ -120,7 +125,7 @@ export function readCityCookie(): DetectedLocation | null {
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
  */
-export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, pageCity = null }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
@@ -143,7 +148,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }:
     window.addEventListener(EL_CITY_UPDATED_EVENT, onUpdate)
     return () => window.removeEventListener(EL_CITY_UPDATED_EVENT, onUpdate)
   }, [])
-  const displayLocation = cookieLocation ?? location
+  const displayLocation = pageCity ?? cookieLocation ?? location
 
   const scrolled = useHeaderScrollState('header-scroll-sentinel')
   const { hasHero } = useHeroPresence()

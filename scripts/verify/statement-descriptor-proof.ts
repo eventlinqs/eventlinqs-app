@@ -52,7 +52,7 @@ type Row = {
 async function realTitlesByCategory(): Promise<{ category: string; title: string }[]> {
   const { data, error } = await supabase
     .from('events')
-    .select('title, category:event_categories(name)')
+    .select('title, category:event_categories!events_category_id_fkey(name)')
     .eq('status', 'published')
     .limit(500)
   if (error) throw error

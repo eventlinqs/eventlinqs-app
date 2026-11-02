@@ -105,6 +105,15 @@ export const GET_TICKETS = 'Get tickets'
 export const FREE_REGISTRATION_REQUIRED = 'Free, registration required'
 
 /**
+ * AN EVENT ROW'S WORDS (Lawal, 2 November 2026, 09:00, refinements 1 and 4: one compact pattern, each fact once). Written
+ * here, with the call to action, because a row says them only from the night's stored state: E1 (free, walk in) reads
+ * 'Free · Walk in' once, in place of 'Free entry' beside 'Walk in, no ticket needed'; a stored free night with a booking
+ * reads 'Free' in its meta line beside the booking label that says where ('Register at <seller>').
+ */
+export const ROW_WALK_IN = 'Free · Walk in'
+export const ROW_FREE_WITH_BOOKING = 'Free'
+
+/**
  * The price line beside the action, the only one each state may carry: E1 "Free entry"; E2 "Free, registration
  * required"; E3 the price of our own ticket types (the caller's priceLabel, from src/lib/events/price-label.ts); E4 a
  * price the outside link was checked at within the last day, else "Tickets on <provider>"; E5 nothing at all.

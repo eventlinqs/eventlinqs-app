@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { EventCardMedia, hasCardPhoto } from '@/components/media/EventCardMedia'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { CategoryTileImage } from '@/components/media/CategoryTileImage'
 
@@ -98,9 +98,11 @@ const PRICE = 'home-card-price'
 export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
-      <div className={`${IMG_WRAP} aspect-[16/10]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
-      </div>
+      {hasCardPhoto(event.imageSrc) ? (
+        <div className={`${IMG_WRAP} aspect-[16/10]`}>
+          <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+        </div>
+      ) : null}
       <div className="flex flex-1 flex-col p-4">
         <p className={LABEL}>{event.label}</p>
         <h3 className={`mt-1.5 line-clamp-2 text-lg ${TITLE}`}>{event.title}</h3>
@@ -120,9 +122,11 @@ export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
 export function EventCardSquare({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
-      <div className={`${IMG_WRAP} aspect-square`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
-      </div>
+      {hasCardPhoto(event.imageSrc) ? (
+        <div className={`${IMG_WRAP} aspect-square`}>
+          <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+        </div>
+      ) : null}
       <div className="flex flex-1 flex-col p-3">
         <p className={LABEL}>{event.label}</p>
         <h3 className={`mt-1 line-clamp-2 text-sm ${TITLE}`}>{event.title}</h3>
@@ -140,9 +144,11 @@ export function EventCardSquare({ event }: { event: HomeCardEvent }) {
 export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb?: string }) {
   return (
     <Link href={event.href} prefetch={false} className={SURFACE}>
-      <div className={`${IMG_WRAP} aspect-[16/9]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
-      </div>
+      {hasCardPhoto(event.imageSrc) ? (
+        <div className={`${IMG_WRAP} aspect-[16/9]`}>
+          <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+        </div>
+      ) : null}
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className={LABEL}>{event.label}</p>
         {/* The card title never outranks the rail heading it sits under

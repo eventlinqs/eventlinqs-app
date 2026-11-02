@@ -194,9 +194,17 @@ export function localHourOfDay(date: Date, zone: string): number {
 }
 
 /**
- * The upcoming weekend, Saturday 00:00 to the last instant of Sunday, in
- * `zone`. On a Sunday the weekend already under way is the one meant, so it
- * steps back a day rather than jumping forward six.
+ * The upcoming weekend, Friday 00:00 to the last instant of Sunday, in `zone`.
+ * On a Friday, Saturday or Sunday the weekend already under way is the one
+ * meant, so it steps back to that Friday rather than jumping forward a week.
+ *
+ * FRIDAY TO SUNDAY since 2 November 2026: Lawal's locked Geelong reference
+ * directive asks 'Friday-to-Sunday events' (C:\dev\DESIGN\CITY-FIRST-1NOV\
+ * GEELONG-REFERENCE-DIRECTIVE-2NOV.md, section 04), and Eventbrite's own 'This
+ * weekend' filter counts all of Friday, a session at 11.30 am included (read
+ * 2 November, C:\dev\EVIDENCE\GEELONG-REFERENCE-2NOV\weekend\
+ * leaders-this-weekend.md). Changed HERE, the one definition, under law 13; no
+ * second weekend is kept beside it.
  *
  * ONE DEFINITION, because there were FOUR: the /events weekend preset, the city
  * page, the suburb page and the community-by-city page each carried their own
@@ -206,10 +214,11 @@ export function localHourOfDay(date: Date, zone: string): number {
  */
 export function weekendWindowUtc(now: Date, zone: string): { from: Date; to: Date } {
   const day = localDayOfWeek(now, zone) // 0 Sun .. 6 Sat
-  const toSaturday = day === 6 ? 0 : day === 0 ? -1 : 6 - day
+  // Days from today back to (or on to) the weekend's Friday: Fri 0, Sat -1, Sun -2, Mon to Thu forward.
+  const toFriday = day === 5 ? 0 : day === 6 ? -1 : day === 0 ? -2 : 5 - day
   return {
-    from: startOfLocalDayUtcOffset(now, zone, toSaturday),
-    to: new Date(startOfLocalDayUtcOffset(now, zone, toSaturday + 2).getTime() - 1),
+    from: startOfLocalDayUtcOffset(now, zone, toFriday),
+    to: new Date(startOfLocalDayUtcOffset(now, zone, toFriday + 3).getTime() - 1),
   }
 }
 

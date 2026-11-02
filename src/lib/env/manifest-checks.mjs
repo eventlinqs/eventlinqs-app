@@ -300,7 +300,11 @@ export function evaluateValueCrossRules(env, opts = {}) {
       const resolvedUrl = rule.urlVars.map(n => env[n]).find(v => v && v.trim()) ?? ''
       const resolvedKey = rule.keyVars.map(n => env[n]).find(v => v && v.trim()) ?? ''
       const offenders = []
-      if (refFromUrl(resolvedUrl) === PRODUCTION_SUPABASE_REF) offenders.push(`the resolved ${rule.urlVars.join(' or ')}`)
+      // A NAMED, TIME LIMITED exception for one branch's preview (the rule's `exceptions`, each with its ruling and
+      // its own expiry). It excuses the URL only: a production service role key is refused on every branch.
+      const branch = env.VERCEL_GIT_COMMIT_REF ?? ''
+      const excused = (rule.exceptions ?? []).some(x => x.branch === branch && Date.now() <= Date.parse(x.until))
+      if (!excused && refFromUrl(resolvedUrl) === PRODUCTION_SUPABASE_REF) offenders.push(`the resolved ${rule.urlVars.join(' or ')}`)
       if (refFromJwt(resolvedKey) === PRODUCTION_SUPABASE_REF) offenders.push(`the resolved ${rule.keyVars.join(' or ')}`)
       if (refFromJwt(env[rule.rawKeyVar] ?? '') === PRODUCTION_SUPABASE_REF) {
         offenders.push(`the raw ${rule.rawKeyVar} (reachable by a direct process.env read)`)

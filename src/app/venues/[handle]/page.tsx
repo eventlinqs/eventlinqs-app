@@ -96,7 +96,7 @@ const PAST_EVENTS_SHOWN = 12
 async function fetchVenueEventsByName(venueName: string) {
   const supabase = createPublicClient()
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, entry_mode, external_ticket_url, category:event_categories!events_category_id_fkey(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
   /*
    * A FAILED READ IS NOT A VENUE WITH NOTHING ON, for the reason written out on
@@ -174,8 +174,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!venue) return { title: 'Venue not found | EventLinqs' }
 
   const baseUrl = getSiteUrl()
-  const cityPart = venue.city ? ` - ${venue.city}` : ''
-  const title = `${venue.name} - Events & Info${cityPart} - EventLinqs`
+  const cityPart = venue.city ? ` | ${venue.city}` : ''
+  const title = `${venue.name} | Events & Info${cityPart} | EventLinqs`
 
   const capacityPart = venue.capacity ? `Capacity ${venue.capacity.toLocaleString('en-AU')}. ` : ''
   const typePart = venue.venueType ? `${venue.venueType}. ` : ''

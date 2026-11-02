@@ -121,7 +121,7 @@ async function fetchVenueEvents(venueName: string): Promise<EventRowForVenue[]> 
   const { data } = await supabase
     .from('events')
     .select(
-      'category:event_categories(name, slug), venue_name, venue_city, venue_state, venue_country, venue_address, venue_latitude, venue_longitude, start_date',
+      'category:event_categories!events_category_id_fkey(name, slug), venue_name, venue_city, venue_state, venue_country, venue_address, venue_latitude, venue_longitude, start_date',
     )
     .match(PUBLIC_EVENT_MATCH)
     .ilike('venue_name', venueName)

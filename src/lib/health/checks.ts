@@ -265,7 +265,7 @@ async function checkAi(): Promise<HealthResult> {
     if (res.status === 401 || res.status === 403) {
       return {
         id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: false,
-        detail: `Anthropic rejected the key (HTTP ${res.status}) - every assistant surface is dead while this stands`,
+        detail: `Anthropic rejected the key (HTTP ${res.status}): every assistant surface is dead while this stands`,
         probableCause: 'ANTHROPIC_API_KEY is revoked, expired, or belongs to a different workspace',
         action: 'console.anthropic.com → API keys: issue a new key, update ANTHROPIC_API_KEY in Vercel (Production + Preview), then redeploy.',
       }
@@ -337,7 +337,7 @@ async function checkPrimaryPages(origin: string): Promise<HealthResult> {
 // (j) SSL + domain validity for the canonical site URL.
 async function checkSslDomain(origin: string): Promise<HealthResult> {
   if (origin.startsWith('http://')) {
-    return { id: 'ssl', label: 'SSL + domain', severity: 'warning', ok: true, skipped: true, detail: `canonical URL is http (local dev: ${origin}) - SSL check N/A` }
+    return { id: 'ssl', label: 'SSL + domain', severity: 'warning', ok: true, skipped: true, detail: `canonical URL is http (local dev: ${origin}), so the SSL check does not apply` }
   }
   try {
     // fetch() rejects on an invalid/expired TLS certificate, so a resolved

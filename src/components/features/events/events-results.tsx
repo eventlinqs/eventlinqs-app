@@ -4,6 +4,8 @@ import { EventsPagination } from './m5-events-pagination'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import type { FetchPublicEventsResult } from '@/lib/events/types'
 import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
+import { WhatsOnDirectory } from './whats-on-directory'
+import { directoryDays } from '@/lib/events/whats-on-directory'
 
 /**
  * Async data regions for /events browse. Both consume the SAME unawaited
@@ -90,6 +92,30 @@ export async function EventsResults({
   return (
     <>
       {filterActive ? grid : <Reveal>{grid}</Reveal>}
+      <EventsPagination params={params} page={result.page} totalPages={result.totalPages} />
+    </>
+  )
+}
+
+/**
+ * THE RESULTS AS WHAT'S ON (Lawal's order of 1 November 2026, 11:01: "Browse Events and each city page: directory
+ * first, Featured above it"). The same page of results the grid drew, one row per night under its day, with the same
+ * pagination and the same designed empty state. The filter bar above already filters, so the list carries no chips.
+ */
+export async function EventsDirectoryResults({
+  resultPromise,
+  params,
+}: {
+  resultPromise: Promise<FetchPublicEventsResult>
+  params: EventsSearchParams
+}) {
+  const result = await resultPromise
+  if (result.events.length === 0) {
+    return <EventsGrid events={[]} params={params} page={result.page} totalPages={result.totalPages} firstCardEager={false} />
+  }
+  return (
+    <>
+      <WhatsOnDirectory days={directoryDays(result.events, new Date())} chips={[]} />
       <EventsPagination params={params} page={result.page} totalPages={result.totalPages} />
     </>
   )

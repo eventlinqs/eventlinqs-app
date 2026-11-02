@@ -51,6 +51,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { selectRest, couldNotLook } from './lib/db-read.mjs'
+import { awaitingCategories } from './lib/awaiting-categories.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[community-layer-protected]'
@@ -152,8 +153,13 @@ if (!REAL_PROJECT.test(url)) {
 }
 if (dbCategories) {
   const dbSlugs = dbCategories.map((c) => c.slug)
+  // A row added after 7 September names the migration that adds it; on a database without ALL of that migration's
+  // categories they are awaiting, not lost (one rule, scripts/guards/lib/awaiting-categories.mjs).
+  const { awaiting, lines } = awaitingCategories(approved.categories.rows, dbSlugs)
+  for (const line of lines) console.log(`${TAG} ${line}`)
   for (const slug of approvedCategories) {
-    if (!dbSlugs.includes(slug)) fail(`categories: the approved ${slug} is missing from public.event_categories on this database; a category present on 7 September 2026 has disappeared`)
+    if (awaiting.has(slug)) continue
+    if (!dbSlugs.includes(slug)) fail(`categories: the approved ${slug} is missing from public.event_categories on this database; a recorded category has disappeared`)
   }
   for (const slug of dbSlugs) {
     if (!approvedCategories.includes(slug)) fail(`categories: ${slug} is in public.event_categories but not recorded in ${APPROVED}; record the addition there (nothing is removed)`)

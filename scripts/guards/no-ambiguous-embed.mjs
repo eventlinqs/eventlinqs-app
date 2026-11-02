@@ -72,6 +72,8 @@ if (!existsSync(MIGRATIONS)) {
  */
 const migrationFiles = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()
 const fkCount = new Map() // "source>target" -> Set of column names
+const fkColsByTable = new Map() // table -> Map(column -> referenced table)
+const pkByTable = new Map() // table -> its composite primary key columns (two or more)
 
 /*
  * BLOCK-AWARE, and the first version was not, which is why this comment exists.
@@ -117,6 +119,12 @@ for (const file of migrationFiles) {
     }
 
     collect(line, table)
+    // A composite primary key, written on CREATE TABLE or by ALTER ... ADD [CONSTRAINT x] PRIMARY KEY (a, b).
+    const pk = /PRIMARY KEY\s*\(([^)]+)\)/i.exec(line)
+    if (pk && table) {
+      const cols = pk[1].split(',').map((c) => c.trim().replace(/"/g, '').toLowerCase()).filter(Boolean)
+      if (cols.length >= 2) pkByTable.set(table, cols)
+    }
 
     if (inAlter) {
       if (line.includes(';')) { table = null; inAlter = false }
@@ -136,6 +144,45 @@ for (const file of migrationFiles) {
     const key = `${source}>${target}`
     if (!fkCount.has(key)) fkCount.set(key, new Set())
     fkCount.get(key).add(column)
+    if (!fkColsByTable.has(source)) fkColsByTable.set(source, new Map())
+    fkColsByTable.get(source).set(column.toLowerCase(), target)
+  }
+}
+
+/*
+ * A SECOND PATH THROUGH A JOIN TABLE IS STILL A SECOND PATH, and this guard could not see it until 1 November 2026.
+ * Migration 20261101161001 created public.event_secondary_categories (event_id -> events, category_id ->
+ * event_categories). events has ONE foreign key to event_categories, so the count above found nothing, yet PostgREST
+ * now answers every bare `event_categories(...)` embed from events with PGRST201 ('more than one relationship was
+ * found'), read on TEST at 20:24 (the city guide's gate stopped on it at its build, C:\dev\EVIDENCE\CITY-FIRST-1NOV\
+ * design\gate-push-dc1010fd.log line 6195). PostgREST reads a table as a many-to-many JOIN TABLE only when it "must
+ * contain foreign keys to other two tables and they must be part of its composite key"
+ * (https://docs.postgrest.org/en/v12/references/api/resource_embedding.html, quoted by WINDOW 1 at 20:23, fetched that
+ * day). So a table adds a path, `via <junction>`, between two tables only when its COMPOSITE PRIMARY KEY holds foreign
+ * keys to both. The first version of this extension (cfdc6069) counted any table with two foreign keys and condemned
+ * 40 working pairs (events -> organisations among them) at the gate of 20:37; that is the false positive the header
+ * above warns of, and this is its correction.
+ */
+const viaJunction = new Set() // "source>target" pairs whose second path runs through a join table
+{
+  const targetsBySource = new Map()
+  for (const [junctionTable, pkCols] of pkByTable) {
+    const fks = fkColsByTable.get(junctionTable)
+    if (!fks) continue
+    const reached = new Set(pkCols.map((c) => fks.get(c)).filter(Boolean))
+    if (reached.size >= 2) targetsBySource.set(junctionTable, reached)
+  }
+  for (const [junction, targets] of targetsBySource) {
+    const list = [...targets].filter((t) => t !== junction)
+    for (const a of list) {
+      for (const b of list) {
+        if (a === b) continue
+        const key = `${a}>${b}`
+        if (!fkCount.has(key)) continue // a junction alone is one path; it matters only beside another
+        fkCount.get(key).add(`via ${junction}`)
+        viaJunction.add(key)
+      }
+    }
   }
 }
 
@@ -204,6 +251,53 @@ for (const abs of files) {
 }
 note(`${queriesChecked} query/queries selected FROM a table with an ambiguous relationship`)
 note(`${failures.length} of them embed it by bare name`)
+
+/*
+ * A PAIR MADE AMBIGUOUS THROUGH A JOIN TABLE IS CHECKED EVERYWHERE, not only in a select written right after its
+ * .from(): the 1 November case lived in select CONSTANTS (src/lib/events/home-queries.ts EVENT_SELECT) and in embeds
+ * NESTED under events from another table (organiser_night_reports -> events(... category:event_categories(...))),
+ * none of which the per-query clause above can attribute. For such a pair every bare `target(` or `target!inner(` in
+ * src and scripts fails. Safe from the false positives described above because it runs only for a target whose
+ * ambiguity is the join table's; on 1 November every embed of event_categories in the tree hung off events (30, read
+ * one by one).
+ */
+const junctionTargets = new Set([...viaJunction].map((k) => k.split('>')[1]))
+const SCRIPTS = join(ROOT, 'scripts')
+const everyFile = [...files, ...walkAll(SCRIPTS)]
+let junctionEmbedsNamed = 0
+for (const abs of everyFile) {
+  const rel = relative(ROOT, abs).split('\\').join('/')
+  if (rel === 'scripts/guards/no-ambiguous-embed.mjs') continue
+  const text = readFileSync(abs, 'utf8')
+  for (const target of junctionTargets) {
+    const re = new RegExp(`\\b${target}((?:![A-Za-z_]+)*)\\(`, 'g')
+    for (const m of text.matchAll(re)) {
+      const hints = m[1].split('!').filter(Boolean)
+      if (hints.length && hints[0] !== 'inner') { junctionEmbedsNamed += 1; continue }
+      const line = text.slice(0, m.index).split('\n').length
+      failures.push(
+        `${rel}:${line}: embeds \`${target}\` by bare name (\`${m[0]}\`), but a join table gives it a second `
+        + `relationship to the table it hangs off, so PostgREST answers PGRST201. Name the constraint, for example `
+        + `\`${target}!events_category_id_fkey(...)\`, with !inner after it where needed.`,
+      )
+    }
+  }
+}
+note(`${junctionTargets.size} target(s) made ambiguous through a join table (${[...junctionTargets].join(', ') || 'none'}); ${junctionEmbedsNamed} embed(s) of them name their key across ${everyFile.length} file(s) in src and scripts`)
+
+function walkAll(dir, out = []) {
+  let entries
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch (error) {
+    console.warn('[scripts/guards/no-ambiguous-embed:walkAll]', error instanceof Error ? error.message : error)
+    return out }
+  for (const e of entries) {
+    if (e.name === 'node_modules' || e.name.startsWith('.')) continue
+    const full = join(dir, e.name)
+    if (e.isDirectory()) { walkAll(full, out); continue }
+    if (/\.(ts|tsx|mjs|mts|js)$/.test(e.name)) out.push(full)
+  }
+  return out
+}
 
 console.log('[no-ambiguous-embed] what this guard scanned:')
 for (const n of notes) console.log(`    - ${n}`)

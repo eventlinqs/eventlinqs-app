@@ -66,7 +66,10 @@
       { "slug": "pride", "name": "Pride", "inScopeV5": null },
       { "slug": "european", "name": "European", "inScopeV5": null },
       { "slug": "middle-eastern", "name": "Middle Eastern", "inScopeV5": null },
-      { "slug": "pacific", "name": "Pacific", "inScopeV5": null }
+      { "slug": "pacific", "name": "Pacific", "inScopeV5": null },
+      { "slug": "theatre", "migration": "20261101161001_guide_categories.sql", "name": "Theatre and performing arts", "inScopeV5": null, "note": "ADDED 1 November 2026 by migration 20261101161001 for the guide's fifteen categories (C:\\dev\\DESIGN\\CITY-FIRST-1NOV\\CITY-FIRST-DIRECTIVE-1NOV.md, directive 2); on TEST from 1 November, on production when Lawal applies it" },
+      { "slug": "markets", "migration": "20261101161001_guide_categories.sql", "name": "Markets", "inScopeV5": null, "note": "ADDED 1 November 2026 by migration 20261101161001 for the guide's fifteen categories (C:\\dev\\DESIGN\\CITY-FIRST-1NOV\\CITY-FIRST-DIRECTIVE-1NOV.md, directive 2); on TEST from 1 November, on production when Lawal applies it" },
+      { "slug": "classes-workshops", "migration": "20261101161001_guide_categories.sql", "name": "Classes and workshops", "inScopeV5": null, "note": "ADDED 1 November 2026 by migration 20261101161001 for the guide's fifteen categories (C:\\dev\\DESIGN\\CITY-FIRST-1NOV\\CITY-FIRST-DIRECTIVE-1NOV.md, directive 2); on TEST from 1 November, on production when Lawal applies it" }
     ],
     "scopeV5Line351": ["Music", "Sports", "Arts & Culture", "Food & Drink", "Business & Networking", "Education", "Charity", "Nightlife", "Family", "Technology", "Religion", "Fashion", "Health & Wellness", "Community", "Other"]
   },

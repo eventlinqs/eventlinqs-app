@@ -54,11 +54,14 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
+import { awaitingCategories } from './lib/awaiting-categories.mjs'
 
 const ROOT = process.cwd()
 const APP = join(ROOT, 'src', 'app')
 const SITEMAP = join(APP, 'sitemap.ts')
 const EDITORIAL = 'src/lib/categories/category-editorial.ts'
+// Re-included in .vercelignore (community-layer-protected reads it too), so it survives the upload.
+const APPROVED_TAXONOMY = 'docs/scope/community-layer-approved.json'
 const CATEGORY_ROUTE = 'src/app/categories/[slug]/page.tsx'
 const POLICY = 'src/lib/seo/indexing-policy.ts'
 const THRESHOLD_MODULE = 'src/lib/seo/discovery-threshold.ts'
@@ -391,7 +394,16 @@ if (url && !hasRealProject) {
     const live = new Set((data ?? []).map(r => r.slug))
     console.log(`  ${live.size} row(s) in event_categories`)
     const unwritten = [...live].filter(s => !written.includes(s)).sort()
-    const orphaned = written.filter(s => !live.has(s)).sort()
+    // A category recorded in the approved file with the migration that adds it, where this database has none of that
+    // migration's slugs yet (production waits for Lawal's own apply), is AWAITING, not orphaned: the surfaces publish
+    // only live rows joined to their editorial (src/lib/categories/taxonomy.ts getPublishableCategories), so nothing
+    // 404s and the sitemap does not list it. One present and another absent is still a fault.
+    const approvedRows = existsSync(join(ROOT, APPROVED_TAXONOMY))
+      ? JSON.parse(readFileSync(join(ROOT, APPROVED_TAXONOMY), 'utf8')).categories.rows
+      : []
+    const { awaiting, lines } = awaitingCategories(approvedRows, [...live])
+    for (const line of lines) console.log(`  ${line} (editorial written, no row yet, so no page)`)
+    const orphaned = written.filter(s => !live.has(s) && !awaiting.has(s)).sort()
     for (const slug of unwritten) {
       fail(
         `the category "${slug}" exists in event_categories and has no editorial in ${EDITORIAL}.\n` +

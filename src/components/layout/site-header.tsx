@@ -46,7 +46,14 @@ import { captureException } from '@/lib/observability/sentry'
  * another visitor. The avatar is intentionally not shown on these
  * anonymous-cacheable surfaces.
  */
-export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean } = {}) {
+export async function SiteHeader({
+  staticSafe = false,
+  city = null,
+}: {
+  staticSafe?: boolean
+  /** The city a city page is about: the header's chip names it (the CONTROLLER's 16:35 walk, (2)). */
+  city?: { name: string; latitude: number; longitude: number } | null
+} = {}) {
   let user: AccountUser | null = null
   let userEmail: string | null = null
   let isAdmin = false
@@ -76,6 +83,7 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
   return (
     <SiteHeaderClient
       location={MELBOURNE_FALLBACK}
+      pageCity={city ? { ...MELBOURNE_FALLBACK, city: city.name, latitude: city.latitude, longitude: city.longitude } : null}
       user={user}
       userEmail={userEmail}
       isAdmin={isAdmin}

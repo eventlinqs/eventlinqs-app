@@ -114,7 +114,7 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
       "Townsville's African community grew through the humanitarian intake and stayed - Sudanese, Liberian, Burundian and Sierra Leonean families settled through Vincent, Heatley and Kirwan. The Townsville Intercommunity Centre coordinates African Day celebrations every May at Riverway, weekend Pan-African Gospel services through Garbutt churches, and Sudanese wedding receptions at the Townsville Stadium function rooms. Nigerian Owambe nights at the Brewery and the Mariners Bar. South African braais along Rowes Bay through the dry. Ethiopian coffee ceremonies through community spaces on Flinders Street. The James Cook University African Students Society runs community nights through every semester. The dry-season calendar packs tight - May to October is when Townsville's African events all happen. EventLinqs is built for Townsville African organisers running events that anchor a community in tropical north Queensland.",
   },
   'african/london': {
-    hero_subtitle: "Lagos, Accra, London - one stage.",
+    hero_subtitle: "Lagos, Accra, London: one stage.",
     editorial:
       "London is the second city of the African world. Peckham is Lagos south of the Thames. Tottenham is Accra. Brixton is the older Caribbean-African meeting ground that grew into the Notting Hill Carnival. Owambe celebrations fill banqueting halls in Croydon every weekend, Ghanaian Highlife nights pack the Indigo at the O2, Amapiano takes over Shoreditch warehouses, Afro House DJs work the South Bank. Pan-African Gospel churches in Stratford pull crowds of three thousand on Sundays. Ethiopian and Eritrean coffee houses thread through Camden, Holborn and Highbury. London's African organisers run the largest concentration of events outside the continent, and the city moves to it. EventLinqs is built for London African organisers throwing nights that travel back home.",
   },
@@ -450,12 +450,12 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
   // EAST ASIAN
   // ============================================================
   'east-asian/sydney': {
-    hero_subtitle: "K-pop, Lunar, J-rock - Sydney's full East Asian spectrum.",
+    hero_subtitle: "K-pop, Lunar, J-rock: Sydney's full East Asian spectrum.",
     editorial:
       "Chinese New Year turning Haymarket into a 100,000-strong outdoor party, K-pop concerts at Qudos Bank Arena, J-rock and anime conventions at the ICC, Vietnamese New Year at Cabra-Vale, Korean community festivals in Strathfield, Japanese matsuri in Darling Harbour. Lunar new year red lanterns light up every Chinatown corner. From K-pop dance crews to Tamil cinema and J-pop singalongs, Sydney's East Asian community runs the most diverse event calendar in the country. EventLinqs is built for Sydney's East Asian promoters - the dance crew leader, the community group leader, the festival committee chair.",
   },
   'east-asian/melbourne': {
-    hero_subtitle: "Lanterns, K-pop, anime - Melbourne's East Asian stage.",
+    hero_subtitle: "Lanterns, K-pop, anime: Melbourne's East Asian stage.",
     editorial:
       "Melbourne's East Asian community is the largest in Australia. Box Hill is the Chinese community heart, Glen Waverley holds the Korean families, Springvale holds the Vietnamese community, Doncaster holds the Japanese expats. Lunar New Year takes over the city for ten days every February with lion dance parades through Chinatown, K-pop dance battles at the Melbourne Exhibition Centre, and night markets at Queen Victoria Market that pull a quarter-million. Vietnamese Tet at Footscray Park fills the inner west with red and gold for a long weekend. Korean Festival every May at Federation Square. Japanese matsuri at the Kobe Garden in Kogarah. K-pop fan meets at Margaret Court Arena fill out from teen to thirty. EventLinqs is built for Melbourne East Asian organisers running events that knit the most diverse Asian-Australian calendar in the country.",
   },
@@ -658,7 +658,7 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
   // MEDITERRANEAN
   // ============================================================
   'mediterranean/melbourne': {
-    hero_subtitle: "Italian, Greek, Spanish - Melbourne's Mediterranean nights.",
+    hero_subtitle: "Italian, Greek, Spanish: Melbourne's Mediterranean nights.",
     editorial:
       "Italian sagra in Carlton every summer, Greek glendi in Oakleigh through every month, Spanish flamenco at the Melbourne Recital Centre, Portuguese fado in Brunswick, Cypriot souvla at the Cypriot Community Hall, Lebanese mahrajan in Coburg. Melbourne's Mediterranean scene is generations old and still growing, with old-country club venues sitting beside contemporary fusion warehouse parties. EventLinqs is built for the Melbourne Mediterranean organisers running everything from family-club glendi to high-end festival weekends.",
   },
@@ -762,7 +762,7 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
   // MIDDLE EASTERN
   // ============================================================
   'middle-eastern/sydney': {
-    hero_subtitle: "Lebanese, Persian, Arabic - Sydney's Middle Eastern stage.",
+    hero_subtitle: "Lebanese, Persian, Arabic: Sydney's Middle Eastern stage.",
     editorial:
       "Lebanese mahrajan in Punchbowl pulling 5000 a weekend, Persian Norouz at the Town Hall, Iraqi community festivals in Fairfield, Egyptian shaabi nights in Bankstown, Turkish folk dances in Auburn, Arabic concerts at the ICC and the Hordern Pavilion. Sydney's Middle Eastern community is dense, organised and runs both family-scale weekend events and city-scale festivals across Lebanese, Egyptian, Persian, Iraqi, Turkish and Israeli communities. EventLinqs is built for Sydney Middle Eastern promoters who already know their community shows up loud.",
   },

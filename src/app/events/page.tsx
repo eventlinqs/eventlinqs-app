@@ -15,8 +15,8 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
 import { EventsFilterBar } from '@/components/features/events/m5-events-filter-bar'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
-import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
-import { EventsCollectionMarkup, EventsCount, EventsResults } from '@/components/features/events/events-results'
+import { FeaturedThisWeekLoader } from '@/components/features/events/featured-this-week-loader'
+import { EventsCollectionMarkup, EventsCount, EventsDirectoryResults } from '@/components/features/events/events-results'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import { BrowseNotice } from '@/components/features/events/browse-notice'
@@ -178,7 +178,7 @@ export default async function EventsPage({ searchParams }: Props) {
             to ~5.2s (Lighthouse). The rail's own fetch (anon, cached) is fast.
             Only the below-the-fold results grid streams behind a skeleton. */}
         {!filterActive ? (
-          <EventsPopularSection filterActive={filterActive} listedPromise={resultPromise} />
+          <FeaturedThisWeekLoader />
         ) : null}
 
         {/* The header search offers four tabs and three of them route here.
@@ -234,11 +234,7 @@ export default async function EventsPage({ searchParams }: Props) {
                 below the fold (and below the popular rail), so this never affects
                 the LCP. Hero + filter bar render immediately above. */}
             <Suspense fallback={<EventsGridSkeleton />}>
-              <EventsResults
-                resultPromise={resultPromise}
-                params={raw}
-                filterActive={filterActive}
-              />
+              <EventsDirectoryResults resultPromise={resultPromise} params={raw} />
             </Suspense>
           </section>
         )}

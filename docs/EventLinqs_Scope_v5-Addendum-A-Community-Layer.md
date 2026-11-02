@@ -136,6 +136,15 @@ browse filter read the same table; the organiser form offers the same rows.
 | `european` | European | approved addition |
 | `middle-eastern` | Middle Eastern | approved addition |
 | `pacific` | Pacific | approved addition |
+| `theatre` | Theatre and performing arts | approved addition, 1 November 2026 |
+| `markets` | Markets | approved addition, 1 November 2026 |
+| `classes-workshops` | Classes and workshops | approved addition, 1 November 2026 |
+
+Added 1 November 2026: `theatre`, `markets` and `classes-workshops`, by migration
+20261101161001_guide_categories.sql, so the city guide has the fifteen categories the city first directive
+names (C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md, directive 2). Nothing was removed or
+renamed. They are on TEST from that day and reach production when Lawal applies the migration; the 22 above
+are the count read on 7 September.
 
 Every one of the 15 scope categories is present. Seven categories exist beyond the scope and are kept
 and recorded here as approved additions. One naming difference, reported and not changed: the scope's

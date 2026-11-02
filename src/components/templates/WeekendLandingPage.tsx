@@ -123,7 +123,7 @@ export function WeekendLandingPage({
           <Prose>
             <h2 id="about-this-weekend">Every event on sale for this weekend, in one place</h2>
             <p>
-              The weekend here is Saturday and Sunday, and an event stays on this page until it has
+              The weekend here is Friday to Sunday, and an event stays on this page until it has
               actually finished rather than disappearing the minute it starts. Anything still
               running on Saturday afternoon is still listed on Saturday afternoon.
             </p>

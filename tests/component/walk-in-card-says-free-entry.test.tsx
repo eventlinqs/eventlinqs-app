@@ -38,7 +38,9 @@ const base: EventCardData = {
 describe('the grid card for a walk-in event', () => {
   it('says "Free entry", not "Free", and shows no price', () => {
     const { container } = render(<EventCard event={{ ...base, entry_mode: 'walk_in' }} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    // Lawal, 2 November 2026, 09:00, refinement 4: 'Free · Walk in' in place of 'Free entry' beside 'Walk in, no ticket
+    // needed'; still one wording, never a bare 'Free'.
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
     expect(screen.queryByText('Free')).toBeNull()
     expect(container.textContent).not.toMatch(/\$\s?\d/)
   })
@@ -47,7 +49,9 @@ describe('the grid card for a walk-in event', () => {
   // for free nights; one word"): a night stored as free reads the call to action's one line, "Free entry", on every card.
   it('a ticketed night stored as free says "Free entry", the one wording, never a bare "Free"', () => {
     render(<EventCard event={{ ...base, entry_mode: 'tickets' }} />)
-    expect(screen.getByText('Free entry')).toBeInTheDocument()
+    // Lawal, 2 November 2026, 09:00, refinement 4: 'Free · Walk in' in place of 'Free entry' beside 'Walk in, no ticket
+    // needed'; still one wording, never a bare 'Free'.
+    expect(screen.getByText('Free · Walk in')).toBeInTheDocument()
     expect(screen.queryByText('Free')).toBeNull()
   })
 

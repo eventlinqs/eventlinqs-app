@@ -92,8 +92,11 @@ const ROOT = process.cwd()
 export const LCP_FIRST_FLUSH_ROUTES = [
   {
     file: 'src/app/page.tsx',
-    hero: 'FeaturedHero',
-    heroFile: 'src/components/features/home/FeaturedHero.tsx',
+    // The city guide (the city-first directive of 1 November 2026): the homepage opens on the city's own photograph
+    // under its name (HeroMedia, priority) inside CityGuideScreen, which the page renders directly and never behind a
+    // boundary, for the reason measured below.
+    hero: 'CityGuideScreen',
+    heroFile: 'src/components/features/city-guide/city-guide-screen.tsx',
     why: 'the homepage: putting this hero behind a streaming boundary moved its discovery from 20 ms to 527 ms and cost 597 ms of LCP and six points of performance score, measured median of 5 at matched machine speed (close-out C8B.3, 18 September 2026)',
   },
 ]

@@ -5,7 +5,6 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
-import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
@@ -292,17 +291,13 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               to keep it. */}
           <EventSection name="hero">
           <figure className="m-0">
-            <div className="relative aspect-[3/2] overflow-hidden bg-ink-900 lg:aspect-[16/7] lg:rounded-[var(--radius-card)]">
-              {/* A night whose only image is our composed cover: its artwork is the title set again under this figure,
-                  so the typographic cover stands in (the category and the EventLinqs mark; no date mark, as a guide can
-                  span many days), as on the event page (heroIsTypographic). */}
-              {hero.image &&
-                (heroIsTypographic({ image: hero.image }) ? (
-                  <BrandedPlaceholder category={event.category?.name ?? null} />
-                ) : (
-                  <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />
-                ))}
-            </div>
+            {/* A night whose only image is our composed cover draws no frame at all: never the branded tile with the
+                EventLinqs mark in place of a photograph (the CONTROLLER's 16:41 of 1 November 2026, (1)). */}
+            {hero.image && !heroIsTypographic({ image: hero.image }) ? (
+              <div className="relative aspect-[3/2] overflow-hidden bg-ink-900 lg:aspect-[16/7] lg:rounded-[var(--radius-card)]">
+                <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />
+              </div>
+            ) : null}
             {heroMosaic.length > 0 && (
               <div data-hero-mosaic className="mt-1 grid grid-cols-4 gap-1 lg:hidden">
                 {heroMosaic.map((g) => (

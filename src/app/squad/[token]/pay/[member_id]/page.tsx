@@ -14,7 +14,7 @@ type Props = {
 
 export async function generateMetadata(_props: Props): Promise<Metadata> {
   return {
-    title: `Pay Your Share - Squad | EventLinqs`,
+    title: `Pay Your Share | Squad | EventLinqs`,
     robots: { index: false },
   }
 }
