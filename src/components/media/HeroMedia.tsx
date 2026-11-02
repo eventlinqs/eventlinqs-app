@@ -63,6 +63,11 @@ export interface HeroMediaProps {
    * a specific subject sits elsewhere.
    */
   objectPosition?: string
+  /**
+   * 'contain' shows an event's photograph WHOLE, never cropped or zoomed (law 15, Lawal 2 November 2026 14:51: 'full
+   * pictures forever'); the box's own colour shows where the shapes differ. Default 'cover' for the site's own imagery.
+   */
+  fit?: 'cover' | 'contain'
 }
 
 function assertRaster(url: string): void {
@@ -86,6 +91,7 @@ export function HeroMedia({
   fillParent = true,
   priority = true,
   objectPosition = '50% 30%',
+  fit = 'cover',
 }: HeroMediaProps) {
   assertRaster(image)
 
@@ -126,6 +132,7 @@ export function HeroMedia({
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
         objectPosition={objectPosition}
+        fit={fit}
       />
 
       {/*

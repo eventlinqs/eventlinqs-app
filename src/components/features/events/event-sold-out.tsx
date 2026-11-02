@@ -219,7 +219,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
             src={event.cover_image_url}
             alt={event.title}
             variant="grid-one-two-three-sm"
-            className="transition-transform duration-500 group-hover:scale-105"
+            objectFit="contain"
           />
         </div>
       ) : null}
