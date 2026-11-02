@@ -602,7 +602,7 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
       {/* A time is one line, '10:30 am' and '12:30 pm' alike (Lawal's round 2, item 3): never broken at its space. */}
       <span className="whitespace-nowrap pt-0.5 font-display text-sm font-extrabold text-[var(--text-primary)]">{r.time ?? ''}</span>
       <span className="min-w-0">
-        <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
+        <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
           {r.title}
         </span>
         <span className="mt-1 block font-display text-sm font-medium text-[var(--text-secondary)] [overflow-wrap:anywhere]">
