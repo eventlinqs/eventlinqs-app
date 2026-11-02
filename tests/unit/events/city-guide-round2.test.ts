@@ -39,6 +39,21 @@ describe('item 3: the time column', () => {
   })
 })
 
+describe('item 7: titles, venues and booking labels wrap on a phone, never past the edge', () => {
+  it('the row title, the venue line, the meta line and the booking label each break a long unbroken word', () => {
+    const guide = src('src/components/features/city-guide/city-guide.tsx')
+    const classOf = (marker: string) => guide.split('\n').find((l) => l.includes(marker)) ?? ''
+    for (const marker of [
+      'block font-headline text-base font-bold leading-snug',
+      'mt-1 block font-display text-sm font-medium text-[var(--text-secondary)]',
+      'mt-1 block font-display text-xs font-semibold text-[var(--text-muted)]',
+      'inline-flex items-start gap-1 font-display text-sm font-bold',
+    ]) {
+      expect(classOf(marker), marker).toContain('[overflow-wrap:anywhere]')
+    }
+  })
+})
+
 describe('item 6: the four kinds of booking stay distinct', () => {
   const ev = (o: Record<string, unknown>) => ({ ticket_tiers: [], external_ticket_url: null, is_free: null, entry_mode: null, ...o }) as never
   it('free entry, free registration with us, free registration elsewhere, our tickets and tickets elsewhere each read their own words', () => {
