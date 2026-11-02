@@ -9,7 +9,7 @@
  */
 import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { sellerName } from '@/lib/events/booking-links'
-import { GET_TICKETS, ROW_WALK_IN } from '@/lib/events/cta'
+import { GET_TICKETS, ROW_REGISTER_ON_EVENTLINQS, ROW_WALK_IN } from '@/lib/events/cta'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
 
 export type DirectoryInput = {
@@ -99,6 +99,8 @@ function timeLabel(at: Date, zone: string): string | null {
  */
 export const WALK_IN_LABEL = ROW_WALK_IN
 export const OUR_CHECKOUT_LABEL = 'Book on EventLinqs'
+/** Free tickets on our own checkout: registered with us, kept apart from a paid night's 'Book on EventLinqs' (round 2, item 6). */
+export const OUR_REGISTRATION_LABEL = ROW_REGISTER_ON_EVENTLINQS
 const UNNAMED_REGISTRATION = 'Register'
 /** Whether a label sends the visitor to another site (it then carries the outbound mark). */
 export const OUTBOUND_LABEL = {
@@ -121,7 +123,7 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
       return seller ? `Tickets at ${seller}` : GET_TICKETS
     case 'free_registration':
       // Free, registered on our own checkout (no outside address): it never leaves EventLinqs, so no outbound label.
-      if (!(e.external_ticket_url ?? '').trim()) return OUR_CHECKOUT_LABEL
+      if (!(e.external_ticket_url ?? '').trim()) return OUR_REGISTRATION_LABEL
       return seller ? `Register at ${seller}` : UNNAMED_REGISTRATION
     case 'free_open':
       return WALK_IN_LABEL

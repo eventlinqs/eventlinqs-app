@@ -6,6 +6,7 @@ import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { discoveryData } from '@/lib/events/discovery-data'
 import type { LedgerRow } from '@/lib/events/ledger-data'
 import { getAllCities, getCity, getSuburbsForCity, type CitySlug } from '@/lib/cities/data'
+import { cityGuideSubtitle } from '@/lib/cities/guide-subtitle'
 import { readGuideCity } from '@/lib/listings/free-week-surface'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
@@ -92,10 +93,8 @@ export async function CityGuideScreen({
               <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
                 What&rsquo;s on in {city.name}
               </h1>
-              {/* The city's own line from our city data (src/lib/cities/data.ts descriptor), never one written for the page. */}
-              {city.descriptor ? (
-                <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{city.descriptor}</p>
-              ) : null}
+              {/* Lawal's sentence for every city guide, its own name in it (src/lib/cities/guide-subtitle.ts). */}
+              <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{cityGuideSubtitle(city.name)}</p>
             </HeroCaption>
           </div>
         </section>

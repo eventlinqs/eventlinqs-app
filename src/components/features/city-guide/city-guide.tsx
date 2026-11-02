@@ -7,7 +7,7 @@ import {
   ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
-import { OUR_CHECKOUT_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
+import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 
@@ -573,7 +573,7 @@ export function eventsByCategory(rows: readonly DirectoryRow[]): [string, string
 export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>): { said: string | null; book: string | null; outbound: boolean } {
   if (r.source === WALK_IN_LABEL) return { said: WALK_IN_LABEL, book: null, outbound: false }
   const said = r.free ? ROW_FREE_WITH_BOOKING : r.price || null
-  if (r.source === OUR_CHECKOUT_LABEL) return { said, book: OUR_CHECKOUT_LABEL, outbound: false }
+  if (r.source === OUR_CHECKOUT_LABEL || r.source === OUR_REGISTRATION_LABEL) return { said, book: r.source, outbound: false }
   if (OUTBOUND_LABEL.test(r.source)) return { said, book: r.source, outbound: true }
   return { said, book: null, outbound: false }
 }
@@ -596,9 +596,10 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
   return (
     <Link
       href={r.href}
-      className="group grid min-h-11 grid-cols-[3.75rem_minmax(0,1fr)] items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,14rem)] md:px-5"
+      className="group grid min-h-11 grid-cols-[4.25rem_minmax(0,1fr)] items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,14rem)] md:px-5"
     >
-      <span className="pt-0.5 font-display text-sm font-extrabold text-[var(--text-primary)]">{r.time ?? ''}</span>
+      {/* A time is one line, '10:30 am' and '12:30 pm' alike (Lawal's round 2, item 3): never broken at its space. */}
+      <span className="whitespace-nowrap pt-0.5 font-display text-sm font-extrabold text-[var(--text-primary)]">{r.time ?? ''}</span>
       <span className="min-w-0">
         <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
           {r.title}
