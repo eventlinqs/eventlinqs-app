@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -9,8 +9,9 @@ import {
 } from 'lucide-react'
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
-import { EventCard, type EventCardData } from '@/components/features/events/event-card'
-import { collapseListings } from '@/lib/events/one-card-per-event'
+import type { EventCardData } from '@/components/features/events/event-card'
+import { byMonth, foldListings, guideSections, inRange, listingKey, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -22,15 +23,18 @@ import { collapseListings } from '@/lib/events/one-card-per-event'
  */
 
 export type GuideCity = { slug: string; name: string; state: string; lat: number; lng: number }
-type When = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'date'
+type When = Range
 type Days = { todayKey: string; tomorrowKey: string; weekendKeys: string[]; weekKeys: string[] }
 type Price = 'all' | 'free' | 'paid'
 
+/** The browse list's ranges (round 3, item 5, Lawal 17:10): 'Next 3 months' is the default; 'All dates' hides nothing. */
 const WHEN: { key: When; label: string }[] = [
   { key: 'today', label: 'Today' },
-  { key: 'tomorrow', label: 'Tomorrow' },
   { key: 'weekend', label: 'This weekend' },
-  { key: 'week', label: 'Next 7 days' },
+  { key: 'week', label: 'This week' },
+  { key: 'month', label: 'This month' },
+  { key: 'three', label: 'Next 3 months' },
+  { key: 'all', label: 'All dates' },
 ]
 const RADII = [0, 25, 50] as const
 const PRICES: { key: Price; label: string }[] = [
@@ -110,7 +114,6 @@ export function CityGuide({
   days,
   stateName,
   stateCityNames,
-  worth = [],
   claimsOn = false,
 }: {
   city: GuideCity
@@ -135,18 +138,16 @@ export function CityGuide({
   claimsOn?: boolean
 }) {
   const [q, setQ] = useState('')
-  const [when, setWhen] = useState<When>('all')
+  const [when, setWhen] = useState<When>('three')
+  const [limit, setLimit] = useState(PAGE)
   const [date, setDate] = useState('')
   const [category, setCategory] = useState('all')
   const [suburb, setSuburb] = useState('all')
   const [price, setPrice] = useState<Price>('all')
-  const [weekendPrice, setWeekendPrice] = useState<Price>('all')
   const [radius, setRadius] = useState<(typeof RADII)[number]>(0)
   const [cities, setCities] = useState(false)
   const [wholeState, setWholeState] = useState(false)
 
-  // One card per event: a listing's later nights are named on its first card, never a second card (one-card-per-event.ts).
-  const worthCards = collapseListings(worth, 6)
   const name = city.name.toLowerCase()
   const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
   const near = (r: DirectoryRow) =>
@@ -161,13 +162,7 @@ export function CityGuide({
   // Friday to Sunday (the 2 November directive, section 4): the platform's one weekend, every day of it from today on
   // (discoveryDays); the 'This weekend' chip and section 4 read the same days, so the page never says two weekends.
   const weekendDays = days.weekendKeys
-  const matchesWhen = (r: DirectoryRow) =>
-    when === 'all' ||
-    (when === 'today' && r.dayKey === days.todayKey) ||
-    (when === 'tomorrow' && r.dayKey === days.tomorrowKey) ||
-    (when === 'weekend' && weekendDays.includes(r.dayKey)) ||
-    (when === 'week' && days.weekKeys.includes(r.dayKey)) ||
-    (when === 'date' && r.dayKey === date)
+  const matchesWhen = (r: DirectoryRow) => inRange(r, when, { ...days, weekendKeys: weekendDays }, date)
   const matchesPrice = (r: DirectoryRow, p: Price) => p === 'all' || (p === 'free' ? r.free : !r.free)
   const shown = here.filter(
     (r) =>
@@ -177,23 +172,6 @@ export function CityGuide({
       (suburb === 'all' || (r.suburb ?? '') === suburb) &&
       matchesPrice(r, price),
   )
-
-  // '+N more dates' (C:\dev\EVIDENCE\CITY-FIRST-1NOV\design\leaders-city-guide.md): a night whose title and venue come
-  // again later says how many more dates it has, so a weekly night reads as one thing, not a wall of repeats. It keys on
-  // eventKey, the one definition of an event the tiles and the count line use (round 2, item 2).
-  const repeats = new Map<string, number>()
-  for (const r of here) {
-    const k = eventKey(r)
-    repeats.set(k, (repeats.get(k) ?? 0) + 1)
-  }
-  const seenOnce = new Map<string, number>()
-  const moreDates = new Map<string, number>()
-  for (const r of [...here].sort((a, b) => a.ts - b.ts)) {
-    const k = eventKey(r)
-    const i = (seenOnce.get(k) ?? 0) + 1
-    seenOnce.set(k, i)
-    moreDates.set(r.id, (repeats.get(k) ?? 1) - i)
-  }
 
   // Section 2: the city's own categories, each count read from its real rows, a tile only where events exist, in
   // Lawal's order (music, sport, comedy, nightlife, markets, food and drink, family, arts), the rest by count, community
@@ -210,15 +188,18 @@ export function CityGuide({
     (a, b) => rank(a[0]) - rank(b[0]) || b[1].n - a[1].n || a[1].label.localeCompare(b[1].label),
   )
 
-  const weekendAll = here.filter((r) => weekendDays.includes(r.dayKey))
-  const weekend = weekendAll.filter((r) => matchesPrice(r, weekendPrice))
+  // Round 3's sections, read once from the city's rows; 'now' is the city's own today at noon, so server and browser agree.
+  const sections = guideSections(here, { ...days, weekendKeys: weekendDays }, Date.parse(`${days.todayKey}T12:00:00Z`))
 
   // Section 5's suburb choice: the suburbs this city's own rows name.
   const suburbs = [...new Set(here.map((r) => r.suburb).filter((s): s is string => Boolean(s)))].sort((a, b) => a.localeCompare(b))
-  const filtered = when !== 'all' || category !== 'all' || suburb !== 'all' || price !== 'all' || words.length > 0
+  const filtered = when !== 'three' || category !== 'all' || suburb !== 'all' || price !== 'all' || words.length > 0
+  // The list: unfiltered, every listing in the next 3 months no section showed; filtered, the whole answer. One entry each.
+  const list = filtered ? foldListings(shown, here) : sections.rest
+  const narrowed = shown.length !== here.length || listingCount(shown) !== listingCount(here)
   const toList = () => document.getElementById('city-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const clear = () => {
-    setWhen('all')
+    setWhen('three')
     setCategory('all')
     setSuburb('all')
     setPrice('all')
@@ -236,12 +217,22 @@ export function CityGuide({
           </button>
           {quickCities.map((c) =>
             c.slug === city.slug ? (
-              <button key={c.slug} type="button" aria-pressed={!wholeState} onClick={() => setWholeState(false)} className={chip(!wholeState)}>
+              // The city you are in: a tap takes you to its events (Lawal 17:22: 'every click ... must work').
+              <button
+                key={c.slug}
+                type="button"
+                aria-pressed={!wholeState}
+                onClick={() => {
+                  setWholeState(false)
+                  toList()
+                }}
+                className={chip(!wholeState)}
+              >
                 {c.name}
               </button>
             ) : (
-              <Link key={c.slug} href={`/city/${c.slug}`} className={chip(false)}>
-                {c.name}
+              <Link key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`}>
+                <TapAnswer label={c.name} />
               </Link>
             ),
           )}
@@ -268,23 +259,23 @@ export function CityGuide({
           <Link
             href={`/events${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`}
             aria-label="Search all of Australia"
-            className="inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
+            className="relative inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
           >
-            All of Australia
+            <TapAnswer label="All of Australia" plain />
           </Link>
         </div>
 
         <div className={`mt-3 ${SCROLL_ROW}`}>
         <div className="flex shrink-0 gap-2" role="group" aria-label="When">
           {WHEN.map((w) => (
-            <button key={w.key} type="button" aria-pressed={when === w.key} onClick={() => setWhen(when === w.key ? 'all' : w.key)} className={chip(when === w.key)}>
+            <button key={w.key} type="button" aria-pressed={when === w.key} onClick={() => setWhen(when === w.key ? 'three' : w.key)} className={chip(when === w.key)}>
               {w.label}
             </button>
           ))}
           {/* 'Choose dates' reads as a chip; the date field covers it and opens the browser's own calendar on a tap. */}
           <label className={`relative ${chip(when === 'date')}`}>
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            <span>{when === 'date' && date ? dateWords(date) : 'Choose dates'}</span>
+            <span>{when === 'date' && date ? dateWords(date) : 'Pick dates'}</span>
             <input
               type="date"
               value={date}
@@ -298,7 +289,7 @@ export function CityGuide({
               }}
               onChange={(e) => {
                 setDate(e.target.value)
-                setWhen(e.target.value ? 'date' : 'all')
+                setWhen(e.target.value ? 'date' : 'three')
               }}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               aria-label="Choose a date"
@@ -368,44 +359,65 @@ export function CityGuide({
           </section>
         ) : null}
 
-        {/* 3 WORTH GOING OUT FOR: organiser artwork with its rights on record, whole; not drawn under three. */}
-        {worthCards.length >= WORTH_MINIMUM ? (
-          <section aria-label="Worth going out for" className="mt-12">
-            <SectionHead eyebrow="Featured" title="Worth going out for" />
-            <ul className="relative -mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
-              {worthCards.map((e) => (
-                <li key={e.id} className="w-[82%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
-                  <EventCard event={e} variant="grid-one-two-four" />
+        {/* ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00 to 17:10; ROUND3-DIRECTIVE-2NOV.md): the sections, chosen by
+            stated rules in src/lib/events/guide-sections.ts, photo first then date, never paid; no listing twice on the
+            page. When the visitor filters, the list below is the whole answer and the sections step aside. */}
+        {!filtered && sections.big.length > 0 ? (
+          <section aria-label={`Big nights in ${placeName}`} className="mt-12">
+            <RailHead title="Big nights" onAll={() => { setWhen('all'); toList() }} />
+            <p className="mt-1 font-display text-sm text-[var(--text-secondary)]">
+              The biggest shows coming to {placeName}, picked by our editors, never paid.
+            </p>
+            <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              {sections.big.map((e) => (
+                <li key={e.row.id}>
+                  <BigCard e={e} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {!filtered && sections.announced.length > 0 ? (
+          <section aria-label={`Just announced in ${placeName}`} className="mt-12">
+            <RailHead title="Just announced" />
+            <CardRail entries={sections.announced} />
+          </section>
+        ) : null}
+        {!filtered && sections.weekend.length > 0 ? (
+          <section aria-label={`This weekend in ${placeName}`} className="mt-12">
+            <RailHead title="This weekend" onAll={() => { setWhen('weekend'); toList() }} />
+            <CardRail entries={sections.weekend} />
+          </section>
+        ) : null}
+        {!filtered && sections.free.length > 0 ? (
+          <section aria-label={`Free and community in ${placeName}`} className="mt-12">
+            <RailHead title="Free and community" onAll={() => { setPrice('free'); toList() }} />
+            <ul className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+              {sections.free.map((e) => (
+                <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
+                  <Row e={e} cityName={name} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {!filtered && sections.soon.length > 0 ? (
+          <section aria-label={`Coming soon in ${placeName}`} className="mt-12">
+            <RailHead title="Coming soon" onAll={() => { setWhen('all'); toList() }} />
+            <ul className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+              {sections.soon.map((e) => (
+                <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
+                  <Row e={e} cityName={name} />
                 </li>
               ))}
             </ul>
           </section>
         ) : null}
 
-        {/* 4 THIS WEEKEND: Friday to Sunday, with Free and Paid. */}
-        {weekendAll.length > 0 ? (
-          <section aria-label={`This weekend in ${placeName}`} className="mt-12">
-            <SectionHead eyebrow="This weekend" title="Plan your weekend" />
-            <div className={`mt-3 ${SCROLL_ROW}`} role="group" aria-label="This weekend, by price">
-              {PRICES.map((p) => (
-                <button key={p.key} type="button" aria-pressed={weekendPrice === p.key} onClick={() => setWeekendPrice(p.key)} className={chip(weekendPrice === p.key)}>
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {weekend.length > 0 ? (
-              <DayList rows={weekend} cityName={name} more={moreDates} />
-            ) : (
-              <p className="mt-4 rounded-2xl border border-[var(--surface-2)] bg-white px-5 py-6 font-display text-base text-[var(--text-secondary)]">
-                Nothing {weekendPrice === 'free' ? 'free' : 'paid'} this weekend yet. Every night this weekend is under All.
-              </p>
-            )}
-          </section>
-        ) : null}
-
-        {/* 5 THE COMPLETE DIRECTORY: every listed night of this city, by day; never hidden by 3 or 4. */}
+        {/* THE BROWSE LIST: the next 3 months by default (rule (b)), one entry per listing under month headings, 20 at a
+            time; 'All dates' reaches every listed night (rule (a)). */}
         <section id="city-calendar" aria-label={`All events in ${placeName}`} className="mt-12 scroll-mt-24">
-          <SectionHead eyebrow="Every event, by day" title={`All events in ${placeName}`} />
+          <SectionHead eyebrow="Every event, by month" title={`All events in ${placeName}`} />
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <label className="flex flex-col gap-1 font-display text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Category
@@ -445,7 +457,7 @@ export function CityGuide({
           </div>
           <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
             <p className="font-display text-sm font-semibold text-[var(--text-muted)]" aria-live="polite">
-              {countLine(filtered ? shown : here, filtered ? here : null)} coming up in{' '}
+              {countLine(shown, narrowed ? here : null)} coming up in{' '}
               {radius && !wholeState ? `${city.name} and within ${radius} km` : placeName}
             </p>
             {filtered ? (
@@ -459,12 +471,25 @@ export function CityGuide({
               </button>
             ) : null}
           </div>
-          {shown.length === 0 ? (
+          {list.length === 0 ? (
             <p className="mt-4 rounded-2xl border border-[var(--surface-2)] bg-white px-5 py-8 font-display text-base text-[var(--text-secondary)]">
-              Nothing in {placeName} matches these choices yet. Try another date or suburb, or clear the filters.
+              {filtered
+                ? `Nothing in ${placeName} matches these choices yet. Try another date or suburb, or clear the filters.`
+                : `Every event in ${placeName} for the next 3 months is shown above. All dates reaches further.`}
             </p>
           ) : (
-            <DayList rows={shown} cityName={name} more={moreDates} />
+            <>
+              <MonthList entries={list.slice(0, limit)} cityName={name} />
+              {list.length > limit ? (
+                <button
+                  type="button"
+                  onClick={() => setLimit(limit + PAGE)}
+                  className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--color-ink-200)] bg-white px-5 font-display text-sm font-bold text-[var(--text-primary)] hover:border-[var(--color-ink-400)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+                >
+                  Show more ({list.length - limit} more {list.length - limit === 1 ? 'event' : 'events'})
+                </button>
+              ) : null}
+            </>
           )}
         </section>
 
@@ -514,22 +539,126 @@ function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   )
 }
 
-function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; cityName: string; more: ReadonlyMap<string, number> }) {
-  const groups: { key: string; label: string; rows: DirectoryRow[] }[] = []
-  for (const r of rows) {
-    const last = groups[groups.length - 1]
-    if (last && last.key === r.dayKey) last.rows.push(r)
-    else groups.push({ key: r.dayKey, label: r.dayLabel, rows: [r] })
-  }
+/**
+ * A LINK THAT ANSWERS THE TAP AT ONCE (round 3, item 0; Lawal 17:22). Measured on live: a city page took about 2 s to
+ * arrive with nothing changing on screen, so a tap read as dead. Inside its Link, this draws the selected, busy state the
+ * moment the navigation starts (Next's useLinkStatus, its documented answer for slow navigations) until the page lands.
+ */
+function TapAnswer({ label, plain = false }: { label: string; plain?: boolean }) {
+  const { pending } = useLinkStatus()
+  return (
+    <>
+      {label}
+      {pending ? (
+        <span
+          className={`absolute inset-0 flex items-center justify-center gap-2 ${plain ? 'bg-[var(--color-canvas)] text-[var(--text-primary)]' : 'rounded-full bg-[var(--color-ink-900)] text-white'}`}
+        >
+          <span aria-hidden="true" className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
+          <span aria-hidden="true">{label}</span>
+          <span className="sr-only">Opening {label}</span>
+        </span>
+      ) : null}
+    </>
+  )
+}
+
+function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">{title}</h2>
+      {onAll ? (
+        <button
+          type="button"
+          onClick={onAll}
+          className="inline-flex min-h-11 items-center font-display text-sm font-bold text-[var(--brand-accent-strong)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+        >
+          See all
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+/** A photograph WHOLE at its own shape inside its box, over its own blurred copy (law 15), only where one is permitted. */
+function WholePhoto({ src, className }: { src: string; className: string }) {
+  return (
+    <span data-row-thumb className={`relative block overflow-hidden bg-[var(--surface-1)] ${className}`}>
+      <span className="ledger-blur" aria-hidden="true">
+        <EventCardMedia src={src} alt="" variant="row-thumb" />
+      </span>
+      <EventCardMedia src={src} alt="" variant="row-thumb" objectFit="contain" />
+    </span>
+  )
+}
+
+function BigCard({ e }: { e: Entry }) {
+  const r = e.row
+  const b = bookingLine(r)
+  return (
+    <Link
+      href={r.href}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+    >
+      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[3/2] w-full" /> : null}
+      <span className="flex flex-1 flex-col gap-2 p-4">
+        <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)] [overflow-wrap:anywhere]">
+          {[r.category, r.venue].filter(Boolean).join(' · ')}
+        </span>
+        <span className="font-headline text-xl font-extrabold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{r.title}</span>
+        {r.teaser ? <span className="line-clamp-3 font-body text-sm text-[var(--text-secondary)]">{r.teaser}</span> : null}
+        <span className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{whenLine(e)}</span>
+          {/^From /.test(r.price) ? (
+            <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{r.price}</span>
+          ) : null}
+        </span>
+        <span className="mt-auto flex items-center justify-between gap-3 pt-2">
+          <span className="font-display text-sm text-[var(--text-secondary)] [overflow-wrap:anywhere]">{b.book ?? b.said ?? ''}{b.outbound ? <span className="sr-only"> (another site)</span> : null}</span>
+          <span className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-gold-500 px-4 font-display text-sm font-bold text-ink-900">
+            {r.free ? 'See details' : 'Get tickets'}
+          </span>
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+function CardRail({ entries }: { entries: readonly Entry[] }) {
+  return (
+    <ul className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+      {entries.map((e) => (
+        <li key={e.row.id} className="w-[78%] shrink-0 sm:w-64">
+          <Link
+            href={e.row.href}
+            className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+          >
+            {e.row.thumb ? <WholePhoto src={e.row.thumb} className="aspect-[4/3] w-full" /> : null}
+            <span className="flex flex-1 flex-col gap-1 p-3">
+              <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
+              <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
+              {e.row.teaser ? <span className="line-clamp-2 font-body text-sm text-[var(--text-secondary)]">{e.row.teaser}</span> : null}
+              <span className="mt-auto pt-1 font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
+                {bookingLine(e.row).book ?? bookingLine(e.row).said ?? e.row.venue ?? ''}
+                {bookingLine(e.row).outbound ? <span className="sr-only"> (another site)</span> : null}
+              </span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function MonthList({ entries, cityName }: { entries: readonly Entry[]; cityName: string }) {
   return (
     <div className="mt-4 space-y-6">
-      {groups.map((g) => (
-        <section key={g.key} aria-label={g.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
-          <h3 className="font-headline text-lg font-extrabold text-[var(--text-primary)]">{g.label}</h3>
-          <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-            {g.rows.map((r) => (
-              <li key={r.id} className="border-t border-[var(--color-ink-100)] first:border-t-0">
-                <Row r={r} cityName={cityName} more={more.get(r.id) ?? 0} />
+      {byMonth(entries).map((m) => (
+        <section key={m.key} aria-label={m.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
+          <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">{m.label}</h3>
+          <ul className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+            {m.entries.map((e) => (
+              <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
+                <Row e={e} cityName={cityName} />
               </li>
             ))}
           </ul>
@@ -550,8 +679,9 @@ function DayList({ rows, cityName, more }: { rows: readonly DirectoryRow[]; city
  * key that table used; a DATE is one listed night. Both come from the same rows, so the two numbers always agree.
  */
 export function eventKey(r: Pick<DirectoryRow, 'title' | 'venue'>): string {
-  return `${r.title.trim().toLowerCase()}|${(r.venue ?? '').trim().toLowerCase()}`
+  return listingKey(r)
 }
+const listingCount = (rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[]) => new Set(rows.map(listingKey)).size
 
 export function eventCount(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[]): number {
   return new Set(rows.map(eventKey)).size
@@ -590,7 +720,9 @@ export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>):
   return { said, book: null, outbound: false }
 }
 
-function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: number }) {
+function Row({ e, cityName }: { e: Entry; cityName: string }) {
+  const r = e.row
+  const more = e.more
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   const b = bookingLine(r)
@@ -605,27 +737,34 @@ function Row({ r, cityName, more }: { r: DirectoryRow; cityName: string; more: n
       ) : null}
     </span>
   ) : null
+  // EVERY ROW SELLS (round 3, item 6): when in gold caps, the title, our one line, the venue, Free or the seller, the fold
+  // line; the photograph on the right, whole, only where one is permitted (a row without one keeps its width for text).
   return (
     <Link
       href={r.href}
-      className="group grid min-h-11 grid-cols-[4.25rem_minmax(0,1fr)] items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,14rem)] md:px-5"
+      className={`group grid min-h-11 items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:px-5 ${
+        r.thumb ? 'grid-cols-[minmax(0,1fr)_7rem] md:grid-cols-[minmax(0,1fr)_10rem]' : 'grid-cols-[minmax(0,1fr)]'
+      }`}
     >
-      {/* A time is one line, '10:30 am' and '12:30 pm' alike (Lawal's round 2, item 3): never broken at its space. */}
-      <span className="whitespace-nowrap pt-0.5 font-display text-sm font-extrabold text-[var(--text-primary)]">{r.time ?? ''}</span>
       <span className="min-w-0">
-        <span className="block font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
+        {/* A time is one line, '10:30 am' and '12:30 pm' alike (round 2, item 3): the when line never breaks. */}
+        <span className="block whitespace-nowrap font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
+        <span className="mt-1 block font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
           {r.title}
         </span>
+        {/* Round 3 (4): the event's own one line, where it says more than the row does (rowTeaser), two lines at most. */}
+        {r.teaser ? (
+          <span className="mt-1 line-clamp-2 block font-body text-sm text-[var(--text-secondary)] [overflow-wrap:anywhere]">{r.teaser}</span>
+        ) : null}
         <span className="mt-1 block font-display text-sm font-medium text-[var(--text-secondary)] [overflow-wrap:anywhere]">
           {[r.venue, r.suburb && r.suburb !== r.venue && r.suburb.toLowerCase() !== cityName ? r.suburb : null, elsewhere].filter(Boolean).join(', ')}
         </span>
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
-          {[r.category, b.said, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' \u00b7 ')}
+          {[r.category, b.said, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' · ')}
         </span>
-        {/* On a phone where it is booked sits on its own line under the venue (the directive, C). */}
-        {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:hidden">{booking}</span> : null}
+        {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      <span className="hidden flex-col items-end gap-1 pt-0.5 text-right md:flex">{booking}</span>
+      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[4/3] w-28 self-start rounded-lg md:w-40" /> : null}
     </Link>
   )
 }

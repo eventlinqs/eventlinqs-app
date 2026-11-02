@@ -66,6 +66,8 @@ export type EventCardMediaVariant =
   | 'card'
   /* A fixed 56px square thumbnail in a dashboard list row. */
   | 'list-thumb'
+  /* The photograph on a city guide row: 112px on a phone, 160px from md, 4:3, contained whole (law 15). */
+  | 'row-thumb'
   | 'marquee'
 
 interface Props {
@@ -119,6 +121,7 @@ const SIZES_BY_VARIANT: Record<EventCardMediaVariant, string> = {
   'grid-two-three-six': MEDIA_SIZES.gridTwoThreeSix,
   card: MEDIA_SIZES.gridTwoThreeFive,
   'list-thumb': MEDIA_SIZES.listThumb,
+  'row-thumb': MEDIA_SIZES.rowThumb,
   marquee: MEDIA_SIZES.marquee,
 }
 
@@ -145,6 +148,7 @@ const QUALITY_BY_VARIANT: Record<EventCardMediaVariant, number> = {
   'grid-two-three-six': MEDIA_QUALITY.card,
   card: MEDIA_QUALITY.card,
   'list-thumb': MEDIA_QUALITY.rail,
+  'row-thumb': MEDIA_QUALITY.rail,
   marquee: MEDIA_QUALITY.rail,
 }
 

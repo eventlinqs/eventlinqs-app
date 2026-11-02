@@ -77,7 +77,8 @@ export async function CityGuideScreen({
 
   return (
     <div className="min-h-screen bg-canvas">
-      <SiteHeader city={{ name: city.name, latitude: city.latitude, longitude: city.longitude }} />
+      {/* staticSafe (round 3, the CONTROLLER 19:01): no server sign-in read, so / and /city/[slug] are edge cached as /events is. */}
+      <SiteHeader staticSafe city={{ name: city.name, latitude: city.latitude, longitude: city.longitude }} />
       <main>
         {/* The city's own photograph, compact so the city, the dates and the first events stay on a phone's first
             screens (the directive: the directory comes up high); the only place on this page text sits on a photo. */}
