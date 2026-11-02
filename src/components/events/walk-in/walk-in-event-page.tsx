@@ -295,7 +295,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                 EventLinqs mark in place of a photograph (the CONTROLLER's 16:41 of 1 November 2026, (1)). */}
             {hero.image && !heroIsTypographic({ image: hero.image }) ? (
               <div className="relative aspect-[3/2] overflow-hidden bg-ink-900 lg:aspect-[16/7] lg:rounded-[var(--radius-card)]">
-                <HeroMedia image={hero.image} alt={hero.alt} objectPosition={hero.objectPosition} />
+                <HeroMedia image={hero.image} alt={hero.alt} objectPosition="50% 50%" fit="contain" />
               </div>
             ) : null}
             {heroMosaic.length > 0 && (

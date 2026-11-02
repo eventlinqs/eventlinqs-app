@@ -32,7 +32,8 @@ describe('the event page and its preload ask it', () => {
   test('the event page draws no hero raster for a typographic hero', () => {
     const page = readFileSync('src/app/events/[slug]/page.tsx', 'utf8')
     expect(page).toMatch(/const typographicHero = heroIsTypographic\(media\)/)
-    expect(page).toMatch(/\{typographicHero \? null : \(\s*<HeroMedia/)
+    // Law 15 (2 November 2026): the photograph sits in its own whole-picture box, so the raster is inside that box.
+    expect(page).toMatch(/\{typographicHero \? null : \(\s*<div data-hero-photo-whole[^>]*>\s*<HeroMedia/)
   })
 
   test('the layout skips the preload for a typographic hero, but not for a walk-in night', () => {

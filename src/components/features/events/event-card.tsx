@@ -201,15 +201,15 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   return (
     <Link href={`/events/${slug}`} className="group ledger-card">
       <div className="ledger-media">
+        {/* Law 15 (Lawal, 2 November 2026, 14:51): a venue's photograph is shown WHOLE as an organiser's is, over its own
+            blurred backdrop, never cropped to the frame and never zoomed on hover; its credit stays on the image's title. */}
         {photo && isVenuePhoto ? (
-          <EventCardMedia
-            src={photo}
-            alt={title}
-            variant={variant}
-            priority={priority}
-            title={event.image_credit ?? null}
-            className="card-hover-img event-card-zoom"
-          />
+          <>
+            <div className="ledger-blur" aria-hidden="true">
+              <EventCardMedia src={photo} alt="" variant={variant} />
+            </div>
+            <EventCardMedia src={photo} alt={title} variant={variant} priority={priority} title={event.image_credit ?? null} objectFit="contain" />
+          </>
         ) : photo ? (
           <>
             <div className="ledger-blur" aria-hidden="true">

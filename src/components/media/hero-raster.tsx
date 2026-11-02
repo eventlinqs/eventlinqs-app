@@ -29,9 +29,11 @@ export interface HeroRasterProps {
   sizes: string
   quality: number
   objectPosition: string
+  /** 'contain' shows the photograph WHOLE at its own shape (law 15, Lawal 2 November 2026 14:51); 'cover' fills the box. */
+  fit?: 'cover' | 'contain'
 }
 
-export function HeroRaster({ src, alt, priority, sizes, quality, objectPosition }: HeroRasterProps) {
+export function HeroRaster({ src, alt, priority, sizes, quality, objectPosition, fit = 'cover' }: HeroRasterProps) {
   const [failed, setFailed] = useState(false)
   const ref = useRef<HTMLImageElement>(null)
 
@@ -62,7 +64,7 @@ export function HeroRaster({ src, alt, priority, sizes, quality, objectPosition 
       loading={priority ? 'eager' : 'lazy'}
       sizes={sizes}
       quality={quality}
-      className="object-cover"
+      className={fit === 'contain' ? 'object-contain' : 'object-cover'}
       style={{ objectPosition }}
       onError={() => setFailed(true)}
     />
