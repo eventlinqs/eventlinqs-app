@@ -392,7 +392,7 @@ export function CityGuide({
         {!filtered && sections.free.length > 0 ? (
           <section aria-label={`Free and community in ${placeName}`} className="mt-12">
             <RailHead title="Free and community" onAll={() => { setPrice('free'); toList() }} />
-            <ul className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+            <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
               {sections.free.map((e) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
                   <Row e={e} cityName={name} />
@@ -402,9 +402,9 @@ export function CityGuide({
           </section>
         ) : null}
         {!filtered && sections.soon.length > 0 ? (
-          <section aria-label={`Coming soon in ${placeName}`} className="mt-12">
-            <RailHead title="Coming soon" onAll={() => { setWhen('all'); toList() }} />
-            <ul className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+          <section aria-label={`Further ahead in ${placeName}`} className="mt-12">
+            <RailHead title="Further ahead" onAll={() => { setWhen('all'); toList() }} />
+            <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
               {sections.soon.map((e) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
                   <Row e={e} cityName={name} />
@@ -597,7 +597,7 @@ function BigCard({ e }: { e: Entry }) {
   return (
     <Link
       href={r.href}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
     >
       {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[3/2] w-full" /> : null}
       <span className="flex flex-1 flex-col gap-2 p-4">
@@ -625,12 +625,12 @@ function BigCard({ e }: { e: Entry }) {
 
 function CardRail({ entries }: { entries: readonly Entry[] }) {
   return (
-    <ul className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+    <ul className="relative -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
       {entries.map((e) => (
         <li key={e.row.id} className="w-[78%] shrink-0 sm:w-64">
           <Link
             href={e.row.href}
-            className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
+            className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
           >
             {e.row.thumb ? <WholePhoto src={e.row.thumb} className="aspect-[4/3] w-full" /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
@@ -655,7 +655,7 @@ function MonthList({ entries, cityName }: { entries: readonly Entry[]; cityName:
       {byMonth(entries).map((m) => (
         <section key={m.key} aria-label={m.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">{m.label}</h3>
-          <ul className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+          <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
             {m.entries.map((e) => (
               <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
                 <Row e={e} cityName={cityName} />

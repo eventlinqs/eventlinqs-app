@@ -3,11 +3,11 @@ import type { DirectoryRow } from './whats-on-directory'
 /**
  * ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00, 17:07 and 17:10; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\
  * ROUND3-DIRECTIVE-2NOV.md). The city guide's sections, chosen by stated rules from the city's own rows, never paid:
- *   Big nights (up to 3), Just announced, This weekend, Free and community, Coming soon, then the browse list.
+ *   Big nights (up to 3), Just announced, This weekend, Free and community, Further ahead, then the browse list.
  * NO EVENT APPEARS TWICE ON ONE PAGE: a listing (one title at one venue, eventKey) shown in a section is left out of every
  * section and of the list after it. A RECURRING LISTING IS ONE ENTRY: its first night, with 'Every <day>' where its
  * nights are weekly, else '+N more dates'. NO EVENT IS EVER HIDDEN BY DISTANCE (rule (a)): Big nights, Just announced
- * and Coming soon read every row whatever its date, and 'All dates' lists them all; only the default browse list opens
+ * and Further ahead read every row whatever its date, and 'All dates' lists them all; only the default browse list opens
  * on the next 3 months (rule (b)).
  * Wall days are 'YYYY-MM-DD' keys in the city's zone, as the rows carry them.
  */

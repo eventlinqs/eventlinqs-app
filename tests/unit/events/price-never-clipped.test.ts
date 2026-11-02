@@ -25,8 +25,9 @@ describe('a price or ticket source is never clipped', () => {
     // Since 2 November 09:00 (refinement 4) the price is said once, in the row's one meta line.
     expect(lineWith('text-xs font-semibold text-[var(--text-muted)]')).toContain('[overflow-wrap:anywhere]')
     expect(lineWith('inline-flex items-start gap-1')).toContain('[overflow-wrap:anywhere]')
-    expect(guide).toContain('md:hidden">{booking}</span>')
-    expect(guide).toContain('hidden flex-col items-end gap-1 pt-0.5 text-right md:flex">{booking}</span>')
+    // Round 3 (Lawal 17:00): the booking sits on its own line under the row at every width, said once.
+    expect(guide).toContain('mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span>')
+    expect(guide.split('>{booking}</span>').length - 1).toBe(1)
   })
 
   it('a venue name wraps, never cut with an ellipsis (the directive, C)', () => {
