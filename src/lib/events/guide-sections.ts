@@ -1,4 +1,5 @@
 import type { DirectoryRow } from './whats-on-directory'
+import { addDaysKey, addMonthsKey, dayNameOfKey } from '@/lib/dates/wall-day-keys'
 
 /**
  * ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00, 17:07 and 17:10; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\
@@ -17,20 +18,7 @@ export function listingKey(r: Pick<DirectoryRow, 'title' | 'venue'>): string {
   return `${r.title.trim().toLowerCase()}|${(r.venue ?? '').trim().toLowerCase()}`
 }
 
-export function addDaysKey(key: string, n: number): string {
-  const d = new Date(`${key}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
-/** The same wall day n months on, clamped to the month's last day (31 January plus one month is 28 or 29 February). */
-export function addMonthsKey(key: string, n: number): string {
-  const [y, m, d] = key.split('-').map(Number)
-  const first = new Date(Date.UTC(y, m - 1 + n, 1))
-  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
-  first.setUTCDate(Math.min(d, last))
-  return first.toISOString().slice(0, 10)
-}
+export { addDaysKey, addMonthsKey }
 
 /** The browse list's ranges. 'three' is the default (Lawal 17:10, rule (b)). */
 export type Range = 'today' | 'weekend' | 'week' | 'month' | 'three' | 'all' | 'date'
@@ -85,8 +73,6 @@ export function photoFirst(a: DirectoryRow, b: DirectoryRow): number {
   return Number(Boolean(b.thumb)) - Number(Boolean(a.thumb)) || a.ts - b.ts
 }
 
-const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
 /** One entry per listing: its first night, how many more it has, and 'Every <day>' where three or more fall a week apart. */
 export type Entry = { readonly row: DirectoryRow; readonly more: number; readonly every: string | null }
 
@@ -104,7 +90,7 @@ export function foldListings(rows: readonly DirectoryRow[], all: readonly Direct
     return {
       row,
       more: own.length - 1,
-      every: weekly ? `Every ${WEEKDAY[new Date(`${row.dayKey}T00:00:00Z`).getUTCDay()]}` : null,
+      every: weekly ? `Every ${dayNameOfKey(row.dayKey)}` : null,
     }
   })
 }

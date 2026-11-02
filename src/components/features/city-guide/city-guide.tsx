@@ -8,7 +8,7 @@ import {
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
-import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
+import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, listingKey, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
@@ -615,7 +615,7 @@ function BigCard({ e }: { e: Entry }) {
         <span className="mt-auto flex items-center justify-between gap-3 pt-2">
           <span className="font-display text-sm text-[var(--text-secondary)] [overflow-wrap:anywhere]">{b.book ?? b.said ?? ''}{b.outbound ? <span className="sr-only"> (another site)</span> : null}</span>
           <span className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-gold-500 px-4 font-display text-sm font-bold text-ink-900">
-            {r.free ? 'See details' : 'Get tickets'}
+            {r.free ? 'See details' : GET_TICKETS}
           </span>
         </span>
       </span>
@@ -742,11 +742,9 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
   return (
     <Link
       href={r.href}
-      className={`group grid min-h-11 items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:px-5 ${
-        r.thumb ? 'grid-cols-[minmax(0,1fr)_7rem] md:grid-cols-[minmax(0,1fr)_10rem]' : 'grid-cols-[minmax(0,1fr)]'
-      }`}
+      className="group flex min-h-11 items-start gap-3 px-4 py-4 transition-colors hover:bg-[var(--color-canvas)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-gold-400)] md:px-5"
     >
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         {/* A time is one line, '10:30 am' and '12:30 pm' alike (round 2, item 3): the when line never breaks. */}
         <span className="block whitespace-nowrap font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
         <span className="mt-1 block font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline md:text-lg">
@@ -764,7 +762,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         </span>
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[4/3] w-28 self-start rounded-lg md:w-40" /> : null}
+      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" /> : null}
     </Link>
   )
 }
