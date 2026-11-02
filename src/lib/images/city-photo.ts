@@ -62,11 +62,11 @@ const CITY_BANNERS: Record<string, CityBanner> = {
     page: 'https://commons.wikimedia.org/wiki/File:Robert_Clark_Conservatory,_Ballarat_Botanic_Gardens.jpg', licence: 'CC BY-SA 4.0',
     licenceUrl: BY_SA_4, position: '50% 44%',
   },
-  // A heritage tram: its front and body centred (at 1440 the roof sign or the wheels may go, the tram stays recognisable).
+  // A heritage tram: at 1440 the band shows its front, the 808 and 'BENDIGO TRAMWAYS' (the roof sign goes, as ruled); whole at 390.
   bendigo: {
     src: '/images/library/city-banner-bendigo.jpg', author: 'DenisFrolow',
     page: 'https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg', licence: 'CC BY-SA 4.0', licenceUrl: BY_SA_4,
-    position: '50% 55%',
+    position: '50% 65%',
   },
 }
 
