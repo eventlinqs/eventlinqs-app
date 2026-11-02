@@ -45,7 +45,10 @@ it('scores every organiser on TEST from its real rows, and the numbers hold from
   const now = new Date()
   const rows = await readOrganiserScores(db, now)
 
-  const [{ organisers }] = await query('select count(*)::int as organisers from public.organisers')
+  // The platform's own listings organisation is not an organiser (src/lib/growth/platform-organiser.ts).
+  const [{ organisers }] = await query(
+    "select count(*)::int as organisers from public.organisers where not exists (select 1 from public.organisations x where x.slug = 'eventlinqs-listings' and x.id = organisers.organisation_id)",
+  )
   expect(rows.length).toBe(organisers)
 
   const scored = rows.filter((r) => r.state === 'scored')

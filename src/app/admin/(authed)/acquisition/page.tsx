@@ -4,6 +4,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrganiserScores } from '@/lib/outreach/organiser-score-read'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { PARTS, WEIGHTS, type Part } from '@/lib/outreach/organiser-score'
 import { COHORT_SIZE, pickCohort } from '@/lib/outreach/cohort-pick'
 import { ACQUISITION_STATES, STATE_WORDS, isAcquisitionState, type AcquisitionState } from '@/lib/outreach/acquisition-states'
@@ -54,7 +55,8 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
   const states = await db.from('organisers').select('id, acquisition_state')
   if (states.error) throw new Error(`organisers: ${states.error.message}`)
   const stateOf = new Map<string, AcquisitionState>()
-  for (const s of states.data ?? []) if (isAcquisitionState(s.acquisition_state)) stateOf.set(s.id, s.acquisition_state)
+  // The platform's own listings organisation is not an organiser in the state counts (src/lib/growth/platform-organiser.ts).
+  for (const s of withoutPlatformOrganisers(states.data ?? [], await readPlatformOrganiserIds(db))) if (isAcquisitionState(s.acquisition_state)) stateOf.set(s.id, s.acquisition_state)
 
   const scored = rows.flatMap((r) => (r.state === 'scored' ? [r] : []))
   const cohort = pickCohort(scored.map((r) => ({ id: r.id, city: r.city, score: r.score, writableEmail: r.writableEmail })))

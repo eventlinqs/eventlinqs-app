@@ -11161,6 +11161,18 @@ const DRILLS = [
     expect: "keeps a reason list of 'payout' alone",
   },
   /*
+   * growth-reads-skip-the-platform (2 November 2026; WINDOW 1's 12:17 data point, CONTROLLER 12:23 (D)). The shape
+   * every one of the five readers had: the organisers read as they stand, the platform's own row among them.
+   */
+  {
+    name: 'growth: the daily twenty counts the EventLinqs listings organisation as an organiser again',
+    guard: `${GUARDS}/growth-reads-skip-the-platform.mjs`,
+    file: 'src/lib/outreach/daily-twenty-read.ts',
+    find: '    await readPlatformOrganiserIds(db),',
+    replace: '    new Set<string>(),',
+    expect: 'reads the organisers with no readPlatformOrganiserIds',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the
