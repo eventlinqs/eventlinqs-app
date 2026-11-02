@@ -13,6 +13,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
+import { getCityBanner } from '@/lib/images/city-photo'
 import { CityGuide } from './city-guide'
 
 /**
@@ -48,6 +49,9 @@ export async function CityGuideScreen({
 }) {
   const city = getCity(citySlug)
   if (!city) return null
+  // The city's licensed banner where one is kept (Geelong, Ballarat, Bendigo), its credit drawn with it; else the page's photo.
+  const banner = getCityBanner(city.slug)
+  const photo = banner?.src ?? heroImage
   const now = new Date()
   const rows = (await withVenuePhotos(await loadGuideUpcoming(createPublicClient(), now))) as LedgerRow[]
   const data = await discoveryData(rows, now)
@@ -83,7 +87,7 @@ export async function CityGuideScreen({
         {/* The city's own photograph, compact so the city, the dates and the first events stay on a phone's first
             screens (the directive: the directory comes up high); the only place on this page text sits on a photo. */}
         <section aria-label={`What's on in ${city.name}`} className="relative isolate overflow-hidden bg-[var(--color-navy-950)]">
-          {heroImage ? <HeroMedia image={heroImage} alt={`${city.name}, ${city.state}`} objectPosition="50% 45%" /> : null}
+          {photo ? <HeroMedia image={photo} alt={`${city.name}, ${city.state}`} objectPosition={banner?.position ?? '50% 45%'} /> : null}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/85 via-[var(--color-navy-950)]/45 to-transparent" aria-hidden="true" />
           <div className="relative mx-auto flex h-60 max-w-7xl flex-col justify-end px-4 pb-6 sm:px-6 md:h-80 md:pb-10 lg:px-8">
             {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph). */}
@@ -100,6 +104,19 @@ export async function CityGuideScreen({
               </h1>
               {/* Lawal's sentence for every city guide, its own name in it (src/lib/cities/guide-subtitle.ts). */}
               <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{cityGuideSubtitle(city.name)}</p>
+              {banner ? (
+                // CC BY-SA 4.0's credit: the author, the source and the licence, small, on the caption's own wash.
+                <p data-banner-credit className="mt-3 font-display text-xs text-white/80">
+                  Photo:{' '}
+                  <a href={banner.page} rel="noopener" className="underline underline-offset-2 hover:text-white">
+                    {banner.author}
+                  </a>
+                  ,{' '}
+                  <a href={banner.licenceUrl} rel="license noopener" className="underline underline-offset-2 hover:text-white">
+                    {banner.licence}
+                  </a>
+                </p>
+              ) : null}
             </HeroCaption>
           </div>
         </section>

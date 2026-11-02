@@ -30,6 +30,50 @@ export async function getCityPhoto(slug: string): Promise<string | null> {
   return KEPT_CITIES.has(key) ? `/images/library/city-${key}.jpg` : null
 }
 
+/**
+ * A CITY GUIDE'S BANNER (Lawal, 3 November 2026, 01:44: 'You don't need my permission for city banner photos for Geelong
+ * and Ballarat ... that should be done'; the CONTROLLER picked each from contact sheets, 02:20 and 02:53). A licensed
+ * photograph of the city itself, from Wikimedia Commons, kept in public/images/library with its author, page and licence
+ * in attribution.json. CC BY-SA 4.0 asks for the author, the licence and the source wherever the photograph is shown, so
+ * the guide that draws a banner draws its credit beside it (city-guide-screen.tsx), and only the guide draws it.
+ * `position` is the focal point the CONTROLLER ruled at 04:29: the cover band keeps each subject readable at every width.
+ */
+export interface CityBanner {
+  src: string
+  author: string
+  page: string
+  licence: 'CC BY-SA 4.0'
+  licenceUrl: string
+  position: string
+}
+
+const BY_SA_4 = 'https://creativecommons.org/licenses/by-sa/4.0/'
+
+const CITY_BANNERS: Record<string, CityBanner> = {
+  // Eastern Beach from the hill: the palms, the bathing enclosure and the bay.
+  geelong: {
+    src: '/images/library/city-banner-geelong.jpg', author: 'Mattplaysthedrums',
+    page: 'https://commons.wikimedia.org/wiki/File:Eastern_Beach_Geelong.jpg', licence: 'CC BY-SA 4.0', licenceUrl: BY_SA_4,
+    position: '50% 32%',
+  },
+  // The Robert Clark Conservatory in the Botanical Gardens, the whole glasshouse in the band.
+  ballarat: {
+    src: '/images/library/city-banner-ballarat.jpg', author: 'Peter Stokes',
+    page: 'https://commons.wikimedia.org/wiki/File:Robert_Clark_Conservatory,_Ballarat_Botanic_Gardens.jpg', licence: 'CC BY-SA 4.0',
+    licenceUrl: BY_SA_4, position: '50% 44%',
+  },
+  // A heritage tram: its front and body centred (at 1440 the roof sign or the wheels may go, the tram stays recognisable).
+  bendigo: {
+    src: '/images/library/city-banner-bendigo.jpg', author: 'DenisFrolow',
+    page: 'https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg', licence: 'CC BY-SA 4.0', licenceUrl: BY_SA_4,
+    position: '50% 55%',
+  },
+}
+
+export function getCityBanner(slug: string): CityBanner | null {
+  return CITY_BANNERS[slug.toLowerCase()] ?? null
+}
+
 /** The landscape band for a city's hero (the /events/browse/<city> band and the community city pages). */
 export async function getCityHeroPhoto(slug: string): Promise<string | null> {
   const spine = getSpineCity(slug)

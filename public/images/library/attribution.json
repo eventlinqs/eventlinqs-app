@@ -2022,6 +2022,45 @@
       "shown_before_tonight": false,
       "downloaded_on": "2026-10-30",
       "chosen_for": "other-european:balkan"
+    },
+    "city-banner-geelong": {
+      "file": "/images/library/city-banner-geelong.jpg",
+      "photographer": "Mattplaysthedrums",
+      "photographer_url": "https://commons.wikimedia.org/wiki/File:Eastern_Beach_Geelong.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File:Eastern_Beach_Geelong.jpg",
+      "title": "Eastern Beach Geelong.jpg",
+      "licence": "CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+      "changes": "Resized to 2400 px wide; nothing else changed.",
+      "alt": "Eastern Beach, Geelong, from the hill: the palms, the bathing enclosure and Corio Bay under a blue sky.",
+      "source": "Wikimedia Commons",
+      "picked_by": "the CONTROLLER, 3 November 2026 02:20 and 02:53, from contact sheets",
+      "downloaded_on": "2026-11-03"
+    },
+    "city-banner-ballarat": {
+      "file": "/images/library/city-banner-ballarat.jpg",
+      "photographer": "Peter Stokes",
+      "photographer_url": "https://commons.wikimedia.org/wiki/File:Robert_Clark_Conservatory,_Ballarat_Botanic_Gardens.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File:Robert_Clark_Conservatory,_Ballarat_Botanic_Gardens.jpg",
+      "title": "Robert Clark Conservatory, Ballarat Botanic Gardens.jpg",
+      "licence": "CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+      "changes": "Resized to 2400 px wide; nothing else changed.",
+      "alt": "The Robert Clark Conservatory in the Ballarat Botanical Gardens, in sunshine, with flower beds in front.",
+      "source": "Wikimedia Commons",
+      "picked_by": "the CONTROLLER, 3 November 2026 02:20 and 02:53, from contact sheets",
+      "downloaded_on": "2026-11-03"
+    },
+    "city-banner-bendigo": {
+      "file": "/images/library/city-banner-bendigo.jpg",
+      "photographer": "DenisFrolow",
+      "photographer_url": "https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File:Bendigo_trams.jpg",
+      "title": "Bendigo trams.jpg",
+      "licence": "CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+      "changes": "Resized to 2400 px wide; nothing else changed.",
+      "alt": "A heritage Bendigo tram, green and orange, number 808, in sunshine under plane trees.",
+      "source": "Wikimedia Commons",
+      "picked_by": "the CONTROLLER, 3 November 2026 02:20 and 02:53, from contact sheets",
+      "downloaded_on": "2026-11-03"
     }
   }
 }
