@@ -21,7 +21,8 @@ enabled = false
 [studio]
 enabled = false
 
-[inbucket]
+# Supabase CLI 3.0.0 renamed [inbucket] to [local_smtp] (it refuses the old key: CliConfigRemovedKeyError, 3 November 2026).
+[local_smtp]
 enabled = false
 
 [storage]
