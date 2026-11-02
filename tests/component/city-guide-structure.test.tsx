@@ -115,8 +115,23 @@ describe('the Geelong reference page, section by section', () => {
     expect(screen.queryByLabelText('Suburb')).toBeNull()
   })
 
-  it('6: Hosting an event in Geelong? goes to existing routes only', () => {
+  it('6: Hosting an event in Geelong? goes to existing routes only, and offers no claim while claims are off', () => {
+    // Round 2 (d), Lawal 2 November 12:05: the block's offers come only from the platform's real terms. Claiming is behind
+    // feature_flags.listing_claims (OFF on production, read 14:30: until Lawal approves the privacy version naming claims).
     guide()
+    const host = screen.getByRole('region', { name: 'Hosting an event in Geelong?' })
+    expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/submit-event', '/organisers'])
+    expect(host.textContent).not.toMatch(/claim/i)
+  })
+
+  it('6: with claims on, the claim card leads the block', () => {
+    render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
+        rows={rows} days={days} claimsOn
+      />,
+    )
     const host = screen.getByRole('region', { name: 'Hosting an event in Geelong?' })
     expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#city-calendar', '/submit-event', '/organisers'])
   })
