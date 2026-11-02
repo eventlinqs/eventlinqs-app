@@ -65,7 +65,7 @@ export async function CityGuideScreen({
   const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
   // Claims open only on the flag (feature_flags.listing_claims; its default and any failed read are OFF), so the organiser
   // block never offers a claim the claim page would refuse (round 2 (d)).
-  const claimsOn = await isFeatureEnabled('listing_claims')
+  const claimsOn = await isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true })
   // A failed read only leaves the link off, and says so (the old city page's own handling).
   const freeWeek = await readGuideCity(city.slug).then(
     (c) => c !== null,

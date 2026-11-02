@@ -261,10 +261,15 @@ async function writeCache(key: string, enabled: boolean): Promise<void> {
  */
 export async function isFeatureEnabled(
   flag: BroadcastFlag,
-  opts?: { client?: FlagReadClient }
+  /**
+   * cachedPage: an edge-cached page (ISR) reads the table through the client given and never Redis, read or write: the
+   * Upstash client fetches with cache 'no-store', and a no-store fetch in a render opts the page out of the cache (live,
+   * 3 November 2026: / and every /city/[slug] MISS on every read). Pass the public client (feature_flags is public SELECT).
+   */
+  opts?: { client?: FlagReadClient; cachedPage?: boolean }
 ): Promise<boolean> {
   const key = cacheKey(flag)
-  const cached = await readCache(key)
+  const cached = opts?.cachedPage ? null : await readCache(key)
   if (cached !== null) return cached
 
   try {
@@ -276,7 +281,7 @@ export async function isFeatureEnabled(
       .maybeSingle()
     if (error) throw new Error(error.message)
     const enabled = (data as FlagRow | null)?.enabled ?? BROADCAST_FLAG_DEFAULTS[flag]
-    await writeCache(key, enabled)
+    if (!opts?.cachedPage) await writeCache(key, enabled)
     return enabled
   } catch (error) {
     captureException(error, { where: 'lib/flags/broadcast:167' })
