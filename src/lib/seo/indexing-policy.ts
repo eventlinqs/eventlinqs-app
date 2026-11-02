@@ -113,6 +113,7 @@ export const DISCOVERY_INDEXING_THRESHOLD = 1
  * claiming otherwise would be a false record.
  */
 export const UNLINKED_BY_DESIGN: Record<string, string> = {
+  '/events/browse/[city]': 'the old city listing: every city with a guide now takes a 301 to /city/<city> (round 3, item 7, the CONTROLLER 18:09 and 00:01, 3 November 2026), so our own links go to the guides; a place without a guide (Aireys Inlet) keeps its listing for visitors who arrive from search or the sitemap, and gets a link when it gets its guide',
   '/launch': 'a campaign landing reached from a link the founder sends, not from site navigation',
   '/waitlist': 'a campaign landing reached from a link the founder sends, not from site navigation',
   '/partners': 'partnerships are built and off until Lawal sets their terms (the project manager\'s 21:51 (E), 27 October 2026), so no navigation offers them yet; the link goes in when a partner is listed',

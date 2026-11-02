@@ -668,8 +668,11 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
       expected += yes(countCategory(rows, [c.slug, c.displayName.toLowerCase()]))
     }
     for (const c of state.categories) expected += yes(countCategory(rows, [c.slug]))
-    // The two stubbed picker cities, as /events/browse/[city].
-    for (const name of ['Melbourne', 'Perth']) expected += yes(countCity(rows, name))
+    // The two stubbed picker cities, as /events/browse/[city], unless the city has a guide: its browse page is then a
+    // 301 to /city/<city> and the sitemap publishes no redirect (round 3, item 7).
+    for (const [name, slug] of [['Melbourne', 'melbourne'], ['Perth', 'perth']] as const) {
+      if (!isRedirected(`/events/browse/${slug}`)) expected += yes(countCity(rows, name))
+    }
     for (const community of getAllCommunities()) expected += yes(countCommunity(rows, community.slug))
     for (const faith of getAllFaiths()) expected += yes(countFaith(rows, faith.slug))
     for (const city of getAllCities()) {

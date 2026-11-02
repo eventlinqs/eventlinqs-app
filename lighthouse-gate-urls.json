@@ -5,7 +5,7 @@
   "static": [
     { "path": "/", "why": "the homepage, the hero-carousel LCP case" },
     { "path": "/events", "why": "the browse grid, the highest-traffic listing surface" },
-    { "path": "/events/browse/melbourne", "why": "a city listing, the photographic city hero" },
+    { "path": "/city/melbourne", "why": "a city guide, the photographic city hero (the old /events/browse/melbourne is a 301 to it since round 3, item 7)" },
     { "path": "/community/african", "why": "a community landing, the spine-imagery path" },
     { "path": "/organisers", "why": "the image-rich marketing surface (Law 4)" },
     { "path": "/pricing", "why": "a text-led marketing surface with tinted bands" },

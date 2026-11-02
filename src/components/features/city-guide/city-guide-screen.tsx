@@ -65,7 +65,7 @@ export async function CityGuideScreen({
   const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
   // Claims open only on the flag (feature_flags.listing_claims; its default and any failed read are OFF), so the organiser
   // block never offers a claim the claim page would refuse (round 2 (d)).
-  const claimsOn = await isFeatureEnabled('listing_claims')
+  const claimsOn = await isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true })
   // A failed read only leaves the link off, and says so (the old city page's own handling).
   const freeWeek = await readGuideCity(city.slug).then(
     (c) => c !== null,
@@ -117,14 +117,11 @@ export async function CityGuideScreen({
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
             21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in
             (C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md s1). Words only; nothing here is an event. */}
+        {/* No 'Browse every event' link any more: /events/browse/<city> is a 301 to this very page (round 3, item 7). */}
+        {freeWeek || suburbs.length > 0 ? (
         <section aria-label={`More of ${city.name}`} className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
           <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">More of {city.name}</h2>
           <ul className="mt-3 flex flex-wrap gap-2">
-            <li>
-              <Link href={`/events/browse/${city.slug}`} className={MORE_LINK}>
-                Browse every event in {city.name}
-              </Link>
-            </li>
             {freeWeek ? (
               <li>
                 <Link href={`/free/${city.slug}/this-week`} className={MORE_LINK}>
@@ -148,6 +145,7 @@ export async function CityGuideScreen({
             </>
           ) : null}
         </section>
+        ) : null}
         {after}
       </main>
       <SiteFooter />
