@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useFootBarClearance } from '@/components/layout/foot-bar-clearance'
 
 interface Props {
   organiserName: string
@@ -15,6 +16,8 @@ interface Props {
  * same pattern as MobileStickyBar on city pages.
  */
 export function OrganiserMobileStickyBar({ organiserName }: Props) {
+  // Its 60px is reserved at the foot of the page, so the footer's last row clears this bar and the nav (round 2, item 8).
+  useFootBarClearance(60)
   const [shown, setShown] = useState(false)
   useEffect(() => {
     const onScroll = () => setShown(window.scrollY > 200)
