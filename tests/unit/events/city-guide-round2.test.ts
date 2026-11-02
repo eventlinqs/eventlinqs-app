@@ -34,8 +34,8 @@ describe('item 4: the hero line', () => {
 describe('item 3: the time column', () => {
   it("holds '10:30 am' on one line: never broken at its space, and wide enough at 320 for '12:30 pm'", () => {
     const guide = src('src/components/features/city-guide/city-guide.tsx')
-    expect(guide).toMatch(/grid-cols-\[4\.25rem_minmax\(0,1fr\)\]/)
-    expect(guide).toMatch(/<span className="whitespace-nowrap[^"]*">\{r\.time \?\? ''\}<\/span>/)
+    // Round 3 moved the time into the gold 'when' line on top of the row; that line never breaks.
+    expect(guide).toMatch(/<span className="block whitespace-nowrap [^"]*">\{whenLine\(e\)\}<\/span>/)
   })
 })
 

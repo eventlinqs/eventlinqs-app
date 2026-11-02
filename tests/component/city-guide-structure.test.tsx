@@ -6,7 +6,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/city/geelong',
 }))
 
-import { CityGuide, bookingLine, countLine, eventCount, WORTH_MINIMUM } from '@/components/features/city-guide/city-guide'
+import { CityGuide, bookingLine, countLine, eventCount } from '@/components/features/city-guide/city-guide'
 import { CityHeroSlider, SLIDER_MINIMUM } from '@/components/features/city-guide/city-hero-slider'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
@@ -60,7 +60,7 @@ describe('the Geelong reference page, section by section', () => {
     const group = screen.getByRole('group', { name: 'Choose a city' })
     expect([...group.querySelectorAll('a, button')].map((e) => e.textContent?.trim())).toEqual(['Victoria', 'Geelong', 'Melbourne', 'Ballarat', 'Bendigo', 'Change city'])
     const when = screen.getByRole('group', { name: 'When' })
-    for (const w of ['Today', 'Tomorrow', 'This weekend', 'Next 7 days', 'Choose dates']) expect(within(when).getByText(w)).toBeInTheDocument()
+    for (const w of ['Today', 'This weekend', 'This week', 'This month', 'Next 3 months', 'All dates', 'Pick dates']) expect(within(when).getByText(w)).toBeInTheDocument()
   })
 
   it('2: tiles in Lawal\u2019s order with counts from the city\u2019s own rows, community last, none at 0, All events at the end', () => {
@@ -70,29 +70,37 @@ describe('the Geelong reference page, section by section', () => {
     expect(tiles).toEqual(['Music1 event', 'Comedy1 event', 'Markets1 event', 'Community1 event', 'All events4 events'])
   })
 
-  it(`3: 'Worth going out for' is not drawn under ${WORTH_MINIMUM}, and is drawn at ${WORTH_MINIMUM}`, () => {
-    const { unmount } = guide([card(1), card(2)])
-    expect(screen.queryByRole('region', { name: 'Worth going out for' })).toBeNull()
+  // Round 3, LOCKED (Lawal 17:00 to 17:10; ROUND3-DIRECTIVE-2NOV.md): Big nights by a stated rule, the rails, no listing twice.
+  it('3: Big nights shows only a paid night at a named big venue, and is not drawn without one', () => {
+    const { unmount } = guide()
+    expect(screen.queryByRole('region', { name: 'Big nights in Geelong' })).toBeNull()
     unmount()
-    guide([card(1), card(2), card(3)])
-    expect(screen.getByRole('region', { name: 'Worth going out for' })).toBeInTheDocument()
+    render(
+      <CityGuide
+        city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
+        stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
+        rows={[...rows, row({ id: 'b1', href: '/events/b1', title: 'Hindley Street Country Club', venue: 'Costa Hall', free: false, format: 'ticketed', price: 'From AUD $59', source: 'Tickets at Geelong Arts Centre', dayKey: '2026-11-14', ts: 9 })]}
+        days={days}
+      />,
+    )
+    const big = screen.getByRole('region', { name: 'Big nights in Geelong' })
+    expect(within(big).getByText('Hindley Street Country Club')).toBeInTheDocument()
+    expect(screen.getAllByText('Hindley Street Country Club')).toHaveLength(1)
   })
 
-  it('4: Plan your weekend runs Friday to Sunday, with All, Free and Paid', () => {
+  it('4: This weekend runs Friday to Sunday as cards, and every Geelong listing appears once on the page', () => {
     guide()
     const weekend = screen.getByRole('region', { name: 'This weekend in Geelong' })
     expect(within(weekend).getByText('Katie Noonan')).toBeInTheDocument()
     expect(within(weekend).getByText('Saturday Market')).toBeInTheDocument()
     expect(within(weekend).queryByText('Open Mic Comedy')).toBeNull()
-    fireEvent.click(within(within(weekend).getByRole('group', { name: 'This weekend, by price' })).getByRole('button', { name: 'Free' }))
-    expect(within(weekend).queryByText('Katie Noonan')).toBeNull()
-    expect(within(weekend).getByText('Saturday Market')).toBeInTheDocument()
+    for (const t of ['Open Mic Comedy', 'Katie Noonan', 'Saturday Market', 'Our Own Night']) expect(screen.getAllByText(t)).toHaveLength(1)
   })
 
-  it('5: All events in Geelong lists every Geelong night and never another city; suburb and price filter it', () => {
+  it('5: All events in Geelong never shows another city; suburb and price filter it, and then it is the whole answer', () => {
     guide()
     const all = screen.getByRole('region', { name: 'All events in Geelong' })
-    for (const t of ['Open Mic Comedy', 'Katie Noonan', 'Saturday Market', 'Our Own Night']) expect(within(all).getByText(t)).toBeInTheDocument()
+    expect(within(all).getByText('Our Own Night')).toBeInTheDocument()
     expect(within(all).queryByText('Comedy Republic Main Stage')).toBeNull()
     fireEvent.change(within(all).getByLabelText('Suburb'), { target: { value: 'Belmont' } })
     expect(within(all).getByText('Saturday Market')).toBeInTheDocument()
@@ -145,7 +153,7 @@ describe('the Geelong reference page, section by section', () => {
 })
 
 describe('a long city is cheap to lay out (2 November 2026, Lighthouse on the preview: TBT 250 to 306 ms over 7,965 elements)', () => {
-  it('every day group of the list skips layout until it nears the screen, keeping its place (content-visibility auto)', () => {
+  it('every month group of the list skips layout until it nears the screen, keeping its place (content-visibility auto)', () => {
     guide()
     const all = screen.getByRole('region', { name: 'All events in Geelong' })
     const days = [...all.querySelectorAll('section[aria-label]')]
@@ -166,17 +174,14 @@ describe('booking, one rule, each fact once, never a domain (the directive, D; L
 
   it('a night sold elsewhere names its seller once on its row, with a mark that says another site', () => {
     guide()
-    const all = screen.getByRole('region', { name: 'All events in Geelong' })
-    const text = all.querySelector('a[href="/events/r2"]')?.textContent ?? ''
-    // The phone line and the wide column are the same words in two places; one is hidden by width, never both shown.
-    expect(text.split('Tickets at Geelong Arts Centre').length - 1).toBe(2)
+    const text = document.querySelector('a[href="/events/r2"]')?.textContent ?? ''
+    expect(text.split('Tickets at Geelong Arts Centre').length - 1).toBe(1)
     expect(text).toContain('(another site)')
   })
 
   it('a free walk-in row says Free · Walk in once, in its one meta line, and nothing else about price', () => {
     guide()
-    const all = screen.getByRole('region', { name: 'All events in Geelong' })
-    const text = all.querySelector('a[href="/events/r1"]')?.textContent ?? ''
+    const text = document.querySelector('a[href="/events/r1"]')?.textContent ?? ''
     expect(text).toContain('Comedy · Free · Walk in')
     expect(text.split('Free').length - 1).toBe(1)
     expect(text).not.toContain('Free entry')
