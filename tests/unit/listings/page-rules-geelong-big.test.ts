@@ -24,7 +24,7 @@ const kpPage = (o: { title: string; when: string; tickets?: string }) => `<!doct
 <div class="col-12"><div class="event-hero-actions-inner"><div class="event-hero-date">
 ${o.when}                </div><div class="event-hero-actions"><a href="#">Share</a></div></div></div></section>
 <section class="event-body"><p>The organiser's own long words about the night, never kept.</p>
-${o.tickets ? `<p>Tickets available <a href="${o.tickets}">HERE</a></p>` : ''}
+${o.tickets ? `<p>Purchase Tickets <a href="${o.tickets}">HERE</a></p>` : ''}
 <h3>More upcoming events</h3><div class="event-card"><h3>Another night</h3><div class="date">Nov 07</div></div></section></body></html>`
 
 describe('GMHBA Stadium rule (Kardinia Park Stadium Trust)', () => {
@@ -54,7 +54,8 @@ describe('GMHBA Stadium rule (Kardinia Park Stadium Trust)', () => {
   })
 
   it('reads a noon start, and a title dash as a plain hyphen', () => {
-    const [night] = rule!.read(kpPage({ title: 'Bp Proof VS Th&#7875; C&ocirc;ng&#8211;Viettel (Vietnam)', when: 'Sat, 19 Dec 2026 12:00 pm' }), url)
+    // The page writes the en dash as the character itself; our source names it by its escape (no literal dash here).
+    const [night] = rule!.read(kpPage({ title: 'Bp Proof VS Thể Công–Viettel (Vietnam)', when: 'Sat, 19 Dec 2026 12:00 pm' }), url)
     expect(night.title).toBe('Bp Proof VS Thể Công-Viettel (Vietnam)')
     expect(night.startsAt).toBe('2026-12-19T01:00:00.000Z') // 12.00 pm AEDT
   })
@@ -78,7 +79,11 @@ const adPage = (o: { date: string; venue: string; times: [string, string][]; tic
 Bp Proof Band												<span class="fw-normal"> Australian &amp; New Zealand Tour 2026</span>
 </h1><h4 class="fw-normal">Joined by Bp Support | Bp Other</h4></div>
 <p>The promoter's own long words about the tour, never kept.</p>
-<div class="tickets"><div>FINAL TICKETS</div>${o.tickets.map(([label, price]) => `<div class="row"><div>${label}</div><div>${price}</div></div>`).join('')}</div>
+<div class="tickets"><div>FINAL TICKETS</div><table><tbody>${o.tickets.map(([label, price]) => `<tr class="border-0">
+<td class="border-0 py-0 ps-0" valign="top">${label}</td>
+<td class="border-0 py-0 text-end pe-0" valign="top" width="40"><p class="text-primary"></p></td>
+<td class="border-0 py-0 ps-1" width="60" valign="top">${price}</td>
+</tr>`).join('')}<tr class="border-0"><td>-</td><td></td><td>-</td></tr></tbody></table></div>
 <div class="set-times"><h2>Set Times</h2><table class="table table-striped"><tbody>
 ${o.times.map(([t, what]) => `<tr><td class="col-2 pe-2 pe-md-0">${t}<td><td class="col">${what}</td></tr>`).join('')}
 </tbody></table></div>
