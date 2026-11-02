@@ -258,8 +258,9 @@ export function occurrenceStore(): OccurrenceStore {
       // (events_walk_in_is_in_person_and_sells_nothing). Nothing is sold here either way.
       const links = night.bookingLinks ?? []
       const soldElsewhere = links.length > 0
-      const slug = occurrenceSlug(night.name, venue.slug ?? venueSlugify(venue.name), date)
-      const { data: inserted, error: insertError } = await admin
+      const hostSlug = venue.slug ?? venueSlugify(venue.name)
+      const insertWithSlug = (slug: string) =>
+        admin
         .from('events')
         .insert({
           ...fields,
@@ -292,6 +293,13 @@ export function occurrenceStore(): OccurrenceStore {
         })
         .select('id')
         .single()
+      let attempt = await insertWithSlug(occurrenceSlug(night.name, hostSlug, date))
+      /* A second session of one show on one day (a matinee and an evening are two nights): the first holds the plain
+         address, so this one's ends in its start. Only a slug clash takes this path; every existing address is kept. */
+      if (attempt.error?.code === '23505' && /slug/i.test(attempt.error.message)) {
+        attempt = await insertWithSlug(occurrenceSlug(night.name, hostSlug, date, night.startsAt))
+      }
+      const { data: inserted, error: insertError } = attempt
       if (insertError || !inserted) return refused(`the occurrence could not be written: ${insertError?.message ?? 'no row'}`)
       const eventId = inserted.id as string
 

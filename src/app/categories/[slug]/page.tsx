@@ -21,6 +21,7 @@ import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { resolveCategorySlug } from '@/lib/events/search-params'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 // ISR: every category page is the same for all anonymous visitors. The
 // 5-minute revalidate window matches /events/[slug] and keeps the live
@@ -39,6 +40,9 @@ export const revalidate = 300
  * are judged on 400 and on one, not on what fits above the fold.
  */
 const GRID_LIMIT = 24
+/** Rows read for a grid of GRID_LIMIT cards: a recurring listing is one card (collapseListings), so the read takes
+ *  more nights than it shows and the grid still fills (the CONTROLLER's 1 November 2026 P1-a). */
+const ROWS_PER_CARD = 4
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -164,11 +168,11 @@ export default async function CategoryPage({ params }: Props) {
         .or(listingWindowOrPredicate(new Date()))
         .eq('category.slug', real!.slug)
         .order('start_date', { ascending: true })
-        .limit(GRID_LIMIT),
+        .limit(GRID_LIMIT * ROWS_PER_CARD),
     { label: `categories/${real!.slug}` },
   )
 
-  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
+  const liveEvents = collapseListings(await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[]), GRID_LIMIT)
 
   const [photo, all] = await Promise.all([
     getCategoryPhoto(real!.slug),
@@ -237,11 +241,11 @@ async function renderHeroCategory(slug: string) {
         .or(listingWindowOrPredicate(new Date()))
         .in('category.slug', categorySlugs)
         .order('start_date', { ascending: true })
-        .limit(6),
+        .limit(6 * ROWS_PER_CARD),
     { label: `categories/${slug}` },
   )
 
-  const liveEvents = await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[])
+  const liveEvents = collapseListings(await withVenuePhotos((eventsRaw ?? []) as unknown as EventCardData[]), 6)
   const baseUrl = getSiteUrl()
   const collectionUrl = `${baseUrl}/categories/${category.slug}`
 

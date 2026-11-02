@@ -556,6 +556,109 @@ export type Database = {
         }
         Relationships: []
       }
+      city_editorial_slots: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          city: string
+          day: string
+          drafted_at: string
+          empty_note: string | null
+          event_ids: string[]
+          id: string
+          slot_date: string
+          spotlight_organisation_id: string | null
+          status: string
+          theme: string
+          total: number
+          week_start: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city: string
+          day: string
+          drafted_at?: string
+          empty_note?: string | null
+          event_ids?: string[]
+          id?: string
+          slot_date: string
+          spotlight_organisation_id?: string | null
+          status?: string
+          theme: string
+          total?: number
+          week_start: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city?: string
+          day?: string
+          drafted_at?: string
+          empty_note?: string | null
+          event_ids?: string[]
+          id?: string
+          slot_date?: string
+          spotlight_organisation_id?: string | null
+          status?: string
+          theme?: string
+          total?: number
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_editorial_slots_spotlight_organisation_id_fkey"
+            columns: ["spotlight_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_geography: {
+        Row: {
+          checked_on: string
+          city_slug: string
+          radius_steps_km: number[]
+          region_name: string
+          region_tr_code: string
+          source_note: string
+          surround_gccsa_code: string | null
+          surround_lga_codes: string[]
+          ucl_code: string
+        }
+        Insert: {
+          checked_on: string
+          city_slug: string
+          radius_steps_km?: number[]
+          region_name: string
+          region_tr_code: string
+          source_note: string
+          surround_gccsa_code?: string | null
+          surround_lga_codes?: string[]
+          ucl_code: string
+        }
+        Update: {
+          checked_on?: string
+          city_slug?: string
+          radius_steps_km?: number[]
+          region_name?: string
+          region_tr_code?: string
+          source_note?: string
+          surround_gccsa_code?: string | null
+          surround_lga_codes?: string[]
+          ucl_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_geography_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: true
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       city_waitlist_signups: {
         Row: {
           city_slug: string
@@ -906,6 +1009,108 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "consent_purposes"
             referencedColumns: ["purpose"]
+          },
+        ]
+      }
+      conversion_opportunities: {
+        Row: {
+          city_slug: string
+          closed_reason: string | null
+          created_at: string
+          id: string
+          organiser_id: string | null
+          source: string
+          source_ref: string | null
+          state: string
+          updated_at: string
+          venue_id: string | null
+          who_first: string
+        }
+        Insert: {
+          city_slug: string
+          closed_reason?: string | null
+          created_at?: string
+          id?: string
+          organiser_id?: string | null
+          source: string
+          source_ref?: string | null
+          state?: string
+          updated_at?: string
+          venue_id?: string | null
+          who_first: string
+        }
+        Update: {
+          city_slug?: string
+          closed_reason?: string | null
+          created_at?: string
+          id?: string
+          organiser_id?: string | null
+          source?: string
+          source_ref?: string | null
+          state?: string
+          updated_at?: string
+          venue_id?: string | null
+          who_first?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_opportunities_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_opportunities_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+          {
+            foreignKeyName: "conversion_opportunities_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversion_opportunity_changes: {
+        Row: {
+          action: string
+          at: string
+          changed_by: string
+          id: number
+          new_row: Json
+          old_row: Json | null
+          opportunity_id: string
+        }
+        Insert: {
+          action: string
+          at?: string
+          changed_by?: string
+          id?: never
+          new_row: Json
+          old_row?: Json | null
+          opportunity_id: string
+        }
+        Update: {
+          action?: string
+          at?: string
+          changed_by?: string
+          id?: never
+          new_row?: Json
+          old_row?: Json | null
+          opportunity_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_opportunity_changes_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_opportunities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1424,6 +1629,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          guide_label: string | null
+          guide_order: number | null
           icon: string | null
           id: string
           is_active: boolean
@@ -1434,6 +1641,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          guide_label?: string | null
+          guide_order?: number | null
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -1444,6 +1653,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          guide_label?: string | null
+          guide_order?: number | null
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -1703,6 +1914,102 @@ export type Database = {
           },
         ]
       }
+      event_misses: {
+        Row: {
+          candidate_id: string | null
+          city_slug: string
+          event_id: string | null
+          fix: string | null
+          fix_ref: string | null
+          fixed_at: string | null
+          found_at: string
+          found_by: string
+          found_by_detail: string | null
+          found_on_url: string | null
+          id: string
+          reason: string
+          reason_detail: string | null
+          source_id: string | null
+          starts_at: string | null
+          title: string
+          venue_name: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          city_slug: string
+          event_id?: string | null
+          fix?: string | null
+          fix_ref?: string | null
+          fixed_at?: string | null
+          found_at?: string
+          found_by: string
+          found_by_detail?: string | null
+          found_on_url?: string | null
+          id?: string
+          reason: string
+          reason_detail?: string | null
+          source_id?: string | null
+          starts_at?: string | null
+          title: string
+          venue_name?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          city_slug?: string
+          event_id?: string | null
+          fix?: string | null
+          fix_ref?: string | null
+          fixed_at?: string | null
+          found_at?: string
+          found_by?: string
+          found_by_detail?: string | null
+          found_on_url?: string | null
+          id?: string
+          reason?: string
+          reason_detail?: string | null
+          source_id?: string | null
+          starts_at?: string | null
+          title?: string
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_misses_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "listing_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_misses_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "event_misses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_misses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_misses_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "listing_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminder_sends: {
         Row: {
           claimed_at: string
@@ -1785,6 +2092,52 @@ export type Database = {
           },
           {
             foreignKeyName: "event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_secondary_categories: {
+        Row: {
+          assigned_by: string
+          category_id: string
+          created_at: string
+          event_id: string
+          rule: string | null
+        }
+        Insert: {
+          assigned_by: string
+          category_id: string
+          created_at?: string
+          event_id: string
+          rule?: string | null
+        }
+        Update: {
+          assigned_by?: string
+          category_id?: string
+          created_at?: string
+          event_id?: string
+          rule?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_secondary_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_secondary_categories_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_secondary_categories_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -1988,7 +2341,10 @@ export type Database = {
           archived_from_status:
             | Database["public"]["Enums"]["event_status"]
             | null
+          category_assigned_by: string | null
           category_id: string | null
+          category_review: string
+          category_rule: string | null
           city_primary: string | null
           community_primary: string | null
           cover_image_alt: string | null
@@ -2077,7 +2433,10 @@ export type Database = {
           archived_from_status?:
             | Database["public"]["Enums"]["event_status"]
             | null
+          category_assigned_by?: string | null
           category_id?: string | null
+          category_review?: string
+          category_rule?: string | null
           city_primary?: string | null
           community_primary?: string | null
           cover_image_alt?: string | null
@@ -2166,7 +2525,10 @@ export type Database = {
           archived_from_status?:
             | Database["public"]["Enums"]["event_status"]
             | null
+          category_assigned_by?: string | null
           category_id?: string | null
+          category_review?: string
+          category_rule?: string | null
           city_primary?: string | null
           community_primary?: string | null
           cover_image_alt?: string | null
@@ -2833,6 +3195,101 @@ export type Database = {
         }
         Relationships: []
       }
+      growth_experiments: {
+        Row: {
+          audience: string
+          baseline: number | null
+          baseline_note: string | null
+          budget_cents: number
+          channel: string
+          city_slug: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          ends_on: string
+          hypothesis: string
+          id: string
+          primary_metric: string
+          result: number | null
+          result_note: string | null
+          starts_on: string
+          title: string
+          tracking_proof: string | null
+        }
+        Insert: {
+          audience: string
+          baseline?: number | null
+          baseline_note?: string | null
+          budget_cents?: number
+          channel: string
+          city_slug?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          ends_on: string
+          hypothesis: string
+          id?: string
+          primary_metric: string
+          result?: number | null
+          result_note?: string | null
+          starts_on: string
+          title: string
+          tracking_proof?: string | null
+        }
+        Update: {
+          audience?: string
+          baseline?: number | null
+          baseline_note?: string | null
+          budget_cents?: number
+          channel?: string
+          city_slug?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          ends_on?: string
+          hypothesis?: string
+          id?: string
+          primary_metric?: string
+          result?: number | null
+          result_note?: string | null
+          starts_on?: string
+          title?: string
+          tracking_proof?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_experiments_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      growth_scorecard_daily: {
+        Row: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at: string
+        }
+        Insert: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at?: string
+        }
+        Update: {
+          day?: string
+          numbers?: Json
+          plan_version?: number
+          read_at?: string
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -3350,13 +3807,21 @@ export type Database = {
           acquisition_order: number | null
           category_id: string | null
           changes: string
+          changes_counted: number
+          checks_counted: number
           city_slug: string | null
           collection: string
           contact: string | null
+          crawl_delay_seconds: number | null
           created_at: string
+          feed_refresh_interval: string | null
           id: string
           kind: string
+          last_changed_at: string | null
           last_checked_at: string | null
+          last_content_hash: string | null
+          last_etag: string | null
+          last_modified_header: string | null
           last_outcome: string | null
           last_success_at: string | null
           licence_owner: string | null
@@ -3381,6 +3846,7 @@ export type Database = {
           may_use_dataset_read_on: string | null
           may_use_dataset_url: string | null
           name: string
+          next_check_at: string | null
           notes: string | null
           organisation_id: string | null
           page_url: string
@@ -3388,7 +3854,11 @@ export type Database = {
           permits_facts: boolean
           permits_images: boolean
           permits_links: boolean
+          refresh_interval_hours: number
+          refresh_interval_reason: string | null
           source_type: string
+          stopped_at: string | null
+          stopped_because: string | null
           terms_quote: string | null
           terms_read_on: string | null
           terms_url: string | null
@@ -3401,13 +3871,21 @@ export type Database = {
           acquisition_order?: number | null
           category_id?: string | null
           changes?: string
+          changes_counted?: number
+          checks_counted?: number
           city_slug?: string | null
           collection: string
           contact?: string | null
+          crawl_delay_seconds?: number | null
           created_at?: string
+          feed_refresh_interval?: string | null
           id?: string
           kind: string
+          last_changed_at?: string | null
           last_checked_at?: string | null
+          last_content_hash?: string | null
+          last_etag?: string | null
+          last_modified_header?: string | null
           last_outcome?: string | null
           last_success_at?: string | null
           licence_owner?: string | null
@@ -3432,6 +3910,7 @@ export type Database = {
           may_use_dataset_read_on?: string | null
           may_use_dataset_url?: string | null
           name: string
+          next_check_at?: string | null
           notes?: string | null
           organisation_id?: string | null
           page_url: string
@@ -3439,7 +3918,11 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          refresh_interval_hours?: number
+          refresh_interval_reason?: string | null
           source_type?: string
+          stopped_at?: string | null
+          stopped_because?: string | null
           terms_quote?: string | null
           terms_read_on?: string | null
           terms_url?: string | null
@@ -3452,13 +3935,21 @@ export type Database = {
           acquisition_order?: number | null
           category_id?: string | null
           changes?: string
+          changes_counted?: number
+          checks_counted?: number
           city_slug?: string | null
           collection?: string
           contact?: string | null
+          crawl_delay_seconds?: number | null
           created_at?: string
+          feed_refresh_interval?: string | null
           id?: string
           kind?: string
+          last_changed_at?: string | null
           last_checked_at?: string | null
+          last_content_hash?: string | null
+          last_etag?: string | null
+          last_modified_header?: string | null
           last_outcome?: string | null
           last_success_at?: string | null
           licence_owner?: string | null
@@ -3483,6 +3974,7 @@ export type Database = {
           may_use_dataset_read_on?: string | null
           may_use_dataset_url?: string | null
           name?: string
+          next_check_at?: string | null
           notes?: string | null
           organisation_id?: string | null
           page_url?: string
@@ -3490,7 +3982,11 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          refresh_interval_hours?: number
+          refresh_interval_reason?: string | null
           source_type?: string
+          stopped_at?: string | null
+          stopped_because?: string | null
           terms_quote?: string | null
           terms_read_on?: string | null
           terms_url?: string | null
@@ -10423,6 +10919,78 @@ export type Database = {
           },
         ]
       }
+      ticketing_activations: {
+        Row: {
+          at: string
+          event_id: string | null
+          id: string
+          opportunity_id: string | null
+          organiser_id: string
+          proof_id: string
+          proved_by: string
+          source: string
+          step: string
+        }
+        Insert: {
+          at?: string
+          event_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          organiser_id: string
+          proof_id: string
+          proved_by: string
+          source: string
+          step: string
+        }
+        Update: {
+          at?: string
+          event_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          organiser_id?: string
+          proof_id?: string
+          proved_by?: string
+          source?: string
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticketing_activations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticketing_activations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           created_at: string
@@ -11142,6 +11710,18 @@ export type Database = {
       }
       venues: {
         Row: {
+          abs_gccsa_code: string | null
+          abs_lga_code: string | null
+          abs_lga_name: string | null
+          abs_placed_at: string | null
+          abs_placed_latitude: number | null
+          abs_placed_longitude: number | null
+          abs_sal_code: string | null
+          abs_sal_name: string | null
+          abs_tr_code: string | null
+          abs_tr_name: string | null
+          abs_ucl_code: string | null
+          abs_ucl_name: string | null
           address: string | null
           capacity: number | null
           city: string | null
@@ -11175,6 +11755,18 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          abs_gccsa_code?: string | null
+          abs_lga_code?: string | null
+          abs_lga_name?: string | null
+          abs_placed_at?: string | null
+          abs_placed_latitude?: number | null
+          abs_placed_longitude?: number | null
+          abs_sal_code?: string | null
+          abs_sal_name?: string | null
+          abs_tr_code?: string | null
+          abs_tr_name?: string | null
+          abs_ucl_code?: string | null
+          abs_ucl_name?: string | null
           address?: string | null
           capacity?: number | null
           city?: string | null
@@ -11208,6 +11800,18 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          abs_gccsa_code?: string | null
+          abs_lga_code?: string | null
+          abs_lga_name?: string | null
+          abs_placed_at?: string | null
+          abs_placed_latitude?: number | null
+          abs_placed_longitude?: number | null
+          abs_sal_code?: string | null
+          abs_sal_name?: string | null
+          abs_tr_code?: string | null
+          abs_tr_name?: string | null
+          abs_ucl_code?: string | null
+          abs_ucl_name?: string | null
           address?: string | null
           capacity?: number | null
           city?: string | null
@@ -11889,6 +12493,24 @@ export type Database = {
         }[]
       }
       audience_price_band: { Args: { p_unit_cents: number }; Returns: string }
+      city_editorial_events: {
+        Args: { p_city: string; p_from: string; p_to: string }
+        Returns: {
+          category: string
+          city_relation: string
+          ends_at: string
+          has_authorised_media: boolean
+          id: string
+          organisation_id: string
+          organisation_name: string
+          starts_at: string
+          status: string
+          suburb: string
+          title: string
+          venue_name: string
+          visibility: string
+        }[]
+      }
       claim_discount_use: {
         Args: { p_code_id: string; p_reservation_id: string }
         Returns: boolean
@@ -12066,6 +12688,7 @@ export type Database = {
         Args: { p_end: string; p_now: string; p_start: string }
         Returns: boolean
       }
+      event_last_checked: { Args: { p_event: string }; Returns: string }
       event_lifecycle_guards: { Args: never; Returns: Json }
       event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
       event_money_record_counts_many: {
@@ -12089,7 +12712,10 @@ export type Database = {
           archived_from_status:
             | Database["public"]["Enums"]["event_status"]
             | null
+          category_assigned_by: string | null
           category_id: string | null
+          category_review: string
+          category_rule: string | null
           city_primary: string | null
           community_primary: string | null
           cover_image_alt: string | null
@@ -12242,6 +12868,34 @@ export type Database = {
         }
         Returns: number
       }
+      growth_acquisition_facts: { Args: never; Returns: Json }
+      growth_channel_weekly: { Args: { p_city: string }; Returns: Json }
+      growth_city_coverage: { Args: { p_city: string }; Returns: Json }
+      growth_city_coverage_detail: {
+        Args: { p_city: string; p_kind: string }
+        Returns: Json
+      }
+      growth_misses_weekly: { Args: { p_city: string }; Returns: Json }
+      growth_scorecard_read: { Args: never; Returns: Json }
+      growth_scorecard_snapshot: {
+        Args: { p_plan_version: number }
+        Returns: {
+          day: string
+          numbers: Json
+          plan_version: number
+          read_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "growth_scorecard_daily"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      growth_visit_channel: {
+        Args: { p_referrer: string; p_utm_medium: string; p_utm_source: string }
+        Returns: string
+      }
       increment_discount_uses: { Args: { p_code_id: string }; Returns: boolean }
       increment_sold_count: {
         Args: { p_quantity: number; p_tier_id: string }
@@ -12282,9 +12936,22 @@ export type Database = {
         Args: { p_now?: string; p_starts_at: string }
         Returns: string
       }
+      listing_publish_accepted_night: {
+        Args: {
+          p_candidate: string
+          p_category: string
+          p_reviewer: string
+          p_venue: string
+        }
+        Returns: string
+      }
       listing_publish_partner_night: {
         Args: { p_candidate: string }
         Returns: string
+      }
+      listing_source_change_rate: {
+        Args: { p_source: string }
+        Returns: number
       }
       marketing_attribution_default_window: { Args: never; Returns: number }
       marketing_attribution_is_billable: {
@@ -12797,6 +13464,10 @@ export type Database = {
           p_payment_id: string
         }
         Returns: boolean
+      }
+      venue_city_relation: {
+        Args: { p_city: string; p_venue: string }
+        Returns: string
       }
       venue_distribution_for: {
         Args: { p_venues: string[] }

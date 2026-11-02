@@ -439,6 +439,38 @@ const DRILLS = [
     replace: '      {false ? null : (\n        <Suspense fallback={null}>',
     expect: 'shows its date chips over an empty page',
   },
+  /*
+   * growth-plan-is-versioned (1 November 2026, Law 8): a version kept in the ledger is changed after it was kept, and
+   * the plan is edited in place without a new dated version.
+   */
+  {
+    name: 'a kept growth plan version is changed',
+    guard: `${GUARDS}/growth-plan-is-versioned.mjs`,
+    file: 'growth/versions/2026-11-01.json',
+    find: '"outreach_messages": 20,',
+    replace: '"outreach_messages": 21,',
+    expect: 'was changed after it was kept',
+  },
+  {
+    name: 'the growth plan is edited in place',
+    guard: `${GUARDS}/growth-plan-is-versioned.mjs`,
+    file: 'growth/plan.json',
+    find: '"outreach_messages": 20,',
+    replace: '"outreach_messages": 25,',
+    expect: 'differs from its newest version',
+  },
+  /*
+   * every-card-list-collapses (1 November 2026, P1-a): a list of event cards drawn again without collapsing a listing
+   * to one card; its import is left in place, because an import alone is not a collapse.
+   */
+  {
+    name: 'a community grid draws its events without collapsing a listing to one card',
+    guard: `${GUARDS}/every-card-list-collapses.mjs`,
+    file: 'src/components/features/community/events-by-community-grid.tsx',
+    find: 'const cards = collapseListings(events)',
+    replace: 'const cards = events',
+    expect: 'never collapses a listing',
+  },
   {
     name: 'the Communities doorway tile loses its photograph',
     guard: `${GUARDS}/tiles-on-stored-photos.mjs`,
@@ -11127,6 +11159,18 @@ const DRILLS = [
     find: '    paidOut += paidOutCents(row)',
     replace: "    if (['payout'].includes(row.reason)) paidOut -= delta",
     expect: "keeps a reason list of 'payout' alone",
+  },
+  /*
+   * growth-reads-skip-the-platform (2 November 2026; WINDOW 1's 12:17 data point, CONTROLLER 12:23 (D)). The shape
+   * every one of the five readers had: the organisers read as they stand, the platform's own row among them.
+   */
+  {
+    name: 'growth: the daily twenty counts the EventLinqs listings organisation as an organiser again',
+    guard: `${GUARDS}/growth-reads-skip-the-platform.mjs`,
+    file: 'src/lib/outreach/daily-twenty-read.ts',
+    find: '    await readPlatformOrganiserIds(db),',
+    replace: '    new Set<string>(),',
+    expect: 'reads the organisers with no readPlatformOrganiserIds',
   },
   /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One

@@ -12,10 +12,10 @@ export const maxDuration = 300
 const RUN_BUDGET_MS = (maxDuration - 60) * 1000
 
 /**
- * THE DAILY COLLECTION RUN (item 19; the engine plan of 28 October 2026, part A; src/lib/listings/collect.ts,
- * docs/walk-in/COLLECTION-RUN.md). 19:00 UTC every day, 6 am in Melbourne in daylight time and 5 am in standard time,
- * so the exception queue is ready each morning. Each source is still read only on its own pace (daily, weekly,
- * monthly or rarely).
+ * THE COLLECTION RUN (item 19; the engine plan of 28 October 2026, part A; src/lib/listings/collect.ts,
+ * docs/walk-in/COLLECTION-RUN.md). Every hour at 25 past (Lawal, 1 November 2026, 16:13: this week first, changes
+ * within the hour): a source holding nights in the next seven days is read each hour; every other source still only on
+ * its own pace (daily, weekly, monthly or rarely).
  *
  * Reads only the register's sources whose own terms allow it, where robots.txt allows the page, and only the page's own
  * Event data. A high confidence find from a partner's own verified feed is accepted by the partner rule; everything

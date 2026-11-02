@@ -1,0 +1,175 @@
+{
+  "name": "EventLinqs growth plan",
+  "version": 3,
+  "set_on": "2026-11-01",
+  "set_by": "Lawal Adams, founder, 05:33 Melbourne time (\"Lock in the winning model now... hardwired into the system\")",
+  "readable_version": "https://claude.ai/artifact/NiVfqJUKJZhu57Asoh1HLJ (EventLinqs: A against the Fever path); V3 checklist https://claude.ai/artifact/9ry6uA1DMt5RBGvHn8njnp",
+  "mission": "The place every city finds everything that's on, and buys the ticket there. Start with Australia's most complete weekly what's-on guide with fair ticketing, then the world.",
+  "model": {
+    "layers": [
+      "Featured photo cards: real, rights-recorded photos only",
+      "Directory: every checked event, by day, no image box"
+    ],
+    "revenue_formula": "Revenue = O x T x 12 x N + P",
+    "O": "frequent paid organisers (sell paid tickets every month)",
+    "T": "paid tickets each sells a month",
+    "N_aud_estimate": 1.18,
+    "N_note": "A$35 ticket, 3.5% + A$0.99 booking fee assumed GST inclusive, less Stripe 1.65% + A$0.30; to be re-measured from real orders (GST, Connect, refunds, chargebacks, fee-free months)",
+    "P": "promoted listings and organiser tools"
+  },
+  "targets": {
+    "plan": [
+      {
+        "year_to": "2027-10",
+        "O": 150,
+        "T": 80,
+        "paid_tickets": 144000,
+        "revenue_aud": 230000
+      },
+      {
+        "year_to": "2028-10",
+        "O": 600,
+        "T": 100,
+        "paid_tickets": 720000,
+        "revenue_aud": 1150000
+      },
+      {
+        "year_to": "2029-10",
+        "O": 2000,
+        "T": 100,
+        "paid_tickets": 2400000,
+        "revenue_aud": 3800000
+      }
+    ],
+    "founder_stretch": {
+      "set": "2026-11-01, Lawal: 10x the three-year plan",
+      "revenue_aud_2029_10": 38000000,
+      "honest_note": "At about A$1.18 a ticket this needs about 32 million paid tickets a year, more than all 31.4 million ticketed live performance attendances in Australia in 2024. It is reachable only with most revenue from promotions, organiser tools (Bookedproof) and markets beyond Australia. Tracked daily beside the plan; the gap is shown, never hidden."
+    }
+  },
+  "scorecard_weekly": [
+    "checked events in the next 14 days, per open city",
+    "share of listings with a real, rights-recorded photo",
+    "organisers who claimed a listing",
+    "frequent paid organisers (O)",
+    "paid tickets this week",
+    "city email subscribers",
+    "search visits to city and category pages"
+  ],
+  "daily_quotas": {
+    "outreach_messages": 20,
+    "outreach_note": "Lawal's minimum since 19 October 2026, replies and follow ups counted; only where the Spam Act's inferred consent holds and the basis is recorded",
+    "social_posts_per_open_city": 1,
+    "listings_rechecked": "every event in the next 7 days and every one-off event, by risk"
+  },
+  "cities": {
+    "open": [
+      "Geelong",
+      "Melbourne",
+      "Ballarat",
+      "Bendigo"
+    ],
+    "pilot_benchmark_checked_events_14_days": {
+      "Geelong": 50,
+      "Ballarat": 50,
+      "Bendigo": 50,
+      "Melbourne": 200
+    }
+  },
+  "rollout_gates": "A new state opens only when every open city meets its benchmark, paid tickets and subscribers grow four weeks in a row, and checking keeps up. Earliest: NSW and QLD Feb 2027; SA, WA, ACT Jul 2027; TAS, NT, regional towns 2028.",
+  "rules": [
+    "Every price shown is the total with unavoidable fees",
+    "No fabricated image, ever",
+    "Nothing planned is reported as done",
+    "Every change to this file is a dated version, never an overwrite of history"
+  ],
+  "changes_from_v1": "Added close_the_ticketing_gap (Lawal 04:30: the first gap must come with its plan) and benchmark_standard.",
+  "close_the_ticketing_gap": {
+    "why": "Revenue starts only when events sell tickets through EventLinqs. On 1 November 2026 production holds 0 upcoming nights with EventLinqs ticket tiers (Window 5, journey J7).",
+    "measure": "upcoming events selling tickets through EventLinqs, counted daily by the scorecard",
+    "targets": [
+      {
+        "by": "2026-11-15",
+        "events": 5
+      },
+      {
+        "by": "2026-12-13",
+        "events": 20
+      },
+      {
+        "by": "2027-01-31",
+        "events": 50
+      }
+    ],
+    "who_first": [
+      "organisers already listed on EventLinqs whose paid events sell through small independent sellers (not venue-contracted Ticketmaster or Ticketek shows)",
+      "venues with ticketed nights (comedy rooms, live music rooms)",
+      "community and cultural organisers with paid events, starting with past EventLinqs organisers (Afro-Fusion)"
+    ],
+    "the_offer": [
+      "six months with no platform fee from registration",
+      "a lower booking fee than Humanitix (3.5% + A$0.99 against 4% + A$0.99 + GST)",
+      "the organiser keeps the full face value",
+      "money held until after the event for refunds, paid to the organiser's own account by the platform",
+      "their event already listed and promoted in the city guide and weekly email"
+    ],
+    "steps": [
+      "claim the listing (ownership check)",
+      "add a ticket tier",
+      "first sale",
+      "weekly report of views, reminders and sales"
+    ],
+    "daily": "5 of the 20 daily outreach messages are conversion asks to organisers in who_first, each with a consent basis recorded"
+  },
+  "benchmark_standard": "Every public flow is checked against Eventbrite, Humanitix and Ticketmaster before it ships and swept weekly after; no behaviour they would not show a customer.",
+  "end_goal": "A global company worth at least US$1 billion within 10 years (by 2036).",
+  "winning_model": {
+    "decided": "2026-11-01 by Lawal: the WHAT'S ON PLATFORM is the winner, not an editorial city guide.",
+    "why": [
+      "A city guide is media and stays small (Concrete Playground, 5 cities, sold for A$5m in Dec 2024).",
+      "Fever is worth billions because it sells the tickets and later produces its own shows; its guides only feed the people in.",
+      "Australia alone cannot reach a billion on a booking fee (all Australian ticket sales are about A$3.4bn a year, LPA 2024); the billion is global."
+    ],
+    "formula": "A playbook that wins one city completely, copied into as many cities as possible. More cities, each won completely, each feeding the data and the audience to win the next one faster.",
+    "a_city_is_won_when": [
+      "every event in the city is listed",
+      "the city follows our weekly email and city social account",
+      "local organisers sell their tickets through us"
+    ]
+  },
+  "global_stages": [
+    {
+      "stage": 1,
+      "name": "Win Geelong completely, then Victoria",
+      "when": "now to Oct 2027",
+      "work": "V3 items 1 to 13; city email and social account per city; tracked links; waitlists on events not yet on sale; write the city playbook down as it is proven",
+      "gate": "the playbook proven in two cities with real numbers"
+    },
+    {
+      "stage": 2,
+      "name": "Every Australian city and New Zealand",
+      "when": "from the stage 1 gate, about 2027 to 2028",
+      "work": "copy the playbook city by city; raise the first outside money on the proven playbook",
+      "gate": "playbook repeats with each new city won faster than the last"
+    },
+    {
+      "stage": 3,
+      "name": "Global where we have an edge",
+      "when": "about 2028 onward",
+      "work": "mid sized English speaking cities in the UK, Canada and the US; African community and cultural events worldwide, then Africa itself",
+      "gate": "each new country opened only when the one before is profitable or funded"
+    },
+    {
+      "stage": 4,
+      "name": "The best of Fever, as we grow",
+      "when": "as the audience and data allow",
+      "work": "own the audience in every city; use our data to see what each city is missing; co-produce nights with local organisers, never against them, only where a waitlist reaches twice the seats; every promoted or EventLinqs night is labelled"
+    }
+  ],
+  "never": [
+    "copy formats Fever already owns (candlelit classical)",
+    "hide ownership of any channel or promoted listing",
+    "produce a night that clashes with a listed organiser's event in the same city and week"
+  ],
+  "changes_from_v2": "v3 adds end_goal, winning_model, global_stages, never; mission widened to global. Targets, quotas, cities, gates, rules, close_the_ticketing_gap and benchmark_standard are unchanged from v2. The Featured and directory layers stay unapproved until the joint images session."
+}

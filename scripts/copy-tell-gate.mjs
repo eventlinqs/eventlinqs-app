@@ -179,6 +179,22 @@ const STRING_SCOPED = [
   { name: 'competitor-name', source: LEXICON.hard.find(h => h.name === 'competitor-name').source },
 ].map(t => ({ name: t.name, re: new RegExp(t.source, 'iu') }))
 
+/** A hyphen standing between words with a space each side: prose punctuation, never a compound. */
+const SPACED_HYPHEN_RE = /[A-Za-z0-9.,)] - [A-Za-z0-9(]/
+
+/** The copy a visitor reads on one line: JSX text, aria-label values, and a title or description given as a literal. */
+function visibleCopy(line) {
+  const out = []
+  // A `>` that closes an arrow (`=>`) or a pointer (`->`) is code, not a tag: `() => page(from, from + pageSize - 1) as
+  // PromiseLike<...>` read as JSX text once (read-every-row.ts:105, 2 November 2026). JSX text holds no `=` or `;`.
+  // And a comparison is code: a tag's '>' follows a name, a quote, a brace or a slash (never a space), and the '<' that
+  // ends JSX text starts a tag ('</' or a letter), never '< margin' (the engine train's gate, 2 November 06:38).
+  for (const m of line.matchAll(/(?<=[A-Za-z0-9"'}/])(?<![=-])>([^<>{}=;]*[A-Za-z]{3,}[^<>{}=;]*)<(?=[/A-Za-z])/g)) out.push(m[1])
+  for (const m of line.matchAll(/aria-label=["']([^"']+)["']/g)) out.push(m[1])
+  for (const m of line.matchAll(/\b(?:title|description|subtitle)\s*[:=]\s*["'`]([^"'`]+)["'`]/g)) out.push(m[1])
+  return out
+}
+
 /** Pull quoted strings and JSX text out of one line of source. */
 function copyChunks(line) {
   const chunks = []
@@ -367,6 +383,12 @@ for (const file of walkAll(scanRoots())) {
     for (const tell of STRING_SCOPED) {
       if (allowed.includes(tell.name)) continue
       if (chunks.some(c => tell.re.test(c))) violations.push(`${where} ${tell.name}`)
+    }
+    // NO SPACED HYPHEN IN WHAT A VISITOR READS (Lawal's rule 6 of 31 October 2026: no em dash, no en dash, no spaced
+    // hyphen). Judged on visible copy only: JSX text, aria labels and a page's title or description, where ' - ' is
+    // prose punctuation; code inside a string (a className, a calc, a log line) is left to the people who read it.
+    if (!allowed.includes('spaced-hyphen') && visibleCopy(line).some(c => SPACED_HYPHEN_RE.test(c))) {
+      violations.push(`${where} spaced-hyphen`)
     }
     // LOCK 4: no fee figure as a literal in copy. docs/PRICING.md is the only
     // place a fee number is allowed to exist, and it is not scanned here.

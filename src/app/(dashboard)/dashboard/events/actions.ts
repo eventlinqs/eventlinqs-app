@@ -42,6 +42,8 @@ import { afterResponse } from '@/lib/after-response'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
 import { normaliseTags } from '@/lib/events/normalise-tags'
 import { readEventTicketTiers } from '@/lib/organisers/event-tier-config'
+import { planSeriesTickets, seriesTierInputs, type SkipReason, type TemplateTier } from '@/lib/events/series-tickets'
+import { planRepeatNights } from '@/lib/events/repeat-nights'
 
 /** What the publish gate judges a ticket type on. */
 type SellableTierRow = { price: number; name: string; total_capacity: number; is_active: boolean }
@@ -599,6 +601,9 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
     })
   }
 
+  const repeat = await makeRepeatNights(supabase, user.id, input.eventId)
+  if (repeat.problem) return { error: `Your event is live${repeat.made ? ` with ${repeat.made} of its repeat nights` : ''}. ${repeat.problem}` }
+
   return {}
 }
 
@@ -1013,6 +1018,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     })
   }
 
+  const repeat = await makeRepeatNights(supabase, user.id, input.eventId)
+  if (repeat.problem) return { error: `Your event is saved and live${repeat.made ? ` with ${repeat.made} of its repeat nights` : ''}. ${repeat.problem}` }
+
   redirect('/dashboard/events?saved=1')
 }
 
@@ -1083,6 +1091,9 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
   // carried this since UX3; the organiser had no counterpart until now. `void`
   // because publishing must never fail on a mail server.
   void notifyOrganiserEventPublished({ eventId })
+
+  const repeat = await makeRepeatNights(supabase, user.id, eventId)
+  if (repeat.problem) return { error: `Your event is live${repeat.made ? ` with ${repeat.made} of its repeat nights` : ''}. ${repeat.problem}` }
 
   return {}
 }
@@ -1238,6 +1249,111 @@ async function refuseUnlessPublishable(
   return { refusal: null, tiers }
 }
 
+/**
+ * A REPEAT MAKES ITS NIGHTS (V3 item 6). When a ticketed night the organiser marked as repeating goes live, its next
+ * dates (planRepeatNights, src/lib/events/repeat-nights.ts) are made as events of their own: the same details, the same
+ * ticket types through save_event_ticket_tiers with the sale window moved with the night, and each through the same
+ * publish refusal as the night itself. A date that already has its night is never made twice, so publishing again
+ * makes only what is missing. Inserts run under the organiser's own session, as duplicateEvent's do.
+ *
+ * Never fatal to the night itself, which is already saved and live: the answer names how many nights were made and
+ * the first reason one was not, so the organiser is told rather than left to count.
+ */
+async function makeRepeatNights(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  templateId: string,
+): Promise<{ made: number; problem: string | null }> {
+  const { data: template } = await supabase
+    .from('events')
+    .select('*')
+    .eq('id', templateId)
+    .maybeSingle()
+  if (!template || !template.is_recurring || template.status !== 'published') return { made: 0, problem: null }
+  if (template.parent_event_id) return { made: 0, problem: null }
+  if (template.entry_mode === 'walk_in') return { made: 0, problem: 'A free walk-in night does not repeat this way yet, so its other dates were not made.' }
+  if (template.has_reserved_seating) return { made: 0, problem: 'A night with reserved seating does not repeat this way yet: make each date as its own event.' }
+
+  const admin = createAdminClient()
+  const { data: children, error: childrenError } = await admin
+    .from('events')
+    .select('occurrence_date')
+    .eq('parent_event_id', templateId)
+    .order('occurrence_date', { ascending: true })
+    .limit(100)
+  if (childrenError || !children) return { made: 0, problem: 'The repeat nights could not be read, so none were made. Publish again in a moment.' }
+
+  const plan = planRepeatNights(template, children.map((c) => c.occurrence_date).filter((d): d is string => Boolean(d)), new Date())
+  if ('problem' in plan) return { made: 0, problem: plan.problem }
+  if (plan.nights.length === 0) return { made: 0, problem: null }
+
+  let tiers: TemplateTier[]
+  try {
+    tiers = await readEventTicketTiers<TemplateTier>(
+      admin,
+      templateId,
+      'name, description, tier_type, access_mode, price, currency, total_capacity, sale_start, sale_end, min_per_order, max_per_order, sort_order, is_active',
+      { activeOnly: true },
+    )
+  } catch {
+    return { made: 0, problem: 'The ticket types could not be read, so no repeat nights were made. Publish again in a moment.' }
+  }
+  const streamLink = await readStreamLink(supabase, templateId)
+  const { id: _id, created_at: _ca, updated_at: _ua, published_at: _pa, slug: _slug, ...rest } = template
+
+  let made = 0
+  for (const night of plan.nights) {
+    const { data: child, error: insertError } = await supabase
+      .from('events')
+      .insert({
+        ...rest,
+        slug: generateSlug(template.title),
+        start_date: night.startIso,
+        end_date: night.endIso,
+        occurrence_date: night.date,
+        parent_event_id: templateId,
+        is_recurring: false,
+        recurrence_rule: null,
+        status: 'draft',
+        published_at: null,
+        scheduled_publish_at: null,
+        created_by: userId,
+      })
+      .select('*')
+      .single()
+    if (insertError || !child) return { made, problem: `The night of ${night.date} could not be made, so it and the dates after it were not.` }
+
+    // A half-made night is taken away again, by the one delete path, which keeps the photos the night shares.
+    const takeBack = async (problem: string) => {
+      await deleteEventEverywhere({ eventId: child.id, actor: { id: userId, email: null, role: 'organiser' }, deleteWith: supabase })
+      return { made, problem }
+    }
+    if (streamLink) {
+      const copied = await writeStreamLink(supabase, child.id, streamLink)
+      if (!copied.ok) return takeBack(`The night of ${night.date} could not take the stream link, so it was not made.`)
+    }
+    if (tiers.length > 0) {
+      const { data: verdictRaw, error: rpcError } = await admin.rpc('save_event_ticket_tiers', {
+        p_event_id: child.id,
+        p_tiers: tierSavePayload(seriesTierInputs(tiers, template.start_date, night.startIso)),
+      })
+      const verdict = rpcError ? null : readTierSaveVerdict(verdictRaw)
+      if (!verdict || !verdict.ok) return takeBack(`The night of ${night.date} could not take the ticket types, so it was not made.`)
+    }
+
+    const { refusal } = await refuseUnlessPublishable(supabase, userId, child.id, child)
+    if (refusal) return takeBack(`The night of ${night.date} was not made: ${refusal.error}`)
+    const { error: publishError } = await supabase
+      .from('events')
+      .update({ status: 'published', published_at: new Date().toISOString() })
+      .eq('id', child.id)
+    if (publishError) return takeBack(`The night of ${night.date} could not go live, so it was not made.`)
+    made++
+    await revalidateEventSurfacesById(admin, child.id)
+  }
+  return { made, problem: null }
+}
+
 export async function pauseEvent(eventId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -1357,6 +1473,94 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
   // organiser's own lists must show it at once.
   await revalidateEventSurfacesById(supabase, newEvent.id)
   return { newEventId: newEvent.id }
+}
+
+/**
+ * EVERY NIGHT OF A SERIES TICKETED IN ONE STEP (V3 item 6). The organiser sets the tickets on one night of a weekly
+ * series and puts the same ticket types on every other upcoming night of it, in one press rather than one form per
+ * week. planSeriesTickets (src/lib/events/series-tickets.ts) decides which nights take them; each write goes through
+ * save_event_ticket_tiers, the database function the organiser's own Save uses, and into the same ledger rows.
+ *
+ * That function RECONCILES a night to the list it is given, so it is only ever handed a night with no ticket types at
+ * all, checked again just before the write: a night that gained its own types in the meantime keeps them.
+ */
+export async function ticketEverySeriesNight(
+  eventId: string,
+): Promise<{ error?: string; ticketed?: number; skipped?: { id: string; reason: SkipReason }[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: template } = await supabase
+    .from('events')
+    .select('id, organisation_id, listing_series_id, start_date')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (!template) return { error: 'Event not found' }
+
+  const authority = await assertCallerMayActForOrganisation(user.id, template.organisation_id, 'owner_or_manager')
+  if (!authority.ok) return { error: 'Event not found' }
+  if (!template.listing_series_id) return { error: 'This night is not part of a weekly series.' }
+
+  const admin = createAdminClient()
+  const tiers = await readEventTicketTiers<TemplateTier>(
+    admin,
+    eventId,
+    'name, description, tier_type, access_mode, price, currency, total_capacity, sale_start, sale_end, min_per_order, max_per_order, sort_order, is_active',
+    { activeOnly: true },
+  )
+  if (tiers.length === 0) return { error: 'Add tickets to this night first, then copy them to the rest of the series.' }
+
+  const { data: nights, error: nightsError } = await admin
+    .from('events')
+    .select('id, start_date, end_date, entry_mode, external_ticket_url, ticket_tiers(id)')
+    .eq('listing_series_id', template.listing_series_id)
+    .eq('organisation_id', template.organisation_id)
+    .in('status', ['draft', 'scheduled', 'published', 'paused', 'postponed'])
+    .order('start_date', { ascending: true })
+    .limit(200)
+  if (nightsError || !nights) return { error: 'The nights of this series could not be read. Nothing was changed.' }
+
+  const plan = planSeriesTickets({
+    templateId: eventId,
+    now: new Date(),
+    nights: nights.map((n) => ({ ...n, tierCount: (n.ticket_tiers ?? []).length })),
+  })
+
+  const skipped = [...plan.skipped]
+  let ticketed = 0
+  for (const id of plan.ticket) {
+    const night = nights.find((n) => n.id === id)!
+    const before = await tiersForLedger(admin, id, 'the inventory before a series copy')
+    if (!before || before.length > 0) {
+      skipped.push({ id, reason: 'already has tickets' })
+      continue
+    }
+    const { data: verdictRaw, error: rpcError } = await admin.rpc('save_event_ticket_tiers', {
+      p_event_id: id,
+      p_tiers: tierSavePayload(seriesTierInputs(tiers, template.start_date, night.start_date)),
+    })
+    const verdict = rpcError ? null : readTierSaveVerdict(verdictRaw)
+    if (!verdict || !verdict.ok) {
+      return {
+        error: `${ticketed} of ${plan.ticket.length} nights took the tickets before one could not be saved. Nothing else was changed.`,
+        ticketed,
+        skipped,
+      }
+    }
+    ticketed++
+
+    const after = await tiersForLedger(admin, id, 'the inventory after a series copy')
+    const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', id).maybeSingle()
+    if (slotEvent && after) {
+      afterResponse('the inventory rows for a series copy', () =>
+        recordTierChanges({ event: slotEvent as unknown as EventForLedger, before, after }),
+      )
+    }
+    await revalidateEventSurfacesById(admin, id)
+  }
+
+  return { ticketed, skipped }
 }
 
 /**

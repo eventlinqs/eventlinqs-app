@@ -270,6 +270,8 @@
  *                              is_test, so a QA press is counted nowhere (R3)
  *   paid-out-is-one-rule       paid out is decided by paidOutCents alone, so a voided or
  *                              pulled back payout never reads as money paid (V3 item 8)
+ *   growth-reads-skip-the-platform  every read of the organisers leaves the platform's
+ *                              own listings organisation out (2 November 2026)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
@@ -676,6 +678,10 @@
  *   empty-collections-are-honest  an empty discovery collection says so plainly, with no
  *                              promotional card and nothing pointing at it (31 October 2026,
  *                              Lawal's directive section 11)
+ *   growth-plan-is-versioned  growth/plan.json holds what the desk reads and equals its newest
+ *                              dated version; no recorded version is changed or gone (Law 8)
+ *   every-card-list-collapses  every list of event cards shows a listing once, its later
+ *                              nights on its one card (1 November 2026, P1-a)
  *   no-library-photo-on-a-night  no event surface picks a library or category photograph
  *                              for a night, every cover rule refuses one, the home hero
  *                              leads only with a night with its own photograph, and the
@@ -2066,6 +2072,12 @@ const GUARDS = [
   // link to real events, never the large 'could be yours' card, and no chip, sticky bar or hero button points at it.
   // Red on main on eight templates; drilled red on two clauses.
   'scripts/guards/empty-collections-are-honest.mjs',
+  // 1 November 2026, Law 8 (Lawal 03:27) and the CONTROLLER's 03:32 G2: the growth plan is valid and keeps every dated
+  // version; drilled red on a version changed after it was kept and on a plan edited in place.
+  'scripts/guards/growth-plan-is-versioned.mjs',
+  // 1 November 2026, the CONTROLLER's 03:21 P1-a: WINDOW 6 counted 288 extra cards on 35 live pages; every file
+  // drawing EventCard collapses a listing to one card. Drilled red on the venue page's upcoming list.
+  'scripts/guards/every-card-list-collapses.mjs',
   // 30 October 2026, Lawal 16:05 (L14): the First Nations and Indian tiles drew no photograph on production; read from
   // the served HTML, 90 of the 105 sub-community tiles were the navy gradient. Red on main with 91 clauses.
   'scripts/guards/sub-community-tiles-stored.mjs',
@@ -3372,6 +3384,10 @@ const GUARDS = [
   // reason 'payout' alone and showed MKLStudios' 448 voided claims as about A$22,019 paid out (1 November 2026). Paid
   // out is one rule, src/lib/payouts/paid-out.ts; this fails the build where src/ judges a payout row by hand.
   'scripts/guards/paid-out-is-one-rule.mjs',
+  // Every organisation has its organisers row since 20261101132001, the platform's own 'EventLinqs listings' account
+  // too; five readers counted that table as it stands (WINDOW 1, 2 November 2026, 12:17). Who is a real organiser is
+  // one rule, src/lib/growth/platform-organiser.ts; this fails the build where src/ selects the organisers without it.
+  'scripts/guards/growth-reads-skip-the-platform.mjs',
   // The cost guard for billed Places calls (the project manager's note of 30 October 2026, 4.52 pm, on Lawal's order:
   // OFF until he says, he wants the cost first): every Places web service address in src asks google_spend_reserve first, through
   // withGoogleSpend, and the migration starts with Google OFF and serialises every reservation. Drilled red two ways.

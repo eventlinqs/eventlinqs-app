@@ -4,6 +4,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 interface Props {
   communitySlug: string
@@ -24,13 +25,16 @@ export function AllEventsGridByCommunity({
   communityName,
   events,
 }: Props) {
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const cards = collapseListings(events)
   return (
     <ContentSection
       surface="base"
       width="wide"
       topBorder
       reveal
-      intrinsicSize={eventGridIntrinsicSize(events.length)}
+      intrinsicSize={eventGridIntrinsicSize(cards.length)}
     >
       {events.length > 0 ? (
         <>
@@ -56,7 +60,7 @@ export function AllEventsGridByCommunity({
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.map(event => (
+            {cards.map(event => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>

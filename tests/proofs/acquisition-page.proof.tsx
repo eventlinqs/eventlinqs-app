@@ -43,12 +43,14 @@ it('renders every TEST organiser with its state, its score parts and its cohort 
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }))
   writeFileSync('C:/dev/EVIDENCE/W6-30OCT/admin-acquisition-TEST.html', html)
 
-  const [{ organisers }] = await query('select count(*)::int as organisers from public.organisers')
+  // The platform's own listings organisation is not an organiser (src/lib/growth/platform-organiser.ts).
+  const REAL = "not exists (select 1 from public.organisations x where x.slug = 'eventlinqs-listings' and x.id = organisers.organisation_id)"
+  const [{ organisers }] = await query(`select count(*)::int as organisers from public.organisers where ${REAL}`)
   const rowsRendered = (html.match(/<tr class="border-t/g) ?? []).length
   expect(rowsRendered).toBe(organisers)
   expect(html).toContain('Organiser pipeline')
   expect(html).not.toContain('Not yet read')
-  const states = await query('select acquisition_state as s, count(*)::int as n from public.organisers group by 1')
+  const states = await query(`select acquisition_state as s, count(*)::int as n from public.organisers where ${REAL} group by 1`)
   for (const { s, n } of states as unknown as { s: string; n: number }[]) {
     const words = (await import('@/lib/outreach/acquisition-states')).STATE_WORDS[s as 'discovered']
     expect(html).toContain(`<span class="font-semibold text-white">${n}</span> ${words.replace(/&/g, '&amp;')}`)

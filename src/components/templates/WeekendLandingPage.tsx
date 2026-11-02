@@ -10,6 +10,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { WeekendDay } from '@/lib/events/weekend-days'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 export interface WeekendCityLink {
   slug: string
@@ -218,7 +219,10 @@ export function WeekendLandingPage({
  */
 function WeekendDaySection({ day, first }: { day: WeekendDay<EventCardData>; first: boolean }) {
   const { events } = day
-  const plural = events.length === 1 ? 'event' : 'events'
+  // One listing, one card, and the SAME collapsed array feeds the reserved height and the cards
+  // (event-grid-reserves-its-own-height, clause B; close-out C8B.3).
+  const cards = collapseListings(events)
+  const plural = cards.length === 1 ? 'event' : 'events'
 
   return (
     <ContentSection
@@ -226,7 +230,7 @@ function WeekendDaySection({ day, first }: { day: WeekendDay<EventCardData>; fir
       width="wide"
       topBorder
       reveal
-      intrinsicSize={eventGridIntrinsicSize(events.length)}
+      intrinsicSize={eventGridIntrinsicSize(cards.length)}
     >
       {/*
        * `mb-6`, an eyebrow and a heading, and NOTHING ELSE IN THIS BLOCK.
@@ -242,7 +246,7 @@ function WeekendDaySection({ day, first }: { day: WeekendDay<EventCardData>; fir
        */}
       <div className="mb-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-          {events.length} {plural} {first ? 'on sale' : 'also on'}
+          {cards.length} {plural} {first ? 'on sale' : 'also on'}
         </p>
         <h2
           id={`day-${day.key}`}
@@ -252,7 +256,7 @@ function WeekendDaySection({ day, first }: { day: WeekendDay<EventCardData>; fir
         </h2>
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {events.map(event => (
+        {cards.map(event => (
           <EventCard key={event.id} event={event} />
         ))}
       </div>

@@ -189,3 +189,51 @@ describe('a run with a deadline', () => {
     expect(rows.get('s-1|2026-11-04')?.status).toBe('published')
   })
 })
+
+/**
+ * A CONVERSION DOES NOT DEPEND ON RUN ORDER (2 November 2026, production, quoted from the 10:10 run: '774 nights:
+ * 42 made ... 184 deleted ... 43 failed', each failure 'duplicate key value violates unique constraint
+ * "events_organisation_id_slug_key"'). A weekly series was paused and its posted dates held as one-off series. The
+ * run took series in id order, so a one-off that sorted BEFORE its weekly sibling tried to write its night while the
+ * sibling's retiring night still held the address; the sibling's nights were deleted later in the same run, and the
+ * real nights stayed missing for an hour. Every night a run will retire is now retired before any night is written.
+ */
+describe('a conversion from a weekly series to dated nights', () => {
+  /** The store refuses a night whose address (name and date, as the slug) another series' row still holds. */
+  function addressStore(nights: ListingNight[]) {
+    const base = memoryStore(nights)
+    const store: OccurrenceStore = {
+      ...base.store,
+      async create(input) {
+        const taken = [...base.rows.values()].some(
+          (r) => r.seriesId !== input.night.id && r.occurrenceDate === input.date && r.title === input.fields.title,
+        )
+        if (taken) {
+          base.calls.push(`create ${input.date} refused`)
+          return { ok: false, reason: 'duplicate key value violates unique constraint "events_organisation_id_slug_key"' }
+        }
+        return base.store.create(input)
+      },
+    }
+    return { ...base, store }
+  }
+
+  it('makes every dated night in the same run that retires the weekly nights, whichever series comes first', async () => {
+    const weekly = night({ id: 's-weekly' })
+    const { store, rows, calls } = addressStore([weekly])
+    await runOccurrences(store, NOW)
+    expect(rows.get('s-weekly|2026-11-04')).toBeDefined()
+
+    // The weekly is paused and 4 November is held as a one-off whose id sorts BEFORE the weekly's.
+    const dated = night({ id: 'a-once', rule: 'once', anchorDate: '2026-11-04' })
+    const converted = { ...store, nights: async () => [dated, { ...weekly, status: 'paused' as const }] }
+    calls.length = 0
+    const run = await runOccurrences(converted, NOW)
+
+    expect(run.failed).toEqual([])
+    expect(run).toMatchObject({ created: 1, deleted: 8 })
+    expect(rows.get('a-once|2026-11-04')?.status).toBe('published')
+    expect([...rows.values()].filter((r) => r.seriesId === 's-weekly')).toEqual([])
+    expect(calls.indexOf('create 2026-11-04')).toBeGreaterThan(calls.indexOf('delete e-2026-11-04'))
+  })
+})

@@ -43,11 +43,11 @@ export function CityOrganiserCtaPanel({ cityName, citySlug }: Props) {
             <ul className="mt-6 space-y-3 text-sm text-[var(--text-secondary)] sm:text-base">
               <li className="flex items-start gap-3">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]" aria-hidden />
-                <span>Transparent pricing - no hidden booking fees, no last-minute surprises.</span>
+                <span>Transparent pricing: no hidden booking fees, no last-minute surprises.</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]" aria-hidden />
-                <span>WhatsApp-first share flows - your audience already lives there.</span>
+                <span>WhatsApp-first share flows: your audience already lives there.</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]" aria-hidden />

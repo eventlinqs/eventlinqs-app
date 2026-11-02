@@ -42,6 +42,10 @@
       "schedule": "17 * * * *"
     },
     {
+      "path": "/api/cron/growth-scorecard",
+      "schedule": "15 0 * * *"
+    },
+    {
       "path": "/api/cron/event-disbursement",
       "schedule": "0 * * * *"
     },
@@ -60,6 +64,10 @@
     {
       "path": "/api/cron/health-sentinel",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/visitor-sentinel",
+      "schedule": "40 */6 * * *"
     },
     {
       "path": "/api/cron/health-heartbeat",
@@ -123,7 +131,7 @@
     },
     {
       "path": "/api/cron/collection-run",
-      "schedule": "0 19 * * *"
+      "schedule": "25 */6 * * *"
     },
     {
       "path": "/api/cron/outreach-run",

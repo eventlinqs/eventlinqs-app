@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { broadcastCta } from '@/lib/broadcast/price-line'
 import { statedCityOf } from './cohort-pick'
@@ -53,8 +54,12 @@ export async function readOrganiserScores(db: Admin, now: Date = new Date()): Pr
   const fromIso = now.toISOString()
   const untilIso = new Date(now.getTime() + HORIZON_DAYS * DAY_MS).toISOString()
 
-  const organisers = await readEveryRow<{ id: string; name: string; organisation_id: string | null; notes: string | null }>('the organisers the score reads', (a, b) =>
-    db.from('organisers').select('id, name, organisation_id, notes').order('id', { ascending: true }).range(a, b),
+  // The platform's own listings organisation is never scored as a host (src/lib/growth/platform-organiser.ts).
+  const organisers = withoutPlatformOrganisers(
+    await readEveryRow<{ id: string; name: string; organisation_id: string | null; notes: string | null }>('the organisers the score reads', (a, b) =>
+      db.from('organisers').select('id, name, organisation_id, notes').order('id', { ascending: true }).range(a, b),
+    ),
+    await readPlatformOrganiserIds(db),
   )
   const links = await readEveryRow<{ venue_id: string; organiser_id: string }>('their venues', (a, b) =>
     db.from('organiser_venues').select('venue_id, organiser_id').order('venue_id', { ascending: true }).range(a, b),

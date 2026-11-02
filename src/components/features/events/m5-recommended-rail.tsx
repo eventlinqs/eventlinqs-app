@@ -2,6 +2,7 @@ import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
+import { collapseListings } from '@/lib/events/one-card-per-event'
 
 type Props = {
   events: PublicEventRow[]
@@ -94,7 +95,7 @@ export async function RecommendedRail({
            * without per-breakpoint card widths.
            */
         >
-          {cards.map((c, i) => (
+          {collapseListings(cards).map((c, i) => (
             <div
               key={c.id}
               className="w-64 shrink-0 snap-start sm:w-72"

@@ -130,7 +130,7 @@ export async function deleteEventEverywhere(input: {
     },
     metadata: {
       moneyRecords: eligibility.counts,
-      storage: { prefixes: storage.prefixes, removed: storage.removed, remaining: storage.remaining },
+      storage: { prefixes: storage.prefixes, removed: storage.removed, kept: storage.kept, remaining: storage.remaining },
     },
   })
 

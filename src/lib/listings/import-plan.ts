@@ -216,9 +216,20 @@ export function planImport(
     if (v.slug) takenSlugs.add(v.slug)
     takenSlugs.add(venueSlugify(v.name))
   }
-  const seriesByKey = new Map(
-    state.series.map((s) => [`${s.venueId}|${s.name}|${s.rule}|${s.anchorDate}`, s]),
-  )
+  /* The nights held for each show on each day at each host. A matinee and an evening of one show on one day are two
+     nights (directive 6, 1 November 2026; event_series_once_per_session), so a night is matched by its start; but a
+     LONE night whose start moved (7pm to 7:30pm) is that night, changed, never a second listing beside it: only when
+     the file itself carries several starts for that day are they sessions (WINDOW 3, 2 November, after 787d59b7). */
+  const seriesByDay = new Map<string, (typeof state.series)[number][]>()
+  for (const s of state.series) {
+    const k = `${s.venueId}|${s.name}|${s.rule}|${s.anchorDate}`
+    seriesByDay.set(k, [...(seriesByDay.get(k) ?? []), s])
+  }
+  const fileStartsPerDay = new Map<string, number>()
+  for (const { row } of rows) {
+    const k = `${hostKey(row.host, row.address)}|${row.name}|${row.rule}|${row.date}`
+    fileStartsPerDay.set(k, (fileStartsPerDay.get(k) ?? 0) + 1)
+  }
 
   const planned = new Map<string, PlannedVenue>()
   const plannedSeries = new Map<string, number>()
@@ -265,13 +276,16 @@ export function planImport(
       donation_optional: row.donationOptional,
       booking_links: bookingLinksJson(row.bookingLinks),
     }
-    const seriesKey = `${venueRef}|${row.name}|${row.rule}|${row.date}`
+    const seriesKey = `${venueRef}|${row.name}|${row.rule}|${row.date}|${clock5(row.startsAt)}`
     const repeat = plannedSeries.get(seriesKey)
     if (repeat !== undefined) {
       refuse(`repeats line ${repeat}: the same night of the same host`)
       continue
     }
-    const stored = existing ? seriesByKey.get(seriesKey) : undefined
+    const sameDay = existing ? seriesByDay.get(`${venueRef}|${row.name}|${row.rule}|${row.date}`) ?? [] : []
+    const stored =
+      sameDay.find((s) => clock5(s.startsAt) === clock5(row.startsAt)) ??
+      (sameDay.length === 1 && fileStartsPerDay.get(`${key}|${row.name}|${row.rule}|${row.date}`) === 1 ? sameDay[0] : undefined)
     let series: SeriesStep
     let outcome: CheckOutcome = 'confirmed'
     const changed: string[] = []

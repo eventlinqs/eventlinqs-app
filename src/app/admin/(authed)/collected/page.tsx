@@ -20,6 +20,7 @@ import { REASON_LABELS, type CandidateReason } from '@/lib/listings/judge'
 import { acceptCandidateAction, addPartnerFeedAction, refuseCandidateAction } from './actions'
 import { LISTINGS_ORG_SLUG } from '@/lib/listings/collect-store'
 import { REFUSAL_REASONS } from './reasons'
+import { venueMatchFor } from '@/lib/listings/accept-choice'
 import {
   ADMIN_CELL,
   ADMIN_CELL_ACTIONS,
@@ -75,11 +76,13 @@ const REGISTER_COLUMNS =
   'id, name, kind, city_slug, page_url, collection, changes, last_checked_at, last_outcome, last_success_at, source_type, acquisition_order, verification, verified_on, licence_owner, contact, permits_facts, permits_descriptions, permits_images, permits_links, may_scrape, may_scrape_quote, may_scrape_read_on, may_use_dataset, may_use_dataset_quote, may_use_dataset_read_on, may_subscribe, may_subscribe_quote, may_subscribe_read_on, may_redistribute_facts, may_redistribute_facts_quote, may_redistribute_facts_read_on, may_reuse_media, may_reuse_media_quote, may_reuse_media_read_on' as const
 
 const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
-  accepted: { tone: 'ok', text: 'Accepted. A new listing goes out with the next import; added links are on the event now; a changed time or venue is yours to make on the event.' },
+  accepted: { tone: 'ok', text: 'Accepted. Added links are on the event now; a changed time or venue is yours to make on the event.' },
+  published: { tone: 'ok', text: 'Published. The night is listed at the venue you chose and appears with the next listings run.' },
+  'needs-venue-and-category': { tone: 'warn', text: 'A new night needs its venue and its category. Nothing was published.' },
   refused: { tone: 'ok', text: 'Refused, with its reason kept.' },
   gone: { tone: 'warn', text: 'That one was already reviewed. The list below is current.' },
   invalid: { tone: 'warn', text: 'That review was not valid. Refresh and try again.' },
-  error: { tone: 'warn', text: 'The links could not be written. Nothing changed; try again.' },
+  error: { tone: 'warn', text: 'That could not be written. Nothing changed.' },
   partner_added: { tone: 'ok', text: "The partner's feed is in the register. The next daily run reads it; its nights at their venue publish by the partner rule." },
   partner_invalid: { tone: 'warn', text: 'That partner feed was not complete. Nothing was written.' },
   partner_refused: { tone: 'warn', text: 'The register refused that feed (it may be there already). Nothing was written.' },
@@ -145,7 +148,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
     readOrThrow('admin-collected', () =>
       db
         .from('listing_candidates')
-        .select('id, kind, event_id, change, title, starts_at, venue_name, venue_address, page_url, links, confidence, reasons, source:listing_sources(name), event:events(title, slug)')
+        .select('id, kind, event_id, change, title, starts_at, venue_name, venue_address, page_url, links, confidence, reasons, source:listing_sources(name, city_slug), event:events(title, slug)')
         .eq('status', 'waiting')
         .gte('starts_at', bounds.publish.toISOString())
         .order('starts_at', { ascending: true })
@@ -161,7 +164,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
       db.from('organisations').select('id, name').neq('slug', LISTINGS_ORG_SLUG).order('name').limit(PICK_LIMIT),
     ),
     readOrThrow('admin-collected-partner-venues', () =>
-      db.from('venues').select('id, name, city').order('name').limit(PICK_LIMIT),
+      db.from('venues').select('id, name, city, city_slug, address').is('removed_at', null).order('name').limit(PICK_LIMIT),
     ),
     readOrThrow('admin-collected-categories', () => db.from('event_categories').select('id, name').order('name').limit(PICK_LIMIT)),
   ])
@@ -237,7 +240,10 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
             <tbody className={ADMIN_TBODY}>
               {(waiting ?? []).map((c) => {
                 const links = (c.links ?? []) as Link[]
-                const source = (Array.isArray(c.source) ? c.source[0] : c.source) as { name: string } | null
+                const source = (Array.isArray(c.source) ? c.source[0] : c.source) as { name: string; city_slug: string | null } | null
+                const held = (partnerVenues ?? []).map((v) => ({ id: v.id as string, name: v.name as string, address: (v.address as string | null) ?? null, citySlug: (v.city_slug as string | null) ?? null }))
+                const matched = c.kind === 'new' ? venueMatchFor({ venueName: c.venue_name as string, venueAddress: (c.venue_address as string | null) ?? null, citySlug: source?.city_slug ?? null }, held) : null
+                const cityVenues = held.filter((v) => !source?.city_slug || v.citySlug === source.city_slug)
                 const event = (Array.isArray(c.event) ? c.event[0] : c.event) as { title: string; slug: string } | null
                 const reasons = (c.reasons ?? []) as string[]
                 const horizon = horizonOf(new Date(c.starts_at as string), now)
@@ -302,13 +308,43 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                     </td>
                     <td className={ADMIN_CELL_ACTIONS}>
                       <div className="flex flex-col gap-2">
-                        <form action={acceptCandidateAction}>
+                        <form action={acceptCandidateAction} className="flex flex-col gap-2">
                           <input type="hidden" name="id" value={c.id} />
+                          {c.kind === 'new' && (
+                            <>
+                              <label className="text-xs text-white/60" htmlFor={`venue-${c.id}`}>
+                                Venue
+                              </label>
+                              <select id={`venue-${c.id}`} name="venue" required defaultValue={matched ?? ''} className="rounded-md border border-white/15 bg-transparent px-2 py-2 text-xs text-white">
+                                <option value="" disabled>
+                                  Choose the held venue
+                                </option>
+                                {cityVenues.map((v) => (
+                                  <option key={v.id} value={v.id}>
+                                    {v.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <label className="text-xs text-white/60" htmlFor={`category-${c.id}`}>
+                                Category
+                              </label>
+                              <select id={`category-${c.id}`} name="category" required defaultValue="" className="rounded-md border border-white/15 bg-transparent px-2 py-2 text-xs text-white">
+                                <option value="" disabled>
+                                  Choose the category
+                                </option>
+                                {(categories ?? []).map((k) => (
+                                  <option key={k.id as string} value={k.id as string}>
+                                    {k.name as string}
+                                  </option>
+                                ))}
+                              </select>
+                            </>
+                          )}
                           <button
                             type="submit"
                             className={`${ADMIN_ROW_CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300/60`}
                           >
-                            Accept
+                            {c.kind === 'new' ? 'Accept and publish' : 'Accept'}
                           </button>
                         </form>
                         <form action={refuseCandidateAction} className="flex flex-col gap-2">

@@ -10,7 +10,7 @@ import { contactAddress, contactMailto } from '@/lib/email/sender'
 export const metadata: Metadata = {
   title: 'Press | EventLinqs',
   description:
-    'Press resources, founder bio, brand assets, and media contact for EventLinqs - the place events get made, for every community.',
+    'Press resources, founder bio, brand assets, and media contact for EventLinqs, the place events get made, for every community.',
   alternates: { canonical: '/press' },
   openGraph: {
     title: 'Press | EventLinqs',
