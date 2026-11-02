@@ -1,7 +1,7 @@
 'use client'
 
 import Link, { useLinkStatus } from 'next/link'
-import { useState, type ReactNode } from 'react'
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
@@ -212,34 +212,32 @@ export function CityGuide({
       <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8 md:pt-6">
         {/* 1 CITY DISCOVERY: the city chosen first, switched in one tap; search in the city; the dates people plan in. */}
         <div className={SCROLL_ROW} role="group" aria-label="Choose a city">
-          <button type="button" aria-pressed={wholeState} onClick={() => setWholeState(!wholeState)} className={chip(wholeState)}>
+          <SnapChip on={wholeState} aria-pressed={wholeState} onSelect={() => setWholeState(!wholeState)}>
             {stateName}
-          </button>
+          </SnapChip>
           {quickCities.map((c) =>
             c.slug === city.slug ? (
               // The city you are in: a tap takes you to its events (Lawal 17:22: 'every click ... must work').
-              <button
+              <SnapChip
                 key={c.slug}
-                type="button"
+                on={!wholeState}
+                next
                 aria-pressed={!wholeState}
-                onClick={() => {
+                onSelect={() => {
                   setWholeState(false)
                   toList()
                 }}
-                className={chip(!wholeState)}
               >
                 {c.name}
-              </button>
+              </SnapChip>
             ) : (
-              <Link key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`}>
-                <TapAnswer label={c.name} />
-              </Link>
+              <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} />
             ),
           )}
-          <button type="button" onClick={() => setCities(true)} className={chip(false)} aria-haspopup="dialog">
+          <SnapChip on={false} next={false} onSelect={() => setCities(true)} aria-haspopup="dialog">
             <MapPin className="h-4 w-4" aria-hidden="true" />
             Change city
-          </button>
+          </SnapChip>
         </div>
 
         {/* SHORTER ON A PHONE (Lawal, 2 November 2026, 09:00, refinement 3): the whole-country search sits beside the box,
@@ -256,21 +254,21 @@ export function CityGuide({
               className="min-w-0 flex-1 bg-transparent font-display text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
           </label>
-          <Link
+          <SnapLink
             href={`/events${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`}
             aria-label="Search all of Australia"
             className="relative inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
-          >
-            <TapAnswer label="All of Australia" plain />
-          </Link>
+            label="All of Australia"
+            plain
+          />
         </div>
 
         <div className={`mt-3 ${SCROLL_ROW}`}>
         <div className="flex shrink-0 gap-2" role="group" aria-label="When">
           {WHEN.map((w) => (
-            <button key={w.key} type="button" aria-pressed={when === w.key} onClick={() => setWhen(when === w.key ? 'three' : w.key)} className={chip(when === w.key)}>
+            <SnapChip key={w.key} on={when === w.key} aria-pressed={when === w.key} onSelect={() => setWhen(when === w.key ? 'three' : w.key)}>
               {w.label}
-            </button>
+            </SnapChip>
           ))}
           {/* 'Choose dates' reads as a chip; the date field covers it and opens the browser's own calendar on a tap. */}
           <label className={`relative ${chip(when === 'date')}`}>
@@ -323,42 +321,6 @@ export function CityGuide({
         </div>
         </div>
 
-        {/* 2 EXPLORE BY INTEREST. */}
-        {tiles.length > 0 ? (
-          <section aria-label={`Explore ${placeName}`} className="mt-10">
-            <SectionHead eyebrow={`Explore ${placeName}`} title="Discover your kind of event" />
-            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {[...tiles, ['all', { label: 'All events', n: eventCount(here) }] as const].map(([slug, c]) => {
-                const Icon = slug === 'all' ? CalendarDays : iconFor(slug)
-                const on = slug !== 'all' && category === slug
-                return (
-                  <li key={slug}>
-                    <button
-                      type="button"
-                      aria-pressed={slug === 'all' ? undefined : on}
-                      onClick={() => {
-                        setCategory(on || slug === 'all' ? 'all' : slug)
-                        toList()
-                      }}
-                      className={`flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-center shadow-[var(--shadow-card)] transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
-                        on ? 'border-[var(--color-ink-900)] bg-[var(--color-ink-900)] text-white' : 'border-[var(--surface-2)] bg-white text-[var(--text-primary)] hover:border-[var(--color-ink-400)]'
-                      }`}
-                    >
-                      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full ${on ? 'bg-white/10' : 'bg-[var(--color-gold-100)]'}`}>
-                        <Icon className={`h-5 w-5 ${on ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}`} aria-hidden="true" />
-                      </span>
-                      <span className="font-display text-base font-bold leading-tight">{c.label}</span>
-                      <span className={`font-display text-xs font-semibold ${on ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
-                        {c.n} {c.n === 1 ? 'event' : 'events'}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ) : null}
-
         {/* ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00 to 17:10; ROUND3-DIRECTIVE-2NOV.md): the sections, chosen by
             stated rules in src/lib/events/guide-sections.ts, photo first then date, never paid; no listing twice on the
             page. When the visitor filters, the list below is the whole answer and the sections step aside. */}
@@ -410,6 +372,42 @@ export function CityGuide({
                   <Row e={e} cityName={name} />
                 </li>
               ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {/* EXPLORE BY INTEREST, after the sections: Big nights leads the page (the CONTROLLER 22:16 (1), the locked brief item 1). */}
+        {tiles.length > 0 ? (
+          <section aria-label={`Explore ${placeName}`} className="mt-10">
+            <SectionHead eyebrow={`Explore ${placeName}`} title="Discover your kind of event" />
+            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {[...tiles, ['all', { label: 'All events', n: eventCount(here) }] as const].map(([slug, c]) => {
+                const Icon = slug === 'all' ? CalendarDays : iconFor(slug)
+                const on = slug !== 'all' && category === slug
+                return (
+                  <li key={slug}>
+                    <button
+                      type="button"
+                      aria-pressed={slug === 'all' ? undefined : on}
+                      onClick={() => {
+                        setCategory(on || slug === 'all' ? 'all' : slug)
+                        toList()
+                      }}
+                      className={`flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-center shadow-[var(--shadow-card)] transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
+                        on ? 'border-[var(--color-ink-900)] bg-[var(--color-ink-900)] text-white' : 'border-[var(--surface-2)] bg-white text-[var(--text-primary)] hover:border-[var(--color-ink-400)]'
+                      }`}
+                    >
+                      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full ${on ? 'bg-white/10' : 'bg-[var(--color-gold-100)]'}`}>
+                        <Icon className={`h-5 w-5 ${on ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}`} aria-hidden="true" />
+                      </span>
+                      <span className="font-display text-base font-bold leading-tight">{c.label}</span>
+                      <span className={`font-display text-xs font-semibold ${on ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+                        {c.n} {c.n === 1 ? 'event' : 'events'}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         ) : null}
@@ -544,12 +542,12 @@ function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
  * arrive with nothing changing on screen, so a tap read as dead. Inside its Link, this draws the selected, busy state the
  * moment the navigation starts (Next's useLinkStatus, its documented answer for slow navigations) until the page lands.
  */
-function TapAnswer({ label, plain = false }: { label: string; plain?: boolean }) {
+function TapAnswer({ label, plain = false, going = false }: { label: string; plain?: boolean; going?: boolean }) {
   const { pending } = useLinkStatus()
   return (
     <>
       {label}
-      {pending ? (
+      {pending || going ? (
         <span
           className={`absolute inset-0 flex items-center justify-center gap-2 ${plain ? 'bg-[var(--color-canvas)] text-[var(--text-primary)]' : 'rounded-full bg-[var(--color-ink-900)] text-white'}`}
         >
@@ -559,6 +557,65 @@ function TapAnswer({ label, plain = false }: { label: string; plain?: boolean })
         </span>
       ) : null}
     </>
+  )
+}
+
+/**
+ * A CHIP THAT SNAPS ON TOUCH (Lawal 17:22: 'You need to snap every tab when you touch it'; the CONTROLLER 22:16 (2)).
+ * Measured on the round 3 preview, a chip's look changed only when the whole guide re-rendered. This chip keeps its own
+ * touch: on pointerdown it paints the state the tap will give (or a gold ring where the tap changes no state) in its own
+ * tiny render, before the page's work starts; the page's state then takes over. A swipe across the chip row cancels the
+ * pointer and the chip goes back.
+ */
+function SnapChip({
+  on,
+  next,
+  onSelect,
+  children,
+  ...rest
+}: { on: boolean; next?: boolean; onSelect: () => void; children: ReactNode } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'className' | 'type'>) {
+  const [heldFrom, setHeldFrom] = useState<boolean | null>(null)
+  const held = heldFrom !== null && heldFrom === on
+  const shown = held ? (next ?? !on) : on
+  return (
+    <button
+      type="button"
+      {...rest}
+      data-snap={held ? 'touched' : undefined}
+      onPointerDown={() => setHeldFrom(on)}
+      onPointerCancel={() => setHeldFrom(null)}
+      onClick={() => {
+        onSelect()
+        window.setTimeout(() => setHeldFrom(null), 400)
+      }}
+      className={`${chip(shown)} ${held ? 'ring-2 ring-[var(--color-gold-400)]' : ''}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** A link chip that turns selected and busy on pointerdown, before the navigation starts (then useLinkStatus holds it). */
+function SnapLink({
+  href,
+  className,
+  label,
+  plain = false,
+  ...rest
+}: { href: string; className: string; label: string; plain?: boolean; 'aria-label'?: string }) {
+  const [going, setGoing] = useState(false)
+  return (
+    <Link
+      href={href}
+      className={className}
+      {...rest}
+      data-snap={going ? 'touched' : undefined}
+      onPointerDown={() => setGoing(true)}
+      onPointerCancel={() => setGoing(false)}
+      onClick={() => setGoing(true)}
+    >
+      <TapAnswer label={label} plain={plain} going={going} />
+    </Link>
   )
 }
 
