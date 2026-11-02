@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
 vi.mock('next/navigation', () => ({
@@ -60,6 +60,10 @@ const lineEvents = () => {
 }
 
 describe('round 2, item 2: tiles, the directory and every filter count from one read', () => {
+  // Pressing a tile scrolls to the list (toList); jsdom draws no layout and has no scrollIntoView, so it is a no-op here.
+  beforeAll(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
   it('All events equals the unfiltered line, and a padded or recased title is still one event', () => {
     guide()
     const all = tileCounts().find((t) => t.label === 'All events')
