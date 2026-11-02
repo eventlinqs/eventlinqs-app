@@ -60,9 +60,11 @@ export async function EventsCount({
   subtitle?: string
 }) {
   const { total } = await resultPromise
+  // ROUND 3 (7), Lawal 2 November 2026: the total is NIGHTS (one row per date), so it says dates; calling dates events
+  // overstated the platform (WINDOW 6's old-routes.md: '383 events available' where Geelong holds 191 events).
   return (
     <>
-      {total} event{total === 1 ? '' : 's'} available
+      {total} upcoming {total === 1 ? 'date' : 'dates'}
       {subtitle ? ` · ${subtitle}` : ''}
     </>
   )

@@ -83,10 +83,10 @@ describe('round 2, item 2: tiles, the directory and every filter count from one 
 
   it("'+N more dates' counts the same event as the tiles: of three nights the first says two more, the second one more", () => {
     guide()
-    const list = screen.getByRole('region', { name: /All events in Geelong/ })
-    const more = within(list)
+    // Round 3 folds a listing to ONE entry (its first night, its later nights counted), wherever on the page it lands.
+    const more = screen
       .queryAllByText(/\+\d+ more dates?/)
       .map((n) => n.textContent?.match(/\+\d+ more dates?/)?.[0])
-    expect(more).toEqual(['+2 more dates', '+1 more date'])
+    expect(more).toEqual(['+2 more dates'])
   })
 })

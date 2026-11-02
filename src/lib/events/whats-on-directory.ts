@@ -29,6 +29,10 @@ export type DirectoryInput = {
   readonly entry_mode?: string | null
   readonly external_ticket_url?: string | null
   readonly ticket_tiers: readonly { readonly price: number; readonly currency: string }[] | null
+  /** The event's own one line, as its page shows it (our words from the facts, or the organiser's own). */
+  readonly summary?: string | null
+  /** When the listing was first published (Just announced: the last 14 days, any date). */
+  readonly created_at?: string | null
 }
 
 export type DirectoryRow = {
@@ -52,6 +56,10 @@ export type DirectoryRow = {
   readonly ts: number
   /** A small image only where an authorised one exists (a credited venue photo or a rights recorded cover). */
   readonly thumb: string | null
+  /** The event's own one line, where it says more than the row already does (rowTeaser); else null. */
+  readonly teaser?: string | null
+  /** When the listing was first published, as epoch ms, else null. */
+  readonly listedAt?: number | null
   /** The suburb, read from the venue's address ('..., Belmont VIC 3216' is Belmont), else the venue's city. */
   readonly suburb: string | null
   /** The venue's point where held, for the city guide's deliberate widening by distance. */
@@ -98,6 +106,25 @@ function timeLabel(at: Date, zone: string): string | null {
  * guards). The full address stays on the event page.
  */
 export const WALK_IN_LABEL = ROW_WALK_IN
+
+/**
+ * THE ROW'S TEASER (round 3 (4), Lawal 2 November 2026, 15:33: 'I shouldn't have to click on every event'). The event's
+ * own one line, shown on its row only where it says something the row does not: with the title, the venue (whole and
+ * each comma part) and the city taken out, five or more words must remain. So 'Live music at Costa Hall, Geelong Arts
+ * Centre.' (WINDOW 6's 15:37: 199 of 828 nights read '<kind> at <venue>') shows nothing until a real line is written.
+ */
+export function rowTeaser(summary: string | null, venue: string | null, city: string | null, title: string): string | null {
+  const line = (summary ?? '').replace(/\s+/g, ' ').trim()
+  if (!line) return null
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  const parts = [title, venue ?? '', ...(venue ?? '').split(','), city ?? '']
+    .map(norm)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+  let rest = ` ${norm(line)} `
+  for (const p of parts) rest = rest.split(` ${p} `).join(' ')
+  return rest.trim().split(' ').filter(Boolean).length >= 5 ? line : null
+}
 export const OUR_CHECKOUT_LABEL = 'Book on EventLinqs'
 /** Free tickets on our own checkout: registered with us, kept apart from a paid night's 'Book on EventLinqs' (round 2, item 6). */
 export const OUR_REGISTRATION_LABEL = ROW_REGISTER_ON_EVENTLINQS
@@ -195,6 +222,8 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
       dayLabel: dayLabel(at, zone),
       ts: at.getTime(),
       thumb: thumbs.get(e.id) ?? null,
+      teaser: rowTeaser(e.summary ?? null, e.venue_name, e.venue_city, e.title),
+      listedAt: e.created_at ? Date.parse(e.created_at) : null,
       lat: typeof e.venue_latitude === 'number' ? e.venue_latitude : null,
       lng: typeof e.venue_longitude === 'number' ? e.venue_longitude : null,
     }

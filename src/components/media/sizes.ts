@@ -247,6 +247,10 @@ export const MEDIA_SIZES = {
    *  640px-wide image for a 56px square: x11.4, the worst single ratio found. */
   listThumb: '56px',
 
+  /** The photograph on a city guide row (round 3, Lawal 2 November 2026 15:27): w-28 (112px) on a phone, md:w-40
+   *  (160px) from md, a 4:3 box, the photograph contained in it whole (law 15). */
+  rowThumb: '(min-width: 768px) 160px, 112px',
+
   /* THE FIVE AVATAR SLOTS ARE ALSO DECLARED IN `./avatar-sizes`, AS FINISHED
    * STRINGS IN BOTH PLACES, AND THAT DUPLICATION IS DELIBERATE.
    *
