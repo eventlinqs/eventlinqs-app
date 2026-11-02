@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { LISTINGS_ORGANISATION_SLUG } from '@/lib/listings/shown-organiser'
 
 /**
@@ -18,15 +18,16 @@ type Db = SupabaseClient<Database>
 
 /** The organisers rows of the platform's own listings organisation; empty where that organisation is not on this database. */
 export async function readPlatformOrganiserIds(db: Db): Promise<Set<string>> {
-  const orgs = await readOrThrow('the platform listings organisation', () =>
-    db.from('organisations').select('id').eq('slug', LISTINGS_ORGANISATION_SLUG),
+  // Neither link is declared unique, so both reads are paged in full rather than bounded by a guess.
+  const orgs = await readEveryRow<{ id: string }>('the platform listings organisation', (f, t) =>
+    db.from('organisations').select('id').eq('slug', LISTINGS_ORGANISATION_SLUG).order('id', { ascending: true }).range(f, t),
   )
-  const orgIds = (orgs ?? []).map((o) => o.id)
+  const orgIds = orgs.map((o) => o.id)
   if (orgIds.length === 0) return new Set()
-  const rows = await readOrThrow("the platform organisation's organisers row", () =>
-    db.from('organisers').select('id').in('organisation_id', orgIds),
+  const rows = await readEveryRow<{ id: string }>("the platform organisation's organisers rows", (f, t) =>
+    db.from('organisers').select('id').in('organisation_id', orgIds).order('id', { ascending: true }).range(f, t),
   )
-  return new Set((rows ?? []).map((r) => r.id))
+  return new Set(rows.map((r) => r.id))
 }
 
 /** The rows that are real organisers, in their order: every row whose organiser is not the platform's own. */
