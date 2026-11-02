@@ -169,7 +169,9 @@ describe('every surface that paints text on a photograph', () => {
     for (const known of [
       'src/components/templates/PhotographicCategoryHero.tsx',
       'src/components/features/city/city-hero.tsx',
-      'src/app/events/[slug]/page.tsx',
+      // src/app/events/[slug]/page.tsx LEFT THIS LIST on 2 November 2026 by law 15 (Lawal, 14:51: full pictures, words
+      // below them, no wash): a night's photograph is drawn whole in its own box and its words sit under it on navy, so
+      // that page paints no text on a photograph (tests/unit/events/law-15-whole-pictures.test.ts holds it).
       'src/components/features/home/FeaturedHeroClient.tsx',
       'src/app/waitlist/page.tsx',
       // The five the hero-scale derivation could never see, because none of

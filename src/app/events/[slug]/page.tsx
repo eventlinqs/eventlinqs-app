@@ -1,6 +1,6 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { readEventForRoute } from '@/lib/events/event-detail-read'
-import { Suspense } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -328,6 +328,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
     },
   }
+}
+
+/**
+ * The hero's words. Over the navy field of a night with no photograph they ride <HeroCaption>'s wash, as every hero
+ * band does; under a photograph shown whole (law 15) they sit on plain navy below it, so no wash is drawn over anything.
+ */
+function HeroWords({ photo, className, children }: { photo: boolean; className: string; children: ReactNode }) {
+  return photo ? <div className={className}>{children}</div> : <HeroCaption className={className}>{children}</HeroCaption>
 }
 
 function formatDateTime(iso: string, timezone: string) {
@@ -1208,21 +1216,29 @@ export default async function EventDetailPage({ params }: Props) {
             the retired 55-70vh content tier per the 2026 competitor mirror:
             neither TM nor Eventbrite runs a taller event-detail hero. */}
         <EventSection name="hero">
+        {/* LAW 15 (Lawal, 2 November 2026, 14:51: 'full pictures forever'): a night with its own photograph shows it
+            WHOLE at its own shape, in its own box (3:2 on a phone, 16:7 from lg, as the walk-in page), never cropped,
+            zoomed or washed; the title, date and buttons follow BELOW it on navy, never over it, and the header stays
+            solid (no transparent header over a photograph). Only a night with no photograph keeps the locked hero band,
+            its words on the navy field. */}
         <section
           aria-label="Event hero"
-          className="hero-marketing relative flex items-end overflow-hidden bg-navy-950"
+          className={typographicHero ? 'hero-marketing relative flex items-end overflow-hidden bg-navy-950' : 'bg-navy-950'}
         >
-          <HeroPresenceMarker />
-          <div className="absolute inset-0">
-            {typographicHero ? null : (
+          {typographicHero ? <HeroPresenceMarker /> : null}
+          {typographicHero ? null : (
+            <div data-hero-photo-whole className="relative aspect-[3/2] w-full overflow-hidden bg-navy-950 lg:mx-auto lg:aspect-[16/7] lg:max-w-7xl">
               <HeroMedia
                 image={media.image}
                 alt={event.cover_image_alt || media.alt}
                 videoSrc={media.videoSrc}
-                kenBurns={media.kenBurns}
-                objectPosition={media.objectPosition}
+                objectPosition="50% 50%"
+                fit="contain"
               />
-            )}
+            </div>
+          )}
+          {typographicHero ? (
+          <div className="absolute inset-0">
             {/* The header wash only. What used to sit here was this hero's own
                 bottom-up ramp, expressed as percentages of a band the text does
                 not occupy a fixed share of: at 390 the meta line read 3.85:1 and
@@ -1237,9 +1253,10 @@ export default async function EventDetailPage({ params }: Props) {
               aria-hidden
             />
           </div>
+          ) : null}
 
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
-            <HeroCaption className="max-w-3xl animate-fade-rise">
+          <div className={`relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${typographicHero ? 'pb-14 lg:pb-20' : 'pb-10 pt-6 lg:pb-14'}`}>
+            <HeroWords photo={!typographicHero} className="max-w-3xl animate-fade-rise">
               {event.category && (
                 <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400 shadow-[var(--shadow-card)]">
                   {event.category.name}
@@ -1323,7 +1340,7 @@ export default async function EventDetailPage({ params }: Props) {
                *  this batch; trust now lives at the moment that drives
                *  the conversion. */}
               {promises.trustSignals && heroSale.trustSignals ? <EventTrustSignals variant="dark" /> : null}
-            </HeroCaption>
+            </HeroWords>
           </div>
         </section>
         </EventSection>

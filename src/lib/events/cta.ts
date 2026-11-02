@@ -112,6 +112,12 @@ export const FREE_REGISTRATION_REQUIRED = 'Free, registration required'
  */
 export const ROW_WALK_IN = 'Free · Walk in'
 export const ROW_FREE_WITH_BOOKING = 'Free'
+/**
+ * Free tickets on our own checkout (every tier at 0, E2 with no outside address): the visitor registers, so the row
+ * says so, never 'Book' as a paid night on EventLinqs does (Lawal's round 2, item 6: free entry, free registration,
+ * external ticketing and EventLinqs ticketing each kept distinct).
+ */
+export const ROW_REGISTER_ON_EVENTLINQS = 'Register on EventLinqs'
 
 /**
  * The price line beside the action, the only one each state may carry: E1 "Free entry"; E2 "Free, registration

@@ -42,7 +42,8 @@ export function GalleryImage({ src, alt, blurDataURL, className = '' }: Props) {
         decoding="async"
         placeholder={blurDataURL ? 'blur' : 'empty'}
         blurDataURL={blurDataURL}
-        className={`card-media-img object-cover ${className}`}
+        /* Law 15 (Lawal, 2 November 2026, 14:51): every photograph WHOLE at its own shape, never cropped to the tile. */
+        className={`card-media-img object-contain ${className}`}
       />
       <HoverWash />
     </>

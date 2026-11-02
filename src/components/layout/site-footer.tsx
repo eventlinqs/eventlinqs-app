@@ -248,9 +248,14 @@ export function SiteFooter() {
      * The last footer row keeps its 64px of air above the nav, so the ABN line
      * is never sitting under the tab bar. Above `md` both classes are zero and
      * the footer is exactly what it was.
+     *
+     * A page's own bar above the tab bar (venue, organiser, city: 60px at
+     * bottom-16) adds its height through --el-foot-bar while it is mounted
+     * (foot-bar-clearance.ts), so the ABN line clears both bars (round 2,
+     * item 8). Where no such bar exists the variable is unset and this is 4rem.
      */
     <footer
-      className="-mb-16 bg-[var(--color-ink-900)] pb-16 text-white md:mb-0 md:pb-0"
+      className="-mb-16 bg-[var(--color-ink-900)] pb-[calc(4rem+var(--el-foot-bar,0px))] text-white md:mb-0 md:pb-0"
       aria-label="Site footer"
     >
       <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">

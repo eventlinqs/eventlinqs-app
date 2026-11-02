@@ -169,6 +169,7 @@ export async function EventBentoTile({
               alt={imageAlt}
               variant={variant}
               title={event.image_credit ?? null}
+              objectFit="contain"
             />
           ) : (
             <BrandedPlaceholder category={placeholderCategory} />
