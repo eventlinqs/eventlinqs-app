@@ -6,6 +6,7 @@ import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { LISTINGS_ORGANISATION_SLUG } from '@/lib/listings/shown-organiser'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from './platform-organiser'
 import { eventsPerActiveOrganiser, funnelOf, monthOf, monthsEndingAt, type FunnelStage, type FunnelStep, type MonthFigure, type OrganiserNight } from './organiser-funnel-math'
 
 /**
@@ -78,9 +79,11 @@ export async function readOrganiserFunnel(now: Date = new Date()): Promise<Organ
   const nowIso = now.toISOString()
 
   const organisers = await stage(() => readOrganisers(admin))
-  const organiserRows = organisers ?? []
+  // The platform's own listings organisation is not an organiser at any stage (./platform-organiser.ts).
+  const platform = organisers === null ? new Set<string>() : await readPlatformOrganiserIds(admin)
+  const organiserRows = withoutPlatformOrganisers(organisers ?? [], platform)
   const contacts = await stage(() => readContacts(admin))
-  const contactRows = contacts ?? []
+  const contactRows = withoutPlatformOrganisers(contacts ?? [], platform, (c) => c.organiser_id)
   const organiserOfContact = new Map(contactRows.map((c) => [c.id, c.organiser_id]))
 
   const reached: Record<FunnelStage, Set<string> | null> = {

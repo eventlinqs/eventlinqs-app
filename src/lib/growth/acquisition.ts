@@ -3,6 +3,7 @@ import planJson from '../../../growth/plan.json'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { GrowthPlan } from './desk-math'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from './platform-organiser'
 import { acquisitionDesk, type AcquisitionDesk, type AcquisitionFactsRow } from './acquisition-desk-math'
 
 /**
@@ -12,6 +13,9 @@ import { acquisitionDesk, type AcquisitionDesk, type AcquisitionFactsRow } from 
  */
 export async function readAcquisitionDesk(now: Date = new Date()): Promise<AcquisitionDesk> {
   const plan = planJson as unknown as GrowthPlan
-  const rows = (await readOrThrow('the acquisition facts', () => createAdminClient().rpc('growth_acquisition_facts'))) as unknown as AcquisitionFactsRow[]
-  return acquisitionDesk(rows ?? [], now, plan.cities.open, plan.focus_market?.name)
+  const db = createAdminClient()
+  const rows = (await readOrThrow('the acquisition facts', () => db.rpc('growth_acquisition_facts'))) as unknown as AcquisitionFactsRow[]
+  // The platform's own listings organisation is not an organiser to recruit (./platform-organiser.ts).
+  const organisers = withoutPlatformOrganisers(rows ?? [], await readPlatformOrganiserIds(db), (r) => r.organiser_id)
+  return acquisitionDesk(organisers, now, plan.cities.open, plan.focus_market?.name)
 }

@@ -60,16 +60,20 @@ function world(over: Partial<Record<string, Answer>> = {}): Resolver {
     if (over[table]) return over[table] as Answer
     switch (table) {
       case 'organisers':
+        // The platform's own listings organisation (L) has its organisers row too (20261101132001): oL, never counted.
+        if (has(ops, 'in', 'organisation_id')) return ok([{ id: 'oL' }])
         return ok([
           { id: 'o1', organisation_id: 'A' },
           { id: 'o2', organisation_id: null },
           { id: 'o3', organisation_id: 'B' },
+          { id: 'oL', organisation_id: 'L' },
         ])
       case 'organiser_contacts':
         return ok([
           { id: 'c1', organiser_id: 'o1', basis_recorded_at: '2026-10-28T01:00:00Z' },
           { id: 'c2', organiser_id: 'o2', basis_recorded_at: null },
           { id: 'c3', organiser_id: 'o3', basis_recorded_at: '2026-10-28T02:00:00Z' },
+          { id: 'cL', organiser_id: 'oL', basis_recorded_at: '2026-10-28T03:00:00Z' },
         ])
       case 'outreach_touches':
         // Sent reports (message 8) are read with night_report_id; sent messages without.
@@ -85,7 +89,7 @@ function world(over: Partial<Record<string, Answer>> = {}): Resolver {
         return ok([{ id: 'L' }])
       case 'events':
         // The 90-day read goes through the listing window (.or); the months read does not.
-        if (has(ops, 'or')) return ok([{ id: 'e1', organisation_id: 'B' }])
+        if (has(ops, 'or')) return ok([{ id: 'e1', organisation_id: 'B' }, { id: 'eL', organisation_id: 'L' }])
         return ok([
           { id: 'm1', organisation_id: 'A', start_date: '2026-10-10T09:00:00Z', is_seed_data: false },
           { id: 'm2', organisation_id: 'A', start_date: '2026-10-20T09:00:00Z', is_seed_data: false },
@@ -118,6 +122,19 @@ describe('readOrganiserFunnel', () => {
       publishing: 1, // org B has a night in the window
       reported: 1, // message 8 sent to c3
     })
+  })
+
+  it("never counts the platform's own listings organisation at any stage (src/lib/growth/platform-organiser.ts)", async () => {
+    const seen: { table: string; ops: Op[] }[] = []
+    const base = world()
+    h.resolve = (table, ops) => {
+      seen.push({ table, ops: [...ops] })
+      return base(table, ops)
+    }
+    const f = await readOrganiserFunnel(NOW)
+    // oL has an organisation, a contact with a basis and a night in the window; counted, it would read 4, 3, 3 and 2.
+    expect([stageCount(f, 'found'), stageCount(f, 'qualified'), stageCount(f, 'claimed'), stageCount(f, 'publishing')]).toEqual([3, 2, 2, 1])
+    expect(seen.some((s) => s.table === 'organisations' && has(s.ops, 'eq', 'slug'))).toBe(true)
   })
 
   it('reads the reports stage only through message 8 and hand-sent reports, the publishing stage only through the listing window', async () => {

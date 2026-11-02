@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { isAcquisitionState, STATE_WORDS } from './acquisition-states'
 import { contactRefusal } from './crm'
 import { buildDailyTwenty, contactFor, EXPIRED_REFUSAL, groupOf, type DailyCandidate, type DailyTwenty, type StoredContact } from './daily-twenty'
@@ -20,8 +21,12 @@ type Admin = SupabaseClient<Database>
 export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promise<DailyTwenty> {
   const todayInMelbourne = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(now)
 
-  const organisers = await readEveryRow<{ id: string; name: string; acquisition_state: string; instagram_handle: string | null }>('the organisers', (a, b) =>
-    db.from('organisers').select('id, name, acquisition_state, instagram_handle').order('id', { ascending: true }).range(a, b),
+  // The platform's own listings organisation is never one of the day's twenty (src/lib/growth/platform-organiser.ts).
+  const organisers = withoutPlatformOrganisers(
+    await readEveryRow<{ id: string; name: string; acquisition_state: string; instagram_handle: string | null }>('the organisers', (a, b) =>
+      db.from('organisers').select('id, name, acquisition_state, instagram_handle').order('id', { ascending: true }).range(a, b),
+    ),
+    await readPlatformOrganiserIds(db),
   )
   const pipeline = await readEveryRow<{ organiser_id: string | null; next_due_on: string | null }>('the outreach pipeline', (a, b) =>
     db.from('outreach_pipeline').select('organiser_id, next_due_on').order('organiser_id', { ascending: true }).range(a, b),
