@@ -170,16 +170,17 @@ export function CityGuide({
   )
 
   // '+N more dates' (C:\dev\EVIDENCE\CITY-FIRST-1NOV\design\leaders-city-guide.md): a night whose title and venue come
-  // again later says how many more dates it has, so a weekly night reads as one thing, not a wall of repeats.
+  // again later says how many more dates it has, so a weekly night reads as one thing, not a wall of repeats. It keys on
+  // eventKey, the one definition of an event the tiles and the count line use (round 2, item 2).
   const repeats = new Map<string, number>()
   for (const r of here) {
-    const k = `${r.title.toLowerCase()}|${(r.venue ?? '').toLowerCase()}`
+    const k = eventKey(r)
     repeats.set(k, (repeats.get(k) ?? 0) + 1)
   }
   const seenOnce = new Map<string, number>()
   const moreDates = new Map<string, number>()
   for (const r of [...here].sort((a, b) => a.ts - b.ts)) {
-    const k = `${r.title.toLowerCase()}|${(r.venue ?? '').toLowerCase()}`
+    const k = eventKey(r)
     const i = (seenOnce.get(k) ?? 0) + 1
     seenOnce.set(k, i)
     moreDates.set(r.id, (repeats.get(k) ?? 1) - i)
