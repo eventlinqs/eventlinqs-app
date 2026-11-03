@@ -97,7 +97,7 @@ export async function everyTap(browser, base, paths, out) {
   // The consent banner first, once: its own answer is a tap like any other.
   {
     const page = await context.newPage()
-    await page.goto(`${base}${paths[0]}`, { waitUntil: 'networkidle' })
+    await page.goto(`${base}${paths[0]}`, { waitUntil: 'load' }); await page.waitForTimeout(800)
     const no = page.getByRole('button', { name: 'No thanks' })
     if (await no.count()) {
       await no.first().tap()
@@ -109,7 +109,7 @@ export async function everyTap(browser, base, paths, out) {
   }
   for (const path of paths) {
     const page = await context.newPage()
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+    await page.goto(`${base}${path}`, { waitUntil: 'load' }); await page.waitForTimeout(800)
     const targets = (await targetsOf(page)).filter((t) => !t.hidden)
     await page.close()
     for (const t of targets) {
@@ -126,7 +126,7 @@ export async function everyTap(browser, base, paths, out) {
       }
       const p = await context.newPage()
       try {
-        await p.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+        await p.goto(`${base}${path}`, { waitUntil: 'load' }); await p.waitForTimeout(800)
         const now = (await targetsOf(p)).filter((x) => !x.hidden)
         const match = now.find((x) => x.tag === t.tag && x.href === t.href && x.label === t.label && x.region === t.region)
         if (!match) { push({ ...row, ok: false, result: 'NOT FOUND AGAIN after a reload' }); continue }
