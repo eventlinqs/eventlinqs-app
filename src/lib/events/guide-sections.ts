@@ -69,27 +69,8 @@ export function isBigNight(r: DirectoryRow): boolean {
   // every free, walk in festival ('Free · Walk in' is not 'Book on EventLinqs'), AMCF at Fed Square among them.
   return r.categorySlug === 'festival' && (OUR_OWN.test(r.source) || r.own === true)
 }
-
-/**
- * THE HEADLINE WEIGHT inside Big nights (round 5 fault 4, C:\dev\GROWTH\ROUND5-STABILITY-ORDER-3NOV.md: 'permitted
- * photograph first, then the headline weight the brief names (stadium, estate concert, festival, Costa Hall), then
- * date'), in that order: a stadium 4, a ticketed estate concert 3, a festival 2, Costa Hall 1, any other big venue 0.
- * Date only had put Anh Do, Macbeth and The Eagles Greatest Hits in Geelong's three while Boyz II Men (Mt Duneed
- * Estate, 28 November) was drawn nowhere.
- */
-export function headlineWeight(r: DirectoryRow): number {
-  const v = r.venue ?? ''
-  if (/\bstadium\b/i.test(v)) return 4
-  if (/\bestate\b/i.test(v) && r.format === 'ticketed') return 3
-  if (r.categorySlug === 'festival') return 2
-  if (/\bcosta hall\b/i.test(v)) return 1
-  return 0
-}
-
-/** Big nights' order: a permitted photograph first, then the headline weight, then the soonest. */
-export function bigNightOrder(a: DirectoryRow, b: DirectoryRow): number {
-  return Number(Boolean(b.thumb)) - Number(Boolean(a.thumb)) || headlineWeight(b) - headlineWeight(a) || a.ts - b.ts
-}
+// Big nights ranks PHOTO FIRST, then date, and nothing else (Lawal, 3 November 2026, 12:29, through the CONTROLLER's
+// 12:31: a show without a permitted photograph is not forced in; featuring is what an organiser gains by sending photos).
 
 /** Photo first, then the soonest (items 1 and 2: 'events with a permitted photograph rank first, then by date'). */
 export function photoFirst(a: DirectoryRow, b: DirectoryRow): number {
@@ -144,7 +125,7 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
     return entries
   }
   const threeEnd = addMonthsKey(days.todayKey, 3)
-  const big = take(rows.filter(isBigNight), 3, bigNightOrder)
+  const big = take(rows.filter(isBigNight), 3)
   const announced = take(
     rows.filter((r) => typeof r.listedAt === 'number' && nowMs - r.listedAt <= JUST_ANNOUNCED_DAYS * 24 * 60 * 60 * 1000),
     8,

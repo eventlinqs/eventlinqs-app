@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { bigNightOrder, foldListings, guideSections, headlineWeight, inRange, isBigNight, listingKey } from '@/lib/events/guide-sections'
+import { foldListings, guideSections, inRange, isBigNight, listingKey } from '@/lib/events/guide-sections'
 import { directoryDays, type DirectoryInput, type DirectoryRow } from '@/lib/events/whats-on-directory'
 
 /*
  * ROUND 5 (the CONTROLLER's order of 3 November 2026, 09:20, C:\dev\GROWTH\ROUND5-STABILITY-ORDER-3NOV.md, and law 17 (d)):
  *   fault 2: AMCF, a free walk in festival its organiser listed with us, belongs at the top of Melbourne's Big nights;
- *   fault 3 and 4: Boyz II Men (Mt Duneed Estate, 28 November) was drawn nowhere on the Geelong guide, because Big nights
- *     ranked by date only and the list opened on the 20 soonest;
+ *   fault 3: Boyz II Men (Mt Duneed Estate, 28 November) is not in Geelong's Big nights and stays out (Lawal 12:29, the
+ *     CONTROLLER's 12:31: Big nights is photo first then date; a show with no permitted photograph is not forced in), but
+ *     it is reachable on the guide;
  *   law 16: every published upcoming night is reachable on its guide under All dates;
  *   the 11:42 sentinel: a night leaves the guide AT its end, so every row carries its end.
  */
@@ -45,20 +46,17 @@ describe('round 5 fault 2: an organiser listed festival is a Big night however i
   })
 })
 
-describe('round 5 fault 4: Big nights ranks photograph, then headline weight, then date', () => {
-  it('the weights the brief names, in its order: stadium, estate concert, festival, Costa Hall', () => {
-    expect(headlineWeight(paid({ venue: 'GMHBA Stadium' }))).toBe(4)
-    expect(headlineWeight(boyz)).toBe(3)
-    expect(headlineWeight(amcf)).toBe(2)
-    expect(headlineWeight(sweet)).toBe(1)
-    expect(headlineWeight(anhDo)).toBe(0)
+describe("Lawal 12:29: Big nights stays photo first, then date; a show with no photograph is not forced in", () => {
+  it("Geelong's three are the soonest three, Boyz II Men not among them, and Boyz II Men is still reachable with All dates", () => {
+    const rows = [anhDo, macbeth, eagles, sweet, boyz]
+    const s = guideSections(rows, days, NOW)
+    expect(s.big.map((e) => e.row.title)).toEqual(['Anh Do: The Happiest Refugee Live!', 'Macbeth', 'The Eagles Greatest Hits'])
+    const allDates = foldListings(rows.filter((r) => inRange(r, 'all', days)), rows).map((e) => e.row.title)
+    expect(allDates).toContain('Boyz II Men')
   })
-  it("Boyz II Men is in Geelong's three ahead of the date-only picks", () => {
-    const s = guideSections([anhDo, macbeth, eagles, sweet, boyz], days, NOW)
-    expect(s.big.map((e) => e.row.title)).toEqual(['Boyz II Men', 'The Sweet (UK): The Final Blitz Tour', 'Anh Do: The Happiest Refugee Live!'])
-  })
-  it('a permitted photograph still comes first', () => {
-    expect(bigNightOrder({ ...anhDo, thumb: '/p.jpg' }, boyz)).toBeLessThan(0)
+  it('a permitted photograph puts a show first', () => {
+    const s = guideSections([anhDo, macbeth, eagles, { ...boyz, thumb: '/own-photo.jpg' }], days, NOW)
+    expect(s.big[0].row.title).toBe('Boyz II Men')
   })
 })
 

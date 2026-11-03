@@ -10,7 +10,8 @@
  *   law16-reachable       every published, still listed night of each city is reachable on its guide with All dates
  *                         (one listing, title at venue, is one entry: at least one of its nights is linked).
  *   no-ended-night        no night past its end is linked on any guide.
- *   headline-big-nights   Big nights carries the headline shows before date-only picks (Boyz II Men in Geelong).
+ *   headline-reachable    Boyz II Men is reachable on the Geelong guide (Lawal 12:29, the CONTROLLER's 12:31: Big nights
+ *                         stays photo first then date, so a show without a permitted photograph is reachable, not forced in).
  *   photo-credit-alt      every photograph drawn on a night is the night's own, rights recorded, with alt text; a third
  *                         party photograph (a venue photo) is never drawn there without its visible credit.
  *
@@ -125,10 +126,10 @@ for (const city of CITIES) {
   record('no-ended-night', city, ended.length === 0, ended.length ? `${ended.length} linked night(s) not listed now (ended or not public): ${ended.slice(0, 8).join(', ')}` : `every linked night is listed at ${dbNow}`)
 }
 
-// 5: the headline show in Geelong.
+// 5: the headline show in Geelong is reachable on its guide (12:31: not forced into Big nights).
 if (pageData.geelong) {
-  const boyz = pageData.geelong.big.some((h) => /^\/events\/boyz-ii-men-/.test(h))
-  record('headline-big-nights', 'geelong', boyz, `Big nights reads ${JSON.stringify(pageData.geelong.big)}`)
+  const boyz = pageData.geelong.linked.filter((s) => /^boyz-ii-men-/.test(s))
+  record('headline-reachable', 'geelong', boyz.length > 0, boyz.length ? `Boyz II Men is linked (${boyz[0]}); Big nights reads ${JSON.stringify(pageData.geelong.big)}` : 'Boyz II Men is linked nowhere on the guide, All dates and every Show more pressed')
 }
 
 // 6: every photograph on a night is its own, rights recorded, with alt text.
