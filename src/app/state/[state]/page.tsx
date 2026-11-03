@@ -22,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!s || !getCity(s.anchor)) return { title: 'Not Found | EventLinqs' }
   const title = `What's on in ${s.name} | EventLinqs`
   const description = `Every event in ${s.name}'s cities on EventLinqs: live music, festivals, markets, family days and more, one place.`
-  return { title, description, alternates: { canonical: `/state/${s.slug}` }, openGraph: { title, description, url: `/state/${s.slug}`, type: 'website', images: ['/opengraph-image'] } }
+  // Not indexed (src/lib/seo/indexing-policy.ts): each city guide is the indexable page; this is their state view.
+  return { title, description, robots: { index: false, follow: true }, alternates: { canonical: `/state/${s.slug}` }, openGraph: { title, description, url: `/state/${s.slug}`, type: 'website', images: ['/opengraph-image'] } }
 }
 
 /**
