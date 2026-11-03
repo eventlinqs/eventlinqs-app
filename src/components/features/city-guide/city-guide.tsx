@@ -116,6 +116,8 @@ export function CityGuide({
   stateCityNames,
   claimsOn = false,
   renderedAt,
+  scope = 'city',
+  stateHref = null,
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
@@ -143,6 +145,10 @@ export function CityGuide({
    * hydration change), then at the browser's own clock on mount and every minute (round 5, the 11:42 'Ended nights shown').
    */
   renderedAt?: number
+  /** 'state': the state page (/state/<slug>), every listed city of the state; 'city': one city (the default). */
+  scope?: 'city' | 'state'
+  /** The state page this city's state chip opens (/state/victoria); null where the state has none. */
+  stateHref?: string | null
 }) {
   const [nowMs, setNowMs] = useState(renderedAt ?? 0)
   useEffect(() => {
@@ -163,7 +169,9 @@ export function CityGuide({
   const [price, setPrice] = useState<Price>('all')
   const [radius, setRadius] = useState<(typeof RADII)[number]>(0)
   const [cities, setCities] = useState(false)
-  const [wholeState, setWholeState] = useState(false)
+  // The whole state only on the state page itself: on a city guide the state chip OPENS that page (the CONTROLLER's 14:10:
+  // it used to widen this page in place and, on Lawal's phone, roll it to the bottom).
+  const wholeState = scope === 'state'
 
   const name = city.name.toLowerCase()
   const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
@@ -230,24 +238,16 @@ export function CityGuide({
       <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8 md:pt-6">
         {/* 1 CITY DISCOVERY: the city chosen first, switched in one tap; search in the city; the dates people plan in. */}
         <div className={SCROLL_ROW} role="group" aria-label="Choose a city">
-          <SnapChip on={wholeState} aria-pressed={wholeState} onSelect={() => setWholeState(!wholeState)}>
-            {stateName}
-          </SnapChip>
+          {/* THE PLACE CHIPS (the CONTROLLER's 14:10 of 3 November 2026): the state chip opens the state page, every other
+              city's chip opens its guide, and the place you are on shows selected and stays put (no scroll, no surprise). */}
+          {wholeState ? (
+            <CurrentChip label={stateName} />
+          ) : stateHref ? (
+            <SnapLink href={stateHref} className={`relative ${chip(false)}`} label={stateName} />
+          ) : null}
           {quickCities.map((c) =>
-            c.slug === city.slug ? (
-              // The city you are in: a tap takes you to its events (Lawal 17:22: 'every click ... must work').
-              <SnapChip
-                key={c.slug}
-                on={!wholeState}
-                next
-                aria-pressed={!wholeState}
-                onSelect={() => {
-                  setWholeState(false)
-                  toList()
-                }}
-              >
-                {c.name}
-              </SnapChip>
+            c.slug === city.slug && !wholeState ? (
+              <CurrentChip key={c.slug} label={c.name} />
             ) : (
               <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} />
             ),
@@ -610,6 +610,15 @@ function SnapChip({
     >
       {children}
     </button>
+  )
+}
+
+/** The place this page is: shown selected, named the current page, and a tap changes nothing (no scroll, no state). */
+function CurrentChip({ label }: { label: string }) {
+  return (
+    <span aria-current="page" className={chip(true)}>
+      {label}
+    </span>
   )
 }
 

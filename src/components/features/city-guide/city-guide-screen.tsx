@@ -15,6 +15,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { getCityBanner } from '@/lib/images/city-photo'
 import { CityGuide } from './city-guide'
+import { statePageHref } from '@/lib/cities/state-pages'
 
 /**
  * The city guide as a whole page: the header (its city chip names THIS city), the guide for ONE city, the footer (the
@@ -37,6 +38,7 @@ export async function CityGuideScreen({
   citySlug,
   heroImage,
   after = null,
+  scope = 'city',
 }: {
   citySlug: string
   /**
@@ -46,6 +48,12 @@ export async function CityGuideScreen({
    */
   heroImage: string | null
   after?: ReactNode
+  /**
+   * 'state': the STATE PAGE (/state/<slug>, the CONTROLLER's 14:10 of 3 November 2026): the same guide over every listed
+   * city of citySlug's state, which is then the state's capital and lends its photograph; the state chip is the current
+   * page. 'city' (the default): one city, its state chip OPENS the state page (never a scroll on this page).
+   */
+  scope?: 'city' | 'state'
 }) {
   const city = getCity(citySlug)
   if (!city) return null
@@ -61,6 +69,9 @@ export async function CityGuideScreen({
   const allCities = every.filter((c) => !c.slug.includes('-') || c.tier === 1).map((c) => ({ slug: c.slug, name: c.name, state: c.state }))
   const stateCityNames = every.filter((c) => c.state === city.state).map((c) => c.name.toLowerCase())
   const name = city.name.toLowerCase()
+  const stateName = STATE_NAMES[city.state] ?? city.state
+  const onState = scope === 'state'
+  const placeName = onState ? stateName : city.name
   // 'Worth going out for' (the 2 November directive, section 3): ORGANISER artwork with its rights on record only, never a
   // venue photograph (image_credit) or a logo; the guide draws it at three or more and the count goes to the gap report.
   const worth = data.featured.filter(
@@ -87,7 +98,7 @@ export async function CityGuideScreen({
       <main>
         {/* The city's own photograph, compact so the city, the dates and the first events stay on a phone's first
             screens (the directive: the directory comes up high); the only place on this page text sits on a photo. */}
-        <section aria-label={`What's on in ${city.name}`} className="relative isolate overflow-hidden bg-[var(--color-navy-950)]">
+        <section aria-label={`What's on in ${placeName}`} className="relative isolate overflow-hidden bg-[var(--color-navy-950)]">
           {photo ? <HeroMedia image={photo} alt={`${city.name}, ${city.state}`} objectPosition={banner?.position ?? '50% 45%'} /> : null}
           <div className="relative mx-auto flex h-60 max-w-7xl flex-col justify-end px-4 pb-6 sm:px-6 md:h-80 md:pb-10 lg:px-8">
             {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph);
@@ -96,15 +107,19 @@ export async function CityGuideScreen({
               <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
                 <Link href="/cities" className="-my-3 inline-flex min-h-11 items-center hover:underline">Australia</Link>
                 <span aria-hidden="true"> / </span>
-                {STATE_NAMES[city.state] ?? city.state}
-                <span aria-hidden="true"> / </span>
-                {city.name}
+                {stateName}
+                {onState ? null : (
+                  <>
+                    <span aria-hidden="true"> / </span>
+                    {city.name}
+                  </>
+                )}
               </p>
               <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                What&rsquo;s on in {city.name}
+                What&rsquo;s on in {placeName}
               </h1>
               {/* Lawal's sentence for every city guide, its own name in it (src/lib/cities/guide-subtitle.ts). */}
-              <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{cityGuideSubtitle(city.name)}</p>
+              <p className="mt-2 max-w-xl font-display text-base text-white/90 sm:text-lg">{cityGuideSubtitle(placeName)}</p>
               {banner?.credit ? (
                 // CC BY-SA 4.0's credit: the author, the source and the licence, small, on the caption's own wash.
                 <p data-banner-credit className="mt-3 font-display text-xs text-white/80">
@@ -123,7 +138,9 @@ export async function CityGuideScreen({
         </section>
         <CityGuide
           city={{ slug: city.slug, name: city.name, state: city.state, lat: city.latitude, lng: city.longitude }}
-          stateName={STATE_NAMES[city.state] ?? city.state}
+          stateName={stateName}
+          scope={scope}
+          stateHref={statePageHref(city.state)}
           stateCityNames={stateCityNames}
           quickCities={quickCities.map((c) => ({ slug: c.slug, name: c.name }))}
           allCities={allCities}
@@ -137,7 +154,7 @@ export async function CityGuideScreen({
             21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in
             (C:\dev\DESIGN\CITY-FIRST-1NOV\CITY-FIRST-DIRECTIVE-1NOV.md s1). Words only; nothing here is an event. */}
         {/* No 'Browse every event' link any more: /events/browse/<city> is a 301 to this very page (round 3, item 7). */}
-        {freeWeek || suburbs.length > 0 ? (
+        {!onState && (freeWeek || suburbs.length > 0) ? (
         <section aria-label={`More of ${city.name}`} className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
           <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">More of {city.name}</h2>
           <ul className="mt-3 flex flex-wrap gap-2">

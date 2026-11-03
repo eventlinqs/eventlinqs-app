@@ -16,6 +16,9 @@
  *                         party photograph (a venue photo) is never drawn there without its visible credit.
  *   cards-no-uncredited   the CONTROLLER's 12:55 (3), one rule everywhere: no event card on / or /events draws a
  *                         photograph whose licence needs a visible credit (a Wikimedia Commons venue photo).
+ *   every-tap-works       the CONTROLLER's 14:10: at 390 with a touch profile, every link, chip, tab and button on /, the
+ *                         four guides, the Victoria page, /events, one event page and AMCF lands on a 200 page or visibly
+ *                         changes state within 300 ms; no 404, no dead tap, no scroll only (scripts/verify/every-tap.mjs).
  *
  * Production is read READ ONLY through the Supabase Management API's SQL endpoint ({ read_only: true }) with the CLI's
  * token: run under scripts\ops\with-supabase-token.ps1. The site read is our own pages only, in one browser.
@@ -26,6 +29,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
+import { everyTap } from './every-tap.mjs'
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`)
@@ -158,6 +162,19 @@ for (const path of ['/', '/events']) {
       .filter((p) => /upload\.wikimedia\.org|commons\.wikimedia\.org/.test(p.src)))
   record('cards-no-uncredited', path, commons.length === 0, commons.length ? `${commons.length}: ${commons.slice(0, 5).map((p) => `${p.href} (${p.src.slice(-50)})`).join('; ')}` : 'no event card draws a Commons photograph')
   await page.close()
+}
+
+// 8: every tap works (--skip-taps leaves it out of a quick run, and says so).
+if (process.argv.includes('--skip-taps')) {
+  console.log('NOT RUN every-tap-works: --skip-taps')
+} else {
+  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026']
+  const taps = await everyTap(browser, BASE, TAP_PATHS, join(OUT, 'every-tap'))
+  for (const path of TAP_PATHS) {
+    const mine = taps.filter((t) => t.path === path)
+    const bad = mine.filter((t) => !t.ok)
+    record('every-tap-works', path, bad.length === 0, `${mine.length - bad.length} of ${mine.length} taps work${bad.length ? `; FAIL ${bad.length}: ${bad.slice(0, 6).map((t) => `[${t.region}] '${t.label}' ${t.result}`).join('; ')}` : ''}`)
+  }
 }
 
 await browser.close()
