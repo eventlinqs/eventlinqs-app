@@ -55,7 +55,12 @@ export function FollowButton({
 }) {
   const router = useRouter()
   const [following, setFollowing] = useState(false)
-  const [ready, setReady] = useState(false)
+  // TAPPABLE FROM FIRST PAINT (every-tap on live, 3 November 2026, 22:20: 'Follow AMCF: DEAD TAP'): the button used to be
+  // disabled until the follow state below came back, 2.1 to 2.8 s after load on live, looking enabled all the while.
+  // Now a tap always answers at once: signed out (known from that read) it says so and opens sign in; otherwise the
+  // optimistic flip shows, and the server's answer settles it.
+  const [signedOut, setSignedOut] = useState(false)
+  const [toSignIn, setToSignIn] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Resolve current follow-state on mount. requiresAuth (anonymous) simply
@@ -67,10 +72,11 @@ export function FollowButton({
       .then((res: FollowResult) => {
         if (!active) return
         setFollowing(Boolean(res.following))
-        setReady(true)
+        setSignedOut(res.requiresAuth === true)
       })
-      .catch(() => {
-        if (active) setReady(true)
+      .catch((error: unknown) => {
+        // The default stands (Follow); the tap then asks the server itself, so nothing here is guessed.
+        console.warn('[follow] the follow state could not be read:', error instanceof Error ? error.message : error)
       })
     return () => {
       active = false
@@ -83,8 +89,18 @@ export function FollowButton({
     return toggleFollowScene(id)
   }
 
+  const toLogin = () => {
+    setToSignIn(true)
+    const path = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/'
+    router.push(`/login?redirect=${encodeURIComponent(path)}`)
+  }
+
   const handleClick = () => {
-    if (isPending) return
+    if (isPending || toSignIn) return
+    if (signedOut) {
+      toLogin()
+      return
+    }
     const next = !following
     setFollowing(next) // optimistic
 
@@ -92,9 +108,7 @@ export function FollowButton({
       const res = await runToggle()
       if (res.requiresAuth) {
         setFollowing(false)
-        const path =
-          typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/'
-        router.push(`/login?redirect=${encodeURIComponent(path)}`)
+        toLogin()
         return
       }
       // Settle on the server truth (covers the error rollback too).
@@ -124,11 +138,14 @@ export function FollowButton({
       type="button"
       onClick={handleClick}
       aria-pressed={following}
-      aria-label={following ? `Following. ${label} again to unfollow.` : label}
-      disabled={isPending || !ready}
+      aria-busy={isPending || toSignIn}
+      aria-label={toSignIn ? 'Sign in to follow' : following ? `Following. ${label} again to unfollow.` : label}
+      disabled={isPending}
       className={`${base} ${state} ${className}`}
     >
-      {following ? (
+      {toSignIn ? (
+        <>Sign in to follow</>
+      ) : following ? (
         <>
           <Check className="h-4 w-4" aria-hidden />
           Following
