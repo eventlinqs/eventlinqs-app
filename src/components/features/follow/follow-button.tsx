@@ -138,7 +138,6 @@ export function FollowButton({
       type="button"
       onClick={handleClick}
       aria-pressed={following}
-      aria-busy={isPending || toSignIn}
       aria-label={toSignIn ? 'Sign in to follow' : following ? `Following. ${label} again to unfollow.` : label}
       disabled={isPending}
       className={`${base} ${state} ${className}`}
