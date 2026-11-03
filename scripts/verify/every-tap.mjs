@@ -62,9 +62,9 @@ const signature = (page) =>
     return `${location.pathname}${location.search}#${document.body.innerText.length}#${states}#${Math.round(sideways)}#${document.documentElement.dataset.shareSheet ?? 0}`
   }).catch(() => 'navigating')
 
-export async function everyTap(browser, base, paths, out) {
+export async function everyTap(browser, base, paths, out, contextOptions = null) {
   mkdirSync(out, { recursive: true })
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 })
+  const context = await browser.newContext(contextOptions ?? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 })
   // A phone's Share opens its own share sheet, which no page can see; a headless browser has none. The stand-in counts the
   // call on the page, so a Share that reaches navigator.share passes and one that reaches nothing stays a dead tap.
   await context.addInitScript(() => {
@@ -208,9 +208,11 @@ export async function everyTap(browser, base, paths, out) {
 // Alone: node scripts/verify/every-tap.mjs --base <url> --out <dir> [--paths a,b]
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/verify/every-tap.mjs')) {
   const arg = (n, f) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : f }
-  const { chromium } = await import('playwright')
-  const browser = await chromium.launch()
-  const res = await everyTap(browser, arg('base', 'https://www.eventlinqs.com.au').replace(/\/$/, ''), arg('paths', '/city/geelong').split(','), arg('out', '.'))
+  const pw = await import('playwright')
+  // --browser webkit: Safari's engine on an iPhone profile (the CONTROLLER's 19:56: the copy buttons proved in WebKit too).
+  const webkit = arg('browser', 'chromium') === 'webkit'
+  const browser = webkit ? await pw.webkit.launch() : await pw.chromium.launch()
+  const res = await everyTap(browser, arg('base', 'https://www.eventlinqs.com.au').replace(/\/$/, ''), arg('paths', '/city/geelong').split(','), arg('out', '.'), webkit ? { ...pw.devices['iPhone 13'] } : null)
   await browser.close()
   const bad = res.filter((r) => !r.ok)
   console.log(`${res.length - bad.length} PASS, ${bad.length} FAIL`)
