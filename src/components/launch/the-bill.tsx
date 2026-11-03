@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { encodeBillRef } from '@/lib/launch/bill-ref'
 import { Reveal } from '@/components/ui/reveal'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * THE BILL. The delivery vehicle for the spread mechanic.
@@ -136,7 +137,7 @@ function ActLink({ code, name }: { code: string; name: string }) {
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      await copyText(`${window.location.origin}${path}`)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {

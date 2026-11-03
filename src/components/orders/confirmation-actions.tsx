@@ -8,6 +8,7 @@ import {
   icsFileName as buildIcsFileName,
   type CalendarEvent,
 } from '@/lib/events/calendar-links'
+import { copyText } from '@/lib/share/copy-text'
 
 interface ConfirmationActionsProps {
   eventTitle: string
@@ -104,7 +105,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
     }
     // Desktop fallback: copy to clipboard
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {

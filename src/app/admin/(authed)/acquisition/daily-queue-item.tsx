@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { copyText } from '@/lib/share/copy-text'
 
 /* The two press styles of /admin/social (its BUTTON and QUIET), so the admin presses read as one system. */
 const BUTTON =
@@ -38,7 +39,7 @@ export function DailyQueueItem({
         type="button"
         className={QUIET}
         onClick={() => {
-          navigator.clipboard.writeText(body).then(
+          copyText(body).then(
             () => setCopied('yes'),
             () => setCopied('failed'),
           )

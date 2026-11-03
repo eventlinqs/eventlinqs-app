@@ -8,6 +8,7 @@ import {
   SOCIAL_CARD_ORDER,
   type SocialCardFormat,
 } from '@/lib/broadcast/social-card-spec'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * THE POST PACK: one panel per channel, carrying the two things the organiser
@@ -50,7 +51,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
 
   const copy = async (key: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      await copyText(text)
       setCopied(key)
       window.setTimeout(() => setCopied(c => (c === key ? null : c)), 2000)
     } catch {

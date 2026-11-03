@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Check, Copy, Download } from 'lucide-react'
 import type { ShareChannel } from '@/lib/broadcast/share-codes'
+import { copyText } from '@/lib/share/copy-text'
 
 const CHANNEL_LABELS: Partial<Record<ShareChannel, string>> = {
   whatsapp: 'WhatsApp',
@@ -33,7 +34,7 @@ export function ShareKit({
 
   const onCopy = async (channel: ShareChannel, url: string) => {
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopiedChannel(channel)
       window.setTimeout(() => setCopiedChannel((c) => (c === channel ? null : c)), 1800)
     } catch {

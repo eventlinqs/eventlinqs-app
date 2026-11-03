@@ -31,6 +31,7 @@ import {
 } from '@/app/(dashboard)/dashboard/api-keys/actions'
 import type { OrganiserApiKeyRecord } from '@/lib/api/v1/keys'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { copyText } from '@/lib/share/copy-text'
 
 type Props = {
   organisationId: string
@@ -235,7 +236,7 @@ function TokenPanel({ token }: { token: string }) {
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(token)
+      await copyText(token)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2500)
     } catch {

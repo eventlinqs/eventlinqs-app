@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { copyText } from '@/lib/share/copy-text'
 
 interface CopyLinkButtonProps {
   shareUrl: string
@@ -11,7 +12,7 @@ export function CopyLinkButton({ shareUrl }: CopyLinkButtonProps) {
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      await copyText(shareUrl)
     } catch {
       // Fallback for browsers without clipboard API
       const el = document.createElement('textarea')

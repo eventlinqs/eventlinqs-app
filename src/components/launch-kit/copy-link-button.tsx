@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * The Launch Kit's copy control. The visible "Copy link" / "Copied" text is
@@ -21,7 +22,7 @@ export function CopyLinkButton({
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {

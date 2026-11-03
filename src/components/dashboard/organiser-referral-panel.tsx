@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Check, Copy, UserPlus } from 'lucide-react'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * AN ORGANISER'S OWN LINK, ON THEIR OWN DASHBOARD.
@@ -28,7 +29,7 @@ export function OrganiserReferralPanel({ link }: { link: string | null }) {
   const onCopy = async () => {
     if (!link) return
     try {
-      await navigator.clipboard.writeText(link)
+      await copyText(link)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {

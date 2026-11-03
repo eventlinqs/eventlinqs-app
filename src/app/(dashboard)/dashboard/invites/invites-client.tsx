@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { generateMyFoundingInvite } from './actions'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { copyText } from '@/lib/share/copy-text'
 
 type InviteRow = { code: string; url: string; cityName: string; status: string; acceptedAt: string | null }
 /** One selectable city, resolved server-side from the canonical registry. */
@@ -99,7 +100,7 @@ export function InvitesClient({
 
   const copy = async (url: string) => {
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(url)
       window.setTimeout(() => setCopied(c => (c === url ? null : c)), 1800)
     } catch {
