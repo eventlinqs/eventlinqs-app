@@ -6,10 +6,11 @@
  */
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 
 function rawWrites(): string[] {
   try {
-    return execFileSync('git', ['grep', '-n', 'navigator.clipboard.writeText', '--', 'src'], { encoding: 'utf8' }).split('\n').filter(Boolean)
+    return execFileSync('git', ['grep', '-n', 'navigator.clipboard.writeText', '--', 'src'], { encoding: 'utf8', env: gitEnv() }).split('\n').filter(Boolean)
   } catch (error) {
     // git grep answers 1 when nothing matches: no write at all.
     if ((error as { status?: number }).status === 1) return []
