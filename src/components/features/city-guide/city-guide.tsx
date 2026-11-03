@@ -1,7 +1,7 @@
 'use client'
 
 import Link, { useLinkStatus } from 'next/link'
-import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
@@ -115,6 +115,7 @@ export function CityGuide({
   stateName,
   stateCityNames,
   claimsOn = false,
+  renderedAt,
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
@@ -136,7 +137,23 @@ export function CityGuide({
    * claim pages answer 404 while it is off, so the offer would be false (round 2 (d), Lawal 2 November 12:05).
    */
   claimsOn?: boolean
+  /**
+   * The instant the server read the rows (epoch ms). The page is edge cached and a stale copy can be served once after a
+   * quiet spell, so the browser drops every night past its end: first at this instant (server and browser agree, no
+   * hydration change), then at the browser's own clock on mount and every minute (round 5, the 11:42 'Ended nights shown').
+   */
+  renderedAt?: number
 }) {
+  const [nowMs, setNowMs] = useState(renderedAt ?? 0)
+  useEffect(() => {
+    const tick = () => setNowMs(Date.now())
+    const first = window.setTimeout(tick, 0)
+    const every = window.setInterval(tick, 60_000)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(every)
+    }
+  }, [])
   const [q, setQ] = useState('')
   const [when, setWhen] = useState<When>('three')
   const [limit, setLimit] = useState(PAGE)
@@ -153,7 +170,8 @@ export function CityGuide({
   const near = (r: DirectoryRow) =>
     radius > 0 && r.lat !== null && r.lng !== null && km(city.lat, city.lng, r.lat, r.lng) <= radius
   const inState = (r: DirectoryRow) => stateCityNames.some((n) => r.cityKey.includes(n))
-  const here = rows.filter((r) => (wholeState ? inState(r) : inCity(r) || near(r)))
+  const live = rows.filter((r) => r.until === undefined || r.until >= nowMs)
+  const here = live.filter((r) => (wholeState ? inState(r) : inCity(r) || near(r)))
   const placeName = wholeState ? stateName : city.name
 
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -637,13 +655,14 @@ function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
 }
 
 /** A photograph WHOLE at its own shape inside its box, over its own blurred copy (law 15), only where one is permitted. */
-function WholePhoto({ src, className }: { src: string; className: string }) {
+function WholePhoto({ src, alt, className }: { src: string; alt?: string | null; className: string }) {
   return (
     <span data-row-thumb className={`relative block overflow-hidden bg-[var(--surface-1)] ${className}`}>
       <span className="ledger-blur" aria-hidden="true">
         <EventCardMedia src={src} alt="" variant="row-thumb" />
       </span>
-      <EventCardMedia src={src} alt="" variant="row-thumb" objectFit="contain" />
+      {/* What the photograph shows, from the cover's own alt, written from a look (round 5 fault 5). */}
+      <EventCardMedia src={src} alt={alt ?? ''} variant="row-thumb" objectFit="contain" />
     </span>
   )
 }
@@ -656,7 +675,7 @@ function BigCard({ e }: { e: Entry }) {
       href={r.href}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
     >
-      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[3/2] w-full" /> : null}
+      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[3/2] w-full" /> : null}
       <span className="flex flex-1 flex-col gap-2 p-4">
         <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)] [overflow-wrap:anywhere]">
           {[r.category, r.venue].filter(Boolean).join(' · ')}
@@ -689,7 +708,7 @@ function CardRail({ entries }: { entries: readonly Entry[] }) {
             href={e.row.href}
             className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
           >
-            {e.row.thumb ? <WholePhoto src={e.row.thumb} className="aspect-[4/3] w-full" /> : null}
+            {e.row.thumb ? <WholePhoto src={e.row.thumb} alt={e.row.thumbAlt} className="aspect-[4/3] w-full" /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
               <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
@@ -819,7 +838,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         </span>
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {r.thumb ? <WholePhoto src={r.thumb} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" /> : null}
+      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" /> : null}
     </Link>
   )
 }

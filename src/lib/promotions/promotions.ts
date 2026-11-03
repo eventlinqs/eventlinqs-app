@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { createPublicClient } from '@/lib/supabase/public-client'
 
 /**
  * PAID PROMOTION: FEATURED PLACEMENT AND THE ORGANISER SERVICES MENU (Train C, rows 12 and 13).
@@ -286,7 +287,7 @@ export async function reconcileAwaiting(admin: Admin, stripe: Pick<Stripe, 'chec
 /** For a public page: the featured row, or none when the records cannot be reached, so a page never fails on it. */
 export async function featuredForPage(placement: Placement, citySlug: string | null = null): Promise<FeaturedListing[]> {
   try {
-    if (!(await isFeatureEnabled('paid_promotions'))) return []
+    if (!(await isFeatureEnabled('paid_promotions', { client: createPublicClient(), cachedPage: true }))) return []
     return await featuredNow(createAdminClient(), placement, new Date(), citySlug)
   } catch {
     return []

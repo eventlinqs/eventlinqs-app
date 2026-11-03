@@ -54,7 +54,11 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
     createAdminClient,
     listed.filter((r) => photo(r) && !r.image_credit).map((r) => r.id),
   )
-  const authorised = (r: LedgerRow) => photo(r) && (Boolean(r.image_credit) || RECORDED.has(rights.get(r.id) ?? ''))
+  // THE NIGHT'S OWN PHOTOGRAPH ONLY (round 5 fault 5, the CONTROLLER's 09:20 of 3 November): a venue photograph the image
+  // chain applied (image_credit set) is NOT drawn as a night's image on the guide: it shows the venue, never the act, and
+  // its CC BY or BY-SA credit lived only in a title attribute nobody sees. It comes off until a credited design is
+  // approved (law 7). What remains is a cover whose rights the database records (organiser authorised, separately licensed).
+  const authorised = (r: LedgerRow) => photo(r) && !r.image_credit && RECORDED.has(rights.get(r.id) ?? '')
   const thumbs = new Map(listed.filter(authorised).map((r) => [r.id, r.cover_image_url as string]))
   const flat = directoryDays(listed, now, thumbs).flatMap((d) => d.rows)
 

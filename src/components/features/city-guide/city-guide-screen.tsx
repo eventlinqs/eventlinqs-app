@@ -131,6 +131,7 @@ export async function CityGuideScreen({
           days={data.days}
           worth={worth}
           claimsOn={claimsOn}
+          renderedAt={now.getTime()}
         />
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
             21:30 on 1 November 2026: replacing the old city page had orphaned them), and the directive's suburb way in

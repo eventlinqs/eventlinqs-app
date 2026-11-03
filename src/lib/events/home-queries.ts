@@ -12,7 +12,7 @@ export const EVENT_SELECT =
   // in the EVENT's zone. Without it the homepage formats in the runtime zone,
   // which is UTC on the server and the reader's in the browser, so a Perth
   // event at 9pm shows the wrong DAY to someone in Sydney.
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, listing_series_id, venue_name, venue_address, venue_city, venue_state, venue_country, venue_latitude, venue_longitude, is_free, entry_mode, external_ticket_url, created_at, category:event_categories!events_category_id_fkey(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, cover_image_alt, thumbnail_url, gallery_urls, start_date, end_date, timezone, listing_source, listing_series_id, venue_name, venue_address, venue_city, venue_state, venue_country, venue_latitude, venue_longitude, is_free, entry_mode, external_ticket_url, created_at, category:event_categories!events_category_id_fkey(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string
@@ -23,8 +23,17 @@ export type RawRow = {
   thumbnail_url: string | null
   gallery_urls: string[] | null
   start_date: string
+  /**
+   * When the night ends, where held. Selected so every list drops a night AT its end, never at midnight (round 5, the
+   * 11:42 sentinel's 'Ended nights shown': the guide's rows carried no end, so its page could not drop one).
+   */
+  end_date?: string | null
   /** The EVENT's IANA zone. Every rail date is formatted in it, never the reader's. */
   timezone: string | null
+  /** Who listed it: 'organiser' is a night its own organiser listed with us (Big nights' festival rule). */
+  listing_source?: string | null
+  /** The cover's alt text, written from a look at the photograph (the row photo's alt, round 5 fault 5). */
+  cover_image_alt?: string | null
   /** The series a night belongs to, so a page shows the series once (the photo system's P4). */
   listing_series_id?: string | null
   venue_name: string | null

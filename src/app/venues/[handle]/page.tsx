@@ -216,7 +216,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * offers no claim and says so; it never blocks the page.
  */
 async function venueOffersClaim(venueId: string | null): Promise<boolean> {
-  if (!venueId || !(await isFeatureEnabled('listing_claims'))) return false
+  if (!venueId || !(await isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true }))) return false
   const { data, error } = await createAdminClient().from('venues').select('listing_source, claimed_at, removed_at').eq('id', venueId).limit(1).maybeSingle()
   if (error) {
     console.warn(`[venues/${venueId}] the claim entry was not read, so none is shown: ${error.message}`)
@@ -281,7 +281,7 @@ export default async function VenueProfilePage({ params }: Props) {
    * not be a reversal. The read is skipped entirely when it is off, so turning
    * it off also removes the round trip.
    */
-  const venueAccessibility = (await isFeatureEnabled('event_availability_and_access'))
+  const venueAccessibility = (await isFeatureEnabled('event_availability_and_access', { client: createPublicClient(), cachedPage: true }))
     ? await readVenueAccessibility(venue.id)
     : NO_ACCESSIBILITY_INFO
 

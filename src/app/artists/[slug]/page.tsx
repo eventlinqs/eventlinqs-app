@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { fetchArtistBySlug, fetchArtistUpcomingShows, fetchArtistAttribution } from '@/lib/broadcast/artists'
 import {
   fetchShowcaseArtistBySlug,
@@ -77,7 +78,7 @@ const artistForRoute = cache(async function artistForRoute(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  if (!(await isFeatureEnabled('broadcast_artists'))) {
+  if (!(await isFeatureEnabled('broadcast_artists', { client: createPublicClient(), cachedPage: true }))) {
     return { title: 'Not found | EventLinqs' }
   }
   const artist = await artistForRoute(slug)
@@ -124,13 +125,13 @@ function youtubePoster(embed: ShowcaseEmbed): string | null {
 
 export default async function ArtistProfilePage({ params }: Props) {
   const { slug } = await params
-  if (!(await isFeatureEnabled('broadcast_artists'))) notFound()
+  if (!(await isFeatureEnabled('broadcast_artists', { client: createPublicClient(), cachedPage: true }))) notFound()
 
   const admin = createAdminClient()
   const artist = await artistForRoute(slug)
   if (!artist) notFound()
 
-  const showcaseOn = await isFeatureEnabled('artist_showcase')
+  const showcaseOn = await isFeatureEnabled('artist_showcase', { client: createPublicClient(), cachedPage: true })
   const showcase = showcaseOn ? await fetchShowcaseArtistBySlug(admin, slug) : null
 
   const shows = await fetchArtistUpcomingShows(admin, artist.id)

@@ -409,7 +409,8 @@ const GOVERNED = [
   {
     file: 'src/app/venues/[handle]/page.tsx',
     shapes: [
-      { re: /isFeatureEnabled\('event_availability_and_access'\)/, what: "the venue's access section" },
+      // With or without its read options (round 5's sweep passes { client, cachedPage: true } on edge cached pages).
+      { re: /isFeatureEnabled\('event_availability_and_access'[,)]/, what: "the venue's access section" },
     ],
   },
   {

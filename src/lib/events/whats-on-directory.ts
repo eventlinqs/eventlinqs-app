@@ -11,6 +11,7 @@ import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { sellerName } from '@/lib/events/booking-links'
 import { GET_TICKETS, ROW_REGISTER_ON_EVENTLINQS, ROW_WALK_IN } from '@/lib/events/cta'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
+import { listingUntil } from '@/lib/events/listing-window'
 
 export type DirectoryInput = {
   readonly id: string
@@ -33,6 +34,12 @@ export type DirectoryInput = {
   readonly summary?: string | null
   /** When the listing was first published (Just announced: the last 14 days, any date). */
   readonly created_at?: string | null
+  /** When the night ends, where held (its end leaves every list, listing-window.ts listingUntil). */
+  readonly end_date?: string | null
+  /** Who listed it ('organiser': its own organiser listed it with us). */
+  readonly listing_source?: string | null
+  /** The cover's alt text, written from a look at the photograph. */
+  readonly cover_image_alt?: string | null
 }
 
 export type DirectoryRow = {
@@ -54,8 +61,15 @@ export type DirectoryRow = {
   readonly dayKey: string
   readonly dayLabel: string
   readonly ts: number
-  /** A small image only where an authorised one exists (a credited venue photo or a rights recorded cover). */
+  /** A small image only where the night's OWN photograph has its rights on record (organiser authorised or separately
+   * licensed). Never a venue photograph (round 5 fault 5: a venue is never presented as the act, and its credit must show). */
   readonly thumb: string | null
+  /** What the photograph shows, as its cover alt says; null where no thumb or no alt is held. */
+  readonly thumbAlt?: string | null
+  /** The instant the night leaves every list (listingUntil, epoch ms): the guide drops it there, in the browser too. */
+  readonly until?: number
+  /** Its own organiser listed it with us (listing_source 'organiser'). */
+  readonly own?: boolean
   /** The event's own one line, where it says more than the row already does (rowTeaser); else null. */
   readonly teaser?: string | null
   /** When the listing was first published, as epoch ms, else null. */
@@ -222,6 +236,9 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
       dayLabel: dayLabel(at, zone),
       ts: at.getTime(),
       thumb: thumbs.get(e.id) ?? null,
+      thumbAlt: thumbs.has(e.id) ? (e.cover_image_alt?.trim() || null) : null,
+      until: listingUntil(e).getTime(),
+      own: e.listing_source === 'organiser',
       teaser: rowTeaser(e.summary ?? null, e.venue_name, e.venue_city, e.title),
       listedAt: e.created_at ? Date.parse(e.created_at) : null,
       lat: typeof e.venue_latitude === 'number' ? e.venue_latitude : null,
