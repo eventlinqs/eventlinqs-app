@@ -14,6 +14,8 @@
  *                         stays photo first then date, so a show without a permitted photograph is reachable, not forced in).
  *   photo-credit-alt      every photograph drawn on a night is the night's own, rights recorded, with alt text; a third
  *                         party photograph (a venue photo) is never drawn there without its visible credit.
+ *   cards-no-uncredited   the CONTROLLER's 12:55 (3), one rule everywhere: no event card on / or /events draws a
+ *                         photograph whose licence needs a visible credit (a Wikimedia Commons venue photo).
  *
  * Production is read READ ONLY through the Supabase Management API's SQL endpoint ({ read_only: true }) with the CLI's
  * token: run under scripts\ops\with-supabase-token.ps1. The site read is our own pages only, in one browser.
@@ -144,6 +146,18 @@ for (const city of CITIES) {
     else if (!p.alt.trim()) bad.push(`${p.href} draws its own photograph with no alt text`)
   }
   record('photo-credit-alt', city, bad.length === 0, bad.length ? `${bad.length}: ${bad.slice(0, 6).join('; ')}` : `${pageData[city].photos.length} photograph(s), each the night's own, rights recorded, with alt`)
+}
+
+// 7: one rule everywhere, the home rails and /events cards.
+for (const path of ['/', '/events']) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1200)
+  const commons = await page.$$eval('a[href^="/events/"] img', (imgs) =>
+    imgs.map((i) => ({ href: i.closest('a').getAttribute('href'), src: decodeURIComponent(i.currentSrc || i.getAttribute('src') || '') }))
+      .filter((p) => /upload\.wikimedia\.org|commons\.wikimedia\.org/.test(p.src)))
+  record('cards-no-uncredited', path, commons.length === 0, commons.length ? `${commons.length}: ${commons.slice(0, 5).map((p) => `${p.href} (${p.src.slice(-50)})`).join('; ')}` : 'no event card draws a Commons photograph')
+  await page.close()
 }
 
 await browser.close()
