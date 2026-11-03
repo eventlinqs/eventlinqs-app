@@ -37,7 +37,7 @@ describe("no photo is ever reused (Lawal's ruling of 31 October 2026, 00:14; the
       { id: 'later', cover_image_url: COMPOSED },
       { id: 'soonest', cover_image_url: COMPOSED },
     ]
-    const out = await withVenuePhotos(rows, { deps: deps({ soonest: photo() }) })
+    const out = await withVenuePhotos(rows, { use: 'event_page', deps: deps({ soonest: photo() }) })
     expect(out.map((r) => r.cover_image_url)).toEqual([COMPOSED, VENUE_FILE])
     expect(out[0].image_credit).toBeUndefined()
   })
@@ -58,8 +58,8 @@ describe('the chain, on a page of rows', () => {
     expect(d.coversOf).not.toHaveBeenCalled()
   })
 
-  it("gives a night with only our composed cover its assigned venue photo and credit", async () => {
-    const [row] = await withVenuePhotos([{ id: 'e1', cover_image_url: COMPOSED }], { deps: deps({ e1: photo() }) })
+  it("gives the EVENT PAGE, which prints the credit under the photo, its assigned venue photo and credit", async () => {
+    const [row] = await withVenuePhotos([{ id: 'e1', cover_image_url: COMPOSED }], { use: 'event_page', deps: deps({ e1: photo() }) })
     expect(row.cover_image_url).toBe(VENUE_FILE)
     expect(row.image_credit).toBe('Photo: Jo Bloggs, CC BY-SA 4.0')
     expect(row.image_credit_file).toBe('https://commons.wikimedia.org/wiki/File:Forum.jpg')
@@ -80,6 +80,22 @@ describe('the chain, on a page of rows', () => {
     const failing: ChainDeps = { coversOf: async () => { throw new Error('function not found') } }
     const rows = [{ id: 'e1', cover_image_url: COMPOSED }]
     expect(await withVenuePhotos(rows, { deps: failing })).toEqual(rows)
+  })
+
+  it("a CARD never takes a photo whose licence needs a visible credit (the CONTROLLER's 12:55): it keeps the typographic cover", async () => {
+    for (const p of [photo(), photo({ licence: 'cc_by' }), photo({ licence: 'owner_permission', credit: 'The Forum', author: null })]) {
+      const [row] = await withVenuePhotos([{ id: 'e1', cover_image_url: COMPOSED }], { deps: deps({ e1: p }) })
+      expect(row.cover_image_url).toBe(COMPOSED)
+      expect(row.image_credit).toBeUndefined()
+    }
+  })
+
+  it('a card takes a CC0 or public domain venue photo, which asks no credit', async () => {
+    for (const licence of ['cc0', 'public_domain'] as const) {
+      const [row] = await withVenuePhotos([{ id: 'e1', cover_image_url: COMPOSED }], { deps: deps({ e1: photo({ licence }) }) })
+      expect(row.cover_image_url).toBe(VENUE_FILE)
+      expect(row.image_credit).toBeNull()
+    }
   })
 
   it('asks for the card use by default', async () => {
