@@ -5,6 +5,7 @@ import { Copy, Mail, Check, Share2 } from 'lucide-react'
 import { buildAttributedUrl } from '@/lib/growth/referrals'
 import { withShareSource } from '@/lib/growth/loops'
 import type { ShareChannel } from '@/lib/broadcast/share-codes'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * The Instagram glyph, inline, because Lucide carries no brand icons and every
@@ -184,7 +185,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, vari
       return
     }
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setSharedNative(true)
       window.setTimeout(() => setSharedNative(false), 1800)
     } catch {
@@ -194,7 +195,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, vari
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(urlFor('copy'))
+      await copyText(urlFor('copy'))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
@@ -215,7 +216,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, vari
    */
   const onInstagram = async () => {
     try {
-      await navigator.clipboard.writeText([shareText, urlFor('instagram')].join(String.fromCharCode(10)))
+      await copyText([shareText, urlFor('instagram')].join(String.fromCharCode(10)))
       setInstagramCopied(true)
       window.setTimeout(() => setInstagramCopied(false), 2400)
     } catch {

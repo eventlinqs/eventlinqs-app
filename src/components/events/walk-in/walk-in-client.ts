@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { withShareSource } from '@/lib/growth/loops'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * The two things a walk-in page's buttons do in the browser (WI1).
@@ -86,7 +87,7 @@ export function useWalkInShare({
       }
     }
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       countOnEvent(eventId, 'share')
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)

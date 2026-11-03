@@ -22,6 +22,7 @@ import { OrganiserProse } from '@/components/ui/organiser-prose'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { getSiteUrl } from '@/lib/site-url'
 import type { FullEvent } from '@/lib/events/event-detail-read'
 import type { CalendarEvent } from '@/lib/events/calendar-links'
@@ -105,7 +106,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     // The event has already resolved under its own policies; the guide follows it
     // for the public exactly when guideIsPublic says so (src/lib/walk-in/guide-visibility.ts).
     readPublicGuide(event),
-    isFeatureEnabled('walk_in_remind_me'),
+    isFeatureEnabled('walk_in_remind_me', { client: createPublicClient(), cachedPage: true }),
     // THE SAME RESOLVER the route layout preloads with (eventHeroPreloadLink),
     // and HeroMedia's own default sizes below, so the raster this paints is the
     // raster the head asked for: one download on the LCP path, not two.
@@ -115,7 +116,7 @@ export async function WalkInEventPage({ event }: { event: FullEvent }) {
     // Item 15 of the locked plan of 27 October 2026: the venues that joined, named under the organiser.
     readJoinedCollaborators(event.id),
     // The claim line at the foot (window 6's gap list of 30 October 2026, item 2), behind its flag.
-    isFeatureEnabled('listing_claims'),
+    isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true }),
   ])
   // The clock is read here with the other reads, as the ticketed page reads it,
   // so the render below stays pure.

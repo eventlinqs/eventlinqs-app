@@ -425,7 +425,7 @@ export default async function EventDetailPage({ params }: Props) {
    * emitting unhandled rejections instead. isFeatureEnabled already swallows
    * its own errors and returns the seeded default, so this is belt and braces.
    */
-  const artistsOnPromise = isFeatureEnabled('broadcast_artists')
+  const artistsOnPromise = isFeatureEnabled('broadcast_artists', { client: createPublicClient(), cachedPage: true })
   artistsOnPromise.catch(() => {})
   /*
    * THE SECOND FLAG STARTS HERE FOR THE SAME REASON AS THE FIRST.
@@ -436,10 +436,10 @@ export default async function EventDetailPage({ params }: Props) {
    * comment above records measuring away: 624ms of server-response-time on the
    * page a buyer is standing on when they decide to pay. Two flags, one wait.
    */
-  const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
+  const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access', { client: createPublicClient(), cachedPage: true })
   availabilityAndAccessPromise.catch(() => {})
   // The claim line at the foot (window 6's gap list, item 2), started here for the same reason as the two above.
-  const listingClaimsPromise = isFeatureEnabled('listing_claims')
+  const listingClaimsPromise = isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true })
   listingClaimsPromise.catch(() => {})
   const event = await readEventForRoute(slug)
 
@@ -480,7 +480,7 @@ export default async function EventDetailPage({ params }: Props) {
   const captureAdmin = createAdminClient()
   const capturePlacementPromise = resolveCapturePlacement(captureAdmin)
   capturePlacementPromise.catch(() => {})
-  const audienceCapturePromise = isFeatureEnabled('audience_capture')
+  const audienceCapturePromise = isFeatureEnabled('audience_capture', { client: createPublicClient(), cachedPage: true })
   audienceCapturePromise.catch(() => {})
 
   /*

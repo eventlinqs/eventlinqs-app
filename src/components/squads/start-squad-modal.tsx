@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { useRouter } from 'next/navigation'
 import { createSquad } from '@/app/actions/squads'
+import { copyText } from '@/lib/share/copy-text'
 
 interface StartSquadModalProps {
   isOpen: boolean
@@ -59,7 +60,7 @@ export function StartSquadModal({
 
   function handleCopy() {
     if (!shareUrl) return
-    navigator.clipboard.writeText(shareUrl).then(() => {
+    copyText(shareUrl).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }).catch(() => {

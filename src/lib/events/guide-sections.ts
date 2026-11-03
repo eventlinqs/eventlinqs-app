@@ -65,8 +65,12 @@ const OUR_OWN = /^(Book|Register) on EventLinqs$/
 export function isBigNight(r: DirectoryRow): boolean {
   const atBigVenue = BIG_VENUES.some((v) => v.test(r.venue ?? ''))
   if (atBigVenue && r.format === 'ticketed' && !r.free) return true
-  return r.categorySlug === 'festival' && OUR_OWN.test(r.source)
+  // A FESTIVAL ITS ORGANISER LISTED WITH US, however it is entered (round 5 fault 2): the booking label alone left out
+  // every free, walk in festival ('Free · Walk in' is not 'Book on EventLinqs'), AMCF at Fed Square among them.
+  return r.categorySlug === 'festival' && (OUR_OWN.test(r.source) || r.own === true)
 }
+// Big nights ranks PHOTO FIRST, then date, and nothing else (Lawal, 3 November 2026, 12:29, through the CONTROLLER's
+// 12:31: a show without a permitted photograph is not forced in; featuring is what an organiser gains by sending photos).
 
 /** Photo first, then the soonest (items 1 and 2: 'events with a permitted photograph rank first, then by date'). */
 export function photoFirst(a: DirectoryRow, b: DirectoryRow): number {

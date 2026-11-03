@@ -5,6 +5,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { IMAGE_ACCEPT_ATTR, MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import type { Caption } from '@/lib/broadcast/captions'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * The rendered artefacts and the six captions.
@@ -325,7 +326,7 @@ function CaptionCard({ caption }: { caption: Caption }) {
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(full)
+      await copyText(full)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {

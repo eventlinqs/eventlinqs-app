@@ -109,6 +109,8 @@ let out = 'C:/dev/EVIDENCE/HERO-CONTRAST'
 let label = 'run'
 let shots = false
 let routesFile = null
+/** --widths 320,390,1440 measures those widths (the CONTROLLER's 07:12 asked for 320 too); default 390, 768, 1440. */
+let widths = null
 const only = []
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--out') out = args[++i]
@@ -116,6 +118,7 @@ for (let i = 0; i < args.length; i += 1) {
   else if (args[i] === '--only') only.push(args[++i])
   else if (args[i] === '--shots') shots = true
   else if (args[i] === '--routes-file') routesFile = args[++i]
+  else if (args[i] === '--widths') widths = args[++i]
 }
 out = join(out, `drive-${label}`)
 mkdirSync(out, { recursive: true })
@@ -256,6 +259,9 @@ const TEMPLATE_ROUTES = {
   /* The community organiser CTA band, which renders under every community
    * page and was measured for the first time on 20 September 2026. */
   'src/components/features/community/community-organiser-cta.tsx': '/community/',
+  /* The city guide (round 3, then the banner head of 3 November 2026), which /
+   * and every /city/[slug] render; the drive refused to run without it. */
+  'src/components/features/city-guide/city-guide-screen.tsx': '/city/',
 }
 /*
  * TWO FAMILIES THIS TABLE CANNOT COVER FROM SOURCE, said here rather than left
@@ -366,11 +372,13 @@ if (only.length && TARGETS.length !== only.length) {
   process.exit(1)
 }
 
-const VIEWPORTS = [
-  { label: '390', width: 390, height: 844 },
-  { label: '768', width: 768, height: 1024 },
-  { label: '1440', width: 1440, height: 1000 },
-]
+const VIEWPORTS = widths
+  ? widths.split(',').map((w) => ({ label: w, width: Number(w), height: Number(w) >= 1024 ? 1000 : Number(w) >= 768 ? 1024 : 844 }))
+  : [
+      { label: '390', width: 390, height: 844 },
+      { label: '768', width: 768, height: 1024 },
+      { label: '1440', width: 1440, height: 1000 },
+    ]
 
 const TEXT_FLOOR = 4.5
 const LARGE_FLOOR = 3

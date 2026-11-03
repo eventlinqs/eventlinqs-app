@@ -69,11 +69,17 @@ export async function withVenuePhotos<T extends ChainRow>(
     const deps = options.deps ?? publicDeps()
     // NO PHOTO IS EVER REUSED (Lawal's ruling of 31 October 2026, 00:14): the database deals each venue's photos one per
     // night (deal_venue_photos) and this reads which night holds which; nothing here picks a photo.
-    const covers = await deps.coversOf(askAbout, options.use ?? 'event_card')
+    const use = options.use ?? 'event_card'
+    const covers = await deps.coversOf(askAbout, use)
     return rows.map((row) => {
       if (isOwnPhoto(row.cover_image_url)) return row
       const photo = covers.get(row.id)
       if (!photo) return row
+      // A PHOTOGRAPH WHOSE LICENCE NEEDS A VISIBLE CREDIT IS NOT SHOWN UNTIL THE CREDITED DESIGN EXISTS, one rule everywhere
+      // (the CONTROLLER's 12:55 of 3 November 2026, round 5 fault 5): a card carries no text on its image (18:57), so its
+      // credit lived only in a title attribute nobody sees. Only the event page draws the credit line under the photo, so
+      // only it takes such a photo; a card keeps the typographic cover. CC0 and public domain ask no credit and stay.
+      if (use !== 'event_page' && venueCreditLine(photo) !== null) return row
       return {
         ...row,
         cover_image_url: photo.imageUrl,

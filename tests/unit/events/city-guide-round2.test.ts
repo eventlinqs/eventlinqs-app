@@ -31,7 +31,9 @@ describe('item 4: the hero line', () => {
   })
   it('replaces the city data descriptor under the heading', () => {
     const screen = src('src/components/features/city-guide/city-guide-screen.tsx')
-    expect(screen).toMatch(/cityGuideSubtitle\(city\.name\)/)
+    // The state page shares the screen, so the sentence takes the place's name: the city's, or its state's (14:10).
+    expect(screen).toMatch(/cityGuideSubtitle\(placeName\)/)
+    expect(screen).toMatch(/const placeName = onState \? stateName : city\.name/)
     expect(screen).not.toMatch(/\{city\.descriptor\}/)
   })
 })

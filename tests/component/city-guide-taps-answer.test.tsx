@@ -45,14 +45,14 @@ describe('every place chip answers the tap', () => {
     fireEvent.pointerDown(today)
     expect(today.getAttribute('data-snap')).toBe('touched')
     expect(today.className).toContain('bg-[var(--color-ink-900)]')
-    const victoria = within(screen.getByRole('group', { name: 'Choose a city' })).getByRole('button', { name: 'Victoria' })
-    fireEvent.pointerDown(victoria)
-    expect(victoria.className).toContain('bg-[var(--color-ink-900)]')
-    fireEvent.pointerCancel(victoria)
-    expect(victoria.className).toContain('bg-white')
+    // A place chip is a link now (the CONTROLLER's 14:10): it turns selected on pointerdown (SnapLink), before it lands.
+    const melbourne = within(screen.getByRole('group', { name: 'Choose a city' })).getByRole('link', { name: 'Melbourne' })
+    expect(melbourne.getAttribute('data-snap')).toBeNull()
+    fireEvent.pointerDown(melbourne)
+    expect(melbourne.getAttribute('data-snap')).toBe('touched')
   })
 
-  it('the current city chip takes the visitor to its events', () => {
+  it("the current city chip shows selected and stays put: no scroll, no surprise (the CONTROLLER's 14:10, Lawal's 14:08)", () => {
     render(
       <CityGuide
         city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
@@ -62,8 +62,11 @@ describe('every place chip answers the tap', () => {
       />,
     )
     scroll.mockClear()
-    fireEvent.click(within(screen.getByRole('group', { name: 'Choose a city' })).getByRole('button', { name: 'Geelong' }))
-    expect(scroll).toHaveBeenCalled()
+    const geelong = within(screen.getByRole('group', { name: 'Choose a city' })).getByText('Geelong')
+    expect(geelong.getAttribute('aria-current')).toBe('page')
+    expect(geelong.className).toContain('bg-[var(--color-ink-900)]')
+    fireEvent.click(geelong)
+    expect(scroll).not.toHaveBeenCalled()
   })
 
   it('a city link and All of Australia show their selected, busy state the moment they are tapped (useLinkStatus)', () => {

@@ -171,6 +171,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/community/[community]/[city]', klass: 'conditional', why: '420 templated community-by-city intersections, the largest duplicate family on the platform' },
   { route: '/city/[slug]', klass: 'conditional', why: 'templated city landings' },
   { route: '/city/[slug]/[suburb]', klass: 'conditional', why: 'templated suburb landings' },
+  { route: '/state/[state]', klass: 'never', why: 'the state chip view of the city guides (3 November 2026, 14:10); each city guide is the indexable page' },
   { route: '/categories/[slug]', klass: 'conditional', why: 'templated category landings' },
   { route: '/events/browse/[city]', klass: 'conditional', why: '22 templated browse-by-city pages' },
   { route: '/faith/[faith]', klass: 'conditional', why: 'templated faith landings' },

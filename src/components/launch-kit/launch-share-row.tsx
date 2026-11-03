@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Check, Copy, Mail } from 'lucide-react'
 import type { ShareChannel } from '@/lib/broadcast/share-codes'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * LaunchShareRow - one-tap tracked sharing for the Launch Kit.
@@ -28,7 +29,7 @@ export function LaunchShareRow({ links, shareText }: Props) {
 
   const copy = async (key: string, url: string) => {
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopiedKey(key)
       window.setTimeout(() => setCopiedKey(c => (c === key ? null : c)), 1800)
     } catch {

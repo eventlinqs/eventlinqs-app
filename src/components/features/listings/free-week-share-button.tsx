@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 import { Share2, Check } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics/plausible'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * SHARE THE CITY GUIDE'S WEEK (WI2 Part 2). The phone's own share sheet where
@@ -28,7 +29,7 @@ export function FreeWeekShareButton({ url, title, citySlug }: { url: string; tit
       return
     }
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(true)
       trackEvent('free_week_shared', { city: citySlug, channel: 'clipboard' })
       window.setTimeout(() => setCopied(false), 2500)

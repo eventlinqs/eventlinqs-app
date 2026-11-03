@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Reveal } from '@/components/ui/reveal'
 import { emailKitToSelf } from '@/app/launch/actions'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * The bookmarkable kit link (founder ruling 0.2c, 9 August 2026: a link, 30
@@ -48,7 +49,7 @@ export function KitLinkBar({ code, ephemeral }: { code: string | null; ephemeral
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {

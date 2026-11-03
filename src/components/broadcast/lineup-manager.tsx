@@ -8,6 +8,7 @@ import {
   inviteGuestPerformerAction,
   removeArtistFromLineupAction,
 } from '@/app/actions/lineup'
+import { copyText } from '@/lib/share/copy-text'
 
 export interface LineupEntry {
   artistId: string
@@ -62,7 +63,7 @@ export function LineupManager({ eventId, entries }: { eventId: string; entries: 
 
   const copy = async (key: string, value: string) => {
     try {
-      await navigator.clipboard.writeText(value)
+      await copyText(value)
       setCopiedKey(key)
       window.setTimeout(() => setCopiedKey((c) => (c === key ? null : c)), 1800)
     } catch {

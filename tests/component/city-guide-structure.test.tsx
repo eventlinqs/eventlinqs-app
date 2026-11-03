@@ -46,6 +46,7 @@ const guide = (worth: EventCardData[] = []) =>
       rows={rows}
       days={days}
       worth={worth}
+      stateHref="/state/victoria"
     />,
   )
 const card = (i: number): EventCardData => ({
@@ -58,7 +59,10 @@ describe('the Geelong reference page, section by section', () => {
   it('1: the switcher reads Victoria, the cities, Change city; the five date chips are visible words', () => {
     guide()
     const group = screen.getByRole('group', { name: 'Choose a city' })
-    expect([...group.querySelectorAll('a, button')].map((e) => e.textContent?.trim())).toEqual(['Victoria', 'Geelong', 'Melbourne', 'Ballarat', 'Bendigo', 'Change city'])
+    // The CONTROLLER's 14:10: Victoria and the other cities are links, the city this is shows selected (aria-current).
+    expect([...group.querySelectorAll('a, button, [aria-current]')].map((e) => e.textContent?.trim())).toEqual(['Victoria', 'Geelong', 'Melbourne', 'Ballarat', 'Bendigo', 'Change city'])
+    expect(within(group).getByRole('link', { name: 'Victoria' }).getAttribute('href')).toBe('/state/victoria')
+    expect(group.querySelector('[aria-current="page"]')?.textContent).toBe('Geelong')
     const when = screen.getByRole('group', { name: 'When' })
     for (const w of ['Today', 'This weekend', 'This week', 'This month', 'Next 3 months', 'All dates', 'Pick dates']) expect(within(when).getByText(w)).toBeInTheDocument()
   })
@@ -144,11 +148,25 @@ describe('the Geelong reference page, section by section', () => {
     expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#city-calendar', '/submit-event', '/organisers'])
   })
 
-  it('Victoria widens on purpose to the state\u2019s listed cities, and says so', () => {
-    guide()
-    fireEvent.click(screen.getByRole('button', { name: 'Victoria' }))
+  it('the Victoria page (scope state) holds the state\u2019s listed cities and says so; Victoria is its current chip', () => {
+    render(
+      <CityGuide
+        city={{ slug: 'melbourne', name: 'Melbourne', state: 'VIC', lat: -37.81, lng: 144.96 }}
+        stateName="Victoria"
+        stateCityNames={['geelong', 'melbourne', 'ballarat', 'bendigo']}
+        quickCities={[{ slug: 'geelong', name: 'Geelong' }, { slug: 'melbourne', name: 'Melbourne' }, { slug: 'ballarat', name: 'Ballarat' }, { slug: 'bendigo', name: 'Bendigo' }]}
+        allCities={[]}
+        rows={rows}
+        days={days}
+        scope="state"
+        stateHref="/state/victoria"
+      />,
+    )
     expect(screen.getAllByText('Comedy Republic Main Stage').length).toBeGreaterThan(0)
     expect(screen.getByRole('region', { name: 'Explore Victoria' })).toBeInTheDocument()
+    const group = screen.getByRole('group', { name: 'Choose a city' })
+    expect(group.querySelector('[aria-current="page"]')?.textContent).toBe('Victoria')
+    expect(within(group).getByRole('link', { name: 'Melbourne' }).getAttribute('href')).toBe('/city/melbourne')
   })
 })
 

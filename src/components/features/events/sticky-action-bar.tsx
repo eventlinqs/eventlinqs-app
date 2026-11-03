@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, Share2 } from 'lucide-react'
+import { copyText } from '@/lib/share/copy-text'
 
 /**
  * StickyActionBar - appears after scrolling past the event hero.
@@ -71,7 +72,7 @@ export function StickyActionBar({
       if (navigator.share) {
         await navigator.share({ title, url: shareUrl })
       } else {
-        await navigator.clipboard.writeText(shareUrl)
+        await copyText(shareUrl)
         setShared(true)
         setTimeout(() => setShared(false), 1600)
       }

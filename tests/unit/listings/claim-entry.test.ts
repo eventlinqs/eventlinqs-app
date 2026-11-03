@@ -24,7 +24,8 @@ describe('the venue page offers its claim', () => {
 
   it('the venue page links to its claim page behind the listing_claims flag, at the 44px floor', () => {
     const page = readFileSync('src/app/venues/[handle]/page.tsx', 'utf8')
-    expect(page).toMatch(/isFeatureEnabled\('listing_claims'\)/)
+    // With or without its read options (round 5's sweep: an edge cached page passes { client, cachedPage: true }).
+    expect(page).toMatch(/isFeatureEnabled\('listing_claims'[,)]/)
     expect(page).toMatch(/href=\{`\/venues\/\$\{handle\}\/claim`\}/)
     expect(page).toMatch(/showClaim && \(/)
     expect(page).toMatch(/min-h-11/)
