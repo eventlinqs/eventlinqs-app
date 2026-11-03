@@ -1,3 +1,4 @@
+import { IMPACT_SITE_VERIFICATION } from '@/lib/seo/impact-site-verification'
 import type { Metadata, Viewport } from 'next'
 import { Manrope, Archivo } from 'next/font/google'
 import Script from 'next/script'
@@ -195,6 +196,9 @@ export default function RootLayout({
   // mismatch (React 19 logs it as a console error in dev otherwise).
   return (
     <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${manrope.variable}`}>
+      <head>
+        <meta {...IMPACT_SITE_VERIFICATION} />
+      </head>
       <body>
         <Script id="el-headless-flag" strategy="beforeInteractive">
           {HEAD_HEADLESS_FLAG}
