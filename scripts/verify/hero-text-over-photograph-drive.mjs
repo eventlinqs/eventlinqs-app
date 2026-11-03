@@ -111,6 +111,9 @@ let shots = false
 let routesFile = null
 /** --widths 320,390,1440 measures those widths (the CONTROLLER's 07:12 asked for 320 too); default 390, 768, 1440. */
 let widths = null
+/** --css <file>: a stylesheet laid over every page before it is measured, to TRY a wash before it is written (a trial
+ *  never ships: the shipped wash is what a run without --css measures). */
+let cssFile = null
 const only = []
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--out') out = args[++i]
@@ -119,7 +122,9 @@ for (let i = 0; i < args.length; i += 1) {
   else if (args[i] === '--shots') shots = true
   else if (args[i] === '--routes-file') routesFile = args[++i]
   else if (args[i] === '--widths') widths = args[++i]
+  else if (args[i] === '--css') cssFile = args[++i]
 }
+const trialCss = cssFile ? readFileSync(cssFile, 'utf8') : null
 out = join(out, `drive-${label}`)
 mkdirSync(out, { recursive: true })
 
@@ -666,6 +671,7 @@ try {
         await ctx.close()
         continue
       }
+      if (trialCss) await page.addStyleTag({ content: trialCss })
 
       /*
        * EVERY PHOTOGRAPH MUST BE MADE TO EXIST BEFORE ANY OF THEM IS JUDGED,
