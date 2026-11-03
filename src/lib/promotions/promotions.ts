@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
-import { createPublicClient } from '@/lib/supabase/public-client'
 
 /**
  * PAID PROMOTION: FEATURED PLACEMENT AND THE ORGANISER SERVICES MENU (Train C, rows 12 and 13).
@@ -287,7 +286,11 @@ export async function reconcileAwaiting(admin: Admin, stripe: Pick<Stripe, 'chec
 /** For a public page: the featured row, or none when the records cannot be reached, so a page never fails on it. */
 export async function featuredForPage(placement: Placement, citySlug: string | null = null): Promise<FeaturedListing[]> {
   try {
-    if (!(await isFeatureEnabled('paid_promotions', { client: createPublicClient(), cachedPage: true }))) return []
+    // PER REQUEST, AS ON LIVE, FOR NOW (car 40, 3 November 2026): read cached, this made the home a cached page, and the
+    // Vercel preview of that home logged React's hydration error #418 (errors-in-console, best-practices 0.96, the
+    // Lighthouse mobile gate red); the home rendered per request (car 39, live today) passed it at 1.00. The cause is
+    // open and named in BP-STATE; until it is found the home keeps its per-request render.
+    if (!(await isFeatureEnabled('paid_promotions'))) return []
     return await featuredNow(createAdminClient(), placement, new Date(), citySlug)
   } catch {
     return []
