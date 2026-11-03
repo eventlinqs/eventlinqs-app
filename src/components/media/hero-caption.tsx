@@ -5,6 +5,7 @@ import {
   HERO_SIDE_LIFT,
   HERO_SIDE_SCRIM_PHONE,
   HERO_SIDE_SCRIM_WIDE,
+  HERO_SIDE_TEXT_SHADOW,
 } from './hero-photo-scrim'
 
 /**
@@ -57,7 +58,9 @@ export function HeroCaption({
   wash?: 'band' | 'text-side'
 }) {
   return (
-    <div className={`relative ${className}`}>
+    // On the text-side wash the words carry a soft navy shadow, inherited from here, part of what the drive measured
+    // (hero-photo-scrim.ts); the wash layers below hold no text.
+    <div className={`relative ${className}`} style={wash === 'text-side' ? { textShadow: HERO_SIDE_TEXT_SHADOW } : undefined}>
       {wash === 'text-side' ? (
         <>
           {/* Phones: from just above the first line down, fading out above it. */}

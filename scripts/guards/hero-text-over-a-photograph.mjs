@@ -362,11 +362,25 @@ if (scrim && /HERO_SIDE_SCRIM_(PHONE|WIDE)/.test(scrim)) {
     if (!body) continue
     if (/\d%/.test(body)) fail('6', `${name} carries a percentage stop; the text-side wash must be anchored to the text by absolute lengths`)
   }
-  if (phone && !/rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) \$\{HERO_SIDE_LIFT\}/.test(phone)) {
-    fail('6', 'HERO_SIDE_SCRIM_PHONE no longer reaches HERO_CAPTION_MIN_ALPHA at the caption\'s first line (HERO_SIDE_LIFT)')
+  /* Pick B (the CONTROLLER's 00:24 of 4 November 2026): behind the words the text-side wash holds HERO_SIDE_TEXT_ALPHA,
+   * measured on the four banner photographs by the drive, never below the 0.62 that measurement proved; the words
+   * carry HERO_SIDE_TEXT_SHADOW; the small gold eyebrow keeps the full promise on its own backing, HERO_EYEBROW_PLATE
+   * at HERO_CAPTION_MIN_ALPHA. */
+  const textAlpha = Number((scrim.match(/HERO_SIDE_TEXT_ALPHA\s*=\s*([0-9.]+)/) ?? [])[1])
+  if (!(textAlpha >= 0.62)) fail('6', `HERO_SIDE_TEXT_ALPHA is ${textAlpha}, below the 0.62 the drive proved on the banner photographs`)
+  if (!/HERO_EYEBROW_PLATE\s*=\s*`rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\)`/.test(scrim)) {
+    fail('6', 'HERO_EYEBROW_PLATE no longer backs the gold eyebrow at HERO_CAPTION_MIN_ALPHA')
   }
-  if (wide && !/rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) 0, rgba\(\$\{NAVY\},\$\{HERO_CAPTION_MIN_ALPHA\}\) calc\(100vw \+ \$\{HERO_SIDE_TEXT\}\)/.test(wide)) {
-    fail('6', 'HERO_SIDE_SCRIM_WIDE no longer holds HERO_CAPTION_MIN_ALPHA from the bleed across the caption column (HERO_SIDE_TEXT)')
+  if (phone && !/rgba\(\$\{NAVY\},\$\{HERO_SIDE_TEXT_ALPHA\}\) \$\{HERO_SIDE_LIFT\}/.test(phone)) {
+    fail('6', 'HERO_SIDE_SCRIM_PHONE no longer reaches HERO_SIDE_TEXT_ALPHA at the caption\'s first line (HERO_SIDE_LIFT)')
+  }
+  if (wide && !/rgba\(\$\{NAVY\},\$\{HERO_SIDE_TEXT_ALPHA\}\) 0, rgba\(\$\{NAVY\},\$\{HERO_SIDE_TEXT_ALPHA\}\) calc\(100vw \+ \$\{HERO_SIDE_TEXT\}\)/.test(wide)) {
+    fail('6', 'HERO_SIDE_SCRIM_WIDE no longer holds HERO_SIDE_TEXT_ALPHA from the bleed across the caption column (HERO_SIDE_TEXT)')
+  }
+  for (const f of HERO_FILES) {
+    const src = read(f)
+    if (src === null || !/<HeroCaption\b[^>]*wash="text-side"/.test(asCode(src))) continue
+    if (!/background: HERO_EYEBROW_PLATE/.test(src)) fail('6', `${f} puts words on the text-side wash without the gold eyebrow's own backing (HERO_EYEBROW_PLATE)`)
   }
   for (const name of ['HERO_SIDE_LIFT', 'HERO_SIDE_TEXT', 'HERO_SIDE_FADE']) {
     const v = (scrim.match(new RegExp(`${name}\\s*=\\s*'([^']+)'`)) ?? [])[1]
@@ -386,6 +400,7 @@ if (scrim && /HERO_SIDE_SCRIM_(PHONE|WIDE)/.test(scrim)) {
     if (!/background: HERO_SIDE_SCRIM_PHONE/.test(body) || !/background: HERO_SIDE_SCRIM_WIDE/.test(body)) {
       fail('6', `${CAPTION_COMPONENT} declares the text-side wash but does not paint both ramps`)
     }
+    if (!/textShadow: HERO_SIDE_TEXT_SHADOW/.test(body)) fail('6', `${CAPTION_COMPONENT} paints the text-side wash without the shadow the drive measured (HERO_SIDE_TEXT_SHADOW)`)
   }
 }
 

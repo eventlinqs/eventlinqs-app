@@ -15,6 +15,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { getCityBanner } from '@/lib/images/city-photo'
 import { CityGuide } from './city-guide'
+import { HERO_EYEBROW_PLATE } from '@/components/media/hero-photo-scrim'
 import { statePageHref } from '@/lib/cities/state-pages'
 
 /**
@@ -104,13 +105,20 @@ export async function CityGuideScreen({
             {/* The one shared caption over a photograph, so the heading clears its contrast floor (hero-text-over-a-photograph);
                 its TEXT-SIDE wash (the CONTROLLER's 07:12) keeps that floor behind every word and leaves the rest of the photo bare. */}
             <HeroCaption wash="text-side" className="max-w-xl">
-              <p className="font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]">
+              {/* THE EYEBROW ON ITS OWN BACKING (the CONTROLLER's pick B, 00:24 of 4 November): the band is light behind the
+                  words, and the small gold line, the one the drive could not prove on the photograph, is dark only behind
+                  itself; its separators are drawn, not a slash glyph too thin to measure. No text shadow on the backing. */}
+              <p
+                data-eyebrow-plate
+                className="inline-flex items-center rounded-md px-2 py-0.5 font-display text-xs font-bold uppercase tracking-widest text-[var(--brand-accent)]"
+                style={{ background: HERO_EYEBROW_PLATE, textShadow: 'none' }}
+              >
                 <Link href="/cities" className="-my-3 inline-flex min-h-11 items-center hover:underline">Australia</Link>
-                <span aria-hidden="true"> / </span>
+                <span aria-hidden="true" className="mx-2 inline-block h-3 w-px bg-current opacity-80" />
                 {stateName}
                 {onState ? null : (
                   <>
-                    <span aria-hidden="true"> / </span>
+                    <span aria-hidden="true" className="mx-2 inline-block h-3 w-px bg-current opacity-80" />
                     {city.name}
                   </>
                 )}
