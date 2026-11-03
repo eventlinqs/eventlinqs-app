@@ -177,8 +177,16 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
         const y1 = await p.evaluate(() => scrollY).catch(() => y0)
         const s1 = await signature(p)
         const focused = await el.evaluate((node) => document.activeElement === node).catch(() => false)
+        // An empty form's submit: the browser holds it, shows its own 'fill out this field' bubble (outside the page)
+        // and moves focus to the first empty required field, which the page does show.
+        const heldEmpty = await p.evaluate(() => {
+          const a = document.activeElement
+          return a instanceof HTMLInputElement && a.required && !a.validity.valid
+        }).catch(() => false)
         if (s1 !== s0) {
           push({ ...row, ok: changedAt !== null && changedAt <= 300, result: `the page changes in ${changedAt ?? '>300'} ms${Math.abs(y1 - y0) > 40 ? `, and scrolls ${y1 - y0} px` : ''}` })
+        } else if (heldEmpty && (t.tag === 'button' || t.type === 'submit')) {
+          push({ ...row, ok: true, result: "the browser holds the empty form at its first empty field (its own 'fill out this field' bubble)" })
         } else if (['input', 'select', 'textarea'].includes(t.tag) && focused) {
           push({ ...row, ok: true, result: 'the field takes focus' })
         } else if (t.tag === 'a' && t.href && new URL(t.href, url0).pathname === u0.pathname && Math.abs(y1 - y0) <= 40) {

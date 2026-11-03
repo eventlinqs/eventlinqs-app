@@ -168,7 +168,7 @@ for (const path of ['/', '/events']) {
 if (process.argv.includes('--skip-taps')) {
   console.log('NOT RUN every-tap-works: --skip-taps')
 } else {
-  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026']
+  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026', '/login', '/signup']
   const taps = await everyTap(browser, BASE, TAP_PATHS, join(OUT, 'every-tap'))
   for (const path of TAP_PATHS) {
     const mine = taps.filter((t) => t.path === path)
