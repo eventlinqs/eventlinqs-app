@@ -332,3 +332,23 @@ describe('why a mark went up, and whether the answer survives the next rewrite',
     }
   })
 })
+
+/*
+ * THE 2 KB MARGIN (the CONTROLLER's line of 4 November 2026, 10.25 pm): car 41 measured /e/[code] at 199.5 KB on this machine and
+ * Vercel's Linux toolchain built it at 200.0 KB, which refused the production deployment ('[initial-bundle-budget] FAIL:
+ * /e/[code] is a PUBLIC route at 200.0 KB gzip ... over the Scope v5 10.3 budget of 200.0 KB by 0.0 KB'). A public route
+ * must leave 2 KB under the budget on a local build, so a Linux build can never tip it; on Vercel's host the budget is
+ * judged as it is.
+ */
+import { LOCAL_MARGIN_BYTES, publicCeiling, SCOPE_10_3_BUDGET_BYTES as BUDGET } from '../../../scripts/perf/lib/first-load.mjs'
+
+describe('a public route leaves 2 KB under the budget on a local build', () => {
+  it('local: the ceiling is 198 KB; on Vercel: the budget itself', () => {
+    expect(LOCAL_MARGIN_BYTES).toBe(2 * 1024)
+    expect(publicCeiling({ onVercel: false })).toBe(BUDGET - 2 * 1024)
+    expect(publicCeiling({ onVercel: true })).toBe(BUDGET)
+  })
+  it("car 41's /e/[code], 199.5 KB locally, is over the local ceiling", () => {
+    expect(199.5 * 1024 > publicCeiling({ onVercel: false })).toBe(true)
+  })
+})

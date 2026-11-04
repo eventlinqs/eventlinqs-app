@@ -117,6 +117,8 @@ import { declareWork } from '../lib/work-report.mjs'
 import {
   SCOPE_10_3_BUDGET_BYTES,
   SHA_JITTER_ALLOWANCE_BYTES,
+  LOCAL_MARGIN_BYTES,
+  publicCeiling,
   kb,
   identityMismatch,
 } from '../perf/lib/first-load.mjs'
@@ -366,6 +368,18 @@ async function judgeBuilt() {
       // Clause 2, the ratchet. Collected rather than reported here so the
       // comparability question is answered once, below, for all of them.
       grew.push({ route: row.route, gzip: row.gzip, mark })
+    }
+
+    // Clause 1b, THE 2 KB MARGIN (the CONTROLLER's line of 4 November 2026, 10.25 pm): off Vercel's host an unregistered public
+    // route must leave LOCAL_MARGIN_BYTES under the budget, so the Linux build Vercel runs can never tip it over.
+    const ceiling = publicCeiling({ onVercel: Boolean(process.env.VERCEL) })
+    if (row.audience === 'public' && !register[row.route] && row.gzip > ceiling && row.gzip <= SCOPE_10_3_BUDGET_BYTES) {
+      failures.push(
+        `${row.route} is a PUBLIC route at ${kb(row.gzip)} KB gzip on this local build, inside the ${kb(LOCAL_MARGIN_BYTES)} KB ` +
+          `margin under the ${kb(SCOPE_10_3_BUDGET_BYTES)} KB budget (ceiling here ${kb(ceiling)} KB): Vercel's Linux build ` +
+          `measured car 41's /e/[code] 0.5 KB heavier than this machine and refused it. Find what it carries with: ` +
+          `node scripts/perf/first-load-budget.mjs --route "${row.route}"`,
+      )
     }
 
     // Clause 1, the Scope budget, blocking for a public route unless the breach

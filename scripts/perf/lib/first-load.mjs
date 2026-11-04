@@ -57,6 +57,20 @@ import { attribute } from './chunk-attribution.mjs'
 export const SCOPE_10_3_BUDGET_BYTES = 200 * 1024
 
 /**
+ * THE 2 KB MARGIN ON A LOCAL BUILD (the CONTROLLER's line of 4 November 2026, 10.25 pm). Car 41's /e/[code] measured 199.5 KB on
+ * this machine and 200.0 KB on Vercel's Linux toolchain, and Vercel refused the production deployment: '[initial-bundle-
+ * budget] FAIL: /e/[code] is a PUBLIC route at 200.0 KB gzip ... over the Scope v5 10.3 budget of 200.0 KB by 0.0 KB'.
+ * Car 40 was the same class (the copy door). So a public route must leave this much under the budget when the build is
+ * measured anywhere but Vercel's own host, and a Linux build can never tip it; on Vercel the budget is judged as it is.
+ */
+export const LOCAL_MARGIN_BYTES = 2 * 1024
+
+/** The most first-load JavaScript an unregistered public route may carry on this host. */
+export function publicCeiling({ onVercel }) {
+  return onVercel ? SCOPE_10_3_BUDGET_BYTES : SCOPE_10_3_BUDGET_BYTES - LOCAL_MARGIN_BYTES
+}
+
+/**
  * THE COMMIT SHA IS IN THE CLIENT BUNDLE, SO EVERY COMMIT MOVES EVERY ROUTE BY
  * A FEW BYTES, AND A MARK WRITTEN TO THE EXACT BYTE CANNOT SURVIVE BEING
  * COMMITTED.
