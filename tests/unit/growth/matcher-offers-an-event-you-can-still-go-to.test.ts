@@ -42,6 +42,7 @@ import { describe, it, expect } from 'vitest'
  */
 
 import { readMatchableEvents, readEventForMatching } from '@/lib/matching/events'
+import { LIST_END_LEAD_MS } from '@/lib/events/listing-window'
 
 type Call = { method: string; args: unknown[] }
 
@@ -99,7 +100,8 @@ describe('the matcher only offers an event that has not finished', () => {
      * produces two different predicates, because the two calls are milliseconds
      * apart and the predicate carries milliseconds.
      */
-    expect(predicate).toContain(`end_date.gte.${NOW.toISOString()}`)
+    // The shared rule judges the asked instant plus the public lists' lead (LIST_END_LEAD_MS, 4 November 2026).
+    expect(predicate).toContain(`end_date.gte.${new Date(NOW.getTime() + LIST_END_LEAD_MS).toISOString()}`)
   })
 
   it('never offers an externally ticketed event, because that is not what the consent was given for', async () => {

@@ -661,12 +661,16 @@ describe('the markup audit on live, 1 November 2026', () => {
     expect(validate(payload).errors).toEqual([])
   })
 
-  it('a paid link with no fresh price still writes no offer: a free registration is the only price known without a read', () => {
+  it("a paid link with no fresh price still carries its Offer, the page and availability with no invented price (the CONTROLLER's 11:55: 'Missing field offers')", () => {
     const payload = build(
       { external_ticket_url: 'https://events.humanitix.com/gig' },
       { ticketTiers: [], bookingLinks: [{ ...reg, kind: 'tickets' as const, url: 'https://events.humanitix.com/gig' }], now: NOW },
     ) as Record<string, unknown>
-    expect(payload.offers).toBeUndefined()
+    const offers = payload.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect(offers[0].url).toBe('https://events.humanitix.com/gig')
+    expect(offers[0].price).toBeUndefined()
+    expect(payload.isAccessibleForFree).toBeUndefined()
   })
 
   it('a paid night sold elsewhere is never called free (Kate Ceberano, Diesel and Spooky Escape on live said isAccessibleForFree)', () => {

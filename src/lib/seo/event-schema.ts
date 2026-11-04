@@ -356,9 +356,16 @@ export function buildEventSchemaPayload({
    * 2026-09-08). We never invent a figure, so an outside event whose price we do not hold, or no longer hold fresh,
    * writes no offers node at all; its ticket link stays on the page.
    */
+  /*
+   * EVERY EVENT CARRIES OFFERS (the CONTROLLER's 11:55 of 4 November 2026: Search Console 'Missing field "offers"' on
+   * Events). Priced Offers stay first; where no price is held fresh, the event still carries its ticket link's Offer
+   * (its page and availability, never an invented price), so 'offers' is never missing; free stays price 0 AUD.
+   */
   const pricedLinkOffers = linkOffers.filter(o => 'price' in o)
   const offers = external
-    ? pricedLinkOffers
+    ? pricedLinkOffers.length > 0
+      ? pricedLinkOffers
+      : linkOffers
     : walkIn
     ? [
         {

@@ -1,7 +1,8 @@
 import 'server-only'
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
-import { getAllCities } from '@/lib/cities/data'
+import { getAllCities, getCity } from '@/lib/cities/data'
+import { statePageHref } from '@/lib/cities/state-pages'
 import { communitiesFromTags } from '@/lib/communities/tag-bridge'
 
 /**
@@ -273,6 +274,14 @@ function markEventPaths(event: RevalidatableEvent): string[] {
 
   const citySlug = citySlugForVenueCity(event.venue_city)
   if (citySlug) mark(`/city/${citySlug}`)
+  // The city's state page and its suburb pages list the same nights (the CONTROLLER's 11:55 of 4 November 2026: every
+  // public list, the suburb pages and /state/victoria included, loses a night at its end, even from a cached render).
+  const statePath = citySlug ? statePageHref(getCity(citySlug)?.state ?? '') : null
+  if (statePath) mark(statePath)
+  if (citySlug) {
+    revalidatePath('/city/[slug]/[suburb]', 'page')
+    invalidated.push('/city/[slug]/[suburb]')
+  }
 
   /*
    * THE CATEGORY MARK IS BACK, BECAUSE THE REASON IT WENT HAS BEEN REVERSED.
