@@ -509,6 +509,23 @@ export function CityGuide({
           )}
         </section>
 
+        {/* EMAIL ALERTS (the CONTROLLER's 22:06 of 4 November 2026): the real sign up, /waitlist, with this city chosen, in
+            the words of the consent the person reads there (joinConsentText: 'email you when there is something on near
+            you', no cadence promised). */}
+        <section aria-label={`Email alerts for ${city.name}`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
+          <SectionHead eyebrow="By email" title={`Never miss a night in ${city.name}`} />
+          <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <li>
+              <Link href={`/waitlist?city=${city.slug}`} className={ORGANISER_LINK}>
+                <span className="font-display text-base font-bold text-[var(--text-primary)]">Get {city.name} alerts by email</span>
+                <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">
+                  We email you when something is on near you. One click unsubscribes.
+                </span>
+              </Link>
+            </li>
+          </ul>
+        </section>
+
         {/* 6 HOSTING AN EVENT: existing routes only, and only offers the platform really makes (a claim only while claims are open). */}
         <section aria-label={`Hosting an event in ${city.name}?`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
           <SectionHead eyebrow="For organisers" title={`Hosting an event in ${city.name}?`} />

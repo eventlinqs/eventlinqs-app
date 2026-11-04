@@ -39,8 +39,10 @@ const record = (form, ok, seen) => {
 }
 
 /** The newest email Resend delivered to this address within the wait, or null. */
+const NOT_JUDGED = Symbol('not judged')
+const NO_KEY = "NOT JUDGED: this env names no Resend key, so no delivered email can be read back (TEST needs RESEND_API_KEY)"
 async function delivered(to, waitMs = 60000) {
-  if (!resendKey) return null
+  if (!resendKey || /^["']*$/.test(resendKey)) return NOT_JUDGED
   const end = Date.now() + waitMs
   while (Date.now() < end) {
     const res = await fetch('https://api.resend.com/emails?limit=50', { headers: { Authorization: `Bearer ${resendKey}` } })
@@ -80,7 +82,8 @@ async function flag(name) {
     const run = spawnSync(process.execPath, ['scripts/verify/auth-journey-e2e.mjs', BASE], { env: process.env, encoding: 'utf8', timeout: 8 * 60 * 1000 })
     writeFileSync(join(OUT, 'auth-journey.txt'), `${run.stdout ?? ''}\n${run.stderr ?? ''}`)
     const tail = `${run.stdout ?? ''}`.trim().split('\n').slice(-2).join(' | ').slice(0, 240)
-    record('sign up, email confirmation, sign in, sign out, password reset (auth-journey-e2e)', run.status === 0, `exit ${run.status}; ${tail}`)
+    const noKey = /RESEND_API_KEY must be set/.test(`${run.stdout}${run.stderr}`)
+    record('sign up, email confirmation, sign in, sign out, password reset (auth-journey-e2e)', noKey ? null : run.status === 0, noKey ? `${NO_KEY} (auth-journey-e2e: 'RESEND_API_KEY must be set for the journey walk')` : `exit ${run.status}; ${tail}`)
   } finally {
     if (wrote) rmSync(envTest, { force: true })
   }
@@ -98,7 +101,7 @@ try {
   await page.getByRole('button', { name: /magic link/i }).click()
   await page.waitForTimeout(2500)
   const mail = await delivered(to)
-  record('magic link', Boolean(mail), mail ? `delivered '${mail.subject}' to the simulator` : 'no email delivered within 60 s')
+  record('magic link', mail === NOT_JUDGED ? null : Boolean(mail), mail === NOT_JUDGED ? `the form answered (${new URL(page.url()).pathname}); ${NO_KEY}` : mail ? `delivered '${mail.subject}' to the simulator` : 'no email delivered within 60 s')
 } catch (e) {
   record('magic link', false, `the form could not be used: ${e.message.slice(0, 160)}`)
 }
@@ -116,30 +119,39 @@ try {
   if (u) made.push(u.id)
   const mail = await delivered(to, 45000)
   const role = u ? JSON.stringify(u.user_metadata ?? {}).slice(0, 120) : ''
-  record('organiser sign up', Boolean(u) && Boolean(mail), `${u ? `account made on TEST (${role})` : 'NO account made'}; ${mail ? `confirmation '${mail.subject}' delivered` : 'no confirmation delivered'}; landed on ${new URL(page.url()).pathname}`)
+  record('organiser sign up', Boolean(u), `${u ? `account made on TEST (${role})` : 'NO account made'}; landed on ${new URL(page.url()).pathname}`)
+  record('organiser sign up confirmation (through Resend)', mail === NOT_JUDGED ? null : Boolean(mail), mail === NOT_JUDGED ? NO_KEY : mail ? `delivered '${mail.subject}'` : 'no confirmation delivered')
 } catch (e) {
   record('organiser sign up', false, `the form could not be used: ${e.message.slice(0, 160)}`)
 }
 
-// 7 and 10: the weekly email sign up on the home page, read back from email_subscribers; its confirmation and unsubscribe.
+// 7 and 10: the email alerts sign up (the one real one, /waitlist, linked from each city guide and the footer since the
+// CONTROLLER's 22:06 of 4 November 2026), read back from city_waitlist_signups; then its own unsubscribe page.
 try {
-  const to = addr('weekly')
-  await page.goto(`${BASE}/`, { waitUntil: 'load' })
-  const input = page.locator('#email-signup-input')
-  await input.scrollIntoViewIfNeeded()
-  await input.fill(to)
-  const consent = page.locator('input[name="consent"]')
-  if (await consent.count()) await consent.first().check()
-  await page.locator('form:has(#email-signup-input) [type="submit"]').click()
-  await page.waitForTimeout(3000)
-  const { data: row } = await db.from('email_subscribers').select('email, consent, confirmed, unsubscribed_at').eq('email', to).maybeSingle()
+  const to = addr('alerts')
+  await page.goto(`${BASE}/waitlist?city=geelong`, { waitUntil: 'load' })
+  await page.locator('#wl-name').fill('Forms Check')
+  await page.locator('#wl-email').fill(to)
+  const attendee = page.locator('input[name="wl-role"][value="attendee"]')
+  if (await attendee.count()) await attendee.check()
+  await page.getByRole('button', { name: /^Get Geelong alerts$/ }).click()
+  await page.waitForTimeout(3500)
+  const { data: row } = await db.from('city_waitlist_signups').select('city_slug, consent_version, unsubscribe_token, unsubscribed_at').eq('email', to).maybeSingle()
+  record('email alerts sign up (/waitlist, Geelong chosen from ?city=geelong)', Boolean(row) && row.city_slug === 'geelong', row ? `city_waitlist_signups row: city ${row.city_slug}, consent ${row.consent_version}` : 'NO city_waitlist_signups row')
   const mail = await delivered(to, 45000)
-  record('weekly email sign up', Boolean(row), row ? `email_subscribers row: consent ${row.consent}, confirmed ${row.confirmed}` : 'NO row in email_subscribers')
-  record('weekly email confirmation (through Resend)', Boolean(mail), mail ? `delivered '${mail.subject}'` : 'NO confirmation email is sent: src/app/actions/email-subscribe.ts inserts the row and sends nothing')
-  record('unsubscribe (from the weekly email)', false, mail ? 'see the delivered email for its link' : 'NOTHING TO UNSUBSCRIBE FROM: no email is ever sent to email_subscribers, and the table has no unsubscribe token')
-  if (row) await db.from('email_subscribers').delete().eq('email', to)
+  record('email alerts confirmation (through Resend)', mail === NOT_JUDGED ? null : Boolean(mail), mail === NOT_JUDGED ? NO_KEY : mail ? `delivered '${mail.subject}'` : 'no confirmation delivered within 45 s')
+  if (row?.unsubscribe_token) {
+    await page.goto(`${BASE}/waitlist/unsubscribe/${row.unsubscribe_token}`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Stop these emails' }).click()
+    await page.waitForTimeout(3000)
+    const { data: after } = await db.from('city_waitlist_signups').select('unsubscribed_at').eq('email', to).maybeSingle()
+    record('unsubscribe (/waitlist/unsubscribe/<token>, Stop these emails)', Boolean(after?.unsubscribed_at), after?.unsubscribed_at ? `unsubscribed_at ${after.unsubscribed_at}` : 'unsubscribed_at still empty')
+  } else {
+    record('unsubscribe (/waitlist/unsubscribe/<token>, Stop these emails)', false, 'no sign up row, so no token to unsubscribe with')
+  }
+  if (row) await db.from('city_waitlist_signups').delete().eq('email', to)
 } catch (e) {
-  record('weekly email sign up', false, `the form could not be used: ${e.message.slice(0, 160)}`)
+  record('email alerts sign up', false, `the form could not be used: ${e.message.slice(0, 160)}`)
 }
 
 // 8: Remind me on a walk in night (its flag, walk_in_remind_me, must be on where the form shows).
@@ -152,9 +164,16 @@ try {
     else {
       const to = addr('remind')
       await page.goto(`${BASE}/events/${night.slug}`, { waitUntil: 'load' })
-      const form = page.locator('[data-remind-me-form]')
-      await form.locator('input[name="email"]').fill(to)
-      await form.locator('[type="submit"]').click()
+      // On a phone the form sits in the bottom bar's sheet, behind its 'Remind me' button (the first run's FAIL was the
+      // drive's: 'locator.fill: Timeout 30000ms exceeded', the sheet never opened).
+      let form = page.locator('[data-remind-me-form]:visible')
+      if ((await form.count()) === 0) {
+        await page.getByRole('button', { name: /^Remind me/ }).first().click()
+        await page.waitForTimeout(800)
+        form = page.locator('[data-remind-me-form]:visible')
+      }
+      await form.first().locator('input[name="email"]').fill(to)
+      await form.first().locator('[type="submit"]').click()
       await page.waitForTimeout(3000)
       const { data: rem } = await db.from('event_reminders').select('id').eq('email', to).limit(1).maybeSingle()
       record('Remind me', Boolean(rem), rem ? `event_reminders row on /events/${night.slug}` : `NO event_reminders row for /events/${night.slug}`)
@@ -182,7 +201,8 @@ try {
       await page.waitForTimeout(3000)
       const { data: claim } = await db.from('listing_claims').select('id').eq('email', to).limit(1).maybeSingle()
       const mail = await delivered(to, 45000)
-      record('listing claim', Boolean(claim) && Boolean(mail), `${claim ? 'listing_claims row made' : 'NO listing_claims row'}; ${mail ? `code email '${mail.subject}' delivered` : 'no code email delivered'}`)
+      record('listing claim', Boolean(claim), claim ? 'listing_claims row made' : 'NO listing_claims row')
+      record('listing claim code email (through Resend)', mail === NOT_JUDGED ? null : Boolean(mail), mail === NOT_JUDGED ? NO_KEY : mail ? `delivered '${mail.subject}'` : 'no code email delivered')
       if (claim) await db.from('listing_claims').delete().eq('id', claim.id)
     }
   }

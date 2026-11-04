@@ -250,3 +250,17 @@ describe('the slider stays built behind its own rule (not drawn on the reference
     expect(container.innerHTML).toBe('')
   })
 })
+
+/*
+ * THE EMAIL ALERTS SIGN UP, WHERE THE GUIDE PROMISES IT (the CONTROLLER's 22:06 of 4 November 2026; the forms check: the
+ * only sign up panel on the platform, email-signup-panel.tsx, was on no page and wrote a table nothing sends to). Each
+ * city guide links the real one, /waitlist (joinCityWaitlist: versioned consent, a Resend confirmation, one click
+ * unsubscribe), with its city chosen, in the words of the consent the person reads: alerts, never a weekly promise.
+ */
+describe('each city guide links its email alerts sign up', () => {
+  it("'Get Geelong alerts by email' opens the sign up with Geelong chosen", () => {
+    guide()
+    const link = screen.getByRole('link', { name: /Get Geelong alerts by email/ })
+    expect(link.getAttribute('href')).toBe('/waitlist?city=geelong')
+  })
+})

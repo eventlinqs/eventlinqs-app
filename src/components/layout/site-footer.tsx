@@ -42,6 +42,9 @@ export const DISCOVER = [
   // self-canonicalises to /events spent it on a page that already has one.
   { label: 'This weekend',      href: '/this-weekend' },
   { label: 'Free events',       href: '/events?preset=free' },
+  // The email alerts sign up (the CONTROLLER's 22:06 of 4 November 2026): the one real sign up, with its versioned
+  // consent, Resend confirmation and one click unsubscribe (src/app/waitlist).
+  { label: 'Email alerts',      href: '/waitlist' },
 ]
 
 export const COMMUNITIES = [
