@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
+import { tearDownAccount } from './lib/teardown-account.mjs'
 
 const BASE = (process.argv[2] ?? 'http://localhost:3042').replace(/\/$/, '')
 const OUT = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : 'C:/dev/EVIDENCE/ROUND5-3NOV/forms'
@@ -233,7 +234,11 @@ try {
 }
 
 await browser.close()
-for (const id of made) await db.auth.admin.deleteUser(id).catch(() => null)
+// The one way an account is deleted (scripts/verify/lib/teardown-account.mjs), which says what actually happened.
+for (const id of made) {
+  const gone = await tearDownAccount(db, id)
+  if (!gone.gone) console.warn(`[forms-check] the TEST account ${id} was not removed: ${gone.detail}`)
+}
 writeFileSync(join(OUT, 'forms-check.json'), JSON.stringify({ base: BASE, at: new Date().toISOString(), results }, null, 1))
 const pass = results.filter((r) => r.ok === true).length
 const fail = results.filter((r) => r.ok === false).length
