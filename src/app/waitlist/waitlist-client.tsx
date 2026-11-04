@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { Check, MapPin } from 'lucide-react'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { TileCaption } from '@/components/media/tile-caption'
@@ -25,6 +25,9 @@ export interface WaitlistCityWithImage extends WaitlistCity {
  * city-opening email (wording shown beside it and stored verbatim), and the
  * marketing opt-in is a separate, unticked box.
  */
+/** The query string never changes under a mounted page, so there is nothing to subscribe to. */
+const noSubscription = () => () => {}
+
 export function WaitlistClient({
   cities,
   offer,
@@ -37,13 +40,16 @@ export function WaitlistClient({
    */
   offer: { initial: string; referral: string }
 }) {
-  const [selected, setSelected] = useState<WaitlistCityWithImage>(cities[0])
   // A city guide's 'Get <City> alerts by email' opens this page with ?city=<slug> (the CONTROLLER's 22:06 of 4 November
-  // 2026): that city chosen. Read after mount, so the page stays static and cached.
-  useEffect(() => {
-    const chosen = cityFromQuery(window.location.search, cities)
-    if (chosen) setSelected(chosen)
-  }, [cities])
+  // 2026): that city chosen until the person picks another. The query is read as an external store, so the server's
+  // render (no city) and the page's cache stay as they are and hydration agrees.
+  const fromQuery = useSyncExternalStore(
+    noSubscription,
+    () => cityFromQuery(window.location.search, cities)?.slug ?? null,
+    () => null,
+  )
+  const [picked, setSelected] = useState<WaitlistCityWithImage | null>(null)
+  const selected = picked ?? cities.find((c) => c.slug === fromQuery) ?? cities[0]
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<WaitlistRole>('organiser')
