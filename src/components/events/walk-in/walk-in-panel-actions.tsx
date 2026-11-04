@@ -3,7 +3,7 @@
 import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import type { CalendarEvent } from '@/lib/events/calendar-links'
 import { SHARE } from '@/lib/walk-in/page-copy'
-import { RemindMeForm } from './remind-me-form'
+import { RemindMeFormLazy as RemindMeForm } from './remind-me-form-lazy'
 import { countOnEvent, useWalkInShare } from './walk-in-client'
 
 /**

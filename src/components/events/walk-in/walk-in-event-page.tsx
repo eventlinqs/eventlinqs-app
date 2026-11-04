@@ -14,7 +14,7 @@ import { EventViewTracker } from '@/components/features/events/event-view-tracke
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { isEventLinqsListing, shownOrganiser } from '@/lib/listings/shown-organiser'
-import { EventGallery } from '@/components/features/events/event-gallery'
+import { EventGalleryLazy as EventGallery } from '@/components/features/events/event-media-lazy'
 import { EventSection } from '@/components/events/event-page/event-sections'
 import { EventVenueSection } from '@/components/events/event-page/event-venue-section'
 import { GalleryImage } from '@/components/media/GalleryImage'

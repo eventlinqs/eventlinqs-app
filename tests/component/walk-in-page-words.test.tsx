@@ -9,6 +9,17 @@ import { render } from '@testing-library/react'
 vi.mock('@/components/layout/site-header', () => ({ SiteHeader: () => <header data-chrome="header" /> }))
 vi.mock('@/components/layout/site-footer', () => ({ SiteFooter: () => <footer data-chrome="footer" /> }))
 vi.mock('@/app/actions/event-reminder', () => ({ requestEventReminder: vi.fn(async () => ({ ok: true, message: 'Done.' })) }))
+// Car 41c loads Remind me through next/dynamic (remind-me-form-lazy.tsx), which in this test renders its loading state;
+// the server still renders the form on the live page. These tests read the form's words, so the wrapper is the form here.
+vi.mock('@/components/events/walk-in/remind-me-form-lazy', async () => {
+  const real = await import('@/components/events/walk-in/remind-me-form')
+  return { RemindMeFormLazy: real.RemindMeForm }
+})
+vi.mock('@/components/features/events/event-media-lazy', async () => {
+  const gallery = await import('@/components/features/events/event-gallery')
+  const video = await import('@/components/features/events/event-video')
+  return { EventGalleryLazy: gallery.EventGallery, EventVideoLazy: video.EventVideo }
+})
 vi.mock('@/app/actions/follow', () => ({
   getFollowState: vi.fn(async () => ({ following: false })),
   toggleFollowOrganiser: vi.fn(),

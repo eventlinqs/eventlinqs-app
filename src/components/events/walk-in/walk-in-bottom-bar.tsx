@@ -6,7 +6,7 @@ import { X } from 'lucide-react'
 import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { FREE_BAR_NO_TICKET_NEEDED } from '@/lib/events/entry-mode'
 import { BOTTOM_BAR_SUBLINE_PROGRAM, BOTTOM_BAR_SUBLINE_REMINDER, REMIND_ME, SHARE } from '@/lib/walk-in/page-copy'
-import { RemindMeForm } from './remind-me-form'
+import { RemindMeFormLazy as RemindMeForm } from './remind-me-form-lazy'
 import { useWalkInShare } from './walk-in-client'
 
 /**
