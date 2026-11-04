@@ -1,5 +1,6 @@
 import type { DirectoryRow } from './whats-on-directory'
 import { addDaysKey, addMonthsKey, dayNameOfKey } from '@/lib/dates/wall-day-keys'
+import { HEADLINE_VENUES, byRelevance, tierOf, type Tier } from './relevance'
 
 /**
  * ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00, 17:07 and 17:10; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\
@@ -62,8 +63,19 @@ export const BIG_VENUES: readonly RegExp[] = [
 ]
 const OUR_OWN = /^(Book|Register) on EventLinqs$/
 
+/** Law 18: a guide row's tier (src/lib/events/relevance.ts), from its own fields. */
+export function rowTier(r: DirectoryRow): Tier {
+  return tierOf({ title: r.title, venue: r.venue, categorySlug: r.categorySlug, ticketed: r.format === 'ticketed' && !r.free })
+}
+
+/** Tier, then the soonest (law 18): every rail but Big nights and the month list. */
+export const relevanceFirst = byRelevance<DirectoryRow>(rowTier, (r) => r.ts)
+
 export function isBigNight(r: DirectoryRow): boolean {
-  const atBigVenue = BIG_VENUES.some((v) => v.test(r.venue ?? ''))
+  // Law 18 (Lawal, 4 November 2026, 15:12): 'you can't be on the big night without images ... No matter how big you
+  // are, you must supply your image'. No permitted photograph, no Big nights, whatever the size; never tier 4.
+  if (!r.thumb || rowTier(r) === 4) return false
+  const atBigVenue = BIG_VENUES.some((v) => v.test(r.venue ?? '')) || HEADLINE_VENUES.some((v) => v.test(r.venue ?? ''))
   if (atBigVenue && r.format === 'ticketed' && !r.free) return true
   // A FESTIVAL ITS ORGANISER LISTED WITH US, however it is entered (round 5 fault 2): the booking label alone left out
   // every free, walk in festival ('Free · Walk in' is not 'Book on EventLinqs'), AMCF at Fed Square among them.
@@ -125,30 +137,51 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
     return entries
   }
   const threeEnd = addMonthsKey(days.todayKey, 3)
-  const big = take(rows.filter(isBigNight), 3)
+  // Law 18: Big nights by headline weight (the tier) then date; Just announced and This weekend by tier then date and
+  // never tier 4; Free and community and Further ahead by tier then date, tier 4 last; the month list in date order with
+  // tier 4 at the end of each month (monthOrder, byMonth).
+  const big = take(rows.filter(isBigNight), 3, relevanceFirst)
   const announced = take(
-    rows.filter((r) => typeof r.listedAt === 'number' && nowMs - r.listedAt <= JUST_ANNOUNCED_DAYS * 24 * 60 * 60 * 1000),
+    rows.filter((r) => rowTier(r) !== 4 && typeof r.listedAt === 'number' && nowMs - r.listedAt <= JUST_ANNOUNCED_DAYS * 24 * 60 * 60 * 1000),
     8,
+    relevanceFirst,
   )
-  const weekend = take(rows.filter((r) => days.weekendKeys.includes(r.dayKey)), 8)
-  const free = take(rows.filter((r) => r.free && r.dayKey <= threeEnd), 6)
-  const soon = take(rows.filter((r) => r.dayKey > threeEnd), 6)
-  const rest = foldListings(rows.filter((r) => r.dayKey <= threeEnd && !shown.has(listingKey(r))), rows)
+  const weekend = take(rows.filter((r) => rowTier(r) !== 4 && days.weekendKeys.includes(r.dayKey)), 8, relevanceFirst)
+  const free = take(rows.filter((r) => r.free && r.dayKey <= threeEnd), 6, relevanceFirst)
+  const soon = take(rows.filter((r) => r.dayKey > threeEnd), 6, relevanceFirst)
+  const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && !shown.has(listingKey(r))), rows))
   return { big, announced, weekend, free, soon, rest }
 }
 
-/** Month headings for the browse list ('November 2026'), in date order. */
-export function byMonth(entries: readonly Entry[]): { key: string; label: string; entries: Entry[] }[] {
-  const groups = new Map<string, Entry[]>()
+/**
+ * THE MONTH LIST'S ORDER (law 18, the spec's rule 5): by month, and inside each month tiers 1 to 3 in date order, then
+ * tier 4 in date order. The list pages 20 at a time in this order, so a month's tier 4 always follows its others.
+ */
+export function monthOrder(entries: readonly Entry[]): Entry[] {
+  const last = (e: Entry) => (rowTier(e.row) === 4 ? 1 : 0)
+  return [...entries].sort((a, b) => a.row.dayKey.slice(0, 7).localeCompare(b.row.dayKey.slice(0, 7)) || last(a) - last(b) || a.row.ts - b.row.ts)
+}
+
+/** The one fold that holds a month's tier 4 (the spec's rule 5, its words). */
+export const LATER_FOLD = 'Also this month: family, library and community sessions'
+
+/** Month headings for the browse list ('November 2026'), in date order; each month's tier 4 apart, under LATER_FOLD. */
+export function byMonth(entries: readonly Entry[]): { key: string; label: string; entries: Entry[]; later: Entry[] }[] {
+  const groups = new Map<string, { entries: Entry[]; later: Entry[] }>()
   for (const e of [...entries].sort((a, b) => a.row.ts - b.row.ts)) {
     const k = e.row.dayKey.slice(0, 7)
-    groups.set(k, [...(groups.get(k) ?? []), e])
+    const g = groups.get(k) ?? { entries: [], later: [] }
+    ;(rowTier(e.row) === 4 ? g.later : g.entries).push(e)
+    groups.set(k, g)
   }
-  return [...groups.entries()].map(([key, list]) => ({
-    key,
-    label: new Date(`${key}-01T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
-    entries: list,
-  }))
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, g]) => ({
+      key,
+      label: new Date(`${key}-01T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+      entries: g.entries,
+      later: g.later,
+    }))
 }
 
 /** A row's 'when' line, read in gold caps: 'Fri 6 Nov · 7:30 pm', or 'Every Saturday · 9:00 am'. */

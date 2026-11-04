@@ -46,11 +46,11 @@ describe('round 5 fault 2: an organiser listed festival is a Big night however i
   })
 })
 
-describe("Lawal 12:29: Big nights stays photo first, then date; a show with no photograph is not forced in", () => {
-  it("Geelong's three are the soonest three, Boyz II Men not among them, and Boyz II Men is still reachable with All dates", () => {
+describe("Lawal 12:29, made law 18 on 4 November 15:12: a show with no photograph is never in Big nights", () => {
+  it("Geelong's shows without a photograph are not in Big nights (none, the section hides), and Boyz II Men is still reachable with All dates", () => {
     const rows = [anhDo, macbeth, eagles, sweet, boyz]
     const s = guideSections(rows, days, NOW)
-    expect(s.big.map((e) => e.row.title)).toEqual(['Anh Do: The Happiest Refugee Live!', 'Macbeth', 'The Eagles Greatest Hits'])
+    expect(s.big.map((e) => e.row.title)).toEqual([])
     const allDates = foldListings(rows.filter((r) => inRange(r, 'all', days)), rows).map((e) => e.row.title)
     expect(allDates).toContain('Boyz II Men')
   })

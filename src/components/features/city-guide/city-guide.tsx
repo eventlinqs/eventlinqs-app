@@ -10,7 +10,7 @@ import {
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
-import { byMonth, foldListings, guideSections, inRange, listingKey, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
@@ -221,7 +221,7 @@ export function CityGuide({
   const suburbs = [...new Set(here.map((r) => r.suburb).filter((s): s is string => Boolean(s)))].sort((a, b) => a.localeCompare(b))
   const filtered = when !== 'three' || category !== 'all' || suburb !== 'all' || price !== 'all' || words.length > 0
   // The list: unfiltered, every listing in the next 3 months no section showed; filtered, the whole answer. One entry each.
-  const list = filtered ? foldListings(shown, here) : sections.rest
+  const list = filtered ? monthOrder(foldListings(shown, here)) : sections.rest
   const narrowed = shown.length !== here.length || listingCount(shown) !== listingCount(here)
   const toList = () => document.getElementById('city-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const clear = () => {
@@ -740,13 +740,34 @@ function MonthList({ entries, cityName }: { entries: readonly Entry[]; cityName:
       {byMonth(entries).map((m) => (
         <section key={m.key} aria-label={m.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">{m.label}</h3>
-          <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-            {m.entries.map((e) => (
-              <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
-                <Row e={e} cityName={cityName} />
-              </li>
-            ))}
-          </ul>
+          {m.entries.length > 0 ? (
+            <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+              {m.entries.map((e) => (
+                <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
+                  <Row e={e} cityName={cityName} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {/* LAW 18: the month's library, toddler, class and community sessions sit last, under one fold, every one still a
+              link (law 16: findable under All dates). */}
+          {m.later.length > 0 ? (
+            <details className="group relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-display text-sm font-bold text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] [&::-webkit-details-marker]:hidden">
+                <span>
+                  {LATER_FOLD} ({m.later.length})
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ul className="border-t border-[var(--surface-2)]">
+                {m.later.map((e) => (
+                  <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
+                    <Row e={e} cityName={cityName} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       ))}
     </div>
