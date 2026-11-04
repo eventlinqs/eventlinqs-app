@@ -6,7 +6,10 @@
  */
 import type { MetaHTMLAttributes } from 'react'
 
+/** The value Impact issued, also written into the apex root's own small page (src/proxy.ts). */
+export const IMPACT_SITE_VERIFICATION_VALUE = '4c53e093-10be-4e4a-9e29-f256cbd89af8'
+
 export const IMPACT_SITE_VERIFICATION = {
   name: 'impact-site-verification',
-  value: '4c53e093-10be-4e4a-9e29-f256cbd89af8',
+  value: IMPACT_SITE_VERIFICATION_VALUE,
 } as MetaHTMLAttributes<HTMLMetaElement>

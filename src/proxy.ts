@@ -1,3 +1,4 @@
+import { IMPACT_SITE_VERIFICATION_VALUE } from '@/lib/seo/impact-site-verification'
 import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -223,8 +224,31 @@ const REDIRECT_HOSTS = new Set([
   'eventlinqs.com.au',
 ])
 
+/*
+ * IMPACT CAN VERIFY THE APEX (the CONTROLLER's 06:53 of 4 November 2026: Lawal pressed Verify on eventlinqs.com.au,
+ * 'Website verification failed'; the apex answered only this 301, so a checker that does not follow it never saw the
+ * tag). Exactly the apex ROOT with no query answers 200 with a small page whose head OPENS with the tag (Impact's rule,
+ * 'Place it at the top, before any other <meta> tags': https://help.impact.com/partner/what-would-you-like-to-learn-about/account-management/account-settings/connect-media-properties/connect-and-verify-a-website),
+ * a canonical to www, noindex, and an immediate refresh to www for a person. Every other apex path, and the root with
+ * a query (a campaign link), keeps the 301 below: the one-host ruling stands for everything a visitor browses.
+ */
+const APEX_ROOT_HOST = 'eventlinqs.com.au'
+const IMPACT_TAG = `<meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION_VALUE}">`
+const APEX_ROOT_PAGE =
+  `<!doctype html><html lang="en"><head>${IMPACT_TAG}<meta charset="utf-8">` +
+  `<meta name="viewport" content="width=device-width, initial-scale=1"><title>EventLinqs</title>` +
+  `<link rel="canonical" href="https://${CANONICAL_HOST}/"><meta name="robots" content="noindex, follow">` +
+  `<meta http-equiv="refresh" content="0; url=https://${CANONICAL_HOST}/"></head>` +
+  `<body><p><a href="https://${CANONICAL_HOST}/">Continue to EventLinqs</a></p></body></html>`
+
 function canonicaliseHost(request: NextRequest): NextResponse | null {
   if (!REDIRECT_HOSTS.has(request.nextUrl.hostname)) return null
+  if (request.nextUrl.hostname === APEX_ROOT_HOST && request.nextUrl.pathname === '/' && !request.nextUrl.search) {
+    return new NextResponse(APEX_ROOT_PAGE, {
+      status: 200,
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' },
+    })
+  }
   // Stripe does NOT follow redirects: a 3xx here silently breaks every webhook
   // delivery. The endpoint is configured on the canonical host directly, and
   // this bypass is the safety net if it is ever pointed at another alias.

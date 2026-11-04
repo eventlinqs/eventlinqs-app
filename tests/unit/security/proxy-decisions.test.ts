@@ -84,7 +84,9 @@ describe('decision 1: host canonicalisation', () => {
   it.each([
     'https://eventlinqs.com/',
     'https://www.eventlinqs.com/',
-    'https://eventlinqs.com.au/',
+    // The bare apex ROOT answers 200 with Impact's tag (the CONTROLLER's 06:53 of 4 November 2026,
+    // tests/unit/security/apex-root-carries-impact-tag.test.ts); every other apex path keeps the 301.
+    'https://eventlinqs.com.au/events',
   ])('redirects %s', async (url) => {
     const res = await proxy(request(url))
     expect(res.status).toBe(301)
