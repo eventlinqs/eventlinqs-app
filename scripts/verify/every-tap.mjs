@@ -20,6 +20,12 @@ const SEL = 'a[href], button, [role="tab"], [role="button"], summary, input:not(
 
 /** Every tappable control on the page now, in document order, with a descriptor to find it again after a reload. */
 async function targetsOf(page) {
+  // Every fold open first (law 18's 'Also this month' fold, 4 November 2026): Chrome lays out a closed <details>' content,
+  // so its rows read as visible yet cannot be pressed (car 41's production rows run: seven Bendigo rows, 'locator.tap:
+  // Timeout 3000ms exceeded'). Opened, every row inside is pressed and proved; its summary is still pressed, and closes it.
+  await page.evaluate(() => {
+    for (const d of document.querySelectorAll('details:not([open])')) d.open = true
+  }).catch((e) => console.warn(`[every-tap] the folds could not be opened: ${e instanceof Error ? e.message : String(e)}`))
   return page.$$eval(SEL, (els) =>
     els.map((el, i) => {
       const r = el.getBoundingClientRect()
