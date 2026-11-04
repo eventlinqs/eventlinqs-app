@@ -28,6 +28,7 @@ export function eventPageState(
   // Only a ticket holder ever reaches an archived event's page
   // (readEventForRoute, branch 3).
   if (event.status === 'archived') return 'archived'
-  if (!isStillListed(event, now)) return 'past'
+  // The event page's own state reads the TRUE end (lead 0); only public lists drop a night early.
+  if (!isStillListed(event, now, 0)) return 'past'
   return null
 }

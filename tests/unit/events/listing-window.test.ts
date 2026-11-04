@@ -115,7 +115,8 @@ describe('the founder 16 August 2026 case', () => {
 
 describe('the SQL predicate agrees with the JavaScript predicate', () => {
   const now = new Date('2026-08-16T03:00:00Z')
-  const predicate = listingWindowOrPredicate(now)
+  // The TRUE rule (lead 0); the public lists' lead has its own test (ended-nights-leave-every-list.test.ts).
+  const predicate = listingWindowOrPredicate(now, 0)
 
   it('carries a branch for every supported zone', () => {
     for (const zone of SUPPORTED_EVENT_ZONES) {

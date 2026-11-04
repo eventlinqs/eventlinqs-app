@@ -72,7 +72,8 @@ export function judgeVisitorPage(input: {
     action: bad.length === 0 ? undefined : action,
   })
 
-  const ended = onPage.filter((f) => !isStillListed({ start_date: f.startDate, end_date: f.endDate, timezone: f.timezone }, now)).map((f) => f.slug)
+  // The TRUE end judges (lead 0): a list may drop a night early, never keep it late.
+  const ended = onPage.filter((f) => !isStillListed({ start_date: f.startDate, end_date: f.endDate, timezone: f.timezone }, now, 0)).map((f) => f.slug)
   // The venue's placement judges where it is known (the label is what put Aireys Inlet under Geelong); an unplaced
   // venue, or a database without the placement function, falls back to the label.
   const otherCity =

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { publishScheduledEvents } from '@/lib/events/publish-scheduled'
 import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
+import { purgeSurfacesOfNightsEnding } from '@/lib/events/ending-purge'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -108,5 +109,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ ok: true, ...summary })
+  // THE NIGHTS ENDING NOW (the CONTROLLER's 11:55 of 4 November 2026; src/lib/events/ending-purge.ts): every page that
+  // lists a night ending inside the list lead is purged before that end, so no cached copy can show it ended. A failed
+  // read is said and the publish result still stands: the next run, five minutes on, tries again inside the lead.
+  let ending: { ending: number; paths: number } | { error: string }
+  try {
+    ending = await purgeSurfacesOfNightsEnding(admin, now)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[cron/publish-scheduled] the ending purge failed: ${message}`)
+    ending = { error: message }
+  }
+
+  return NextResponse.json({ ok: true, ...summary, ending })
 }

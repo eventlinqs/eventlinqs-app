@@ -251,12 +251,24 @@ export function listingUntil(event: {
   return endOfLocalDayUtc(starts, eventZone(event.timezone))
 }
 
-/** Is this event still listed at `now`? */
+/**
+ * A PUBLIC LIST DROPS A NIGHT A LITTLE BEFORE ITS END (the CONTROLLER's 11:55 of 4 November 2026: the health sentinel
+ * read three ended library sessions on /city/geelong and one on /city/bendigo at 11:40, two days running, from an edge
+ * cached render made before they ended: 'Age: 717, X-Vercel-Cache: STALE'). A rendered list carries a night only while
+ * it has at least this long to run, and the five minute cron (src/lib/events/ending-purge.ts) purges every page that
+ * lists a night inside this lead before that night ends, so no cached copy, however old, can still show it ended.
+ * The lead is longer than the cron's interval on purpose: every night's end has a run inside its lead.
+ * The TRUE end stays the judge of the health sentinel and of the event page's own 'past' state (pass 0).
+ */
+export const LIST_END_LEAD_MS = 6 * 60 * 1000
+
+/** Is this event still listed at `now`, for a public list (with the lead) or for the true end (`leadMs` 0)? */
 export function isStillListed(
   event: { start_date: string; end_date?: string | null; timezone?: string | null },
   now: Date = new Date(),
+  leadMs: number = LIST_END_LEAD_MS,
 ): boolean {
-  return listingUntil(event).getTime() >= now.getTime()
+  return listingUntil(event).getTime() >= now.getTime() + leadMs
 }
 
 /**
@@ -274,7 +286,9 @@ export function isStillListed(
  * The last two branches are what make an unrecognised or absent zone list for
  * longer rather than vanish.
  */
-export function listingWindowOrPredicate(now: Date = new Date()): string {
+export function listingWindowOrPredicate(now: Date = new Date(), leadMs: number = LIST_END_LEAD_MS): string {
+  // The lead (LIST_END_LEAD_MS) shifts the instant every branch judges, so the SQL and isStillListed agree.
+  now = new Date(now.getTime() + leadMs)
   const nowIso = now.toISOString()
   const branches: string[] = [`end_date.gte.${nowIso}`]
 
