@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 // A plain .mjs ops script, imported the way the suite imports others.
-import { starDisallows, starGroup } from '../../../scripts/ops/register-hunt-sources.mjs'
+import { HUNT_REGISTER, UPGRADE_COLUMNS, starDisallows, starGroup } from '../../../scripts/ops/register-hunt-sources.mjs'
+
+/* Car 44b: Geelong Arts Centre's held 'ask' row is moved to 'read' on today's read, its name, city and page untouched. */
+describe("the hunt register's upgrade of a held row", () => {
+  it('names only Geelong Arts Centre for an upgrade, and never rewrites what the row is', () => {
+    expect(HUNT_REGISTER.filter((s) => s.upgrade).map((s) => s.name)).toEqual(['Geelong Arts Centre'])
+    for (const k of ['name', 'city_slug', 'page_url', 'kind', 'id']) expect(UPGRADE_COLUMNS).not.toContain(k)
+    expect(UPGRADE_COLUMNS).toEqual(expect.arrayContaining(['collection', 'verification', 'may_scrape', 'terms_quote']))
+  })
+})
 
 /* Car 44: a hunt source is registered only on its robots.txt read today, its lines for every agent quoted. */
 describe("the hunt register's robots reading", () => {

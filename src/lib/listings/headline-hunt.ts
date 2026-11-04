@@ -31,9 +31,13 @@ export const HUNT_SOURCES: readonly HuntSource[] = [
   { host: 'johncainarena.com.au', citySlug: 'melbourne', venues: ['John Cain Arena'], usualCategory: 'music' },
   { host: 'margaretcourtarena.com.au', citySlug: 'melbourne', venues: ['Margaret Court Arena'], usualCategory: 'music' },
   { host: 'aamipark.com.au', citySlug: 'melbourne', venues: ['AAMI Park'], usualCategory: 'sports' },
+  // Car 44b (the CONTROLLER's 01:05 of 5 November 2026): Forum Melbourne, its own list page (page-rules-melbourne.ts).
+  { host: 'forummelbourne.com.au', citySlug: 'melbourne', venues: ['Forum Melbourne'], usualCategory: 'music' },
   // Geelong (the CONTROLLER's 15:20): the stadium and the estate, both already read sources.
   { host: 'kardiniapark.vic.gov.au', citySlug: 'geelong', venues: ['GMHBA Stadium', 'Kardinia Park Precinct'], usualCategory: 'sports' },
   { host: 'adayonthegreen.com.au', citySlug: 'geelong', venues: ['Mt Duneed Estate'], usualCategory: 'music' },
+  // Car 44b: Geelong Arts Centre, its event sitemap (page-rules.ts), the venue from each show's own Venue block.
+  { host: 'geelongartscentre.org.au', citySlug: 'geelong', venues: ['Costa Hall', 'The Play House', 'The Story House', 'Geelong Arts Centre'], usualCategory: 'theatre' },
   // Ballarat: Her Majesty's and the Civic Hall on one page (page-rules-ballarat.ts).
   { host: 'hermaj.com', citySlug: 'ballarat', venues: ["Her Majesty's Theatre Ballarat", 'Civic Hall Ballarat'], usualCategory: 'theatre' },
 ]
@@ -49,7 +53,29 @@ export function huntFor(pageUrl: string): HuntSource | null {
   return HUNT_SOURCES.find((h) => h.host === host) ?? null
 }
 
-const fold = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+/** Folded for matching: case, accents and punctuation aside, and 'Mount' read as 'Mt' (the CONTROLLER's 01:05 of 5 November
+ * 2026: Mt Duneed Estate is held as 'Mt', its page states 'Mount'). */
+export const fold = (s: string) =>
+  s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\bmount\b/g, 'mt')
+
+/** The reasons that still hold a hunt night for a person: a likely duplicate, a called off show, a time likely not stated,
+ * and a page the register has not verified. */
+export const HUNT_HOLDS = ['similar_listing', 'called_off_words', 'midnight_start', 'source_unverified'] as const
+
+/**
+ * A LIKELY DUPLICATE (the CONTROLLER's 01:05 of 5 November 2026): a night EventLinqs already lists in the same city with the
+ * same title (folded, Mt and Mount alike) on the same day, at any venue, whatever words its venue is given in.
+ */
+export function likelyDuplicate(
+  night: { title: string; startsAt: string },
+  known: readonly { title: string; startsAt: string; citySlug?: string | null }[],
+  citySlug: string,
+  dayOf: (iso: string) => string,
+): boolean {
+  const title = fold(night.title)
+  const day = dayOf(night.startsAt)
+  return known.some((k) => (k.citySlug ?? citySlug) === citySlug && fold(k.title) === title && dayOf(k.startsAt) === day)
+}
 
 /** The held venue name a night's own venue words name, when it is one this page speaks for; else null. */
 export function huntVenue(hunt: HuntSource, venueName: string): string | null {

@@ -185,17 +185,22 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
     },
 
-    async publishHuntNight(row, hunt, venueName): Promise<void> {
-      /* The candidate as the run landed it: only one the hunt's rule accepted and not yet published (idempotent). */
-      const { data: c, error } = await db
-        .from('listing_candidates')
-        .select('id, decided_by, published_series_id')
-        .eq('source_id', row.sourceId)
-        .eq('page_url', row.pageUrl)
-        .eq('starts_at', row.startsAt)
-        .maybeSingle()
-      if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
-      if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
+    async publishHuntNight(row, hunt, venueName, options = {}): Promise<void> {
+      /* The candidate as the run landed it: only one the hunt's rule accepted and not yet published (idempotent). A direct
+         publish (no candidate row) is idempotent by the series' own uniqueness instead. */
+      let c: { id: string } | null = null
+      if (!options.direct) {
+        const { data, error } = await db
+          .from('listing_candidates')
+          .select('id, decided_by, published_series_id')
+          .eq('source_id', row.sourceId)
+          .eq('page_url', row.pageUrl)
+          .eq('starts_at', row.startsAt)
+          .maybeSingle()
+        if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
+        if (!data || data.decided_by !== 'partner_rule' || data.published_series_id) return
+        c = { id: data.id as string }
+      }
       if (row.title.trim().length > 80) throw new Error(`'${row.title.slice(0, 40)}...' is longer than a listing's 80 characters: a person names it`)
       const { data: org, error: orgError } = await db.from('organisations').select('id').eq('slug', LISTINGS_ORG_SLUG).maybeSingle()
       if (orgError || !org) throw new Error('the EventLinqs listings organisation could not be read')
@@ -213,6 +218,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const same = (held ?? []).find((v) => !v.removed_at)
       if (same && (same.listing_source === 'organiser' || same.claimed_at)) throw new Error(`${venueName} lists its own nights on EventLinqs`)
       let venueId = (same?.id as string | undefined) ?? null
+      if (!venueId && !(row.venueAddress ?? '').trim()) throw new Error(`${venueName} is not held and the page gives no address: a person adds it`)
       if (!venueId) {
         const { data: made, error: madeError } = await db
           .from('venues')
@@ -279,8 +285,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         reuse_basis: 'licensed_source',
       })
       if (checkError) throw new Error(`the listing check could not be written: ${checkError.message}`)
-      const { error: markError } = await db.from('listing_candidates').update({ published_series_id: made.id }).eq('id', c.id)
-      if (markError) throw new Error(`the candidate could not be marked published: ${markError.message}`)
+      if (c) {
+        const { error: markError } = await db.from('listing_candidates').update({ published_series_id: made.id }).eq('id', c.id)
+        if (markError) throw new Error(`the candidate could not be marked published: ${markError.message}`)
+      }
     },
 
     async thisWeekSources(now: Date): Promise<Set<string>> {
