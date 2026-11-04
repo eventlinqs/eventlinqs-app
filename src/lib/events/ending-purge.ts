@@ -12,7 +12,7 @@
  * guide, its suburb pages, its state page, its category, communities and organiser), so one list of surfaces holds.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { LIST_END_LEAD_MS, listingUntil } from '@/lib/events/listing-window'
+import { LIST_END_LEAD_MS, listingUntil, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
 
@@ -41,13 +41,14 @@ export async function purgeSurfacesOfNightsEnding(admin: SupabaseClient, now: Da
     .gte('end_date', from)
     .lt('end_date', to)
   if (withEnd.error) throw new Error(`the nights ending now could not be read: ${withEnd.error.message}`)
-  // A night with no end listed until the end of its own day: those that start within a day and a half either side.
+  // A night with no end is listed until the end of its own day: those still listed now by the true rule (the shared
+  // listing window, lead 0) and starting within twelve hours, which is every one whose day can end inside the lead.
   const noEnd = await admin
     .from('events')
     .select('id, start_date, end_date, timezone')
     .match(PUBLIC_EVENT_MATCH)
     .is('end_date', null)
-    .gte('start_date', new Date(now.getTime() - 36 * HOUR).toISOString())
+    .or(listingWindowOrPredicate(now, 0))
     .lte('start_date', new Date(now.getTime() + 12 * HOUR).toISOString())
   if (noEnd.error) throw new Error(`the nights with no end time could not be read: ${noEnd.error.message}`)
   const ids = endingWithinLead([...((withEnd.data ?? []) as EndingRow[]), ...((noEnd.data ?? []) as EndingRow[])], now)
