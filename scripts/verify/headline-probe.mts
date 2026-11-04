@@ -38,6 +38,24 @@ async function polite(url: string): Promise<{ status: number | null; body: strin
   }
 }
 
+/** The sitemaps robots.txt names, and the event-like page addresses they list (one level of index followed). */
+async function sitemapEvents(robotsTxt: string, origin: string): Promise<{ maps: string[]; pages: string[] }> {
+  const maps = [...robotsTxt.matchAll(/^\s*sitemap:\s*(\S+)/gim)].map((m) => m[1])
+  if (maps.length === 0) maps.push(`${origin}/sitemap.xml`)
+  const pages: string[] = []
+  for (const m of maps.slice(0, 3)) {
+    const r = await polite(m)
+    const locs = [...r.body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((x) => x[1])
+    const children = locs.filter((l) => /sitemap/i.test(l) && /event|show|whats|performance|production|page/i.test(l)).slice(0, 2)
+    for (const c of children) {
+      const rc = await polite(c)
+      pages.push(...[...rc.body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((x) => x[1]))
+    }
+    pages.push(...locs.filter((l) => !/sitemap/i.test(l)))
+  }
+  return { maps, pages: [...new Set(pages)].filter((p) => /\/(event|events|show|shows|whats-on|performances?|productions?)\/[^/]+/i.test(new URL(p).pathname)) }
+}
+
 for (const c of CANDIDATES) {
   const u = new URL(c.url)
   const robots = await polite(`${u.origin}/robots.txt`)
@@ -59,6 +77,16 @@ for (const c of CANDIDATES) {
     }
   }
   const first = events.slice(0, 2).map((e) => `${e.startsAt.slice(0, 10)} ${e.title.slice(0, 40)} @ ${e.venueName.slice(0, 30)}`).join('; ')
+  if (process.argv.includes('--sitemaps') && events.length === 0 && sampleEvents === 0) {
+    const sm = await sitemapEvents(robots.body, u.origin)
+    const pick = sm.pages.find((p) => robotsVerdict(robots.status, robots.body, new URL(p).pathname) !== 'disallowed')
+    let n = 0
+    if (pick) {
+      const one = await polite(pick)
+      n = one.body ? eventsFromBody(one.body, one.final).length : 0
+    }
+    console.log(`${c.city} | ${c.venue} | sitemaps ${sm.maps.join(' ')} | event-like pages ${sm.pages.length}${pick ? ` | sample ${pick.slice(0, 90)}: ${n} Event(s)` : ''}`)
+  }
   console.log(
     `${c.city} | ${c.venue} | ${c.url} | robots ${robots.status} ${verdict} | page ${page.status}${page.final !== c.url ? ` -> ${page.final}` : ''} | ` +
       `Events on the page: ${events.length}${first ? ` (${first})` : ''} | event links: ${eventLinks.length}` +
