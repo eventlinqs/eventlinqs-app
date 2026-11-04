@@ -3,6 +3,10 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
+import { huntFor } from './headline-hunt'
+import { classify } from '@/lib/categories/classify'
+import { toZonedInputValue } from '@/lib/dates/event-time'
+import { venueSlugify } from '@/lib/venues/venue-slug'
 
 /**
  * The collection run's reads and writes (item 19), through the service role: the register, the events already
@@ -54,6 +58,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           partner: PARTNER_TYPES.has(s.source_type as string) && owned && venue !== null && venue.city_slug !== null && s.category_id !== null,
           partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
           citySlug: (s.city_slug as string | null) ?? null,
+          hunt: huntFor(s.page_url as string),
         }
       })
     },
@@ -178,6 +183,104 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
       const { error: perr } = await db.rpc('listing_publish_partner_night', { p_candidate: c.id })
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
+    },
+
+    async publishHuntNight(row, hunt, venueName): Promise<void> {
+      /* The candidate as the run landed it: only one the hunt's rule accepted and not yet published (idempotent). */
+      const { data: c, error } = await db
+        .from('listing_candidates')
+        .select('id, decided_by, published_series_id')
+        .eq('source_id', row.sourceId)
+        .eq('page_url', row.pageUrl)
+        .eq('starts_at', row.startsAt)
+        .maybeSingle()
+      if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
+      if (!c || c.decided_by !== 'partner_rule' || c.published_series_id) return
+      if (row.title.trim().length > 80) throw new Error(`'${row.title.slice(0, 40)}...' is longer than a listing's 80 characters: a person names it`)
+      const { data: org, error: orgError } = await db.from('organisations').select('id').eq('slug', LISTINGS_ORG_SLUG).maybeSingle()
+      if (orgError || !org) throw new Error('the EventLinqs listings organisation could not be read')
+      const { data: city, error: cityError } = await db.from('cities').select('name, timezone').eq('slug', hunt.citySlug).maybeSingle()
+      if (cityError || !city?.timezone) throw new Error(`the timezone of ${hunt.citySlug} could not be read`)
+
+      /* The venue EventLinqs holds by that name in that city, else made as a listing's venue is, from the night's own
+         address. A venue that lists its own nights, or has claimed itself, is never listed for (the import's rule). */
+      const { data: held, error: heldError } = await db
+        .from('venues')
+        .select('id, name, listing_source, claimed_at, removed_at')
+        .eq('city_slug', hunt.citySlug)
+        .ilike('name', venueName.replace(/[%_]/g, ''))
+      if (heldError) throw new Error(`the venues could not be read: ${heldError.message}`)
+      const same = (held ?? []).find((v) => !v.removed_at)
+      if (same && (same.listing_source === 'organiser' || same.claimed_at)) throw new Error(`${venueName} lists its own nights on EventLinqs`)
+      let venueId = (same?.id as string | undefined) ?? null
+      if (!venueId) {
+        const { data: made, error: madeError } = await db
+          .from('venues')
+          .insert({
+            organisation_id: org.id,
+            name: venueName,
+            address: row.venueAddress,
+            city: city.name,
+            state: 'VIC',
+            country: 'Australia',
+            slug: venueSlugify(venueName),
+            city_slug: hunt.citySlug,
+            listing_source: 'eventlinqs',
+            is_active: true,
+          })
+          .select('id')
+          .single()
+        if (madeError || !made) throw new Error(`the venue could not be written: ${madeError?.message ?? 'no row'}`)
+        venueId = made.id as string
+      }
+
+      const slug = classify({ title: row.title }).primary ?? hunt.usualCategory
+      const { data: category, error: catError } = await db.from('event_categories').select('id').eq('slug', slug).maybeSingle()
+      if (catError || !category) throw new Error(`category ${slug} is not in the database`)
+      const local = toZonedInputValue(row.startsAt, city.timezone as string)
+      const anchorDate = local.slice(0, 10)
+      const today = toZonedInputValue(row.foundAt, city.timezone as string).slice(0, 10)
+      const name = row.title.trim()
+      const series = {
+        venue_id: venueId,
+        organisation_id: org.id,
+        name,
+        category_id: category.id,
+        rule: 'once',
+        anchor_date: anchorDate,
+        day: new Date(`${anchorDate}T00:00:00Z`).getUTCDay(),
+        starts_at: local.slice(11, 16),
+        ends_at: null,
+        timezone: city.timezone,
+        summary: `${name} at ${venueName}.`,
+        booking_links: row.links.map((l) => ({ url: l.url, kind: 'tickets', price_from_cents: l.priceFromCents, price_checked_on: l.priceFromCents === null ? null : today })),
+        listing_source: 'eventlinqs',
+        status: 'active',
+      }
+      let { data: made, error: seriesError } = await db.from('event_series').insert(series).select('id').single()
+      if (seriesError?.code === '23505') {
+        ;({ data: made, error: seriesError } = await db
+          .from('event_series')
+          .select('id')
+          .eq('venue_id', venueId)
+          .eq('name', name)
+          .eq('rule', 'once')
+          .eq('anchor_date', anchorDate)
+          .eq('starts_at', series.starts_at)
+          .single())
+      }
+      if (seriesError || !made) throw new Error(`the night could not be listed: ${seriesError?.message ?? 'no row'}`)
+      const { error: checkError } = await db.from('listing_checks').insert({
+        series_id: made.id,
+        source_url: row.pageUrl,
+        source_date: today,
+        import_file: `big event hunt, source ${row.sourceId}`,
+        outcome: 'confirmed',
+        reuse_basis: 'licensed_source',
+      })
+      if (checkError) throw new Error(`the listing check could not be written: ${checkError.message}`)
+      const { error: markError } = await db.from('listing_candidates').update({ published_series_id: made.id }).eq('id', c.id)
+      if (markError) throw new Error(`the candidate could not be marked published: ${markError.message}`)
     },
 
     async thisWeekSources(now: Date): Promise<Set<string>> {

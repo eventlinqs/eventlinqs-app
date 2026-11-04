@@ -2,6 +2,7 @@ import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from
 import { HORIZON_DAYS } from './horizon'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 import { factChange } from './judge'
+import type { HuntSource } from './headline-hunt'
 
 /**
  * THE WEEKLY COLLECTION RUN (the foundation's item 19, START-16OCT/EVENTLINQS-FOUNDATION-LOCKED-27OCT.md;
@@ -480,6 +481,8 @@ export type RegisteredSource = {
   partnerVenue: { name: string; address: string | null } | null
   /** The source's own city (listing_sources.city_slug): its fact changes and its known venues are this city's only. */
   citySlug?: string | null
+  /** A headline venue's own What's on page on the daily big event hunt's list (./headline-hunt.ts), else null. */
+  hunt?: HuntSource | null
 }
 
 /**

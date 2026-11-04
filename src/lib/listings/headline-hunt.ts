@@ -1,0 +1,58 @@
+/**
+ * THE DAILY BIG EVENT HUNT'S LIST (car 44; Lawal's ruling of 4 November 2026, 15:12, through the CONTROLLER's 15:20,
+ * 15:30 and 22:25b: 'every day ... it reads the What's on pages of each city's headline venues and promoters ... adds
+ * any new public ticketed event with our own words and the seller's ticket link, never copying text or photos and never
+ * reading Eventbrite pages'; Melbourne and Geelong first, together, then Ballarat and Bendigo; 05:00 and 15:00 Melbourne
+ * time).
+ *
+ * A source on this list is a headline venue's OWN What's on page, registered in listing_sources like any other (its
+ * robots.txt and terms quoted there, facts and links only). A night it states AT ITS OWN VENUE, found with high
+ * confidence, is listed without a person, as Lawal ruled ('Make sure this is not something I'm doing daily', the
+ * CONTROLLER's 15:50); a night it states anywhere else, or with any doubt, waits for a person as every other find does.
+ *
+ * Which venue a page speaks for is written here, by its host, because a page cannot be trusted to say so itself. The
+ * category comes from the night's own words (src/lib/categories/classify.ts); a venue's usual category stands only when
+ * its words give none, as a source's category does for a partner.
+ */
+import type { GuideCategory } from '@/lib/categories/classify'
+
+export type HuntSource = {
+  /** The register's page, by host (without www) and path start. */
+  readonly host: string
+  readonly citySlug: 'melbourne' | 'geelong' | 'ballarat' | 'bendigo'
+  /** The venue names this page speaks for, as EventLinqs holds them (public.venues.name). */
+  readonly venues: readonly string[]
+  readonly usualCategory: GuideCategory
+}
+
+export const HUNT_SOURCES: readonly HuntSource[] = [
+  // Melbourne (the CONTROLLER's 15:30): the arenas and the stadium on one platform (page-rules-melbourne.ts).
+  { host: 'rodlaverarena.com.au', citySlug: 'melbourne', venues: ['Rod Laver Arena'], usualCategory: 'music' },
+  { host: 'johncainarena.com.au', citySlug: 'melbourne', venues: ['John Cain Arena'], usualCategory: 'music' },
+  { host: 'margaretcourtarena.com.au', citySlug: 'melbourne', venues: ['Margaret Court Arena'], usualCategory: 'music' },
+  { host: 'aamipark.com.au', citySlug: 'melbourne', venues: ['AAMI Park'], usualCategory: 'sports' },
+  // Geelong (the CONTROLLER's 15:20): the stadium and the estate, both already read sources.
+  { host: 'kardiniapark.vic.gov.au', citySlug: 'geelong', venues: ['GMHBA Stadium', 'Kardinia Park Precinct'], usualCategory: 'sports' },
+  { host: 'adayonthegreen.com.au', citySlug: 'geelong', venues: ['Mt Duneed Estate'], usualCategory: 'music' },
+  // Ballarat: Her Majesty's and the Civic Hall on one page (page-rules-ballarat.ts).
+  { host: 'hermaj.com', citySlug: 'ballarat', venues: ["Her Majesty's Theatre Ballarat", 'Civic Hall Ballarat'], usualCategory: 'theatre' },
+]
+
+/** The hunt entry a registered page belongs to, by its host; null for every other source. */
+export function huntFor(pageUrl: string): HuntSource | null {
+  let host: string
+  try {
+    host = new URL(pageUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+  return HUNT_SOURCES.find((h) => h.host === host) ?? null
+}
+
+const fold = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/** The held venue name a night's own venue words name, when it is one this page speaks for; else null. */
+export function huntVenue(hunt: HuntSource, venueName: string): string | null {
+  const v = fold(venueName)
+  return hunt.venues.find((name) => v === fold(name) || v.startsWith(`${fold(name)} `) || (v.length > 6 && fold(name).startsWith(`${v} `))) ?? null
+}
