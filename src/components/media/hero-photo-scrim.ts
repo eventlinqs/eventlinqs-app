@@ -125,11 +125,27 @@ export const HERO_SIDE_TOP_ALPHA = 0.12
 export const HERO_SIDE_TEXT = '37rem'
 export const HERO_SIDE_FADE = '18rem'
 
+/**
+ * BEHIND THE WORDS, MEASURED ON THE REAL PHOTOGRAPHS (the CONTROLLER's 22:09 of 3 November 2026 and his pick B of 00:24:
+ * 'brighten every city band so the upper photo reads in daylight colour ... dark only behind the text, AA proved per
+ * text line on the real pixels'). The text-side wash sits only on the city banners, four named licensed photographs
+ * (public/images/library, attribution.json), so their words are proved against THEIR pixels by
+ * scripts/verify/hero-text-over-photograph-drive.mjs at 320, 390 and 1440, not against the worst case white photograph
+ * HERO_CAPTION_MIN_ALPHA is sized for (the shipped 0.82 left the band dark on a phone, where the caption fills it).
+ * Measured on 3 and 4 November: 0.30, 0.45 and 0.55 fail on the gold eyebrow; 0.62 with HERO_SIDE_TEXT_SHADOW holds
+ * the title, the subtitle and the credit; the 12 px gold eyebrow, the one line that does not, carries its own backing
+ * at HERO_CAPTION_MIN_ALPHA (HERO_EYEBROW_PLATE), dark only behind that line. A new banner photograph is measured by
+ * the drive before it ships.
+ */
+export const HERO_SIDE_TEXT_ALPHA = 0.62
+export const HERO_SIDE_TEXT_SHADOW = `0 1px 2px rgba(${NAVY},0.85), 0 0 12px rgba(${NAVY},0.55)`
+export const HERO_EYEBROW_PLATE = `rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA})`
+
 export const HERO_SIDE_SCRIM_PHONE =
-  `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(${HERO_SIDE_LIFT} * 0.3), rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) ${HERO_SIDE_LIFT}, rgba(${NAVY},${HERO_CAPTION_BASE_ALPHA}) calc(${HERO_SIDE_LIFT} + 11.25rem))`
+  `linear-gradient(to bottom, rgba(${NAVY},0) 0, rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(${HERO_SIDE_LIFT} * 0.3), rgba(${NAVY},${HERO_SIDE_TEXT_ALPHA}) ${HERO_SIDE_LIFT})`
 
 export const HERO_SIDE_SCRIM_WIDE =
-  `linear-gradient(to right, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) 0, rgba(${NAVY},${HERO_CAPTION_MIN_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT}), rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE}), rgba(${NAVY},0) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE} + 8rem))`
+  `linear-gradient(to right, rgba(${NAVY},${HERO_SIDE_TEXT_ALPHA}) 0, rgba(${NAVY},${HERO_SIDE_TEXT_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT}), rgba(${NAVY},${HERO_SIDE_TOP_ALPHA}) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE}), rgba(${NAVY},0) calc(100vw + ${HERO_SIDE_TEXT} + ${HERO_SIDE_FADE} + 8rem))`
 
 /**
  * The header wash. Top-anchored, so the transparent header's white nav clears a

@@ -20,6 +20,7 @@ import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { JsonLd } from '@/components/seo/json-ld'
+import { byRelevance, tierOf } from '@/lib/events/relevance'
 
 export const revalidate = 300
 
@@ -127,7 +128,7 @@ export default async function SuburbPage({ params }: Props) {
   // 55 Melbourne events carry the CBD centroid as their venue coordinate, so an
   // inclusive radius test hands those same 43 events to Bayside, Northern
   // Suburbs and Western Suburbs alike, each page asserting they are its own.
-  const events = allRaw.filter(e =>
+  const inSuburb = allRaw.filter(e =>
     (e.suburb_primary ??
       resolveSuburbSlug({
         citySlug: city.slug,
@@ -136,8 +137,23 @@ export default async function SuburbPage({ params }: Props) {
       })) === suburbContent.slug,
   )
 
+  // LAW 18, THE SAME ORDER AS THE CITY GUIDE (the CONTROLLER's 15:30 and 15:40; src/lib/events/relevance.ts): the list
+  // keeps date order with library, toddler, class and community sessions (tier 4) after the rest; the weekend rail ranks
+  // by tier then date and never carries tier 4.
+  const tier = (e: (typeof inSuburb)[number]) =>
+    tierOf({
+      title: e.title,
+      venue: e.venue_name,
+      categorySlug: (e.category as { slug?: string | null } | null)?.slug ?? null,
+      ticketed: !e.is_free && e.entry_mode !== 'walk_in',
+    })
+  const at = (e: (typeof inSuburb)[number]) => Date.parse(e.start_date)
+  const events = [...inSuburb].sort((a, b) => Number(tier(a) === 4) - Number(tier(b) === 4) || at(a) - at(b))
+
   const w = weekendWindow(new Date())
-  const weekendEvents = events.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
+  const weekendEvents = inSuburb
+    .filter(e => tier(e) !== 4 && e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
+    .sort(byRelevance(tier, at))
 
   const [heroImage, ...rest] = await Promise.all([
     getSuburbHeroPhoto(suburbContent.slug),

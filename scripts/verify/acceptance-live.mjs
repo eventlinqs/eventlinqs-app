@@ -168,12 +168,22 @@ for (const path of ['/', '/events']) {
 if (process.argv.includes('--skip-taps')) {
   console.log('NOT RUN every-tap-works: --skip-taps')
 } else {
-  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026']
+  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026', '/login', '/signup']
   const taps = await everyTap(browser, BASE, TAP_PATHS, join(OUT, 'every-tap'))
   for (const path of TAP_PATHS) {
     const mine = taps.filter((t) => t.path === path)
     const bad = mine.filter((t) => !t.ok)
     record('every-tap-works', path, bad.length === 0, `${mine.length - bad.length} of ${mine.length} taps work${bad.length ? `; FAIL ${bad.length}: ${bad.slice(0, 6).map((t) => `[${t.region}] '${t.label}' ${t.result}`).join('; ')}` : ''}`)
+  }
+  // AND AT 1440 (the CONTROLLER's 15:10 of 4 November (1): 'at 390 and 1440 on /, /city/geelong, /city/melbourne,
+  // /city/ballarat, /city/bendigo, /state/victoria and one event page'): the desktop layout, a touch-capable screen so
+  // the same press is made.
+  const WIDE_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events/amcf-2026']
+  const wide = await everyTap(browser, BASE, WIDE_PATHS, join(OUT, 'every-tap-1440'), { viewport: { width: 1440, height: 900 }, hasTouch: true, isMobile: false, deviceScaleFactor: 1 })
+  for (const path of WIDE_PATHS) {
+    const mine = wide.filter((t) => t.path === path)
+    const bad = mine.filter((t) => !t.ok)
+    record('every-tap-works-1440', path, bad.length === 0, `${mine.length - bad.length} of ${mine.length} taps work${bad.length ? `; FAIL ${bad.length}: ${bad.slice(0, 6).map((t) => `[${t.region}] '${t.label}' ${t.result}`).join('; ')}` : ''}`)
   }
 }
 

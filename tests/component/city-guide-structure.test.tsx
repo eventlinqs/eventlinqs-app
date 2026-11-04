@@ -75,7 +75,8 @@ describe('the Geelong reference page, section by section', () => {
   })
 
   // Round 3, LOCKED (Lawal 17:00 to 17:10; ROUND3-DIRECTIVE-2NOV.md): Big nights by a stated rule, the rails, no listing twice.
-  it('3: Big nights shows only a paid night at a named big venue, and is not drawn without one', () => {
+  // Law 18 (Lawal, 4 November 2026, 15:12): and only with its photograph.
+  it('3: Big nights shows only a paid night at a named big venue WITH its photograph, and is not drawn without one', () => {
     const { unmount } = guide()
     expect(screen.queryByRole('region', { name: 'Big nights in Geelong' })).toBeNull()
     unmount()
@@ -83,7 +84,7 @@ describe('the Geelong reference page, section by section', () => {
       <CityGuide
         city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
         stateName="Victoria" stateCityNames={['geelong']} quickCities={[{ slug: 'geelong', name: 'Geelong' }]} allCities={[]}
-        rows={[...rows, row({ id: 'b1', href: '/events/b1', title: 'Hindley Street Country Club', venue: 'Costa Hall', free: false, format: 'ticketed', price: 'From AUD $59', source: 'Tickets at Geelong Arts Centre', dayKey: '2026-11-14', ts: 9 })]}
+        rows={[...rows, row({ id: 'b1', href: '/events/b1', title: 'Hindley Street Country Club', venue: 'Costa Hall', free: false, format: 'ticketed', price: 'From AUD $59', source: 'Tickets at Geelong Arts Centre', dayKey: '2026-11-14', ts: 9, thumb: '/p/own.jpg' })]}
         days={days}
       />,
     )

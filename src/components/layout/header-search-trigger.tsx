@@ -137,6 +137,11 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
     import('./header-search-overlay').then(m => m.HeaderSearchOverlay),
   )
 
+  // THE TAP ANSWERS AT ONCE (the CONTROLLER's 14:10, every-tap on live at 22:20: 'Open search: the page changes in
+  // 321 ms'): the overlay's chunk is fetched on intent and lands after the tap on a first open, so the button itself
+  // shows it is open from the tap (aria-expanded, and its own hover look held), while the overlay arrives.
+  const openState = { 'aria-expanded': open, 'aria-haspopup': 'dialog' as const }
+
   const overlay = HeaderSearchOverlay ? (
     <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} />
   ) : null
@@ -150,6 +155,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
           type="button"
           onClick={openOverlay}
           {...intentProps}
+          {...openState}
           className={[
             // w-full up to a 360px cap, not a fixed 360 (close-out UX6). A fixed width
             // cannot shrink, and at xl the row has 316px to spare, not 360, so a
@@ -157,6 +163,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
             // exactly 1280. The cap keeps it identical at 1440 and wider.
             'group inline-flex h-11 w-full max-w-[360px] min-w-0 items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/15',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
+            open ? 'border-white/30 bg-white/15' : '',
             className,
           ].join(' ')}
           aria-label="Open search"
@@ -183,10 +190,12 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
         type="button"
         onClick={openOverlay}
         {...intentProps}
+        {...openState}
         aria-label="Open search"
         className={[
           'flex h-11 w-11 items-center justify-center rounded-full text-white/85 transition hover:bg-white/10 hover:text-white',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
+          open ? 'bg-white/10 text-white' : '',
           className,
         ].join(' ')}
       >

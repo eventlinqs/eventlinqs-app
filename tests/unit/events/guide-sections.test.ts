@@ -36,12 +36,15 @@ describe('the calendar arithmetic', () => {
 })
 
 describe('Big nights, the stated rule (item 1)', () => {
-  it('a paid ticketed night at a named big venue, or a festival its organiser listed with us; never a free night', () => {
-    expect(isBigNight(paid({ venue: 'Costa Hall, Geelong Arts Centre' }))).toBe(true)
-    expect(isBigNight(paid({ venue: 'Mt Duneed Estate' }))).toBe(true)
-    expect(isBigNight(paid({ venue: 'The Barwon Club' }))).toBe(false)
-    expect(isBigNight(row({ venue: 'Costa Hall' }))).toBe(false)
-    expect(isBigNight(row({ categorySlug: 'festival', source: 'Register on EventLinqs', venue: 'Federation Square' }))).toBe(true)
+  // Law 18 (Lawal, 4 November 2026, 15:12): a permitted photograph is required too, whatever the size.
+  it('a paid ticketed night at a named big venue, or a festival its organiser listed with us, WITH its photograph; never a free night', () => {
+    const photo = '/p/own.jpg'
+    expect(isBigNight(paid({ venue: 'Costa Hall, Geelong Arts Centre', thumb: photo }))).toBe(true)
+    expect(isBigNight(paid({ venue: 'Mt Duneed Estate', thumb: photo }))).toBe(true)
+    expect(isBigNight(paid({ venue: 'Mt Duneed Estate' }))).toBe(false)
+    expect(isBigNight(paid({ venue: 'The Barwon Club', thumb: photo }))).toBe(false)
+    expect(isBigNight(row({ venue: 'Costa Hall', thumb: photo }))).toBe(false)
+    expect(isBigNight(row({ categorySlug: 'festival', source: 'Register on EventLinqs', venue: 'Federation Square', thumb: photo }))).toBe(true)
   })
 })
 
@@ -57,13 +60,15 @@ describe('the sections (items 1 to 4)', () => {
     row({ id: 'n1', title: 'Story time', venue: 'Geelong Library', dayKey: '2026-12-10', ts: at('2026-12-10'), listedAt: NOW - 3 * 86_400_000 }),
   ]
   const s = guideSections(rows, days, NOW)
-  it('Big nights: photo first, then by date', () => {
-    expect(s.big.map((e) => e.row.id)).toEqual(['b2', 'b1'])
+  // Law 18 superseded 'photo first': no photograph, no Big nights (Hindley Street Country Club has none).
+  it('Big nights: only with a photograph, then by headline weight and date', () => {
+    expect(s.big.map((e) => e.row.id)).toEqual(['b2'])
   })
   it('no listing appears twice on one page, the list included', () => {
     const all = [s.big, s.announced, s.weekend, s.free, s.soon, s.rest].flat().map((e) => listingKey(e.row))
     expect(new Set(all).size).toBe(all.length)
-    expect(s.announced.map((e) => e.row.id)).toEqual(['n1'])
+    // Law 18: story time at a library is tier 4, never Just announced; it stays in the month list.
+    expect(s.announced.map((e) => e.row.id)).toEqual([])
     expect(s.weekend.map((e) => e.row.id)).toEqual(['w1', 'm1'])
   })
   it('Coming soon reads past the three months: nothing is hidden by distance', () => {

@@ -62,6 +62,33 @@ const signature = (page) =>
     return `${location.pathname}${location.search}#${document.body.innerText.length}#${states}#${Math.round(sideways)}#${document.documentElement.dataset.shareSheet ?? 0}`
   }).catch(() => 'navigating')
 
+/** The list lead (src/lib/events/listing-window.ts LIST_END_LEAD_MS) and a minute's grace for the drive's own reload. */
+const LEAVES_LISTS_MS = 7 * 60 * 1000
+
+/** 'ended 14:50' or 'ends 14:50' where the event page's own JSON-LD says its night is over or inside the lead; else null. */
+async function endedOrEnding(context, url) {
+  try {
+    const res = await context.request.get(url, { maxRedirects: 5, timeout: 20000 })
+    const html = await res.text()
+    for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)) {
+      let data
+      try {
+        data = JSON.parse(m[1])
+      } catch {
+        continue
+      }
+      const end = data && typeof data === 'object' ? Date.parse(data.endDate ?? '') : NaN
+      if (Number.isFinite(end) && end - Date.now() <= LEAVES_LISTS_MS) {
+        const at = new Date(end).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Melbourne' })
+        return `${end <= Date.now() ? 'ended' : 'ends'} ${at}`
+      }
+    }
+  } catch (e) {
+    console.warn(`[every-tap] the event page could not be read for its end: ${e instanceof Error ? e.message : String(e)}`)
+  }
+  return null
+}
+
 export async function everyTap(browser, base, paths, out, contextOptions = null) {
   mkdirSync(out, { recursive: true })
   const context = await browser.newContext(contextOptions ?? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 })
@@ -129,7 +156,16 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
         await p.goto(`${base}${path}`, { waitUntil: 'load' }); await p.waitForTimeout(800)
         const now = (await targetsOf(p)).filter((x) => !x.hidden)
         const match = now.find((x) => x.tag === t.tag && x.href === t.href && x.label === t.label && x.region === t.region)
-        if (!match) { push({ ...row, ok: false, result: 'NOT FOUND AGAIN after a reload' }); continue }
+        if (!match) {
+          // A night leaves every public list LIST_END_LEAD_MS (6 minutes) before its end (car 43, src/lib/events/
+          // listing-window.ts): a row the drive saw that is gone on the reload because its night is ending or ended is
+          // the guide keeping its promise, never a dead tap (car 43's read back, 4 November 14:50: Baby Time ended 14:50
+          // and left at 14:44). Read from the event page's own JSON-LD endDate.
+          const left = t.href && t.href.startsWith('/events/') ? await endedOrEnding(context, `${base}${t.href}`) : null
+          if (left) { push({ ...row, ok: true, result: `left the lists at its end (${left})` }); continue }
+          push({ ...row, ok: false, result: 'NOT FOUND AGAIN after a reload' })
+          continue
+        }
         const el = p.locator(SEL).nth(match.i)
         await el.scrollIntoViewIfNeeded({ timeout: 3000 })
         const y0 = await p.evaluate(() => scrollY)
@@ -177,8 +213,16 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
         const y1 = await p.evaluate(() => scrollY).catch(() => y0)
         const s1 = await signature(p)
         const focused = await el.evaluate((node) => document.activeElement === node).catch(() => false)
+        // An empty form's submit: the browser holds it, shows its own 'fill out this field' bubble (outside the page)
+        // and moves focus to the first empty required field, which the page does show.
+        const heldEmpty = await p.evaluate(() => {
+          const a = document.activeElement
+          return a instanceof HTMLInputElement && a.required && !a.validity.valid
+        }).catch(() => false)
         if (s1 !== s0) {
           push({ ...row, ok: changedAt !== null && changedAt <= 300, result: `the page changes in ${changedAt ?? '>300'} ms${Math.abs(y1 - y0) > 40 ? `, and scrolls ${y1 - y0} px` : ''}` })
+        } else if (heldEmpty && (t.tag === 'button' || t.type === 'submit')) {
+          push({ ...row, ok: true, result: "the browser holds the empty form at its first empty field (its own 'fill out this field' bubble)" })
         } else if (['input', 'select', 'textarea'].includes(t.tag) && focused) {
           push({ ...row, ok: true, result: 'the field takes focus' })
         } else if (t.tag === 'a' && t.href && new URL(t.href, url0).pathname === u0.pathname && Math.abs(y1 - y0) <= 40) {
