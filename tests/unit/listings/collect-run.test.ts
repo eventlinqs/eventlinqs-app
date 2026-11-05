@@ -359,19 +359,17 @@ describe("the hunt's rule", () => {
       ...night,
     })}</script>`
 
-  it('lists a night with no street address at its own venue directly, with no review row', async () => {
+  /* Car 46, one publication gate: a hunt night below high confidence is never published around its candidate row; it
+     lands for a person with its reasons (car 44b's direct publish is gone). */
+  it('a night with no street address waits for a person, with its reason, and is never published around the gate', async () => {
     const m = memoryStore([hunted()])
-    const direct: string[] = []
-    m.store.publishHuntNight = async (row, _hunt, venueName, options) => {
-      direct.push(`${row.title} @ ${venueName}${options?.direct ? ' (direct)' : ''}`)
+    m.store.publishHuntNight = async () => {
+      throw new Error('never')
     }
     const r = await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: page({ location: { name: 'Rod Laver Arena' } }) } }).fetcher, NOW)
-    expect(direct).toEqual(['A Big Show @ Rod Laver Arena (direct)'])
-    expect(m.landed).toEqual([])
-    expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
-    // The run log's rule holds for a direct listing too (listing_source_runs_counts_add_up).
+    expect(m.landed[0]).toMatchObject({ decidedBy: 'person', reasons: ['no_venue_address'] })
+    expect(r).toMatchObject({ acceptedByRule: 0, queued: 1 })
     expect(m.runs[0].queued + m.runs[0].acceptedByRule).toBeLessThanOrEqual(m.runs[0].landed)
-    expect(m.runs[0].landed).toBeLessThanOrEqual(m.runs[0].found)
   })
 
   it('counts a night that waited from before the hunt, and is decided by its rule now, as listed', async () => {

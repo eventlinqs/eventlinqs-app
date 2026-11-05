@@ -95,7 +95,7 @@ export type CollectionStore = {
    * names, its category from its own words, its seller's link, a licensed_source listing check. Idempotent.
    */
   /** 'promoted' when a night that waited for a person is decided by the hunt's rule now and published (car 44b). */
-  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string, options?: { direct?: boolean }): Promise<'published' | 'promoted' | void>
+  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string): Promise<'published' | 'promoted' | void>
   /**
    * Takes every waiting row whose night has passed out of the queue, saying so; returns how many. onlySources narrows
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
@@ -350,11 +350,11 @@ export async function runCollection(
                 !likelyDuplicate(plan.event, known, source.hunt.citySlug, (iso) => platformDay(new Date(iso)))
                   ? huntVenue(source.hunt, plan.event.venueName)
                   : null
-              /* The database lets the run accept a candidate only at high confidence (listing_candidates_decided_by,
-                 20261028204001); a hunt night held back only by a missing street address at a venue EventLinqs holds is
-                 published directly instead, with no candidate row: the series and its listing check are the record. */
-              const huntDirect = huntAt !== null && confidence !== 'high'
-              const byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && !huntDirect)
+              /* ONE PUBLICATION GATE (car 46; LAW 19 section 4; the independent review's gate gap): a hunt night is listed by
+                 the rule only at high confidence, through its candidate row, the way the database's own check
+                 (listing_candidates_decided_by) allows; anything less lands for a person, with its reasons. The direct
+                 publish of car 44b, with no candidate row, no audit and no plausibility check, is gone. */
+              const byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && confidence === 'high')
               const foundAt = now.toISOString()
               /* The links first, so an accepted row never names links the event does not carry. */
               if (byRule && plan.kind === 'adds_links') await store.addLinks(plan.eventId, plan.event.links, foundAt)
@@ -376,16 +376,6 @@ export async function runCollection(
                 confidence,
                 reasons,
                 decidedBy: byRule ? 'partner_rule' : 'person',
-              }
-              if (huntDirect && source.hunt && store.publishHuntNight) {
-                try {
-                  await store.publishHuntNight(row, source.hunt, huntAt as string, { direct: true })
-                  landed += 1
-                  ruled += 1
-                } catch (err) {
-                  unpublished.push(err instanceof Error ? err.message : String(err))
-                }
-                continue
               }
               const isNew = await store.land(row)
               /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a

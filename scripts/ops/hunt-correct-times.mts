@@ -41,7 +41,7 @@ cjs._resolveFilename = (request: string, ...rest: unknown[]) =>
 const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody, wallClockToIso } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
-const { huntFor } = pick((await import('@/lib/listings/headline-hunt')) as typeof HuntModule)
+const { correctionDecision, huntFor } = pick((await import('@/lib/listings/headline-hunt')) as typeof HuntModule)
 const { toZonedInputValue } = pick((await import('@/lib/dates/event-time')) as typeof TimeModule)
 
 const TARGETS = { production: 'gndnldyfudbytbboxesk', test: 'vkapkibzokmfaxqogypq' } as const
@@ -220,20 +220,18 @@ for (const pageUrl of [...new Set(nights.map((n) => n.pageUrl))]) {
   readings.set(pageUrl, { status: page.status, starts: new Set(found.map((f) => new Date(f.startsAt).toISOString())) })
 }
 
-/** The fault's own mapping: the stored instant's UTC clock, read as Melbourne's clock. */
-const asMelbourne = (iso: string) => {
-  const d = new Date(iso)
-  return wallClockToIso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), 0, ZONE)
-}
 const local = (iso: string) => toZonedInputValue(iso, ZONE).replace('T', ' ')
 type Decision = { night: Night; kind: 'right' | 'move' | 'hold'; to: string | null; why: string }
 const decisions: Decision[] = nights.map((night) => {
   const reading = readings.get(night.pageUrl)
-  if (!reading || reading.status !== 200) return { night, kind: 'hold', to: null, why: `the page answered ${reading?.status ?? 'nothing'}` }
-  if (reading.starts.has(night.startsAt)) return { night, kind: 'right', to: null, why: 'the page states this start' }
-  const to = asMelbourne(night.startsAt)
-  if (to && reading.starts.has(new Date(to).toISOString())) return { night, kind: 'move', to: new Date(to).toISOString(), why: "the page states this clock in Melbourne time" }
-  return { night, kind: 'hold', to: null, why: reading.starts.size ? 'the page no longer states this night' : 'the page states no time the reader can trust' }
+  // The one tested verdict (correctionDecision, src/lib/listings/headline-hunt.ts; tests/unit/listings/engine-p0-times.test.ts).
+  const v = correctionDecision(night.startsAt, reading?.starts ?? new Set(), reading?.status ?? null)
+  const why =
+    v.kind === 'right' ? 'the page states this start'
+    : v.kind === 'move' ? 'the page states this clock in Melbourne time'
+    : reading?.status !== 200 ? `the page answered ${reading?.status ?? 'nothing'}`
+    : reading.starts.size ? 'the page no longer states this night' : 'the page states no time the reader can trust'
+  return { night, kind: v.kind, to: v.to, why }
 })
 for (const d of decisions) {
   console.log(`${d.kind.toUpperCase().padEnd(5)} ${d.night.title.slice(0, 50).padEnd(50)} stored ${local(d.night.startsAt)}${d.to ? ` -> ${local(d.to)}` : ''} | ${d.why} | ${d.night.pageUrl}`)

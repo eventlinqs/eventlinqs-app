@@ -45,10 +45,7 @@ for (const pageUrl of pages) {
     addLinks: async () => {},
     logRun: async () => {},
     publishPartnerNight: async () => {},
-    publishHuntNight: async (row: { title: string; startsAt: string; venueName: string }, _h: unknown, venue: string, options?: { direct?: boolean }) => {
-      if (options?.direct) found.push(`${row.startsAt.slice(0, 16)} ${row.title.slice(0, 60)} @ ${venue} [listed directly]`)
-      return 'published' as const
-    },
+    publishHuntNight: async () => 'published' as const,
     expirePassed: async () => 0,
   }
   const started = Date.now()
