@@ -1,6 +1,7 @@
 import { getCity, getSuburb, isCitySlug } from '@/lib/cities/data'
 import { buildFaithTagOrFilter, isFaithSlug } from '@/lib/faiths/data'
 import { COMMUNITY_MOMENTS } from '@/lib/community-moments/calendar'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 
 /**
  * URL FILTER SEMANTICS: what every clickable /events link actually means.
@@ -281,11 +282,15 @@ export function resolveMoment(
   const slug = value.trim().toLowerCase()
   const moment = COMMUNITY_MOMENTS.find((m) => m.slug === slug)
   if (!moment) return null
+  /* THE PLATFORM ZONE'S DAYS, NEVER UTC'S (the engine review's risk 13, 5 November 2026): a moment from '2026-07-05' was
+     read from 00:00 UTC, which is 10:00 or 11:00 in Australia, so its first morning fell outside it and the morning after
+     its last day fell in. The window is inclusive of the end day: it runs to a millisecond before the next day begins. */
+  const [y, mo, d] = moment.end.split('-').map(Number)
+  const after = new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().slice(0, 10)
   return {
     community: moment.community ?? null,
-    // The window is inclusive of the end day, so extend to its final moment.
-    from: new Date(`${moment.start}T00:00:00.000Z`).toISOString(),
-    to: new Date(`${moment.end}T23:59:59.999Z`).toISOString(),
+    from: fromZonedInputValue(`${moment.start}T00:00`, PLATFORM_TIME_ZONE),
+    to: new Date(new Date(fromZonedInputValue(`${after}T00:00`, PLATFORM_TIME_ZONE)).getTime() - 1).toISOString(),
   }
 }
 
