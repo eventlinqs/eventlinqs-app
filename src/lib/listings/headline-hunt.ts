@@ -77,6 +77,22 @@ export function likelyDuplicate(
   return known.some((k) => (k.citySlug ?? citySlug) === citySlug && fold(k.title) === title && dayOf(k.startsAt) === day)
 }
 
+/**
+ * WHAT THE HUNT DOES WITH A NIGHT'S EXISTING CANDIDATE (car 44b; the CONTROLLER's 01:05 of 5 November 2026: 'For review ends
+ * for these sources'). One the hunt's rule accepted and has not published is published. One that has waited for a person
+ * since before the hunt read its page (GMHBA Stadium's four of 2 November) is decided by the rule now, when the rule accepts
+ * it today at high confidence (the only way the database lets the rule decide, listing_candidates_decided_by). A night a
+ * person refused, or one already published, is left.
+ */
+export function huntDecision(
+  existing: { status: string; decided_by: string; published_series_id: string | null } | null,
+  row: { decidedBy: string; confidence: string; kind: string },
+): 'publish' | 'promote' | 'leave' {
+  if (!existing || existing.published_series_id) return 'leave'
+  if (existing.decided_by === 'partner_rule') return existing.status === 'accepted' ? 'publish' : 'leave'
+  return existing.status === 'waiting' && row.decidedBy === 'partner_rule' && row.confidence === 'high' && row.kind === 'new' ? 'promote' : 'leave'
+}
+
 /** The held venue name a night's own venue words name, when it is one this page speaks for; else null. */
 export function huntVenue(hunt: HuntSource, venueName: string): string | null {
   const v = fold(venueName)

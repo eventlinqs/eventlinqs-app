@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_HOLDS, HUNT_SOURCES, fold, huntFor, huntVenue, likelyDuplicate } from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntVenue, likelyDuplicate } from '@/lib/listings/headline-hunt'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
 
 /* Car 44: the hunt's list, its venue match, and the arenas' page rule (one platform, /events/ to /event/<slug>/). */
@@ -36,6 +36,16 @@ describe('the hunt, car 44b', () => {
   })
   it('a called off show, a night with no time and an unverified page still wait for a person', () => {
     expect([...HUNT_HOLDS]).toEqual(expect.arrayContaining(['similar_listing', 'called_off_words', 'midnight_start', 'source_unverified']))
+  })
+  it('decides by its rule a night that waited for a person from before the hunt, and never one a person refused', () => {
+    const ruled = { decidedBy: 'partner_rule', confidence: 'high', kind: 'new' }
+    const waiting = { status: 'waiting', decided_by: 'person', published_series_id: null }
+    expect(huntDecision(waiting, ruled)).toBe('promote')
+    expect(huntDecision(waiting, { ...ruled, decidedBy: 'person', confidence: 'low' })).toBe('leave')
+    expect(huntDecision({ ...waiting, status: 'refused' }, ruled)).toBe('leave')
+    expect(huntDecision({ status: 'accepted', decided_by: 'partner_rule', published_series_id: null }, ruled)).toBe('publish')
+    expect(huntDecision({ status: 'accepted', decided_by: 'partner_rule', published_series_id: 's1' }, ruled)).toBe('leave')
+    expect(huntDecision(null, ruled)).toBe('leave')
   })
   it("reads Geelong Arts Centre's rooms and Forum Melbourne by their own pages", () => {
     const gac = huntFor('https://geelongartscentre.org.au/sitemaps-1-section-event-1-sitemap.xml')!

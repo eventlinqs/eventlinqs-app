@@ -94,7 +94,8 @@ export type CollectionStore = {
    * Publishes a new night the hunt's rule accepted (./headline-hunt.ts): a dated series at the headline venue the night
    * names, its category from its own words, its seller's link, a licensed_source listing check. Idempotent.
    */
-  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string, options?: { direct?: boolean }): Promise<void>
+  /** 'promoted' when a night that waited for a person is decided by the hunt's rule now and published (car 44b). */
+  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string, options?: { direct?: boolean }): Promise<'published' | 'promoted' | void>
   /**
    * Takes every waiting row whose night has passed out of the queue, saying so; returns how many. onlySources narrows
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
@@ -384,17 +385,22 @@ export async function runCollection(
               const isNew = await store.land(row)
               /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a
                  publish an earlier run could not finish is finished by the next, and nothing is published twice. */
+              let promoted = false
               if (byRule && plan.kind === 'new') {
                 /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
                    run asks again. */
                 try {
-                  if (huntAt && source.hunt && store.publishHuntNight) await store.publishHuntNight(row, source.hunt, huntAt)
+                  if (huntAt && source.hunt && store.publishHuntNight) promoted = (await store.publishHuntNight(row, source.hunt, huntAt)) === 'promoted'
                   else await store.publishPartnerNight(row)
                 } catch (err) {
                   unpublished.push(err instanceof Error ? err.message : String(err))
                 }
               }
-              if (!isNew) continue
+              /* Car 44b: a night that waited for a person from before the hunt, decided by the hunt's rule now, is listed. */
+              if (!isNew) {
+                if (promoted) ruled += 1
+                continue
+              }
               landed += 1
               if (byRule) ruled += 1
               else queued += 1

@@ -3,7 +3,7 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntFor } from './headline-hunt'
+import { huntDecision, huntFor } from './headline-hunt'
 import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
 import { venueSlugify } from '@/lib/venues/venue-slug'
@@ -185,20 +185,39 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
     },
 
-    async publishHuntNight(row, hunt, venueName, options = {}): Promise<void> {
-      /* The candidate as the run landed it: only one the hunt's rule accepted and not yet published (idempotent). A direct
+    async publishHuntNight(row, hunt, venueName, options = {}): Promise<'published' | 'promoted' | void> {
+      /* The candidate as the run landed it: one the hunt's rule accepted and not yet published (idempotent), or one that
+         waited for a person from before the hunt read the page, decided by the rule now (huntDecision, car 44b). A direct
          publish (no candidate row) is idempotent by the series' own uniqueness instead. */
       let c: { id: string } | null = null
+      let promoted = false
       if (!options.direct) {
         const { data, error } = await db
           .from('listing_candidates')
-          .select('id, decided_by, published_series_id')
+          .select('id, status, decided_by, published_series_id')
           .eq('source_id', row.sourceId)
           .eq('page_url', row.pageUrl)
           .eq('starts_at', row.startsAt)
           .maybeSingle()
         if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
-        if (!data || data.decided_by !== 'partner_rule' || data.published_series_id) return
+        const decision = huntDecision(
+          data ? { status: data.status as string, decided_by: data.decided_by as string, published_series_id: (data.published_series_id as string | null) ?? null } : null,
+          row,
+        )
+        if (!data || decision === 'leave') return
+        if (decision === 'promote') {
+          /* The CONTROLLER's 01:05 of 5 November 2026: 'For review ends for these sources'. Only a row still waiting is
+             moved, so a person's decision taken meanwhile is never overwritten. */
+          const { data: moved, error: moveError } = await db
+            .from('listing_candidates')
+            .update({ status: 'accepted', decided_by: 'partner_rule', confidence: 'high', reasons: [], reviewed_at: row.foundAt })
+            .eq('id', data.id)
+            .eq('status', 'waiting')
+            .select('id')
+          if (moveError) throw new Error(`the waiting night could not be decided by the hunt's rule: ${moveError.message}`)
+          if (!moved || moved.length === 0) return
+          promoted = true
+        }
         c = { id: data.id as string }
       }
       if (row.title.trim().length > 80) throw new Error(`'${row.title.slice(0, 40)}...' is longer than a listing's 80 characters: a person names it`)
@@ -289,6 +308,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         const { error: markError } = await db.from('listing_candidates').update({ published_series_id: made.id }).eq('id', c.id)
         if (markError) throw new Error(`the candidate could not be marked published: ${markError.message}`)
       }
+      return promoted ? 'promoted' : 'published'
     },
 
     async thisWeekSources(now: Date): Promise<Set<string>> {

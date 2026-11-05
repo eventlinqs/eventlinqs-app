@@ -371,6 +371,18 @@ describe("the hunt's rule", () => {
     expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
   })
 
+  it('counts a night that waited from before the hunt, and is decided by its rule now, as listed', async () => {
+    const m = memoryStore([hunted({ hunt: null })])
+    const fetcher = sites({ ...open, [arena]: { status: 200, body: page({}) } }).fetcher
+    await runCollection(m.store, fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
+    const later = memoryStore([hunted()])
+    later.store.land = m.store.land
+    later.store.publishHuntNight = async () => 'promoted'
+    const r = await runCollection(later.store, fetcher, new Date(NOW.getTime() + 60_000))
+    expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
   it('holds a likely duplicate, the same title the same day at any venue, for a person', async () => {
     const known: KnownEvent[] = [
       { eventId: 'e1', venueId: null, venueName: 'Melbourne Park', venueAddress: null, title: 'A BIG SHOW', startsAt: '2026-11-21T19:30:00+11:00', citySlug: 'melbourne' },
