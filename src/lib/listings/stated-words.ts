@@ -82,7 +82,8 @@ export function statedInWords(html: string, iso: string, zone: string): 'both' |
  */
 function statesWeekdayAndStart(line: string, p: ReturnType<typeof localParts>): boolean {
   if (!new RegExp(`\\b${p.weekday}s?\\b`).test(line)) return false
-  const notAfter = String.raw`(?<![\d.:])(?<![-–—]\s?)`
+  // A hyphen, an en dash or an em dash (written as escapes: no dash character lives in src, law 6's guard).
+  const notAfter = String.raw`(?<![\d.:])(?<![-\u2013\u2014]\s?)`
   const forms = [
     { re: new RegExp(`${notAfter}${String(p.h24).padStart(2, '0')}:${p.min}(?!\\d)`), clock24: true },
     { re: new RegExp(`${notAfter}${p.h12}[.:]${p.min}(?!\\d)`), clock24: false },
@@ -95,7 +96,7 @@ function statesWeekdayAndStart(line: string, p: ReturnType<typeof localParts>): 
     const rest = line.slice(hit.index + hit[0].length)
     const marker = /(am|pm)\b/.exec(rest)?.[1]
     if (marker === p.ampm) return true
-    return p.ampm === 'am' && marker === 'pm' && /^\s*[-–—]\s*12([.:]\d\d)?\s*pm/.test(rest)
+    return p.ampm === 'am' && marker === 'pm' && /^\s*[-\u2013\u2014]\s*12([.:]\d\d)?\s*pm/.test(rest)
   })
 }
 
@@ -103,7 +104,7 @@ function statesWeekdayAndStart(line: string, p: ReturnType<typeof localParts>): 
 function termRanges(text: string, year: number): [string, string][] {
   const M = MONTHS.join('|')
   const W = '(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\\s+)?'
-  const re = new RegExp(`${W}(\\d{1,2})\\s+(${M})\\s*[-–—]\\s*${W}(\\d{1,2})\\s+(${M})`, 'g')
+  const re = new RegExp(`${W}(\\d{1,2})\\s+(${M})\\s*[-\\u2013\\u2014]\\s*${W}(\\d{1,2})\\s+(${M})`, 'g')
   const ymd = (y: number, month: string, day: string) => `${y}-${String(MONTHS.indexOf(month) + 1).padStart(2, '0')}-${day.padStart(2, '0')}`
   return [...text.matchAll(re)].map((m) => {
     const from = ymd(year, m[2], m[1])
