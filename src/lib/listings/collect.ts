@@ -1,7 +1,7 @@
 import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from '@/lib/events/booking-links'
 import { HORIZON_DAYS } from './horizon'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
-import { factChange } from './judge'
+import { factChange, movedToAnotherDay } from './judge'
 import type { HuntSource } from './headline-hunt'
 
 /**
@@ -941,7 +941,14 @@ export function planCandidates(
       continue
     }
     const moved = factChange(e, known, citySlug)
-    plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
+    if (moved) {
+      plans.push({ kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change })
+      continue
+    }
+    /* A one-off night the source moved to another day is a time change for a person, never a second night beside the
+       first (LAW 19 section 4.2 (4), its date half; tests/unit/listings/law19-publication-gate.test.ts). */
+    const movedDay = movedToAnotherDay(e, found, known, now, citySlug)
+    plans.push(movedDay ? { kind: 'changes_facts', event, eventId: movedDay, change: 'time_changed' } : { kind: 'new', event })
   }
   return plans
 }

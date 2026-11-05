@@ -110,6 +110,32 @@ export function factChange(
   return null
 }
 
+/**
+ * A ONE-OFF NIGHT MOVED TO ANOTHER DAY (LAW 19 section 4.2 (4), its date half; 6 November 2026). When EventLinqs lists
+ * exactly one coming night of this event at this venue, the source now states exactly one night of it, and the two fall
+ * on different days, the source has moved it: the listed night's id, for a time change a person decides. Never a second
+ * night published beside the first. A recurring night (more than one listed, or more than one stated) is never paired,
+ * so a weekly session entering the horizon stays new. Pure.
+ */
+export function movedToAnotherDay(
+  e: FoundEvent,
+  found: readonly FoundEvent[],
+  known: readonly KnownEvent[],
+  now: Date,
+  citySlug: string | null = null,
+): string | null {
+  const alike = (k: ListingKey, f: FoundEvent) =>
+    titleShare(k.title, f.title) >= SAME_TITLE_SHARE && sharesEnoughWords(k.title, f.title) && sameVenue(k, keyOf(f))
+  const mine = known.filter(
+    (k) =>
+      (!citySlug || !k.citySlug || k.citySlug.toLowerCase() === citySlug.toLowerCase()) &&
+      new Date(k.startsAt).getTime() >= now.getTime() &&
+      alike(k, e),
+  )
+  if (mine.length !== 1 || sameDay(mine[0].startsAt, e.startsAt)) return null
+  return found.filter((f) => alike(mine[0], f)).length === 1 ? mine[0].eventId : null
+}
+
 /** The night kinds an early start is implausible for (LAW 19 section 4): from the title's own words, or a match. */
 const NIGHT_KINDS = new Set(['music', 'comedy', 'nightlife', 'theatre'])
 const MATCH = /\s(?:v|vs)\.?\s/i
