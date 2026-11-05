@@ -167,7 +167,11 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
            with a fresher count (car 46's re-tap, 5 November 19:45). Taken only when exactly one control matches so. */
         const masked = (s) => String(s ?? '').replace(/\d+/g, '#')
         const recounted = now.filter((x) => same(x) && masked(x.label) === masked(t.label))
-        const match = now.find((x) => same(x) && x.label === t.label) ?? (recounted.length === 1 ? recounted[0] : undefined)
+        /* A link that kept its words and its place but moved its address is the same control too: 'Browse' opens the
+           visitor's chosen city once the drive has tapped a city chip, which remembers it (car 45 (7), the production-rows
+           run of 5 November 21:15). Taken only when exactly one control matches so; it is then tapped and must land. */
+        const readdressed = now.filter((x) => x.tag === t.tag && x.region === t.region && x.label === t.label && x.href !== t.href)
+        const match = now.find((x) => same(x) && x.label === t.label) ?? (recounted.length === 1 ? recounted[0] : undefined) ?? (readdressed.length === 1 ? readdressed[0] : undefined)
         if (!match) {
           // A night leaves every public list LIST_END_LEAD_MS (6 minutes) before its end (car 43, src/lib/events/
           // listing-window.ts): a row the drive saw that is gone on the reload because its night is ending or ended is

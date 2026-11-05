@@ -28,7 +28,9 @@ describe('the chosen city, read from the el_city cookie (chosenCitySlug)', () =>
 
 describe('where Browse Events goes, and when /events follows the city', () => {
   it('Browse Events opens on the chosen city, else every event', () => {
-    expect(eventsHrefFor('melbourne')).toBe('/events?city=melbourne')
+    // Straight to the city's guide: /events?city=<a guided city> 308s there by round 3, item 7 (next.config.ts), and
+    // carried its query along ('/city/melbourne?city=melbourne', the production-rows look of 5 November 21:11).
+    expect(eventsHrefFor('melbourne')).toBe('/city/melbourne')
     expect(eventsHrefFor(null)).toBe('/events')
   })
   it('a bare /events follows the chosen city; any filter, a search or All of Australia does not', () => {

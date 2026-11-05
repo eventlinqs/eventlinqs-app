@@ -41,9 +41,13 @@ export function chosenCitySlug(raw: string | null | undefined): string | null {
   }
 }
 
-/** Where 'Browse Events' opens: the chosen city's events, else every event. Pure. */
+/**
+ * Where 'Browse Events' opens: the chosen city's guide, else every event. Pure. Straight to /city/<slug>: every city we
+ * list has a guide, and /events?city=<slug> 308s to it by round 3, item 7 (next.config.ts), carrying its query along
+ * ('/city/melbourne?city=melbourne', seen on the production-rows build of 5 November 21:11), so the link skips the hop.
+ */
 export function eventsHrefFor(slug: string | null): string {
-  return slug ? `/events?city=${encodeURIComponent(slug)}` : '/events'
+  return slug ? `/city/${encodeURIComponent(slug)}` : '/events'
 }
 
 /** Whether an /events visit follows the chosen city: only a bare one, with no filter, search or 'all' in its address. Pure. */
