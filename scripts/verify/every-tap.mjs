@@ -161,7 +161,13 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
       try {
         await p.goto(`${base}${path}`, { waitUntil: 'load' }); await p.waitForTimeout(800)
         const now = (await targetsOf(p)).filter((x) => !x.hidden)
-        const match = now.find((x) => x.tag === t.tag && x.href === t.href && x.label === t.label && x.region === t.region)
+        const same = (x) => x.tag === t.tag && x.href === t.href && x.region === t.region
+        /* A control whose name carries a live count ('Geelong344 events', 'Show more (106 more events)') is the same
+           control when only its numbers moved between the drive and the reload: a night ended, or another edge answered
+           with a fresher count (car 46's re-tap, 5 November 19:45). Taken only when exactly one control matches so. */
+        const masked = (s) => String(s ?? '').replace(/\d+/g, '#')
+        const recounted = now.filter((x) => same(x) && masked(x.label) === masked(t.label))
+        const match = now.find((x) => same(x) && x.label === t.label) ?? (recounted.length === 1 ? recounted[0] : undefined)
         if (!match) {
           // A night leaves every public list LIST_END_LEAD_MS (6 minutes) before its end (car 43, src/lib/events/
           // listing-window.ts): a row the drive saw that is gone on the reload because its night is ending or ended is
