@@ -29,6 +29,7 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
+const { statedInWords, statedWeekly } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 
 const REF = 'gndnldyfudbytbboxesk' // production: read only, except --enforce, which may switch a failing source off
 if (process.argv.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
@@ -96,18 +97,20 @@ for (const c of (checks ?? []).sort((a, b) => String(b.source_date).localeCompar
 const lastHit = new Map<string, number>()
 const stopped = new Set<string>()
 const robots = new Map<string, { status: number | null; body: string }>()
-async function polite(u: string): Promise<{ status: number | null; body: string }> {
+async function polite(u: string): Promise<{ status: number | null; body: string; pdf: boolean }> {
   const host = new URL(u).host
-  if (stopped.has(host)) return { status: null, body: '' }
+  if (stopped.has(host)) return { status: null, body: '', pdf: false }
   const wait = (lastHit.get(host) ?? 0) + 1000 - Date.now()
   if (wait > 0) await new Promise((r) => setTimeout(r, wait))
   lastHit.set(host, Date.now())
   try {
     const res = await fetch(u, { headers: { 'User-Agent': COLLECTOR_AGENT }, redirect: 'follow', signal: AbortSignal.timeout(25000) })
     if (res.status === 403 || res.status === 429) stopped.add(host)
-    return { status: res.status, body: res.ok ? await res.text() : '' }
+    // A PDF is named as one, never read as text: no reader of ours parses a PDF programme.
+    const pdf = /pdf/i.test(res.headers.get('content-type') ?? '') || /\.pdf$/i.test(new URL(u).pathname)
+    return { status: res.status, body: res.ok && !pdf ? await res.text() : '', pdf }
   } catch {
-    return { status: null, body: '' }
+    return { status: null, body: '', pdf: false }
   }
 }
 const sameMinute = (a: string, b: string) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) < 60_000
@@ -116,53 +119,16 @@ const localClock = (iso: string, zone: string) =>
 const timeOnly = (iso: string, zone: string) =>
   new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(/\u202f/g, ' ').toLowerCase()
 
-/**
- * THE PAGE'S OWN WORDS (the CONTROLLER's 16:20: a night the readers cannot parse is judged, not left unjudged). Whether a
- * page's visible text names the night's local date ('Thursday 26 November', '26 Nov', 'November 26', '26/11') and, within
- * 300 characters of it, its local time ('7:00pm', '7pm', '7:00 pm', '19:00'). 'both', 'date' or null. Pure.
- */
-function statedInWords(html: string, iso: string, zone: string): 'both' | 'date' | null {
-  const text = html
-    .replace(/<(script|style|noscript|svg|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;| | /g, ' ')
-    .replace(/\s+/g, ' ')
-    .toLowerCase()
-    .replace(/\s+(am|pm)\b/g, '$1')
-  const part = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, ...o }).format(new Date(iso)).toLowerCase()
-  const d = part({ day: 'numeric' })
-  const dd = d.padStart(2, '0')
-  const m = part({ month: 'numeric' })
-  const mm = m.padStart(2, '0')
-  const monthLong = part({ month: 'long' })
-  const monthShort = monthLong.slice(0, 3)
-  const dateForms = [`${d} ${monthLong}`, `${d} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`]
-  const h24 = part({ hour: '2-digit', hourCycle: 'h23' }).padStart(2, '0')
-  const min = part({ minute: '2-digit' }).padStart(2, '0')
-  const h12 = Number(part({ hour: 'numeric', hour12: true }).replace(/\D/g, ''))
-  const ampm = Number(h24) < 12 ? 'am' : 'pm'
-  const timeForms = [`${h12}:${min}${ampm}`, `${h24}:${min}`, ...(min === '00' ? [`${h12}${ampm}`] : [])]
-  const at = (form: string) => {
-    const out: number[] = []
-    for (let i = text.indexOf(form); i >= 0; i = text.indexOf(form, i + 1)) {
-      const before = text[i - 1] ?? ' '
-      const after = text[i + form.length] ?? ' '
-      if (!/[a-z0-9]/.test(before) && !/[0-9]/.test(after)) out.push(i)
-    }
-    return out
-  }
-  const dates = dateForms.flatMap(at)
-  if (dates.length === 0) return null
-  const times = timeForms.flatMap(at)
-  return dates.some((i) => times.some((j) => Math.abs(i - j) <= 300)) ? 'both' : 'date'
-}
+/* THE PAGE'S OWN WORDS, dated or a weekly timetable: src/lib/listings/stated-words.ts, with its cases in
+   tests/unit/listings/stated-words.test.ts (North Central Goldfields Regional Library's storytimes, 5 November). */
+
+const PDF_SOURCE = 'the source is a PDF, which the verifier does not read'
+const OUTSIDE_TERM = 'the page states this weekly session, but no term it states covers this night'
 
 type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'; why: string; sourceUrl: string; critical: boolean }
 const results: Result[] = []
 const browser = await chromium.launch()
-for (const n of nights) {
-  // A fresh night is read only until its city has its count of judged nights.
-  if (!criticalIds.has(n.id) && (judgedIn.get(n.city_primary ?? '') ?? 0) >= WANT_PER_CITY) continue
+async function judgeNight(n: Row): Promise<void> {
   const zone = n.timezone ?? 'Australia/Melbourne'
   const stored = localClock(n.start_date, zone)
   const pages = n.listing_series_id ? sourcesOf.get(n.listing_series_id) ?? [] : []
@@ -188,14 +154,23 @@ for (const n of nights) {
     // states at exactly its start, or the page's only night.
     const mine = found.filter((f) => fold(f.title) === fold(n.title) || sameMinute(f.startsAt, n.start_date) || found.length === 1)
     const words = page.status === 200 && mine.length === 0 ? statedInWords(page.body, n.start_date, zone) : null
-    if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
+    const weekly = page.status === 200 && mine.length === 0 && words !== 'both' ? statedWeekly(page.body, n.title, n.venue_name ?? '', n.start_date, zone) : null
+    if (page.pdf) source = PDF_SOURCE
+    else if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
     else if (words === 'both') {
       // No reader of ours parses this page, but its own visible words state the night's date and time together.
       sourceOk = true
       src = candidate
       source = `${localClock(n.start_date, zone)} (in the page's words)`
       break
-    } else if (words === 'date') source = 'the page states the date in words but not this time'
+    } else if (weekly === 'weekly') {
+      // A weekly timetable: under the session's own heading, its venue's line states this weekday and this start.
+      sourceOk = true
+      src = candidate
+      source = `${new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'long' }).format(new Date(n.start_date))}s ${timeOnly(n.start_date, zone)} at ${n.venue_name} (the page's weekly timetable)`
+      break
+    } else if (weekly === 'outside_term') source = OUTSIDE_TERM
+    else if (words === 'date') source = 'the page states the date in words but not this time'
     else if (mine.length === 0) source = 'the page does not state this night'
     else if (mine.every((f) => f.timeStatus === 'date_only')) source = 'the page states a date with no time'
     else if (mine.some((f) => sameMinute(f.startsAt, n.start_date))) {
@@ -233,13 +208,28 @@ for (const n of nights) {
   /* UNVERIFIABLE, with its reason, where no permitted read can judge the night (the CONTROLLER's 16:20): no source page on
      record (it needs one), robots.txt barring a re-read, a page stating no such night in any form, or a date with no time.
      A source going quiet is never read as a cancellation; these are listed for a person's re-check. */
-  const UNVERIFIABLE = ['no source page on record', 'robots.txt disallows a re-read', 'the page does not state this night', 'the page states a date with no time']
+  // A date in words with no time beside it is the same class as a date with no time: the page cannot judge the start.
+  const UNVERIFIABLE = ['no source page on record', 'robots.txt disallows a re-read', 'the page does not state this night', 'the page states a date with no time', 'the page states the date in words but not this time', PDF_SOURCE, OUTSIDE_TERM]
   const verdict: Result['verdict'] =
     sourceOk === false || !liveOk ? 'FAIL' : sourceOk === null ? (UNVERIFIABLE.includes(source) ? 'UNVERIFIABLE' : 'NOT JUDGED') : 'PASS'
   const why = sourceOk === false ? 'the source states another time' : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
   results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
   if (!criticalIds.has(n.id) && (verdict === 'PASS' || verdict === 'FAIL')) judgedIn.set(n.city_primary ?? '', (judgedIn.get(n.city_primary ?? '') ?? 0) + 1)
   console.log(`${verdict.padEnd(10)} ${n.title.slice(0, 44).padEnd(44)} stored ${stored} | source: ${source} | 390: ${live[390].text} | 1440: ${live[1440].text}`)
+}
+/* First each city to its count of judged nights; then, where a city's coming nights run out of judgeable ones (most of
+   Bendigo's are library sessions), the other cities make up the sample, a night from each in turn, so the bar always
+   counts SAMPLE judged fresh nights (the CONTROLLER's 16:20) or says it could not. */
+const position = new Map<string, number>()
+for (const city of ['melbourne', 'geelong', 'ballarat', 'bendigo']) sample.filter((s) => s.city_primary === city).forEach((s, i) => position.set(s.id, i))
+const left: Row[] = []
+for (const n of nights) {
+  if (!criticalIds.has(n.id) && (judgedIn.get(n.city_primary ?? '') ?? 0) >= WANT_PER_CITY) left.push(n)
+  else await judgeNight(n)
+}
+for (const n of left.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))) {
+  if ([...judgedIn.values()].reduce((a, b) => a + b, 0) >= SAMPLE) break
+  await judgeNight(n)
 }
 await browser.close()
 
