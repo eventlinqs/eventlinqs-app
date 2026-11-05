@@ -11,6 +11,7 @@ import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LAB
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { ALL_OF_AUSTRALIA_HREF, rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
@@ -251,7 +252,8 @@ export function CityGuide({
             c.slug === city.slug && !wholeState ? (
               <CurrentChip key={c.slug} label={c.name} />
             ) : (
-              <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} />
+              // A city chosen here is remembered, so 'Browse Events' opens on it (the CONTROLLER's 08:50 (7)).
+              <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} onChoose={() => rememberCity({ name: c.name })} />
             ),
           )}
           <SnapChip on={false} next={false} onSelect={() => setCities(true)} aria-haspopup="dialog">
@@ -275,7 +277,8 @@ export function CityGuide({
             />
           </label>
           <SnapLink
-            href={`/events${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`}
+            // The whole country, said in the address, so /events never takes it for a bare visit to follow a chosen city.
+            href={`${ALL_OF_AUSTRALIA_HREF}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ''}`}
             aria-label="Search all of Australia"
             className="relative inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
             label="All of Australia"
@@ -646,8 +649,9 @@ function SnapLink({
   className,
   label,
   plain = false,
+  onChoose,
   ...rest
-}: { href: string; className: string; label: string; plain?: boolean; 'aria-label'?: string }) {
+}: { href: string; className: string; label: string; plain?: boolean; 'aria-label'?: string; onChoose?: () => void }) {
   const [going, setGoing] = useState(false)
   return (
     <Link
@@ -657,7 +661,10 @@ function SnapLink({
       data-snap={going ? 'touched' : undefined}
       onPointerDown={() => setGoing(true)}
       onPointerCancel={() => setGoing(false)}
-      onClick={() => setGoing(true)}
+      onClick={() => {
+        setGoing(true)
+        onChoose?.()
+      }}
     >
       <TapAnswer label={label} plain={plain} going={going} />
     </Link>
@@ -926,7 +933,7 @@ function CitySheet({
         {[...byState.entries()].map(([state, list]) => (
           <Group key={state} label={state}>
             {list.map((c) => (
-              <Link key={c.slug} href={`/city/${c.slug}`} aria-current={c.slug === current ? 'page' : undefined} className={chip(c.slug === current)}>
+              <Link key={c.slug} href={`/city/${c.slug}`} aria-current={c.slug === current ? 'page' : undefined} className={chip(c.slug === current)} onClick={() => rememberCity({ name: c.name })}>
                 {c.name}
               </Link>
             ))}

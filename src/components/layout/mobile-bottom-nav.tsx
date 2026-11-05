@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Home, LayoutGrid, Search, Heart, User } from 'lucide-react'
+import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
 
 /**
  * MobileBottomNav - global persistent bottom navigation for <= 768px
@@ -79,6 +80,8 @@ const ITEMS = [
 
 export function MobileBottomNav() {
   const pathname = usePathname() ?? '/'
+  // Browse opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)).
+  const eventsHref = useChosenEventsHref()
   const [hidden, setHidden] = useState(false)
   const [lastY, setLastY] = useState(0)
 
@@ -139,7 +142,7 @@ export function MobileBottomNav() {
           return (
             <li key={href} className="flex-1">
               <Link
-                href={href}
+                href={href === '/events' ? eventsHref : href}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={[

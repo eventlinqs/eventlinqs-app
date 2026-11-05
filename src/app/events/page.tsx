@@ -20,6 +20,7 @@ import { EventsCollectionMarkup, EventsCount, EventsDirectoryResults } from '@/c
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import { BrowseNotice } from '@/components/features/events/browse-notice'
+import { FollowChosenCity } from '@/components/features/events/follow-chosen-city'
 import { SearchScopeResults } from '@/components/features/events/search-scope-results'
 import { resolveScopeResults } from '@/lib/events/search-scopes'
 import {
@@ -141,6 +142,8 @@ export default async function EventsPage({ searchParams }: Props) {
           scripts/guards/edge-cache-is-viewer-independent.mjs refuses the pair
           from coming apart again. */}
       <SiteHeader staticSafe />
+      {/* A bare /events follows the visitor's chosen city, in the browser, once a session (the CONTROLLER's 08:50 (7)). */}
+      <FollowChosenCity />
       <main className="flex-1">
         {/* Checkout bounced this buyer here. Tell them why, before anything
             else, or their held seats simply disappeared.
