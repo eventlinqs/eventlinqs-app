@@ -16,7 +16,7 @@ import { sameVenue } from '@/lib/events/booking-links'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
-import { HUNT_HOLDS, huntVenue, likelyDuplicate, type HuntSource } from './headline-hunt'
+import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -345,6 +345,8 @@ export async function runCollection(
                 source.hunt &&
                 plan.kind === 'new' &&
                 !reasons.some((r) => (HUNT_HOLDS as readonly string[]).includes(r)) &&
+                /* Car 44c: a start between midnight and 9 am in Melbourne waits for a person (plausibleHuntStart). */
+                plausibleHuntStart(plan.event.startsAt) &&
                 !likelyDuplicate(plan.event, known, source.hunt.citySlug, (iso) => platformDay(new Date(iso)))
                   ? huntVenue(source.hunt, plan.event.venueName)
                   : null

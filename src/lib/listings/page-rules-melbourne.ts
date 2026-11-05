@@ -147,8 +147,59 @@ export const forumMelbourne: PageRule = {
  * read by the collector's own reader (read on 4 November 2026 through the polite reader: robots allowed, 32 to 39 shows
  * linked, one Event on each sampled page; C:\dev\EVIDENCE\CAR44\probe-1.txt).
  */
+/*
+ * CAR 44c, THE PAGE'S OWN TIME (the CONTROLLER's 14:55 of 5 November 2026, 'STOP THE LINE, WRONG TIMES ON LIVE FROM THE
+ * HUNT'). This platform writes each night's LOCAL clock into its schema.org Event with a false UTC offset (John Cain Arena:
+ * 'startDate=2026-11-07T19:30:00+00:00' for 'Saturday 7 November 2026 / 7:30 pm'), so the schema gives the name, the
+ * venue and the link, and the night's day and time come only from the page's own Date block:
+ * '<h2>Date</h2><p class="lead">Saturday 7 November 2026</p><p>7:30 pm</p>', in Melbourne time. A run of up to three days
+ * ('Thursday 12 to Saturday 14 November 2026') is a night on each day at the stated time; a longer run, a missing block
+ * or a missing time lists nothing, never a guessed time.
+ */
+const ARENA_RUN_DAYS = 3
+
+/** The days a Date block's line names: one day, or each day of a run of up to ARENA_RUN_DAYS. Pure. */
+export function arenaDays(line: string): [number, number, number][] {
+  const one = longDate(line)
+  if (one) return [one]
+  const run = new RegExp(
+    `^(?:${WEEKDAY},?\\s+)?(\\d{1,2})(?:\\s+(${MONTH_NAMES}))?(?:\\s+(\\d{4}))?\\s+to\\s+(?:${WEEKDAY},?\\s+)?(\\d{1,2})\\s+(${MONTH_NAMES})\\s+(\\d{4})$`,
+    'i',
+  ).exec(line.trim())
+  if (!run) return []
+  const m2 = MONTHS[run[5].slice(0, 3).toLowerCase()]
+  const m1 = run[2] ? MONTHS[run[2].slice(0, 3).toLowerCase()] : m2
+  const y2 = Number(run[6])
+  const y1 = run[3] ? Number(run[3]) : m1 > m2 ? y2 - 1 : y2
+  const from = Date.UTC(y1, m1 - 1, Number(run[1]))
+  const to = Date.UTC(y2, m2 - 1, Number(run[4]))
+  const days = Math.round((to - from) / 86_400_000) + 1
+  if (!(days >= 1 && days <= ARENA_RUN_DAYS)) return []
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(from + i * 86_400_000)
+    return [d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()] as [number, number, number]
+  })
+}
+
 function arenaRule(host: string): PageRule {
-  return { host, eventPath: /^\/event\/[^/]+\/?$/, read: (html, pageUrl) => eventsFromHtml(html, pageUrl) }
+  return {
+    host,
+    eventPath: /^\/event\/[^/]+\/?$/,
+    read(html, pageUrl) {
+      const base = eventsFromHtml(html, pageUrl)[0]
+      const block = /<h2\b[^>]*>\s*Date\s*<\/h2>\s*<p\b[^>]*>([^<]+)<\/p>\s*<p\b[^>]*>([^<]+)<\/p>/i.exec(html)
+      if (!base || !block) return []
+      const at = clock(decode(block[2]))
+      const days = arenaDays(decode(block[1]))
+      if (!at) return []
+      const out: FoundEvent[] = []
+      for (const [y, m, d] of days) {
+        const startsAt = wallClockToIso(y, m, d, at[0], at[1], 0, ZONE)
+        if (startsAt) out.push({ ...base, startsAt, endsAt: null })
+      }
+      return out
+    },
+  }
 }
 export const rodLaverArena = arenaRule('rodlaverarena.com.au')
 export const johnCainArena = arenaRule('johncainarena.com.au')
