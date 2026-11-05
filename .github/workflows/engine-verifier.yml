@@ -1,0 +1,65 @@
+name: engine verifier
+
+# THE ENGINE'S INDEPENDENT VERIFIER, ON LIVE (LAW 19 sections 3 and 4.3; the engine directive, Phases 8 and 9; the research
+# note C:\dev\GROWTH\ENGINE-P0-RESEARCH-5NOV.md, section 6: 'the thing that would have caught this without Lawal').
+#
+# After every production release and twice a day after the big event hunt's own runs, it compares the fixed critical cases
+# (every night ever published wrong) and a fresh sample of 20 nights across the four cities, field by field, between the
+# night's own source page read now, the stored row and the live page in a browser at 390 and 1440
+# (scripts/verify/engine-verifier.mts). A night its own source disagrees with switches that source's automatic
+# publication off (--enforce: listing_sources collection 'read' to 'ask'; nothing is deleted), and the job fails, so the
+# failure is visible at once. The table is kept as the run's artifact.
+#
+# Secrets: SUPABASE_ACCESS_TOKEN (the same one CI's types-drift guard uses). A missing one FAILS, it does not skip.
+
+on:
+  deployment_status:
+  schedule:
+    # 05:30 and 15:30 Melbourne in daylight saving time (AEDT, UTC+11), half an hour after the hunt's 05:00 and 15:00.
+    - cron: '30 18 * * *'
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: engine-verifier
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      ${{ github.event_name != 'deployment_status'
+       || (github.event.deployment_status.state == 'success'
+           && github.event.deployment.environment == 'Production') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      ALLOW_PRODUCTION_SUPABASE: '1'
+      ENGINE_EVIDENCE_DIR: engine-evidence
+    steps:
+      - name: Refuse to run blind
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set: the engine verifier cannot read production, so it fails rather than skips"
+            exit 1
+          fi
+      - name: Check out
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify source, stored and live
+        run: node node_modules/tsx/dist/cli.mjs scripts/verify/engine-verifier.mts --sample 20 --enforce
+      - name: Keep the table
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: engine-verifier-${{ github.run_id }}
+          path: engine-evidence
+          if-no-files-found: warn

@@ -13,7 +13,7 @@
  *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/engine-verifier.mts [--sample 20]
  */
 import Module from 'node:module'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
@@ -29,9 +29,13 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 
-const REF = 'gndnldyfudbytbboxesk' // production, read only: this script writes nothing to any database
+const REF = 'gndnldyfudbytbboxesk' // production: read only, except --enforce, which may switch a failing source off
+if (process.argv.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
+  console.error('[engine-verifier] REFUSED: --enforce writes production (a failing source switched off); set ALLOW_PRODUCTION_SUPABASE=1 for this run')
+  process.exit(1)
+}
 const BASE = 'https://www.eventlinqs.com.au'
-const OUT = 'C:/dev/EVIDENCE/ENGINE-P0'
+const OUT = process.env.ENGINE_EVIDENCE_DIR || 'C:/dev/EVIDENCE/ENGINE-P0'
 const args = process.argv.slice(2)
 const SAMPLE = Number(args[args.indexOf('--sample') + 1]) || 20
 /** Every night ever published wrong (LAW 19 section 3, the fixed critical cases); later ones are added here. */
@@ -177,4 +181,36 @@ const md = [
 writeFileSync(`${OUT}/verifier-${stamp}.md`, md + '\n')
 writeFileSync(`${OUT}/verifier-${stamp}.json`, JSON.stringify(results, null, 1))
 console.log(`[engine-verifier] ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${count('NOT JUDGED')} NOT JUDGED; ${OUT}/verifier-${stamp}.md`)
+
+/*
+ * --enforce (LAW 19 section 4.3 and 7.2: 'that source's publication flag switches off', automatically, by a failed check).
+ * A source whose night the check finds wrong against its own page is taken off automatic reading (listing_sources
+ * collection 'read' to 'ask', the same switch the 5 November containment used): its published nights stay and are not
+ * deleted; nothing new from it is published until a person restores it. A night that fails only on the live page (the
+ * site, not the source) switches no source off. Logged; the run exits 1, so the job that ran it fails and says so.
+ */
+if (args.includes('--enforce')) {
+  const failingSources = [...new Set(results.filter((r) => r.verdict === 'FAIL' && r.why === 'the source states another time' && r.sourceUrl).map((r) => new URL(r.sourceUrl).host.replace(/^www\./, '')))]
+  for (const host of failingSources) {
+    const { data: rows } = await records.from('listing_sources').select('id, name, page_url, collection, notes').eq('collection', 'read')
+    const mine = (rows ?? []).filter((s) => {
+      try {
+        return new URL(s.page_url as string).host.replace(/^www\./, '') === host
+      } catch {
+        return false
+      }
+    })
+    for (const s of mine) {
+      const note = ` | Switched off ${new Date().toISOString()} by the engine verifier (LAW 19 4.3): a night it published disagrees with its own page (${OUT}/verifier-${stamp}.md).`
+      const { error } = await records.from('listing_sources').update({ collection: 'ask', notes: `${(s.notes as string | null) ?? ''}${note}` }).eq('id', s.id).eq('collection', 'read')
+      const line = `${new Date().toISOString()} | engine-verifier --enforce | production | ${error ? `FAILED to switch off ${s.name}: ${error.message}` : `${s.name} switched off (collection read -> ask)`}; evidence ${OUT}/verifier-${stamp}.md`
+      console.log(`[engine-verifier] ${line}`)
+      try {
+        appendFileSync('C:/dev/PRODUCTION-WRITES.txt', line + '\n')
+      } catch {
+        // On a CI runner the write log is the job's own output, printed above.
+      }
+    }
+  }
+}
 process.exitCode = count('FAIL') > 0 ? 1 : 0
