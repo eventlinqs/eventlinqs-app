@@ -16,7 +16,7 @@ import { sameVenue } from '@/lib/events/booking-links'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
-import { huntVenue, type HuntSource } from './headline-hunt'
+import { HUNT_HOLDS, huntVenue, likelyDuplicate, type HuntSource } from './headline-hunt'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -94,7 +94,8 @@ export type CollectionStore = {
    * Publishes a new night the hunt's rule accepted (./headline-hunt.ts): a dated series at the headline venue the night
    * names, its category from its own words, its seller's link, a licensed_source listing check. Idempotent.
    */
-  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string): Promise<void>
+  /** 'promoted' when a night that waited for a person is decided by the hunt's rule now and published (car 44b). */
+  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string, options?: { direct?: boolean }): Promise<'published' | 'promoted' | void>
   /**
    * Takes every waiting row whose night has passed out of the queue, saying so; returns how many. onlySources narrows
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
@@ -202,9 +203,12 @@ export async function runCollection(
   fetcher: Fetcher,
   now: Date,
   deadline = Infinity,
-  options: { pauseMs?: number } = {},
+  options: { pauseMs?: number; pageCap?: number } = {},
 ): Promise<CollectionResult> {
   const pauseMs = options.pauseMs ?? PAGE_PAUSE_MS
+  /* The big event hunt reads fewer pages per site (HUNT_PAGE_CAP) so every site on its list fits its runs; the daily
+     collection run still reads each up to PAGE_READ_CAP. */
+  const pageCap = options.pageCap ?? PAGE_READ_CAP
   /* This week first: a source holding nights in the next seven days falls due again 6 hours after its last read (the
      run itself every 6 hours, CONTROLLER 01:04). A failed read of that set never stops the run; every source then keeps
      the daily floor. */
@@ -281,7 +285,7 @@ export async function runCollection(
             if (rule && (isSitemap(res.body) || listPage)) {
               raw = []
               const pages = listPage ? eventPagesFromListPage(res.body, source.pageUrl, rule) : eventPagesFromSitemap(res.body, rule)
-              for (const url of pages.slice(0, PAGE_READ_CAP)) {
+              for (const url of pages.slice(0, pageCap)) {
                 if (Date.now() >= deadline) break
                 const at = new URL(url)
                 let siteRobots = robotsByOrigin.get(at.origin)
@@ -334,8 +338,21 @@ export async function runCollection(
               const { confidence, reasons } = judgeCandidate({ plan, sourceVerified: source.verified, known })
               /* THE HUNT'S RULE (car 44, Lawal's 15:12 of 4 November 2026): a new night a headline venue's own page states
                  at that venue, with high confidence, is listed without a person; anything else waits, as before. */
-              const huntAt = source.hunt && plan.kind === 'new' && confidence === 'high' ? huntVenue(source.hunt, plan.event.venueName) : null
-              const byRule = acceptedByRule(source, plan, confidence) || huntAt !== null
+              /* Car 44b (the CONTROLLER's 01:05 of 5 November 2026): 'For review ends for these sources: a public ticketed
+                 event from a headline venue's own page is accepted by rule ... only a likely duplicate is held'. A called off
+                 show and a midnight start (a time the page likely did not state) are held with it. */
+              const huntAt =
+                source.hunt &&
+                plan.kind === 'new' &&
+                !reasons.some((r) => (HUNT_HOLDS as readonly string[]).includes(r)) &&
+                !likelyDuplicate(plan.event, known, source.hunt.citySlug, (iso) => platformDay(new Date(iso)))
+                  ? huntVenue(source.hunt, plan.event.venueName)
+                  : null
+              /* The database lets the run accept a candidate only at high confidence (listing_candidates_decided_by,
+                 20261028204001); a hunt night held back only by a missing street address at a venue EventLinqs holds is
+                 published directly instead, with no candidate row: the series and its listing check are the record. */
+              const huntDirect = huntAt !== null && confidence !== 'high'
+              const byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && !huntDirect)
               const foundAt = now.toISOString()
               /* The links first, so an accepted row never names links the event does not carry. */
               if (byRule && plan.kind === 'adds_links') await store.addLinks(plan.eventId, plan.event.links, foundAt)
@@ -358,20 +375,35 @@ export async function runCollection(
                 reasons,
                 decidedBy: byRule ? 'partner_rule' : 'person',
               }
+              if (huntDirect && source.hunt && store.publishHuntNight) {
+                try {
+                  await store.publishHuntNight(row, source.hunt, huntAt as string, { direct: true })
+                  landed += 1
+                  ruled += 1
+                } catch (err) {
+                  unpublished.push(err instanceof Error ? err.message : String(err))
+                }
+                continue
+              }
               const isNew = await store.land(row)
               /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a
                  publish an earlier run could not finish is finished by the next, and nothing is published twice. */
+              let promoted = false
               if (byRule && plan.kind === 'new') {
                 /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
                    run asks again. */
                 try {
-                  if (huntAt && source.hunt && store.publishHuntNight) await store.publishHuntNight(row, source.hunt, huntAt)
+                  if (huntAt && source.hunt && store.publishHuntNight) promoted = (await store.publishHuntNight(row, source.hunt, huntAt)) === 'promoted'
                   else await store.publishPartnerNight(row)
                 } catch (err) {
                   unpublished.push(err instanceof Error ? err.message : String(err))
                 }
               }
-              if (!isNew) continue
+              /* Car 44b: a night that waited for a person from before the hunt, decided by the hunt's rule now, is listed. */
+              if (!isNew) {
+                if (promoted) ruled += 1
+                continue
+              }
               landed += 1
               if (byRule) ruled += 1
               else queued += 1

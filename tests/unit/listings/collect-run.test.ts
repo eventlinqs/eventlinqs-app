@@ -346,4 +346,63 @@ describe("the hunt's rule", () => {
     await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: show('Rod Laver Arena') } }).fetcher, NOW)
     expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
   })
+
+  /* Car 44b (the CONTROLLER's 01:05 of 5 November 2026): 'For review ends for these sources ... only a likely duplicate is
+     held, and the duplicate check matches Mt and Mount and the same title on the same day'. */
+  const page = (night: Record<string, unknown>) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@type': 'MusicEvent',
+      name: 'A Big Show',
+      startDate: '2026-11-21T20:00:00+11:00',
+      location: { name: 'Rod Laver Arena', address: 'Olympic Boulevard, Melbourne VIC 3001' },
+      offers: { url: 'https://www.ticketmaster.com.au/a-big-show/event/1', availability: 'InStock' },
+      ...night,
+    })}</script>`
+
+  it('lists a night with no street address at its own venue directly, with no review row', async () => {
+    const m = memoryStore([hunted()])
+    const direct: string[] = []
+    m.store.publishHuntNight = async (row, _hunt, venueName, options) => {
+      direct.push(`${row.title} @ ${venueName}${options?.direct ? ' (direct)' : ''}`)
+    }
+    const r = await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: page({ location: { name: 'Rod Laver Arena' } }) } }).fetcher, NOW)
+    expect(direct).toEqual(['A Big Show @ Rod Laver Arena (direct)'])
+    expect(m.landed).toEqual([])
+    expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
+  it('counts a night that waited from before the hunt, and is decided by its rule now, as listed', async () => {
+    const m = memoryStore([hunted({ hunt: null })])
+    const fetcher = sites({ ...open, [arena]: { status: 200, body: page({}) } }).fetcher
+    await runCollection(m.store, fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
+    const later = memoryStore([hunted()])
+    later.store.land = m.store.land
+    later.store.publishHuntNight = async () => 'promoted'
+    const r = await runCollection(later.store, fetcher, new Date(NOW.getTime() + 60_000))
+    expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
+  it('holds a likely duplicate, the same title the same day at any venue, for a person', async () => {
+    const known: KnownEvent[] = [
+      { eventId: 'e1', venueId: null, venueName: 'Melbourne Park', venueAddress: null, title: 'A BIG SHOW', startsAt: '2026-11-21T19:30:00+11:00', citySlug: 'melbourne' },
+    ]
+    const m = memoryStore([hunted()], known)
+    m.store.publishHuntNight = async () => {
+      throw new Error('a likely duplicate is never listed by the hunt')
+    }
+    await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: page({}) } }).fetcher, NOW)
+    expect(m.landed.every((r) => r.decidedBy === 'person')).toBe(true)
+  })
+
+  it('holds a night its own words call off, and a night with no time, for a person', async () => {
+    for (const night of [{ name: 'A Big Show (Postponed)' }, { startDate: '2026-11-21T00:00:00+11:00' }]) {
+      const m = memoryStore([hunted()])
+      m.store.publishHuntNight = async () => {
+        throw new Error('never')
+      }
+      await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: page(night) } }).fetcher, NOW)
+      expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
+    }
+  })
 })

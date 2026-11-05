@@ -1,4 +1,5 @@
 import { eventsFromHtml, wallClockToIso, type FoundEvent } from './collect'
+import { MAJOR_SELLERS, providerOf } from '@/lib/events/booking-links'
 import type { PageRule } from './page-rules'
 
 /**
@@ -154,4 +155,213 @@ export const johnCainArena = arenaRule('johncainarena.com.au')
 export const margaretCourtArena = arenaRule('margaretcourtarena.com.au')
 export const aamiPark = arenaRule('aamipark.com.au')
 
-export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark]
+/*
+ * CAR 44b, THE REST OF THE CONTROLLER'S 01:05 LIST (5 November 2026). Each read through the polite reader that morning
+ * (robots first, one request a second, the collector's agent): C:\dev\EVIDENCE\CAR44\look\. Facts and the link only.
+ */
+const WEEKDAY = '(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)'
+const MONTH_NAMES = 'January|February|March|April|May|June|July|August|September|October|November|December'
+
+/** A line as the pages write a long date: 'Saturday November 21, 2026' or 'Thursday 12 November 2026'. */
+function longDate(line: string): [number, number, number] | null {
+  const md = new RegExp(`^(?:${WEEKDAY},?\\s+)?(${MONTH_NAMES})\\s+(\\d{1,2}),?\\s+(\\d{4})$`, 'i').exec(line.trim())
+  const dm = new RegExp(`^(?:${WEEKDAY},?\\s+)?(\\d{1,2})\\s+(${MONTH_NAMES})\\s+(\\d{4})$`, 'i').exec(line.trim())
+  const [mon, day, year] = md ? [md[1], md[2], md[3]] : dm ? [dm[2], dm[1], dm[3]] : []
+  const mo = mon ? MONTHS[mon.slice(0, 3).toLowerCase()] : undefined
+  return mo && day && year ? [Number(year), mo, Number(day)] : null
+}
+
+/** The page's visible lines (the shape page-rules.ts reads), kept here so this file stays free of a cycle. */
+function lines(html: string): string[] {
+  return decode(
+    html
+      .replace(/<(script|style|noscript|svg|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<\/?(p|div|li|h[1-6]|br|tr|section|article|aside|header|footer|main|dd|dt|a)\b[^>]*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' '),
+  )
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+}
+
+/** The first link on the page, from a point on it, to a major ticket seller, as booking-links.ts names them (the one table
+ * of platform names, copy-tell-gate's allowlist). */
+function sellerLink(html: string, from = 0): string | null {
+  for (const m of html.slice(Math.max(0, from)).matchAll(/href="(https:\/\/[^"]+)"/gi)) {
+    const url = decode(m[1])
+    if (MAJOR_SELLERS.has(providerOf(url))) return url
+  }
+  return null
+}
+
+function ogTitle(html: string): string | null {
+  const m = /<meta[^>]+property="og:title"[^>]+content="([^"]*)"/i.exec(html) ?? /<meta[^>]+content="([^"]*)"[^>]+property="og:title"/i.exec(html)
+  return m ? decode(m[1]).trim() || null : null
+}
+
+/**
+ * THE MCG (mcg.org.au). Robots allows every page and names its sitemap, which lists each event page at
+ * /events/<year>/<month>/<slug>; each page states its night in its banner: 'event-banner-date' ('Saturday November 21,
+ * 2026') and 'event-banner-time' ('7:15PM'), its name as og:title ('Australia v England Mens T20I | MCG'), and its Ticketek
+ * link in its tickets section. No street address is printed; the MCG says it stands in Yarra Park, so that is its place.
+ */
+export const mcg: PageRule = {
+  host: 'mcg.org.au',
+  eventPath: /^\/events\/\d{4}\/[a-z]+\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const title = (ogTitle(html) ?? '').replace(/\s*\|\s*MCG\s*$/i, '').trim()
+    /* The exact class: 'event-banner-time-wrapper' comes first on the page and holds the team logos, not the time. */
+    const exact = (cls: string) => textOf(new RegExp(`<div\\b[^>]*class="${cls}"[^>]*>([^<]*)</div>`, 'i').exec(html)?.[1] ?? '')
+    const date = longDate(exact('event-banner-date'))
+    const at = clock(exact('event-banner-time'))
+    if (!title || !date || !at) return []
+    const startsAt = wallClockToIso(date[0], date[1], date[2], at[0], at[1], 0, ZONE)
+    if (!startsAt) return []
+    const tickets = html.indexOf('id="tickets"')
+    const buy = tickets >= 0 ? sellerLink(html, tickets) : null
+    return [
+      {
+        title,
+        startsAt,
+        endsAt: null,
+        venueName: 'Melbourne Cricket Ground',
+        venueAddress: 'Yarra Park, Melbourne VIC',
+        pageUrl,
+        imageUrl: null,
+        description: null,
+        links: [{ url: buy ? withoutTracking(buy) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+      },
+    ]
+  },
+}
+
+/**
+ * LIVE NATION'S VENUE SITES: the Palais Theatre and Festival Hall. Each home page links its shows at
+ * /all-events/<slug>-tickets-ae<id>; each show page states, after its name and 'Events', a date line ('Dec 12 2026') and
+ * the day with its time ('Saturday: 7:30 pm'), its Ticketmaster link, and the venue's own address in its page data
+ * (Festival Hall '300 Dudley Street, West Melbourne, VIC', '3003'; the Palais 'Next door to Luna Park, St Kilda'). A date
+ * with no time ('Wednesday', 'RUN TIMES TBC') or marked 'VENUE CHANGE' is not listed.
+ */
+function liveNationVenue(host: string, venueName: string): PageRule {
+  return {
+    host,
+    eventPath: /^\/all-events\/[a-z0-9-]+-tickets-ae\d+\/?$/,
+    read(html, pageUrl) {
+      const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+      const title = h1 ? textOf(h1[1]) : ''
+      if (!title) return []
+      const ls = lines(html)
+      const start = ls.findIndex((l, i) => l === 'Events' && ls[i - 1] === title)
+      if (start < 0) return []
+      const address = /\\?"address\\?":\\?"([^"\\]+)\\?"[^}]*?\\?"zipCode\\?":\\?"([^"\\]*)\\?"/.exec(html)
+      const venueAddress = address ? `${address[1]}${address[2] ? ` ${address[2]}` : ''}` : null
+      const buy = sellerLink(html)
+      const out: FoundEvent[] = []
+      for (let i = start + 1; i < Math.min(ls.length, start + 40); i += 1) {
+        const d = /^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{4})$/.exec(ls[i])
+        if (!d) continue
+        const mo = MONTHS[d[1].toLowerCase()]
+        const day = /^[A-Za-z]+:\s*(\d{1,2}:\d{2}\s*[ap]m)$/i.exec(ls[i + 1] ?? '')
+        if (!mo || !day || /^VENUE CHANGE$/i.test(ls[i + 2] ?? '')) continue
+        const at = clock(day[1])
+        const startsAt = at ? wallClockToIso(Number(d[3]), mo, Number(d[2]), at[0], at[1], 0, ZONE) : null
+        if (!startsAt || out.some((e) => e.startsAt === startsAt)) continue
+        out.push({
+          title,
+          startsAt,
+          endsAt: null,
+          venueName,
+          venueAddress,
+          pageUrl,
+          imageUrl: null,
+          description: null,
+          links: [{ url: buy ?? pageUrl, availability: 'on_sale', priceFromCents: null }],
+        })
+      }
+      return out
+    },
+  }
+}
+export const palaisTheatre = liveNationVenue('palaistheatre.com.au', 'Palais Theatre')
+export const festivalHall = liveNationVenue('festivalhall.com.au', 'Festival Hall')
+
+/**
+ * MELBOURNE RECITAL CENTRE (melbournerecital.com.au). Robots allows every page and names its sitemap, which lists each
+ * production at /whats-on/current-productions/<slug>/; each page's own data (__NEXT_DATA__) names every performance as
+ * 'YYYY-MM-DD HH:MM (id)' ('2027-02-22 19:00 (25624)'), and the venue's address ('31 Sturt St Southbank 3006'). Its
+ * tickets are sold on its own pages, so the link is the production's page.
+ */
+export const melbourneRecitalCentre: PageRule = {
+  host: 'melbournerecital.com.au',
+  eventPath: /^\/whats-on\/current-productions\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1 ? textOf(h1[1]) : ''
+    const data = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i.exec(html)?.[1] ?? ''
+    if (!title || !data) return []
+    const address = /"address"\s*:\s*"([^"]+)"/.exec(data)?.[1] ?? null
+    const out: FoundEvent[] = []
+    for (const m of data.matchAll(/"contentType"\s*:\s*"tessituraPerformance"\s*,\s*"name"\s*:\s*"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}) \(\d+\)"/g)) {
+      const startsAt = wallClockToIso(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]), 0, ZONE)
+      if (!startsAt || out.some((e) => e.startsAt === startsAt)) continue
+      out.push({
+        title,
+        startsAt,
+        endsAt: null,
+        venueName: 'Melbourne Recital Centre',
+        venueAddress: address,
+        pageUrl,
+        imageUrl: null,
+        description: null,
+        links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+      })
+    }
+    return out
+  },
+}
+
+/**
+ * FEDERATION SQUARE (fedsquare.com). Robots allows every page; its sitemap lists 1,906 event pages, NEWEST FIRST, with no
+ * lastmod; each page states 'Dates' then a day ('Thursday 12 November 2026') and its hours ('6:15pm - 9:30pm'), and
+ * 'Free' where it is free. A page with no single dated day ('Weekdays', a season) is not listed. Every night is at
+ * Federation Square, the venue EventLinqs holds.
+ */
+export const fedSquare: PageRule = {
+  host: 'fedsquare.com',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  newestFirst: true,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1 ? textOf(h1[1]) : ''
+    const ls = lines(html)
+    const from = ls.indexOf('Dates')
+    if (!title || from < 0) return []
+    const until = ls.indexOf('Venue', from)
+    const free = ls.slice(0, from).includes('Free')
+    const out: FoundEvent[] = []
+    for (let i = from + 1; i < (until > from ? until : from + 12); i += 1) {
+      const date = longDate(ls[i])
+      const at = clock(/^(\d{1,2}(?::\d{2})?\s*[ap]m)/i.exec(ls[i + 1] ?? '')?.[1] ?? '')
+      if (!date || !at) continue
+      const startsAt = wallClockToIso(date[0], date[1], date[2], at[0], at[1], 0, ZONE)
+      if (!startsAt || out.some((e) => e.startsAt === startsAt)) continue
+      out.push({
+        title,
+        startsAt,
+        endsAt: null,
+        venueName: 'Federation Square',
+        venueAddress: null,
+        pageUrl,
+        imageUrl: null,
+        description: null,
+        links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: free ? 0 : null }],
+      })
+    }
+    return out
+  },
+}
+
+export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [
+  comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark,
+  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare,
+]

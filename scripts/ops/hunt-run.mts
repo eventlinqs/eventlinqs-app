@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js'
 import type * as RunModule from '@/lib/listings/collect-run'
 import type * as StoreModule from '@/lib/listings/collect-store'
 import type * as DayModule from '@/lib/listings/headline-hunt-day'
+import type * as HuntModule from '@/lib/listings/headline-hunt'
 
 const EMPTY = fileURLToPath(new URL('../../tests/stubs/empty.ts', import.meta.url))
 const cjs = Module as unknown as { _resolveFilename: (request: string, ...rest: unknown[]) => string }
@@ -28,6 +29,8 @@ const dayMod = (await import('@/lib/listings/headline-hunt-day')) as typeof DayM
 const { runCollection } = (runMod.default ?? runMod) as typeof RunModule
 const { collectionStore } = (storeMod.default ?? storeMod) as typeof StoreModule
 const { huntDay } = (dayMod.default ?? dayMod) as typeof DayModule
+const huntMod = (await import('@/lib/listings/headline-hunt')) as typeof HuntModule & { default?: typeof HuntModule }
+const { HUNT_PAGE_CAP, huntOrder } = (huntMod.default ?? huntMod) as typeof HuntModule
 
 const TARGETS = { production: 'gndnldyfudbytbboxesk', test: 'vkapkibzokmfaxqogypq' } as const
 // A production run that writes asks the platform preflight's own explicit opt in (ALLOW_PRODUCTION_SUPABASE=1) and APPLY.
@@ -86,8 +89,8 @@ if (apply) {
   }
 }
 const now = new Date()
-const hunt = { ...store, sources: async () => (await real.sources()).filter((s) => s.hunt).map((s) => ({ ...s, lastCheckedAt: null })) } as typeof real
-const result = await runCollection(hunt, fetch, now)
+const hunt = { ...store, sources: async () => huntOrder(await real.sources()) } as typeof real
+const result = await runCollection(hunt, fetch, now, Infinity, { pageCap: HUNT_PAGE_CAP })
 const byCity = await huntDay(db, result, now)
 for (const s of result.sources) console.log(`[hunt-run] ${s.name}: ${s.outcome}`)
 for (const c of byCity) console.log(`[hunt-run] ${c.citySlug}: ${c.newBigEvents} new big event(s) listed, ${c.waiting} waiting; upcoming by tier 1 ${c.upcomingByTier[1]}, 2 ${c.upcomingByTier[2]}, 3 ${c.upcomingByTier[3]}, 4 ${c.upcomingByTier[4]}`)

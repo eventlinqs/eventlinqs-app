@@ -27,6 +27,25 @@ export const HUNT_REGISTER = [
   { name: 'Margaret Court Arena (Melbourne & Olympic Parks)', city_slug: 'melbourne', page_url: 'https://margaretcourtarena.com.au/events/' },
   { name: 'AAMI Park (Melbourne & Olympic Parks)', city_slug: 'melbourne', page_url: 'https://aamipark.com.au/events/' },
   { name: "Her Majesty's Theatre Ballarat", city_slug: 'ballarat', page_url: 'https://www.hermaj.com/events' },
+  // Car 44b (the CONTROLLER's 01:05 of 5 November 2026).
+  { name: 'Forum Melbourne', city_slug: 'melbourne', page_url: 'https://forummelbourne.com.au/' },
+  // Held since 1 November as 'ask' ('Terms: none found on automated access; read once a person confirms'). The 01:05 names
+  // it on Lawal's ruling of 4 November 15:12, which is that confirmation: its row is moved to 'read' with today's robots
+  // quote; its name, city and page are left as they are.
+  { name: 'Geelong Arts Centre', city_slug: 'geelong', page_url: 'https://geelongartscentre.org.au/sitemaps-1-section-event-1-sitemap.xml', upgrade: true },
+  // The rest of the 01:05 list that reads cleanly (the CONTROLLER's 11:45 of 5 November 2026; page-rules-melbourne.ts).
+  { name: 'Melbourne Cricket Ground (MCG)', city_slug: 'melbourne', page_url: 'https://www.mcg.org.au/sitemap.xml' },
+  { name: 'Palais Theatre (Live Nation)', city_slug: 'melbourne', page_url: 'https://www.palaistheatre.com.au/' },
+  { name: 'Festival Hall (Live Nation)', city_slug: 'melbourne', page_url: 'https://www.festivalhall.com.au/' },
+  { name: 'Melbourne Recital Centre', city_slug: 'melbourne', page_url: 'https://www.melbournerecital.com.au/sitemap.xml' },
+  { name: 'Federation Square', city_slug: 'melbourne', page_url: 'https://fedsquare.com/sitemap.xml' },
+]
+
+/** What an 'ask' row named above takes from today's read: what lets it be read and when; never its name, city or page. */
+export const UPGRADE_COLUMNS = [
+  'collection', 'verification', 'verified_on', 'terms_url', 'terms_quote', 'terms_read_on',
+  'may_scrape', 'may_scrape_quote', 'may_scrape_url', 'may_scrape_read_on',
+  'permits_facts', 'permits_links', 'permits_images', 'permits_descriptions', 'refresh_interval_hours', 'notes',
 ]
 
 class Refusal extends Error {}
@@ -159,13 +178,19 @@ async function main() {
     console.log(`  ${s.name}: robots '${quote}', page 200 -> read, facts and links`)
   }
   if (rows.length === 0) return console.log('[register-hunt-sources] nothing to register')
+  const upgrades = rows.filter((r) => HUNT_REGISTER.find((s) => s.page_url === r.page_url)?.upgrade)
+  const inserts = rows.filter((r) => !upgrades.includes(r))
   const cols = Object.keys(rows[0])
-  const values = rows.map((r) => `(${cols.map((c) => lit(r[c])).join(', ')})`).join(',\n')
+  const values = inserts.map((r) => `(${cols.map((c) => lit(r[c])).join(', ')})`).join(',\n')
   const held = await query(`select page_url from public.listing_sources where page_url in (${rows.map((r) => lit(r.page_url)).join(', ')})`, true)
   console.log(`[register-hunt-sources] ${a.target}: ${rows.length} to register, ${held.length} already held (left as they are)`)
   if (!a.apply) return console.log('[register-hunt-sources] DRY RUN: nothing written. Add --apply to write.')
   if (askLine(`Type APPLY to register ${rows.length} source(s) on ${a.target}: `) !== 'APPLY') throw new Refusal('not applied')
-  await query(`insert into public.listing_sources (${cols.join(', ')}) values ${values} on conflict (page_url) do nothing`, false)
+  if (inserts.length > 0) await query(`insert into public.listing_sources (${cols.join(', ')}) values ${values} on conflict (page_url) do nothing`, false)
+  for (const u of upgrades) {
+    const set = UPGRADE_COLUMNS.map((k) => `${k} = ${lit(u[k])}`).join(', ')
+    await query(`update public.listing_sources set ${set} where page_url = ${lit(u.page_url)} and collection <> 'read'`, false)
+  }
   const after = await query(`select name, collection from public.listing_sources where page_url in (${rows.map((r) => lit(r.page_url)).join(', ')}) order by name`, true)
   console.log(`[register-hunt-sources] read back: ${after.map((r) => `${r.name} (${r.collection})`).join('; ')}`)
   if (a.target === 'production') {

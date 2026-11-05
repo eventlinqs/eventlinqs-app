@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_SOURCES, huntFor, huntVenue } from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntVenue, likelyDuplicate } from '@/lib/listings/headline-hunt'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
 
 /* Car 44: the hunt's list, its venue match, and the arenas' page rule (one platform, /events/ to /event/<slug>/). */
@@ -14,6 +14,46 @@ describe('the hunt list', () => {
     expect(huntVenue(rla, 'Rod Laver Arena')).toBe('Rod Laver Arena')
     expect(huntVenue(rla, 'Rod Laver Arena, Melbourne Park')).toBe('Rod Laver Arena')
     expect(huntVenue(rla, 'John Cain Arena')).toBeNull()
+  })
+})
+
+/* Car 44b (the CONTROLLER's 01:05 of 5 November 2026). */
+describe('the hunt, car 44b', () => {
+  const day = (iso: string) => iso.slice(0, 10)
+  it('reads Mount as Mt, and only as a whole word', () => {
+    expect(fold('Mount Duneed Estate')).toBe('mt duneed estate')
+    expect(fold('Paramount Theatre')).toBe('paramount theatre')
+    const estate = huntFor('https://www.adayonthegreen.com.au/')!
+    expect(huntVenue(estate, 'Mount Duneed Estate')).toBe('Mt Duneed Estate')
+  })
+  it('a likely duplicate is the same title on the same day in the same city, at any venue', () => {
+    const known = [{ title: 'BOYZ II MEN', startsAt: '2026-12-05T18:00:00+11:00', citySlug: 'geelong' }]
+    const night = { title: 'Boyz II Men', startsAt: '2026-12-05T19:30:00+11:00' }
+    expect(likelyDuplicate(night, known, 'geelong', day)).toBe(true)
+    expect(likelyDuplicate({ ...night, startsAt: '2026-12-06T19:30:00+11:00' }, known, 'geelong', day)).toBe(false)
+    expect(likelyDuplicate(night, known, 'melbourne', day)).toBe(false)
+    expect(likelyDuplicate({ ...night, title: 'Boyz II Men Tribute' }, known, 'geelong', day)).toBe(false)
+  })
+  it('a called off show, a night with no time and an unverified page still wait for a person', () => {
+    expect([...HUNT_HOLDS]).toEqual(expect.arrayContaining(['similar_listing', 'called_off_words', 'midnight_start', 'source_unverified']))
+  })
+  it('decides by its rule a night that waited for a person from before the hunt, and never one a person refused', () => {
+    const ruled = { decidedBy: 'partner_rule', confidence: 'high', kind: 'new' }
+    const waiting = { status: 'waiting', decided_by: 'person', published_series_id: null }
+    expect(huntDecision(waiting, ruled)).toBe('promote')
+    expect(huntDecision(waiting, { ...ruled, decidedBy: 'person', confidence: 'low' })).toBe('leave')
+    expect(huntDecision({ ...waiting, status: 'refused' }, ruled)).toBe('leave')
+    expect(huntDecision({ status: 'accepted', decided_by: 'partner_rule', published_series_id: null }, ruled)).toBe('publish')
+    expect(huntDecision({ status: 'accepted', decided_by: 'partner_rule', published_series_id: 's1' }, ruled)).toBe('leave')
+    expect(huntDecision(null, ruled)).toBe('leave')
+  })
+  it("reads Geelong Arts Centre's rooms and Forum Melbourne by their own pages", () => {
+    const gac = huntFor('https://geelongartscentre.org.au/sitemaps-1-section-event-1-sitemap.xml')!
+    expect(gac.citySlug).toBe('geelong')
+    expect(huntVenue(gac, 'Costa Hall')).toBe('Costa Hall')
+    expect(huntVenue(gac, 'The Play House')).toBe('The Play House')
+    expect(huntVenue(gac, 'Barwon Club')).toBeNull()
+    expect(huntVenue(huntFor('https://forummelbourne.com.au/')!, 'Forum Melbourne')).toBe('Forum Melbourne')
   })
 })
 

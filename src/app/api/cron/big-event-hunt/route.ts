@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { runCollection } from '@/lib/listings/collect-run'
 import { collectionStore } from '@/lib/listings/collect-store'
 import { huntDay, type HuntCityLog } from '@/lib/listings/headline-hunt-day'
+import { HUNT_PAGE_CAP, huntOrder } from '@/lib/listings/headline-hunt'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,9 +29,10 @@ export async function GET(request: NextRequest) {
     const started = Date.now()
     const db = createAdminClient()
     const store = collectionStore(db)
-    // Only the hunt's sources, each due now: the hunt reads them at its two times whatever their own pace.
-    const hunt = { ...store, sources: async () => (await store.sources()).filter((s) => s.hunt).map((s) => ({ ...s, lastCheckedAt: null })) }
-    const result = await runCollection(hunt, fetch, new Date(started), started + RUN_BUDGET_MS)
+    // Only the hunt's sources, each due now, the one read longest ago first (huntOrder): the hunt reads them at its two
+    // times whatever their own pace, and a source one run's time ran out before is read first by the next.
+    const hunt = { ...store, sources: async () => huntOrder(await store.sources()) }
+    const result = await runCollection(hunt, fetch, new Date(started), started + RUN_BUDGET_MS, { pageCap: HUNT_PAGE_CAP })
     const byCity: HuntCityLog[] = await huntDay(db, result, new Date(started))
     for (const c of byCity) {
       console.log(
