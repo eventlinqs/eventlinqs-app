@@ -159,7 +159,7 @@ describe('what lands for review', () => {
       [
         found('Bp Proof Trio'),
         found('Bp Proof Trio, live', { links: [{ url: 'https://www.eventbrite.com.au/e/1', availability: 'on_sale', priceFromCents: null }] }),
-        found('Bp Comedy Hour', { startsAt: '2026-11-15T09:00:00.000Z' }),
+        found('Bp Comedy Hour', { startsAt: '2026-11-15T09:30:00.000Z' }),
       ],
       [{ eventId: 'ev-1', venueId: null, venueName: 'The Barwon Club', venueAddress: null, title: 'Bp Comedy Hour', startsAt: '2026-11-15T09:30:00.000Z' }],
       now,
@@ -167,6 +167,17 @@ describe('what lands for review', () => {
     expect(plans.map((p) => p.kind)).toEqual(['new', 'adds_links'])
     expect(plans[0].event.links.map((l) => l.url)).toEqual(['https://events.humanitix.com/13', 'https://www.eventbrite.com.au/e/1'])
     expect(plans[1].kind === 'adds_links' && plans[1].eventId).toBe('ev-1')
+  })
+
+  /* LAW 19 section 4 (5 November 2026), superseding the 12:30 rule's silent link for a night found half an hour off: a time
+     that differs from the one held is a change for a person; still never a second card. */
+  it('the listed night found at another start is a time change for a person, never a second card', () => {
+    const plans = planCandidates(
+      [found('Bp Comedy Hour', { startsAt: '2026-11-15T09:00:00.000Z' })],
+      [{ eventId: 'ev-1', venueId: null, venueName: 'The Barwon Club', venueAddress: null, title: 'Bp Comedy Hour', startsAt: '2026-11-15T09:30:00.000Z' }],
+      now,
+    )
+    expect(plans).toEqual([expect.objectContaining({ kind: 'changes_facts', change: 'time_changed', eventId: 'ev-1' })])
   })
 
   it('nothing past, nothing past the 90 day horizon (the engine plan of 28 October 2026)', () => {

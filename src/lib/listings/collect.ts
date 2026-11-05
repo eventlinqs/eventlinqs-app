@@ -712,6 +712,14 @@ export function planCandidates(
       (k) => sameEvent(k, keyOf(e)) && (new Date(k.startsAt).getTime() === new Date(e.startsAt).getTime() || !found.some((f) => f.pageUrl === e.pageUrl && new Date(f.startsAt).getTime() === new Date(k.startsAt).getTime())),
     )
     const event = { ...e, links: [...e.links] }
+    /* A LISTED NIGHT AT ANOTHER TIME IS A CHANGE, NEVER A CONFIRMATION (car 46; LAW 19 section 4: a time that differs from
+       the last verified value is held). sameEvent's two hour window finds the night; a start a minute or more away from
+       the one held is a time change for a person, never a silent 'adds_links' that confirms the stale time (Geelong
+       Regional Libraries' 'Baby time', 16 November: 10:30 on its page, 11:30 held, confirmed daily from 2 November). */
+    if (listed && Math.abs(new Date(listed.startsAt).getTime() - at) >= 60_000) {
+      plans.push({ kind: 'changes_facts', event, eventId: listed.eventId, change: 'time_changed' })
+      continue
+    }
     if (listed) {
       plans.push({ kind: 'adds_links', event, eventId: listed.eventId })
       continue

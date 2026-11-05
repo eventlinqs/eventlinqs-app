@@ -93,6 +93,21 @@ describe('6. two sessions of one show, two hours apart, stay two', () => {
   })
 })
 
+describe('6b. a listed night the source now states at another time is a time change for a person, never a silent confirmation', () => {
+  /* Found by the verifier on 5 November 2026: Geelong Regional Libraries' 'Baby time' (Mon 16 Nov) imported at 11:30 from
+     event 17245487; the library's page 17255956 states 10:30, an hour apart, inside sameEvent's two hour window, so each
+     run 'confirmed' the 11:30 series. LAW 19 section 4: a time that differs from the last verified value is held. */
+  it('10:30 found against 11:30 listed is time_changed, and confirms nothing', () => {
+    const found: FoundEvent = {
+      title: 'Baby time', startsAt: '2026-11-15T23:30:00.000Z', endsAt: null, venueName: 'Geelong Library and Heritage Centre (The Dome)',
+      venueAddress: '51 Little Malop Street, Geelong VIC 3220', pageUrl: 'https://events.grlc.vic.gov.au/event/17255956', imageUrl: null, description: null, links: [],
+    }
+    const known = [{ eventId: 'e1', seriesId: 's1', venueId: null, venueName: 'Geelong Library and Heritage Centre (The Dome)', venueAddress: '51 Little Malop Street, Geelong VIC 3220', title: 'Baby time', startsAt: '2026-11-16T00:30:00.000Z' }]
+    const [plan] = planCandidates([found], known, NOW)
+    expect(plan).toMatchObject({ kind: 'changes_facts', change: 'time_changed', eventId: 'e1' })
+  })
+})
+
 describe('7. the correction run: the right night kept, the wrong one moved or held, never a second series', () => {
   it('reads each stored night against what the page states', () => {
     const page = new Set(['2026-11-07T08:30:00.000Z'])
