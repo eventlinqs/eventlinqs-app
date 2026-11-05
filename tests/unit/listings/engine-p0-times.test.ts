@@ -93,6 +93,25 @@ describe('6. two sessions of one show, two hours apart, stay two', () => {
   })
 })
 
+describe("6a. two sessions on two pages of one source stay two (Geelong Regional Libraries' 'Baby time', 16 November)", () => {
+  /* The library states Baby time on Monday 16 November twice: event 17245487 '11:30am - 11:50am' and event 17255956
+     '10:30am - 11:00am' (read 5 November 2026). The two hour window merged them and dropped the 10:30. */
+  const night = (startsAt: string, id: string): FoundEvent => ({
+    title: 'Baby time', startsAt, endsAt: null, venueName: 'Geelong Library and Heritage Centre (The Dome)',
+    venueAddress: '51 Little Malop Street, Geelong VIC 3220', pageUrl: `https://events.grlc.vic.gov.au/event/${id}`, imageUrl: null, description: null, links: [],
+  })
+  const s1030 = night('2026-11-15T23:30:00.000Z', '17255956')
+  const s1130 = night('2026-11-16T00:30:00.000Z', '17245487')
+  it('both sessions found are two plans', () => {
+    expect(planCandidates([s1130, s1030], [], NOW).map((p) => p.event.startsAt).sort()).toEqual(['2026-11-15T23:30:00.000Z', '2026-11-16T00:30:00.000Z'])
+  })
+  it('with the 11:30 listed, the 11:30 adds its link and the 10:30 is new, never a time change', () => {
+    const known = [{ eventId: 'e1130', venueId: null, venueName: s1130.venueName, venueAddress: s1130.venueAddress, title: 'Baby time', startsAt: '2026-11-16T00:30:00.000Z' }]
+    const plans = planCandidates([s1130, s1030], known, NOW)
+    expect(plans.map((p) => [p.kind, p.event.pageUrl.slice(-8)])).toEqual([['adds_links', '17245487'], ['new', '17255956']])
+  })
+})
+
 describe('6b. a listed night the source now states at another time is a time change for a person, never a silent confirmation', () => {
   /* Found by the verifier on 5 November 2026: Geelong Regional Libraries' 'Baby time' (Mon 16 Nov) imported at 11:30 from
      event 17245487; the library's page 17255956 states 10:30, an hour apart, inside sameEvent's two hour window, so each

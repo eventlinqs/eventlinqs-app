@@ -698,18 +698,19 @@ export function planCandidates(
   for (const e of found) {
     const at = new Date(e.startsAt).getTime()
     if (at < now.getTime() || at > limit) continue
-    /* TWO SESSIONS STAY TWO (car 46; the independent review's defect 6): one page stating the same show at two exact
-       starts (a 2 pm and a 4 pm matinee) states two sessions, never one; sameEvent's two hour window joins only different
-       pages naming one night. */
-    const onePageTwoStarts = (a: { pageUrl: string; startsAt: string }) => a.pageUrl === e.pageUrl && a.startsAt !== e.startsAt
-    const same = plans.find((p) => sameEvent(keyOf(p.event), keyOf(e)) && !onePageTwoStarts(p.event))
+    /* TWO SESSIONS STAY TWO (car 46; the independent review's defect 6): what ONE source states at two exact starts, on
+       one page or two (a 2 pm and a 4 pm matinee; Geelong Regional Libraries' Baby time at 10:30 and 11:30 on 16 November,
+       events 17255956 and 17245487), is two sessions, never one; only the same exact start, stated twice, is one night. */
+    const time = (iso: string) => new Date(iso).getTime()
+    const same = plans.find((p) => sameEvent(keyOf(p.event), keyOf(e)) && time(p.event.startsAt) === at)
     if (same) {
       for (const l of e.links) if (!same.event.links.some((x) => x.url === l.url)) same.event.links.push(l)
       continue
     }
-    /* A listed night is this session only when its start is this one, or when this page states no session at its start. */
+    /* A listed night is this session only when its start is this one, or when this source states no session at its start
+       (then the source has moved it: a time change for a person, below). */
     const listed = known.find(
-      (k) => sameEvent(k, keyOf(e)) && (new Date(k.startsAt).getTime() === new Date(e.startsAt).getTime() || !found.some((f) => f.pageUrl === e.pageUrl && new Date(f.startsAt).getTime() === new Date(k.startsAt).getTime())),
+      (k) => sameEvent(k, keyOf(e)) && (time(k.startsAt) === at || !found.some((f) => f !== e && time(f.startsAt) === time(k.startsAt) && sameEvent(keyOf(f), k))),
     )
     const event = { ...e, links: [...e.links] }
     /* A LISTED NIGHT AT ANOTHER TIME IS A CHANGE, NEVER A CONFIRMATION (car 46; LAW 19 section 4: a time that differs from

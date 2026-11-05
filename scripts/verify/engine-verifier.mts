@@ -28,6 +28,7 @@ cjs._resolveFilename = (request: string, ...rest: unknown[]) =>
 const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
+const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 
 const REF = 'gndnldyfudbytbboxesk' // production: read only, except --enforce, which may switch a failing source off
 if (process.argv.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
@@ -79,9 +80,13 @@ const nights = [...((critical ?? []) as Row[]), ...sample.filter((s) => !(critic
 /* Each night's source page: the page its listing check names (the series' own record). */
 const seriesIds = [...new Set(nights.map((n) => n.listing_series_id).filter(Boolean))] as string[]
 const { data: checks } = await records.from('listing_checks').select('series_id, source_url, source_date').in('series_id', seriesIds)
-const sourceOf = new Map<string, string>()
+/* Every page a series' checks name, newest first: a night is judged against each until one states its start (Geelong
+   Regional Libraries' Baby time 11:30 was re-pointed by the two hour merge to the 10:30 session's page, 5 November). */
+const sourcesOf = new Map<string, string[]>()
 for (const c of (checks ?? []).sort((a, b) => String(b.source_date).localeCompare(String(a.source_date)))) {
-  if (!sourceOf.has(c.series_id as string) && /^https?:\/\//.test(String(c.source_url))) sourceOf.set(c.series_id as string, c.source_url as string)
+  const list = sourcesOf.get(c.series_id as string) ?? []
+  if (/^https?:\/\//.test(String(c.source_url)) && !list.includes(c.source_url as string)) list.push(c.source_url as string)
+  sourcesOf.set(c.series_id as string, list)
 }
 
 const lastHit = new Map<string, number>()
@@ -113,30 +118,41 @@ const browser = await chromium.launch()
 for (const n of nights) {
   const zone = n.timezone ?? 'Australia/Melbourne'
   const stored = localClock(n.start_date, zone)
-  const src = n.listing_series_id ? sourceOf.get(n.listing_series_id) ?? '' : ''
+  const pages = n.listing_series_id ? sourcesOf.get(n.listing_series_id) ?? [] : []
+  let src = pages[0] ?? ''
   let source = 'no source page on record'
   let sourceOk: boolean | null = null
-  if (src) {
-    const u = new URL(src)
+  const disagree: string[] = []
+  for (const candidate of pages.slice(0, 4)) {
+    const u = new URL(candidate)
     let r = robots.get(u.origin)
     if (!r) {
       r = await polite(`${u.origin}/robots.txt`)
       robots.set(u.origin, r)
     }
-    if (robotsVerdict(r.status, r.body, u.pathname + u.search) === 'disallowed') source = 'robots.txt disallows a re-read'
-    else {
-      const page = await polite(src)
-      const rule = pageRuleFor(src)
-      const found = page.body ? (rule ? rule.read(page.body, src) : eventsFromBody(page.body, src)) : []
-      const mine = found.filter((f) => f.title.trim().toLowerCase() === n.title.trim().toLowerCase() || found.length === 1)
-      if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
-      else if (mine.length === 0) source = 'the page no longer states this night'
-      else if (mine.every((f) => f.timeStatus === 'date_only')) source = 'the page states a date with no time'
-      else {
-        sourceOk = mine.some((f) => sameMinute(f.startsAt, n.start_date))
-        source = sourceOk ? localClock(n.start_date, zone) : `states ${mine.map((f) => localClock(f.startsAt, zone)).join(', ')}`
-      }
+    if (robotsVerdict(r.status, r.body, u.pathname + u.search) === 'disallowed') {
+      source = 'robots.txt disallows a re-read'
+      continue
     }
+    const page = await polite(candidate)
+    const rule = pageRuleFor(candidate)
+    const found = page.body ? (rule ? rule.read(page.body, candidate) : eventsFromBody(page.body, candidate)) : []
+    // This night on the page: its title once case, accents and punctuation are set aside (fold), or anything the page
+    // states at exactly its start, or the page's only night.
+    const mine = found.filter((f) => fold(f.title) === fold(n.title) || sameMinute(f.startsAt, n.start_date) || found.length === 1)
+    if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
+    else if (mine.length === 0) source = 'the page no longer states this night'
+    else if (mine.every((f) => f.timeStatus === 'date_only')) source = 'the page states a date with no time'
+    else if (mine.some((f) => sameMinute(f.startsAt, n.start_date))) {
+      sourceOk = true
+      src = candidate
+      source = localClock(n.start_date, zone)
+      break
+    } else disagree.push(`${mine.map((f) => localClock(f.startsAt, zone)).join(', ')} (${candidate.split('/').pop()})`)
+  }
+  if (sourceOk !== true && disagree.length > 0) {
+    sourceOk = false
+    source = `states ${disagree.join('; ')}`
   }
   const live: Record<number, { ok: boolean; text: string }> = {}
   for (const width of [390, 1440]) {
