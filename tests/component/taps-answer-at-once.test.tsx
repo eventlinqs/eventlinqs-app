@@ -9,6 +9,10 @@ import { describe, expect, it, vi } from 'vitest'
  */
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }), usePathname: () => '/events/amcf-2026' }))
+// The overlay arrives by its own import on the first tap; this test is about the tap answering BEFORE it, so the overlay is
+// a stub here. A real one loaded after the test's end and failed CI on the train of 5 November 2026: 'EnvironmentTeardownError:
+// Cannot load '/src/lib/analytics/measurement-off.ts' imported from .../plausible.ts after the environment was torn down'.
+vi.mock('@/components/layout/header-search-overlay', () => ({ HeaderSearchOverlay: () => null }))
 
 let resolveState: (v: { following: boolean; requiresAuth?: boolean }) => void = () => {}
 vi.mock('@/app/actions/follow', () => ({

@@ -40,6 +40,15 @@ export function getWaitlistCities(): WaitlistCity[] {
   }))
 }
 
+/**
+ * The city a link chose ('?city=geelong', from a city guide's 'Get Geelong alerts by email'; the CONTROLLER's 22:06 of
+ * 4 November 2026), or null for none or one the list does not hold.
+ */
+export function cityFromQuery<T extends { slug: string }>(search: string, cities: readonly T[]): T | null {
+  const slug = new URLSearchParams(search).get('city')
+  return (slug && cities.find((c) => c.slug === slug)) || null
+}
+
 export const WAITLIST_ROLES = ['organiser', 'attendee'] as const
 export type WaitlistRole = (typeof WAITLIST_ROLES)[number]
 

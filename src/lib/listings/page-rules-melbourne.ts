@@ -139,4 +139,19 @@ export const forumMelbourne: PageRule = {
   },
 }
 
-export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [comedyRepublic, comicsLounge, forumMelbourne]
+/**
+ * MELBOURNE'S HEADLINE ARENAS AND STADIUM (car 44, the daily big event hunt; the CONTROLLER's 15:30 of 4 November 2026:
+ * Rod Laver Arena, Margaret Court Arena, John Cain Arena and AAMI Park). One platform serves all four: a list page at
+ * /events/ linking each show's own page at /event/<slug>/, and each show page states its facts as one schema.org Event,
+ * read by the collector's own reader (read on 4 November 2026 through the polite reader: robots allowed, 32 to 39 shows
+ * linked, one Event on each sampled page; C:\dev\EVIDENCE\CAR44\probe-1.txt).
+ */
+function arenaRule(host: string): PageRule {
+  return { host, eventPath: /^\/event\/[^/]+\/?$/, read: (html, pageUrl) => eventsFromHtml(html, pageUrl) }
+}
+export const rodLaverArena = arenaRule('rodlaverarena.com.au')
+export const johnCainArena = arenaRule('johncainarena.com.au')
+export const margaretCourtArena = arenaRule('margaretcourtarena.com.au')
+export const aamiPark = arenaRule('aamipark.com.au')
+
+export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark]

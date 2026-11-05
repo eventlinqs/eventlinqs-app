@@ -16,6 +16,7 @@ import { sameVenue } from '@/lib/events/booking-links'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
+import { huntVenue, type HuntSource } from './headline-hunt'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -89,6 +90,11 @@ export type CollectionStore = {
    * partner's venue, which the hourly listings run makes into the event. Idempotent.
    */
   publishPartnerNight(row: CandidateRow): Promise<void>
+  /**
+   * Publishes a new night the hunt's rule accepted (./headline-hunt.ts): a dated series at the headline venue the night
+   * names, its category from its own words, its seller's link, a licensed_source listing check. Idempotent.
+   */
+  publishHuntNight?(row: CandidateRow, hunt: HuntSource, venueName: string): Promise<void>
   /**
    * Takes every waiting row whose night has passed out of the queue, saying so; returns how many. onlySources narrows
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
@@ -326,7 +332,10 @@ export async function runCollection(
               const plan = await stillNew(store, p)
               if (!plan) continue
               const { confidence, reasons } = judgeCandidate({ plan, sourceVerified: source.verified, known })
-              const byRule = acceptedByRule(source, plan, confidence)
+              /* THE HUNT'S RULE (car 44, Lawal's 15:12 of 4 November 2026): a new night a headline venue's own page states
+                 at that venue, with high confidence, is listed without a person; anything else waits, as before. */
+              const huntAt = source.hunt && plan.kind === 'new' && confidence === 'high' ? huntVenue(source.hunt, plan.event.venueName) : null
+              const byRule = acceptedByRule(source, plan, confidence) || huntAt !== null
               const foundAt = now.toISOString()
               /* The links first, so an accepted row never names links the event does not carry. */
               if (byRule && plan.kind === 'adds_links') await store.addLinks(plan.eventId, plan.event.links, foundAt)
@@ -356,7 +365,8 @@ export async function runCollection(
                 /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
                    run asks again. */
                 try {
-                  await store.publishPartnerNight(row)
+                  if (huntAt && source.hunt && store.publishHuntNight) await store.publishHuntNight(row, source.hunt, huntAt)
+                  else await store.publishPartnerNight(row)
                 } catch (err) {
                   unpublished.push(err instanceof Error ? err.message : String(err))
                 }

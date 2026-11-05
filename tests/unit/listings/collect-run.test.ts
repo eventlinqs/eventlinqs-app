@@ -299,3 +299,51 @@ describe('passed nights leave the queue on their own', () => {
     expect(r2).toMatchObject({ expired: 0, landed: 1 })
   })
 })
+
+/*
+ * CAR 44, THE DAILY BIG EVENT HUNT (Lawal's 15:12 of 4 November 2026: 'Make sure this is not something I'm doing daily'):
+ * a headline venue's own What's on page on the hunt's list (src/lib/listings/headline-hunt.ts) lists a new night it
+ * states AT ITS OWN VENUE, with high confidence, without a person; a night it states anywhere else waits, as before.
+ */
+describe("the hunt's rule", () => {
+  const arena = 'https://rodlaverarena.com.au/event/a-big-show/'
+  const open = { 'https://rodlaverarena.com.au/robots.txt': { status: 200, body: 'User-agent: *\nAllow: /' } }
+  const show = (venue: string) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@type': 'MusicEvent',
+      name: 'A Big Show',
+      startDate: '2026-11-21T20:00:00+11:00',
+      location: { name: venue, address: 'Olympic Boulevard, Melbourne VIC 3001' },
+      offers: { url: 'https://www.ticketmaster.com.au/a-big-show/event/1', availability: 'InStock' },
+    })}</script>`
+  const hunted = (over: Partial<RegisteredSource> = {}) =>
+    source('rla', arena, { citySlug: 'melbourne', hunt: { host: 'rodlaverarena.com.au', citySlug: 'melbourne', venues: ['Rod Laver Arena'], usualCategory: 'music' }, ...over })
+
+  it('lists a high confidence new night at the venue the page speaks for, through the hunt publisher', async () => {
+    const m = memoryStore([hunted()])
+    const huntPublished: string[] = []
+    m.store.publishHuntNight = async (row, _hunt, venueName) => {
+      huntPublished.push(`${row.title} @ ${venueName}`)
+    }
+    const r = await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: show('Rod Laver Arena') } }).fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ kind: 'new', confidence: 'high', decidedBy: 'partner_rule' })
+    expect(huntPublished).toEqual(['A Big Show @ Rod Laver Arena'])
+    expect(m.published).toEqual([])
+    expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
+  it('leaves a night the page states at another venue for a person', async () => {
+    const m = memoryStore([hunted()])
+    m.store.publishHuntNight = async () => {
+      throw new Error('never')
+    }
+    await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: show('Some Other Hall') } }).fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
+  })
+
+  it('a source off the list stays a person\'s, however confident', async () => {
+    const m = memoryStore([hunted({ hunt: null })])
+    await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body: show('Rod Laver Arena') } }).fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ decidedBy: 'person' })
+  })
+})
