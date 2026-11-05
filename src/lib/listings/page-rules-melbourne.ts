@@ -1,4 +1,5 @@
 import { eventsFromHtml, wallClockToIso, type FoundEvent } from './collect'
+import { MAJOR_SELLERS, providerOf } from '@/lib/events/booking-links'
 import type { PageRule } from './page-rules'
 
 /**
@@ -183,6 +184,16 @@ function lines(html: string): string[] {
     .filter(Boolean)
 }
 
+/** The first link on the page, from a point on it, to a major ticket seller, as booking-links.ts names them (the one table
+ * of platform names, copy-tell-gate's allowlist). */
+function sellerLink(html: string, from = 0): string | null {
+  for (const m of html.slice(Math.max(0, from)).matchAll(/href="(https:\/\/[^"]+)"/gi)) {
+    const url = decode(m[1])
+    if (MAJOR_SELLERS.has(providerOf(url))) return url
+  }
+  return null
+}
+
 function ogTitle(html: string): string | null {
   const m = /<meta[^>]+property="og:title"[^>]+content="([^"]*)"/i.exec(html) ?? /<meta[^>]+content="([^"]*)"[^>]+property="og:title"/i.exec(html)
   return m ? decode(m[1]).trim() || null : null
@@ -207,7 +218,7 @@ export const mcg: PageRule = {
     const startsAt = wallClockToIso(date[0], date[1], date[2], at[0], at[1], 0, ZONE)
     if (!startsAt) return []
     const tickets = html.indexOf('id="tickets"')
-    const buy = /href="(https:\/\/premier\.ticketek\.com\.au\/[^"]+)"/i.exec(tickets >= 0 ? html.slice(tickets) : '')
+    const buy = tickets >= 0 ? sellerLink(html, tickets) : null
     return [
       {
         title,
@@ -218,7 +229,7 @@ export const mcg: PageRule = {
         pageUrl,
         imageUrl: null,
         description: null,
-        links: [{ url: buy ? withoutTracking(decode(buy[1])) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+        links: [{ url: buy ? withoutTracking(buy) : pageUrl, availability: 'on_sale', priceFromCents: null }],
       },
     ]
   },
@@ -244,7 +255,7 @@ function liveNationVenue(host: string, venueName: string): PageRule {
       if (start < 0) return []
       const address = /\\?"address\\?":\\?"([^"\\]+)\\?"[^}]*?\\?"zipCode\\?":\\?"([^"\\]*)\\?"/.exec(html)
       const venueAddress = address ? `${address[1]}${address[2] ? ` ${address[2]}` : ''}` : null
-      const buy = /href="(https:\/\/www\.ticketmaster\.com\.au\/[^"]+)"/i.exec(html)
+      const buy = sellerLink(html)
       const out: FoundEvent[] = []
       for (let i = start + 1; i < Math.min(ls.length, start + 40); i += 1) {
         const d = /^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{4})$/.exec(ls[i])
@@ -264,7 +275,7 @@ function liveNationVenue(host: string, venueName: string): PageRule {
           pageUrl,
           imageUrl: null,
           description: null,
-          links: [{ url: buy ? decode(buy[1]) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+          links: [{ url: buy ?? pageUrl, availability: 'on_sale', priceFromCents: null }],
         })
       }
       return out
