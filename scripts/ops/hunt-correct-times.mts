@@ -45,6 +45,11 @@ const { huntFor } = pick((await import('@/lib/listings/headline-hunt')) as typeo
 const { toZonedInputValue } = pick((await import('@/lib/dates/event-time')) as typeof TimeModule)
 
 const TARGETS = { production: 'gndnldyfudbytbboxesk', test: 'vkapkibzokmfaxqogypq' } as const
+// A production run that writes asks the platform preflight's own explicit opt in (ALLOW_PRODUCTION_SUPABASE=1) and APPLY.
+if (process.argv.includes('production') && process.argv.includes('--apply') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
+  console.error('[hunt-correct-times] REFUSED: a production run that writes needs ALLOW_PRODUCTION_SUPABASE=1 set for this run, then APPLY typed')
+  process.exit(1)
+}
 const ZONE = 'Australia/Melbourne'
 const LOG = 'C:/dev/PRODUCTION-WRITES.txt'
 const args = process.argv.slice(2)
@@ -52,10 +57,6 @@ const target = args[args.indexOf('--target') + 1] as keyof typeof TARGETS
 const apply = args.includes('--apply')
 if (!(target in TARGETS)) {
   console.error('[hunt-correct-times] REFUSED: --target must be test or production; there is no default')
-  process.exit(1)
-}
-if (target === 'production' && apply && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
-  console.error('[hunt-correct-times] REFUSED: a production run that writes needs ALLOW_PRODUCTION_SUPABASE=1 set for this run, then APPLY typed')
   process.exit(1)
 }
 const token = process.env.SUPABASE_ACCESS_TOKEN ?? ''
@@ -110,7 +111,7 @@ if (args.includes('--refresh-words')) {
   const seriesIds = [...new Set((checks ?? []).map((c) => c.series_id as string))]
   const { data: series, error: se } = await db
     .from('event_series')
-    .select('id, name, anchor_date, starts_at, timezone, summary, booking_links, status, category:event_categories(slug)')
+    .select('id, name, anchor_date, starts_at, timezone, summary, booking_links, status')
     .in('id', seriesIds)
     .eq('status', 'active')
   if (se) throw new Error(`the hunted series could not be read: ${se.message}`)
