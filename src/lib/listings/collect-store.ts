@@ -3,7 +3,8 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntDecision, huntFor } from './headline-hunt'
+import { huntDecision, huntFor, huntSummary } from './headline-hunt'
+import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
 import { venueSlugify } from '@/lib/venues/venue-slug'
@@ -266,6 +267,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const anchorDate = local.slice(0, 10)
       const today = toZonedInputValue(row.foundAt, city.timezone as string).slice(0, 10)
       const name = row.title.trim()
+      const free = row.links.length > 0 && row.links.every((l) => l.priceFromCents === 0)
       const series = {
         venue_id: venueId,
         organisation_id: org.id,
@@ -277,8 +279,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         starts_at: local.slice(11, 16),
         ends_at: null,
         timezone: city.timezone,
-        summary: `${name} at ${venueName}.`,
-        booking_links: row.links.map((l) => ({ url: l.url, kind: 'tickets', price_from_cents: l.priceFromCents, price_checked_on: l.priceFromCents === null ? null : today })),
+        /* Car 44c (the CONTROLLER's 14:55 (4)): a one line description from the night's own facts, which the row shows;
+           and a night every link of which states it free is free entry, walk in, with no ticket link. */
+        summary: huntSummary({ categorySlug: classify({ title: row.title }).primary ?? null, startsAt: row.startsAt, seller: free ? null : sellerName(row.links[0]?.url ?? null), free }),
+        booking_links: free ? [] : row.links.map((l) => ({ url: l.url, kind: 'tickets', price_from_cents: l.priceFromCents, price_checked_on: l.priceFromCents === null ? null : today })),
         listing_source: 'eventlinqs',
         status: 'active',
       }

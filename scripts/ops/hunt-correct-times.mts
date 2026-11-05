@@ -98,6 +98,56 @@ function typedApply(prompt: string) {
   }
 }
 
+/* --refresh-words: every active hunted series' one line description rewritten from its own facts (huntSummary: its kind,
+   its day and part of the day in Melbourne, where it is booked), the CONTROLLER's 14:55 (4); then the occurrence run for
+   those nights, which brings each future event's words in line. Before values saved; nothing else changes. */
+if (args.includes('--refresh-words')) {
+  const { huntSummary } = pick((await import('@/lib/listings/headline-hunt')) as typeof HuntModule)
+  const { sellerName } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
+  const { classify } = pick((await import('@/lib/categories/classify')) as typeof import('@/lib/categories/classify'))
+  const { data: checks, error: ce } = await db.from('listing_checks').select('series_id').like('import_file', 'big event hunt, source %')
+  if (ce) throw new Error(`the hunted series could not be read: ${ce.message}`)
+  const seriesIds = [...new Set((checks ?? []).map((c) => c.series_id as string))]
+  const { data: series, error: se } = await db
+    .from('event_series')
+    .select('id, name, anchor_date, starts_at, timezone, summary, booking_links, status, category:event_categories(slug)')
+    .in('id', seriesIds)
+    .eq('status', 'active')
+  if (se) throw new Error(`the hunted series could not be read: ${se.message}`)
+  const plan = (series ?? []).map((s) => {
+    const [y, m, d] = String(s.anchor_date).split('-').map(Number)
+    const [hh, mm] = String(s.starts_at).split(':').map(Number)
+    const startsAt = wallClockToIso(y, m, d, hh, mm, 0, String(s.timezone)) ?? new Date().toISOString()
+    const links = (s.booking_links ?? []) as { url: string; price_from_cents: number | null }[]
+    const free = links.length > 0 && links.every((l) => l.price_from_cents === 0)
+    // The kind only from the night's own words (classify on its name), never the venue's usual category.
+    const next = huntSummary({ categorySlug: classify({ title: String(s.name) }).primary ?? null, startsAt, seller: free ? null : sellerName(links[0]?.url ?? null), free })
+    return { id: s.id as string, name: s.name as string, before: (s.summary as string | null) ?? null, next }
+  })
+  const changes = plan.filter((p) => p.before !== p.next)
+  for (const p of changes.slice(0, 12)) console.log(`  ${p.name.slice(0, 44).padEnd(44)} '${p.before}' -> '${p.next}'`)
+  console.log(`[hunt-correct-times] --refresh-words: ${plan.length} active hunted series, ${changes.length} to rewrite`)
+  if (!apply) {
+    console.log('[hunt-correct-times] DRY RUN: nothing written. Add --apply to write.')
+    process.exit(0)
+  }
+  typedApply(`Type APPLY to rewrite ${changes.length} hunted description(s) on ${target}: `)
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
+  writeFileSync(`C:/dev/EVIDENCE/CAR44/refresh-words-before-${stamp}.json`, JSON.stringify(changes.map((c) => ({ id: c.id, summary: c.before })), null, 1))
+  let done = 0
+  for (const c of changes) {
+    const { error } = await db.from('event_series').update({ summary: c.next }).eq('id', c.id)
+    if (error) console.error(`  ${c.name}: ${error.message}`)
+    else done += 1
+  }
+  const s = await occurrencesFor(new Set(changes.map((c) => c.id)))
+  console.log(`[hunt-correct-times] rewrote ${done}; occurrence run: ${JSON.stringify({ ...s, held: s.held.length, failed: s.failed })}`)
+  if (target === 'production') {
+    appendFileSync(LOG, `${new Date().toISOString()} | hunt-correct-times --refresh-words | production | the CONTROLLER's 14:55 (4): ${done} hunted series' one line descriptions rewritten from their own facts; occurrence run created ${s.created}, updated ${s.updated}, deleted ${s.deleted}, failed ${s.failed.length}. Before values: C:\\dev\\EVIDENCE\\CAR44\\refresh-words-before-${stamp}.json\n`)
+  }
+  process.exit(0)
+}
+
 /* --occurrences-for <before-values file>: only the occurrence run, for the series a corrected run touched (car 44c: the
    first APPLY of 5 November moved and paused the series, then its occurrence step stopped at revalidatePath). */
 const forFile = args.includes('--occurrences-for') ? args[args.indexOf('--occurrences-for') + 1] : null

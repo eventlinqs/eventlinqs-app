@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntSummary, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
+import { rowTeaser } from '@/lib/events/whats-on-directory'
+import { sellerName } from '@/lib/events/booking-links'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
 
 /* Car 44: the hunt's list, its venue match, and the arenas' page rule (one platform, /events/ to /event/<slug>/). */
@@ -104,6 +106,38 @@ describe("the arenas' own Date block, never the schema's offset", () => {
     expect(plausibleHuntStart('2026-11-07T19:30:00.000Z')).toBe(false) // Sunday 6:30 am, the fault as it showed on live
     expect(plausibleHuntStart('2026-11-07T08:30:00.000Z')).toBe(true) // Saturday 7:30 pm
     expect(plausibleHuntStart('2026-12-05T23:00:00.000Z')).toBe(true) // Sunday 10 am
+  })
+})
+
+/* Car 44c, the CONTROLLER's 14:55 (4): each hunted row carries a one line description in our own words, which the row's
+   own rule (rowTeaser) shows: five words or more past the title, the venue and the city. */
+describe("the hunt's one line description", () => {
+  it('says what kind of night, when, and where tickets are sold, and the row shows it', () => {
+    const line = huntSummary({ categorySlug: 'music', startsAt: '2026-11-13T08:20:00.000Z', seller: 'Ticketek', free: false })
+    expect(line).toBe('A live concert on a Friday evening, tickets through Ticketek.')
+    expect(rowTeaser(line, 'AAMI Park', 'Melbourne', 'Iron Maiden')).toBe(line)
+    expect(huntSummary({ categorySlug: 'sports', startsAt: '2026-11-07T08:30:00.000Z', seller: 'AXS', free: false })).toBe('A live match on a Saturday evening, tickets through AXS.')
+    expect(huntSummary({ categorySlug: 'community', startsAt: '2026-11-21T00:00:00.000Z', seller: null, free: true })).toBe('A community event on a Saturday morning, free entry.')
+    expect(huntSummary({ categorySlug: 'comedy', startsAt: '2026-12-12T03:00:00.000Z', seller: null, free: false })).toBe('Live stand-up comedy on a Saturday afternoon.')
+  })
+  it("names no kind its title does not give: 'An event', never a venue's guess (WWE, a stand-up comedian)", () => {
+    const line = huntSummary({ categorySlug: null, startsAt: '2026-12-09T08:30:00.000Z', seller: 'AXS', free: false })
+    expect(line).toBe('An event on a Wednesday evening, tickets through AXS.')
+    expect(rowTeaser(line, 'Rod Laver Arena', 'Melbourne', 'WWE')).toBe(line)
+  })
+  it("names every seller and venue booking page the hunt lists, so no hunted row reads a bare 'Get tickets'", () => {
+    for (const [url, name] of [
+      ['https://www.axs.com/au/events/1632144/a-ap-rocky-tickets', 'AXS'],
+      ['https://www.melbournerecital.com.au/whats-on/current-productions/ning-feng/', 'Melbourne Recital Centre'],
+      ['https://forummelbourne.com.au/shows/men-i-trust', 'Forum Melbourne'],
+      ['https://www.palaistheatre.com.au/all-events/x-tickets-ae1', 'Palais Theatre'],
+      ['https://www.mcg.org.au/events/2026/december/x', 'MCG'],
+      ['https://fedsquare.com/events/pillars-of-light', 'Fed Square'],
+      ['https://geelongartscentre.org.au/whats-on/all-events/x/', 'Geelong Arts Centre'],
+      ['https://ausxsupercross.com.au/events/ausx-open/', 'AUSX'],
+    ]) {
+      expect(sellerName(url)).toBe(name)
+    }
   })
 })
 
