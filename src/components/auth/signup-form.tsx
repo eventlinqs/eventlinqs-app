@@ -8,7 +8,7 @@ import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
 import { AuthErrorFromUrl } from './auth-error-from-url'
 import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
-import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
+import { signupConsentLine } from '@/lib/consent/wording'
 import { authMessage, signupFieldFor, type AuthFailureClass } from '@/lib/auth/auth-errors'
 import { reportClientError } from '@/lib/observability/client-error-report'
 import { HEARD_FROM_CHOICES, HEARD_FROM_OTHER_MAX, HEARD_FROM_QUESTION } from '@/lib/growth/heard-from'
@@ -29,6 +29,11 @@ type Props = {
    * src/lib/auth/providers.ts for why this cannot be a client-side check.
    */
   googleEnabled: boolean
+  /**
+   * Whether the weekly local digest runs (broadcast_digest), read server-side in the page. The box offers the digest
+   * only while it does; otherwise occasional EventLinqs updates by email (the CONTROLLER's 08:50 (4)).
+   */
+  digestOn: boolean
 }
 
 /**
@@ -44,7 +49,9 @@ type SignupError = {
   field: 'fullName' | 'email' | 'password' | null
 }
 
-export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
+export function SignupForm({ role = 'attendee', googleEnabled, digestOn }: Props) {
+  // The consent line this form shows, and the name of it the route records against (src/lib/consent/wording.ts).
+  const consentLine = signupConsentLine(digestOn)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -135,6 +142,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
           heardFrom: heardFrom || undefined,
           heardFromOther: heardFromOther || undefined,
           digestOptIn,
+          consentShown: consentLine.shown,
         }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
@@ -405,7 +413,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             onChange={(e) => setDigestOptIn(e.target.checked)}
             className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-200 text-gold-500 focus:ring-2 focus:ring-gold-400"
           />
-          <span className="text-xs text-ink-600">{DIGEST_CONSENT_WORDING}</span>
+          <span className="text-xs text-ink-600">{consentLine.wording}</span>
         </label>
 
         <button

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { SignupForm } from '@/components/auth/signup-form'
 import { isProviderEnabled } from '@/lib/auth/providers'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 export const metadata = {
   title: 'Create account | EventLinqs',
@@ -17,6 +18,8 @@ export default async function SignupPage({ searchParams }: Props) {
   const isOrganiser = role === 'organiser'
   // Server-resolved, fail-safe. See src/lib/auth/providers.ts.
   const googleEnabled = await isProviderEnabled('google')
+  // The consent box offers the weekly digest only while it runs (the CONTROLLER's 08:50 (4)).
+  const digestOn = await isFeatureEnabled('broadcast_digest')
 
   return (
     <AuthShell
@@ -35,7 +38,7 @@ export default async function SignupPage({ searchParams }: Props) {
         </>
       }
     >
-      <SignupForm role={isOrganiser ? 'organiser' : 'attendee'} googleEnabled={googleEnabled} />
+      <SignupForm role={isOrganiser ? 'organiser' : 'attendee'} googleEnabled={googleEnabled} digestOn={digestOn} />
     </AuthShell>
   )
 }
