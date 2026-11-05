@@ -30,6 +30,7 @@ const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { statedInWords, statedWeekly } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
+const { verifierVerdict, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
 
 const REF = 'gndnldyfudbytbboxesk' // production: read only, except --enforce, which may switch a failing source off
 if (process.argv.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
@@ -122,8 +123,6 @@ const timeOnly = (iso: string, zone: string) =>
 /* THE PAGE'S OWN WORDS, dated or a weekly timetable: src/lib/listings/stated-words.ts, with its cases in
    tests/unit/listings/stated-words.test.ts (North Central Goldfields Regional Library's storytimes, 5 November). */
 
-const PDF_SOURCE = 'the source is a PDF, which the verifier does not read'
-const OUTSIDE_TERM = 'the page states this weekly session, but no term it states covers this night'
 
 type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'; why: string; sourceUrl: string; critical: boolean }
 const results: Result[] = []
@@ -205,13 +204,9 @@ async function judgeNight(n: Row): Promise<void> {
     }
   }
   const liveOk = live[390].ok && live[1440].ok
-  /* UNVERIFIABLE, with its reason, where no permitted read can judge the night (the CONTROLLER's 16:20): no source page on
-     record (it needs one), robots.txt barring a re-read, a page stating no such night in any form, or a date with no time.
-     A source going quiet is never read as a cancellation; these are listed for a person's re-check. */
-  // A date in words with no time beside it is the same class as a date with no time: the page cannot judge the start.
-  const UNVERIFIABLE = ['no source page on record', 'robots.txt disallows a re-read', 'the page does not state this night', 'the page states a date with no time', 'the page states the date in words but not this time', PDF_SOURCE, OUTSIDE_TERM]
-  const verdict: Result['verdict'] =
-    sourceOk === false || !liveOk ? 'FAIL' : sourceOk === null ? (UNVERIFIABLE.includes(source) ? 'UNVERIFIABLE' : 'NOT JUDGED') : 'PASS'
+  /* The verdict, one rule: src/lib/listings/verifier-verdict.ts (UNVERIFIABLE with its reason, a page that gave no answer
+     among them; a source going quiet is never read as a cancellation; each is listed for a person's re-check). */
+  const verdict: Result['verdict'] = verifierVerdict({ sourceOk, liveOk, source })
   const why = sourceOk === false ? 'the source states another time' : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
   results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
   if (!criticalIds.has(n.id) && (verdict === 'PASS' || verdict === 'FAIL')) judgedIn.set(n.city_primary ?? '', (judgedIn.get(n.city_primary ?? '') ?? 0) + 1)
