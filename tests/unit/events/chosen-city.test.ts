@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ALL_OF_AUSTRALIA_HREF, chosenCitySlug, cityCookieValue, eventsHrefFor, followsChosenCity } from '@/lib/events/chosen-city'
+import { chosenCitySlug, cityCookieValue, eventsHrefFor } from '@/lib/events/chosen-city'
 
 /*
  * THE CONTROLLER'S 08:50 (7), FROM THE 5 NOVEMBER AUDIT: a visitor who chose Melbourne on the guide and then pressed
- * 'Browse Events' was shown the whole country. /events follows the city the visitor chose (the el_city cookie, which
- * the header's location picker writes and now the guide's city choice too), while 'All of Australia' stays the whole
- * country and a visitor who clears the city on /events is never sent back to it.
+ * 'Browse Events' was shown the whole country. Browse follows the city the visitor chose (the el_city cookie, which the
+ * header's location picker writes and now the guide's city choice too). /events itself stays all of Australia: a bare
+ * visit is never redirected, because the production-rows run of 5 November 21:44 showed the redirect as a flash of the
+ * national list then a jump, once per new tab, and it took over links that promise every event ('Browse all events').
  */
 describe('the chosen city, read from the el_city cookie (chosenCitySlug)', () => {
   it('reads the city the cookie names as its guide slug, encoded or plain', () => {
@@ -26,35 +27,28 @@ describe('the chosen city, read from the el_city cookie (chosenCitySlug)', () =>
   })
 })
 
-describe('where Browse Events goes, and when /events follows the city', () => {
-  it('Browse Events opens on the chosen city, else every event', () => {
+describe('where Browse Events goes', () => {
+  it('opens the chosen city\'s guide, else every event', () => {
     // Straight to the city's guide: /events?city=<a guided city> 308s there by round 3, item 7 (next.config.ts), and
     // carried its query along ('/city/melbourne?city=melbourne', the production-rows look of 5 November 21:11).
     expect(eventsHrefFor('melbourne')).toBe('/city/melbourne')
     expect(eventsHrefFor(null)).toBe('/events')
   })
-  it('a bare /events follows the chosen city; any filter, a search or All of Australia does not', () => {
-    expect(followsChosenCity('')).toBe(true)
-    expect(followsChosenCity('?all=1')).toBe(false)
-    expect(followsChosenCity('?city=geelong')).toBe(false)
-    expect(followsChosenCity('?q=jazz')).toBe(false)
-    expect(ALL_OF_AUSTRALIA_HREF).toBe('/events?all=1')
-  })
 })
 
 describe('the surfaces use it', () => {
   const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8')
-  it('the guide records a city choice and its All of Australia link says so', () => {
+  it('the guide records a city choice, and its All of Australia link is every event', () => {
     const guide = read('src/components/features/city-guide/city-guide.tsx')
     expect(guide).toMatch(/rememberCity\(/)
-    expect(guide).toMatch(/ALL_OF_AUSTRALIA_HREF/)
+    expect(guide).toMatch(/href=\{`\/events\$\{q\.trim\(\)/)
   })
   it('the header and both bottom bars open Browse on the chosen city', () => {
     for (const f of ['src/components/layout/site-header-client.tsx', 'src/components/layout/mobile-bottom-nav.tsx', 'src/components/layout/bottom-nav.tsx']) {
       expect(read(f), f).toMatch(/useChosenEventsHref\(/)
     }
   })
-  it('/events follows the chosen city once a session when entered bare', () => {
-    expect(read('src/app/events/page.tsx')).toMatch(/<FollowChosenCity \/>/)
+  it('/events itself never redirects a visit: it stays all of Australia', () => {
+    expect(read('src/app/events/page.tsx')).not.toMatch(/FollowChosenCity/)
   })
 })

@@ -11,7 +11,7 @@ import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LAB
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
-import { ALL_OF_AUSTRALIA_HREF, rememberCity } from '@/lib/events/chosen-city'
+import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
@@ -277,8 +277,7 @@ export function CityGuide({
             />
           </label>
           <SnapLink
-            // The whole country, said in the address, so /events never takes it for a bare visit to follow a chosen city.
-            href={`${ALL_OF_AUSTRALIA_HREF}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ''}`}
+            href={`/events${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`}
             aria-label="Search all of Australia"
             className="relative inline-flex min-h-11 shrink-0 items-center font-display text-sm font-bold text-[var(--text-primary)] underline decoration-[var(--color-ink-200)] underline-offset-4"
             label="All of Australia"

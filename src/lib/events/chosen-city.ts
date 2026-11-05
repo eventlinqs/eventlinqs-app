@@ -1,21 +1,18 @@
 import { getAllCities } from '@/lib/cities/data'
 
 /**
- * THE CITY A VISITOR CHOSE, AND /events FOLLOWING IT (the CONTROLLER's 08:50 (7), from the 5 November audit: a visitor
- * who chose Melbourne on the guide and pressed 'Browse Events' was shown the whole country). The choice lives in the
- * el_city cookie, the one the header's location picker writes through /api/location/set, a functional cookie named on
- * /legal/cookies; the guide's city choice now writes it too, in the same shape. /events stays an edge-cached page that
- * reads no cookie on the server: the links that open it carry the city, and a bare visit follows the city once a session
- * in the browser. 'All of Australia' says so in its address, so it is never taken for a bare visit.
+ * THE CITY A VISITOR CHOSE, AND BROWSE FOLLOWING IT (the CONTROLLER's 08:50 (7), from the 5 November audit: a visitor who
+ * chose Melbourne on the guide and pressed 'Browse Events' was shown the whole country). The choice lives in the el_city
+ * cookie, the one the header's location picker writes through /api/location/set, a functional cookie named on
+ * /legal/cookies; the guide's city choice now writes it too, in the same shape. The links that open browsing (the header,
+ * its drawer, both bottom bars) carry the city. /events itself stays all of Australia and is never redirected: a bare
+ * visit redirected in the browser showed the national list, then jumped, once per new tab, and took over links that
+ * promise every event ('Browse all events'); the production-rows run of 5 November 21:44 showed both.
  */
 
 export const EL_CITY_COOKIE = 'el_city'
 /** The browser event the header listens for when el_city changes (cookies have no change event of their own). */
 export const EL_CITY_UPDATED = 'el_city_updated'
-/** The whole country, said in the address, so /events never follows a chosen city for it. */
-export const ALL_OF_AUSTRALIA_HREF = '/events?all=1'
-/** Once a session: a visitor who clears the city on /events is never sent back to it. */
-export const FOLLOWED_THIS_SESSION = 'el_events_followed_city'
 
 /** The el_city value for a guide city: the shape /api/location/set writes. Pure. */
 export function cityCookieValue(city: { name: string }): string {
@@ -48,11 +45,6 @@ export function chosenCitySlug(raw: string | null | undefined): string | null {
  */
 export function eventsHrefFor(slug: string | null): string {
   return slug ? `/city/${encodeURIComponent(slug)}` : '/events'
-}
-
-/** Whether an /events visit follows the chosen city: only a bare one, with no filter, search or 'all' in its address. Pure. */
-export function followsChosenCity(search: string): boolean {
-  return search.replace(/^\?/, '').trim() === ''
 }
 
 /** The el_city value in this browser, or null. */
