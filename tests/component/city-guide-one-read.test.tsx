@@ -55,7 +55,7 @@ const tileCounts = () =>
       return { button: b, label: m?.[1] ?? t, n: Number(m?.[2]) }
     })
 const lineEvents = () => {
-  const m = screen.getByText(/coming up in Geelong/).textContent?.match(/^(\d+) events?, (\d+) dates?/)
+  const m = screen.getByText(/^(Next 3 months|All dates|Today|This weekend|This week|This month)\b.*: \d+ events?/).textContent?.match(/: (\d+) events?, (\d+) dates?/)
   return { events: Number(m?.[1]), dates: Number(m?.[2]) }
 }
 
