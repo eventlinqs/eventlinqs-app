@@ -15,6 +15,7 @@
  * its words give none, as a source's category does for a partner.
  */
 import type { GuideCategory } from '@/lib/categories/classify'
+import { wallClockToIso } from './collect'
 
 export type HuntSource = {
   /** The register's page, by host (without www) and path start. */
@@ -132,7 +133,26 @@ export const fold = (s: string) =>
 
 /** The reasons that still hold a hunt night for a person: a likely duplicate, a called off show, a time likely not stated,
  * and a page the register has not verified. */
-export const HUNT_HOLDS = ['similar_listing', 'called_off_words', 'midnight_start', 'source_unverified'] as const
+export const HUNT_HOLDS = [
+  'similar_listing', 'called_off_words', 'midnight_start', 'source_unverified',
+  // ENGINE P0, the publication gate (LAW 19 section 4): a time not to be trusted is never published by the rule.
+  'offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span',
+] as const
+
+/**
+ * THE CORRECTION RUN'S VERDICT ON ONE STORED NIGHT (car 46; the independent review's test 7). Against the starts the
+ * night's own page states now (read by the fixed readers): 'right' when it states the stored start; 'move' when it
+ * states the stored UTC clock as Melbourne's clock (the false offset fault), to that instant; else 'hold' (the series is
+ * paused, never guessed). The stored night is corrected in place, so no second series is ever made beside it. Pure.
+ */
+export function correctionDecision(stored: string, pageStarts: ReadonlySet<string>, status: number | null): { kind: 'right' | 'move' | 'hold'; to: string | null } {
+  if (status !== 200) return { kind: 'hold', to: null }
+  const at = new Date(stored)
+  if (pageStarts.has(at.toISOString())) return { kind: 'right', to: null }
+  const to = wallClockToIso(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate(), at.getUTCHours(), at.getUTCMinutes(), 0, 'Australia/Melbourne')
+  if (to && pageStarts.has(new Date(to).toISOString())) return { kind: 'move', to: new Date(to).toISOString() }
+  return { kind: 'hold', to: null }
+}
 
 /**
  * A LIKELY DUPLICATE (the CONTROLLER's 01:05 of 5 November 2026): a night EventLinqs already lists in the same city with the

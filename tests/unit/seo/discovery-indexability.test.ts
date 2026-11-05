@@ -95,6 +95,12 @@ function chain(rows: unknown[], weekendRows?: unknown[], guideWeekRows?: unknown
   for (const method of ['select', 'match', 'not', 'eq', 'in', 'or', 'limit', 'lte', 'is', 'range']) {
     self[method] = () => self
   }
+  // A paged read (readEveryRow's `.range()`, the sitemap past 1,000 rows, 5 November 2026) gets every row on its first
+  // page and nothing after, as the server answers; any other `.range()` caller asks from 0.
+  self.range = (from: number) => {
+    if (from > 0) out = []
+    return self
+  }
   // `.eq('is_free', ...)` is the guide week's read and nothing else's.
   self.eq = (column: string) => {
     if (column === 'is_free' && guideWeekRows) out = guideWeekRows

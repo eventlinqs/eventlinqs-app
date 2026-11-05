@@ -4,6 +4,7 @@ import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed } from '@/lib/events/listing-window'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isOrganiserProfileIndexable } from '@/lib/seo/indexing-policy'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 
 /**
  * THE THREE FAMILIES OF SITEMAP URL THAT COME FROM ROWS, READ IN ONE PLACE
@@ -67,7 +68,7 @@ export type CatalogueRead = {
  * identically and a difference the guard reports is a real difference rather
  * than two caps disagreeing.
  */
-export const CATALOGUE_ROW_CAP = 5000
+export const CATALOGUE_ROW_CAP = 50_000
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -93,7 +94,7 @@ type AdminClient = ReturnType<typeof createAdminClient>
 export async function readEventCatalogue(given?: AdminClient): Promise<CatalogueRead> {
   try {
     const admin = given ?? createAdminClient()
-    const { data, error } = await admin
+    const data = await readEveryRow<{ slug: string | null; updated_at: string | null }>('the sitemap event pages', (from, to) => admin
       .from('events')
       .select('slug, updated_at')
       .match(PUBLIC_EVENT_MATCH)
@@ -104,10 +105,9 @@ export async function readEventCatalogue(given?: AdminClient): Promise<Catalogue
       // so an unordered query made the Lighthouse gate audit a different page on
       // different runs of the same branch and blocked two merges on 2026-08-23.
       .order('slug', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (error) return { rows: [], error: error.message }
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
     const rows: CatalogueRow[] = []
-    for (const row of data ?? []) {
+    for (const row of data) {
       const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
       if (!slug) continue
       rows.push({
@@ -150,7 +150,7 @@ export async function readOrganiserCatalogue(options: {
 }): Promise<CatalogueRead> {
   try {
     const admin = options.admin ?? createAdminClient()
-    const { data, error } = await admin
+    const data = await readEveryRow<{ id: string; slug: string | null; description: string | null; updated_at: string | null }>('the sitemap organiser pages', (from, to) => admin
       .from('organisations')
       // `id` and `description` are read for the substance rule: the page decides
       // its own robots directive from the event count and the biography.
@@ -158,10 +158,9 @@ export async function readOrganiserCatalogue(options: {
       .not('slug', 'is', null)
       .eq('status', 'active')
       .order('slug', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (error) return { rows: [], error: error.message }
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
     const rows: CatalogueRow[] = []
-    for (const row of data ?? []) {
+    for (const row of data) {
       const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
       if (!slug) continue
       // WI2 ruling A: the listings organisation has no page, so it is never offered.
@@ -196,17 +195,16 @@ export async function readOrganiserCatalogue(options: {
 export async function readVenueCatalogue(given?: AdminClient): Promise<CatalogueRead> {
   try {
     const admin = given ?? createAdminClient()
-    const { data, error } = await admin
+    const data = await readEveryRow<{ venue_name: string | null; updated_at: string | null }>('the sitemap venue pages', (from, to) => admin
       .from('events')
       .select('venue_name, updated_at')
       .match(PUBLIC_EVENT_MATCH)
       .not('venue_name', 'is', null)
       .order('venue_name', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (error) return { rows: [], error: error.message }
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
     /** handle -> most recent updated_at among the events at that venue. */
     const handles = new Map<string, string | null>()
-    for (const row of data ?? []) {
+    for (const row of data) {
       const name = typeof row.venue_name === 'string' ? row.venue_name.trim() : ''
       if (!name) continue
       const handle = venueSlugify(name)
@@ -294,7 +292,7 @@ export async function readArtistCatalogue(given?: AdminClient): Promise<Catalogu
      * on this path, so asking them first bounds both `in()` lists by the number
      * of lineup rows rather than by the number of events on the platform.
      */
-    const lineup = await admin
+    const lineupRows = await readEveryRow<{ artist_id: string; event_id: string }>('the sitemap lineup rows', (from, to) => admin
       .from('event_artists')
       .select('artist_id, event_id')
       .eq('status', 'confirmed')
@@ -304,19 +302,17 @@ export async function readArtistCatalogue(given?: AdminClient): Promise<Catalogu
       // rows the cap below truncates, so an unordered paged read publishes a
       // different set of artists on different runs of the same tree.
       .order('event_id', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (lineup.error) return { rows: [], error: lineup.error.message }
-    const lineupRows = (lineup.data ?? []) as { artist_id: string; event_id: string }[]
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
     if (lineupRows.length === 0) return { rows: [], error: null }
 
-    const events = await admin
+    const lineupEventIds = [...new Set(lineupRows.map(r => r.event_id))]
+    const eventRows = await readEveryRow<{ id: string; start_date: string; end_date: string | null; timezone: string | null }>('the sitemap lineup events', (from, to) => admin
       .from('events')
       .select('id, start_date, end_date, timezone')
-      .in('id', [...new Set(lineupRows.map(r => r.event_id))])
+      .in('id', lineupEventIds)
       .match(PUBLIC_EVENT_MATCH)
       .order('id', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (events.error) return { rows: [], error: events.error.message }
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
 
     // THE WINDOW IS THE PLATFORM'S OWN, applied with `isStillListed`, the same
     // function every discovery surface uses. A second dialect of the listing
@@ -324,7 +320,7 @@ export async function readArtistCatalogue(given?: AdminClient): Promise<Catalogu
     // the pages to disagree, which is the failure this module exists to prevent.
     const now = new Date()
     const liveEventIds = new Set(
-      ((events.data ?? []) as { id: string; start_date: string; end_date: string | null; timezone: string | null }[])
+      eventRows
         .filter(e => typeof e.start_date === 'string' && isStillListed(e, now))
         .map(e => e.id),
     )
@@ -333,17 +329,16 @@ export async function readArtistCatalogue(given?: AdminClient): Promise<Catalogu
     const artistIds = [...new Set(lineupRows.filter(r => liveEventIds.has(r.event_id)).map(r => r.artist_id))]
     if (artistIds.length === 0) return { rows: [], error: null }
 
-    const artists = await admin
+    const artistRows = await readEveryRow<{ slug: string | null; updated_at: string | null }>('the sitemap artist pages', (from, to) => admin
       .from('artists')
       .select('slug, updated_at')
       .in('id', artistIds)
       .not('slug', 'is', null)
       .order('slug', { ascending: true })
-      .limit(CATALOGUE_ROW_CAP)
-    if (artists.error) return { rows: [], error: artists.error.message }
+      .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
 
     const rows: CatalogueRow[] = []
-    for (const a of (artists.data ?? []) as { slug: string | null; updated_at: string | null }[]) {
+    for (const a of artistRows) {
       const slug = typeof a.slug === 'string' ? a.slug.trim() : ''
       if (!slug) continue
       rows.push({ path: `/artists/${slug}`, lastModified: typeof a.updated_at === 'string' ? a.updated_at : null })

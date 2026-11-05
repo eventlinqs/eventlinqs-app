@@ -1,5 +1,6 @@
 import { SAME_START_WITHIN_MS, SAME_TITLE_SHARE, sameVenue, titleShare, titleWords, type ListingKey } from '@/lib/events/booking-links'
 import { daysAhead, HORIZON_ZONE } from './horizon'
+import { classify } from '@/lib/categories/classify'
 import type { CandidatePlan, FoundEvent, KnownEvent } from './collect'
 
 /**
@@ -26,6 +27,15 @@ export type CandidateReason =
   | 'venue_changed'
   /** A different night with a partly alike title is listed at the same venue that day: maybe the same, maybe not. */
   | 'similar_listing'
+  /* ENGINE P0, the publication gate (the engine directive, Phase 5; LAW 19 section 4; migration 20261105160001). */
+  /** Its stated UTC offset is not its venue zone's offset on that date: never shifted, never published unseen. */
+  | 'offset_mismatch'
+  /** The source gives a date with no time: no time is ever filled in. */
+  | 'no_time'
+  /** A concert, show, comedy or club night, or a match, starting 00:00 to 09:59 local, not stated in the page's words. */
+  | 'implausible_time'
+  /** One Event spanning more than a day with no performance of its own named. */
+  | 'multi_day_span'
 
 export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   source_unverified: 'Source not verified',
@@ -35,6 +45,10 @@ export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   time_changed: 'Time changed on a listed night',
   venue_changed: 'Venue changed on a listed night',
   similar_listing: 'A similar night is listed there that day',
+  offset_mismatch: 'Its time zone offset is not the venue zone',
+  no_time: 'No start time given',
+  implausible_time: 'Starts before 10 am for its kind',
+  multi_day_span: 'Spans several days with no performance named',
 }
 
 export type Confidence = 'high' | 'low'
@@ -96,6 +110,18 @@ export function factChange(
   return null
 }
 
+/** The night kinds an early start is implausible for (LAW 19 section 4): from the title's own words, or a match. */
+const NIGHT_KINDS = new Set(['music', 'comedy', 'nightlife', 'theatre'])
+const MATCH = /\s(?:v|vs)\.?\s/i
+const melbourneHour = new Intl.DateTimeFormat('en-AU', { timeZone: HORIZON_ZONE, hour: 'numeric', hourCycle: 'h23' })
+
+/** A night kind starting 00:00 to 09:59 local whose time was not read from the page's own words. Pure. */
+export function implausibleStart(e: Pick<FoundEvent, 'title' | 'startsAt' | 'timeStatus' | 'timeFromWords'>): boolean {
+  if (e.timeFromWords || e.timeStatus === 'date_only') return false
+  if (Number(melbourneHour.format(new Date(e.startsAt))) >= 10) return false
+  return NIGHT_KINDS.has(classify({ title: e.title }).primary ?? '') || MATCH.test(` ${e.title} `)
+}
+
 export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boolean; known: readonly KnownEvent[] }): Judgement {
   const { plan, sourceVerified, known } = input
   const e = plan.event
@@ -103,7 +129,11 @@ export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boo
   if (!sourceVerified) reasons.push('source_unverified')
   if (!e.venueAddress || !e.venueAddress.trim()) reasons.push('no_venue_address')
   if (melbourneClock.format(new Date(e.startsAt)) === '00:00') reasons.push('midnight_start')
-  if (CALLED_OFF.test(e.title) || CALLED_OFF.test(e.description ?? '')) reasons.push('called_off_words')
+  if (e.calledOff || CALLED_OFF.test(e.title) || CALLED_OFF.test(e.description ?? '')) reasons.push('called_off_words')
+  if (e.timeStatus === 'offset_mismatch') reasons.push('offset_mismatch')
+  if (e.timeStatus === 'date_only') reasons.push('no_time')
+  if (e.timeStatus === 'multi_day') reasons.push('multi_day_span')
+  if (implausibleStart(e)) reasons.push('implausible_time')
   if (plan.kind === 'changes_facts') reasons.push(plan.change)
   if (plan.kind === 'new') {
     const key = keyOf(e)

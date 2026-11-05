@@ -131,7 +131,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
     },
 
     async land(row): Promise<boolean> {
-      const { data, error } = await db
+      const write = (reasons: readonly string[]) => db
         .from('listing_candidates')
         .upsert(
           {
@@ -150,13 +150,22 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
             links: row.links,
             change: row.change,
             confidence: row.confidence,
-            reasons: row.reasons,
+            reasons,
             decided_by: row.decidedBy,
             ...(row.decidedBy === 'partner_rule' ? { status: 'accepted', reviewed_at: row.foundAt } : {}),
           },
           { onConflict: 'source_id,page_url,starts_at', ignoreDuplicates: true },
         )
         .select('id')
+      let { data, error } = await write(row.reasons)
+      /* UNTIL THE FOUNDER APPLIES 20261105160001 (the gate's four new hold reasons): a database that does not yet allow
+         one refuses the row (listing_candidates_reasons_known). The night still lands for a person, held, with the
+         nearest reason it allows ('midnight_start', a time not to be trusted), never published and never lost. */
+      if (error && /listing_candidates_reasons_known/.test(error.message)) {
+        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span']
+        const allowed = [...new Set(row.reasons.map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
+        ;({ data, error } = await write(allowed))
+      }
       if (error) throw new Error(`a candidate could not be written: ${error.message}`)
       return (data ?? []).length > 0
     },
@@ -186,41 +195,39 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (perr) throw new Error(`the accepted night could not be published: ${perr.message}`)
     },
 
-    async publishHuntNight(row, hunt, venueName, options = {}): Promise<'published' | 'promoted' | void> {
+    async publishHuntNight(row, hunt, venueName): Promise<'published' | 'promoted' | void> {
       /* The candidate as the run landed it: one the hunt's rule accepted and not yet published (idempotent), or one that
-         waited for a person from before the hunt read the page, decided by the rule now (huntDecision, car 44b). A direct
-         publish (no candidate row) is idempotent by the series' own uniqueness instead. */
-      let c: { id: string } | null = null
+         waited for a person from before the hunt read the page, decided by the rule now (huntDecision, car 44b). Every
+         hunt night is published through its candidate row (car 46: one publication gate, no direct publish). */
       let promoted = false
-      if (!options.direct) {
-        const { data, error } = await db
+      const { data, error } = await db
+        .from('listing_candidates')
+        .select('id, status, decided_by, published_series_id')
+        .eq('source_id', row.sourceId)
+        .eq('page_url', row.pageUrl)
+        .eq('starts_at', row.startsAt)
+        .maybeSingle()
+      if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
+      const decision = huntDecision(
+        data ? { status: data.status as string, decided_by: data.decided_by as string, published_series_id: (data.published_series_id as string | null) ?? null } : null,
+        row,
+      )
+      if (!data || decision === 'leave') return
+      if (decision === 'promote') {
+        /* The CONTROLLER's 01:05 of 5 November 2026: 'For review ends for these sources'. Only a row still waiting is
+           moved, so a person's decision taken meanwhile is never overwritten. */
+        const { data: moved, error: moveError } = await db
           .from('listing_candidates')
-          .select('id, status, decided_by, published_series_id')
-          .eq('source_id', row.sourceId)
-          .eq('page_url', row.pageUrl)
-          .eq('starts_at', row.startsAt)
-          .maybeSingle()
-        if (error) throw new Error(`the accepted night could not be read: ${error.message}`)
-        const decision = huntDecision(
-          data ? { status: data.status as string, decided_by: data.decided_by as string, published_series_id: (data.published_series_id as string | null) ?? null } : null,
-          row,
-        )
-        if (!data || decision === 'leave') return
-        if (decision === 'promote') {
-          /* The CONTROLLER's 01:05 of 5 November 2026: 'For review ends for these sources'. Only a row still waiting is
-             moved, so a person's decision taken meanwhile is never overwritten. */
-          const { data: moved, error: moveError } = await db
-            .from('listing_candidates')
-            .update({ status: 'accepted', decided_by: 'partner_rule', confidence: 'high', reasons: [], reviewed_at: row.foundAt })
-            .eq('id', data.id)
-            .eq('status', 'waiting')
-            .select('id')
-          if (moveError) throw new Error(`the waiting night could not be decided by the hunt's rule: ${moveError.message}`)
-          if (!moved || moved.length === 0) return
-          promoted = true
-        }
-        c = { id: data.id as string }
+          /* Today's own judgement, written as judged (huntDecision promotes only a row judged high with no reasons). */
+          .update({ status: 'accepted', decided_by: 'partner_rule', confidence: row.confidence, reasons: row.reasons, reviewed_at: row.foundAt })
+          .eq('id', data.id)
+          .eq('status', 'waiting')
+          .select('id')
+        if (moveError) throw new Error(`the waiting night could not be decided by the hunt's rule: ${moveError.message}`)
+        if (!moved || moved.length === 0) return
+        promoted = true
       }
+      const c = { id: data.id as string }
       if (row.title.trim().length > 80) throw new Error(`'${row.title.slice(0, 40)}...' is longer than a listing's 80 characters: a person names it`)
       const { data: org, error: orgError } = await db.from('organisations').select('id').eq('slug', LISTINGS_ORG_SLUG).maybeSingle()
       if (orgError || !org) throw new Error('the EventLinqs listings organisation could not be read')

@@ -195,7 +195,7 @@ function arenaRule(host: string): PageRule {
       const out: FoundEvent[] = []
       for (const [y, m, d] of days) {
         const startsAt = wallClockToIso(y, m, d, at[0], at[1], 0, ZONE)
-        if (startsAt) out.push({ ...base, startsAt, endsAt: null })
+        if (startsAt) out.push({ ...base, startsAt, endsAt: null, timeStatus: 'exact', timeFromWords: true })
       }
       return out
     },
@@ -281,6 +281,7 @@ export const mcg: PageRule = {
         imageUrl: null,
         description: null,
         links: [{ url: buy ? withoutTracking(buy) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+        timeFromWords: true,
       },
     ]
   },
@@ -327,6 +328,7 @@ function liveNationVenue(host: string, venueName: string): PageRule {
           imageUrl: null,
           description: null,
           links: [{ url: buy ?? pageUrl, availability: 'on_sale', priceFromCents: null }],
+          timeFromWords: true,
         })
       }
       return out
@@ -365,6 +367,7 @@ export const melbourneRecitalCentre: PageRule = {
         imageUrl: null,
         description: null,
         links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+        timeFromWords: true,
       })
     }
     return out
@@ -406,6 +409,7 @@ export const fedSquare: PageRule = {
         imageUrl: null,
         description: null,
         links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: free ? 0 : null }],
+        timeFromWords: true,
       })
     }
     return out

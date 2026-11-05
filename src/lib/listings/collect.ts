@@ -126,6 +126,61 @@ export type FoundEvent = {
   /** The source's own words about the event, as it states them; kept only where the source permits descriptions. */
   description: string | null
   links: FoundLink[]
+  /**
+   * How far the start can be trusted (the engine directive, Phase 4; the independent review's defects 1 to 4): 'exact';
+   * 'offset_mismatch' (the stated UTC offset is not the venue zone's on that date, never shifted); 'date_only' (no time
+   * given, never filled in); 'multi_day' (one Event spanning days with no performance named). Absent means exact.
+   */
+  timeStatus?: 'exact' | 'offset_mismatch' | 'date_only' | 'multi_day'
+  /** The start was read from the page's own visible words (a page rule), not only from a schema (LAW 19 section 4). */
+  timeFromWords?: boolean
+  /** The source marks it postponed or rescheduled (schema.org eventStatus): a person decides. */
+  calledOff?: boolean
+}
+
+/** The zone a found night is read in when its source states no zone: the four guide cities are all in Victoria. */
+export const SOURCE_ZONE = 'Australia/Melbourne'
+
+/** A zone's UTC offset in minutes at an instant (DST aware). Pure. */
+export function zoneOffsetMinutes(instant: number, zone: string): number | null {
+  try {
+    const at: Record<string, number> = {}
+    for (const p of new Intl.DateTimeFormat('en-US', { timeZone: zone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(instant))) {
+      if (p.type !== 'literal') at[p.type] = Number(p.value)
+    }
+    return Math.round((Date.UTC(at.year, at.month - 1, at.day, at.hour % 24, at.minute, at.second) - instant) / 60000)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A schema.org startDate as the engine reads it (the research note's order of trust, rule 4): with no offset, the venue
+ * zone's wall clock; a date alone, that day with no time ('date_only', never a filled in time); with an offset, the instant
+ * as stated, 'exact' only when that offset is the zone's own on that date, else 'offset_mismatch' (never shifted). Pure.
+ */
+export function readStartDate(raw: string, zone: string = SOURCE_ZONE): { startsAt: string; timeStatus: 'exact' | 'offset_mismatch' | 'date_only' } | null {
+  const s = raw.trim()
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (dateOnly) {
+    const at = wallClockToIso(+dateOnly[1], +dateOnly[2], +dateOnly[3], 0, 0, 0, zone)
+    return at ? { startsAt: at, timeStatus: 'date_only' } : null
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/i.exec(s)
+  if (!m) {
+    const t = Date.parse(s)
+    return Number.isNaN(t) ? null : { startsAt: new Date(t).toISOString(), timeStatus: 'exact' }
+  }
+  const [, y, mo, d, h, mi, sec = '0', off] = m
+  if (!off) {
+    const at = wallClockToIso(+y, +mo, +d, +h, +mi, +sec, zone)
+    return at ? { startsAt: at, timeStatus: 'exact' } : null
+  }
+  const t = Date.parse(s)
+  if (Number.isNaN(t)) return null
+  const stated = off.toUpperCase() === 'Z' ? 0 : (off[0] === '-' ? -1 : 1) * (Number(off.slice(1, 3)) * 60 + Number(off.slice(-2)))
+  const own = zoneOffsetMinutes(t, zone)
+  return { startsAt: new Date(t).toISOString(), timeStatus: own !== null && own === stated ? 'exact' : 'offset_mismatch' }
 }
 
 /** Longest description a candidate carries (listing_candidates_description, 20261028140001), cut on a whole character. */
@@ -150,6 +205,16 @@ function nodesOf(value: Json, out: { [k: string]: Json }[] = []): { [k: string]:
     if (value['@graph']) nodesOf(value['@graph'], out)
   }
   return out
+}
+
+/**
+ * Each performance an Event names (schema.org subEvent; the independent review's defect 4): a night of its own, taking
+ * from its parent whatever it does not state itself (its name, place, offers, page). An Event with none is itself. Pure.
+ */
+function performancesOf(node: { [k: string]: Json }): { node: { [k: string]: Json }; isPerformance: boolean }[] {
+  const subs = nodesOf(node['subEvent'] ?? null).filter((s) => s['startDate'] !== undefined)
+  if (subs.length === 0) return [{ node, isPerformance: false }]
+  return subs.map((s) => ({ node: { ...node, subEvent: null, endDate: null, ...s } as { [k: string]: Json }, isPerformance: true }))
 }
 
 function text(v: Json | undefined): string | null {
@@ -197,18 +262,22 @@ export function eventsFromHtml(html: string, pageUrl: string): FoundEvent[] {
     } catch {
       continue
     }
-    for (const node of nodesOf(parsed)) {
-      if (!typesOf(node).some((t) => EVENT_TYPES.has(t))) continue
+    for (const parent of nodesOf(parsed)) {
+      if (!typesOf(parent).some((t) => EVENT_TYPES.has(t))) continue
+      for (const { node, isPerformance } of performancesOf(parent)) {
       const status = (text(node['eventStatus']) ?? '').toLowerCase()
       if (status.includes('cancelled') || status.includes('movedonline')) continue
+      /* Postponed and rescheduled are kept, and held for a person (the independent review's defect 5). */
+      const calledOff = status.includes('postponed') || status.includes('rescheduled')
       const title = text(node['name'])
-      const startsAt = text(node['startDate'])
+      const rawStart = text(node['startDate'])
       const location = Array.isArray(node['location']) ? node['location'][0] : node['location']
       const place = location && typeof location === 'object' && !Array.isArray(location) ? location : null
       /* EventLinqs lists events people go to: the location must be a Place (or say no type), never anything else. */
       if (place && place['@type'] !== undefined && !typesOf(place).some((t) => t === 'place' || t.endsWith('venue') || t === 'localbusiness')) continue
       const venueName = place ? text(place['name']) : null
-      if (!title || !startsAt || Number.isNaN(Date.parse(startsAt)) || !venueName) continue
+      const start = rawStart ? readStartDate(rawStart) : null
+      if (!title || !start || !venueName) continue
       const offers = nodesOf(node['offers'] ?? null)
       const links: FoundLink[] = []
       for (const o of offers) {
@@ -222,18 +291,24 @@ export function eventsFromHtml(html: string, pageUrl: string): FoundEvent[] {
           priceFromCents: Number.isFinite(price) && price >= 0 && (currency === null || currency === 'AUD') ? Math.round(price * 100) : null,
         })
       }
-      const endsAt = text(node['endDate'])
+      const rawEnd = text(node['endDate'])
+      const end = rawEnd ? readStartDate(rawEnd) : null
+      /* One Event spanning more than a day with no performance of its own named is held, never read as its first night. */
+      const spansDays = !isPerformance && end !== null && Date.parse(end.startsAt) - Date.parse(start.startsAt) > DAY_MS
       found.push({
         title,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: endsAt && !Number.isNaN(Date.parse(endsAt)) ? new Date(endsAt).toISOString() : null,
+        startsAt: start.startsAt,
+        endsAt: end && end.timeStatus !== 'date_only' ? end.startsAt : null,
         venueName,
         venueAddress: place ? addressOf(place['address']) : null,
         pageUrl: absolute(text(node['url']), pageUrl) ?? pageUrl,
         imageUrl: absolute(text(node['image']), pageUrl),
         description: descriptionOf(typeof node['description'] === 'string' ? node['description'] : null),
         links,
+        timeStatus: start.timeStatus !== 'exact' ? start.timeStatus : spansDays ? 'multi_day' : 'exact',
+        ...(calledOff ? { calledOff } : {}),
       })
+      }
     }
   }
   return found
@@ -623,13 +698,29 @@ export function planCandidates(
   for (const e of found) {
     const at = new Date(e.startsAt).getTime()
     if (at < now.getTime() || at > limit) continue
-    const same = plans.find((p) => sameEvent(keyOf(p.event), keyOf(e)))
+    /* TWO SESSIONS STAY TWO (car 46; the independent review's defect 6): what ONE source states at two exact starts, on
+       one page or two (a 2 pm and a 4 pm matinee; Geelong Regional Libraries' Baby time at 10:30 and 11:30 on 16 November,
+       events 17255956 and 17245487), is two sessions, never one; only the same exact start, stated twice, is one night. */
+    const time = (iso: string) => new Date(iso).getTime()
+    const same = plans.find((p) => sameEvent(keyOf(p.event), keyOf(e)) && time(p.event.startsAt) === at)
     if (same) {
       for (const l of e.links) if (!same.event.links.some((x) => x.url === l.url)) same.event.links.push(l)
       continue
     }
-    const listed = known.find((k) => sameEvent(k, keyOf(e)))
+    /* A listed night is this session only when its start is this one, or when this source states no session at its start
+       (then the source has moved it: a time change for a person, below). */
+    const listed = known.find(
+      (k) => sameEvent(k, keyOf(e)) && (time(k.startsAt) === at || !found.some((f) => f !== e && time(f.startsAt) === time(k.startsAt) && sameEvent(keyOf(f), k))),
+    )
     const event = { ...e, links: [...e.links] }
+    /* A LISTED NIGHT AT ANOTHER TIME IS A CHANGE, NEVER A CONFIRMATION (car 46; LAW 19 section 4: a time that differs from
+       the last verified value is held). sameEvent's two hour window finds the night; a start a minute or more away from
+       the one held is a time change for a person, never a silent 'adds_links' that confirms the stale time (Geelong
+       Regional Libraries' 'Baby time', 16 November: 10:30 on its page, 11:30 held, confirmed daily from 2 November). */
+    if (listed && Math.abs(new Date(listed.startsAt).getTime() - at) >= 60_000) {
+      plans.push({ kind: 'changes_facts', event, eventId: listed.eventId, change: 'time_changed' })
+      continue
+    }
     if (listed) {
       plans.push({ kind: 'adds_links', event, eventId: listed.eventId })
       continue
