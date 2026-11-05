@@ -205,6 +205,25 @@ describe('the run log and the partner rule', () => {
     expect(runs[0]).toMatchObject({ acceptedByRule: 1, queued: 0, outcome: 'read: 1 event(s) found, 1 new: 1 accepted by the partner rule, 0 for review' })
   })
 
+  /* LAW 19 SECTION 4.2, RULE (5) (6 November 2026): a night a rule would publish is first asked whether its ticket link
+     reaches the seller, robots.txt first. A 404 or 410 from the seller holds it for a person; a link robots bar, or a seller
+     that does not answer, does not, since the button falls back to the source page and the daily link check reads it. */
+  const humanitix = { 'https://events.humanitix.com/robots.txt': { status: 200, body: '' } }
+  it('holds a night a rule would publish when its ticket link answers 404 at the seller', async () => {
+    const { store, landed, published } = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
+    await runCollection(store, sites({ ...open, [club]: trio, ...humanitix, 'https://events.humanitix.com/bp-trio': { status: 404 } }).fetcher, NOW)
+    expect(landed[0]).toMatchObject({ confidence: 'low', reasons: ['link_unreached'], decidedBy: 'person' })
+    expect(published).toEqual([])
+  })
+  it('publishes it when the seller answers, and never holds it for a link robots bar', async () => {
+    const ok = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
+    await runCollection(ok.store, sites({ ...open, [club]: trio, ...humanitix, 'https://events.humanitix.com/bp-trio': { status: 200, body: '<html></html>' } }).fetcher, NOW)
+    expect(ok.published).toHaveLength(1)
+    const barred = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
+    await runCollection(barred.store, sites({ ...open, [club]: trio, 'https://events.humanitix.com/robots.txt': { status: 200, body: 'User-agent: *\nDisallow: /' } }).fetcher, NOW)
+    expect(barred.published).toHaveLength(1)
+  })
+
   it("asks the store to finish a publish on the next run, when the night landed before", async () => {
     const { store, published } = memoryStore([source('club', club, { partner: true, partnerVenue: barwon })])
     await runCollection(store, sites({ ...open, [club]: trio }).fetcher, NOW)

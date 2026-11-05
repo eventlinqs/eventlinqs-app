@@ -172,6 +172,35 @@ async function get(fetcher: Fetcher, url: string): Promise<{ status: number | nu
   }
 }
 
+/**
+ * Whether a ticket link does not reach its seller (LAW 19 section 4.2 (5); 6 November 2026): the seller's robots.txt first
+ * (cached per origin, as every page is read), then one request with the collector's agent. True only for a 404 or 410:
+ * a link robots bars, or a seller that does not answer, is not held, since the button falls back to the source page and
+ * the daily link check (src/lib/events/link-check-run.ts) reads it again.
+ */
+async function linkUnreached(
+  fetcher: Fetcher,
+  url: string,
+  robotsByOrigin: Map<string, { status: number | null; body: string }>,
+  pauseMs: number,
+): Promise<boolean> {
+  let at: URL
+  try {
+    at = new URL(url)
+  } catch {
+    return true
+  }
+  let robots = robotsByOrigin.get(at.origin)
+  if (!robots) {
+    robots = await get(fetcher, `${at.origin}/robots.txt`)
+    robotsByOrigin.set(at.origin, robots)
+  }
+  if (robotsVerdict(robots.status, robots.body, at.pathname + at.search) === 'disallowed') return false
+  if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs))
+  const answer = await get(fetcher, url)
+  return answer.status === 404 || answer.status === 410
+}
+
 /** Links the event already carries are not offered again; a candidate with nothing new is not landed. */
 async function stillNew(store: CollectionStore, plan: CandidatePlan): Promise<CandidatePlan | null> {
   if (plan.kind !== 'adds_links') return plan
@@ -335,7 +364,9 @@ export async function runCollection(
             for (const p of plans) {
               const plan = await stillNew(store, p)
               if (!plan) continue
-              const { confidence, reasons } = judgeCandidate({ plan, sourceVerified: source.verified, known })
+              const judged = judgeCandidate({ plan, sourceVerified: source.verified, known })
+              let confidence = judged.confidence
+              const reasons = [...judged.reasons]
               /* THE HUNT'S RULE (car 44, Lawal's 15:12 of 4 November 2026): a new night a headline venue's own page states
                  at that venue, with high confidence, is listed without a person; anything else waits, as before. */
               /* Car 44b (the CONTROLLER's 01:05 of 5 November 2026): 'For review ends for these sources: a public ticketed
@@ -354,7 +385,14 @@ export async function runCollection(
                  the rule only at high confidence, through its candidate row, the way the database's own check
                  (listing_candidates_decided_by) allows; anything less lands for a person, with its reasons. The direct
                  publish of car 44b, with no candidate row, no audit and no plausibility check, is gone. */
-              const byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && confidence === 'high')
+              let byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && confidence === 'high')
+              /* LAW 19 SECTION 4.2, RULE (5): a night a rule would publish is first asked whether its ticket link reaches the
+                 seller. A 404 or 410 holds it for a person (link_unreached); robots barring the link, or no answer, does not. */
+              if (byRule && plan.kind === 'new' && plan.event.links[0] && (await linkUnreached(fetcher, plan.event.links[0].url, robotsByOrigin, pauseMs))) {
+                reasons.push('link_unreached')
+                confidence = 'low'
+                byRule = false
+              }
               const foundAt = now.toISOString()
               /* The links first, so an accepted row never names links the event does not carry. */
               if (byRule && plan.kind === 'adds_links') await store.addLinks(plan.eventId, plan.event.links, foundAt)
