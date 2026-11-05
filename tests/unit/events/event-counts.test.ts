@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countEvents, eventsPerCityName } from '@/lib/events/event-counts'
+import { countEvents, eventsPerCityName, eventsPerLabel } from '@/lib/events/event-counts'
 
 /*
  * THE CONTROLLER'S 08:50 (2), FROM THE 5 NOVEMBER AUDIT (C:\dev\EVIDENCE\AUDIT-5NOV\counts.txt): the homepage's city tiles
@@ -25,6 +25,13 @@ describe('countEvents: the guide\'s eventKey, a title at a venue', () => {
   })
   it('counts nothing in nothing', () => {
     expect(countEvents([])).toBe(0)
+  })
+})
+
+describe('eventsPerLabel: an organiser page\'s breakdown by type, counted in events', () => {
+  it('counts each event once under its label, however many dates it has', () => {
+    const rows = ROWS.slice(0, 5).map((r, i) => ({ ...r, kind: i < 3 ? 'Family' : i === 3 ? 'Family' : 'Music' }))
+    expect(Object.fromEntries(eventsPerLabel(rows, (r) => r.kind))).toEqual({ Family: 2, Music: 1 })
   })
 })
 

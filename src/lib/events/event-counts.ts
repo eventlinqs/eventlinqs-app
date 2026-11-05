@@ -21,6 +21,20 @@ export function countEvents(rows: readonly Pick<CountRow, 'title' | 'venue_name'
   return new Set(rows.map((r) => listingKey({ title: r.title ?? '', venue: r.venue_name }))).size
 }
 
+/** Each label's events (an organiser page's breakdown by type): every event counted once, under its first row's label. Pure. */
+export function eventsPerLabel<R extends Pick<CountRow, 'title' | 'venue_name'>>(rows: readonly R[], labelOf: (r: R) => string): Map<string, number> {
+  const seen = new Set<string>()
+  const out = new Map<string, number>()
+  for (const r of rows) {
+    const key = listingKey({ title: r.title ?? '', venue: r.venue_name })
+    if (seen.has(key)) continue
+    seen.add(key)
+    const label = labelOf(r)
+    out.set(label, (out.get(label) ?? 0) + 1)
+  }
+  return out
+}
+
 /**
  * Each city name's events, where the row's venue_city contains the name in any case: the same match the city tiles made
  * with venue_city ILIKE '%<name>%', counted in events instead of rows. Pure.
