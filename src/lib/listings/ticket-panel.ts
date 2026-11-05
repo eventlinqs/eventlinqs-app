@@ -1,4 +1,4 @@
-import { PROVIDER_NAMES, alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
+import { PROVIDER_NAMES, alsoOn, buttonOf, fromPrice, priceToShow, type BookingLink } from '@/lib/events/booking-links'
 import { ctaFor, FREE_REGISTRATION_REQUIRED, GET_TICKETS, type Cta } from '@/lib/events/cta'
 import { outboundHost, outboundHref, ticketButtonLabel } from './outbound'
 
@@ -24,11 +24,8 @@ const nameOf = (l: BookingLink) => PROVIDER_NAMES[l.provider] ?? null
 
 const live = (l: BookingLink) => (l.availability === 'on_sale' || l.availability === 'not_yet') && l.kind !== 'sold_out'
 
-/** "From $35.50", the lowest price including fees, as Google asks it to be read. */
-export function fromPrice(cents: number): string {
-  const dollars = cents / 100
-  return `From $${Number.isInteger(dollars) ? dollars.toLocaleString('en-AU') : dollars.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+/* "From $35.50": one formatter for the page and the guide's rows, in src/lib/events/booking-links.ts. */
+export { fromPrice }
 
 export function ticketPanelOf(eventSlug: string, links: readonly BookingLink[], now: Date): TicketPanel {
   const first = buttonOf(links)

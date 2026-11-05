@@ -81,8 +81,9 @@ const link = (over: Partial<BookingLink> = {}): BookingLink => ({
 
 describe('a curated listing says its own price line, never "Free entry" over a paid night', () => {
   test('a price read within the day', () => expect(listingPriceLabel([link()], false, NOW)).toBe('From $35.50'))
-  test('a price older than a day names where it sells', () =>
-    expect(listingPriceLabel([link({ priceCheckedAt: '2026-10-26T06:00:00+11:00' })], false, NOW)).toBe('Tickets on Humanitix'))
+  // The CONTROLLER's 08:50 (6), 5 November 2026: one window of 7 days for a price, page, row and post alike.
+  test('a price older than 7 days names where it sells', () =>
+    expect(listingPriceLabel([link({ priceCheckedAt: '2026-10-21T06:00:00+11:00' })], false, NOW)).toBe('Tickets on Humanitix'))
   test('a free registration says registration is required (E2)', () => expect(listingPriceLabel([link({ kind: 'free_register', priceFromCents: null })], true, NOW)).toBe('Free, registration required'))
   test('a free night with no link', () => expect(listingPriceLabel([], true, NOW)).toBe('Free entry'))
   test('no link and not free says nothing', () => expect(listingPriceLabel([], false, NOW)).toBeNull())

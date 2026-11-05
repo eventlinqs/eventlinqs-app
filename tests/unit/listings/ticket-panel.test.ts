@@ -67,10 +67,12 @@ describe('ticketPanelOf', () => {
     expect(ticketPanelOf('gig', [link({ kind: 'free_register' })], NOW).button?.label).toBe('Register free on Humanitix')
   })
 
-  it('a price, including fees, only when read in the last 24 hours', () => {
+  // The CONTROLLER's 08:50 (6), 5 November 2026: one window of 7 days, so the page and the guide's row agree.
+  it('a price, including fees, only when read in the last 7 days', () => {
     expect(ticketPanelOf('gig', [link({ priceFromCents: 3550, priceCheckedAt: hoursAgo(3) })], NOW).button?.price).toBe('From $35.50')
-    expect(ticketPanelOf('gig', [link({ priceFromCents: 4000, priceCheckedAt: hoursAgo(3) })], NOW).button?.price).toBe('From $40')
-    expect(ticketPanelOf('gig', [link({ priceFromCents: 3550, priceCheckedAt: hoursAgo(25) })], NOW).button?.price).toBeNull()
+    expect(ticketPanelOf('gig', [link({ priceFromCents: 4000, priceCheckedAt: hoursAgo(25) })], NOW).button?.price).toBe('From $40')
+    expect(ticketPanelOf('gig', [link({ priceFromCents: 3550, priceCheckedAt: hoursAgo(167) })], NOW).button?.price).toBe('From $35.50')
+    expect(ticketPanelOf('gig', [link({ priceFromCents: 3550, priceCheckedAt: hoursAgo(169) })], NOW).button?.price).toBeNull()
   })
 
   it("names a venue's own booking page plainly", () => {
