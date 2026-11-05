@@ -10,7 +10,7 @@ import { runEventDisbursements } from '@/lib/payments/event-transfer'
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
 
-function client(attempts: Array<{ status: string; created_at: string }>) {
+function client(attempts: Array<{ status: string; created_at: string }>, ledger: Array<{ id: string }> = []) {
   const rpc = vi.fn(async () => ({ data: { success: false, error: 'nothing_to_disburse' }, error: null }))
   const from = vi.fn((table: string) => {
     const rows =
@@ -18,7 +18,9 @@ function client(attempts: Array<{ status: string; created_at: string }>) {
         ? [{ id: 'ev_1', organisation_id: 'org_1', end_date: hoursAgo(24 * 30), status: 'published', organisations: { stripe_account_id: 'acct_1', stripe_account_country: 'AU', payout_status: 'active' } }]
         : table === 'payouts'
           ? attempts
-          : []
+          : table === 'organiser_balance_ledger'
+            ? ledger
+            : []
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'not', 'lte', 'is', 'order', 'limit', 'in']) b[m] = () => b
     b.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok)
@@ -33,6 +35,16 @@ describe('the cron honours the retry cap', () => {
     const s = await runEventDisbursements(c, {} as never, { balance: { retrieve: vi.fn() } } as never)
     expect(s.skipped).toBe(1)
     expect(s.results[0].error).toMatch(/^held after 2 failed transfers; next attempt /)
+    expect(rpc).not.toHaveBeenCalledWith('disburse_transfer', expect.anything())
+  })
+
+  /* The CONTROLLER's 15:25 (1) of 5 November 2026: a payout the founder settled outside the platform (its ledger entry
+     'paid-outside-the-platform', written 1 November) is never retried, whatever its balance, failures or no failures. */
+  test('settled outside the platform by the founder: skipped, no claim made, ever', async () => {
+    const { client: c, rpc } = client([], [{ id: 'ledger_1' }])
+    const s = await runEventDisbursements(c, {} as never, { balance: { retrieve: vi.fn() } } as never)
+    expect(s.skipped).toBe(1)
+    expect(s.results[0].error).toBe('settled outside the platform by the founder: never retried')
     expect(rpc).not.toHaveBeenCalledWith('disburse_transfer', expect.anything())
   })
 
