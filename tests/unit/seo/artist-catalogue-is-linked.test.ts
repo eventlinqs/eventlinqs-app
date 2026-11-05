@@ -64,6 +64,10 @@ function stubAdmin(fixture: {
       if (table === 'artists') asked.artistIds = values
       return chain
     }
+    // Paged as the reader now pages (readEveryRow's .range(), the sitemap past 1,000 rows, 5 November 2026): the first
+    // page is the fixture, the next is empty, which ends the read.
+    chain.range = (from: number) =>
+      from === 0 ? (chain.limit as () => Promise<unknown>)() : Promise.resolve({ data: fail ? null : [], error: fail })
     chain.limit = () =>
       Promise.resolve({
         data: fail
@@ -178,7 +182,8 @@ describe('readArtistCatalogue', () => {
         error: { table, message: `42703 on ${table}` },
       })
       const read = await readArtistCatalogue(admin)
-      expect(read.error, `a failure reading ${table} must be reported`).toBe(`42703 on ${table}`)
+      // The database's own words, kept inside readEveryRow's 'could not be read in full' (never swallowed).
+      expect(read.error, `a failure reading ${table} must be reported`).toContain(`42703 on ${table}`)
       expect(read.rows).toEqual([])
     }
   })

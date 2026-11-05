@@ -156,7 +156,8 @@ describe('the sitemap the gate reads is itself ordered', () => {
     const paged: { file: string; table: string; body: string }[] = []
     for (const [file, src] of sources) {
       for (const c of src.matchAll(/\.from\('(\w+)'\)([\s\S]{0,900}?)(?=\n\s*(?:if|for|\}|const)\s)/g)) {
-        if (/\.limit\(/.test(c[2])) paged.push({ file, table: c[1], body: c[2] })
+        // Paged by .limit() or, since 5 November 2026, by readEveryRow's .range() (the sitemap past the 1,000 row ceiling).
+        if (/\.(limit|range)\(/.test(c[2])) paged.push({ file, table: c[1], body: c[2] })
       }
     }
     expect(
