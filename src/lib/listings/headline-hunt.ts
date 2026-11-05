@@ -38,9 +38,31 @@ export const HUNT_SOURCES: readonly HuntSource[] = [
   { host: 'adayonthegreen.com.au', citySlug: 'geelong', venues: ['Mt Duneed Estate'], usualCategory: 'music' },
   // Car 44b: Geelong Arts Centre, its event sitemap (page-rules.ts), the venue from each show's own Venue block.
   { host: 'geelongartscentre.org.au', citySlug: 'geelong', venues: ['Costa Hall', 'The Play House', 'The Story House', 'Geelong Arts Centre'], usualCategory: 'theatre' },
+  // Car 44b, the rest of the 01:05 list that reads cleanly (page-rules-melbourne.ts).
+  { host: 'mcg.org.au', citySlug: 'melbourne', venues: ['Melbourne Cricket Ground'], usualCategory: 'sports' },
+  { host: 'palaistheatre.com.au', citySlug: 'melbourne', venues: ['Palais Theatre'], usualCategory: 'music' },
+  { host: 'festivalhall.com.au', citySlug: 'melbourne', venues: ['Festival Hall'], usualCategory: 'music' },
+  { host: 'melbournerecital.com.au', citySlug: 'melbourne', venues: ['Melbourne Recital Centre'], usualCategory: 'music' },
+  { host: 'fedsquare.com', citySlug: 'melbourne', venues: ['Federation Square'], usualCategory: 'community' },
   // Ballarat: Her Majesty's and the Civic Hall on one page (page-rules-ballarat.ts).
   { host: 'hermaj.com', citySlug: 'ballarat', venues: ["Her Majesty's Theatre Ballarat", 'Civic Hall Ballarat'], usualCategory: 'theatre' },
 ]
+
+/** Pages a hunt run reads per site (car 44b): every site on the list fits its two daily runs; the daily collection run
+ * still reads each site up to PAGE_READ_CAP. */
+export const HUNT_PAGE_CAP = 40
+
+/**
+ * THE HUNT'S ORDER (car 44b): every hunt source is due at each hunt run, the one read longest ago first, so a source a
+ * run's time ran out before is read first by the next instead of never (the run reads its sources one after another).
+ */
+export function huntOrder<S extends { hunt?: HuntSource | null; lastCheckedAt: string | null }>(sources: readonly S[]): S[] {
+  const at = (s: S) => (s.lastCheckedAt === null ? -Infinity : new Date(s.lastCheckedAt).getTime())
+  return sources
+    .filter((s) => s.hunt)
+    .sort((a, b) => at(a) - at(b))
+    .map((s) => ({ ...s, lastCheckedAt: null }))
+}
 
 /** The hunt entry a registered page belongs to, by its host; null for every other source. */
 export function huntFor(pageUrl: string): HuntSource | null {

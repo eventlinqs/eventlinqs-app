@@ -33,6 +33,12 @@ export const HUNT_REGISTER = [
   // it on Lawal's ruling of 4 November 15:12, which is that confirmation: its row is moved to 'read' with today's robots
   // quote; its name, city and page are left as they are.
   { name: 'Geelong Arts Centre', city_slug: 'geelong', page_url: 'https://geelongartscentre.org.au/sitemaps-1-section-event-1-sitemap.xml', upgrade: true },
+  // The rest of the 01:05 list that reads cleanly (the CONTROLLER's 11:45 of 5 November 2026; page-rules-melbourne.ts).
+  { name: 'Melbourne Cricket Ground (MCG)', city_slug: 'melbourne', page_url: 'https://www.mcg.org.au/sitemap.xml' },
+  { name: 'Palais Theatre (Live Nation)', city_slug: 'melbourne', page_url: 'https://www.palaistheatre.com.au/' },
+  { name: 'Festival Hall (Live Nation)', city_slug: 'melbourne', page_url: 'https://www.festivalhall.com.au/' },
+  { name: 'Melbourne Recital Centre', city_slug: 'melbourne', page_url: 'https://www.melbournerecital.com.au/sitemap.xml' },
+  { name: 'Federation Square', city_slug: 'melbourne', page_url: 'https://fedsquare.com/sitemap.xml' },
 ]
 
 /** What an 'ask' row named above takes from today's read: what lets it be read and when; never its name, city or page. */

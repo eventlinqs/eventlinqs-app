@@ -25,6 +25,8 @@ export type PageRule = {
   readonly eventPath: RegExp
   /** The facts on one event page: one FoundEvent per performance; nothing when the page is archived or unreadable. */
   read(html: string, pageUrl: string): FoundEvent[]
+  /** A sitemap with no lastmod that lists its NEWEST pages first (fedsquare.com, 5 November 2026), read in its own order. */
+  readonly newestFirst?: boolean
 }
 
 const ENTITIES: Readonly<Record<string, string>> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' }
@@ -174,6 +176,7 @@ export function eventPagesFromSitemap(xml: string, rule: PageRule): string[] {
     const at = lastmod ? Date.parse(lastmod[1]) : NaN
     found.push({ loc, at: Number.isNaN(at) ? null : at })
   }
+  if (rule.newestFirst && !found.every((f) => f.at !== null)) return found.map((f) => f.loc)
   const newestLast = [...found].reverse()
   if (found.length > 0 && found.every((f) => f.at !== null)) {
     return newestLast.sort((a, b) => (b.at as number) - (a.at as number)).map((f) => f.loc)

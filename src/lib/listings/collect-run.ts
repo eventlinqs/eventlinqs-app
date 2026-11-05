@@ -203,9 +203,12 @@ export async function runCollection(
   fetcher: Fetcher,
   now: Date,
   deadline = Infinity,
-  options: { pauseMs?: number } = {},
+  options: { pauseMs?: number; pageCap?: number } = {},
 ): Promise<CollectionResult> {
   const pauseMs = options.pauseMs ?? PAGE_PAUSE_MS
+  /* The big event hunt reads fewer pages per site (HUNT_PAGE_CAP) so every site on its list fits its runs; the daily
+     collection run still reads each up to PAGE_READ_CAP. */
+  const pageCap = options.pageCap ?? PAGE_READ_CAP
   /* This week first: a source holding nights in the next seven days falls due again 6 hours after its last read (the
      run itself every 6 hours, CONTROLLER 01:04). A failed read of that set never stops the run; every source then keeps
      the daily floor. */
@@ -282,7 +285,7 @@ export async function runCollection(
             if (rule && (isSitemap(res.body) || listPage)) {
               raw = []
               const pages = listPage ? eventPagesFromListPage(res.body, source.pageUrl, rule) : eventPagesFromSitemap(res.body, rule)
-              for (const url of pages.slice(0, PAGE_READ_CAP)) {
+              for (const url of pages.slice(0, pageCap)) {
                 if (Date.now() >= deadline) break
                 const at = new URL(url)
                 let siteRobots = robotsByOrigin.get(at.origin)
