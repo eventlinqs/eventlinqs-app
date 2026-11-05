@@ -1,7 +1,7 @@
 import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from '@/lib/events/booking-links'
 import { HORIZON_DAYS } from './horizon'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
-import { factChange } from './judge'
+import { factChange, movedToAnotherDay } from './judge'
 import type { HuntSource } from './headline-hunt'
 
 /**
@@ -440,16 +440,208 @@ export function wallClockToIso(y: number, mo: number, d: number, h: number, mi: 
 }
 
 /**
+ * Windows time zone names, as a calendar exported from Outlook or Exchange writes them in a TZID, mapped to IANA zones by
+ * CLDR's windowsZones.xml, territory 001 (https://github.com/unicode-org/cldr/blob/main/common/supplemental/windowsZones.xml,
+ * read 6 November 2026), for Australia and its nearest neighbours. Intl reads none of these names: before this table a
+ * Windows TZID made wallClockToIso answer null and the event was dropped in silence (the independent review's risk 10).
+ */
+export const WINDOWS_ZONES: Readonly<Record<string, string>> = {
+  'AUS Eastern Standard Time': 'Australia/Sydney',
+  'E. Australia Standard Time': 'Australia/Brisbane',
+  'Cen. Australia Standard Time': 'Australia/Adelaide',
+  'AUS Central Standard Time': 'Australia/Darwin',
+  'W. Australia Standard Time': 'Australia/Perth',
+  'Tasmania Standard Time': 'Australia/Hobart',
+  'Lord Howe Standard Time': 'Australia/Lord_Howe',
+  'Aus Central W. Standard Time': 'Australia/Eucla',
+  'New Zealand Standard Time': 'Pacific/Auckland',
+  UTC: 'Etc/UTC',
+}
+
+function readableZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-AU', { timeZone: zone })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The IANA zone a TZID names: as written, a Windows name by CLDR, or a path ending in a zone
+ * ('/mozilla.org/20050126_1/Australia/Melbourne'); the feed's zone when there is no TZID; null when nothing resolves it,
+ * and the event is then read in the feed's zone and HELD (offset_mismatch), never dropped.
+ */
+export function icsZone(tzid: string | undefined): string | null {
+  if (tzid === undefined || tzid.trim() === '') return FEED_ZONE
+  const t = tzid.trim()
+  if (WINDOWS_ZONES[t]) return WINDOWS_ZONES[t]
+  if (readableZone(t)) return t
+  const tail = /([A-Za-z]+(?:\/[A-Za-z_+-]+)+)$/.exec(t)?.[1]
+  return tail && readableZone(tail) ? tail : null
+}
+
+/** One RFC 5545 date or date-time as it is written (3.3.4, 3.3.5), with the zone it is read in. */
+type IcsTime = { y: number; mo: number; d: number; h: number; mi: number; s: number; utc: boolean; dateOnly: boolean; zone: string | null }
+
+function icsTime(prop: IcsProp | undefined): IcsTime | null {
+  if (!prop) return null
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(prop.value.trim())
+  if (!m) return null
+  const [, y, mo, d, h, mi, s, z] = m
+  return { y: +y, mo: +mo, d: +d, h: +(h ?? 0), mi: +(mi ?? 0), s: +(s ?? 0), utc: Boolean(z), dateOnly: h === undefined, zone: z ? 'Etc/UTC' : icsZone(prop.params['TZID']) }
+}
+
+/** An IcsTime's instant: UTC as written, else the wall clock in its zone (the feed's when its TZID resolves to none). */
+function isoOf(t: IcsTime, y = t.y, mo = t.mo, d = t.d): string | null {
+  if (t.utc) return new Date(Date.UTC(y, mo - 1, d, t.h, t.mi, t.s)).toISOString()
+  return wallClockToIso(y, mo, d, t.h, t.mi, t.s, t.zone ?? FEED_ZONE)
+}
+
+/**
  * RFC 5545 3.3.5's three forms (FORM #2 "DATE WITH UTC TIME" ends in Z; FORM #3 names a TZID; FORM #1 is floating) and
  * 3.3.4's DATE, an all-day event, read as the start of that day in the feed's zone.
  */
 function icsInstant(prop: IcsProp | undefined): string | null {
-  if (!prop) return null
-  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(prop.value.trim())
-  if (!m) return null
-  const [, y, mo, d, h = '00', mi = '00', s = '00', z] = m
-  if (z) return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString()
-  return wallClockToIso(+y, +mo, +d, +h, +mi, +s, prop.params['TZID'] || FEED_ZONE)
+  const t = icsTime(prop)
+  return t ? isoOf(t) : null
+}
+
+/** An RRULE this reader expands (RFC 5545 3.3.10): DAILY, WEEKLY with BYDAY, MONTHLY with BYMONTHDAY or BYDAY. */
+type IcsRule = { freq: 'DAILY' | 'WEEKLY' | 'MONTHLY'; interval: number; count: number | null; until: IcsTime | null; byDay: { n: number | null; wd: number }[]; byMonthDay: number[] }
+const WEEKDAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+const RULE_PARTS = new Set(['FREQ', 'INTERVAL', 'COUNT', 'UNTIL', 'BYDAY', 'BYMONTHDAY', 'WKST'])
+
+/** The rule, or null for one with a part this reader does not expand: that event is read at its first date only. */
+function rruleOf(value: string, zone: string | null): IcsRule | null {
+  const parts = new Map(value.split(';').filter(Boolean).map((p): [string, string] => [p.split('=')[0].trim().toUpperCase(), (p.split('=')[1] ?? '').trim()]))
+  const freq = parts.get('FREQ')
+  if (freq !== 'DAILY' && freq !== 'WEEKLY' && freq !== 'MONTHLY') return null
+  if ([...parts.keys()].some((k) => !RULE_PARTS.has(k))) return null
+  if ((parts.get('WKST') ?? 'MO').toUpperCase() !== 'MO') return null
+  const interval = Number(parts.get('INTERVAL') ?? 1)
+  if (!Number.isInteger(interval) || interval < 1) return null
+  const count = parts.has('COUNT') ? Number(parts.get('COUNT')) : null
+  if (count !== null && !(Number.isInteger(count) && count > 0)) return null
+  let until: IcsTime | null = null
+  if (parts.has('UNTIL')) {
+    until = icsTime({ value: parts.get('UNTIL') ?? '', params: {} })
+    if (!until) return null
+    // A local UNTIL is read in the zone of its DTSTART; 'bounds the recurrence rule in an inclusive manner' (3.3.10).
+    if (!until.utc) until = { ...until, zone, ...(until.dateOnly ? { h: 23, mi: 59, s: 59 } : {}) }
+  }
+  const byDay: IcsRule['byDay'] = []
+  for (const tok of (parts.get('BYDAY') ?? '').split(',').filter(Boolean)) {
+    const m = /^([+-]?\d{1,2})?(SU|MO|TU|WE|TH|FR|SA)$/.exec(tok.toUpperCase())
+    if (!m) return null
+    const n = m[1] ? Number(m[1]) : null
+    if (n !== null && (freq !== 'MONTHLY' || n === 0 || Math.abs(n) > 5)) return null
+    byDay.push({ n, wd: WEEKDAYS.indexOf(m[2]) })
+  }
+  const byMonthDay = (parts.get('BYMONTHDAY') ?? '').split(',').filter(Boolean).map(Number)
+  if (byMonthDay.some((n) => !Number.isInteger(n) || n === 0 || Math.abs(n) > 31)) return null
+  if (byMonthDay.length && (freq !== 'MONTHLY' || byDay.length)) return null
+  if (freq === 'DAILY' && byDay.length) return null
+  return { freq, interval, count, until, byDay, byMonthDay }
+}
+
+const ICS_DAY_MS = 86_400_000
+
+/** The local calendar dates of a recurrence set in order, DTSTART's first ('defines the first instance', 3.8.5.3), bounded. */
+function* recurrenceDates(start: IcsTime, rule: IcsRule): Generator<{ y: number; mo: number; d: number }> {
+  const at = (t: number) => {
+    const dt = new Date(t)
+    return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() }
+  }
+  const s0 = Date.UTC(start.y, start.mo - 1, start.d)
+  yield at(s0)
+  if (rule.freq === 'DAILY') {
+    for (let k = 1; k <= 3660; k++) yield at(s0 + k * rule.interval * ICS_DAY_MS)
+    return
+  }
+  if (rule.freq === 'WEEKLY') {
+    const days = rule.byDay.length ? rule.byDay.map((b) => b.wd) : [new Date(s0).getUTCDay()]
+    const monday = s0 - ((new Date(s0).getUTCDay() + 6) % 7) * ICS_DAY_MS
+    for (let k = 0; k <= 530; k += rule.interval) {
+      const week = [...new Set(days)].map((wd) => monday + k * 7 * ICS_DAY_MS + ((wd + 6) % 7) * ICS_DAY_MS).sort((a, b) => a - b)
+      for (const t of week) if (t > s0) yield at(t)
+    }
+    return
+  }
+  for (let k = 0; k <= 240; k += rule.interval) {
+    const y = start.y + Math.floor((start.mo - 1 + k) / 12)
+    const mo = ((start.mo - 1 + k) % 12) + 1
+    const len = new Date(Date.UTC(y, mo, 0)).getUTCDate()
+    const ds: number[] = []
+    if (rule.byMonthDay.length) {
+      for (const n of rule.byMonthDay) ds.push(n > 0 ? n : len + 1 + n)
+    } else if (rule.byDay.length) {
+      for (const b of rule.byDay) {
+        const all: number[] = []
+        for (let d = 1; d <= len; d++) if (new Date(Date.UTC(y, mo - 1, d)).getUTCDay() === b.wd) all.push(d)
+        // '+1MO ... represents the first Monday within the month, whereas -1MO represents the last Monday' (3.3.10).
+        if (b.n === null) ds.push(...all)
+        else {
+          const pick = b.n > 0 ? all[b.n - 1] : all[all.length + b.n]
+          if (pick !== undefined) ds.push(pick)
+        }
+      }
+    } else ds.push(start.d)
+    for (const d of [...new Set(ds)].filter((d) => d >= 1 && d <= len).sort((a, b) => a - b)) {
+      const t = Date.UTC(y, mo - 1, d)
+      if (t > s0) yield at(t)
+    }
+  }
+}
+
+/** The most instances one rule lands in a run; the horizon ends a weekly rule long before it. */
+const MAX_INSTANCES = 200
+
+/**
+ * Every instance of one VEVENT within the collection horizon: its DTSTART alone when it has no RRULE (or one this reader
+ * does not expand), else each instance from now to the horizon, less every EXDATE ('excluding any start DATE-TIME values
+ * specified by "EXDATE"', 3.8.5.1) and every instance an override replaces (RECURRENCE-ID, 3.8.4.4). Each instance keeps
+ * the DTSTART's wall clock in its own zone, so a weekly 7 pm stays 7 pm across a daylight saving change.
+ */
+function instancesOf(e: Map<string, IcsProp>, exdates: IcsProp[], replaced: Set<number>, now: Date): { startsAt: string; endsAt: string | null }[] {
+  const start = icsTime(e.get('DTSTART'))
+  if (!start) return []
+  const first = isoOf(start)
+  if (!first) return []
+  const end = icsInstant(e.get('DTEND'))
+  const span = end ? Date.parse(end) - Date.parse(first) : null
+  const rule = e.get('RRULE') ? rruleOf(e.get('RRULE')!.value, start.zone) : null
+  if (!rule) return replaced.has(Date.parse(first)) ? [] : [{ startsAt: first, endsAt: end }]
+  const out: { startsAt: string; endsAt: string | null }[] = []
+  const excluded = new Set<number>()
+  const excludedDays = new Set<string>()
+  for (const x of exdates) {
+    for (const v of x.value.split(',')) {
+      const t = icsTime({ value: v, params: x.params })
+      if (!t) continue
+      if (t.dateOnly) excludedDays.add(`${t.y}-${t.mo}-${t.d}`)
+      else {
+        const iso = isoOf(t.utc || x.params['TZID'] ? t : { ...t, zone: start.zone })
+        if (iso) excluded.add(Date.parse(iso))
+      }
+    }
+  }
+  const until = rule.until ? Date.parse(isoOf(rule.until) ?? '') : Infinity
+  const horizon = now.getTime() + HORIZON_DAYS.relationships * ICS_DAY_MS
+  let n = 0
+  for (const day of recurrenceDates(start, rule)) {
+    const iso = isoOf(start, day.y, day.mo, day.d)
+    if (!iso) break
+    const t = Date.parse(iso)
+    if (t > until || t > horizon) break
+    n += 1
+    if (rule.count !== null && n > rule.count) break
+    if (excluded.has(t) || excludedDays.has(`${day.y}-${day.mo}-${day.d}`) || replaced.has(t)) continue
+    if (t < now.getTime() - ICS_DAY_MS) continue
+    out.push({ startsAt: iso, endsAt: span !== null ? new Date(t + span).toISOString() : null })
+    if (out.length >= MAX_INSTANCES) break
+  }
+  return out
 }
 
 /**
@@ -466,48 +658,71 @@ export function venueOfLocation(location: string): string {
  * Every event a calendar feed publishes (RFC 5545 VEVENTs), read as the feed states it; anything it does not state stays
  * empty. A cancelled event is not taken, and neither is one with no LOCATION, since EventLinqs lists events people go
  * to. The LOCATION's venue is venueOfLocation's and the whole line, where it has a comma, its address. A repeating event
- * (RRULE) is read at its first date only; the next run reads the feed again.
+ * is each of its instances within the collection horizon, less its EXDATEs and the instances its overrides replace; an
+ * override (RECURRENCE-ID) is its own night, or no night when it is cancelled. A TZID nothing resolves is read in the
+ * feed's zone and held for a person (offset_mismatch).
  */
-export function eventsFromIcs(ics: string, pageUrl: string): FoundEvent[] {
-  const found: FoundEvent[] = []
-  let event: Map<string, IcsProp> | null = null
+export function eventsFromIcs(ics: string, pageUrl: string, now: Date = new Date()): FoundEvent[] {
+  /* Two passes: every VEVENT first, so an override anywhere in the feed replaces its instance of the master. */
+  const vevents: { props: Map<string, IcsProp>; exdates: IcsProp[] }[] = []
+  let event: { props: Map<string, IcsProp>; exdates: IcsProp[] } | null = null
   for (const line of unfold(ics)) {
     const upper = line.trim().toUpperCase()
     if (upper === 'BEGIN:VEVENT') {
-      event = new Map()
+      event = { props: new Map(), exdates: [] }
       continue
     }
     if (upper === 'END:VEVENT') {
-      const e = event
+      if (event) vevents.push(event)
       event = null
-      if (!e) continue
-      if ((e.get('STATUS')?.value ?? '').trim().toUpperCase() === 'CANCELLED') continue
-      const title = e.get('SUMMARY') ? unescapeText(e.get('SUMMARY')!.value) : ''
-      const startsAt = icsInstant(e.get('DTSTART'))
-      const location = e.get('LOCATION') ? unescapeText(e.get('LOCATION')!.value).replace(/\s*\n\s*/g, ', ') : ''
-      const venueName = venueOfLocation(location)
-      if (!title || !startsAt || !venueName) continue
-      const uid = e.get('UID')?.value.trim()
-      const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : ownPageOf(pageUrl, uid)
-      /* No address of its own: the feed's, told apart by the event's UID, so two events at one instant stay two. */
-      const fallback = uid ? `${pageUrl.split('#')[0]}#${encodeURIComponent(uid)}` : pageUrl
-      const image = e.get('ATTACH') && /^image\//i.test(e.get('ATTACH')!.params['FMTTYPE'] ?? '') ? absolute(e.get('ATTACH')!.value.trim(), pageUrl) : null
+      continue
+    }
+    if (!event) continue
+    const p = propOf(line)
+    if (!p) continue
+    if (p.name === 'EXDATE') event.exdates.push(p.prop)
+    else if (!event.props.has(p.name)) event.props.set(p.name, p.prop)
+  }
+  const replacedOf = new Map<string, Set<number>>()
+  for (const v of vevents) {
+    const uid = v.props.get('UID')?.value.trim()
+    const rid = icsInstant(v.props.get('RECURRENCE-ID'))
+    if (!uid || !rid) continue
+    const set = replacedOf.get(uid) ?? new Set<number>()
+    set.add(Date.parse(rid))
+    replacedOf.set(uid, set)
+  }
+  const found: FoundEvent[] = []
+  for (const { props: e, exdates } of vevents) {
+    if ((e.get('STATUS')?.value ?? '').trim().toUpperCase() === 'CANCELLED') continue
+    const title = e.get('SUMMARY') ? unescapeText(e.get('SUMMARY')!.value) : ''
+    const location = e.get('LOCATION') ? unescapeText(e.get('LOCATION')!.value).replace(/\s*\n\s*/g, ', ') : ''
+    const venueName = venueOfLocation(location)
+    if (!title || !venueName) continue
+    const uid = e.get('UID')?.value.trim()
+    const override = e.has('RECURRENCE-ID')
+    const instances = instancesOf(e, exdates, !override && uid ? (replacedOf.get(uid) ?? new Set()) : new Set(), now)
+    if (instances.length === 0) continue
+    const own = e.get('URL') ? absolute(e.get('URL')!.value.trim(), pageUrl) : ownPageOf(pageUrl, uid)
+    /* No address of its own: the feed's, told apart by the event's UID, so two events at one instant stay two. */
+    const fallback = uid ? `${pageUrl.split('#')[0]}#${encodeURIComponent(uid)}` : pageUrl
+    const image = e.get('ATTACH') && /^image\//i.test(e.get('ATTACH')!.params['FMTTYPE'] ?? '') ? absolute(e.get('ATTACH')!.value.trim(), pageUrl) : null
+    const start = icsTime(e.get('DTSTART'))
+    const unresolved = start !== null && !start.utc && start.zone === null
+    for (const { startsAt, endsAt } of instances) {
       found.push({
         title: title.slice(0, 200),
         startsAt,
-        endsAt: icsInstant(e.get('DTEND')),
+        endsAt,
         venueName,
         venueAddress: location.includes(',') ? location : null,
         pageUrl: own ?? fallback,
         imageUrl: image,
         description: descriptionOf(e.get('DESCRIPTION') ? unescapeText(e.get('DESCRIPTION')!.value) : null),
         links: [],
+        ...(unresolved ? { timeStatus: 'offset_mismatch' as const } : {}),
       })
-      continue
     }
-    if (!event) continue
-    const p = propOf(line)
-    if (p && !event.has(p.name)) event.set(p.name, p.prop)
   }
   return found
 }
@@ -726,7 +941,14 @@ export function planCandidates(
       continue
     }
     const moved = factChange(e, known, citySlug)
-    plans.push(moved ? { kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change } : { kind: 'new', event })
+    if (moved) {
+      plans.push({ kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change })
+      continue
+    }
+    /* A one-off night the source moved to another day is a time change for a person, never a second night beside the
+       first (LAW 19 section 4.2 (4), its date half; tests/unit/listings/law19-publication-gate.test.ts). */
+    const movedDay = movedToAnotherDay(e, found, known, now, citySlug)
+    plans.push(movedDay ? { kind: 'changes_facts', event, eventId: movedDay, change: 'time_changed' } : { kind: 'new', event })
   }
   return plans
 }

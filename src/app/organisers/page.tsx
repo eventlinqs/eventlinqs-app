@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { OrganisersLandingPage } from '@/components/templates/OrganisersLandingPage'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { createPublicClient } from '@/lib/supabase/public-client'
 
 // ISR: re-read the live platform fee from pricing_rules at most once a minute so
 // the organisers fee display tracks the admin-set value (static-constant
@@ -28,6 +30,12 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/opengraph-image'] },
 }
 
-export default function OrganisersPage() {
-  return <OrganisersLandingPage />
+export default async function OrganisersPage() {
+  // What the page promises about reach follows the two broadcast flags, read as an edge-cached page reads a flag (the
+  // public client, cachedPage), the same read the organiser profile makes (the CONTROLLER's 02:20 of 6 November 2026).
+  const [followOn, digestOn] = await Promise.all([
+    isFeatureEnabled('broadcast_follow', { client: createPublicClient(), cachedPage: true }),
+    isFeatureEnabled('broadcast_digest', { client: createPublicClient(), cachedPage: true }),
+  ])
+  return <OrganisersLandingPage broadcastsOn={followOn && digestOn} />
 }

@@ -84,7 +84,7 @@ export const CATEGORY_EDITORIAL: readonly CategoryEditorial[] = [
       'Gigs, tours, album launches and club nights across Australia, with the total price shown up front and alerts for the rooms you keep going back to.',
     storyHeadline: 'What a music listing is worth here',
     storyParagraphs: [
-      'A gig sells on two things: the people who already follow the act, and the people who were free that night and never heard about it. Most platforms only reach the first group. The discovery feed, the follow graph and the push alerts on EventLinqs are built for the second, which is where the last part of a room usually comes from.',
+      'A gig sells on two things: the people who already follow the act, and the people who were free that night and never heard about it. Most platforms only reach the first group. A place in the city’s guide and on every page an event belongs to is built for the second, which is where the last part of a room usually comes from.',
       'Every listing carries the all-in price at the first click, the door times, the age policy and the venue on a map. Nothing is sprung at the payment step, so a buyer who has decided at the top of the page is still buying at the bottom of it.',
     ],
     personas: [
@@ -128,7 +128,7 @@ export const CATEGORY_EDITORIAL: readonly CategoryEditorial[] = [
       'Independent theatre, dance, galleries and readings across Australia. Season passes, concession pricing and seat maps, with the total price shown first.',
     storyHeadline: 'A short season has no time to be invisible',
     storyParagraphs: [
-      'An independent season opens on a Wednesday and closes eleven days later. By the time word of mouth arrives the run is half over, which is why a company spends on press it cannot afford. A listing that enters search the day it is published, and a push alert to people who booked something similar last season, is the cheaper half of the same job.',
+      'An independent season opens on a Wednesday and closes eleven days later. By the time word of mouth arrives the run is half over, which is why a company spends on press it cannot afford. A listing that enters search and its city’s guide the day it is published is the cheaper half of the same job.',
       'Concession, preview and pay-what-you-can pricing are ordinary ticket tiers here rather than an awkward workaround, and a seat map is set once and reused for the whole season.',
     ],
     personas: [
@@ -549,7 +549,7 @@ export const CATEGORY_EDITORIAL: readonly CategoryEditorial[] = [
     storyHeadline: 'Sixty years of committee minutes, on a phone',
     storyParagraphs: [
       'A community club running an annual festa has decades of practice and a ticketing process built out of a raffle book. Table bookings, member pricing and a printed door list are the three things it actually needs, and all three come out of the same event page.',
-      'These events also draw a second and third generation who find things on a phone rather than in a newsletter, which is what a search-visible listing and a discovery feed are for.',
+      'These events also draw a second and third generation who find things on a phone rather than in a newsletter, which is what a search-visible listing and a city guide are for.',
     ],
     personas: [
       'Community clubs and social committees',

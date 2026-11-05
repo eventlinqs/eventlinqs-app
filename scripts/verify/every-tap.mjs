@@ -187,7 +187,11 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
         const y0 = await p.evaluate(() => scrollY)
         const s0 = await signature(p)
         const url0 = p.url()
-        const popup = p.context().waitForEvent('page', { timeout: 1500 }).catch(() => null)
+        /* A link that opens a new tab gets up to 5 s for it: Playwright reports the tab only once its first navigation answers
+           (our /out 302, then the seller's own site), and car 47's live run of 6 November read Boyz II Men's ticket button
+           at 390 as a dead tap while a single tap opened the seller in 1487 ms against the old 1500 ms. The 300 ms bound for
+           a change on the page itself is unchanged. */
+        const popup = p.context().waitForEvent('page', { timeout: t.target === '_blank' ? 5000 : 1500 }).catch(() => null)
         const download = p.waitForEvent('download', { timeout: 1500 }).catch(() => null)
         const t0 = Date.now()
         await el.tap({ timeout: 3000 })
