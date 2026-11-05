@@ -70,11 +70,15 @@ const sample: Row[] = []
 for (const city of ['melbourne', 'geelong', 'ballarat', 'bendigo']) {
   const { data } = await db.from('events').select(cols).eq('status', 'published').eq('city_primary', city).gt('start_date', nowIso).not('listing_series_id', 'is', null).order('start_date').limit(200)
   const rows = (data ?? []) as Row[]
-  // A spread across each city's coming nights, not the first few: every k-th night.
+  // A spread across each city's coming nights, not the first few: every k-th night, and four times as many as are
+  // judged, so the fresh sample reaches its count of JUDGED nights past any unverifiable ones (the CONTROLLER's 16:20).
   const want = Math.ceil(SAMPLE / 4)
-  const step = Math.max(1, Math.floor(rows.length / want))
-  for (let i = 0; i < rows.length && sample.filter((s) => s.city_primary === city).length < want; i += step) sample.push(rows[i])
+  const step = Math.max(1, Math.floor(rows.length / (want * 4)))
+  for (let i = 0; i < rows.length && sample.filter((s) => s.city_primary === city).length < want * 4; i += step) sample.push(rows[i])
 }
+const WANT_PER_CITY = Math.ceil(SAMPLE / 4)
+const criticalIds = new Set(((critical ?? []) as Row[]).map((c) => c.id))
+const judgedIn = new Map<string, number>()
 const nights = [...((critical ?? []) as Row[]), ...sample.filter((s) => !(critical ?? []).some((c) => (c as Row).id === s.id))]
 
 /* Each night's source page: the page its listing check names (the series' own record). */
@@ -112,10 +116,53 @@ const localClock = (iso: string, zone: string) =>
 const timeOnly = (iso: string, zone: string) =>
   new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(/\u202f/g, ' ').toLowerCase()
 
-type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED'; why: string; sourceUrl: string }
+/**
+ * THE PAGE'S OWN WORDS (the CONTROLLER's 16:20: a night the readers cannot parse is judged, not left unjudged). Whether a
+ * page's visible text names the night's local date ('Thursday 26 November', '26 Nov', 'November 26', '26/11') and, within
+ * 300 characters of it, its local time ('7:00pm', '7pm', '7:00 pm', '19:00'). 'both', 'date' or null. Pure.
+ */
+function statedInWords(html: string, iso: string, zone: string): 'both' | 'date' | null {
+  const text = html
+    .replace(/<(script|style|noscript|svg|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;| | /g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\s+(am|pm)\b/g, '$1')
+  const part = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, ...o }).format(new Date(iso)).toLowerCase()
+  const d = part({ day: 'numeric' })
+  const dd = d.padStart(2, '0')
+  const m = part({ month: 'numeric' })
+  const mm = m.padStart(2, '0')
+  const monthLong = part({ month: 'long' })
+  const monthShort = monthLong.slice(0, 3)
+  const dateForms = [`${d} ${monthLong}`, `${d} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`]
+  const h24 = part({ hour: '2-digit', hourCycle: 'h23' }).padStart(2, '0')
+  const min = part({ minute: '2-digit' }).padStart(2, '0')
+  const h12 = Number(part({ hour: 'numeric', hour12: true }).replace(/\D/g, ''))
+  const ampm = Number(h24) < 12 ? 'am' : 'pm'
+  const timeForms = [`${h12}:${min}${ampm}`, `${h24}:${min}`, ...(min === '00' ? [`${h12}${ampm}`] : [])]
+  const at = (form: string) => {
+    const out: number[] = []
+    for (let i = text.indexOf(form); i >= 0; i = text.indexOf(form, i + 1)) {
+      const before = text[i - 1] ?? ' '
+      const after = text[i + form.length] ?? ' '
+      if (!/[a-z0-9]/.test(before) && !/[0-9]/.test(after)) out.push(i)
+    }
+    return out
+  }
+  const dates = dateForms.flatMap(at)
+  if (dates.length === 0) return null
+  const times = timeForms.flatMap(at)
+  return dates.some((i) => times.some((j) => Math.abs(i - j) <= 300)) ? 'both' : 'date'
+}
+
+type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'; why: string; sourceUrl: string; critical: boolean }
 const results: Result[] = []
 const browser = await chromium.launch()
 for (const n of nights) {
+  // A fresh night is read only until its city has its count of judged nights.
+  if (!criticalIds.has(n.id) && (judgedIn.get(n.city_primary ?? '') ?? 0) >= WANT_PER_CITY) continue
   const zone = n.timezone ?? 'Australia/Melbourne'
   const stored = localClock(n.start_date, zone)
   const pages = n.listing_series_id ? sourcesOf.get(n.listing_series_id) ?? [] : []
@@ -140,8 +187,16 @@ for (const n of nights) {
     // This night on the page: its title once case, accents and punctuation are set aside (fold), or anything the page
     // states at exactly its start, or the page's only night.
     const mine = found.filter((f) => fold(f.title) === fold(n.title) || sameMinute(f.startsAt, n.start_date) || found.length === 1)
+    const words = page.status === 200 && mine.length === 0 ? statedInWords(page.body, n.start_date, zone) : null
     if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
-    else if (mine.length === 0) source = 'the page no longer states this night'
+    else if (words === 'both') {
+      // No reader of ours parses this page, but its own visible words state the night's date and time together.
+      sourceOk = true
+      src = candidate
+      source = `${localClock(n.start_date, zone)} (in the page's words)`
+      break
+    } else if (words === 'date') source = 'the page states the date in words but not this time'
+    else if (mine.length === 0) source = 'the page does not state this night'
     else if (mine.every((f) => f.timeStatus === 'date_only')) source = 'the page states a date with no time'
     else if (mine.some((f) => sameMinute(f.startsAt, n.start_date))) {
       sourceOk = true
@@ -175,20 +230,34 @@ for (const n of nights) {
     }
   }
   const liveOk = live[390].ok && live[1440].ok
-  const verdict: Result['verdict'] = sourceOk === false || !liveOk ? 'FAIL' : sourceOk === null ? 'NOT JUDGED' : 'PASS'
+  /* UNVERIFIABLE, with its reason, where no permitted read can judge the night (the CONTROLLER's 16:20): no source page on
+     record (it needs one), robots.txt barring a re-read, a page stating no such night in any form, or a date with no time.
+     A source going quiet is never read as a cancellation; these are listed for a person's re-check. */
+  const UNVERIFIABLE = ['no source page on record', 'robots.txt disallows a re-read', 'the page does not state this night', 'the page states a date with no time']
+  const verdict: Result['verdict'] =
+    sourceOk === false || !liveOk ? 'FAIL' : sourceOk === null ? (UNVERIFIABLE.includes(source) ? 'UNVERIFIABLE' : 'NOT JUDGED') : 'PASS'
   const why = sourceOk === false ? 'the source states another time' : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
-  results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src })
+  results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
+  if (!criticalIds.has(n.id) && (verdict === 'PASS' || verdict === 'FAIL')) judgedIn.set(n.city_primary ?? '', (judgedIn.get(n.city_primary ?? '') ?? 0) + 1)
   console.log(`${verdict.padEnd(10)} ${n.title.slice(0, 44).padEnd(44)} stored ${stored} | source: ${source} | 390: ${live[390].text} | 1440: ${live[1440].text}`)
 }
 await browser.close()
 
 const count = (v: Result['verdict']) => results.filter((r) => r.verdict === v).length
+/* THE BASELINE BAR, THIS RUN'S HALF (the CONTROLLER's 16:20: every fixed case and a fresh sample of at least 20 all PASS, on
+   two consecutive runs): every critical case PASS, and at least SAMPLE fresh nights judged, every one PASS. */
+const criticalAll = results.filter((r) => r.critical)
+const freshJudged = results.filter((r) => !r.critical && (r.verdict === 'PASS' || r.verdict === 'FAIL'))
+const barMet = criticalAll.length > 0 && criticalAll.every((r) => r.verdict === 'PASS') && freshJudged.length >= SAMPLE && freshJudged.every((r) => r.verdict === 'PASS')
+const baselineLine = `baseline bar this run: ${barMet ? 'MET' : 'NOT MET'} (critical ${criticalAll.filter((r) => r.verdict === 'PASS').length} of ${criticalAll.length} PASS; fresh judged ${freshJudged.length}, ${freshJudged.filter((r) => r.verdict === 'PASS').length} PASS)`
 mkdirSync(OUT, { recursive: true })
 const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
 const md = [
   `# Engine verifier, ${new Date().toISOString()}`,
   '',
-  `${results.length} nights (${(critical ?? []).length} fixed critical cases, ${results.length - (critical ?? []).length} fresh across the four cities): ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${count('NOT JUDGED')} NOT JUDGED.`,
+  `${results.length} nights (${results.filter((r) => r.critical).length} fixed critical cases, ${results.filter((r) => !r.critical).length} fresh across the four cities): ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${count('NOT JUDGED')} NOT JUDGED, ${count('UNVERIFIABLE')} UNVERIFIABLE.`,
+  '',
+  baselineLine,
   '',
   '| Verdict | Night | City | Stored (local) | Source now | Live 390 | Live 1440 | Why |',
   '|---|---|---|---|---|---|---|---|',
@@ -196,7 +265,7 @@ const md = [
 ].join('\n')
 writeFileSync(`${OUT}/verifier-${stamp}.md`, md + '\n')
 writeFileSync(`${OUT}/verifier-${stamp}.json`, JSON.stringify(results, null, 1))
-console.log(`[engine-verifier] ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${count('NOT JUDGED')} NOT JUDGED; ${OUT}/verifier-${stamp}.md`)
+console.log(`[engine-verifier] ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${count('NOT JUDGED')} NOT JUDGED, ${count('UNVERIFIABLE')} UNVERIFIABLE; ${baselineLine}; ${OUT}/verifier-${stamp}.md`)
 
 /*
  * --enforce (LAW 19 section 4.3 and 7.2: 'that source's publication flag switches off', automatically, by a failed check).
