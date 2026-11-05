@@ -18,7 +18,8 @@ import { contactMailto } from '@/lib/email/sender'
 import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
 import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
-import { ORGANISER_OBJECTIONS } from '@/lib/organisers/objections'
+import { organiserObjections } from '@/lib/organisers/objections'
+import { reachWords } from '@/lib/organisers/reach-words'
 import { ORGANISER_TESTIMONIALS } from '@/lib/organisers/testimonials'
 import { PAYOUT_LINE } from '@/lib/payments/payout-line'
 import {
@@ -65,7 +66,7 @@ const FAQ_ARTICLES = SELLING_TICKETS_TOPIC
  * made to the recruitment pack's wording are recorded in
  * src/lib/organisers/objections.ts.
  */
-const FAQ_ENTRIES = [...FAQ_ARTICLES, ...ORGANISER_OBJECTIONS]
+// The FAQ is composed in the page: one answer ends with what the broadcast flags make true (organiserObjections).
 
 // ── Real platform truths (no fabricated numbers, no fake logos) ──────────────
 const STATS = [
@@ -86,17 +87,11 @@ interface FeatureBand {
 
 // The discovery band: the first blade of the wedge, rendered directly
 // after the stats band so the discovery pitch leads the page argument. Every
-// point names a mechanism that exists on the platform today.
-const DISCOVERY_BAND: FeatureBand = {
+// point names a mechanism that exists on the platform today: its body and points come from
+// src/lib/organisers/reach-words.ts, chosen by the broadcast flags (the CONTROLLER's 02:20 of 6 November 2026).
+const DISCOVERY_BAND_FRAME: Omit<FeatureBand, 'body' | 'points'> = {
   eyebrow: 'Built-in discovery',
   title: 'We bring the audience, not just the checkout.',
-  body: 'Every event you list goes into the discovery feed and out through push alerts to attendees who chose to hear about events like yours. Buyers see who else is going, and everyone who follows you gets your next event the moment it goes live.',
-  points: [
-    'A personalised discovery feed puts your event in front of the right people',
-    'Push alerts land on lock screens, not in spam folders',
-    'Who’s-going proof turns interest into tickets',
-    'Followers get every event you publish, automatically',
-  ],
   image: ORGANISER_BANDS.discovery,
 }
 
@@ -507,7 +502,11 @@ function TestimonialsBand() {
   )
 }
 
-export async function OrganisersLandingPage() {
+export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcastsOn?: boolean } = {}) {
+  // What the page promises about reach: what runs today while the broadcasts are off (reach-words.ts).
+  const reach = reachWords(broadcastsOn)
+  const DISCOVERY_BAND: FeatureBand = { ...DISCOVERY_BAND_FRAME, body: reach.bandBody, points: reach.bandPoints }
+  const FAQ_ENTRIES = [...FAQ_ARTICLES, ...organiserObjections(broadcastsOn)]
   // Live fee from pricing_rules (same source the calculator charges), static
   // fallback inside getLivePublicFee. Displayed == charged. The full rate set
   // feeds the payout calculator; the live counts feed the proof strip.
@@ -561,9 +560,7 @@ export async function OrganisersLandingPage() {
                   headline + fee line + CTAs at 390; the supporting copy
                   re-enters immediately in the bands below. */}
               <p className="mt-2 hidden max-w-xl text-sm text-white/85 sm:block sm:text-base">
-                Then the tools that fill it: tracked share links, a discovery feed
-                and push alerts to a local audience already looking, measured in
-                tickets sold rather than views, and your attendee list stays yours.
+                {reach.heroLine}
               </p>
               {/* Cost in one glance, above the fold (exact fee from the pricing
                   source, never invented). */}

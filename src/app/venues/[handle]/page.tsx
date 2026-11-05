@@ -9,6 +9,7 @@ import { AccessibilitySection } from '@/components/features/accessibility/access
 import { readVenueAccessibility } from '@/lib/accessibility/read'
 import { hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { reachWords } from '@/lib/organisers/reach-words'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLAIM_ENTRY_LINK, CLAIM_ENTRY_QUESTION, offersVenueClaim } from '@/lib/listings/claim-entry'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
@@ -233,6 +234,14 @@ export default async function VenueProfilePage({ params }: Props) {
   // the old address never ends in a 404.
   if (venue.handle !== handle) permanentRedirect(`/venues/${venue.handle}`)
 
+  // What an empty venue page promises follows the two broadcast flags (src/lib/organisers/reach-words.ts; the
+  // CONTROLLER's 02:20 of 6 November 2026), read as an edge-cached page reads a flag.
+  const [followOn, digestOn] = await Promise.all([
+    isFeatureEnabled('broadcast_follow', { client: createPublicClient(), cachedPage: true }),
+    isFeatureEnabled('broadcast_digest', { client: createPublicClient(), cachedPage: true }),
+  ])
+  const reach = reachWords(followOn && digestOn)
+
   const [{ upcoming, past }, regularNights, showClaim] = await Promise.all([
     fetchVenueEventsByName(venue.name),
     // WI2 Part 3a: a venue record's regular nights (a profile built from event rows alone has none).
@@ -438,14 +447,13 @@ export default async function VenueProfilePage({ params }: Props) {
             <CategoryHeroEmpty
               eyebrow="UPCOMING"
               headline={`No upcoming events at ${venue.name} just yet.`}
-              subhead={`Get notified when new events are listed.`}
+              subhead={reach.venueEmpty(venue.name)}
               primaryAction={{ label: 'Browse all events', href: '/events' }}
               secondaryAction={{ label: 'Get directions', href: directionsUrl ?? '/events' }}
-              trustPillars={[
-                { icon: Zap as ComponentType<{ className?: string }>, label: 'New listings weekly' },
-                { icon: Heart as ComponentType<{ className?: string }>, label: 'Free to follow' },
-                { icon: Wallet as ComponentType<{ className?: string }>, label: 'Unsubscribe anytime' },
-              ]}
+              trustPillars={reach.venuePillars.map((label, i) => ({
+                icon: [Zap, Heart, Wallet][i % 3] as ComponentType<{ className?: string }>,
+                label,
+              }))}
             />
           )}
         </ContentSection>

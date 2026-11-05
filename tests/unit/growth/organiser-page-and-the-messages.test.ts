@@ -155,7 +155,8 @@ describe('OL1: the five things a stranger says back', () => {
   })
 
   it('reaches the page through the same FAQ the help answers use', () => {
-    expect(TEMPLATE).toContain('const FAQ_ENTRIES = [...FAQ_ARTICLES, ...ORGANISER_OBJECTIONS]')
+    // One answer now ends with what the broadcast flags make true (the CONTROLLER's 02:20 of 6 November 2026).
+    expect(TEMPLATE).toContain('const FAQ_ENTRIES = [...FAQ_ARTICLES, ...organiserObjections(broadcastsOn)]')
     expect(TEMPLATE).toContain('{FAQ_ENTRIES.map((article, i) => (')
   })
 })

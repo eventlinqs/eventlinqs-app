@@ -99,7 +99,7 @@ export function buildEventPublishedEmail(facts: {
   const title = 'Your event is live'
   const lines = [
     `${facts.eventTitle} is published and on sale.`,
-    'It is now on the discovery feed, and people who follow your scene or your city can be alerted to it.',
+    'It is now in its city’s guide and on every page it belongs to.',
     'Share the link below. Every sale is tracked back to where it came from, so you can see what is working.',
   ]
   const cta = { label: 'View your event page', url: publicUrl }
