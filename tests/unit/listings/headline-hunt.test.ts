@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntVenue, likelyDuplicate } from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntSummary, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
+import { rowTeaser } from '@/lib/events/whats-on-directory'
+import { sellerName } from '@/lib/events/booking-links'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
 
 /* Car 44: the hunt's list, its venue match, and the arenas' page rule (one platform, /events/ to /event/<slug>/). */
@@ -54,6 +56,88 @@ describe('the hunt, car 44b', () => {
     expect(huntVenue(gac, 'The Play House')).toBe('The Play House')
     expect(huntVenue(gac, 'Barwon Club')).toBeNull()
     expect(huntVenue(huntFor('https://forummelbourne.com.au/')!, 'Forum Melbourne')).toBe('Forum Melbourne')
+  })
+})
+
+/*
+ * Car 44c (the CONTROLLER's 14:55 of 5 November 2026, 'STOP THE LINE, WRONG TIMES ON LIVE FROM THE HUNT'). The arena pages
+ * write their local clock into the schema.org Event with a false UTC offset; their own Date block is the truth. The three
+ * source texts, as read that afternoon (C:\dev\EVIDENCE\CAR44\arena-times.txt).
+ */
+describe("the arenas' own Date block, never the schema's offset", () => {
+  const arenaPage = (o: { type: string; name: string; startDate: string; endDate?: string; venue: string; date: string; time: string }) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@type': o.type,
+      name: o.name,
+      startDate: o.startDate,
+      ...(o.endDate ? { endDate: o.endDate } : {}),
+      location: { name: o.venue, address: 'Olympic Boulevard, Melbourne VIC 3001' },
+      offers: { url: 'https://www.ticketmaster.com.au/event/1', availability: 'InStock' },
+    })}</script>
+    <h1 class="text-white text-uppercase mb-2"> ${o.name}</h1>
+    <h2 class="overline text-uppercase mb-1">Date</h2><p class="lead mb-1">${o.date}</p><p class=""> ${o.time}</p>
+    <h2 class="overline text-uppercase mb-1">Venue</h2><p class="lead mb-2">${o.venue}</p>`
+  const read = (url: string, html: string) => pageRuleFor(url)!.read(html, url).map((e) => e.startsAt)
+
+  it("John Cain Arena: 'Saturday 7 November 2026 / 7:30 pm' is 7:30 pm in Melbourne, whatever '+00:00' says", () => {
+    const url = 'https://johncainarena.com.au/event/melbourne-united-vs-brisbane-bullets-round-8-2026-27/'
+    const html = arenaPage({ type: 'SportsEvent', name: 'Melbourne United vs Brisbane Bullets', startDate: '2026-11-07T19:30:00+00:00', venue: 'John Cain Arena', date: 'Saturday 7 November 2026', time: '7:30 pm' })
+    expect(read(url, html)).toEqual(['2026-11-07T08:30:00.000Z'])
+  })
+  it("Rod Laver Arena: 'Thursday 12 to Saturday 14 November 2026 / 7:50 pm' is three nights at 7:50 pm", () => {
+    const url = 'https://rodlaverarena.com.au/event/benson-boone-wanted-man-tour-melbourne-2026/'
+    const html = arenaPage({ type: 'MusicEvent', name: 'Benson Boone', startDate: '2026-11-12T19:50:00+00:00', endDate: '2026-11-14T19:50:00+00:00', venue: 'Rod Laver Arena', date: 'Thursday 12 to Saturday 14 November 2026', time: '7:50 pm' })
+    expect(read(url, html)).toEqual(['2026-11-12T08:50:00.000Z', '2026-11-13T08:50:00.000Z', '2026-11-14T08:50:00.000Z'])
+  })
+  it("AAMI Park: 'Friday 13 November 2026 / 7:20 pm' is 7:20 pm in Melbourne", () => {
+    const url = 'https://aamipark.com.au/event/iron-maiden-run-for-your-lives-world-tour-2026/'
+    const html = arenaPage({ type: 'MusicEvent', name: 'Iron Maiden', startDate: '2026-11-13T19:20:00+00:00', venue: 'AAMI Park', date: 'Friday 13 November 2026', time: '7:20 pm' })
+    expect(read(url, html)).toEqual(['2026-11-13T08:20:00.000Z'])
+  })
+  it('lists nothing it would have to guess: no Date block, no time, or a run longer than three days', () => {
+    const url = 'https://rodlaverarena.com.au/event/a-long-run/'
+    const base = { type: 'MusicEvent', name: 'A Long Run', startDate: '2026-11-27T19:30:00+00:00', venue: 'Rod Laver Arena', date: 'Friday 27 November 2026', time: '7:30 pm' }
+    expect(read(url, arenaPage(base).replace(/<h2[^>]*>Date<\/h2>/, ''))).toEqual([])
+    expect(read(url, arenaPage({ ...base, time: 'TBC' }))).toEqual([])
+    expect(read(url, arenaPage({ ...base, date: 'Friday 27 November to Sunday 6 December 2026' }))).toEqual([])
+    expect(read(url, arenaPage({ ...base, date: 'Saturday 28 November to Sunday 29 November 2026' }))).toHaveLength(2)
+  })
+  it('the hunt lists by rule no night starting between midnight and 9 am in Melbourne', () => {
+    expect(plausibleHuntStart('2026-11-07T19:30:00.000Z')).toBe(false) // Sunday 6:30 am, the fault as it showed on live
+    expect(plausibleHuntStart('2026-11-07T08:30:00.000Z')).toBe(true) // Saturday 7:30 pm
+    expect(plausibleHuntStart('2026-12-05T23:00:00.000Z')).toBe(true) // Sunday 10 am
+  })
+})
+
+/* Car 44c, the CONTROLLER's 14:55 (4): each hunted row carries a one line description in our own words, which the row's
+   own rule (rowTeaser) shows: five words or more past the title, the venue and the city. */
+describe("the hunt's one line description", () => {
+  it('says what kind of night, when, and where tickets are sold, and the row shows it', () => {
+    const line = huntSummary({ categorySlug: 'music', startsAt: '2026-11-13T08:20:00.000Z', seller: 'Ticketek', free: false })
+    expect(line).toBe('A live concert on a Friday evening, tickets through Ticketek.')
+    expect(rowTeaser(line, 'AAMI Park', 'Melbourne', 'Iron Maiden')).toBe(line)
+    expect(huntSummary({ categorySlug: 'sports', startsAt: '2026-11-07T08:30:00.000Z', seller: 'AXS', free: false })).toBe('A live match on a Saturday evening, tickets through AXS.')
+    expect(huntSummary({ categorySlug: 'community', startsAt: '2026-11-21T00:00:00.000Z', seller: null, free: true })).toBe('A community event on a Saturday morning, free entry.')
+    expect(huntSummary({ categorySlug: 'comedy', startsAt: '2026-12-12T03:00:00.000Z', seller: null, free: false })).toBe('Live stand-up comedy on a Saturday afternoon.')
+  })
+  it("names no kind its title does not give: 'An event', never a venue's guess (WWE, a stand-up comedian)", () => {
+    const line = huntSummary({ categorySlug: null, startsAt: '2026-12-09T08:30:00.000Z', seller: 'AXS', free: false })
+    expect(line).toBe('An event on a Wednesday evening, tickets through AXS.')
+    expect(rowTeaser(line, 'Rod Laver Arena', 'Melbourne', 'WWE')).toBe(line)
+  })
+  it("names every seller and venue booking page the hunt lists, so no hunted row reads a bare 'Get tickets'", () => {
+    for (const [url, name] of [
+      ['https://www.axs.com/au/events/1632144/a-ap-rocky-tickets', 'AXS'],
+      ['https://www.melbournerecital.com.au/whats-on/current-productions/ning-feng/', 'Melbourne Recital Centre'],
+      ['https://forummelbourne.com.au/shows/men-i-trust', 'Forum Melbourne'],
+      ['https://www.palaistheatre.com.au/all-events/x-tickets-ae1', 'Palais Theatre'],
+      ['https://www.mcg.org.au/events/2026/december/x', 'MCG'],
+      ['https://fedsquare.com/events/pillars-of-light', 'Fed Square'],
+      ['https://geelongartscentre.org.au/whats-on/all-events/x/', 'Geelong Arts Centre'],
+      ['https://ausxsupercross.com.au/events/ausx-open/', 'AUSX'],
+    ]) {
+      expect(sellerName(url)).toBe(name)
+    }
   })
 })
 

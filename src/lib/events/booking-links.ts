@@ -133,6 +133,16 @@ const SELLER_HOST_NAMES: ReadonlyArray<[RegExp, string]> = [
   [/(^|\.)bendigo\.vic\.gov\.au$/, 'City of Greater Bendigo'],
   [/(^|\.)tipsysketching\.club$/, 'The Tipsy Sketching Club'],
   [/^auschoir\.my\.salesforce-sites\.com$/, 'Australian Chamber Choir'],
+  // Car 44c (the CONTROLLER's 14:55 (4) of 5 November 2026): the hunt's sellers and its venues' own booking pages, so a
+  // hunted row reads 'Tickets at <seller>', never a bare 'Get tickets' (34 of 98 hunted nights sold through AXS).
+  [/(^|\.)axs\.com$/, 'AXS'],
+  [/(^|\.)melbournerecital\.com\.au$/, 'Melbourne Recital Centre'],
+  [/(^|\.)forummelbourne\.com\.au$/, 'Forum Melbourne'],
+  [/(^|\.)palaistheatre\.com\.au$/, 'Palais Theatre'],
+  [/(^|\.)festivalhall\.com\.au$/, 'Festival Hall'],
+  [/(^|\.)mcg\.org\.au$/, 'MCG'],
+  [/(^|\.)fedsquare\.com$/, 'Fed Square'],
+  [/(^|\.)ausxsupercross\.com\.au$/, 'AUSX'],
 ]
 
 /** The seller's name for a booking address: the platform's, else the site's own, else null (never the domain). */

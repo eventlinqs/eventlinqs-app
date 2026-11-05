@@ -496,6 +496,22 @@ export async function runEventDisbursements(
       summary.results.push({ eventId: ev.id, organisationId: ev.organisation_id, status: 'skipped', error: 'no_connected_account' })
       continue
     }
+    // SETTLED OUTSIDE THE PLATFORM (the CONTROLLER's 15:25 (1) of 5 November 2026, Lawal's 15:12): a payout the founder
+    // paid himself carries its ledger entry 'paid-outside-the-platform' (written 1 November for the Afro-Fusion showcase).
+    // Such an event is never claimed, transferred or retried again, whatever its balance. A failed read is not taken as
+    // settled: the claim below still caps at the ledger's balance, which that entry already nets to zero.
+    const { data: settledOutside, error: settledError } = await adminClient
+      .from('organiser_balance_ledger')
+      .select('id')
+      .eq('event_id', ev.id)
+      .eq('metadata->>part', 'paid-outside-the-platform')
+      .limit(1)
+    if (settledError) captureException(settledError, { scope: 'payments-event-transfer', handler: 'settled-outside-read', event_id: ev.id })
+    if ((settledOutside ?? []).length > 0) {
+      summary.skipped++
+      summary.results.push({ eventId: ev.id, organisationId: ev.organisation_id, status: 'skipped', error: 'settled outside the platform by the founder: never retried' })
+      continue
+    }
     // RETRIES CAPPED (src/lib/payments/payout-retry.ts): after two failures in a row an event is tried at most once a
     // day, and the health sentinel tells the founder. A failed read attempts, exactly as before the cap.
     const { data: attempts, error: attemptsError } = await adminClient

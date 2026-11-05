@@ -48,6 +48,56 @@ export const HUNT_SOURCES: readonly HuntSource[] = [
   { host: 'hermaj.com', citySlug: 'ballarat', venues: ["Her Majesty's Theatre Ballarat", 'Civic Hall Ballarat'], usualCategory: 'theatre' },
 ]
 
+const MELBOURNE_HOUR = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' })
+
+/**
+ * A START THE HUNT MAY LIST BY ITS RULE (car 44c; the CONTROLLER's 14:55 of 5 November 2026: the arenas' nights showed on
+ * live at 6:30 am, 'No concert or match starts at 6 am'). A headline venue's night that starts between midnight and 9 am
+ * in Melbourne is almost always a time read wrong, so it waits for a person; it is never listed by the rule.
+ */
+export function plausibleHuntStart(startsAt: string): boolean {
+  const t = new Date(startsAt)
+  if (Number.isNaN(t.getTime())) return false
+  return Number(MELBOURNE_HOUR.format(t)) >= 9
+}
+
+/** The kind of night, in our own words, by its guide category. */
+const KIND_LINE: Readonly<Record<GuideCategory, string>> = {
+  music: 'A live concert',
+  sports: 'A live match',
+  comedy: 'Live stand-up comedy',
+  theatre: 'A stage show',
+  festival: 'A festival day',
+  family: 'A family show',
+  'arts-community': 'An arts event',
+  nightlife: 'A club night',
+  markets: 'A market',
+  'food-drink': 'A food and drink event',
+  'classes-workshops': 'A class',
+  'business-networking': 'A networking event',
+  'health-wellness': 'A wellness session',
+  education: 'A talk',
+  community: 'A community event',
+}
+const MELBOURNE_WEEKDAY = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long' })
+
+/**
+ * THE HUNTED NIGHT'S ONE LINE (car 44c; the CONTROLLER's 14:55 (4): 'a one line description in our own words like every
+ * other row'). Composed only from the night's own facts, never the source's words: its kind (its guide category), its day
+ * and part of the day in Melbourne, and where it is booked. It always leaves five words past the title, the venue and
+ * the city, so the row shows it (rowTeaser, src/lib/events/whats-on-directory.ts).
+ */
+export function huntSummary(night: { categorySlug: string | null; startsAt: string; seller: string | null; free: boolean }): string {
+  const t = new Date(night.startsAt)
+  const hour = Number(MELBOURNE_HOUR.format(t))
+  const part = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
+  /* The kind only when the night's OWN words give it (classify on its title): a venue's usual category is a guess, and a
+     guess made 'A live concert' of WWE and of a stand-up comedian (5 November 2026). Otherwise 'An event', which is true. */
+  const kind = (night.categorySlug ? KIND_LINE[night.categorySlug as GuideCategory] : null) ?? 'An event'
+  const where = night.free ? ', free entry' : night.seller ? `, tickets through ${night.seller}` : ''
+  return `${kind} on a ${MELBOURNE_WEEKDAY.format(t)} ${part}${where}.`
+}
+
 /** Pages a hunt run reads per site (car 44b): every site on the list fits its two daily runs; the daily collection run
  * still reads each site up to PAGE_READ_CAP. */
 export const HUNT_PAGE_CAP = 40
