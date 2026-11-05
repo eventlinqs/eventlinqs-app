@@ -371,7 +371,11 @@ export default async function OrganiserProfilePage({ params }: Props) {
   const pastCards = collapseListings(pastShown)
 
   // What the page promises a follower, by the two broadcast flags (the CONTROLLER's 08:50 (3)).
-  const [followOn, digestOn] = await Promise.all([isFeatureEnabled('broadcast_follow'), isFeatureEnabled('broadcast_digest')])
+  // An edge-cached page reads its flags through the public client, never Redis (tests/unit/flags/edge-cached-pages-read-flags-cached.test.ts).
+  const [followOn, digestOn] = await Promise.all([
+    isFeatureEnabled('broadcast_follow', { client: createPublicClient(), cachedPage: true }),
+    isFeatureEnabled('broadcast_digest', { client: createPublicClient(), cachedPage: true }),
+  ])
   const words = organiserUpdateWords(organisation.name, followOn && digestOn)
 
   // Stats: EVENTS (upcoming + past), never dates (the CONTROLLER's 08:50 (2)): the guide's eventKey, so a weekly session
