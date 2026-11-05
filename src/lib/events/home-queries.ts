@@ -6,6 +6,7 @@ import type {
 import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from './public-visibility'
+import type { BookingLinkRow } from './booking-links'
 
 export const EVENT_SELECT =
   // `timezone` is selected because every card that prints a date must format it
@@ -51,6 +52,8 @@ export type RawRow = {
   category: { name: string; slug: string } | null
   organisation: { name: string } | null
   ticket_tiers: { id: string; price: number; currency: string; sold_count: number; reserved_count: number; total_capacity: number }[] | null
+  /** Read by the city guide only (GUIDE_SELECT, src/lib/events/guide-queries.ts); the home rails never select it. */
+  booking_links?: BookingLinkRow[] | null
 }
 
 export function toBentoEvent(r: RawRow & { image_credit?: string | null }): BentoEvent {

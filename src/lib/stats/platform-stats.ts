@@ -4,6 +4,7 @@ import { captureException } from '@/lib/observability/sentry'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { countEvents } from '@/lib/events/event-counts'
 
 /**
  * THE STRIP COUNTS WHAT /events COUNTS (the controller's order of 31 October 2026, 21:12, from window 6's finding).
@@ -98,11 +99,13 @@ export interface PlatformStats {
   source: 'live' | 'unavailable'
 }
 
-/** One row of the only two columns these three numbers need. */
+/** One row of the only columns these three numbers need: an event is its title at its venue (the guide's eventKey). */
 export interface PlatformStatsRow {
   organisation_id: string | null
   venue_city: string | null
   city_primary: string | null
+  title: string
+  venue_name: string | null
 }
 
 /**
@@ -146,7 +149,7 @@ export async function getPlatformStats(opts?: { client?: StatsReadClient; now?: 
     const rows = await readEveryRow<PlatformStatsRow>('visible events for platform stats', (from, to) =>
       client
         .from('events')
-        .select('organisation_id, venue_city, city_primary')
+        .select('organisation_id, venue_city, city_primary, title, venue_name')
         .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(now))
         .order('id', { ascending: true })
@@ -159,7 +162,9 @@ export async function getPlatformStats(opts?: { client?: StatsReadClient; now?: 
     ).size
 
     return {
-      eventsListed: rows.length,
+      // EVENTS, never dates (the CONTROLLER's 08:50 (2): the audit read '815 events live right now' over 815 dates of 398
+      // events): the guide's eventKey, so a weekly session is one event however many nights it has.
+      eventsListed: countEvents(rows),
       organisers,
       cities,
       source: 'live',

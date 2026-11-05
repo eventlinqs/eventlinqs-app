@@ -182,12 +182,60 @@ export function alsoOn(links: readonly BookingLink[]): BookingLink[] {
   return [...links].filter((l) => l.availability !== 'dead' && l.id !== button?.id).sort(byButtonOrder)
 }
 
-/** Shown only when it was checked within the last day, as the 12:30 (4) says; else no price at all. */
-export const PRICE_SHOWN_FOR_MS = 24 * 60 * 60 * 1000
+/**
+ * Shown only when it was read within the last 7 days, else no price at all (the CONTROLLER's 08:50 (6) of 5 November
+ * 2026, for the guide's outside rows; it widens the 12:30 (4)'s one day, so a row and its event page, which both read
+ * this rule, never disagree about a price). Reversible here, in one number.
+ */
+export const PRICE_SHOWN_FOR_MS = 7 * 24 * 60 * 60 * 1000
 
 export function priceToShow(link: BookingLink, now: Date): number | null {
   if (link.priceFromCents === null || link.priceCheckedAt === null) return null
   return now.getTime() - new Date(link.priceCheckedAt).getTime() <= PRICE_SHOWN_FOR_MS ? link.priceFromCents : null
+}
+
+/** "From $35.50", the lowest price including fees, as Google asks it to be read. */
+export function fromPrice(cents: number): string {
+  const dollars = cents / 100
+  return `From $${Number.isInteger(dollars) ? dollars.toLocaleString('en-AU') : dollars.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** One event_booking_links row as the database returns it. */
+export type BookingLinkRow = {
+  id: string
+  provider: string
+  url: string
+  kind: string
+  availability: string
+  price_from_cents: number | null
+  price_checked_at: string | null
+  is_primary: boolean
+  set_by: string
+  pointed_to_by_organiser: boolean
+  position: number
+  created_at: string
+}
+
+/** The columns a BookingLinkRow is read with, for a select or an embed. */
+export const BOOKING_LINK_COLUMNS =
+  'id, provider, url, kind, availability, price_from_cents, price_checked_at, is_primary, set_by, pointed_to_by_organiser, position, created_at'
+
+/** A database row as a BookingLink. Pure. */
+export function toBookingLink(r: BookingLinkRow): BookingLink {
+  return {
+    id: r.id,
+    provider: r.provider as BookingLink['provider'],
+    url: r.url,
+    kind: r.kind as BookingLink['kind'],
+    availability: r.availability as BookingLink['availability'],
+    priceFromCents: r.price_from_cents,
+    priceCheckedAt: r.price_checked_at,
+    isPrimary: r.is_primary,
+    setBy: r.set_by as BookingLink['setBy'],
+    pointedToByOrganiser: r.pointed_to_by_organiser,
+    position: r.position,
+    createdAt: r.created_at,
+  }
 }
 
 /* ------------------------------------------------------------------ one event */

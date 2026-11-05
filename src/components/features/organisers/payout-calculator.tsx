@@ -7,6 +7,7 @@ import {
   type FeePassType,
   type FeeRates,
 } from '@/lib/payments/fee-math'
+import { PAYOUT_LINE } from '@/lib/payments/payout-line'
 
 /**
  * Live payout calculator - the organiser landing's signature element.
@@ -208,7 +209,7 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
                 {formatMoney(organiserReceivesCents, currency)}
               </dd>
               <dd className="mt-0.5 text-sm text-[var(--text-secondary)]">
-                Paid to your account within 5 business days of your event ending.
+                {PAYOUT_LINE}
               </dd>
             </div>
             <div className="border-t border-ink-200 pt-4">

@@ -11,6 +11,7 @@ import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LAB
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
@@ -223,6 +224,8 @@ export function CityGuide({
   // The list: unfiltered, every listing in the next 3 months no section showed; filtered, the whole answer. One entry each.
   const list = filtered ? monthOrder(foldListings(shown, here)) : sections.rest
   const narrowed = shown.length !== here.length || listingCount(shown) !== listingCount(here)
+  // The count line names the range in force: a chip's own label, or the picked day in words.
+  const rangeName = when === 'date' && date ? dateWords(date) : (WHEN.find((w) => w.key === when)?.label ?? 'Next 3 months')
   const toList = () => document.getElementById('city-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const clear = () => {
     setWhen('three')
@@ -249,7 +252,8 @@ export function CityGuide({
             c.slug === city.slug && !wholeState ? (
               <CurrentChip key={c.slug} label={c.name} />
             ) : (
-              <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} />
+              // A city chosen here is remembered, so 'Browse Events' opens on it (the CONTROLLER's 08:50 (7)).
+              <SnapLink key={c.slug} href={`/city/${c.slug}`} className={`relative ${chip(false)}`} label={c.name} onChoose={() => rememberCity({ name: c.name })} />
             ),
           )}
           <SnapChip on={false} next={false} onSelect={() => setCities(true)} aria-haspopup="dialog">
@@ -473,8 +477,7 @@ export function CityGuide({
           </div>
           <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
             <p className="font-display text-sm font-semibold text-[var(--text-muted)]" aria-live="polite">
-              {countLine(shown, narrowed ? here : null)} coming up in{' '}
-              {radius && !wholeState ? `${city.name} and within ${radius} km` : placeName}
+              {countLine(shown, narrowed ? here : null, radius && !wholeState ? `${rangeName}, ${city.name} and within ${radius} km` : rangeName)}
             </p>
             {filtered ? (
               <button
@@ -645,8 +648,9 @@ function SnapLink({
   className,
   label,
   plain = false,
+  onChoose,
   ...rest
-}: { href: string; className: string; label: string; plain?: boolean; 'aria-label'?: string }) {
+}: { href: string; className: string; label: string; plain?: boolean; 'aria-label'?: string; onChoose?: () => void }) {
   const [going, setGoing] = useState(false)
   return (
     <Link
@@ -656,7 +660,10 @@ function SnapLink({
       data-snap={going ? 'touched' : undefined}
       onPointerDown={() => setGoing(true)}
       onPointerCancel={() => setGoing(false)}
-      onClick={() => setGoing(true)}
+      onClick={() => {
+        setGoing(true)
+        onChoose?.()
+      }}
     >
       <TapAnswer label={label} plain={plain} going={going} />
     </Link>
@@ -810,11 +817,17 @@ export function eventCount(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[
   return new Set(rows.map(eventKey)).size
 }
 
-/** 'N events, M dates', and with a filter on, 'N events, M dates of T events'. */
-export function countLine(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[], of: readonly Pick<DirectoryRow, 'title' | 'venue'>[] | null): string {
+/**
+ * 'Next 3 months: N events, M dates. T events in all.' (the CONTROLLER's 08:50 (1), from the 5 November audit, which read
+ * '95 events, 207 dates of 97 events coming up in' on /city/melbourne): the range's own name first, then the events and
+ * dates it holds, then the place's whole count of events whenever the range or a filter leaves some dates out.
+ */
+export function countLine(rows: readonly Pick<DirectoryRow, 'title' | 'venue'>[], of: readonly Pick<DirectoryRow, 'title' | 'venue'>[] | null, range: string): string {
   const e = eventCount(rows)
-  const words = `${e} ${e === 1 ? 'event' : 'events'}, ${rows.length} ${rows.length === 1 ? 'date' : 'dates'}`
-  return of ? `${words} of ${eventCount(of)} events` : words
+  const words = `${range}: ${e} ${e === 1 ? 'event' : 'events'}, ${rows.length} ${rows.length === 1 ? 'date' : 'dates'}.`
+  if (!of) return words
+  const t = eventCount(of)
+  return `${words} ${t} ${t === 1 ? 'event' : 'events'} in all.`
 }
 
 /** Each category's EVENT count, [slug, label, n], from the rows given. */
@@ -919,7 +932,7 @@ function CitySheet({
         {[...byState.entries()].map(([state, list]) => (
           <Group key={state} label={state}>
             {list.map((c) => (
-              <Link key={c.slug} href={`/city/${c.slug}`} aria-current={c.slug === current ? 'page' : undefined} className={chip(c.slug === current)}>
+              <Link key={c.slug} href={`/city/${c.slug}`} aria-current={c.slug === current ? 'page' : undefined} className={chip(c.slug === current)} onClick={() => rememberCity({ name: c.name })}>
                 {c.name}
               </Link>
             ))}

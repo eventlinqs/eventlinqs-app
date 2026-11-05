@@ -20,6 +20,7 @@ import { PayoutCalculator } from '@/components/features/organisers/payout-calcul
 import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
 import { ORGANISER_OBJECTIONS } from '@/lib/organisers/objections'
 import { ORGANISER_TESTIMONIALS } from '@/lib/organisers/testimonials'
+import { PAYOUT_LINE } from '@/lib/payments/payout-line'
 import {
   ORGANISER_HERO,
   ORGANISER_BANDS,
@@ -69,7 +70,7 @@ const FAQ_ENTRIES = [...FAQ_ARTICLES, ...ORGANISER_OBJECTIONS]
 // ── Real platform truths (no fabricated numbers, no fake logos) ──────────────
 const STATS = [
   { stat: 'All-in', label: 'pricing', body: 'What buyers see at checkout is what they pay. Zero hidden fees, every event.' },
-  { stat: '5 days', label: 'to payout', body: 'Your money lands within 5 business days of your event ending.' },
+  { stat: '5 days', label: 'to payout', body: PAYOUT_LINE },
   { stat: 'Same day', label: 'to go live', body: 'Most events are approved the same business day. No gatekeeping on organisers.' },
   { stat: 'Every', label: 'community', body: 'Built for every event type and every community across Australia.' },
 ]
@@ -148,7 +149,7 @@ const HOW_IT_WORKS = [
   { step: 1, title: 'Create your account', detail: 'About a minute. Your name, your payout account, and you are in.' },
   { step: 2, title: 'Build your event', detail: 'Title, description, ticket tiers, and pricing. 5 to 15 minutes.' },
   { step: 3, title: 'Submit for review', detail: 'Checked against our content and safety policy. Most approved the same business day.' },
-  { step: 4, title: 'Go live and sell', detail: 'Share your page anywhere. Payouts land within 5 business days of your event ending.' },
+  { step: 4, title: 'Go live and sell', detail: `Share your page anywhere. Payout: ${PAYOUT_LINE.charAt(0).toLowerCase()}${PAYOUT_LINE.slice(1)}` },
 ]
 
 // ── Sub-components ───────────────────────────────────────────────────────────

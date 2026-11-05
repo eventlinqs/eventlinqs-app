@@ -36,6 +36,9 @@ import { isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
+import { organiserUpdateWords } from '@/lib/organisers/update-words'
+import { countEvents, eventsPerLabel } from '@/lib/events/event-counts'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { loadDiscoveryRows, countOrganiser } from '@/lib/seo/discovery-counts'
 import { organiserIndexingFor } from '@/lib/seo/discovery-threshold'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
@@ -367,18 +370,23 @@ export default async function OrganiserProfilePage({ params }: Props) {
   const upcomingCards = collapseListings(upcoming, 12)
   const pastCards = collapseListings(pastShown)
 
-  // Stats: total events (upcoming + past), unique cities.
-  const totalEvents = upcoming.length + past.length
+  // What the page promises a follower, by the two broadcast flags (the CONTROLLER's 08:50 (3)).
+  // An edge-cached page reads its flags through the public client, never Redis (tests/unit/flags/edge-cached-pages-read-flags-cached.test.ts).
+  const [followOn, digestOn] = await Promise.all([
+    isFeatureEnabled('broadcast_follow', { client: createPublicClient(), cachedPage: true }),
+    isFeatureEnabled('broadcast_digest', { client: createPublicClient(), cachedPage: true }),
+  ])
+  const words = organiserUpdateWords(organisation.name, followOn && digestOn)
+
+  // Stats: EVENTS (upcoming + past), never dates (the CONTROLLER's 08:50 (2)): the guide's eventKey, so a weekly session
+  // is one event however many nights it has; unique cities.
+  const totalEvents = countEvents([...upcoming, ...past])
   const cityNames = new Set<string>()
   for (const e of [...upcoming, ...past]) if (e.venue_city) cityNames.add(e.venue_city)
   const cities = Array.from(cityNames).sort()
 
-  // Event-type breakdown across upcoming + past combined.
-  const typeCounts = new Map<string, number>()
-  for (const e of [...upcoming, ...past]) {
-    const label = e.category?.name ?? 'Other'
-    typeCounts.set(label, (typeCounts.get(label) ?? 0) + 1)
-  }
+  // Event-type breakdown across upcoming + past combined, each event counted once.
+  const typeCounts = eventsPerLabel([...upcoming, ...past], (e) => e.category?.name ?? 'Other')
   const breakdown = Array.from(typeCounts.entries())
     .map(([label, count]) => ({ label, count, percent: (count / Math.max(1, totalEvents)) * 100 }))
     .sort((a, b) => b.count - a.count)
@@ -493,6 +501,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
         <OrganiserBioSection
           organiserName={organisation.name}
           bio={organisation.description}
+          emptyLine={words.bioLine}
         />
 
         {/* OP3 Upcoming events rail */}
@@ -517,14 +526,13 @@ export default async function OrganiserProfilePage({ params }: Props) {
             <CategoryHeroEmpty
               eyebrow="UPCOMING"
               headline={`No upcoming events from ${organisation.name} just yet.`}
-              subhead={`Get notified when new events drop.`}
-              primaryAction={{ label: 'Get updates', href: '#stay-connected' }}
+              subhead={words.emptySubhead}
+              primaryAction={{ label: words.emptyAction, href: '#stay-connected' }}
               secondaryAction={{ label: 'Browse all events', href: '/events' }}
-              trustPillars={[
-                { icon: Zap as ComponentType<{ className?: string }>, label: 'No spam, just events' },
-                { icon: Heart as ComponentType<{ className?: string }>, label: 'Unsubscribe anytime' },
-                { icon: Wallet as ComponentType<{ className?: string }>, label: 'Free to follow' },
-              ]}
+              trustPillars={words.pillars.map((label, i) => ({
+                icon: [Wallet, Zap, Heart][i % 3] as ComponentType<{ className?: string }>,
+                label,
+              }))}
             />
           )}
         </ContentSection>
@@ -645,6 +653,8 @@ export default async function OrganiserProfilePage({ params }: Props) {
             organiserSlug={organisation.slug}
             website={organisation.website}
             email={null}
+            line={words.panelLine}
+            followSlot={<FollowButton type="organiser" id={organisation.id} label={`Follow ${organisation.name}`} />}
           />
         </div>
 

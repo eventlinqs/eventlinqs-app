@@ -49,7 +49,7 @@ function ceilingClient(
       expect(table).toBe('events')
       return {
         select(columns: string) {
-          expect(columns).toBe('organisation_id, venue_city, city_primary')
+          expect(columns).toBe('organisation_id, venue_city, city_primary, title, venue_name')
           return {
             match(m: Record<string, string>) {
               matched.push(m)
@@ -98,17 +98,19 @@ function allDistinct(n: number): PlatformStatsRow[] {
     organisation_id: `org-${i}`,
     venue_city: `City ${i}`,
     city_primary: null,
+    title: `Event ${i}`,
+    venue_name: `Venue ${i}`,
   }))
 }
 
 describe('getPlatformStats', () => {
   it('counts published events, distinct organisers, and distinct cities', async () => {
     const client = ceilingClient([
-      { organisation_id: 'org-1', venue_city: 'Melbourne', city_primary: null },
-      { organisation_id: 'org-1', venue_city: 'melbourne ', city_primary: null },
-      { organisation_id: 'org-2', venue_city: 'Sydney', city_primary: null },
-      { organisation_id: 'org-3', venue_city: null, city_primary: null },
-      { organisation_id: null, venue_city: 'Geelong', city_primary: null },
+      { organisation_id: 'org-1', venue_city: 'Melbourne', city_primary: null, title: 'A', venue_name: 'Hall' },
+      { organisation_id: 'org-1', venue_city: 'melbourne ', city_primary: null, title: 'B', venue_name: 'Hall' },
+      { organisation_id: 'org-2', venue_city: 'Sydney', city_primary: null, title: 'C', venue_name: 'Hall' },
+      { organisation_id: 'org-3', venue_city: null, city_primary: null, title: 'D', venue_name: null },
+      { organisation_id: null, venue_city: 'Geelong', city_primary: null, title: 'E', venue_name: 'Hall' },
     ])
     const stats = await getPlatformStats({ client, now: NOW })
     expect(stats.eventsListed).toBe(5)
@@ -202,14 +204,27 @@ describe('the platform strip counts the catalogue /events counts', () => {
 
   it("counts a suburb venue under its event's city, never as a city of its own", async () => {
     const client = ceilingClient([
-      { organisation_id: 'org-1', venue_city: 'West Melbourne', city_primary: 'melbourne' },
-      { organisation_id: 'org-1', venue_city: 'Melbourne', city_primary: 'melbourne' },
-      { organisation_id: 'org-2', venue_city: 'Torquay', city_primary: 'geelong' },
-      { organisation_id: 'org-2', venue_city: 'Bendigo', city_primary: 'bendigo' },
+      { organisation_id: 'org-1', venue_city: 'West Melbourne', city_primary: 'melbourne', title: 'A', venue_name: 'Hall' },
+      { organisation_id: 'org-1', venue_city: 'Melbourne', city_primary: 'melbourne', title: 'B', venue_name: 'Hall' },
+      { organisation_id: 'org-2', venue_city: 'Torquay', city_primary: 'geelong', title: 'C', venue_name: 'Hall' },
+      { organisation_id: 'org-2', venue_city: 'Bendigo', city_primary: 'bendigo', title: 'D', venue_name: 'Hall' },
     ])
     const stats = await getPlatformStats({ client, now: NOW })
     expect(stats.eventsListed).toBe(4)
     expect(stats.cities).toBe(3)
+  })
+
+  /* THE CONTROLLER'S 08:50 (2), FROM THE 5 NOVEMBER AUDIT: /organisers printed '815 events live right now' over 815 DATES
+     of 398 events. An event is the guide's eventKey (a title at a venue, trimmed, any case), so a weekly night is one. */
+  it('counts events by the guide\'s eventKey, so a weekly night on three dates is one event', async () => {
+    const client = ceilingClient([
+      { organisation_id: 'org-1', venue_city: 'Bendigo', city_primary: 'bendigo', title: 'Storytime', venue_name: 'Bendigo Library' },
+      { organisation_id: 'org-1', venue_city: 'Bendigo', city_primary: 'bendigo', title: ' storytime', venue_name: 'Bendigo Library ' },
+      { organisation_id: 'org-1', venue_city: 'Bendigo', city_primary: 'bendigo', title: 'STORYTIME', venue_name: 'bendigo library' },
+      { organisation_id: 'org-1', venue_city: 'Bendigo', city_primary: 'bendigo', title: 'Storytime', venue_name: 'Eaglehawk Library' },
+    ])
+    const stats = await getPlatformStats({ client, now: NOW })
+    expect(stats.eventsListed).toBe(2)
   })
 
   it('composes the same two definitions as the /events grid, so the two numbers cannot part', () => {

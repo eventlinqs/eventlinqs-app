@@ -8,7 +8,7 @@
  * (src/lib/broadcast/price-line.ts), so a night sold elsewhere is never called Free here either.
  */
 import { broadcastCta, broadcastPriceLabel } from '@/lib/broadcast/price-line'
-import { sellerName } from '@/lib/events/booking-links'
+import { fromPrice, priceToShow, sellerName, toBookingLink, type BookingLinkRow } from '@/lib/events/booking-links'
 import { GET_TICKETS, ROW_REGISTER_ON_EVENTLINQS, ROW_WALK_IN } from '@/lib/events/cta'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
 import { listingUntil } from '@/lib/events/listing-window'
@@ -30,6 +30,8 @@ export type DirectoryInput = {
   readonly entry_mode?: string | null
   readonly external_ticket_url?: string | null
   readonly ticket_tiers: readonly { readonly price: number; readonly currency: string }[] | null
+  /** The event's outside booking links (the guide reads them embedded), whose fresh price an outside row names. */
+  readonly booking_links?: readonly BookingLinkRow[] | null
   /** The event's own one line, as its page shows it (our words from the facts, or the organiser's own). */
   readonly summary?: string | null
   /** When the listing was first published (Just announced: the last 14 days, any date). */
@@ -146,10 +148,22 @@ const UNNAMED_REGISTRATION = 'Register'
 /** Whether a label sends the visitor to another site (it then carries the outbound mark). */
 export const OUTBOUND_LABEL = {
   test: (label: string): boolean =>
-    label.startsWith('Tickets at ') || label.startsWith('Register at ') || label === GET_TICKETS || label === UNNAMED_REGISTRATION,
+    label.startsWith('Tickets at ') || label.startsWith('Register at ') || /^From \$[\d,.]+ at /.test(label) || label === GET_TICKETS || label === UNNAMED_REGISTRATION,
 }
 
-export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_ticket_url' | 'is_free' | 'entry_mode'>): string {
+/**
+ * An outside seller's price for a row: the link at the address the row names, priced above nothing and read in the last
+ * 7 days (priceToShow, the event page's own rule); else null (the CONTROLLER's 08:50 (6)).
+ */
+function outsidePrice(e: Pick<DirectoryInput, 'external_ticket_url' | 'booking_links'>, now: Date | undefined): number | null {
+  const url = (e.external_ticket_url ?? '').trim()
+  if (!now || !url) return null
+  const mine = (e.booking_links ?? []).find((l) => l.url.trim() === url && l.availability !== 'dead')
+  const cents = mine ? priceToShow(toBookingLink(mine), now) : null
+  return cents !== null && cents > 0 ? cents : null
+}
+
+export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_ticket_url' | 'is_free' | 'entry_mode' | 'booking_links'>, now?: Date): string {
   const cta = broadcastCta({
     ticket_tiers: e.ticket_tiers ?? [],
     external_ticket_url: e.external_ticket_url ?? null,
@@ -160,8 +174,12 @@ export function sourceLabel(e: Pick<DirectoryInput, 'ticket_tiers' | 'external_t
   switch (cta.state) {
     case 'paid_native':
       return OUR_CHECKOUT_LABEL
-    case 'paid_external':
+    case 'paid_external': {
+      // 'From $89.90 at AXS' when the seller's own link carries a price read in the last 7 days, else 'Tickets at AXS'.
+      const cents = seller ? outsidePrice(e, now) : null
+      if (cents !== null) return `${fromPrice(cents)} at ${seller}`
       return seller ? `Tickets at ${seller}` : GET_TICKETS
+    }
     case 'free_registration':
       // Free, registered on our own checkout (no outside address): it never leaves EventLinqs, so no outbound label.
       if (!(e.external_ticket_url ?? '').trim()) return OUR_REGISTRATION_LABEL
@@ -228,7 +246,7 @@ export function directoryDays(events: readonly DirectoryInput[], now: Date, thum
       price,
       time: timeLabel(at, zone),
       free: /^free/i.test(price),
-      source: sourceLabel(e),
+      source: sourceLabel(e, now),
       format: e.entry_mode === 'walk_in' ? 'walk_in' : (e.ticket_tiers ?? []).length > 0 || (e.external_ticket_url ?? '').trim() ? 'ticketed' : 'other',
       cityKey: (e.venue_city ?? '').trim().toLowerCase(),
       suburb: suburbOf(e.venue_address ?? null, e.venue_city),

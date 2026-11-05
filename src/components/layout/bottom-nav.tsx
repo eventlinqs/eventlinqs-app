@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, CalendarDays, Ticket, User } from 'lucide-react'
+import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
 
 /**
  * Mobile bottom tab bar - visible on <768px, hidden on md+.
@@ -40,6 +41,8 @@ const TABS: TabConfig[] = [
 
 export function BottomNav() {
   const pathname = usePathname()
+  // Events opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)).
+  const eventsHref = useChosenEventsHref()
 
   // Hide on checkout, dashboard, and auth routes
   const isHidden = HIDDEN_PREFIXES.some(
@@ -62,7 +65,7 @@ export function BottomNav() {
           return (
             <Link
               key={href}
-              href={href}
+              href={href === '/events' ? eventsHref : href}
               prefetch={false}
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}

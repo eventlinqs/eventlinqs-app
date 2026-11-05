@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CityNewsletterCapture } from '@/components/features/city/city-newsletter-capture'
+import type { ReactNode } from 'react'
 import { ExternalLink, Globe, Mail } from 'lucide-react'
 
 interface Props {
@@ -8,6 +8,14 @@ interface Props {
   organiserSlug?: string
   website: string | null
   email: string | null
+  /** What the panel promises a follower: src/lib/organisers/update-words.ts, by the broadcast flags. */
+  line: string
+  /**
+   * The follow control. It replaced the weekly email form (the CONTROLLER's 08:50 (3)): that form posted the organiser's
+   * name as a city, which /api/newsletter/subscribe refuses, so it failed on every organiser page, and it promised a
+   * weekly email no organiser has.
+   */
+  followSlot: ReactNode
 }
 
 /**
@@ -19,7 +27,7 @@ interface Props {
  * have in the schema today; Instagram + TikTok come later when the M7
  * admin panel surfaces a typed social-links schema).
  */
-export function OrganiserContactPanel({ organiserName, website, email }: Props) {
+export function OrganiserContactPanel({ organiserName, website, email, line, followSlot }: Props) {
   return (
     <section
       aria-labelledby="organiser-contact-heading"
@@ -47,9 +55,7 @@ export function OrganiserContactPanel({ organiserName, website, email }: Props) 
             >
               Stay connected with {organiserName}.
             </h2>
-            <p className="mt-3 text-sm text-[var(--text-secondary)] sm:text-base">
-              Get notified the moment new events go live. One email per release. Unsubscribe anytime.
-            </p>
+            <p className="mt-3 text-sm text-[var(--text-secondary)] sm:text-base">{line}</p>
 
             {(website || email) ? (
               <ul role="list" className="mt-6 space-y-2">
@@ -99,9 +105,7 @@ export function OrganiserContactPanel({ organiserName, website, email }: Props) 
             </div>
           </div>
 
-          <div className="flex items-center">
-            <CityNewsletterCapture cityName={organiserName} tone="light" />
-          </div>
+          <div className="flex items-center">{followSlot}</div>
         </div>
       </div>
     </section>

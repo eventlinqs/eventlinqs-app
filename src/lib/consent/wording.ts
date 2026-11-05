@@ -37,6 +37,30 @@ export const DIGEST_CONSENT_WORDING =
 export const DIGEST_CONSENT_WORDING_VERSION = 'v1'
 
 /**
+ * The signup box while no weekly digest runs (the CONTROLLER's 08:50 (4), 5 November 2026: broadcast_digest is off in
+ * production, so /signup offering 'a weekly local digest' promised a mail no job sends). A NEW wording, version v1 of
+ * 5 November 2026, never an edit of the digest's: it names who (EventLinqs), the channel (email) and how to stop.
+ * A tick on it records the platform updates consent (email_subscribers, as the checkout's updates box does).
+ */
+export const SIGNUP_UPDATES_CONSENT_WORDING = 'Occasional EventLinqs updates by email. You can unsubscribe at any time.'
+export const SIGNUP_UPDATES_CONSENT_WORDING_VERSION = 'v1'
+
+/** Which line the signup box shows: the digest's only while broadcast_digest is on. Pure. */
+export function signupConsentLine(digestOn: boolean): { wording: string; shown: 'digest' | 'updates' } {
+  return digestOn ? { wording: DIGEST_CONSENT_WORDING, shown: 'digest' } : { wording: SIGNUP_UPDATES_CONSENT_WORDING, shown: 'updates' }
+}
+
+/**
+ * Which consent a signup's tick records: exactly the line the form says it showed. A form that names no line is the
+ * form before this change, which showed the digest. An unknown line records nothing rather than a guess. Pure.
+ */
+export function signupConsentRecord(ticked: boolean, shown: unknown): 'digest' | 'updates' | null {
+  if (!ticked) return null
+  if (shown === undefined || shown === 'digest') return 'digest'
+  return shown === 'updates' ? 'updates' : null
+}
+
+/**
  * The city newsletter capture, shown on every city landing, every
  * community-by-city page and every organiser profile.
  *

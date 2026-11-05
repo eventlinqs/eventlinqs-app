@@ -83,10 +83,11 @@ describe('the one button', () => {
     expect(buttonOf([link('d', { availability: 'dead' })])).toBeNull()
   })
 
-  it('a price is shown only when checked within the last day', () => {
+  it('a price is shown only when checked within the last 7 days (the CONTROLLER 08:50 (6), row and page alike)', () => {
     const now = new Date('2026-10-27T12:00:00Z')
-    expect(priceToShow(link('x', { priceFromCents: 2850, priceCheckedAt: '2026-10-27T01:00:00Z' }), now)).toBe(2850)
-    expect(priceToShow(link('x', { priceFromCents: 2850, priceCheckedAt: '2026-10-26T11:00:00Z' }), now)).toBeNull()
+    expect(priceToShow(link('x', { priceFromCents: 2850, priceCheckedAt: '2026-10-26T11:00:00Z' }), now)).toBe(2850)
+    expect(priceToShow(link('x', { priceFromCents: 2850, priceCheckedAt: '2026-10-20T13:00:00Z' }), now)).toBe(2850)
+    expect(priceToShow(link('x', { priceFromCents: 2850, priceCheckedAt: '2026-10-20T11:00:00Z' }), now)).toBeNull()
     expect(priceToShow(link('x'), now)).toBeNull()
   })
 })

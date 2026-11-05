@@ -110,7 +110,7 @@ describe('the Geelong reference page, section by section', () => {
     fireEvent.change(within(all).getByLabelText('Suburb'), { target: { value: 'Belmont' } })
     expect(within(all).getByText('Saturday Market')).toBeInTheDocument()
     expect(within(all).queryByText('Open Mic Comedy')).toBeNull()
-    expect(within(all).getByText(/1 event, 1 date of 4 events/)).toBeInTheDocument()
+    expect(within(all).getByText('Next 3 months: 1 event, 1 date. 4 events in all.')).toBeInTheDocument()
     fireEvent.click(within(all).getByRole('button', { name: /Clear/ }))
     fireEvent.click(within(within(all).getByRole('group', { name: 'Price' })).getByRole('button', { name: 'Paid' }))
     expect(within(all).getByText('Katie Noonan')).toBeInTheDocument()
@@ -218,7 +218,9 @@ describe('the count is told honestly, events and dates (the CONTROLLER 09:13 (3)
   it('a weekly night is one event on many dates; the line and the tiles count events', () => {
     const weekly = [row({ id: 'w1', dayKey: '2026-11-03' }), row({ id: 'w2', href: '/events/w2', dayKey: '2026-11-10', dayLabel: 'Tuesday 10 November' }), row({ id: 'w3', href: '/events/w3', dayKey: '2026-11-17', dayLabel: 'Tuesday 17 November' })]
     expect(eventCount(weekly)).toBe(1)
-    expect(countLine(weekly, null)).toBe('1 event, 3 dates')
+    expect(countLine(weekly, null, 'All dates')).toBe('All dates: 1 event, 3 dates.')
+    // The CONTROLLER's 08:50 (1), from the 5 November audit: the range's own name, what it holds, then the whole count.
+    expect(countLine(weekly.slice(0, 1), weekly, 'This week')).toBe('This week: 1 event, 1 date. 1 event in all.')
     render(
       <CityGuide
         city={{ slug: 'geelong', name: 'Geelong', state: 'VIC', lat: -38.15, lng: 144.36 }}
@@ -226,7 +228,8 @@ describe('the count is told honestly, events and dates (the CONTROLLER 09:13 (3)
         rows={weekly} days={days}
       />,
     )
-    expect(screen.getByText(/1 event, 3 dates coming up in Geelong/)).toBeInTheDocument()
+    expect(screen.getByText('Next 3 months: 1 event, 3 dates.')).toBeInTheDocument()
+    expect(screen.queryByText(/coming up in/)).toBeNull()
     const explore = screen.getByRole('region', { name: 'Explore Geelong' })
     expect(within(explore).getAllByRole('button').map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Comedy1 event', 'All events1 event'])
   })
@@ -240,7 +243,7 @@ describe('the filters are shorter on a phone, every control kept (Lawal 2 Novemb
     const distance = screen.getByLabelText('Distance') as HTMLSelectElement
     expect([...distance.options].map((o) => o.textContent)).toEqual(['In Geelong', 'Within 25 km', 'Within 50 km'])
     fireEvent.change(distance, { target: { value: '25' } })
-    expect(screen.getByText(/coming up in Geelong and within 25 km/)).toBeInTheDocument()
+    expect(screen.getByText(/^Next 3 months, Geelong and within 25 km: \d+ events?, \d+ dates?\./)).toBeInTheDocument()
   })
 })
 

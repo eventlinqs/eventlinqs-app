@@ -8,7 +8,7 @@ import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import { isFlagEnabled } from '@/lib/flags'
 import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
-import { acceptedPaymentMethodsSentence } from '@/lib/payments/payment-methods'
+import { PRICING_FAQ, PRICING_TIERS } from '@/lib/pricing/tiers'
 
 /**
  * PricingPage - /pricing
@@ -18,104 +18,6 @@ import { acceptedPaymentMethodsSentence } from '@/lib/payments/payment-methods'
  * always equals the charged fee. Stated as ONE definite number: no "from", no
  * "indicative", no "may vary" hedging.
  */
-
-// ---- Pricing tier data ----
-
-const TIERS = [
-  {
-    id: 'free',
-    name: 'Free Events',
-    price: 'Free forever',
-    priceDetail: null,
-    description:
-      'Host any free event at zero cost. No platform fees. No hidden charges. Keep every dollar you collect.',
-    features: [
-      'Unlimited free events',
-      'Unlimited free tickets',
-      'All platform features included',
-      'Real-time sales dashboard and scan app',
-      'Guest list export and check-in tools',
-    ],
-    cta: null,
-    highlighted: false,
-  },
-  {
-    id: 'paid',
-    name: 'Paid Events',
-    // Always overridden at render by the live fee (getLivePublicFee); the paid
-    // tier never reads this static value. Kept blank so there is no second fee.
-    price: '',
-    priceDetail: 'per paid ticket sold. That is the whole fee.',
-    description:
-      'Transparent rates, published in full. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
-    features: [
-      'All features from Free tier',
-      'Squad booking and group ticketing',
-      'Discount codes and tiered pricing',
-      'Advanced sales analytics',
-      'Dedicated payout support',
-      'Multi-currency checkout',
-    ],
-    cta: { label: 'Start selling tickets', href: '/organisers/signup' },
-    highlighted: true,
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 'Custom',
-    priceDetail: 'contact us for a quote',
-    description:
-      'For venues, festivals, and high-volume organisers. Custom rates, dedicated support, and white-label options available.',
-    features: [
-      'Custom pricing for high volume',
-      'Dedicated account manager',
-      'White-label event pages (optional)',
-      'Custom integrations and reporting',
-      'Priority support SLA',
-    ],
-    cta: { label: 'Contact us', href: '/contact?topic=partnership' },
-    highlighted: false,
-  },
-]
-
-// ---- FAQ data ----
-
-const FAQ = [
-  {
-    q: "What counts as a paid ticket?",
-    a: "Any ticket with a price above zero is a paid ticket. Free tickets and complimentary tickets issued by the organiser are not charged a platform fee. Free events have zero platform fees permanently.",
-  },
-  {
-    q: "Who pays the booking fee, the organiser or the buyer?",
-    a: "You choose. When you create your event, you can set whether the booking fee is absorbed into your ticket price (organiser pays) or passed on as a separate line item at checkout (buyer pays). Either way, buyers always see the full amount before confirming their purchase. No surprises.",
-  },
-  {
-    q: "What currencies do you support?",
-    a: "You can price your event in Australian dollars, British pounds, US dollars, Canadian dollars, and Euros. Buyers outside your currency will see their card issuer's exchange rate applied by their bank. EventLinqs does not add a currency conversion fee.",
-  },
-  {
-    q: "When do I get paid after my event?",
-    a: "Payouts are initiated within 5 business days of your event ending, to your linked bank account. Bank processing typically adds 1 to 3 business days on top. Payouts require Stripe identity verification to be completed before your first payout can be sent.",
-  },
-  {
-    q: "What payment methods do buyers use?",
-    /*
-     * COMPOSED FROM THE ONE DECLARATION, never typed (close-out SEO4 step 5).
-     *
-     * This answer used to be a second hand-written list, and it did not match
-     * the one in the checkout panel: it named Stripe Link and the panel did not.
-     * Whether Link is enabled is a Stripe dashboard fact this repository cannot
-     * read, so naming it to a buyer was an unsourced claim about money. The
-     * sentence is now built from src/lib/payments/payment-methods.ts, so the FAQ
-     * and the checkout say the same thing by construction.
-     */
-    a: `Buyers can pay with ${acceptedPaymentMethodsSentence()}`,
-  },
-  {
-    q: "Do you charge a fee for refunds?",
-    a: "No. There is no refund fee and no administration charge. When a refund is issued the EventLinqs service fee goes back to the buyer with the ticket price, and for an event cancelled by the organiser the full amount paid is refunded. There is only ever the one fee, and card processing is already inside it.",
-  },
-]
 
 export async function PricingPage() {
   // The displayed fee is read LIVE from pricing_rules (the same source the
@@ -161,7 +63,7 @@ export async function PricingPage() {
       <ContentSection surface="alt" width="wide" topBorder>
         <h2 className="sr-only">Pricing tiers</h2>
         <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
-          {TIERS.map(tier => (
+          {PRICING_TIERS.map(tier => (
             <div
               key={tier.id}
               className={[
@@ -344,7 +246,7 @@ export async function PricingPage() {
         </h2>
 
         <div className="space-y-3">
-          {FAQ.map((item, i) => (
+          {PRICING_FAQ.map((item, i) => (
             <details
               key={i}
               className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] open:shadow-sm"

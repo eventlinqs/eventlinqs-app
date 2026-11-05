@@ -1,9 +1,8 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCities, type CityContent, type CitySlug } from './data'
-import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { EVENT_DATA_CACHE_TAGS } from '@/lib/events/cache-tags'
-import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { eventsPerCityName, readListedRows, type CountReadClient } from '@/lib/events/event-counts'
 
 export interface CityIndexEntry {
   slug: CitySlug
@@ -32,18 +31,12 @@ async function getCityIndexEntriesRaw(): Promise<CityIndexEntry[]> {
   const cities: CityContent[] = getAllCities()
   const supabase = createPublicClient()
 
+  // EVENTS, never dates (the CONTROLLER's 08:50 (2): the audit read 'Bendigo VIC 174 events' over the 89 events its
+  // guide counts): every listed row read once, each city's events counted by the guide's eventKey, the same venue_city
+  // match as before. A failed read throws, and getCityIndexEntries answers with its zero-count fallback.
+  const perCity = eventsPerCityName(await readListedRows(supabase as unknown as CountReadClient, new Date()), cities.map((c) => c.name))
   const counts: Record<CitySlug, number> = {} as Record<CitySlug, number>
-  await Promise.all(
-    cities.map(async (c: CityContent) => {
-      const { count, error } = await supabase
-        .from('events')
-        .select('id', { count: 'exact', head: true })
-        .match(PUBLIC_EVENT_MATCH)
-        .or(listingWindowOrPredicate(new Date()))
-        .ilike('venue_city', `%${c.name}%`)
-      counts[c.slug] = error || count === null ? 0 : count
-    }),
-  )
+  for (const c of cities) counts[c.slug] = perCity.get(c.name) ?? 0
 
   return cities.map(c => ({
     slug: c.slug,

@@ -9,7 +9,8 @@ import {
   toAttributionRecord,
   type CapturedAttribution,
 } from '@/lib/growth/referrals'
-import { recordPlatformDigestConsent } from '@/lib/consent/record'
+import { recordPlatformDigestConsent, recordPlatformUpdateConsent } from '@/lib/consent/record'
+import { signupConsentRecord } from '@/lib/consent/wording'
 import { resolveDigestCityFor } from '@/lib/consent/digest-city'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
@@ -58,6 +59,8 @@ const BodySchema = z.object({
   // Optional, unticked-by-default digest opt-in (Broadcast Layer SPEC 3.1).
   // Never a signup condition: the account is created whether or not it is set.
   digestOptIn: z.boolean().optional(),
+  // Which line the box showed (src/lib/consent/wording.ts signupConsentLine): a tick records exactly that consent.
+  consentShown: z.string().max(20).optional(),
 })
 
 /**
@@ -449,7 +452,18 @@ export async function POST(request: NextRequest) {
    * three were `src/lib/consent/digest-city.ts`, which is where the rule now
    * lives for every caller, and `src/app/actions/consent.ts`, fixed in 4bfb0fd0.
    */
-  if (body.digestOptIn && newUserId) {
+  // A tick records exactly the line the box showed (the CONTROLLER's 08:50 (4)): the occasional updates line, while no
+  // weekly digest runs, is the platform updates consent the checkout's box records; the digest line, the digest consent.
+  const consentRecord = signupConsentRecord(Boolean(body.digestOptIn), body.consentShown)
+  if (consentRecord === 'updates' && newUserId) {
+    try {
+      await recordPlatformUpdateConsent(admin, { email: body.email, source: 'registration' })
+    } catch (error) {
+      captureException(error, { where: 'app/api/auth/signup/route:updates-consent' })
+      // swallow - consent capture must never fail the signup
+    }
+  }
+  if (consentRecord === 'digest' && newUserId) {
     try {
       const city = await resolveDigestCityFor(admin, {
         eventId: null,

@@ -5,6 +5,8 @@ import { stripMarkdown } from '@/lib/prose/markdown-subset'
 interface Props {
   organiserName: string
   bio: string | null
+  /** The line when there is no bio: src/lib/organisers/update-words.ts (it promises only what runs). */
+  emptyLine: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface Props {
  * and add a bio - the next iteration of the dashboard will deep link
  * here from the empty state.
  */
-export function OrganiserBioSection({ organiserName, bio }: Props) {
+export function OrganiserBioSection({ organiserName, bio, emptyLine }: Props) {
   return (
     <ContentSection surface="base" width="prose" topBorder>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -39,7 +41,7 @@ export function OrganiserBioSection({ organiserName, bio }: Props) {
         />
       ) : (
         <p className="mt-5 text-sm text-[var(--text-secondary)]">
-          {organiserName} hasn&apos;t added a bio yet. Subscribe to event updates below to get notified when new events go live.
+          {emptyLine}
         </p>
       )}
     </ContentSection>

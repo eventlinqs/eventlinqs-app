@@ -1,5 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
-import type { BookingLink } from './booking-links'
+import { BOOKING_LINK_COLUMNS, toBookingLink, type BookingLink, type BookingLinkRow } from './booking-links'
 
 /**
  * An event's booking links as the public reads them (WI3; the table's policy,
@@ -11,7 +11,7 @@ import type { BookingLink } from './booking-links'
 export async function readBookingLinks(eventId: string): Promise<BookingLink[]> {
   const { data, error } = await createPublicClient()
     .from('event_booking_links')
-    .select('id, provider, url, kind, availability, price_from_cents, price_checked_at, is_primary, set_by, pointed_to_by_organiser, position, created_at')
+    .select(BOOKING_LINK_COLUMNS)
     .eq('event_id', eventId)
     .order('position', { ascending: true })
     .limit(20)
@@ -19,18 +19,5 @@ export async function readBookingLinks(eventId: string): Promise<BookingLink[]> 
     console.error('[booking-links] the links could not be read', { eventId, error: error.message })
     return []
   }
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    provider: r.provider as BookingLink['provider'],
-    url: r.url,
-    kind: r.kind as BookingLink['kind'],
-    availability: r.availability as BookingLink['availability'],
-    priceFromCents: r.price_from_cents,
-    priceCheckedAt: r.price_checked_at,
-    isPrimary: r.is_primary,
-    setBy: r.set_by as BookingLink['setBy'],
-    pointedToByOrganiser: r.pointed_to_by_organiser,
-    position: r.position,
-    createdAt: r.created_at,
-  }))
+  return ((data ?? []) as unknown as BookingLinkRow[]).map(toBookingLink)
 }

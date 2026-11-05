@@ -180,9 +180,16 @@ describe('URL filters that appear in real hrefs', () => {
     it('resolves a moment to its heritage and its window', () => {
       const moment = resolveMoment('naidoc-week-2026')
       expect(moment?.community).toBe('aboriginal-torres-strait-islander')
-      expect(moment?.from.startsWith('2026-07-05')).toBe(true)
-      // The window is inclusive of its final day.
-      expect(moment?.to.startsWith('2026-07-12')).toBe(true)
+      /* The window is the platform zone's days, never UTC's (the engine review's risk 13, 5 November 2026): 5 July begins at
+         14:00 UTC on 4 July in Australian Eastern Standard Time, and 12 July, inclusive, ends a millisecond before 13 July. */
+      expect(moment?.from).toBe('2026-07-04T14:00:00.000Z')
+      expect(moment?.to).toBe('2026-07-12T13:59:59.999Z')
+    })
+
+    it('reads a summer moment in daylight saving time', () => {
+      const moment = resolveMoment('invasion-day-2026')
+      expect(moment?.from).toBe('2026-01-25T13:00:00.000Z')
+      expect(moment?.to).toBe('2026-01-26T12:59:59.999Z')
     })
 
     it('applies both halves through the parser', () => {

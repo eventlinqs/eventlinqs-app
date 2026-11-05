@@ -11,6 +11,7 @@ import { SiteHeaderAccountDropdown } from './site-header-account-dropdown'
 import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
+import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
 
 /**
  * Custom event name dispatched on `window` after LocationPicker writes a
@@ -128,6 +129,9 @@ export function readCityCookie(): DetectedLocation | null {
 export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, pageCity = null }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
+  // Browse Events opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)); '/events' until it is read.
+  const eventsHref = useChosenEventsHref()
+  const hrefOf = (href: string) => (href === '/events' ? eventsHref : href)
 
   // Cookie-backed location, hydrated post-mount so the route stays
   // statically renderable (no cookies() at the server). Initial state
@@ -260,7 +264,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, p
             {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
-                href={link.href}
+                href={hrefOf(link.href)}
                 // min-h-11: a 44px hit area inside the 64px bar (the link box
                 // was the 20px text line). rounded-lg: the control radius, so
                 // the focus ring does not add a fourth radius to the page.
@@ -431,7 +435,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, p
             {NAV_LINKS.map(link => (
               <li key={link.href}>
                 <Link
-                  href={link.href}
+                  href={hrefOf(link.href)}
                   className="chrome-drawer-link"
                   onClick={closeSheet}
                 >
