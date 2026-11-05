@@ -1,4 +1,5 @@
-import { getAllCities } from '@/lib/cities/data'
+// The names and slugs only: the full city data (48 KB) never enters the header's client bundle.
+import { CITY_NAMES } from '@/lib/cities/city-names'
 
 /**
  * THE CITY A VISITOR CHOSE, AND BROWSE FOLLOWING IT (the CONTROLLER's 08:50 (7), from the 5 November audit: a visitor who
@@ -32,7 +33,7 @@ export function chosenCitySlug(raw: string | null | undefined): string | null {
     const parsed = JSON.parse(value) as { city?: unknown }
     if (typeof parsed?.city !== 'string') return null
     const name = parsed.city.trim().toLowerCase()
-    return getAllCities().find((c) => c.name.toLowerCase() === name)?.slug ?? null
+    return CITY_NAMES.find(([, n]) => n.toLowerCase() === name)?.[0] ?? null
   } catch {
     return null
   }
