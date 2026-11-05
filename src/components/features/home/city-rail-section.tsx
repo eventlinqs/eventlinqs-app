@@ -7,8 +7,7 @@ import { getSpineCity } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
-import { listingWindowOrPredicate } from '@/lib/events/listing-window'
-import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { eventsPerCityName, readListedRows, type CountReadClient } from '@/lib/events/event-counts'
 
 interface Props {
   nowIso: string
@@ -16,34 +15,27 @@ interface Props {
 
 export async function CityRailSection({ nowIso }: Props) {
   const supabase = createPublicClient()
+  // EVENTS, never dates (the CONTROLLER's 08:50 (2): the audit read 'Melbourne 211 events' over the 97 events its guide
+  // counts): every listed row read once, each city's events counted by the guide's eventKey. A failed read hides the rail.
+  const listed = await readListedRows(supabase as unknown as CountReadClient, new Date(nowIso)).catch(() => null)
+  if (!listed) return null
+  const perCity = eventsPerCityName(listed, CITY_TILES.map((t) => t.city))
 
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {
       // Spine-first: the licensed city photo is the slot image. Pexels then the
       // local SVG remain the fallback chain for any city without a spine slot.
       const spine = getSpineCity(t.slug)
-      const [countResult, photo] = await Promise.all([
-        // Match on the city NAME (e.g. "Gold Coast"), consistent with the city
-        // landing pages (/city/[slug] uses %city.name%). Matching the slug
-        // ("gold-coast") would never match a "Gold Coast" venue_city, so
-        // multi-word cities would show 0 events on the rail even when seeded.
-        // LISTED UNTIL IT HAS ENDED, not until it has started. This count used
-        // `start_date >= now`, so an event that had begun stopped being counted,
-        // and a city whose only event was on right now lost its tile from the
-        // rail entirely. Survivor of the 16 August 2026 date-window pass, which
-        // corrected the query files and missed this component.
-        supabase.from('events').select('id', { count: 'exact', head: true })
-          .match(PUBLIC_EVENT_MATCH)
-          .or(listingWindowOrPredicate(new Date(nowIso)))
-          .ilike('venue_city', `%${t.city}%`),
-        spine ? Promise.resolve(null) : getCityPhoto(t.slug),
-      ])
+      // Matched on the city NAME (e.g. "Gold Coast"), consistent with the city landing pages (/city/[slug] uses
+      // %city.name%); listed until it has ENDED, not until it has started (the listing window), so a city whose only
+      // event is on right now keeps its tile.
+      const photo = spine ? null : await getCityPhoto(t.slug)
       const localSvg = LOCAL_CITY_SVG.has(t.slug)
         ? `/cities/${t.slug}.svg`
         : '/cities/_fallback.svg'
       return {
         ...t,
-        count: countResult.count ?? 0,
+        count: perCity.get(t.city) ?? 0,
         imageSrc: spine ? spine.src : (photo ?? localSvg),
         objectPosition: spine?.objectPosition,
       }
