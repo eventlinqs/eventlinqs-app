@@ -369,6 +369,9 @@ describe("the hunt's rule", () => {
     expect(direct).toEqual(['A Big Show @ Rod Laver Arena (direct)'])
     expect(m.landed).toEqual([])
     expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+    // The run log's rule holds for a direct listing too (listing_source_runs_counts_add_up).
+    expect(m.runs[0].queued + m.runs[0].acceptedByRule).toBeLessThanOrEqual(m.runs[0].landed)
+    expect(m.runs[0].landed).toBeLessThanOrEqual(m.runs[0].found)
   })
 
   it('counts a night that waited from before the hunt, and is decided by its rule now, as listed', async () => {
@@ -381,6 +384,12 @@ describe("the hunt's rule", () => {
     later.store.publishHuntNight = async () => 'promoted'
     const r = await runCollection(later.store, fetcher, new Date(NOW.getTime() + 60_000))
     expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+    /* The run log's own rule (listing_source_runs_counts_add_up, 20261028204001): queued + accepted_by_rule <= landed <=
+       found. Production refused GMHBA's row on 5 November 2026, 14:46, when two promoted nights counted as accepted, not
+       landed. */
+    const run = later.runs[0]
+    expect(run.queued + run.acceptedByRule).toBeLessThanOrEqual(run.landed)
+    expect(run.landed).toBeLessThanOrEqual(run.found)
   })
 
   it('holds a likely duplicate, the same title the same day at any venue, for a person', async () => {

@@ -399,9 +399,14 @@ export async function runCollection(
                   unpublished.push(err instanceof Error ? err.message : String(err))
                 }
               }
-              /* Car 44b: a night that waited for a person from before the hunt, decided by the hunt's rule now, is listed. */
+              /* Car 44b: a night that waited for a person from before the hunt, decided by the hunt's rule now, is listed. It
+                 counts as landed too: the run log holds queued + accepted_by_rule <= landed (listing_source_runs_counts_add_up),
+                 and production refused GMHBA's run row on 5 November 2026 when it did not (car 44c). */
               if (!isNew) {
-                if (promoted) ruled += 1
+                if (promoted) {
+                  landed += 1
+                  ruled += 1
+                }
                 continue
               }
               landed += 1
