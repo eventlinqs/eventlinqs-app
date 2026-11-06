@@ -8,7 +8,7 @@ Every row PASS, or it is not launch ready.
 
 ## VERDICT: NOT LAUNCH READY
 
-4 of 17 rows PASS. 13 are OWNER BLOCKED. 0 FAIL.
+4 of 17 rows PASS. 12 are OWNER BLOCKED. 1 FAIL.
 
 An OWNER BLOCKED row blocks the launch exactly as hard as a FAIL. It is a separate state only
 because it carries the one sentence that ends the blocking, which a bare FAIL would hide.
@@ -19,7 +19,6 @@ because it carries the one sentence that ends the blocking, which a bare FAIL wo
 |---|---|
 | Approval to create one test organiser account and one test event on PRODUCTION, because every organiser journey below writes to the live database and L1 requires them driven there rather than on TEST. | 1, 2, 3, 5, 6, 7, 13, 15 |
 | Approval to put one real card through a low-price live event and refund it, because it is real money on the live Stripe account and no other path proves the buyer journey end to end. | 9, 10, 11, 12 |
-| Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land, the fixed release cannot reach production before they do, and a read of the live screens reads the old code until it does. | 17 |
 
 ## The 17 rows
 
@@ -28,20 +27,20 @@ because it carries the one sentence that ends the blocking, which a bare FAIL wo
 | 1 | ORGANISER | Sign up at /signup, verify email, sign in. | **OWNER BLOCKED** | - | - |
 | 2 | ORGANISER | Create an organisation, then create an event at /dashboard/events/create with a real venue address, and confirm coordinates are saved and NOT null. | **OWNER BLOCKED** | - | - |
 | 3 | ORGANISER | Add tiers and pricing, add a discount code, publish. | **OWNER BLOCKED** | - | - |
-| 4 | ORGANISER | The event appears on /events/[slug], on browse, on its city page, and on any community it belongs to. | **PASS** | `docs/verification/launch-readiness/appearance-2026-09-09.json` | 2026-09-09 |
+| 4 | ORGANISER | The event appears on /events/[slug], on browse, on its city page, and on any community it belongs to. | **PASS** | `docs/verification/launch-readiness/appearance-2026-11-07.json` | 2026-11-07 |
 | 5 | ORGANISER | Generate the Launch Kit and confirm every card renders with real ink. | **OWNER BLOCKED** | - | - |
 | 6 | ORGANISER | Pause, unpause, archive, restore, and delete a zero-sales event. | **OWNER BLOCKED** | - | - |
 | 7 | ORGANISER | View attendees, orders, and the GST report. | **OWNER BLOCKED** | - | - |
-| 8 | ATTENDEE | Find the event from the homepage without knowing the URL. | **PASS** | `docs/verification/launch-readiness/discovery-2026-09-09.json` | 2026-09-09 |
+| 8 | ATTENDEE | Find the event from the homepage without knowing the URL. | **PASS** | `docs/verification/launch-readiness/discovery-2026-11-07.json` | 2026-11-07 |
 | 9 | ATTENDEE | Buy a ticket end to end with a real card on a low-price test event, receive the confirmation email, and see the ticket at /account/tickets and /t/[code]. | **OWNER BLOCKED** | - | - |
 | 10 | ATTENDEE | Refund that order from /dashboard/events/[id]/refunds and confirm the money returns and the ticket is voided. | **OWNER BLOCKED** | - | - |
 | 11 | ATTENDEE | Squad or group purchase path, and a waitlist join. | **OWNER BLOCKED** | - | - |
 | 12 | DOOR | Scan the issued ticket at /scan/[eventId]. It validates once and refuses the second time. Prove the offline path and the multi-scanner path. | **OWNER BLOCKED** | - | - |
 | 13 | PAYOUT | The organiser payout path resolves and reports correctly at /dashboard/payouts. | **OWNER BLOCKED** | - | - |
-| 14 | PLATFORM | Every route enumerated from src/app returns its expected status on production. Zero unexpected 404s. Zero 500s anywhere. | **PASS** | `docs/verification/launch-readiness/route-sweep-2026-09-09.json` | 2026-09-09 |
+| 14 | PLATFORM | Every route enumerated from src/app returns its expected status on production. Zero unexpected 404s. Zero 500s anywhere. | **PASS** | `docs/verification/launch-readiness/route-sweep-2026-11-07.json` | 2026-11-07 |
 | 15 | PLATFORM | Every transactional and confirmation email actually sends and renders. | **OWNER BLOCKED** | - | - |
-| 16 | PLATFORM | axe-core zero on every public surface. | **PASS** | `docs/verification/launch-readiness/axe-2026-09-09.json` | 2026-09-09 |
-| 17 | PLATFORM | A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this. | **OWNER BLOCKED** | - | - |
+| 16 | PLATFORM | axe-core zero on every public surface. | **PASS** | `docs/verification/launch-readiness/axe-2026-11-07.json` | 2026-11-07 |
+| 17 | PLATFORM | A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this. | **FAIL** | - | 2026-11-07 |
 
 ## Row by row
 
@@ -73,7 +72,7 @@ Where it HAS been driven: Driven on TEST: tiers and pricing in the create wizard
 
 **PASS**
 
-Driven anonymously on production against a real published event, with the slug taken from the platform own sitemap and every onward page reached from links on the event page rather than from a typed URL. This row needs no write, which is why it is PASS while the rows around it are not.
+Re-driven anonymously on production on 7 November 2026, in a browser, as a visitor: the first event in the platform own sitemap whose own Event data has not ended (the 2026 Boxing Day Test, day 1, 26 December at the MCG), looked for on all 20 city guides and 21 community pages with All dates and every Show more pressed. It is linked on /city/melbourne and on /events/browse/melbourne, which lands on that guide, at 390, 768 and 1440; no community lists it, so none is owed. The 9 September drive read each page by plain fetch, which cannot press All dates, and on 7 November reported this same event missing from every guide: the drive was wrong, not the platform. This row needs no write.
 
 ### 5. Generate the Launch Kit and confirm every card renders with real ink.
 
@@ -103,7 +102,7 @@ Where it HAS been driven: The three surfaces answer on production to an anonymou
 
 **PASS**
 
-Driven anonymously on production at 390, 768 and 1440 by clicking only: the homepage was loaded, an event link was found on it and followed, and the page it reached was confirmed to be a real event page. No URL was typed after the homepage.
+Re-driven anonymously on production on 7 November 2026 at 390, 768 and 1440 for the event under test, not any event, two ways with no URL typed: by clicks only (the homepage link to Melbourne, All dates, seven presses of Show more, its card) and by its name (the homepage search, its title typed, its card in the results within 0.4 seconds). Both end on its own page with its own h1.
 
 ### 9. Buy a ticket end to end with a real card on a low-price test event, receive the confirmation email, and see the ticket at /account/tickets and /t/[code].
 
@@ -149,7 +148,7 @@ Where it HAS been driven: Driven on TEST across the funds-holding model includin
 
 **PASS**
 
-Re-driven on the current release: 211 requests over 77 static pages, 55 dynamic pages, 48 static handlers and 12 dynamic handlers. No server error, no error boundary inside a 200, no soft 404, no undeliberate 404. Dynamic values came from the platform own sitemap and from anchors harvested off the pages the sweep already drives, never from a guess.
+Re-driven on production on 7 November 2026: 302 requests over 107 static pages, 66 dynamic pages, 73 static handlers and 30 dynamic handlers, 0 defects. No server error, no error boundary inside a 200, no soft 404, no undeliberate 404. Dynamic values came from the platform own sitemap and from anchors harvested off the pages the sweep already drives, never from a guess.
 
 ### 15. Every transactional and confirmation email actually sends and renders.
 
@@ -163,19 +162,17 @@ Where it HAS been driven: Rendered and sent on TEST across the transactional set
 
 **PASS**
 
-Re-run on the current release across every public URL that answered 200 to an anonymous visitor, at 390 and 1440, at every impact level. The URL list was enumerated from the route sweep own results rather than typed.
+Re-run on production on 7 November 2026 across all 82 public URLs that answered 200 to an anonymous visitor, at 390 and 1440, at every impact level, each page walked to its end and back first so every band is painted: 162 scans, 0 violations. The URL list was enumerated from the route sweep own results rather than typed. One route answers an image, not a page (/free/melbourne/this-week/card/story, image/jpeg), and is counted apart: scanned as a page it had judged the browser own image viewer.
 
 ### 17. A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this.
 
-**OWNER BLOCKED**
+**FAIL**
 
-Needs: Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land, the fixed release cannot reach production before they do, and a read of the live screens reads the old code until it does.
-
-Where it HAS been driven: Read at 390, 768 and 1440 on a local production build of this tree by scripts/verify/launch-screens-read.mjs, which resolves the event slug from the database rather than typing one, and which is how the Google Maps developer panel on the event page was found (close-out UX2.5, 11 September 2026). It cannot be read on PRODUCTION as this release yet, because the pending migrations have not landed and production still serves the code the owner read those defects on.
+Read by eye on production on 7 November 2026 at 768 and 1440, and the event page at 390, screen by screen as a visitor scrolls (a full page capture leaves bands that are painted only on scroll blank, so it was not used as evidence). The event page is the 2026 Boxing Day Test. Four faults are live, each fixed with a test on the next car and read again on production when it lands: the event page says its address with the city and state twice (Yarra Park, Melbourne VIC, Melbourne, VIC; 28 of 82 venues, 406 nights); it shows Get directions twice a thumb apart; /pricing at 768 squeezes Start selling tickets onto two lines inside a fixed height button; and /organisers community tiles end at uneven heights. Clean: unrendered markup none, invisible controls none, the venue map shows its pin on the MCG at 768 and 1440. One finding held for Lawal under law 7: /events at 768 cuts every title to one line, as his approved sample of 1 November does.
 
 ## What this report does not claim
 
-A row that is OWNER BLOCKED is not a row that was never built or never tested. 13 of them carry
+A row that is OWNER BLOCKED is not a row that was never built or never tested. 12 of them carry
 a line saying where the journey HAS been driven, and in every case that is TEST or a local
 production build rather than production. L1 asks for production, so production is what the state
-reflects. The gap is an approval, not an absence of work, and it is exactly 3 approvals wide.
+reflects. The gap is an approval, not an absence of work, and it is exactly 2 approvals wide.

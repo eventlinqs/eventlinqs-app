@@ -104,6 +104,49 @@ describe('missing parts never leave punctuation behind', () => {
   })
 })
 
+/*
+ * THE LOCALITY LINE IS NOT SAID TWICE (LAUNCH-READINESS row 17, read on production on 7 November 2026). The event page
+ * of the 2026 Boxing Day Test read 'Yarra Park, Melbourne VIC, Melbourne, VIC, Australia', and the same read of every
+ * published upcoming night found 28 of 82 venue rows, on 406 nights, printing their city or state twice: each address
+ * already ends in Australia Post's last line, 'the locality or suburb, state and postcode'
+ * (https://auspost.com.au/personal/sending/sending-guidelines/addressing-guidelines, fetched 7 November 2026), and the
+ * guide's city and state were added after it. The rows below are those rows, as production holds them.
+ */
+describe('an address that already ends in its locality, state and postcode', () => {
+  test.each([
+    [{ name: 'Melbourne Cricket Ground', address: 'Yarra Park, Melbourne VIC', city: 'Melbourne', state: 'VIC', country: 'Australia' }, 'Yarra Park, Melbourne VIC, Australia'],
+    [{ name: "Bird's Basement", address: '11 Singers Lane, Melbourne VIC 3000', city: 'Melbourne', state: 'VIC', country: 'Australia' }, '11 Singers Lane, Melbourne VIC 3000, Australia'],
+    [{ name: 'Chilwell Library', address: '51 Russell Street, Newtown VIC 3220', city: 'Geelong', state: 'VIC', country: 'Australia' }, '51 Russell Street, Newtown VIC 3220, Australia'],
+    [{ name: 'Kardinia Park Precinct', address: 'Geelong VIC 3220', city: 'Geelong', state: 'VIC', country: 'Australia' }, 'Geelong VIC 3220, Australia'],
+    [{ name: 'Costa Hall', address: '1 Gheringhap St, Geelong VIC 3220', city: 'Geelong', state: 'VIC', country: 'AU' }, '1 Gheringhap St, Geelong VIC 3220, AU'],
+  ])('%j says its locality once', (parts, expected) => {
+    expect(formatVenueAddress(parts)).toBe(expected)
+    expect(formatVenueWithAddress(parts)).toBe(`${parts.name}, ${expected}`)
+  })
+
+  test('a state written out in full is the same state', () => {
+    expect(formatVenueAddress({ address: '1 Bay Street, Geelong Victoria 3220', city: 'Geelong', state: 'VIC', country: 'Australia' })).toBe(
+      '1 Bay Street, Geelong Victoria 3220, Australia',
+    )
+  })
+
+  test('a segment of state and postcode alone states the state, and the city is still said', () => {
+    expect(formatVenueAddress({ address: 'Brunton Avenue, Melbourne, VIC 3002', city: 'Melbourne', state: 'VIC', country: 'Australia' })).toBe(
+      'Brunton Avenue, Melbourne, VIC 3002, Australia',
+    )
+  })
+
+  test('a street that only ends in a state word is not a locality line', () => {
+    expect(formatVenueAddress({ address: '57 Swan Street', city: 'Richmond', state: 'VIC', country: 'Australia' })).toBe('57 Swan Street, Richmond, VIC, Australia')
+  })
+
+  test('outside Australia the rule does not apply', () => {
+    expect(formatVenueAddress({ address: '1 Queen Street, Auckland Central WA', city: 'Auckland', state: 'Auckland', country: 'New Zealand' })).toBe(
+      '1 Queen Street, Auckland Central WA, Auckland, New Zealand',
+    )
+  })
+})
+
 describe('a postcode sits where an Australian address expects it', () => {
   test('after the state, before the country', () => {
     expect(

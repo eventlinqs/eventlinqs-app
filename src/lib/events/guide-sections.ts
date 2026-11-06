@@ -185,6 +185,15 @@ export function byMonth(entries: readonly Entry[]): { key: string; label: string
 }
 
 /** A row's 'when' line, read in gold caps: 'Fri 6 Nov · 7:30 pm', or 'Every Saturday · 9:00 am'. */
+/**
+ * '+N more dates' for a listing with further nights, the one wording every surface prints beside its first night: the browse
+ * row, the section cards and Big nights (round 3's 'else +N more dates'). The cards once printed only the first night, so The
+ * Little Mermaid read 'Fri 6 Nov · 7:00 pm' on /city/geelong with five more shows listed (the CONTROLLER's 20:28 of 6 November).
+ */
+export function moreDatesLine(e: Pick<Entry, 'more' | 'every'>): string | null {
+  return e.more > 0 ? `+${e.more} more ${e.more === 1 ? 'date' : 'dates'}` : null
+}
+
 export function whenLine(e: Entry): string {
   const day =
     e.every ??

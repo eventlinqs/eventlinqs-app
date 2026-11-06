@@ -416,7 +416,41 @@ export const fedSquare: PageRule = {
   },
 }
 
+/**
+ * BIRD'S BASEMENT (birdsbasement.com, 11 Singers Lane). Read 6 November 2026 through the polite reader: robots.txt allows its
+ * show pages; each page under /show/<id>/<slug> carries one schema.org Event per date with a DATE ONLY startDate, and states
+ * its times in words, once for every date: 'Early Show Starts: 7:30 pm' (/show/1779) and, on some, 'Late Show Starts: 10:00
+ * pm' as well (/show/1773). Where the page states exactly one show time, every date starts at it (from the words); where it
+ * states two, which dates run which show is not stated, so every date stays date only and nothing is guessed.
+ */
+export const birdsBasement: PageRule = {
+  host: 'birdsbasement.com',
+  eventPath: /^\/show\/\d+\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    /* The price is the page's own 'Price Range: From $45 + booking fee'. Every page's Event data carries the same $29.00
+       whatever the show (28 pages read on 6 November), so it is never the price; a page without the line gives none. */
+    const visible = /Price Range:\s*From\s*\$\s?(\d[\d,]*(?:\.\d{2})?)/i.exec(textOf(html))
+    const priceFromCents = visible ? Math.round(Number(visible[1].replace(/,/g, '')) * 100) : null
+    const found = eventsFromHtml(html, pageUrl).map((f) => ({ ...f, links: f.links.map((l) => ({ ...l, priceFromCents })) }))
+    const stated = [...textOf(html).matchAll(/\b(?:Early |Late )?Show Starts?:\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm))/gi)]
+      .map((m) => clock(m[1]))
+      .filter((c): c is [number, number] => c !== null)
+    const times = [...new Set(stated.map(([h, mi]) => `${h}:${mi}`))]
+    if (times.length !== 1) return found
+    const [h, mi] = times[0].split(':').map(Number)
+    return found.map((f): FoundEvent => {
+      if (f.timeStatus !== 'date_only') return f
+      const [y, mo, d] = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
+        .format(new Date(f.startsAt))
+        .split('-')
+        .map(Number)
+      const at = wallClockToIso(y, mo, d, h, mi, 0, ZONE)
+      return at ? { ...f, startsAt: at, timeStatus: 'exact', timeFromWords: true } : f
+    })
+  },
+}
+
 export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [
   comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark,
-  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare,
+  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare, birdsBasement,
 ]

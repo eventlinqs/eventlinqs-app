@@ -65,9 +65,15 @@ const darkSurface: Partial<Record<Variant, string>> = {
 const sizes: Record<Size, string> = {
   // 44px tall at every size (the touch-target law); sm keeps the small type
   // and tighter padding, not a smaller target.
-  sm: 'h-11 px-3 text-sm',
-  md: 'h-11 px-4 text-base',
-  lg: 'h-12 px-6 text-base',
+  //
+  // A FLOOR, NOT A FIXED HEIGHT (LAUNCH-READINESS row 17, /pricing at 768 on
+  // production, 7 November 2026): in a narrow card a label wraps, and a box
+  // fixed at 44px squeezed 'Start selling tickets' onto two lines set flush
+  // left against its top edge. A one line button is unchanged (its line plus
+  // the padding sits under the floor); a wrapped label grows it, centred.
+  sm: 'min-h-11 py-2 px-3 text-sm text-center',
+  md: 'min-h-11 py-2 px-4 text-base text-center',
+  lg: 'min-h-12 py-2 px-6 text-base text-center',
 }
 
 function cls(variant: Variant, size: Size, onSurface: Surface, className = '') {

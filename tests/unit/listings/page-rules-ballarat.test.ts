@@ -70,6 +70,17 @@ describe("Her Majesty's Theatre Ballarat rule", () => {
     expect(found[0].venueAddress).toBe('17 Lydiard Street South, Ballarat Central VIC')
   })
 
+  it("one line of tiers, as The Big Christmas Sing's page writes them, reads FULL $39: a group's '(8+)' keeps its label", () => {
+    // Read through the polite reader on 6 November 2026; the accuracy sweep had read $29, the GROUP (8+) price, as open.
+    const found = rule!.read(
+      hmPage({ title: 'The Big Christmas Sing', location: 'Civic Hall Ballarat',
+        prices: 'FULL: $39.00 SENIORS: $34.00 CONCESSION: $29.00 CHILD: $20.00 (Children aged 2-14 years) FAMILY: $105.00 (Group of 4 with a maximum of 2 adults) 30 YEARS AND UNDER: $30.00 GROUP (8+): $29.00',
+        sessions: [['Sunday', 'November 29, 2026', '14:00', '16:00']] }),
+      url,
+    )
+    expect(found[0].links[0].priceFromCents).toBe(3900)
+  })
+
   it('a finish at or before the start (past midnight on the page) is no finish, never an end before the start', () => {
     const found = rule!.read(
       hmPage({ title: 'Bp Late', location: 'Civic Hall Ballarat', prices: 'Full: $50', sessions: [['Saturday', 'November 07, 2026', '20:30', '00:10']] }),

@@ -1,5 +1,6 @@
 import { wallClockToIso, type FoundEvent } from './collect'
 import type { PageRule } from './page-rules'
+import { RESTRICTED_TIER } from './open-tier'
 
 /**
  * GEELONG'S BIG NIGHTS, TWO PAGE RULES (WINDOW 2, 2 November 2026, on the CONTROLLER's 15:34 order: "the engine's next
@@ -96,8 +97,8 @@ export const gmhbaStadium: PageRule = {
   },
 }
 
-/** A ticket a buyer must add to another, or qualify for, is never the 'from' price. */
-const NOT_OPEN = /upgrade|vip|meet|package|dining|hamper|concession|child|senior|student|pensioner|companion|family|group/i
+/** A ticket a buyer must add to another, or qualify for, is never the 'from' price: one list for every reader (./open-tier.ts). */
+const NOT_OPEN = RESTRICTED_TIER
 const MT_DUNEED = /\b(?:mt|mount) duneed estate\b/i
 const MT_DUNEED_STREET = '65 Pettavel Road, Geelong VIC'
 

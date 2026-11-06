@@ -103,11 +103,20 @@ export function factChange(
    * Bendigo night to a Geelong branch. A known night with no recorded city is still compared, as before.
    */
   citySlug: string | null = null,
+  /**
+   * Everything the source states this read. A listed night whose OWN start the source still states has not moved: a found
+   * night beside it the same day is a second session (the Little Mermaid's 1:30 pm and 7:00 pm, Geelong Arts Centre, 6
+   * November 2026), never that night's time changed.
+   */
+  found: readonly FoundEvent[] = [],
 ): { eventId: string; change: 'time_changed' | 'venue_changed' } | null {
   const key = keyOf(e)
+  const stillStated = (k: KnownEvent) =>
+    found.some((f) => f !== e && Math.abs(new Date(f.startsAt).getTime() - new Date(k.startsAt).getTime()) < 60_000 && sameVenue(k, keyOf(f)) && titleShare(k.title, f.title) >= SAME_TITLE_SHARE)
   for (const k of known) {
     if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
     if (titleShare(k.title, e.title) < SAME_TITLE_SHARE || !sharesEnoughWords(k.title, e.title)) continue
+    if (stillStated(k)) continue
     const apart = Math.abs(new Date(k.startsAt).getTime() - new Date(e.startsAt).getTime())
     const venue = sameVenue(k, key)
     if (venue && apart > SAME_START_WITHIN_MS && sameDay(k.startsAt, e.startsAt)) return { eventId: k.eventId, change: 'time_changed' }
@@ -154,8 +163,86 @@ export function implausibleStart(e: Pick<FoundEvent, 'title' | 'startsAt' | 'tim
   return NIGHT_KINDS.has(classify({ title: e.title }).primary ?? '') || MATCH.test(` ${e.title} `)
 }
 
-export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boolean; known: readonly KnownEvent[] }): Judgement {
-  const { plan, sourceVerified, known } = input
+const folded = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/**
+ * A found night of the same title inside an organiser's own published event (no listing series; its start day to its stated
+ * end): that event, under the venue's other name, never a second listing. AMCF's organiser lists the festival at 'Fed
+ * Square' from Friday 20 to Sunday 22 November 2026; Fed Square's feed states its days at 'Federation Square',
+ * and on 5 November the partner rule published the Saturday and Sunday beside it (the engine accuracy sweep, 6 November).
+ */
+export function insideOwnEvent(e: Pick<FoundEvent, 'title' | 'startsAt'>, known: readonly KnownEvent[]): boolean {
+  const t = new Date(e.startsAt).getTime()
+  return known.some(
+    (k) =>
+      !k.seriesId &&
+      Boolean(k.endsAt) &&
+      folded(k.title) === folded(e.title) &&
+      (sameDay(k.startsAt, e.startsAt) || (t >= new Date(k.startsAt).getTime() && t <= new Date(k.endsAt as string).getTime())),
+  )
+}
+
+/** A source's site: the host of a page it was read from, lower case and 'www.' aside; null for no page. Pure. */
+export function sourceHostOf(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).host.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * ONE EVENT FROM TWO SOURCES (class N of the engine accuracy sweep; the CONTROLLER's 03:31 of 7 November 2026). The id of a
+ * night ANOTHER source already lists with the same title on the same Melbourne day in the same city, at any venue; else
+ * null. The City of Greater Geelong's feed listed 'Boost Mobile AUSX Open Geelong' at the venue 'AUSX Open' at 1:00 pm and
+ * Kardinia Park's page gave 'AUSX Open Geelong' at GMHBA Stadium at 6:00 pm the same Saturday: a sponsor's name and a
+ * second venue name, so neither the same-venue check below nor the hunt's same-title check saw one event twice. A source is
+ * the site a night was read from (its host, 'www.' aside): the council's rows came from a hand import whose listing check
+ * names www.geelongcity.vic.gov.au, so a source id alone would not have named them. A known night whose source is not on
+ * record is never a twin (never guessed), and one site's own nights are never each other's twins (a library's same session
+ * at two branches the same day is two sessions). Pure.
+ */
+export function crossSourceTwin(
+  e: Pick<FoundEvent, 'title' | 'startsAt'>,
+  known: readonly KnownEvent[],
+  sourceHost: string,
+  citySlug: string | null,
+): string | null {
+  const reading = sourceHost.toLowerCase().replace(/^www\./, '')
+  for (const k of known) {
+    if (!k.sourceHosts || k.sourceHosts.length === 0 || k.sourceHosts.includes(reading)) continue
+    if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
+    if (!sameDay(k.startsAt, e.startsAt)) continue
+    if (!oneTitle(k.title, e.title)) continue
+    return k.eventId
+  }
+  return null
+}
+
+/**
+ * Two sites name one event when its titles are the same, or the shorter, at least three words, sits wholly inside the
+ * longer ('AUSX Open Geelong' inside 'Boost Mobile AUSX Open Geelong'). The judge's half share is too loose across sites:
+ * put through production's 881 upcoming nights on 7 November 2026 it also called "Sailors' Rest New Year's Eve" and
+ * "New Year's Eve Buffet Dinner", two venues' own dinners, one event. Pure.
+ */
+function oneTitle(a: string, b: string): boolean {
+  if (folded(a) === folded(b)) return true
+  const wa = titleWords(a)
+  const wb = titleWords(b)
+  const [short, long] = wa.size <= wb.size ? [wa, wb] : [wb, wa]
+  return short.size >= 3 && [...short].every((w) => long.has(w))
+}
+
+export function judgeCandidate(input: {
+  plan: CandidatePlan
+  sourceVerified: boolean
+  known: readonly KnownEvent[]
+  /** The site reading this night (its host), and its city: with them, a night another site already lists that day waits. */
+  sourceHost?: string | null
+  citySlug?: string | null
+}): Judgement {
+  const { plan, sourceVerified, known, sourceHost, citySlug = null } = input
   const e = plan.event
   const reasons: CandidateReason[] = []
   if (!sourceVerified) reasons.push('source_unverified')
@@ -173,7 +260,7 @@ export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boo
       const share = titleShare(k.title, e.title)
       return share >= SIMILAR_TITLE_SHARE && share < SAME_TITLE_SHARE && sameVenue(k, key) && sameDay(k.startsAt, e.startsAt)
     })
-    if (alike) reasons.push('similar_listing')
+    if (alike || insideOwnEvent(e, known) || (sourceHost && crossSourceTwin(e, known, sourceHost, citySlug) !== null)) reasons.push('similar_listing')
   }
   return { confidence: reasons.length === 0 ? 'high' : 'low', reasons }
 }

@@ -30,7 +30,7 @@ const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { statedInWords, statedWeekly } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
-const { verifierVerdict, sourcesToSwitchOff, SOURCE_DISAGREES, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
+const { verifierVerdict, sourcesToSwitchOff, asksTheWords, SOURCE_DISAGREES, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
 
 const args = process.argv.slice(2)
 const valueOf = (flag: string): string | null => (args.includes(flag) ? args[args.indexOf(flag) + 1] ?? null : null)
@@ -180,8 +180,13 @@ async function judgeNight(n: Row): Promise<void> {
     // This night on the page: its title once case, accents and punctuation are set aside (fold), or anything the page
     // states at exactly its start, or the page's only night.
     const mine = found.filter((f) => fold(f.title) === fold(n.title) || sameMinute(f.startsAt, n.start_date) || found.length === 1)
-    const words = page.status === 200 && mine.length === 0 ? statedInWords(page.body, n.start_date, zone) : null
-    const weekly = page.status === 200 && mine.length === 0 && words !== 'both' ? statedWeekly(page.body, n.title, n.venue_name ?? '', n.start_date, zone) : null
+    /* The page's words are asked whenever no night it carries sits at this one's minute, not only when it carries none: a
+       weekly listing's page often carries one Event at its FIRST date, and run 42251873336 (7 November 2026, 03:25, the
+       first on ubuntu-24.04) failed Here & Now Lounge's Sunday Improv, stored Sun 8 Nov 6:30 pm, against that page's 'Sun 11
+       Oct', though its words state Sun 8 and Sun 22 November at 6:30 pm (the accuracy sweep read both). */
+    const ask = asksTheWords(mine, n.start_date)
+    const words = page.status === 200 && ask ? statedInWords(page.body, n.start_date, zone) : null
+    const weekly = page.status === 200 && ask && words !== 'both' ? statedWeekly(page.body, n.title, n.venue_name ?? '', n.start_date, zone) : null
     if (page.pdf) source = PDF_SOURCE
     else if (page.status !== 200) source = `the page answered ${page.status ?? 'nothing'}`
     else if (words === 'both') {

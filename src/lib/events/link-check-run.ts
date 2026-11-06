@@ -36,7 +36,7 @@ export type LinkCheckSummary = { links: number; changed: number; robots: number;
 export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: Date): Promise<LinkCheckSummary> {
   const { data, error } = await admin
     .from('event_booking_links')
-    .select('id, url, availability, price_from_cents, events!inner(end_date)')
+    .select('id, url, availability, price_from_cents, events!inner(end_date, start_date, timezone)')
     .gte('events.end_date', now.toISOString())
     .limit(MOST_LINKS)
   if (error) {
@@ -45,23 +45,33 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
   }
   const summary: LinkCheckSummary = { links: 0, changed: 0, robots: 0, unknown: 0, failed: 0 }
   const robots = new Map()
-  for (const link of (data ?? []) as { id: string; url: string; availability: string; price_from_cents: number | null }[]) {
+  // One read of a page per run, however many nights' links it sells (Comedy Republic's Main Stage is one page for every
+  // night), and each night read for itself on it (link-check.ts readPage).
+  const pages = new Map<string, Promise<{ status: number; body: string } | null>>()
+  const once: CheckDeps = {
+    get(url) {
+      if (!pages.has(url)) pages.set(url, deps.get(url))
+      return pages.get(url) as Promise<{ status: number; body: string } | null>
+    },
+  }
+  type Linked = { id: string; url: string; availability: string; price_from_cents: number | null; events: { start_date: string; timezone: string | null } | { start_date: string; timezone: string | null }[] | null }
+  for (const link of (data ?? []) as Linked[]) {
     summary.links++
-    const verdict = await checkLink(link.url, deps, robots)
+    const ev = Array.isArray(link.events) ? link.events[0] : link.events
+    const night = ev?.start_date ? { startsAt: ev.start_date, zone: ev.timezone ?? 'Australia/Melbourne' } : null
+    const verdict = await checkLink(link.url, once, robots, night)
     if (!verdict.changed) {
       summary[verdict.why]++
       continue
     }
     const price = verdict.priceFromCents
-    if (verdict.availability === link.availability && (price === null || price === link.price_from_cents)) continue
-    const { error: writeError } = await admin
-      .from('event_booking_links')
-      .update(
-        price === null
-          ? { availability: verdict.availability, updated_at: now.toISOString() }
-          : { availability: verdict.availability, price_from_cents: price, price_checked_at: now.toISOString(), updated_at: now.toISOString() },
-      )
-      .eq('id', link.id)
+    // An unstated availability keeps the stored one; only what the page states is written.
+    const availability = verdict.availability ?? link.availability
+    if (availability === link.availability && (price === null || price === link.price_from_cents)) continue
+    const row: Record<string, unknown> = { updated_at: now.toISOString() }
+    if (verdict.availability) row.availability = verdict.availability
+    if (price !== null) Object.assign(row, { price_from_cents: price, price_checked_at: now.toISOString() })
+    const { error: writeError } = await admin.from('event_booking_links').update(row).eq('id', link.id)
     if (writeError) {
       summary.failed++
       captureException(writeError, { scope: 'link-check', handler: 'write-verdict', linkId: link.id })
