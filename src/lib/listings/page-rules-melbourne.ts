@@ -427,7 +427,11 @@ export const birdsBasement: PageRule = {
   host: 'birdsbasement.com',
   eventPath: /^\/show\/\d+\/[^/]+\/?$/,
   read(html, pageUrl) {
-    const found = eventsFromHtml(html, pageUrl)
+    /* The price is the page's own 'Price Range: From $45 + booking fee'. Every page's Event data carries the same $29.00
+       whatever the show (28 pages read on 6 November), so it is never the price; a page without the line gives none. */
+    const visible = /Price Range:\s*From\s*\$\s?(\d[\d,]*(?:\.\d{2})?)/i.exec(textOf(html))
+    const priceFromCents = visible ? Math.round(Number(visible[1].replace(/,/g, '')) * 100) : null
+    const found = eventsFromHtml(html, pageUrl).map((f) => ({ ...f, links: f.links.map((l) => ({ ...l, priceFromCents })) }))
     const stated = [...textOf(html).matchAll(/\b(?:Early |Late )?Show Starts?:\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm))/gi)]
       .map((m) => clock(m[1]))
       .filter((c): c is [number, number] => c !== null)

@@ -32,6 +32,13 @@ describe("Bird's Basement's page rule", () => {
     expect(found[0]).toMatchObject({ timeStatus: 'exact', timeFromWords: true })
   })
 
+  it("the from price is the visible 'Price Range: From $45', never the $29.00 every page's Event data carries", () => {
+    const found = pageRuleFor(url)!.read(page(['2026-11-07'], '<p>Early Show Starts: 7:30 pm</p>'), url)
+    expect(found[0].links.map((l) => l.priceFromCents)).toEqual([4500])
+    const unpriced = pageRuleFor(url)!.read(page(['2026-11-07'], '<p>Early Show Starts: 7:30 pm</p>').replace('Price Range: From $45 + booking fee.', ''), url)
+    expect(unpriced[0].links.every((l) => l.priceFromCents === null)).toBe(true)
+  })
+
   it('an early and a late show, not tied to dates, leave every date date only: nothing is guessed', () => {
     const found = pageRuleFor(url)!.read(
       page(['2026-11-19', '2026-11-20', '2026-11-21'], '<p>Early Show Starts: 7:30 pm</p><p>Late Doors Open: 9:20 pm</p><p>Late Show Starts: 10:00 pm</p>'),

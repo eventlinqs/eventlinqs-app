@@ -104,6 +104,35 @@ describe('a page of several dated nights', () => {
     expect(readPage(200, onlyConcession)).toEqual({ availability: 'on_sale', priceFromCents: 1500 })
   })
 
+  test("a rule that does not state availability never asserts 'on sale': Bird's Basement gives its price alone", async () => {
+    // Its Event data carries no availability and a $29.00 placeholder; its page states 'Price Range: From $45 + booking fee'.
+    const birds = [
+      '<html><head><script type="application/ld+json">',
+      JSON.stringify({ '@context': 'https://schema.org', '@type': 'Event', name: 'Fleetwood Max', startDate: '2026-11-14', location: { '@type': 'Place', name: "Bird's Basement", address: '11 Singers Lane, Melbourne VIC 3000' }, offers: { '@type': 'Offer', price: '29.00', priceCurrency: 'AUD', url: 'https://birdsbasement.com/show/1760/fleetwood-max' } }),
+      '</script></head><body><h1>Fleetwood Max</h1><p>Price Range: From $50 + booking fee.</p><p>Early Show Starts: 7:30 pm</p></body></html>',
+    ].join('')
+    const url = 'https://birdsbasement.com/show/1760/fleetwood-max'
+    const deps: CheckDeps = { async get(u) { return u.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: birds } } }
+    expect(await checkLink(url, deps, new Map(), { startsAt: '2026-11-14T08:30:00.000Z', zone })).toEqual({ changed: true, availability: null, priceFromCents: 5000 })
+  })
+
+  test('the run writes a price alone where availability is not stated, and keeps the stored availability', async () => {
+    const links = [{ id: 'fm', url: 'https://birdsbasement.com/show/1760/fleetwood-max', availability: 'sold_out', price_from_cents: 2900, events: { start_date: '2026-11-14T08:30:00.000Z', timezone: zone } }]
+    const writes: { id: string; row: Record<string, unknown> }[] = []
+    const admin = {
+      from: () => ({
+        select: () => ({ gte: () => ({ limit: async () => ({ data: links, error: null }) }) }),
+        update: (row: Record<string, unknown>) => ({ eq: async (_c: string, id: string) => { writes.push({ id, row }); return { error: null } } }),
+      }),
+    } as unknown as SupabaseClient
+    const body = '<html><body><h1>Fleetwood Max</h1><p>Price Range: From $50 + booking fee.</p><p>Early Show Starts: 7:30 pm</p></body></html>'
+      .replace('<html>', `<html><head><script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Event', name: 'Fleetwood Max', startDate: '2026-11-14', location: { '@type': 'Place', name: "Bird's Basement", address: '11 Singers Lane, Melbourne VIC 3000' }, offers: { '@type': 'Offer', price: '29.00', priceCurrency: 'AUD', url: 'https://birdsbasement.com/show/1760/fleetwood-max' } })}</script></head>`)
+    const deps: CheckDeps = { async get(u) { return u.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body } } }
+    await runLinkCheck(admin, deps, new Date('2026-11-06T00:00:00Z'))
+    expect(writes).toEqual([{ id: 'fm', row: expect.objectContaining({ price_from_cents: 5000 }) }])
+    expect(writes[0].row).not.toHaveProperty('availability')
+  })
+
   test('checkLink carries the night to the read', async () => {
     const deps: CheckDeps = { async get(url) { return url.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: week } } }
     expect(await checkLink('https://www.comedyrepublic.com.au/shows/main-stage/', deps, new Map(), { startsAt: '2026-11-07T09:00:00.000Z', zone }))

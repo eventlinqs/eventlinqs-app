@@ -153,7 +153,8 @@ export type CheckDeps = {
   get(url: string): Promise<{ status: number; body: string } | null>
 }
 
-export type LinkVerdict = { changed: false; why: 'robots' | 'unknown' } | { changed: true; availability: Availability; priceFromCents: number | null }
+/** A changed read. availability null: the page states a price and no availability, so only the price is written. */
+export type LinkVerdict = { changed: false; why: 'robots' | 'unknown' } | { changed: true; availability: Availability | null; priceFromCents: number | null }
 
 /** Reads one link: its site's robots.txt first, then the page. Robots cached per host by the caller's map. */
 /**
@@ -173,7 +174,8 @@ export function readByRule(url: string, html: string, night: Night): PageRead | 
     return { availability: null, priceFromCents: null }
   }
   const own = found.filter((f) => Math.abs(new Date(f.startsAt).getTime() - new Date(night.startsAt).getTime()) < 60_000)
-  const states = own.flatMap((f) => f.links.map((l) => l.availability))
+  // Only a rule that reads sold out from the page states availability; the others call an unstated one 'on sale'.
+  const states = rule.statesAvailability ? own.flatMap((f) => f.links.map((l) => l.availability)) : []
   const availability: Availability | null = states.includes('on_sale') ? 'on_sale' : states.includes('not_yet') ? 'not_yet' : states.length > 0 && states.every((s) => s === 'sold_out') ? 'sold_out' : null
   const prices = own.flatMap((f) => f.links.map((l) => l.priceFromCents)).filter((p): p is number => p !== null)
   return { availability, priceFromCents: prices.length > 0 ? Math.min(...prices) : null }
@@ -196,8 +198,13 @@ export async function checkLink(url: string, deps: CheckDeps, robotsCache: Map<s
   const page = await deps.get(url)
   if (!page) return { changed: false, why: 'unknown' }
   const byRule = night && page.status >= 200 && page.status < 300 ? readByRule(url, page.body, night) : null
-  // The rule's answer where it has one; else the page's Event data, read for this night.
-  const read = byRule?.availability ? byRule : readPage(page.status, page.body, night)
-  if (!read.availability) return { changed: false, why: 'unknown' }
-  return { changed: true, availability: read.availability, priceFromCents: read.priceFromCents }
+  // Availability: the page's Event data for this night where it states one, else a rule that reads sold out from the page.
+  // Price: the site's own rule where one is written (it knows the site: Bird's Basement's Event data carries a $29.00
+  // placeholder), else the Event data. A page gone is gone, whatever else it says.
+  const data = readPage(page.status, page.body, night)
+  if (data.availability === 'dead') return { changed: true, availability: 'dead', priceFromCents: null }
+  const availability = data.availability ?? byRule?.availability ?? null
+  const priceFromCents = byRule?.priceFromCents ?? data.priceFromCents
+  if (!availability && priceFromCents === null) return { changed: false, why: 'unknown' }
+  return { changed: true, availability, priceFromCents }
 }

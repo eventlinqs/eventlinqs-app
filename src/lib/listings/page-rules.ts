@@ -27,6 +27,12 @@ export type PageRule = {
   read(html: string, pageUrl: string): FoundEvent[]
   /** A sitemap with no lastmod that lists its NEWEST pages first (fedsquare.com, 5 November 2026), read in its own order. */
   readonly newestFirst?: boolean
+  /**
+   * The rule reads each night's sold out from the page itself, so its 'on sale' is a statement. A rule without it builds its
+   * links on the collector's reader, which calls an unstated availability 'on sale', so the daily link check takes only its
+   * price (src/lib/events/link-check.ts readByRule; the engine accuracy sweep, 6 November 2026).
+   */
+  readonly statesAvailability?: boolean
 }
 
 const ENTITIES: Readonly<Record<string, string>> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' }
@@ -96,6 +102,8 @@ function block(lines: readonly string[], label: string): string[] {
 const geelongArtsCentre: PageRule = {
   host: 'geelongartscentre.org.au',
   eventPath: /^\/whats-on\/(?:[^/]+\/)+[^/]+\/?$/,
+  // Each performance line says 'Sold Out' when it is; a line without it is on sale.
+  statesAvailability: true,
   read(html, pageUrl) {
     const lines = textLines(html)
     if (lines.some((l) => /^This is an archived Event$/i.test(l))) return []

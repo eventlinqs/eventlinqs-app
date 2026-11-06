@@ -65,15 +65,13 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
       continue
     }
     const price = verdict.priceFromCents
-    if (verdict.availability === link.availability && (price === null || price === link.price_from_cents)) continue
-    const { error: writeError } = await admin
-      .from('event_booking_links')
-      .update(
-        price === null
-          ? { availability: verdict.availability, updated_at: now.toISOString() }
-          : { availability: verdict.availability, price_from_cents: price, price_checked_at: now.toISOString(), updated_at: now.toISOString() },
-      )
-      .eq('id', link.id)
+    // An unstated availability keeps the stored one; only what the page states is written.
+    const availability = verdict.availability ?? link.availability
+    if (availability === link.availability && (price === null || price === link.price_from_cents)) continue
+    const row: Record<string, unknown> = { updated_at: now.toISOString() }
+    if (verdict.availability) row.availability = verdict.availability
+    if (price !== null) Object.assign(row, { price_from_cents: price, price_checked_at: now.toISOString() })
+    const { error: writeError } = await admin.from('event_booking_links').update(row).eq('id', link.id)
     if (writeError) {
       summary.failed++
       captureException(writeError, { scope: 'link-check', handler: 'write-verdict', linkId: link.id })
