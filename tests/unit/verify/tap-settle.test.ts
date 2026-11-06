@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error: a plain .mjs module of the verify scripts, no types
 import { settledInView } from '../../../scripts/verify/lib/tap-settle.mjs'
 
 /*
