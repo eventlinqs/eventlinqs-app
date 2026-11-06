@@ -68,6 +68,22 @@ describe('a page of several dated nights', () => {
     expect(writes).toEqual([{ id: 'sat', row: expect.objectContaining({ availability: 'sold_out', price_from_cents: 3900 }) }])
   })
 
+  test("a page the engine reads by its own page rule is read the same way: Cosi's Fri 13 Nov sold out, Sat 14 Nov on sale", async () => {
+    // Geelong Arts Centre's pages carry no Event data; their 'Performances:' block marks each sold out night (page-rules.ts).
+    const gac = [
+      '<html><body><h1>Cosi - Geelong Repertory Theatre Company</h1>',
+      '<p>Performances:</p><p>Fri 13 Nov 2026 7:30pm Sold Out</p><p>Sat 14 Nov 2026 7:30pm</p>',
+      '<p>Ticket Prices:</p><p>Adult $29.00</p><p>Venue:</p><p>Woodbin Theatre</p><p>Venue info</p>',
+      '</body></html>',
+    ].join('')
+    const url = 'https://geelongartscentre.org.au/whats-on/all-events/cosi/'
+    const deps: CheckDeps = { async get(u) { return u.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: gac } } }
+    expect(await checkLink(url, deps, new Map(), { startsAt: '2026-11-13T08:30:00.000Z', zone })).toEqual({ changed: true, availability: 'sold_out', priceFromCents: 2900 })
+    expect(await checkLink(url, deps, new Map(), { startsAt: '2026-11-14T08:30:00.000Z', zone })).toEqual({ changed: true, availability: 'on_sale', priceFromCents: 2900 })
+    // A night the rule does not find on its page is said nothing about.
+    expect(await checkLink(url, deps, new Map(), { startsAt: '2026-11-15T03:00:00.000Z', zone })).toEqual({ changed: false, why: 'unknown' })
+  })
+
   test('checkLink carries the night to the read', async () => {
     const deps: CheckDeps = { async get(url) { return url.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: week } } }
     expect(await checkLink('https://www.comedyrepublic.com.au/shows/main-stage/', deps, new Map(), { startsAt: '2026-11-07T09:00:00.000Z', zone }))
