@@ -179,6 +179,44 @@ describe("a feed that names a known venue of its own city", () => {
     expect(landed[0].venueAddress).toBeNull()
     expect(landed[0].reasons).toContain('no_venue_address')
   })
+
+  /* 6 November 2026, found by the LAW 19 planted demonstration on TEST and measured on production: 8 of 20 found
+     addresses at a held venue of that name were spelled otherwise ('81 Ryrie Street, Geelong VIC' on the page, '81 Ryrie
+     Street, Geelong VIC 3220' held for The Play House). sameVenue refuses two addresses that differ, so the listed night
+     was never matched: a re-read never confirmed its series (its freshness ran out), and a changed time planned as a NEW
+     night. The night is read at the venue EventLinqs holds by that name in the source's city, as the publisher lists it. */
+  const playHouse = (startDate: string) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@type': 'TheaterEvent',
+      name: 'Annie the Musical',
+      startDate,
+      location: { name: 'The Play House', address: '81 Ryrie Street, Geelong VIC' },
+      offers: { url: 'https://tickets.example.com.au/annie', availability: 'InStock' },
+    })}</script>`
+  const gac = 'https://gac.example.com.au/whats-on/annie'
+  const gacPages = (body: string) => ({ 'https://gac.example.com.au/robots.txt': { status: 200, body: '' }, [gac]: { status: 200, body } })
+  const listed: KnownEvent = {
+    eventId: 'e-annie', seriesId: 's-annie', citySlug: 'geelong', venueId: 'v-play-house', venueName: 'The Play House',
+    venueAddress: '81 Ryrie Street, Geelong VIC 3220', title: 'Annie the Musical', startsAt: '2026-11-14T08:30:00.000Z',
+  }
+  const heldPlayHouse = { geelong: { 'the play house': '81 Ryrie Street, Geelong VIC 3220' } }
+
+  it('a re-read of a listed night whose page spells the address otherwise confirms its series, and lands nothing new', async () => {
+    const m = memoryStore([source('gac', gac, { citySlug: 'geelong' })], [listed], { 'e-annie': ['https://tickets.example.com.au/annie'] }, heldPlayHouse)
+    const confirmed: string[] = []
+    m.store.confirmSeries = async (rows) => {
+      confirmed.push(...rows.map((r) => r.seriesId))
+    }
+    await runCollection(m.store, sites(gacPages(playHouse('2026-11-14T19:30:00+11:00'))).fetcher, NOW)
+    expect(confirmed).toEqual(['s-annie'])
+    expect(m.landed).toEqual([])
+  })
+
+  it('a listed night the page now states two hours later, address spelled otherwise, is a time change for a person, never a new night', async () => {
+    const m = memoryStore([source('gac', gac, { citySlug: 'geelong' })], [listed], {}, heldPlayHouse)
+    await runCollection(m.store, sites(gacPages(playHouse('2026-11-14T21:30:00+11:00'))).fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ kind: 'changes_facts', change: 'time_changed', eventId: 'e-annie', decidedBy: 'person', venueAddress: '81 Ryrie Street, Geelong VIC 3220' })
+  })
 })
 
 describe('the run log and the partner rule', () => {

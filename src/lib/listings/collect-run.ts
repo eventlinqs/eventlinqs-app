@@ -132,15 +132,23 @@ function platformDay(at: Date): string {
 }
 
 /**
- * A found night with no address of its own takes the address of the venue it names, when EventLinqs records a venue of
- * exactly that name in the source's own city; otherwise it stays empty and the reviewer's address check holds it. The
- * names are compared trimmed and in lower case, never partly, so a near name never borrows another place's street.
+ * A found night naming a venue EventLinqs records by exactly that name in the source's own city is read at that venue's
+ * address: the place the hunt's publisher lists it at (./collect-store.ts publishHuntNight, the venue by name in the
+ * city), so it is matched to the nights EventLinqs already lists there. An unknown venue keeps the page's own address,
+ * and with none it stays empty and the reviewer's address check holds it. The names are compared trimmed and in lower
+ * case, never partly, so a near name never borrows another place's street.
+ *
+ * Why the page's own spelling gives way (6 November 2026, the LAW 19 planted demonstration on TEST, then production read
+ * only): 8 of 20 found addresses at a held venue were spelled otherwise ('81 Ryrie Street, Geelong VIC' against The Play
+ * House's '81 Ryrie Street, Geelong VIC 3220'; '354 Moorabool Street' against 'Moorabool St'), and sameVenue
+ * (src/lib/events/booking-links.ts) refuses two addresses that differ. So the listed night was never found: a re-read
+ * never confirmed its series, whose freshness then ran down, and a changed start planned as a NEW night instead of a
+ * time change for a person.
  */
 export function withKnownVenueAddress(events: readonly FoundEvent[], addresses: ReadonlyMap<string, string>): FoundEvent[] {
   return events.map((e) => {
-    if (e.venueAddress && e.venueAddress.trim()) return e
     const known = addresses.get(e.venueName.trim().toLowerCase())
-    return known ? { ...e, venueAddress: known } : e
+    return known && known !== e.venueAddress ? { ...e, venueAddress: known } : e
   })
 }
 
