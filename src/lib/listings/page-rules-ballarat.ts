@@ -42,11 +42,21 @@ const MONTHS: Readonly<Record<string, number>> = { jan: 1, feb: 2, mar: 3, apr: 
 const RESTRICTED = RESTRICTED_TIER
 
 /** The lowest price open to anyone, in cents: 'Label: $49' pairs, restricted tiers left out; null when none is stated. */
+/**
+ * The lowest price open to anyone. A price's label is the words before it ('CONCESSION: $29.00', 'GROUP (8+): $29.00'); its
+ * qualifier is the words after it, up to the next price and never the next tier's own label ('$15 ($12 concession)' but not
+ * 'FULL: $39.00 SENIORS:'). Lines were once split at parentheses too, which cut 'GROUP (8+): $29.00' from its label, so The Big
+ * Christmas Sing read $29, the group price, where its open price is FULL $39 (the engine accuracy sweep, 6 November 2026).
+ */
 function openPriceCents(text: string): number | null {
   let best: number | null = null
-  for (const line of text.split(/\n|\(|\)/)) {
+  for (const line of text.split(/\n/)) {
     for (const m of line.matchAll(/([^$:]{0,40}?):?\s*\$\s?(\d[\d,]*(?:\.\d{2})?)/g)) {
-      if (RESTRICTED.test(m[1]) || RESTRICTED.test(line.slice(m.index ?? 0, (m.index ?? 0) + m[0].length + 30))) continue
+      const end = (m.index ?? 0) + m[0].length
+      const tail = line.slice(end, end + 60).split('$')[0]
+      const colon = tail.indexOf(':')
+      const qualifier = colon < 0 ? tail : tail.slice(0, colon).replace(/\S+(?:\s*\([^)]*\))?\s*$/, '')
+      if (RESTRICTED.test(m[1]) || RESTRICTED.test(qualifier)) continue
       const cents = Math.round(Number(m[2].replace(/,/g, '')) * 100)
       best = best === null ? cents : Math.min(best, cents)
     }
