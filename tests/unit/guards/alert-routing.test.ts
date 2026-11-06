@@ -177,6 +177,15 @@ describe('clause 6: the stall clock is not reset by bookkeeping', () => {
     expect(problems.join('\n')).toContain('only pushes to ops/session-log produced a last push')
   })
 
+  it('FAILS a picker that counts only push records, blind to a merged pull request (the 5 November false alarm)', () => {
+    const pushOnly = (feed: Array<{ activity_type?: string; ref?: string; timestamp?: string }>) => {
+      const push = feed.find((a) => (a.activity_type === 'push' || a.activity_type === 'force_push') && a.ref !== 'refs/heads/ops/session-log')
+      return { when: push?.timestamp ?? null, ref: push?.ref?.replace('refs/heads/', '') ?? null, actor: null, bookkeepingSkipped: 0 }
+    }
+    const problems = judgeStallClock({ pick: pushOnly })
+    expect(problems.join('\n')).toContain('a merged pull request into main did not count as the build moving')
+  })
+
   it('FAILS a collector that no longer routes through the picker', () => {
     const problems = judgeStallClock({ collectorSource: 'async function collectLastPush() { return { when: null } }' })
     expect(problems.join('\n')).toContain('no longer picks the last push through pickLastPush')

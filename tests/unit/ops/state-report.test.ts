@@ -272,10 +272,38 @@ describe('what counts as a push, so the stall clock is not reset by bookkeeping'
     expect(pick.bookkeepingSkipped).toBe(2)
   })
 
-  it('counts a force push to a working branch, and ignores records that are not pushes', () => {
-    const pick = pickLastPush([{ activity_type: 'branch_creation', ref: 'refs/heads/x', timestamp: hoursAgo(0.1) }, { ...work(hoursAgo(2)), activity_type: 'force_push' }])
+  it('counts a force push to a working branch, and ignores a deleted branch', () => {
+    const pick = pickLastPush([{ activity_type: 'branch_deletion', ref: 'refs/heads/x', timestamp: hoursAgo(0.1) }, { ...work(hoursAgo(2)), activity_type: 'force_push' }])
     expect(pick.ref).toBe('verify/l5-launch-readiness')
     expect(pick.when).toBe(hoursAgo(2))
+  })
+
+  // 5 November 2026, 22:08Z: the stall alert said 'nothing pushed for 30 hours' while two cars had merged that day.
+  // Every car reaches GitHub as a new branch (branch_creation) and then a merged pull request into main (pr_merge),
+  // and only push and force_push were counted, so the clock ran from the force push of 4 November 15:40Z. These are
+  // the records GitHub's activity listing returned, newest first (eventlinqs/eventlinqs-app, read 6 November 2026).
+  it('counts a merged pull request and a pushed new branch as the build moving (the 5 November false alarm)', () => {
+    // What the listing held at the alert, 22:08Z: car 48's branch nine minutes old, car 47 merged at 14:33Z.
+    const feed = [
+      { activity_type: 'branch_creation', ref: 'refs/heads/feat/w5-car48', timestamp: '2026-11-05T21:59:11Z', actor: { login: 'eventlinqs' } },
+      { activity_type: 'pr_merge', ref: 'refs/heads/main', timestamp: '2026-11-05T14:33:18Z', actor: { login: 'eventlinqs' } },
+      { activity_type: 'branch_creation', ref: 'refs/heads/feat/w5-car47', timestamp: '2026-11-05T14:00:10Z', actor: { login: 'eventlinqs' } },
+      { activity_type: 'pr_merge', ref: 'refs/heads/main', timestamp: '2026-11-05T08:02:45Z', actor: { login: 'eventlinqs' } },
+      { activity_type: 'force_push', ref: 'refs/heads/feat/w5-car44', timestamp: '2026-11-04T15:40:13Z', actor: { login: 'eventlinqs' } },
+    ]
+    const pick = pickLastPush(feed)
+    expect(pick.ref).toBe('feat/w5-car48')
+    expect(pick.when).toBe('2026-11-05T21:59:11Z')
+    expect(judgeStall({ lastPushIso: pick.when, nowIso: '2026-11-05T22:08:00Z' }).stalled).toBe(false)
+    expect(pickLastPush(feed.slice(1))).toMatchObject({ ref: 'main', when: '2026-11-05T14:33:18Z' })
+    expect(pickLastPush(feed.slice(2)).ref).toBe('feat/w5-car47')
+    expect(pickLastPush([{ activity_type: 'merge_queue_merge', ref: 'refs/heads/main', timestamp: '2026-11-05T15:00:00Z' }]).ref).toBe('main')
+  })
+
+  it('still passes over a new session-log branch as bookkeeping', () => {
+    const pick = pickLastPush([{ ...log(hoursAgo(0.1)), activity_type: 'branch_creation' }, work(hoursAgo(3))])
+    expect(pick.ref).toBe('verify/l5-launch-readiness')
+    expect(pick.bookkeepingSkipped).toBe(1)
   })
 
   it('names the bookkeeping in the report rather than hiding it', () => {

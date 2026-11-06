@@ -158,11 +158,12 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         )
         .select('id')
       let { data, error } = await write(row.reasons)
-      /* UNTIL THE FOUNDER APPLIES 20261105160001 (the gate's four new hold reasons): a database that does not yet allow
-         one refuses the row (listing_candidates_reasons_known). The night still lands for a person, held, with the
-         nearest reason it allows ('midnight_start', a time not to be trusted), never published and never lost. */
+      /* UNTIL THE FOUNDER APPLIES A NEW HOLD REASON'S MIGRATION (20261105160001 applied 5 November; 20261106090001,
+         link_unreached, prepared 6 November): a database that does not yet allow one refuses the row
+         (listing_candidates_reasons_known). The night still lands for a person, held, with the nearest reason it allows
+         ('midnight_start', a fact not to be trusted), never published and never lost. */
       if (error && /listing_candidates_reasons_known/.test(error.message)) {
-        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span']
+        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached']
         const allowed = [...new Set(row.reasons.map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
         ;({ data, error } = await write(allowed))
       }

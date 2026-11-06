@@ -291,6 +291,26 @@ export function judgeStallClock({ pick = pickLastPush, collectorSource = null } 
   if (onlyLog?.when) {
     problems.push('a feed holding only pushes to ops/session-log produced a last push, so a stall would be judged from the build writing its own log (UX4.2)')
   }
+  // 5 November 2026, 22:08Z: 'nothing pushed for 30 hours' while two cars had merged that day, because a merged
+  // pull request (pr_merge) and a pushed new branch (branch_creation) were not counted (scripts/lib/state-report.mjs,
+  // MOVING_ACTIVITY). The records are the ones GitHub's listing returned.
+  const merged = pick([
+    { activity_type: 'pr_merge', ref: 'refs/heads/main', timestamp: '2026-11-05T14:33:18Z', actor: { login: 'eventlinqs' } },
+    { activity_type: 'branch_creation', ref: 'refs/heads/feat/w5-car47', timestamp: '2026-11-05T14:00:10Z', actor: { login: 'eventlinqs' } },
+    { activity_type: 'force_push', ref: 'refs/heads/feat/w5-car44', timestamp: '2026-11-04T15:40:13Z', actor: { login: 'eventlinqs' } },
+  ])
+  if (merged?.when !== '2026-11-05T14:33:18Z') {
+    problems.push(
+      `a merged pull request into main did not count as the build moving: the clock read ${merged?.ref ?? 'nothing'} at ${merged?.when ?? 'no time'}, so every car shipped by pull request reads as a stall`,
+    )
+  }
+  const created = pick([
+    { activity_type: 'branch_creation', ref: 'refs/heads/feat/w5-car47', timestamp: '2026-11-05T14:00:10Z', actor: { login: 'eventlinqs' } },
+    { activity_type: 'force_push', ref: 'refs/heads/feat/w5-car44', timestamp: '2026-11-04T15:40:13Z', actor: { login: 'eventlinqs' } },
+  ])
+  if (created?.when !== '2026-11-05T14:00:10Z') {
+    problems.push('a pushed new branch did not count as the build moving, so a car pushed for review reads as a stall')
+  }
   for (const ref of BOOKKEEPING_REFS) {
     if (!ref.startsWith('ops/')) {
       problems.push(`${ref} is listed as bookkeeping but is not under ops/, so pushes to a working branch would be hidden from the stall judge`)

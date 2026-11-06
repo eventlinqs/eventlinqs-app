@@ -36,6 +36,8 @@ export type CandidateReason =
   | 'implausible_time'
   /** One Event spanning more than a day with no performance of its own named. */
   | 'multi_day_span'
+  /** Its ticket link answers 404 or 410 at the seller (LAW 19 section 4.2 (5); migration 20261106090001). */
+  | 'link_unreached'
 
 export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   source_unverified: 'Source not verified',
@@ -49,6 +51,7 @@ export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   no_time: 'No start time given',
   implausible_time: 'Starts before 10 am for its kind',
   multi_day_span: 'Spans several days with no performance named',
+  link_unreached: 'Its ticket link does not reach the seller',
 }
 
 export type Confidence = 'high' | 'low'

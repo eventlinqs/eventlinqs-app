@@ -75,6 +75,21 @@ export function hoursBetween(earlierIso, laterIso) {
 export const BOOKKEEPING_REFS = ['ops/session-log']
 
 /**
+ * THE ACTIVITY TYPES THAT ARE THE BUILD MOVING. GitHub's activity listing types
+ * every record as one of push, force_push, branch_creation, branch_deletion,
+ * pr_merge or merge_queue_merge
+ * (https://docs.github.com/en/rest/repos/repos#list-repository-activities,
+ * fetched 6 November 2026). Only a deletion moves nothing.
+ *
+ * Found 6 November 2026: on 5 November at 22:08Z the stall alert said nothing
+ * had been pushed for 30 hours, while two cars had merged into main that day.
+ * Every car reaches GitHub as a new branch (branch_creation) and then a merged
+ * pull request (pr_merge), and only push and force_push were counted, so the
+ * clock ran from a force push of 4 November 15:40Z.
+ */
+export const MOVING_ACTIVITY = ['push', 'force_push', 'branch_creation', 'pr_merge', 'merge_queue_merge']
+
+/**
  * The newest push in one page of the repository activity listing that is not
  * bookkeeping. Pure: the page is whatever the caller fetched. What was passed
  * over is COUNTED, so the report can say it rather than hide it.
@@ -86,7 +101,7 @@ export function pickLastPush(activity, { ignoreRefs = BOOKKEEPING_REFS } = {}) {
   const ignored = new Set(ignoreRefs.map((ref) => `refs/heads/${ref}`))
   let bookkeepingSkipped = 0
   for (const record of Array.isArray(activity) ? activity : []) {
-    if (record?.activity_type !== 'push' && record?.activity_type !== 'force_push') continue
+    if (!MOVING_ACTIVITY.includes(record?.activity_type)) continue
     if (ignored.has(record.ref)) {
       bookkeepingSkipped += 1
       continue
