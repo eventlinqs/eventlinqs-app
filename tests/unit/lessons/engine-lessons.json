@@ -1,0 +1,21 @@
+{
+  "about": "THE ENGINE'S LESSONS (learning part 2 of the CONTROLLER's 08:42 of 7 November 2026: 'each wrong fact gets its class (A to N) ... a test asserting the right value goes into the corpus. The corpus only grows; a fix that breaks an old lesson fails the gate'). Each lesson names the class of C:\\dev\\GROWTH\\ENGINE-ACCURACY-7NOV.md it came from, the case, the test that asserts the right value, and words that test carries for the case. tests/unit/lessons/engine-lessons.test.ts fails if a lesson's test is gone or no longer names its case, or if the corpus falls below its floor. The floor is raised in the commit that adds a lesson and is never lowered.",
+  "floor": 15,
+  "lessons": [
+    { "class": "A", "case": "The Little Mermaid's 7:00 pm sessions, a second session the same day", "test": "tests/unit/listings/second-session-not-a-move.test.ts", "names": "Little Mermaid" },
+    { "class": "B", "case": "Comedy Republic Main Stage's price per night, not one price for every night", "test": "tests/unit/events/link-check-per-night.test.ts", "names": "Comedy Republic" },
+    { "class": "C", "case": "Cosi's sold out nights read by the engine's own page rule", "test": "tests/unit/events/link-check-per-night.test.ts", "names": "Cosi" },
+    { "class": "D", "case": "Bird's Basement's visible 'Price Range: From $X', never its $29.00 placeholder", "test": "tests/unit/listings/birds-basement-rule.test.ts", "names": "Price Range" },
+    { "class": "E", "case": "The Peter Tobin Oration's open ticket, not its concession", "test": "tests/unit/events/link-check-per-night.test.ts", "names": "Peter Tobin" },
+    { "class": "F", "case": "AMCF's days from Fed Square's feed, inside the organiser's own event", "test": "tests/unit/listings/inside-own-event.test.ts", "names": "African Music and Cultural Festival" },
+    { "class": "G", "case": "Ballarat's group price read with its label, never as the open price", "test": "tests/unit/listings/page-rules-ballarat.test.ts", "names": "GROUP (8+)" },
+    { "class": "H", "case": "Bird's Basement's show time read from its pages' words, only where they state one", "test": "tests/unit/listings/birds-basement-rule.test.ts", "names": "Bird" },
+    { "class": "I", "case": "North Central Goldfields' weekly storytimes, read from the page's timetable", "test": "tests/unit/listings/stated-words.test.ts", "names": "torytime" },
+    { "class": "J", "case": "Here & Now Lounge's Sunday Improv, the page's words asked when no night sits at the stored minute", "test": "tests/unit/listings/verifier-asks-the-words.test.ts", "names": "Sunday Improv" },
+    { "class": "N", "case": "The AUSX Open listed from two sites, held as one event twice", "test": "tests/unit/listings/cross-source-twin.test.ts", "names": "AUSX" },
+    { "class": "N", "case": "A held night carries the sites it was read from, an import's check among them", "test": "tests/unit/listings/known-carries-its-sources.test.ts", "names": "AUSX" },
+    { "class": "O", "case": "Melbourne United at John Cain Arena is sport by its own words, never the venue's Music", "test": "tests/unit/listings/hunt-category.test.ts", "names": "Melbourne United" },
+    { "class": "P", "case": "Yarra Park, Melbourne VIC: an Australian locality line said once", "test": "tests/unit/venues/format-venue-address.test.ts", "names": "Yarra Park" },
+    { "class": "Q", "case": "A wrong price or a missing category on the live page fails the verifier's sample", "test": "tests/unit/listings/verifier-fields.test.ts", "names": "category" }
+  ]
+}
