@@ -76,7 +76,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const data = await readEveryRow<Record<string, unknown>>('the held nights', (from, to) =>
         db
           .from('events')
-          .select('id, title, start_date, venue_id, venue_name, venue_address, city_primary, listing_series_id')
+          .select('id, title, start_date, end_date, venue_id, venue_name, venue_address, city_primary, listing_series_id')
           .gte('start_date', new Date(now.getTime() - DAY_MS).toISOString())
           .lte('start_date', new Date(now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS).toISOString())
           .not('venue_name', 'is', null)
@@ -90,6 +90,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         venueAddress: (e.venue_address as string | null) ?? null,
         title: e.title as string,
         startsAt: e.start_date as string,
+        endsAt: (e.end_date as string | null) ?? null,
         citySlug: (e.city_primary as string | null) ?? null,
         seriesId: (e.listing_series_id as string | null) ?? null,
       }))

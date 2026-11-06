@@ -163,6 +163,25 @@ export function implausibleStart(e: Pick<FoundEvent, 'title' | 'startsAt' | 'tim
   return NIGHT_KINDS.has(classify({ title: e.title }).primary ?? '') || MATCH.test(` ${e.title} `)
 }
 
+const folded = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/**
+ * A found night of the same title inside an organiser's own published event (no listing series; its start day to its stated
+ * end): that event, under the venue's other name, never a second listing. The African Music and Cultural Festival's organiser
+ * lists it at 'Fed Square' from Friday 20 to Sunday 22 November 2026; Fed Square's feed states its days at 'Federation Square',
+ * and on 5 November the partner rule published the Saturday and Sunday beside it (the engine accuracy sweep, 6 November).
+ */
+export function insideOwnEvent(e: Pick<FoundEvent, 'title' | 'startsAt'>, known: readonly KnownEvent[]): boolean {
+  const t = new Date(e.startsAt).getTime()
+  return known.some(
+    (k) =>
+      !k.seriesId &&
+      Boolean(k.endsAt) &&
+      folded(k.title) === folded(e.title) &&
+      (sameDay(k.startsAt, e.startsAt) || (t >= new Date(k.startsAt).getTime() && t <= new Date(k.endsAt as string).getTime())),
+  )
+}
+
 export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boolean; known: readonly KnownEvent[] }): Judgement {
   const { plan, sourceVerified, known } = input
   const e = plan.event
@@ -182,7 +201,7 @@ export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boo
       const share = titleShare(k.title, e.title)
       return share >= SIMILAR_TITLE_SHARE && share < SAME_TITLE_SHARE && sameVenue(k, key) && sameDay(k.startsAt, e.startsAt)
     })
-    if (alike) reasons.push('similar_listing')
+    if (alike || insideOwnEvent(e, known)) reasons.push('similar_listing')
   }
   return { confidence: reasons.length === 0 ? 'high' : 'low', reasons }
 }

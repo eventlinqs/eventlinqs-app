@@ -881,7 +881,13 @@ export function dueSources(sources: readonly RegisteredSource[], now: Date, this
 
 /** citySlug: the night's own city (events.city_primary), so another city's same-named night is never 'this night moved'. */
 /** seriesId: the regular night it is one date of (events.listing_series_id), null for an organiser's own night. */
-export type KnownEvent = ListingKey & { eventId: string; citySlug?: string | null; seriesId?: string | null }
+export type KnownEvent = ListingKey & {
+  eventId: string
+  citySlug?: string | null
+  seriesId?: string | null
+  /** Its stated end, where it has one: an organiser's own event spanning days covers every night inside it (./judge.ts). */
+  endsAt?: string | null
+}
 
 export type CandidatePlan =
   | { kind: 'new'; event: FoundEvent }
