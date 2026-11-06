@@ -84,11 +84,19 @@ const write = (name, value) => {
     const m = line.match(/^\s*(\d{3})\s+(\d+)\s+violations=(\d+)\s+(\S.*)$/)
     if (m) rows.push({ status: Number(m[1]), viewport: Number(m[2]), violations: Number(m[3]), url: m[4].trim() })
   }
-  const totals = log.match(/axe-urls: (\d+) scans across (\d+) URL\(s\) and (\d+) viewports, (\d+) violation\(s\), (\d+) non-200 load\(s\)/)
-  if (!totals) throw new Error('the axe run log carries no totals line, so the run did not finish')
+  /*
+   * ONE RUN OR SEVERAL PARTS (7 November 2026: 82 URLs were scanned in three parts, each a full axe-urls run with its
+   * own totals line). Every totals line is summed and every part must have finished; an answer that is not an HTML
+   * document (axe-urls' 'not a page') is counted apart, as the harness counts it.
+   */
+  const parts = [...log.matchAll(/axe-urls: (\d+) scans across (\d+) URL\(s\) and (\d+) viewports, (\d+) violation\(s\), (\d+) non-200 load\(s\)(?:, (\d+) answer\(s\) not a page)?/g)]
+  if (parts.length === 0) throw new Error('the axe run log carries no totals line, so the run did not finish')
+  const sum = (i) => parts.reduce((n, m) => n + Number(m[i] ?? 0), 0)
+  const totals = [null, sum(1), sum(2), parts[0][3], sum(4), sum(5), sum(6)]
   if (rows.length !== Number(totals[1])) {
     throw new Error(`the log has ${rows.length} scan lines and claims ${totals[1]} scans`)
   }
+  const notPages = [...new Set([...log.matchAll(/not a page \(([^)]+)\), not scanned\s+(\S+)/g)].map((m) => `${m[2]} (${m[1]})`))]
   write(`axe-${DATE}.json`, {
     l1Item: 16,
     requirement: 'axe-core zero on every public surface.',
@@ -102,6 +110,7 @@ const write = (name, value) => {
     violations: Number(totals[4]),
     nonOkLoads: Number(totals[5]),
     urlsWithViolations: [...new Set(rows.filter((r) => r.violations > 0).map((r) => r.url))],
+    answersNotAPage: notPages,
     urlsScanned: [...new Set(rows.map((r) => r.url))].sort(),
     verdict: Number(totals[4]) === 0 && Number(totals[5]) === 0 ? 'PASS' : 'FAIL',
   })
@@ -123,7 +132,9 @@ const write = (name, value) => {
     base: drive.base,
     driven: drive.driven,
     eventPath: e.eventPath,
-    howTheEventWasChosen: 'the first /events/<slug> the platform publishes in its own sitemap.xml',
+    howTheEventWasChosen: 'the first /events/<slug> in the platform\'s own sitemap.xml whose page\'s Event data has not ended',
+    howEachSurfaceWasRead:
+      'in a browser at 390, as a visitor: All dates pressed and every Show more pressed (law 16), then the event\'s own link looked for',
     citiesPublished: e.citiesPublished,
     communitiesPublished: e.communitiesPublished,
     listedOn: { city: e.citiesListing, browse: e.browseListing, community: e.communitiesListing },
@@ -139,7 +150,8 @@ const write = (name, value) => {
     producedBy: 'scripts/verify/launch-readiness-drive.mjs',
     base: drive.base,
     driven: drive.driven,
-    method: 'the homepage was loaded, an event link was found on it and clicked, and the page it reached was checked against the sitemap. No URL was typed after the homepage.',
+    method:
+      'the event under test, not any event, reached two ways from the homepage with no URL typed: by clicks only (the homepage\'s link to the guide that lists it, All dates, every Show more, its card), and by its name (the homepage search, its title typed, Enter, its card in the results); each ends on its own page with its own h1.',
     perViewport: Object.fromEntries(viewports.map((v) => [v, drive.item8[v]])),
     verdict: drive.faults.length === 0 ? 'PASS' : 'FAIL',
   })

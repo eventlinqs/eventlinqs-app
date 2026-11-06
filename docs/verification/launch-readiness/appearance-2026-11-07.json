@@ -1,0 +1,90 @@
+{
+  "l1Item": 4,
+  "requirement": "The event appears on /events/[slug], on browse, on its city page, and on any community it belongs to.",
+  "producedBy": "scripts/verify/launch-readiness-drive.mjs",
+  "base": "https://www.eventlinqs.com.au",
+  "driven": "2026-11-06T16:56:43.901Z",
+  "eventPath": "/events/2026-boxing-day-test-day-1-australia-v-new-zealand-melbourne-cricket-ground-2026-12-26",
+  "howTheEventWasChosen": "the first /events/<slug> in the platform's own sitemap.xml whose page's Event data has not ended",
+  "howEachSurfaceWasRead": "in a browser at 390, as a visitor: All dates pressed and every Show more pressed (law 16), then the event's own link looked for",
+  "citiesPublished": 20,
+  "communitiesPublished": 21,
+  "listedOn": {
+    "city": [
+      "/city/melbourne"
+    ],
+    "browse": [
+      "/events/browse/melbourne"
+    ],
+    "community": []
+  },
+  "renderedInBrowser": {
+    "390": {
+      "eventStatus": 200,
+      "h1": "2026 Boxing Day Test - Day 1 - Australia v New Zealand",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        }
+      ]
+    },
+    "768": {
+      "eventStatus": 200,
+      "h1": "2026 Boxing Day Test - Day 1 - Australia v New Zealand",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        }
+      ]
+    },
+    "1440": {
+      "eventStatus": 200,
+      "h1": "2026 Boxing Day Test - Day 1 - Australia v New Zealand",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "landedOn": "/city/melbourne",
+          "allDates": true,
+          "showMore": 7,
+          "renderedLinks": 1
+        }
+      ]
+    }
+  },
+  "verdict": "PASS"
+}
