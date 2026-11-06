@@ -186,6 +186,55 @@ function statedMonthly(html: string, iso: string, zone: string): boolean {
   }
   return false
 }
+/** A night's own parts in its zone: weekday, day of month, its ISO day, and its start as hour, minute and am or pm. */
+function nightParts(iso: string, zone: string) {
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date(iso))
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return {
+    day: get('weekday').toLowerCase(), date: Number(get('day')), h: Number(get('hour')), mi: Number(get('minute')),
+    ap: get('dayPeriod').toLowerCase().replace(/\./g, ''),
+    ymd: new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)),
+  }
+}
+const visibleFolded = (html: string) =>
+  fold(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&#?[a-z0-9]+;/gi, ' '))
+const firstTimeIs = (s: string, p: ReturnType<typeof nightParts>) => {
+  const t = /\b(\d{1,2})(?: (\d{2}))? ?(am|pm)\b/.exec(s)
+  return Boolean(t && Number(t[1]) === p.h && Number(t[2] ?? 0) === p.mi && t[3] === p.ap)
+}
+
+/**
+ * A dated gig list: 'SATURDAY 7TH CARL & MATTY O 7:00 pm' (Aireys Pub, read 7 November), the weekday and the day of the month
+ * with no month beside them. The two together pin one date within the few months such a list holds; the first time within
+ * 60 characters after must be the night's start.
+ */
+function statedInGigList(html: string, iso: string, zone: string): boolean {
+  const p = nightParts(iso, zone)
+  const re = new RegExp(`\\b${p.day} ${p.date}(?:st|nd|rd|th)\\b`, 'g')
+  const text = visibleFolded(html)
+  for (const m of text.matchAll(re)) if (firstTimeIs(text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 60), p)) return true
+  return false
+}
+
+/**
+ * Every weekday inside a stated range: 'Thursday, October 08, 2026 - Thursday, December 17, 2026 10.30am, Every Thursday during
+ * school terms' (the Eureka Centre's Show-and-Tell, read 7 November). The night falls inside the range, on the weekday the
+ * page says every, and the first time after the range is its start.
+ */
+const MONTH_NUMBER: Record<string, string> = { january: '01', february: '02', march: '03', april: '04', may: '05', june: '06', july: '07', august: '08', september: '09', october: '10', november: '11', december: '12' }
+function statedEveryInRange(html: string, iso: string, zone: string): boolean {
+  const p = nightParts(iso, zone)
+  const text = visibleFolded(html)
+  if (!new RegExp(`\\bevery ${p.day}\\b`).test(text)) return false
+  const M = Object.keys(MONTH_NUMBER).join('|')
+  const re = new RegExp(`(?:[a-z]+ )?(${M}) (\\d{1,2}) (\\d{4}) (?:[a-z]+ )?(${M}) (\\d{1,2}) (\\d{4})`, 'g')
+  for (const m of text.matchAll(re)) {
+    const from = `${m[3]}-${MONTH_NUMBER[m[1]]}-${m[2].padStart(2, '0')}`
+    const to = `${m[6]}-${MONTH_NUMBER[m[4]]}-${m[5].padStart(2, '0')}`
+    if (from <= p.ymd && p.ymd <= to && firstTimeIs(text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 40), p)) return true
+  }
+  return false
+}
 const localDay = (iso: string, zone: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 const clock = (iso: string, zone: string) =>
   new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(/\u202f/g, ' ')
@@ -253,6 +302,8 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
     // their page states each branch's weekday and start under the session's own heading (37 nights read so, 7 November).
     const weekly = words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
     if (words === 'both' || weekly === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
+    if (statedInGigList(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated gig list)`, source: src, eventId: e.id }); continue }
+    if (statedEveryInRange(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (every weekday in its stated range)`, source: src, eventId: e.id }); continue }
     if (statedMonthly(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its monthly words)`, source: src, eventId: e.id }); continue }
     if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
     if (weekly === 'outside_term') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
