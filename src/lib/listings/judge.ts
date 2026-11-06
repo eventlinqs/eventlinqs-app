@@ -167,8 +167,8 @@ const folded = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').
 
 /**
  * A found night of the same title inside an organiser's own published event (no listing series; its start day to its stated
- * end): that event, under the venue's other name, never a second listing. The African Music and Cultural Festival's organiser
- * lists it at 'Fed Square' from Friday 20 to Sunday 22 November 2026; Fed Square's feed states its days at 'Federation Square',
+ * end): that event, under the venue's other name, never a second listing. AMCF's organiser lists the festival at 'Fed
+ * Square' from Friday 20 to Sunday 22 November 2026; Fed Square's feed states its days at 'Federation Square',
  * and on 5 November the partner rule published the Saturday and Sunday beside it (the engine accuracy sweep, 6 November).
  */
 export function insideOwnEvent(e: Pick<FoundEvent, 'title' | 'startsAt'>, known: readonly KnownEvent[]): boolean {
