@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { CalendarPlus, ChevronDown } from 'lucide-react'
-import {
-  buildIcs,
-  buildGoogleCalendarUrl,
-  icsFileName,
-  type CalendarEvent,
-} from '@/lib/events/calendar-links'
+import type { CalendarEvent } from '@/lib/events/calendar-links'
+
+/** The menu and its calendar code, loaded on the first open (./add-to-calendar-menu.tsx says why). */
+const AddToCalendarMenu = dynamic(() => import('./add-to-calendar-menu').then((m) => m.AddToCalendarMenu), { ssr: false })
 
 /**
  * ADD TO CALENDAR, on the event page (close-out SEO5 step 2).
@@ -68,22 +67,6 @@ export function AddToCalendar({
     }
   }, [open])
 
-  function downloadIcs() {
-    const blob = new Blob([buildIcs(event)], { type: 'text/calendar;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = icsFileName(event.title)
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    // Revoked on the next tick: revoking synchronously can cancel the download
-    // in some browsers before it has read the blob.
-    setTimeout(() => URL.revokeObjectURL(url), 0)
-    setOpen(false)
-    onChosen?.('ics')
-  }
-
   const buttonClass =
     appearance === 'pill'
       ? 'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-[1.5px] border-ink-900 bg-white px-4 text-sm font-bold text-ink-900 transition-colors hover:bg-[var(--color-ink-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
@@ -107,34 +90,7 @@ export function AddToCalendar({
         )}
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-[var(--shadow-card-hover)]"
-        >
-          <a
-            role="menuitem"
-            href={buildGoogleCalendarUrl(event)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              setOpen(false)
-              onChosen?.('google')
-            }}
-            className="flex min-h-11 items-center px-4 py-3 text-sm text-ink-900 transition-colors hover:bg-ink-50"
-          >
-            Google Calendar
-          </a>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={downloadIcs}
-            className="flex w-full min-h-11 items-center px-4 py-3 text-left text-sm text-ink-900 transition-colors hover:bg-ink-50"
-          >
-            Apple or Outlook (.ics)
-          </button>
-        </div>
-      )}
+      {open && <AddToCalendarMenu event={event} onClose={() => setOpen(false)} onChosen={onChosen} />}
     </div>
   )
 }
