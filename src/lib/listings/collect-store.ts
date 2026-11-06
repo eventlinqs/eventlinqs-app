@@ -3,7 +3,7 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntDecision, huntFor, huntSummary } from './headline-hunt'
+import { huntCategory, huntDecision, huntFor, huntSummary } from './headline-hunt'
 import { sourceHostOf } from './judge'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
@@ -311,7 +311,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         venueId = made.id as string
       }
 
-      const slug = classify({ title: row.title }).primary ?? hunt.usualCategory
+      const slug = huntCategory(row.title, hunt.usualCategory)
       const { data: category, error: catError } = await db.from('event_categories').select('id').eq('slug', slug).maybeSingle()
       if (catError || !category) throw new Error(`category ${slug} is not in the database`)
       const local = toZonedInputValue(row.startsAt, city.timezone as string)

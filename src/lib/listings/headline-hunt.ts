@@ -14,8 +14,19 @@
  * category comes from the night's own words (src/lib/categories/classify.ts); a venue's usual category stands only when
  * its words give none, as a source's category does for a partner.
  */
-import type { GuideCategory } from '@/lib/categories/classify'
+import { classify, type GuideCategory } from '@/lib/categories/classify'
 import { wallClockToIso } from './collect'
+
+/**
+ * A HUNTED NIGHT'S CATEGORY (class O, read from production on 7 November 2026). A title naming two sides ('A vs B', 'A v B')
+ * is a match, so sport, whatever the venue: the hunt took the venue's usual category when the classifier could not read a
+ * title, and listed seven Melbourne United and South East Melbourne Phoenix games at John Cain Arena as Music. Otherwise
+ * the classifier's reading, then the venue's usual category, as before. Pure.
+ */
+export function huntCategory(title: string, usual: GuideCategory): GuideCategory {
+  if (/\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
+  return (classify({ title }).primary as GuideCategory | null) ?? usual
+}
 
 export type HuntSource = {
   /** The register's page, by host (without www) and path start. */
