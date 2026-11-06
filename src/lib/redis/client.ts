@@ -109,6 +109,16 @@ function namespaceClient(raw: RedisLike): RedisLike {
   }) as RedisLike
 }
 
+/**
+ * THE LONGEST ANY ONE STORE REQUEST MAY TAKE (the CONTROLLER's 21:54 of 6 November 2026, after Upstash's card charge failed:
+ * what production does if Upstash stops answering). Upstash answering with an error was already a store error that every
+ * limiter degrades around (src/lib/redis/rate-limit.ts), but the client had no time limit, so a store that took the
+ * connection and never answered held every limiter call, the proxy and the checkout and sign in actions behind it, until the
+ * platform ended the function. Upstash answers in tens of milliseconds; 1.5 seconds is a failure, never a slow success.
+ * Proved against the installed SDK and a server that never answers: tests/unit/redis/upstash-outage.test.ts.
+ */
+export const REDIS_REQUEST_TIMEOUT_MS = 1500
+
 function getRedisClient(): RedisLike | null {
   if (_redis) return _redis
 
@@ -121,7 +131,18 @@ function getRedisClient(): RedisLike | null {
   }
 
   try {
-    _redis = namespaceClient(new Redis({ url, token }))
+    _redis = namespaceClient(
+      new Redis({
+        url,
+        token,
+        // One retry for a blip; the signal spans it, so the bound below holds for the whole request.
+        retry: { retries: 1, backoff: () => 100 },
+        // A fresh signal per request (@upstash/redis 1.37 calls the function for each one and THROWS on its abort, never
+        // retrying), so a store that never answers is a store error within the bound, never a wait until the platform
+        // ends the function.
+        signal: () => AbortSignal.timeout(REDIS_REQUEST_TIMEOUT_MS),
+      }),
+    )
     return _redis
   } catch (err) {
     console.error('[redis] Failed to initialise Redis client:', err)

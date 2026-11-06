@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { getRedisClient } from '@/lib/redis/client'
+import { checkRateLimit } from '@/lib/redis/rate-limit'
 import {
   generatePositionToken,
   generateAdmissionToken,
@@ -37,18 +37,15 @@ export async function joinQueue(input: {
   const headersList = await headers()
   const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
 
-  // IP rate limiting (gracefully skipped when Redis is unavailable)
+  // IP rate limiting through the shared limiter: with no Upstash configured it allows, and when Upstash fails or never
+  // answers it degrades to the per-instance window. It was a raw incr here, which threw on a suspended account or a wrong
+  // token and turned a buyer's join into an error (the CONTROLLER's 21:54 of 6 November 2026).
   if (ip) {
-    const redis = getRedisClient()
-    if (redis) {
-      const key = `queue:join:${ip}`
-      const count = (await redis.incr(key)) as number
-      if (count === 1) await redis.expire(key, RATE_LIMIT_WINDOW_SEC)
-      if (count > RATE_LIMIT_MAX) {
-        return {
-          success: false,
-          error: 'Too many queue attempts. Please wait a few minutes before trying again.',
-        }
+    const limited = await checkRateLimit({ key: `queue:join:${ip}`, limit: RATE_LIMIT_MAX, windowSec: RATE_LIMIT_WINDOW_SEC })
+    if (!limited.ok) {
+      return {
+        success: false,
+        error: 'Too many queue attempts. Please wait a few minutes before trying again.',
       }
     }
   }
