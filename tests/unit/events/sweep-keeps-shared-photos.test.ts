@@ -21,7 +21,8 @@ function eventsQuery() {
     select: () => q,
     neq: () => q,
     like: (_col: string, pattern: string) => ((kind = 'cover'), (key = pattern.replace(/^%\//, '')), q),
-    contains: (_col: string, value: { url: string }[]) => ((kind = 'gallery'), (key = value[0].url.slice(BASE.length)), q),
+    /* The sweep sends the gallery value as a JSON string (src/lib/media/gallery-filter.ts; tests/unit/events/gallery-contains-filter.test.ts). */
+    contains: (_col: string, value: string) => ((kind = 'gallery'), (key = (JSON.parse(value) as { url: string }[])[0].url.slice(BASE.length)), q),
     limit: async () => {
       if (state.failReads) return { data: null, error: { message: 'down' } }
       const hit = kind === 'cover' ? state.coverElsewhere.has(key) : state.galleryElsewhere.has(key)

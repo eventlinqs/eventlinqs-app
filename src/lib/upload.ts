@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
+import { galleryHolding } from '@/lib/media/gallery-filter'
 import { photoHashes } from '@/lib/images/photo-hash'
 import { lockIfSaved, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { checkRateLimit } from '@/lib/redis/rate-limit'
@@ -395,7 +396,7 @@ export async function sweepEventStorage(input: {
     const url = bucket.getPublicUrl(path).data.publicUrl
     const [cover, gallery] = await Promise.all([
       admin.from('events').select('id').neq('id', input.eventId).like('cover_image_url', `%/${path}`).limit(1),
-      admin.from('events').select('id').neq('id', input.eventId).contains('gallery_urls', [{ url }]).limit(1),
+      admin.from('events').select('id').neq('id', input.eventId).contains('gallery_urls', galleryHolding(url)).limit(1),
     ])
     if (cover.error || gallery.error) errors.push(`still shown elsewhere? ${path}: ${(cover.error ?? gallery.error)!.message}`)
     if (cover.error || gallery.error || (cover.data ?? []).length > 0 || (gallery.data ?? []).length > 0) shown.add(path)
