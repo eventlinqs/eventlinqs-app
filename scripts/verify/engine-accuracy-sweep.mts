@@ -22,7 +22,7 @@
  *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/engine-accuracy-sweep.mts
  */
 import Module from 'node:module'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
@@ -394,5 +394,18 @@ const lines = [
 ]
 writeFileSync(`${OUT}/sweep-${stamp}.md`, lines.join('\n') + '\n')
 writeFileSync(`${OUT}/sweep-${stamp}.json`, JSON.stringify({ at: new Date().toISOString(), events: events.length, pages: pages.length, facts, unreadable }, null, 1))
+/* THE TREND (learning part 1 of the CONTROLLER's 08:42 of 7 November 2026): one row a run, appended to trend.jsonl beside the
+   runs; a rate above the day before's last run is said here, for a CONTROLLER line (src/lib/listings/accuracy-trend.ts). */
+{
+  const { trendRow, rateRose } = pick((await import('@/lib/listings/accuracy-trend')) as typeof import('@/lib/listings/accuracy-trend'))
+  const trendFile = `${OUT}/trend.jsonl`
+  const earlier = existsSync(trendFile)
+    ? readFileSync(trendFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as import('@/lib/listings/accuracy-trend').TrendRow)
+    : []
+  const row = trendRow(new Date().toISOString(), facts, unreadable.length)
+  appendFileSync(trendFile, JSON.stringify(row) + '\n')
+  console.log(`[sweep] trend: ${row.date} ${row.rate}% (${row.wrong} of ${row.facts}), ${earlier.length + 1} run(s) in ${trendFile}`)
+  if (rateRose(earlier, row)) console.log(`[sweep] RATE ROSE over the day before: ${row.rate}% against the last run before ${row.date}; a CONTROLLER line`)
+}
 console.log(`[sweep] ${events.length} listings, ${pages.length} pages; wrong ${rate(wrong.length, facts.length)}; unreadable ${unreadable.length}; ${OUT}/sweep-${stamp}.md`)
 for (const f of fields) console.log(`[sweep]   ${f}: ${rate(wrong.filter((x) => x.field === f).length, facts.filter((x) => x.field === f).length)}`)
