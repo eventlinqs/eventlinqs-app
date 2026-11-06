@@ -49,8 +49,10 @@ const TILES: StripTile[] = [
   { label: 'Comedy', description: 'Stand-up, open mics and gala nights.', href: '/events?category=comedy', img: { kind: 'category', slug: 'comedy' } },
 ]
 
+// h-full: each tile fills its grid row, so a row whose descriptions differ in length still ends level (LAUNCH-READINESS
+// row 17, read on production at 768 and 1440, 7 November 2026; the Design system's uniform card dimensions).
 const SURFACE =
-  'group block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
+  'group block h-full overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
   'shadow-[0_1px_3px_rgba(10,22,40,0.05)] transition-all duration-200 ease-out ' +
   'hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(10,22,40,0.13)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
