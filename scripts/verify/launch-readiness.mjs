@@ -107,8 +107,8 @@ export const OWNER_NEEDS = {
     'Approval to create one test organiser account and one test event on PRODUCTION, because every organiser journey below writes to the live database and L1 requires them driven there rather than on TEST.',
   'real-card':
     'Approval to put one real card through a low-price live event and refund it, because it is real money on the live Stripe account and no other path proves the buyer journey end to end.',
-  'release-on-production':
-    'Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land, the fixed release cannot reach production before they do, and a read of the live screens reads the old code until it does.',
+  // 'release-on-production' was row 17's need until 7 November 2026, when the five screens were read on production as
+  // the current release; a need no row cites is deleted (judgeLaunchReadiness).
 }
 
 /**
@@ -290,10 +290,10 @@ export const ITEMS = [
     group: 'PLATFORM',
     requirement:
       'A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this.',
-    state: 'OWNER BLOCKED',
-    needs: 'release-on-production',
-    drivenElsewhere:
-      'Read at 390, 768 and 1440 on a local production build of this tree by scripts/verify/launch-screens-read.mjs, which resolves the event slug from the database rather than typing one, and which is how the Google Maps developer panel on the event page was found (close-out UX2.5, 11 September 2026). It cannot be read on PRODUCTION as this release yet, because the pending migrations have not landed and production still serves the code the owner read those defects on.',
+    state: 'FAIL',
+    driven: '2026-11-07',
+    note:
+      'Read by eye on production on 7 November 2026 at 768 and 1440, and the event page at 390, screen by screen as a visitor scrolls (a full page capture leaves bands that are painted only on scroll blank, so it was not used as evidence). The event page is the 2026 Boxing Day Test. Four faults are live, each fixed with a test on the next car and read again on production when it lands: the event page says its address with the city and state twice (Yarra Park, Melbourne VIC, Melbourne, VIC; 28 of 82 venues, 406 nights); it shows Get directions twice a thumb apart; /pricing at 768 squeezes Start selling tickets onto two lines inside a fixed height button; and /organisers community tiles end at uneven heights. Clean: unrendered markup none, invisible controls none, the venue map shows its pin on the MCG at 768 and 1440. One finding held for Lawal under law 7: /events at 768 cuts every title to one line, as his approved sample of 1 November does.',
   },
 ]
 

@@ -329,11 +329,13 @@ describe('the adjudication cannot state how far production is behind', () => {
     expect(judgeLaunchReadiness({ items: ITEMS, evidenceExists: always }).faults).toEqual([])
   })
 
+  // Asserted as 'no count fault', not 'no fault at all': since 7 November 2026 no row cites 'release-on-production'
+  // (row 17 was read on production), so the uncited-need rule also speaks here, rightly, about a different thing.
   it('lets an UNCOUNTED mention of migrations stand, which is what the report has to be able to say', () => {
     expect(
       need(
         'Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land and a read of the live screens reads the old code until it does.',
       ),
-    ).toBe('')
+    ).not.toContain('which counts how far production is behind this tree')
   })
 })
