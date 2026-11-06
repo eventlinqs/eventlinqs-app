@@ -78,8 +78,8 @@ export function rankPicks(events: readonly PickInput[], kind: PostKind): Pick[] 
       reasons.push('ticketed at a headline venue')
     } else if (tier === 2) {
       score += 3
-      // Tier 2 is every other ticketed night AND a free festival or cultural event: the reason says which.
-      reasons.push(e.ticketed ? 'a ticketed night' : 'a free festival or cultural event')
+      // Tier 2 is every other ticketed night AND a free festival or community event: the reason says which.
+      reasons.push(e.ticketed ? 'a ticketed night' : 'a free festival or community event')
     }
     if (e.nightsInListing <= 1) {
       score += 6

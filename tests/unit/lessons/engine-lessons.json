@@ -7,7 +7,7 @@
     { "class": "C", "case": "Cosi's sold out nights read by the engine's own page rule", "test": "tests/unit/events/link-check-per-night.test.ts", "names": "Cosi" },
     { "class": "D", "case": "Bird's Basement's visible 'Price Range: From $X', never its $29.00 placeholder", "test": "tests/unit/listings/birds-basement-rule.test.ts", "names": "Price Range" },
     { "class": "E", "case": "The Peter Tobin Oration's open ticket, not its concession", "test": "tests/unit/events/link-check-per-night.test.ts", "names": "Peter Tobin" },
-    { "class": "F", "case": "AMCF's days from Fed Square's feed, inside the organiser's own event", "test": "tests/unit/listings/inside-own-event.test.ts", "names": "African Music and Cultural Festival" },
+    { "class": "F", "case": "AMCF's days from Fed Square's feed, inside the organiser's own event", "test": "tests/unit/listings/inside-own-event.test.ts", "names": "amcf-own" },
     { "class": "G", "case": "Ballarat's group price read with its label, never as the open price", "test": "tests/unit/listings/page-rules-ballarat.test.ts", "names": "GROUP (8+)" },
     { "class": "H", "case": "Bird's Basement's show time read from its pages' words, only where they state one", "test": "tests/unit/listings/birds-basement-rule.test.ts", "names": "Bird" },
     { "class": "I", "case": "North Central Goldfields' weekly storytimes, read from the page's timetable", "test": "tests/unit/listings/stated-words.test.ts", "names": "torytime" },

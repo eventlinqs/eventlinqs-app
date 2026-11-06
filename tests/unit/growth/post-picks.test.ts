@@ -54,12 +54,12 @@ describe('the Free post', () => {
       [
         ev({ title: 'Paid gig' }),
         ev({ title: 'Carols by the Bay', venue: 'Steampacket Gardens', categorySlug: 'community', ticketed: false, free: true }),
-        ev({ title: 'Palestine Cultural Festival', venue: 'Federation Square', categorySlug: 'festival', ticketed: false, free: true }),
+        ev({ title: 'Polish Festival', venue: 'Federation Square', categorySlug: 'festival', ticketed: false, free: true }),
         ev({ title: 'Family Movie Time', venue: 'Biyal-a Armstrong Creek Library', categorySlug: 'family', ticketed: false, free: true }),
       ],
       'free',
     )
-    expect(picks.map((p) => p.title)).toEqual(['Palestine Cultural Festival'])
+    expect(picks.map((p) => p.title)).toEqual(['Polish Festival'])
     // A free festival's reason never calls it ticketed (the first output to production said 'a ticketed night').
     expect(picks[0].reasons.join('; ')).not.toMatch(/ticketed/)
   })
