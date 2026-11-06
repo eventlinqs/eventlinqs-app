@@ -159,6 +159,33 @@ function statedBesideTitle(html: string, title: string, iso: string, zone: strin
   }
   return false
 }
+/**
+ * A monthly night stated in words: 'the second Saturday of every month ... from 9:00 am' (Bendigo Community Farmers Market,
+ * read 7 November). The night must BE that weekday's nth (or last) in its month, and the first time written within 120
+ * characters after the phrase must be its start.
+ */
+const ORDINALS: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4, '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, last: -1 }
+function statedMonthly(html: string, iso: string, zone: string): boolean {
+  const text = fold(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&#?[a-z0-9]+;/gi, ' '))
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date(iso))
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  const day = get('weekday').toLowerCase()
+  const date = Number(get('day'))
+  const h = Number(get('hour'))
+  const mi = Number(get('minute'))
+  const ap = get('dayPeriod').toLowerCase().replace(/\./g, '')
+  const daysInMonth = new Date(Number(get('year')), Number(get('month')), 0).getDate()
+  const nth = Math.ceil(date / 7)
+  const last = date + 7 > daysInMonth
+  const re = new RegExp(`\\b(first|second|third|fourth|1st|2nd|3rd|4th|last) ${day} of (?:every|each|the) month\\b`, 'g')
+  for (const m of text.matchAll(re)) {
+    const want = ORDINALS[m[1]]
+    if (!(want === nth || (want === -1 && last))) continue
+    const t = /\b(\d{1,2})(?: (\d{2}))? ?(am|pm)\b/.exec(text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 120))
+    if (t && Number(t[1]) === h && Number(t[2] ?? 0) === mi && t[3] === ap) return true
+  }
+  return false
+}
 const localDay = (iso: string, zone: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 const clock = (iso: string, zone: string) =>
   new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(/\u202f/g, ' ')
@@ -226,6 +253,7 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
     // their page states each branch's weekday and start under the session's own heading (37 nights read so, 7 November).
     const weekly = words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
     if (words === 'both' || weekly === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
+    if (statedMonthly(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its monthly words)`, source: src, eventId: e.id }); continue }
     if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
     if (weekly === 'outside_term') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
     const timedMine = mine.filter(timed)
