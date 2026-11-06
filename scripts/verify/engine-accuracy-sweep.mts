@@ -86,7 +86,7 @@ const sourceOf = new Map<string, string>()
 for (const c of checks.sort((a, b) => b.checked_at.localeCompare(a.checked_at))) {
   if (!sourceOf.has(c.series_id) && /^https?:\/\//.test(c.source_url)) sourceOf.set(c.series_id, c.source_url)
 }
-const links = await inChunks<{ event_id: string; price_from_cents: number | null; availability: string }>(events.map((e) => e.id), (c, a, b) => db.from('event_booking_links').select('id, event_id, price_from_cents, availability').in('event_id', c).order('id').range(a, b))
+const links = await inChunks<{ event_id: string; url: string; price_from_cents: number | null; availability: string }>(events.map((e) => e.id), (c, a, b) => db.from('event_booking_links').select('id, event_id, url, price_from_cents, availability').in('event_id', c).order('id').range(a, b))
 
 // The polite reader, the verifier's own rules.
 const lastHit = new Map<string, number>()
@@ -132,6 +132,33 @@ const samePlace = (ours: Ev, f: Found): boolean | null => {
   const y = fold(f.venueName).replace(/^the /, '')
   return x === y || x.includes(y) || y.includes(x)
 }
+/**
+ * A weekly night stated beside its own title: the first time written after the title (within 60 characters) is the night's
+ * start, and its weekday is named in the 160 characters before the title (Murphy's: 'WEDNESDAY ... Front Bar Trivia 7pm')
+ * or between the title and that time (Queen Victoria Market: 'The Melbourne Book Market Detail: Sat & Sun, 9am'). The FIRST
+ * time after the title, never any time near it, so a Happy Hour's '4pm' beside the trivia never vouches for another start.
+ */
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+function statedBesideTitle(html: string, title: string, iso: string, zone: string): boolean {
+  const text = fold(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&#?[a-z0-9]+;/gi, ' '))
+  const want = fold(title)
+  if (want.length < 6) return false
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date(iso))
+  const day = (parts.find((p) => p.type === 'weekday')?.value ?? '').toLowerCase()
+  const h = Number(parts.find((p) => p.type === 'hour')?.value)
+  const mi = Number(parts.find((p) => p.type === 'minute')?.value)
+  const ap = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toLowerCase().replace(/\./g, '')
+  if (!WEEKDAYS.includes(day) || !Number.isFinite(h)) return false
+  const named = (s: string) => new RegExp(`\\b(${day}s?|${day.slice(0, 3)})\\b`).test(s)
+  for (let at = text.indexOf(want); at >= 0; at = text.indexOf(want, at + 1)) {
+    const after = text.slice(at + want.length, at + want.length + 60)
+    const m = /\b(\d{1,2})(?: (\d{2}))? ?(am|pm)\b/.exec(after)
+    if (!m) continue
+    const sameTime = Number(m[1]) === h && Number(m[2] ?? 0) === mi && m[3] === ap
+    if (sameTime && (named(text.slice(Math.max(0, at - 160), at)) || named(after.slice(0, m.index)))) return true
+  }
+  return false
+}
 const localDay = (iso: string, zone: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 const clock = (iso: string, zone: string) =>
   new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(/\u202f/g, ' ')
@@ -150,10 +177,14 @@ for (const e of events) {
 }
 const pages = [...byPage.keys()].sort((a, b) => new URL(a).host.localeCompare(new URL(b).host))
 const horizon = now.getTime() + COLLECT_AHEAD_DAYS * 86_400_000
-let pageNo = 0
-for (const src of pages) {
-  pageNo += 1
-  const listed = byPage.get(src) ?? []
+type Unread = { e: Ev; src: string; why: string; host: string }
+
+/**
+ * One page judged for the listings it holds; what it cannot judge is returned. `sessions` counts the page's own nights
+ * against our listings, done on a listing's source page only, so a booking page read second never counts a night twice.
+ */
+async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<Unread[]> {
+  const left: Unread[] = []
   const u = new URL(src)
   const host = u.host.replace(/^www\./, '')
   let r = robots.get(u.origin)
@@ -161,13 +192,11 @@ for (const src of pages) {
     r = await polite(`${u.origin}/robots.txt`)
     robots.set(u.origin, r)
   }
-  const unread = (why: string) => {
-    for (const e of listed) unreadable.push({ title: e.title, when: e.start_date, source: src, why, eventId: e.id, city: e.city_primary, host })
-  }
-  if (robotsVerdict(r.status, r.body, u.pathname + u.search) === 'disallowed') { unread('robots.txt disallows a re-read'); continue }
+  const unread = (why: string) => listed.map((e) => ({ e, src, why, host }))
+  if (robotsVerdict(r.status, r.body, u.pathname + u.search) === 'disallowed') return unread('robots.txt disallows a re-read')
   const page = await polite(src)
-  if (page.pdf) { unread('the source is a PDF'); continue }
-  if (page.status !== 200) { unread(`the page answered ${page.status ?? 'nothing'}`); continue }
+  if (page.pdf) return unread('the source is a PDF')
+  if (page.status !== 200) return unread(`the page answered ${page.status ?? 'nothing'}`)
   const rule = pageRuleFor(src)
   let found: Found[] = []
   try {
@@ -195,6 +224,7 @@ for (const src of pages) {
     const words = statedInWords(page.body, e.start_date, zone)
     const weekly = recurring && words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
     if (words === 'both' || weekly === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
+    if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
     if (weekly === 'outside_term') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
     const timedMine = mine.filter(timed)
     if (timedMine.length > 0 && !recurring) {
@@ -207,19 +237,47 @@ for (const src of pages) {
       : found.length > 0
         ? 'the page does not state this night (it may have ended its run, been cancelled or moved)'
         : 'no reader of ours finds a night on this page'
-    unreadable.push({ title: e.title, when: e.start_date, source: src, why, eventId: e.id, city: e.city_primary, host })
+    left.push({ e, src, why, host })
   }
   // Sessions: every timed night the page states for a title we list here, inside the horizon, has its own listing.
   const titles = [...new Set(listed.map((e) => e.title))]
-  for (const f of found) {
+  for (const f of sessions ? found : []) {
     const t = new Date(f.startsAt).getTime()
     if (t <= now.getTime() || t > horizon || !timed(f)) continue
     if (!titles.some((x) => sameTitle(x, f.title))) continue
     const has = events.some((e) => sameTitle(e.title, f.title) && sameMinute(e.start_date, f.startsAt))
     facts.push({ field: 'session', ok: has, host, title: f.title, detail: has ? clock(f.startsAt, 'Australia/Melbourne') : `the page states ${clock(f.startsAt, 'Australia/Melbourne')}, which we do not list`, source: src })
   }
+  return left
+}
+
+let pageNo = 0
+const firstPass: Unread[] = []
+for (const src of pages) {
+  pageNo += 1
+  firstPass.push(...(await judgePage(src, byPage.get(src) ?? [], true)))
   if (pageNo % 25 === 0) console.log(`[sweep] ${pageNo} of ${pages.length} pages read`)
 }
+// Second: a listing its source page could not judge is read on its own booking page, the seller's, where it has one.
+const byBooking = new Map<string, Unread[]>()
+for (const x of firstPass) {
+  const url = links.find((l) => l.event_id === x.e.id && /^https:\/\//.test(l.url) && l.url !== x.src)?.url
+  if (!url) {
+    unreadable.push({ title: x.e.title, when: x.e.start_date, source: x.src, why: x.why, eventId: x.e.id, city: x.e.city_primary, host: x.host })
+    continue
+  }
+  byBooking.set(url, [...(byBooking.get(url) ?? []), x])
+}
+let viaBooking = 0
+for (const [url, xs] of byBooking) {
+  const left = await judgePage(url, xs.map((x) => x.e), false)
+  viaBooking += xs.length - left.length
+  for (const l of left) {
+    const first = xs.find((x) => x.e.id === l.e.id) as Unread
+    unreadable.push({ title: l.e.title, when: l.e.start_date, source: first.src, why: `${first.why}; its booking page too (${l.why})`, eventId: l.e.id, city: l.e.city_primary, host: first.host })
+  }
+}
+console.log(`[sweep] ${viaBooking} listing(s) judged on their booking page where the source page could not be`)
 
 const wrong = facts.filter((f) => !f.ok)
 const rate = (w: number, n: number) => (n === 0 ? 'none checked' : `${w} of ${n} (${((100 * w) / n).toFixed(3)}%)`)
