@@ -13,7 +13,7 @@
  *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/engine-verifier.mts [--sample 20]
  */
 import Module from 'node:module'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
@@ -30,16 +30,39 @@ const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { statedInWords, statedWeekly } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
-const { verifierVerdict, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
+const { verifierVerdict, sourcesToSwitchOff, SOURCE_DISAGREES, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
 
-const REF = 'gndnldyfudbytbboxesk' // production: read only, except --enforce, which may switch a failing source off
-if (process.argv.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
+const args = process.argv.slice(2)
+const valueOf = (flag: string): string | null => (args.includes(flag) ? args[args.indexOf(flag) + 1] ?? null : null)
+/*
+ * --target test (LAW 19 section 7.2 on a planted failure, 6 November 2026): the same checks and the same switch against
+ * TEST, with --base naming a build that serves TEST (no public site reads TEST), --only naming the nights to judge, and
+ * --plant a file of planted source pages (url to status and body) answered instead of a read. Production keeps every
+ * rule it had: www as its base, real reads only, and --enforce only with ALLOW_PRODUCTION_SUPABASE=1.
+ */
+const TARGET = valueOf('--target') ?? 'production'
+const REFS: Record<string, string> = { production: 'gndnldyfudbytbboxesk', test: 'vkapkibzokmfaxqogypq' }
+const REF = REFS[TARGET] // production: read only, except --enforce, which may switch a failing source off
+if (!REF) {
+  console.error('[engine-verifier] REFUSED: --target is production or test')
+  process.exit(1)
+}
+if (TARGET === 'production' && (valueOf('--base') || valueOf('--plant'))) {
+  console.error('[engine-verifier] REFUSED: --base and --plant are for --target test only; production is read as a visitor reads it')
+  process.exit(1)
+}
+if (TARGET === 'test' && !valueOf('--base')) {
+  console.error('[engine-verifier] REFUSED: --target test needs --base, a build serving TEST')
+  process.exit(1)
+}
+if (TARGET === 'production' && args.includes('--enforce') && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
   console.error('[engine-verifier] REFUSED: --enforce writes production (a failing source switched off); set ALLOW_PRODUCTION_SUPABASE=1 for this run')
   process.exit(1)
 }
-const BASE = 'https://www.eventlinqs.com.au'
+const BASE = valueOf('--base') ?? 'https://www.eventlinqs.com.au'
+const ONLY = valueOf('--only')
+const PLANTED: Record<string, { status: number; body: string }> = valueOf('--plant') ? JSON.parse(readFileSync(valueOf('--plant')!, 'utf8')) : {}
 const OUT = process.env.ENGINE_EVIDENCE_DIR || 'C:/dev/EVIDENCE/ENGINE-P0'
-const args = process.argv.slice(2)
 const SAMPLE = Number(args[args.indexOf('--sample') + 1]) || 20
 /** Every night ever published wrong (LAW 19 section 3, the fixed critical cases); later ones are added here. */
 export const CRITICAL_TITLES = [
@@ -56,7 +79,7 @@ const keys = (await (await fetch(`https://api.supabase.com/v1/projects/${REF}/ap
 const anon = keys.find((k) => k.name === 'anon')?.api_key
 const service = keys.find((k) => k.name === 'service_role')?.api_key
 if (!anon || !service) {
-  console.error('[engine-verifier] REFUSED: the production keys could not be read')
+  console.error(`[engine-verifier] REFUSED: the ${TARGET} keys could not be read`)
   process.exit(1)
 }
 // The events through the public (anon) key, exactly what a visitor's page reads; the listing checks (not public) through
@@ -67,9 +90,9 @@ const records = createClient(`https://${REF}.supabase.co`, service, { auth: { pe
 type Row = { id: string; title: string; slug: string; start_date: string; timezone: string | null; venue_name: string | null; city_primary: string | null; external_ticket_url: string | null; listing_series_id: string | null }
 const cols = 'id, title, slug, start_date, timezone, venue_name, city_primary, external_ticket_url, listing_series_id'
 const nowIso = new Date().toISOString()
-const { data: critical } = await db.from('events').select(cols).in('title', CRITICAL_TITLES).eq('status', 'published').gt('start_date', nowIso).order('start_date')
+const { data: critical } = await db.from('events').select(cols).in('title', ONLY ? [ONLY] : CRITICAL_TITLES).eq('status', 'published').gt('start_date', nowIso).order('start_date')
 const sample: Row[] = []
-for (const city of ['melbourne', 'geelong', 'ballarat', 'bendigo']) {
+for (const city of ONLY ? [] : ['melbourne', 'geelong', 'ballarat', 'bendigo']) {
   const { data } = await db.from('events').select(cols).eq('status', 'published').eq('city_primary', city).gt('start_date', nowIso).not('listing_series_id', 'is', null).order('start_date').limit(200)
   const rows = (data ?? []) as Row[]
   // A spread across each city's coming nights, not the first few: every k-th night, and four times as many as are
@@ -99,6 +122,11 @@ const lastHit = new Map<string, number>()
 const stopped = new Set<string>()
 const robots = new Map<string, { status: number | null; body: string }>()
 async function polite(u: string): Promise<{ status: number | null; body: string; pdf: boolean }> {
+  /* A planted page (TEST only, refused for production above) is answered as given, and nothing else is read. */
+  if (TARGET === 'test' && Object.keys(PLANTED).length > 0) {
+    const p = PLANTED[u]
+    return p ? { status: p.status, body: p.body, pdf: false } : { status: null, body: '', pdf: false }
+  }
   const host = new URL(u).host
   if (stopped.has(host)) return { status: null, body: '', pdf: false }
   const wait = (lastHit.get(host) ?? 0) + 1000 - Date.now()
@@ -207,7 +235,7 @@ async function judgeNight(n: Row): Promise<void> {
   /* The verdict, one rule: src/lib/listings/verifier-verdict.ts (UNVERIFIABLE with its reason, a page that gave no answer
      among them; a source going quiet is never read as a cancellation; each is listed for a person's re-check). */
   const verdict: Result['verdict'] = verifierVerdict({ sourceOk, liveOk, source })
-  const why = sourceOk === false ? 'the source states another time' : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
+  const why = sourceOk === false ? SOURCE_DISAGREES : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
   results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
   if (!criticalIds.has(n.id) && (verdict === 'PASS' || verdict === 'FAIL')) judgedIn.set(n.city_primary ?? '', (judgedIn.get(n.city_primary ?? '') ?? 0) + 1)
   console.log(`${verdict.padEnd(10)} ${n.title.slice(0, 44).padEnd(44)} stored ${stored} | source: ${source} | 390: ${live[390].text} | 1440: ${live[1440].text}`)
@@ -260,26 +288,19 @@ console.log(`[engine-verifier] ${count('PASS')} PASS, ${count('FAIL')} FAIL, ${c
  * site, not the source) switches no source off. Logged; the run exits 1, so the job that ran it fails and says so.
  */
 if (args.includes('--enforce')) {
-  const failingSources = [...new Set(results.filter((r) => r.verdict === 'FAIL' && r.why === 'the source states another time' && r.sourceUrl).map((r) => new URL(r.sourceUrl).host.replace(/^www\./, '')))]
-  for (const host of failingSources) {
-    const { data: rows } = await records.from('listing_sources').select('id, name, page_url, collection, notes').eq('collection', 'read')
-    const mine = (rows ?? []).filter((s) => {
-      try {
-        return new URL(s.page_url as string).host.replace(/^www\./, '') === host
-      } catch {
-        return false
-      }
-    })
-    for (const s of mine) {
-      const note = ` | Switched off ${new Date().toISOString()} by the engine verifier (LAW 19 4.3): a night it published disagrees with its own page (${OUT}/verifier-${stamp}.md).`
-      const { error } = await records.from('listing_sources').update({ collection: 'ask', notes: `${(s.notes as string | null) ?? ''}${note}` }).eq('id', s.id).eq('collection', 'read')
-      const line = `${new Date().toISOString()} | engine-verifier --enforce | production | ${error ? `FAILED to switch off ${s.name}: ${error.message}` : `${s.name} switched off (collection read -> ask)`}; evidence ${OUT}/verifier-${stamp}.md`
-      console.log(`[engine-verifier] ${line}`)
-      try {
-        appendFileSync('C:/dev/PRODUCTION-WRITES.txt', line + '\n')
-      } catch {
-        // On a CI runner the write log is the job's own output, printed above.
-      }
+  /* The switch, one rule: src/lib/listings/verifier-verdict.ts sourcesToSwitchOff (tests/unit/listings/verifier-switch-off.test.ts). */
+  const { data: rows } = await records.from('listing_sources').select('id, name, page_url, collection, notes').eq('collection', 'read')
+  const off = new Set(sourcesToSwitchOff(results, (rows ?? []) as { id: string; page_url: string; collection: string }[]))
+  for (const s of (rows ?? []).filter((r) => off.has(r.id as string))) {
+    const note = ` | Switched off ${new Date().toISOString()} by the engine verifier (LAW 19 4.3): a night it published disagrees with its own page (${OUT}/verifier-${stamp}.md).`
+    const { error } = await records.from('listing_sources').update({ collection: 'ask', notes: `${(s.notes as string | null) ?? ''}${note}` }).eq('id', s.id).eq('collection', 'read')
+    const line = `${new Date().toISOString()} | engine-verifier --enforce | ${TARGET} | ${error ? `FAILED to switch off ${s.name}: ${error.message}` : `${s.name} switched off (collection read -> ask)`}; evidence ${OUT}/verifier-${stamp}.md`
+    console.log(`[engine-verifier] ${line}`)
+    if (TARGET !== 'production') continue
+    try {
+      appendFileSync('C:/dev/PRODUCTION-WRITES.txt', line + '\n')
+    } catch {
+      // On a CI runner the write log is the job's own output, printed above.
     }
   }
 }

@@ -27,6 +27,30 @@ export const UNVERIFIABLE_REASONS: readonly string[] = [
 
 export type Verdict = 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'
 
+/** The verifier's 'why' for a night its own source states at another time: the only failure that switches a source off. */
+export const SOURCE_DISAGREES = 'the source states another time'
+
+const hostOf = (u: string): string | null => {
+  try {
+    return new URL(u).host.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * THE SWITCH, ONE RULE (LAW 19 sections 4.3 and 7.2: 'that source's publication flag switches off'). Every source still
+ * read automatically ('read') whose host is the host of a night the check found wrong against its own page; a night that
+ * fails only on the live page (the site, not the source) switches nothing off. Returns their ids in the order given. Pure.
+ */
+export function sourcesToSwitchOff(
+  results: readonly { verdict: string; why: string; sourceUrl: string }[],
+  sources: readonly { id: string; page_url: string; collection: string }[],
+): string[] {
+  const failing = new Set(results.filter((r) => r.verdict === 'FAIL' && r.why === SOURCE_DISAGREES && r.sourceUrl).map((r) => hostOf(r.sourceUrl)).filter((h): h is string => h !== null))
+  return sources.filter((s) => s.collection === 'read' && failing.has(hostOf(s.page_url) ?? '')).map((s) => s.id)
+}
+
 export function verifierVerdict(r: { sourceOk: boolean | null; liveOk: boolean; source: string }): Verdict {
   if (r.sourceOk === false || !r.liveOk) return 'FAIL'
   if (r.sourceOk === true) return 'PASS'
