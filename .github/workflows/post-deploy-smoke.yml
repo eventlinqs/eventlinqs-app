@@ -80,7 +80,7 @@ concurrency:
 jobs:
   smoke:
     name: production homepage smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     # Run when a PRODUCTION deploy succeeded (the primary path), when the
@@ -252,7 +252,7 @@ jobs:
     # Both `failure` and `error` are accepted because they are two different
     # GitHub deployment states and a provider may report either.
     name: production deployment failed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     if: >-
       ${{ github.event_name == 'deployment_status'

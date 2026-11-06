@@ -49,7 +49,7 @@ concurrency:
 jobs:
   locks:
     name: every lock can still fire
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -63,7 +63,7 @@ jobs:
 
   cross-store:
     name: CRON_SECRET agrees across both stores
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     # Scheduled and manual only. A push from a fork must never be handed the
     # production bearer.

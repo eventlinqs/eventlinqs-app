@@ -25,7 +25,7 @@ jobs:
   verify:
     name: lint · typecheck · build
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 20, not 15, since 7 September 2026: the build step's prebuild guards
     # include preview-deployment-state, which now WAITS up to 600 s for this
     # commit's own Vercel deployment to settle. Measured on the last two green
@@ -162,7 +162,7 @@ jobs:
   types-drift-guard:
     name: types-drift guard
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # [2026-06-07] BLOCKING. The SUPABASE_ACCESS_TOKEN repository secret
     # is now configured and the guard was verified green on 6e6223c, so
@@ -240,7 +240,7 @@ jobs:
   production-parity:
     name: production parity
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Close-out C16.2.2 (7 September 2026). REQUIRED on main. Two merges went
     # red on main and failed to deploy after every pull-request check passed,
@@ -270,7 +270,7 @@ jobs:
   test:
     name: test (vitest)
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     env:
@@ -317,7 +317,7 @@ jobs:
     name: main is red
     needs: [verify, types-drift-guard, production-parity, test]
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

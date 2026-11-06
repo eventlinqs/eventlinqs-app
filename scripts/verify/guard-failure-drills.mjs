@@ -1812,6 +1812,26 @@ const DRILLS = [
     replace: 'types: [opened, synchronize, reopened]',
     expect: 'never runs this workflow',
   },
+  /*
+   * workflows-pin-a-supported-runner (the CONTROLLER's 23:23 of 6 November 2026): ubuntu-latest moved to 26.04 and
+   * Playwright 1.59.1 has no chromium for it (engine verifier run 42216739826). The two ways it returns.
+   */
+  {
+    name: 'a workflow goes back to ubuntu-latest',
+    guard: `${GUARDS}/workflows-pin-a-supported-runner.mjs`,
+    file: '.github/workflows/engine-verifier.yml',
+    find: '    runs-on: ubuntu-24.04',
+    replace: '    runs-on: ubuntu-latest',
+    expect: "runs on 'ubuntu-latest'",
+  },
+  {
+    name: 'a workflow names an image Playwright does not support',
+    guard: `${GUARDS}/workflows-pin-a-supported-runner.mjs`,
+    file: '.github/workflows/engine-verifier.yml',
+    find: '    runs-on: ubuntu-24.04',
+    replace: '    runs-on: ubuntu-26.04',
+    expect: 'which the installed Playwright does not support',
+  },
   {
     name: 'the pre-push hook stops invoking the gate',
     guard: `${GUARDS}/pre-push-gate-wired.mjs`,

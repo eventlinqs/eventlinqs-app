@@ -29,7 +29,7 @@ on:
 jobs:
   purchase-e2e-local:
     name: Buyer purchase journey (local supabase)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Parked for post-launch verification. Only runs once the repo variable
     # PURCHASE_E2E_LOCAL_ENABLED is set to 'true', so it adds no red or pending
     # check to the launch PR (mirrors purchase-e2e.yml / PURCHASE_E2E_ENABLED).
