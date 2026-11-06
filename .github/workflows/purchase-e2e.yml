@@ -36,7 +36,7 @@ on:
 jobs:
   purchase-e2e:
     name: Buyer purchase journey
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Drafts do not run it (close-out C2.2): CI runs once, when the pull request is marked ready.
     if: ${{ vars.PURCHASE_E2E_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     timeout-minutes: 20

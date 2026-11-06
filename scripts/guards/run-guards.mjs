@@ -348,6 +348,8 @@
  *                              RPC, so two doors never go silently deaf to each other
  *   workflows-skip-drafts     every pull-request workflow skips a draft on every job and wakes
  *                              on ready_for_review, so CI runs once, after the local gate
+ *   workflows-pin-a-supported-runner  every workflow names its image, never latest, and one the installed
+ *                              Playwright's own support list names
  *   pre-push-gate-wired       .githooks/pre-push runs the whole of scripts/ops/pre-push-gate.mjs,
  *                              npm run gate:push is the same command, and git is pointed at it
  *   gate-servers-carry-a-limiter  every gate step that serves the production build starts it
@@ -2251,6 +2253,9 @@ const GUARDS = [
   // because that setting is local config no clone inherits. Both proven red by
   // the drills in scripts/verify/guard-failure-drills.mjs and green after.
   'scripts/guards/workflows-skip-drafts.mjs',
+  // 6 November 2026, the CONTROLLER's 23:23: GitHub moved ubuntu-latest to 26.04 and Playwright 1.59.1 has no chromium for it
+  // (engine verifier run 42216739826). Every workflow names an image the installed Playwright's own list supports.
+  'scripts/guards/workflows-pin-a-supported-runner.mjs',
   'scripts/guards/pre-push-gate-wired.mjs',
   // 10 September 2026, found by the gate failing on itself. Three gate steps
   // served the production build and each spawned `next start` in its own block.

@@ -65,7 +65,7 @@ jobs:
   daily:
     name: the daily state
     if: ${{ github.event.schedule == '10 21 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -177,7 +177,7 @@ jobs:
   stall:
     name: the stall check
     if: ${{ github.event.schedule == '25 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'stall') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7

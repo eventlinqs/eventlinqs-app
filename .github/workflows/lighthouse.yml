@@ -94,7 +94,7 @@ jobs:
   preview:
     name: Resolve Vercel preview
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
       url: ${{ steps.resolve.outputs.url }}
@@ -141,7 +141,7 @@ jobs:
     name: Lighthouse mobile gate
     needs: preview
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 45 since 7 September 2026 (close-out C8.2): a 13 URL three-run collection measured 17 minutes on the runner
     # (run 34079721873, 03:30:14Z to 03:47:35Z), so five runs need about 29, plus the resolve and the warm pass.
     timeout-minutes: 45
