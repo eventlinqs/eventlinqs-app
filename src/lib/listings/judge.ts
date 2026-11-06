@@ -182,8 +182,67 @@ export function insideOwnEvent(e: Pick<FoundEvent, 'title' | 'startsAt'>, known:
   )
 }
 
-export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boolean; known: readonly KnownEvent[] }): Judgement {
-  const { plan, sourceVerified, known } = input
+/** A source's site: the host of a page it was read from, lower case and 'www.' aside; null for no page. Pure. */
+export function sourceHostOf(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).host.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * ONE EVENT FROM TWO SOURCES (class N of the engine accuracy sweep; the CONTROLLER's 03:31 of 7 November 2026). The id of a
+ * night ANOTHER source already lists with the same title on the same Melbourne day in the same city, at any venue; else
+ * null. The City of Greater Geelong's feed listed 'Boost Mobile AUSX Open Geelong' at the venue 'AUSX Open' at 1:00 pm and
+ * Kardinia Park's page gave 'AUSX Open Geelong' at GMHBA Stadium at 6:00 pm the same Saturday: a sponsor's name and a
+ * second venue name, so neither the same-venue check below nor the hunt's same-title check saw one event twice. A source is
+ * the site a night was read from (its host, 'www.' aside): the council's rows came from a hand import whose listing check
+ * names www.geelongcity.vic.gov.au, so a source id alone would not have named them. A known night whose source is not on
+ * record is never a twin (never guessed), and one site's own nights are never each other's twins (a library's same session
+ * at two branches the same day is two sessions). Pure.
+ */
+export function crossSourceTwin(
+  e: Pick<FoundEvent, 'title' | 'startsAt'>,
+  known: readonly KnownEvent[],
+  sourceHost: string,
+  citySlug: string | null,
+): string | null {
+  const reading = sourceHost.toLowerCase().replace(/^www\./, '')
+  for (const k of known) {
+    if (!k.sourceHosts || k.sourceHosts.length === 0 || k.sourceHosts.includes(reading)) continue
+    if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
+    if (!sameDay(k.startsAt, e.startsAt)) continue
+    if (!oneTitle(k.title, e.title)) continue
+    return k.eventId
+  }
+  return null
+}
+
+/**
+ * Two sites name one event when its titles are the same, or the shorter, at least three words, sits wholly inside the
+ * longer ('AUSX Open Geelong' inside 'Boost Mobile AUSX Open Geelong'). The judge's half share is too loose across sites:
+ * put through production's 881 upcoming nights on 7 November 2026 it also called "Sailors' Rest New Year's Eve" and
+ * "New Year's Eve Buffet Dinner", two venues' own dinners, one event. Pure.
+ */
+function oneTitle(a: string, b: string): boolean {
+  if (folded(a) === folded(b)) return true
+  const wa = titleWords(a)
+  const wb = titleWords(b)
+  const [short, long] = wa.size <= wb.size ? [wa, wb] : [wb, wa]
+  return short.size >= 3 && [...short].every((w) => long.has(w))
+}
+
+export function judgeCandidate(input: {
+  plan: CandidatePlan
+  sourceVerified: boolean
+  known: readonly KnownEvent[]
+  /** The site reading this night (its host), and its city: with them, a night another site already lists that day waits. */
+  sourceHost?: string | null
+  citySlug?: string | null
+}): Judgement {
+  const { plan, sourceVerified, known, sourceHost, citySlug = null } = input
   const e = plan.event
   const reasons: CandidateReason[] = []
   if (!sourceVerified) reasons.push('source_unverified')
@@ -201,7 +260,7 @@ export function judgeCandidate(input: { plan: CandidatePlan; sourceVerified: boo
       const share = titleShare(k.title, e.title)
       return share >= SIMILAR_TITLE_SHARE && share < SAME_TITLE_SHARE && sameVenue(k, key) && sameDay(k.startsAt, e.startsAt)
     })
-    if (alike || insideOwnEvent(e, known)) reasons.push('similar_listing')
+    if (alike || insideOwnEvent(e, known) || (sourceHost && crossSourceTwin(e, known, sourceHost, citySlug) !== null)) reasons.push('similar_listing')
   }
   return { confidence: reasons.length === 0 ? 'high' : 'low', reasons }
 }

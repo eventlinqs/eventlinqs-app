@@ -887,6 +887,8 @@ export type KnownEvent = ListingKey & {
   seriesId?: string | null
   /** Its stated end, where it has one: an organiser's own event spanning days covers every night inside it (./judge.ts). */
   endsAt?: string | null
+  /** The sites its series was read from (hosts, 'www.' aside), where on record: a night another site lists is one event twice. */
+  sourceHosts?: readonly string[] | null
 }
 
 export type CandidatePlan =

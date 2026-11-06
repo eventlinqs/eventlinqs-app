@@ -14,7 +14,7 @@ import {
 } from './collect'
 import { sameVenue } from '@/lib/events/booking-links'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
-import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
+import { judgeCandidate, sourceHostOf, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
 import { canaryOpen, inCanaryTenth } from './canary'
@@ -373,7 +373,7 @@ export async function runCollection(
             for (const p of plans) {
               const plan = await stillNew(store, p)
               if (!plan) continue
-              const judged = judgeCandidate({ plan, sourceVerified: source.verified, known })
+              const judged = judgeCandidate({ plan, sourceVerified: source.verified, known, sourceHost: sourceHostOf(source.pageUrl), citySlug: city })
               let confidence = judged.confidence
               const reasons = [...judged.reasons]
               /* THE HUNT'S RULE (car 44, Lawal's 15:12 of 4 November 2026): a new night a headline venue's own page states

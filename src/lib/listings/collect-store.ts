@@ -4,6 +4,7 @@ import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
 import { huntDecision, huntFor, huntSummary } from './headline-hunt'
+import { sourceHostOf } from './judge'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
@@ -83,17 +84,52 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           .order('id')
           .range(from, to),
       )
-      return data.map((e) => ({
-        eventId: e.id as string,
-        venueId: (e.venue_id as string | null) ?? null,
-        venueName: e.venue_name as string,
-        venueAddress: (e.venue_address as string | null) ?? null,
-        title: e.title as string,
-        startsAt: e.start_date as string,
-        endsAt: (e.end_date as string | null) ?? null,
-        citySlug: (e.city_primary as string | null) ?? null,
-        seriesId: (e.listing_series_id as string | null) ?? null,
-      }))
+      /* ONE EVENT FROM TWO SOURCES (./judge.ts crossSourceTwin; the AUSX pair of 7 November 2026): each held night carries
+         the sites its series was read from, read whole like the nights: the page of the candidate that published it, and
+         the page an import's own listing check names (the council's AUSX rows came from a hand import, no candidate). The
+         daily confirmations ('collection run, source ...') repeat a series' own site every day and are left out. A series
+         with neither (an organiser's own) carries none, and is never called another source's. */
+      const published = await readEveryRow<{ published_series_id: string; page_url: string | null }>('the published candidates', (from, to) =>
+        db
+          .from('listing_candidates')
+          .select('published_series_id, page_url')
+          .not('published_series_id', 'is', null)
+          .order('id')
+          .range(from, to),
+      )
+      const imported = await readEveryRow<{ series_id: string; source_url: string | null }>('the import checks', (from, to) =>
+        db
+          .from('listing_checks')
+          .select('series_id, source_url')
+          .not('import_file', 'like', 'collection run%')
+          .order('id')
+          .range(from, to),
+      )
+      const sourcesOf = new Map<string, Set<string>>()
+      const note = (seriesId: string, url: string | null) => {
+        const host = sourceHostOf(url)
+        if (!host) return
+        const set = sourcesOf.get(seriesId) ?? new Set<string>()
+        set.add(host)
+        sourcesOf.set(seriesId, set)
+      }
+      for (const p of published) note(p.published_series_id, p.page_url)
+      for (const c of imported) note(c.series_id, c.source_url)
+      return data.map((e) => {
+        const seriesId = (e.listing_series_id as string | null) ?? null
+        return {
+          eventId: e.id as string,
+          venueId: (e.venue_id as string | null) ?? null,
+          venueName: e.venue_name as string,
+          venueAddress: (e.venue_address as string | null) ?? null,
+          title: e.title as string,
+          startsAt: e.start_date as string,
+          endsAt: (e.end_date as string | null) ?? null,
+          citySlug: (e.city_primary as string | null) ?? null,
+          seriesId,
+          sourceHosts: seriesId ? [...(sourcesOf.get(seriesId) ?? [])] : [],
+        }
+      })
     },
 
     async confirmSeries(rows): Promise<void> {
