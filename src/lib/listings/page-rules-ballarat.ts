@@ -1,5 +1,6 @@
 import { wallClockToIso, type FoundEvent } from './collect'
 import type { PageRule } from './page-rules'
+import { RESTRICTED_TIER } from './open-tier'
 
 /**
  * BALLARAT'S PAGE RULES (WINDOW 2, 1 November 2026, on the CONTROLLER's 15:54 page reader and its 16:41 order: sources
@@ -37,8 +38,8 @@ function clean(html: string): string {
 
 const MONTHS: Readonly<Record<string, number>> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
 
-/** A tier a buyer must qualify for is never the 'from' price: a concession, an age, a group, a community, a package. */
-const RESTRICTED = /concession|child|senior|student|mob tix|under \d+|\d+ years|high five|group|family|vip|meet|companion|pensioner/i
+/** A tier a buyer must qualify for is never the 'from' price: one list for every reader (./open-tier.ts). */
+const RESTRICTED = RESTRICTED_TIER
 
 /** The lowest price open to anyone, in cents: 'Label: $49' pairs, restricted tiers left out; null when none is stated. */
 function openPriceCents(text: string): number | null {

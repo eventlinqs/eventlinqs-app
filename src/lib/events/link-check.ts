@@ -25,6 +25,7 @@
  */
 
 import { pageRuleFor } from '@/lib/listings/page-rules'
+import { isRestrictedTier } from '@/lib/listings/open-tier'
 
 export const AGENT = 'EventLinqsLinkCheck'
 
@@ -137,8 +138,11 @@ export function readPage(status: number, html: string, night?: Night | null): Pa
   const offers = mine.flatMap((e) => e.offers)
   const states = offers.map((o) => AVAILABILITY[String(o.availability ?? '').replace(/^https?:\/\/schema\.org\//i, '').toLowerCase()]).filter(Boolean)
   const availability = states.includes('on_sale') ? 'on_sale' : states.includes('not_yet') ? 'not_yet' : states.length > 0 ? 'sold_out' : null
+  // The from price is an open ticket's (src/lib/listings/open-tier.ts): a concession or a package never sets it, though it
+  // still counts for availability above, since a buyer who qualifies can still buy.
   const prices = offers
     .filter((o) => String(o.priceCurrency ?? 'AUD').toUpperCase() === 'AUD')
+    .filter((o) => !isRestrictedTier(`${String(o.name ?? '')} ${String(o.description ?? '')} ${String(o.category ?? '')}`))
     .map((o) => Number(o.lowPrice ?? o.price))
     .filter((p) => Number.isFinite(p) && p >= 0)
   return { availability, priceFromCents: prices.length > 0 ? Math.round(Math.min(...prices) * 100) : null }

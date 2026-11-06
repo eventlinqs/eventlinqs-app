@@ -84,6 +84,26 @@ describe('a page of several dated nights', () => {
     expect(await checkLink(url, deps, new Map(), { startsAt: '2026-11-15T03:00:00.000Z', zone })).toEqual({ changed: false, why: 'unknown' })
   })
 
+  test("the from price is the open ticket's, never a concession's: the Peter Tobin Oration is $15, not $12", () => {
+    const tobin = page({
+      '@type': 'Event', name: 'The Peter Tobin Oration with Cathy McGowan AO', startDate: '2026-12-04T18:00:00+11:00',
+      offers: [
+        { '@type': 'Offer', name: 'Concession', price: 12, priceCurrency: 'AUD', availability: 'https://schema.org/InStock' },
+        { '@type': 'Offer', name: 'General Admission', price: 15, priceCurrency: 'AUD', availability: 'https://schema.org/InStock' },
+      ],
+    })
+    expect(readPage(200, tobin)).toEqual({ availability: 'on_sale', priceFromCents: 1500 })
+    // Only restricted tickets left on sale: still on sale (a concession buyer can buy), and no open price to state.
+    const onlyConcession = page({
+      '@type': 'Event', name: 'The Peter Tobin Oration with Cathy McGowan AO', startDate: '2026-12-04T18:00:00+11:00',
+      offers: [
+        { '@type': 'Offer', name: 'Concession', price: 12, priceCurrency: 'AUD', availability: 'https://schema.org/InStock' },
+        { '@type': 'Offer', name: 'General Admission', price: 15, priceCurrency: 'AUD', availability: 'https://schema.org/SoldOut' },
+      ],
+    })
+    expect(readPage(200, onlyConcession)).toEqual({ availability: 'on_sale', priceFromCents: 1500 })
+  })
+
   test('checkLink carries the night to the read', async () => {
     const deps: CheckDeps = { async get(url) { return url.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: week } } }
     expect(await checkLink('https://www.comedyrepublic.com.au/shows/main-stage/', deps, new Map(), { startsAt: '2026-11-07T09:00:00.000Z', zone }))
