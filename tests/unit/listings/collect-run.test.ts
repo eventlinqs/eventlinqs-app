@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { runCollection, type CandidateRow, type CollectionStore, type Fetcher, type RunRow } from '@/lib/listings/collect-run'
 import type { KnownEvent, RegisteredSource } from '@/lib/listings/collect'
+import { inCanaryTenth } from '@/lib/listings/canary'
 
 /* Item 19's run: robots.txt before the page, only due sources whose terms allow it, a second source a link. */
 
@@ -179,6 +180,44 @@ describe("a feed that names a known venue of its own city", () => {
     expect(landed[0].venueAddress).toBeNull()
     expect(landed[0].reasons).toContain('no_venue_address')
   })
+
+  /* 6 November 2026, found by the LAW 19 planted demonstration on TEST and measured on production: 8 of 20 found
+     addresses at a held venue of that name were spelled otherwise ('81 Ryrie Street, Geelong VIC' on the page, '81 Ryrie
+     Street, Geelong VIC 3220' held for The Play House). sameVenue refuses two addresses that differ, so the listed night
+     was never matched: a re-read never confirmed its series (its freshness ran out), and a changed time planned as a NEW
+     night. The night is read at the venue EventLinqs holds by that name in the source's city, as the publisher lists it. */
+  const playHouse = (startDate: string) =>
+    `<script type="application/ld+json">${JSON.stringify({
+      '@type': 'TheaterEvent',
+      name: 'Annie the Musical',
+      startDate,
+      location: { name: 'The Play House', address: '81 Ryrie Street, Geelong VIC' },
+      offers: { url: 'https://tickets.example.com.au/annie', availability: 'InStock' },
+    })}</script>`
+  const gac = 'https://gac.example.com.au/whats-on/annie'
+  const gacPages = (body: string) => ({ 'https://gac.example.com.au/robots.txt': { status: 200, body: '' }, [gac]: { status: 200, body } })
+  const listed: KnownEvent = {
+    eventId: 'e-annie', seriesId: 's-annie', citySlug: 'geelong', venueId: 'v-play-house', venueName: 'The Play House',
+    venueAddress: '81 Ryrie Street, Geelong VIC 3220', title: 'Annie the Musical', startsAt: '2026-11-14T08:30:00.000Z',
+  }
+  const heldPlayHouse = { geelong: { 'the play house': '81 Ryrie Street, Geelong VIC 3220' } }
+
+  it('a re-read of a listed night whose page spells the address otherwise confirms its series, and lands nothing new', async () => {
+    const m = memoryStore([source('gac', gac, { citySlug: 'geelong' })], [listed], { 'e-annie': ['https://tickets.example.com.au/annie'] }, heldPlayHouse)
+    const confirmed: string[] = []
+    m.store.confirmSeries = async (rows) => {
+      confirmed.push(...rows.map((r) => r.seriesId))
+    }
+    await runCollection(m.store, sites(gacPages(playHouse('2026-11-14T19:30:00+11:00'))).fetcher, NOW)
+    expect(confirmed).toEqual(['s-annie'])
+    expect(m.landed).toEqual([])
+  })
+
+  it('a listed night the page now states two hours later, address spelled otherwise, is a time change for a person, never a new night', async () => {
+    const m = memoryStore([source('gac', gac, { citySlug: 'geelong' })], [listed], {}, heldPlayHouse)
+    await runCollection(m.store, sites(gacPages(playHouse('2026-11-14T21:30:00+11:00'))).fetcher, NOW)
+    expect(m.landed[0]).toMatchObject({ kind: 'changes_facts', change: 'time_changed', eventId: 'e-annie', decidedBy: 'person', venueAddress: '81 Ryrie Street, Geelong VIC 3220' })
+  })
 })
 
 describe('the run log and the partner rule', () => {
@@ -349,6 +388,32 @@ describe("the hunt's rule", () => {
     expect(huntPublished).toEqual(['A Big Show @ Rod Laver Arena'])
     expect(m.published).toEqual([])
     expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
+  /* LAW 19 section 7.4, the records canary: while a source's canary is open, the rule publishes only the records in its
+     tenth (src/lib/listings/canary.ts); every other record waits for a person as canary_hold, until the canary widens. */
+  it('while its canary is open, publishes only the records in its tenth; the rest wait as canary_hold', async () => {
+    const at = (day: number) => `2026-11-${String(day).padStart(2, '0')}T20:00:00+11:00`
+    const iso = (day: number) => new Date(at(day)).toISOString()
+    const days = Array.from({ length: 20 }, (_, i) => i + 8)
+    const inside = days.find((d) => inCanaryTenth({ sourceId: 'rla', pageUrl: arena, startsAt: iso(d) }))!
+    const outside = days.find((d) => !inCanaryTenth({ sourceId: 'rla', pageUrl: arena, startsAt: iso(d) }))!
+    const night = (day: number) => ({
+      '@type': 'MusicEvent',
+      name: `A Big Show ${day}`,
+      startDate: at(day),
+      location: { name: 'Rod Laver Arena', address: 'Olympic Boulevard, Melbourne VIC 3001' },
+      offers: { url: `https://www.ticketmaster.com.au/a-big-show/event/${day}`, availability: 'InStock' },
+    })
+    const body = `<script type="application/ld+json">${JSON.stringify([night(inside), night(outside)])}</script>`
+    const m = memoryStore([hunted({ canary: { openedAt: '2026-10-26T00:00:00Z', release: 'abc1234' } })])
+    const huntPublished: string[] = []
+    m.store.publishHuntNight = async (row) => {
+      huntPublished.push(row.title)
+    }
+    await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body } }).fetcher, NOW)
+    expect(huntPublished).toEqual([`A Big Show ${inside}`])
+    expect(m.landed.find((r) => r.title === `A Big Show ${outside}`)).toMatchObject({ decidedBy: 'person', confidence: 'low', reasons: ['canary_hold'] })
   })
 
   it('leaves a night the page states at another venue for a person', async () => {

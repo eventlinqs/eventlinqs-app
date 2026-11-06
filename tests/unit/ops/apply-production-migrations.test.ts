@@ -51,11 +51,11 @@ describe('decide', () => {
 })
 
 describe('supabaseCommands', () => {
-  test('links production first, pushes --linked and nothing else, and rests on TEST last', () => {
+  test('links production first, pushes --remote (Supabase CLI v3; --linked is deprecated) and nothing else, and rests on TEST last', () => {
     const commands = supabaseCommands()
     expect(commands.map((c) => c.step)).toEqual(['link', 'push', 'rest'])
     expect(commands[0].args).toEqual(['supabase', 'link', '--project-ref', PRODUCTION_PROJECT_REF])
-    expect(commands[1].args).toEqual(['supabase', 'db', 'push', '--linked'])
+    expect(commands[1].args).toEqual(['supabase', 'db', 'push', '--remote'])
     expect(commands[2].args).toEqual(['supabase', 'link', '--project-ref', TEST_PROJECT_REF])
     expect(TEST_PROJECT_REF).not.toBe(PRODUCTION_PROJECT_REF)
   })
@@ -88,10 +88,10 @@ describe("a pending file older than production's newest (29 October: car 4 behin
     expect(outOfOrder([], applied)).toEqual([])
   })
 
-  test('the push carries --include-all only when asked, after --linked, and still no credential', () => {
-    expect(supabaseCommands()[1].args).toEqual(['supabase', 'db', 'push', '--linked'])
-    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: false })[1].args).toEqual(['supabase', 'db', 'push', '--linked'])
-    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: true })[1].args).toEqual(['supabase', 'db', 'push', '--linked', '--include-all'])
+  test('the push carries --include-all only when asked, after --remote, and still no credential', () => {
+    expect(supabaseCommands()[1].args).toEqual(['supabase', 'db', 'push', '--remote'])
+    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: false })[1].args).toEqual(['supabase', 'db', 'push', '--remote'])
+    expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: true })[1].args).toEqual(['supabase', 'db', 'push', '--remote', '--include-all'])
     expect(supabaseCommands(PRODUCTION_PROJECT_REF, { includeAll: true })[2].args).toEqual(['supabase', 'link', '--project-ref', TEST_PROJECT_REF])
   })
 

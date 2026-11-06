@@ -90,6 +90,8 @@ export type FullEvent = Event & {
   organisation: Organisation
   category: EventCategory | null
   event_addons?: EventAddon[]
+  /** A listing night's series end, so the page shows only an end someone stated (src/lib/events/stated-end.ts). */
+  listing_series?: { ends_at: string | null } | null
 }
 
 /**
@@ -105,7 +107,7 @@ export type FullEvent = Event & {
  * event page. See docs/security/AUDIT-2026-08-08.md.
  */
 export const EVENT_PAGE_SELECT =
-  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website, instagram_handle, short_name), category:event_categories!events_category_id_fkey(*), event_addons(*)'
+  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website, instagram_handle, short_name), category:event_categories!events_category_id_fkey(*), event_addons(*), listing_series:event_series!events_listing_series_id_fkey(ends_at)'
 
 /**
  * The event at this slug as this viewer may see it, or null when there is none.

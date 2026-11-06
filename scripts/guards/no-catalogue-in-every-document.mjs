@@ -88,10 +88,11 @@
  * read only after an action. This guard has nothing to say about an event page
  * serialising its own event.
  */
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
+import { builtDocuments, builtDocumentsExist } from './lib/built-documents.mjs'
 import { catalogueWeight } from '../perf/lib/document-weight.mjs'
 import { CATALOGUES } from '../perf/lib/catalogues.mjs'
 
@@ -99,7 +100,6 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
 const TAG = '[no-catalogue-in-every-document]'
 const BUILT = process.argv.includes('--built')
-const APP = join(ROOT, '.next', 'server', 'app')
 
 /**
  * Where each catalogue's rows are DECLARED, and under which exported type.
@@ -232,29 +232,20 @@ let documentsJudged = 0
 let bytesFound = 0
 
 if (BUILT) {
-  if (!existsSync(APP)) {
+  if (!builtDocumentsExist(ROOT)) {
     problems.push(
-      `--built was passed and there is no build under .next/server/app. This mode exists to read ` +
-        `what the build wrote, and a run with nothing to read is a gate looking at nothing.`,
+      `--built was passed and there is no build under .next/server/app or .next/server/route-cache. This mode ` +
+        `exists to read what the build wrote, and a run with nothing to read is a gate looking at nothing.`,
     )
   } else {
-    const files = []
-    const walk = dir => {
-      for (const name of readdirSync(dir)) {
-        const path = join(dir, name)
-        if (statSync(path).isDirectory()) {
-          walk(path)
-          continue
-        }
-        if (name.endsWith('.html') || name.endsWith('.rsc')) files.push(path)
-      }
-    }
-    walk(APP)
+    // Both layouts: a build alone writes under server/app, a build through a deployment adapter (Vercel's) under
+    // server/route-cache (./lib/built-documents.mjs; car 50's preview went ERROR on the first).
+    const files = builtDocuments(ROOT)
 
     if (files.length === 0) {
       problems.push(
-        `not one .html or .rsc document under .next/server/app. Every build of this tree ` +
-          `prerenders some, so this is the walk failing rather than a build with no output.`,
+        `not one .html or .rsc document under .next/server/app or .next/server/route-cache. Every build of this ` +
+          `tree prerenders some, so this is the walk failing rather than a build with no output.`,
       )
     }
 

@@ -8,6 +8,7 @@ import type { Metadata } from 'next'
 import type { TicketTier } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { priceLabel } from '@/lib/events/price-label'
+import { statedEnd } from '@/lib/events/stated-end'
 // Types only: erased at compile time, so they never pull the seating engine
 // into this route's bundle. The component itself arrives via the client
 // boundary below.
@@ -1456,10 +1457,14 @@ export default async function EventDetailPage({ params }: Props) {
                     <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                       When
                     </p>
-                    {/* Each fact once: the hero states the start; this card adds the end, the timezone and the calendar. */}
-                    <p className="mt-2 text-sm font-semibold text-ink-900">
-                      Ends {formatDateTime(event.end_date, event.timezone)}
-                    </p>
+                    {/* Each fact once: the hero states the start; this card adds the end, the timezone and the calendar.
+                        Only an end someone stated (src/lib/events/stated-end.ts): a listing night whose source gave a
+                        start only shows none, never the midnight the occurrence run fills in. */}
+                    {statedEnd(event) && (
+                      <p className="mt-2 text-sm font-semibold text-ink-900">
+                        Ends {formatDateTime(statedEnd(event)!, event.timezone)}
+                      </p>
+                    )}
                     <p className="mt-2 text-xs text-ink-400">Timezone: {event.timezone}</p>
                     {/*
                       ADD TO CALENDAR (close-out SEO5 step 2), in the WHEN card
@@ -1482,7 +1487,7 @@ export default async function EventDetailPage({ params }: Props) {
                             id: event.id,
                             title: event.title,
                             startDate: event.start_date,
-                            endDate: event.end_date,
+                            endDate: statedEnd(event),
                             timezone: event.timezone ?? null,
                             location: [event.venue_name, event.venue_city].filter(Boolean).join(', ') || null,
                             url: `${baseUrl}/events/${event.slug}`,

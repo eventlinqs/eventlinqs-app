@@ -37,7 +37,8 @@ enable_refresh_token_rotation = true
 enable_signup = true
 
 [auth.email]
-enable_signup = true
+# Supabase CLI 3.0.0 deprecated enable_signup here in favour of enabled (its release notes, 6 November 2026).
+enabled = true
 enable_confirmations = false
 
 [analytics]

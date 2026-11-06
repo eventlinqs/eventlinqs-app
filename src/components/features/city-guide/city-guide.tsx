@@ -413,6 +413,9 @@ export function CityGuide({
                       aria-pressed={slug === 'all' ? undefined : on}
                       onClick={() => {
                         setCategory(on || slug === 'all' ? 'all' : slug)
+                        /* A tile counts every date, so its tap shows every date: the list then holds exactly the number
+                           the tile states (tests/component/city-guide-tile-counts.test.tsx, 6 November 2026). */
+                        setWhen('all')
                         toList()
                       }}
                       className={`guide-tile ${

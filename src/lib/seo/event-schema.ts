@@ -30,6 +30,7 @@ import { isExternallyTicketed } from '@/lib/payments/sale-status'
 import { alsoOn, buttonOf, priceToShow, type BookingLink } from '@/lib/events/booking-links'
 import { shownOrganiser } from '@/lib/listings/shown-organiser'
 import { shownVenueName } from '@/lib/venues/shown-venue-name'
+import { statedEnd, type EndSource } from '@/lib/events/stated-end'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -250,6 +251,7 @@ export function buildEventSchemaPayload({
   // Every date this payload emits is written in the EVENT'S zone, never the
   // server's. `events.timezone` is NOT NULL and was already on this page.
   const zoned = (iso: string) => toZonedIso8601(iso, event.timezone)
+  const endStated = statedEnd(event as EndSource)
 
   /**
    * The date this event was originally scheduled for, when it has since been
@@ -393,7 +395,8 @@ export function buildEventSchemaPayload({
     '@type': schemaEventType(event.category?.slug),
     name: event.title,
     startDate: zoned(event.start_date),
-    endDate: zoned(event.end_date),
+    /* Only an end someone stated (src/lib/events/stated-end.ts): a filled in midnight is never sent to Google. */
+    ...(endStated ? { endDate: zoned(endStated) } : {}),
     /*
      * RESCHEDULED, WITH ITS REQUIRED PARTNER PROPERTY.
      *

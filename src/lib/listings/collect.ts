@@ -3,6 +3,7 @@ import { HORIZON_DAYS } from './horizon'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 import { factChange, movedToAnotherDay } from './judge'
 import type { HuntSource } from './headline-hunt'
+import type { SourceCanary } from './canary'
 
 /**
  * THE WEEKLY COLLECTION RUN (the foundation's item 19, START-16OCT/EVENTLINQS-FOUNDATION-LOCKED-27OCT.md;
@@ -773,6 +774,8 @@ export type RegisteredSource = {
   citySlug?: string | null
   /** A headline venue's own What's on page on the daily big event hunt's list (./headline-hunt.ts), else null. */
   hunt?: HuntSource | null
+  /** Its open records canary (LAW 19 section 7.4, ./canary.ts), else null: a rule then publishes only its tenth. */
+  canary?: SourceCanary
 }
 
 /**

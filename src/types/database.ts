@@ -3805,6 +3805,8 @@ export type Database = {
       listing_sources: {
         Row: {
           acquisition_order: number | null
+          canary_opened_at: string | null
+          canary_release: string | null
           category_id: string | null
           changes: string
           changes_counted: number
@@ -3869,6 +3871,8 @@ export type Database = {
         }
         Insert: {
           acquisition_order?: number | null
+          canary_opened_at?: string | null
+          canary_release?: string | null
           category_id?: string | null
           changes?: string
           changes_counted?: number
@@ -3933,6 +3937,8 @@ export type Database = {
         }
         Update: {
           acquisition_order?: number | null
+          canary_opened_at?: string | null
+          canary_release?: string | null
           category_id?: string | null
           changes?: string
           changes_counted?: number

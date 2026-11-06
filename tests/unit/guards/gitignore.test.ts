@@ -142,6 +142,14 @@ describe('a nested ignore file is relative to its own directory', () => {
  */
 describe('the walk, against git itself, on this repository', () => {
   const root = process.cwd()
+  /*
+   * WHAT THE CHECKOUT LEFT OUT WHEN THE WALK BEGAN, read at the same moment as the walk. Car 50's gate, 6 November
+   * 2026 21:05: poster-palette.test.ts wrote docs/design/poster-palette/midnight-artwork.pdf into this sparse
+   * checkout while the suite ran, after the walk and before the test body; git status anywhere then clears a present
+   * file's skip-worktree bit, so the list read in the body no longer named it and the walk was blamed for a file
+   * that was not on the disk when it looked (reproduced: C:\dev\EVIDENCE\ROUND5-3NOV\car40\car50-gate-race).
+   */
+  const sparseAtWalk = sparseAbsentPaths(root)
   const walked = new Set(walkTrackedFiles(root))
   const tracked = listTrackedFiles(root)
 
@@ -183,7 +191,7 @@ describe('the walk, against git itself, on this repository', () => {
      * worktrees leave about 4,400 docs files out), so the walk cannot see it and that says nothing about the rules.
      * Only those are set aside; on a full checkout, the gate's, the set is empty (X13, 31 October 2026).
      */
-    const sparse = sparseAbsentPaths(root)
+    const sparse = new Set([...sparseAtWalk, ...sparseAbsentPaths(root)])
     const droppedByWalk = tracked.filter((f) => !walked.has(f) && !sparse.has(f))
     const ask = spawnSync('git', ['check-ignore', '--stdin', '-z', '--no-index'], {
       cwd: root,

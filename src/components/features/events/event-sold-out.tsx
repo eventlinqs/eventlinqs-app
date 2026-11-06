@@ -1,6 +1,5 @@
 'use client'
 
-import { formatEventDateShort } from '@/lib/dates/event-time'
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -25,12 +24,12 @@ export interface EventSoldOutRelated {
   id: string
   slug: string
   title: string
-  start_date: string
   /**
-   * The EVENT own IANA zone. Required, so the compiler names every caller:
-   * an optional field would have let a surface go on printing the UTC day.
+   * The night's date, already written on the server in the EVENT's own zone (formatEventDateShort(start_date, timezone)).
+   * Required, so the compiler names every caller. Written there and not here, so the date code is not in the event page's
+   * first load: car 50's gate of 6 November 2026 measured /events/[slug] at 198.4 KB gzip against its 198.0 KB ceiling.
    */
-  timezone: string | null
+  date_label: string
   venue_city: string | null
   venue_country: string | null
   cover_image_url: string | null
@@ -202,7 +201,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
 }
 
 function RelatedCard({ event }: { event: EventSoldOutRelated }) {
-  const dateLabel = formatEventDateShort(event.start_date, event.timezone)
+  const dateLabel = event.date_label
   const locationLabel = formatVenueAddress({ city: event.venue_city, country: event.venue_country })
   const priceLabel = event.price_line?.trim() || null
 
