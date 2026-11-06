@@ -101,11 +101,11 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stripJsComments } from './lib/strip-js-comments.mjs'
+import { builtDocuments, builtDocumentsExist } from './lib/built-documents.mjs'
 
 const TAG = '[class-lists-are-not-repeated-per-card]'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const BUILT = process.argv.includes('--built')
-const APP = join(ROOT, '.next', 'server', 'app')
 
 /** Clause A: the composites, and the files that must use them. */
 const COMPOSITES = [
@@ -500,11 +500,13 @@ if (probe.count < 4) {
 let documentsWeighed = 0
 let worst = { bytes: 0 }
 if (BUILT) {
-  if (!existsSync(APP)) {
-    console.error(`${TAG} REFUSING: --built was given but ${rel(APP)} does not exist. Run a build first.`)
+  if (!builtDocumentsExist(ROOT)) {
+    console.error(`${TAG} REFUSING: --built was given but neither .next/server/app nor .next/server/route-cache exists. Run a build first.`)
     process.exit(1)
   }
-  for (const path of walk(APP, n => n.endsWith('.html') || n.endsWith('.rsc'))) {
+  // Both layouts: a build alone writes under server/app, a build through a deployment adapter (Vercel's) under
+  // server/route-cache (./lib/built-documents.mjs; car 50, 6 November 2026).
+  for (const path of builtDocuments(ROOT)) {
     documentsWeighed += 1
     const text = readFileSync(path, 'utf8')
     for (const row of repeatCosts(text)) {
