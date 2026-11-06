@@ -66,6 +66,7 @@ const browser = await chromium.launch({ headless: true })
 let scanned = 0
 let totalViolations = 0
 let failedLoads = 0
+let notPages = 0
 const summary = []
 for (const path of urls) {
   for (const [label, viewport] of VIEWPORTS) {
@@ -107,7 +108,40 @@ for (const path of urls) {
       throw lastError
     }
     const status = res.status()
+    /*
+     * NOT A PAGE (LAUNCH-READINESS row 16, 7 November 2026). A route that answers an image (a share card such as
+     * /free/melbourne/this-week/card/story) is shown by Chrome inside its own viewer document, and axe then judged
+     * Chrome's markup ('<html style="height: 100%;">' with no lang, the viewer's own <img> with no alt): two
+     * violations that are not in this repository. An answer that is not an HTML document is printed as such and
+     * counted apart, never scanned and never silently dropped.
+     */
+    const contentType = (res.headers()['content-type'] ?? '').split(';')[0].trim()
+    if (contentType && contentType !== 'text/html') {
+      const line = `  ${String(status).padEnd(4)} ${label.padStart(4)}  not a page (${contentType}), not scanned  ${path.replace(/k=[^&]+/, 'k=***')}`
+      summary.push(line)
+      console.log(line)
+      notPages += 1
+      if (status !== 200) failedLoads += 1
+      await context.close()
+      continue
+    }
     await page.waitForTimeout(800)
+    /*
+     * SCROLL THROUGH FIRST (row 16, 7 November 2026). Sections below the fold carry content-visibility:auto (the
+     * cv-section class), so the browser skips their layout and paint until they near the viewport; axe's colour
+     * check then reads an element that was never painted and judged one link on /organisers at 390 against a
+     * background it does not sit on. The page is walked to its end a screen at a time and back to the top, as a
+     * visitor scrolls, before axe judges it.
+     */
+    await page.evaluate(async () => {
+      const step = Math.max(200, Math.floor(window.innerHeight * 0.8))
+      for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
+        window.scrollTo(0, y)
+        await new Promise((r) => setTimeout(r, 120))
+      }
+      window.scrollTo(0, 0)
+      await new Promise((r) => setTimeout(r, 300))
+    })
     let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     for (const sel of excludes) builder = builder.exclude(sel)
     const results = await builder.analyze()
@@ -115,7 +149,7 @@ for (const path of urls) {
       id: v.id,
       impact: v.impact,
       help: v.help,
-      nodes: v.nodes.map((n) => ({ target: n.target, html: n.html?.slice(0, 200) })),
+      nodes: v.nodes.map((n) => ({ target: n.target, html: n.html?.slice(0, 200), why: n.failureSummary?.slice(0, 400) })),
     }))
     const slug = path.replace(/[?].*$/, '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'root'
     writeFileSync(join(out, `${slug}-${label}.json`), JSON.stringify({ url: results.url, status, violations }, null, 2), 'utf8')
@@ -129,12 +163,15 @@ for (const path of urls) {
     console.log(line)
     for (const v of violations) {
       console.log(`       [${v.impact}] ${v.id}: ${v.help}`)
-      for (const n of v.nodes.slice(0, 4)) console.log(`         ${JSON.stringify(n.target)}  ${n.html?.slice(0, 100)}`)
+      for (const n of v.nodes.slice(0, 4)) {
+        console.log(`         ${JSON.stringify(n.target)}  ${n.html?.slice(0, 100)}`)
+        if (n.why) console.log(`         why: ${n.why.replace(/\s+/g, ' ').slice(0, 220)}`)
+      }
     }
     await context.close()
   }
 }
 await browser.close()
-console.log(`axe-urls: ${scanned} scans across ${urls.length} URL(s) and ${VIEWPORTS.length} viewports, ${totalViolations} violation(s), ${failedLoads} non-200 load(s)`)
-writeFileSync(join(out, 'summary.txt'), summary.join('\n') + `\n\n${scanned} scans, ${totalViolations} violations, ${failedLoads} non-200 loads\n`, 'utf8')
+console.log(`axe-urls: ${scanned} scans across ${urls.length} URL(s) and ${VIEWPORTS.length} viewports, ${totalViolations} violation(s), ${failedLoads} non-200 load(s), ${notPages} answer(s) not a page`)
+writeFileSync(join(out, 'summary.txt'), summary.join('\n') + `\n\n${scanned} scans, ${totalViolations} violations, ${failedLoads} non-200 loads, ${notPages} answers not a page\n`, 'utf8')
 process.exit(totalViolations === 0 && failedLoads === 0 && scanned > 0 ? 0 : 1)
