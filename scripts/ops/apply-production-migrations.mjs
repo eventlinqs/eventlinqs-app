@@ -171,7 +171,8 @@ export function outOfOrder(pending, applied) {
 }
 
 /**
- * The Supabase CLI commands of the apply path, in order. The push is `--linked`
+ * The Supabase CLI commands of the apply path, in order. The push is `--remote`
+ * (the linked project; Supabase CLI 3.0.0 deprecated `--linked` for it, 6 November 2026)
  * and nothing else: no project ref, no password, no connection string on the
  * command line, so the CLI's own prompts and stored credentials are the only
  * way a password ever enters the process. The last command always rests the
@@ -180,7 +181,7 @@ export function outOfOrder(pending, applied) {
 export function supabaseCommands(ref = PRODUCTION_PROJECT_REF, { includeAll = false } = {}) {
   return [
     { step: 'link', args: ['supabase', 'link', '--project-ref', ref] },
-    { step: 'push', args: ['supabase', 'db', 'push', '--linked', ...(includeAll ? ['--include-all'] : [])] },
+    { step: 'push', args: ['supabase', 'db', 'push', '--remote', ...(includeAll ? ['--include-all'] : [])] },
     { step: 'rest', args: ['supabase', 'link', '--project-ref', TEST_PROJECT_REF] },
   ]
 }
