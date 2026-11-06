@@ -766,6 +766,19 @@ describe("Search Console's Events warnings, answered honestly (the project manag
     expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney', url: 'https://owambe.example.com' })
   })
 
+  /* 6 November 2026: every hunted night carried endDate at the midnight the occurrence run filled in, a time no source
+     stated (Benson Boone on www: '2026-11-13T00:00:00+11:00'). Google: "Don't indicate the time if you don't know the time". */
+  it('a listing night whose series states no end sends no endDate, and stays valid', () => {
+    const payload = build({ end_date: '2026-09-12T14:00:00+00:00', listing_series_id: 's1', listing_series: { ends_at: null } }) as Record<string, unknown>
+    expect(payload.endDate).toBeUndefined()
+    expect(validate(payload).errors ?? []).toEqual([])
+  })
+
+  it('a listing night whose series states its end sends it', () => {
+    const payload = build({ end_date: '2026-09-12T13:00:00+00:00', listing_series_id: 's1', listing_series: { ends_at: '23:00:00' } }) as Record<string, unknown>
+    expect(payload.endDate).toBe('2026-09-12T23:00:00+10:00')
+  })
+
   it('organizer.url is omitted when we hold neither', () => {
     const payload = build({}, { organisation: { name: 'Owambe Sydney', slug: null, website: null, description: null } }) as Record<string, unknown>
     expect(payload.organizer).toEqual({ '@type': 'Organization', name: 'Owambe Sydney' })

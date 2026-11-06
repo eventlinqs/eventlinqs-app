@@ -3,6 +3,7 @@ import { CalendarClock, Clock, XCircle } from 'lucide-react'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { statedEnd } from '@/lib/events/stated-end'
 import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
@@ -213,7 +214,8 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
     id: event.id,
     title: event.title,
     startDate: event.start_date,
-    endDate: event.end_date,
+    /* Only an end someone stated (src/lib/events/stated-end.ts); without one the calendar gives its own two hour block. */
+    endDate: statedEnd(event),
     timezone: event.timezone ?? null,
     location: [event.venue_name, event.venue_city].filter(Boolean).join(', ') || null,
     url: eventUrl,
