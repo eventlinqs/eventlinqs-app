@@ -10,7 +10,7 @@ import {
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
-import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
@@ -719,7 +719,7 @@ function BigCard({ e }: { e: Entry }) {
         <span className="font-headline text-xl font-extrabold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{r.title}</span>
         {r.teaser ? <span className="line-clamp-3 font-body text-sm text-[var(--text-secondary)]">{r.teaser}</span> : null}
         <span className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{whenLine(e)}</span>
+          <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
           {/^From /.test(r.price) ? (
             <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{r.price}</span>
           ) : null}
@@ -746,7 +746,7 @@ function CardRail({ entries }: { entries: readonly Entry[] }) {
           >
             {e.row.thumb ? <WholePhoto src={e.row.thumb} alt={e.row.thumbAlt} className="aspect-[4/3] w-full" /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
-              <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{whenLine(e)}</span>
+              <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
               {e.row.teaser ? <span className="line-clamp-2 font-body text-sm text-[var(--text-secondary)]">{e.row.teaser}</span> : null}
               <span className="mt-auto pt-1 font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
@@ -861,7 +861,6 @@ export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>):
 
 function Row({ e, cityName }: { e: Entry; cityName: string }) {
   const r = e.row
-  const more = e.more
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   const b = bookingLine(r)
@@ -897,7 +896,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
           {[r.venue, r.suburb && r.suburb !== r.venue && r.suburb.toLowerCase() !== cityName ? r.suburb : null, elsewhere].filter(Boolean).join(', ')}
         </span>
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
-          {[r.category, b.said, more > 0 ? `+${more} more ${more === 1 ? 'date' : 'dates'}` : null].filter(Boolean).join(' · ')}
+          {[r.category, b.said, moreDatesLine(e)].filter(Boolean).join(' · ')}
         </span>
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
