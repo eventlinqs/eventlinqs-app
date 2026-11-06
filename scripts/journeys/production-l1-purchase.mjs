@@ -48,6 +48,41 @@ function refuse(why) {
 const amounts = (text) => [...text.matchAll(/(?:A\$|AUD\s?|\$)\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2})?)/g)].map((m) => Math.round(Number(m[1].replace(/,/g, '')) * 100))
 
 /*
+ * ONE TICKET OF THE NAMED PRICE (found by the rehearsal on car 52's TEST preview, 7 November 2026). The event page shows each
+ * tier with its own '-' and '+' ('Increase <tier> ticket quantity') and, under them, 'Select tickets to continue', DISABLED
+ * until a quantity is chosen, which then reads 'Checkout · AUD <total>'. The first version pressed a buy button first and
+ * matched that disabled one. Now the '+' of the tier whose own row states the price is pressed (the test event also carries
+ * a free tier, row 3), after an enabled buy button opens the panel where a page keeps the tiers behind one. Returns the
+ * control pressed, or null.
+ */
+async function addOneOfThePrice(p, cents) {
+  const findPlus = async () => {
+    const pluses = p.locator('main button[aria-label^="Increase" i]')
+    for (let i = 0; i < (await pluses.count()); i++) {
+      const plus = pluses.nth(i)
+      const rowText = await plus.evaluate((el) => {
+        let n = el.parentElement
+        for (let k = 0; k < 6 && n; k++, n = n.parentElement) if (/(?:A\$|AUD|\$)\s?\d/.test(n.innerText || '')) return n.innerText
+        return ''
+      })
+      if (amounts(rowText).includes(cents) && (await plus.isEnabled())) return plus
+    }
+    return null
+  }
+  let plus = await findPlus()
+  if (!plus) {
+    const open = p.locator('main button:enabled').filter({ hasText: /^(get tickets|buy tickets|book now)/i }).first()
+    if ((await open.count()) > 0) {
+      await open.click()
+      await p.waitForTimeout(2500)
+      plus = await findPlus()
+    }
+  }
+  if (plus) await plus.click()
+  return plus
+}
+
+/*
  * THE REHEARSAL (the CONTROLLER's 05:20 of 7 November 2026: 'rehearse both on TEST first'). `--rehearse <a TEST-reading
  * site> --slug <a TEST event sold through EventLinqs>`: the sign in page's way in, then the event page's buy button,
  * pressed to open the ticket selector, and the add and checkout controls inside it, by the same locators this script uses.
@@ -67,14 +102,15 @@ if (REHEARSE) {
   r = await p.goto(`${base}/events/${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await p.waitForTimeout(2500)
   checks.push(`HTTP ${r?.status()} /events/${SLUG}: '${((await p.locator('h1').first().innerText().catch(() => '')) || '').trim()}'`)
-  const buy = p.getByRole('button', { name: /^(get tickets|buy tickets|select tickets|book now)/i }).first()
-  await has('the buy button', buy)
-  if ((await buy.count()) > 0) {
-    await buy.click()
-    await p.waitForTimeout(3000)
-    await has('the add control in the selector', p.locator('button[aria-label*="ncrease" i], button[aria-label*="add" i]').first())
-    await has('the checkout button', p.getByRole('button', { name: /^checkout\b/i }).first())
-    checks.push(`amounts on the page: ${JSON.stringify(amounts((await p.locator('main').innerText().catch(() => '')).replace(/\s+/g, ' ')).slice(0, 8))}`)
+  // The rehearsal presses the tier's '+' (on TEST only; it changes the page's own count), never checkout.
+  const price = Number(argOf('--price-cents') ?? TICKET_CENTS)
+  const plus = await addOneOfThePrice(p, price)
+  checks.push(`${plus ? 'FOUND  ' : 'MISSING'} the add control of the ${(price / 100).toFixed(2)} tier`)
+  if (plus) {
+    await p.waitForTimeout(2000)
+    const cta = p.getByRole('button', { name: /^checkout\b/i }).first()
+    await has('the checkout button, enabled', cta.and(p.locator(':enabled')))
+    checks.push(`the checkout button reads: '${((await cta.innerText().catch(() => '')) || '').replace(/\s+/g, ' ')}'`)
   }
   await b.close()
   console.log(checks.join('\n'))
@@ -122,12 +158,9 @@ try {
   if (!amounts(await main()).includes(TICKET_CENTS)) refuse('the event page shows no A$2.00 ticket')
   await shot('1-event')
 
-  // 2. One ticket, and the all in total read at selection.
-  const buy = page.getByRole('button', { name: /^(get tickets|buy tickets|select tickets|book now)/i }).first()
-  await buy.click()
-  await page.waitForTimeout(3000)
-  const plus = page.locator('button[aria-label*="ncrease" i], button[aria-label*="add" i]').first()
-  await plus.click()
+  // 2. One A$2.00 ticket, and the all in total read at selection.
+  const plus = await addOneOfThePrice(page, TICKET_CENTS)
+  if (!plus) refuse('no A$2.00 tier with an add control was found on the event page')
   await page.waitForTimeout(2000)
   const cta = page.getByRole('button', { name: /^checkout\b/i }).first()
   const ctaText = (await cta.innerText().catch(() => '')) || ''
