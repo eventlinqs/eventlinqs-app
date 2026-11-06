@@ -15,6 +15,7 @@
  */
 import { appendFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { settleInView } from './lib/tap-settle.mjs'
 
 const SEL = 'a[href], button, [role="tab"], [role="button"], summary, input:not([type="hidden"]), select, textarea, [aria-current="page"]'
 
@@ -183,7 +184,9 @@ export async function everyTap(browser, base, paths, out, contextOptions = null)
           continue
         }
         const el = p.locator(SEL).nth(match.i)
-        await el.scrollIntoViewIfNeeded({ timeout: 3000 })
+        /* Held still on screen before the scroll is read and the clock starts, so a page still rendering rows below never
+           makes the checker's own scroll count as the page's (./lib/tap-settle.mjs; car 49's Bendigo 'Show more'). */
+        await settleInView(p, el)
         const y0 = await p.evaluate(() => scrollY)
         const s0 = await signature(p)
         const url0 = p.url()
