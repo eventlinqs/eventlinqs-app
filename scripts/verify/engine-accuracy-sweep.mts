@@ -222,7 +222,9 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
       continue
     }
     const words = statedInWords(page.body, e.start_date, zone)
-    const weekly = recurring && words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
+    // Asked of every listing, not only a weekly series: the libraries' storytimes are stored one dated night at a time, and
+    // their page states each branch's weekday and start under the session's own heading (37 nights read so, 7 November).
+    const weekly = words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
     if (words === 'both' || weekly === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
     if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
     if (weekly === 'outside_term') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
