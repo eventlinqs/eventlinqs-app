@@ -943,7 +943,7 @@ export function planCandidates(
       plans.push({ kind: 'adds_links', event, eventId: listed.eventId })
       continue
     }
-    const moved = factChange(e, known, citySlug)
+    const moved = factChange(e, known, citySlug, found)
     if (moved) {
       plans.push({ kind: 'changes_facts', event, eventId: moved.eventId, change: moved.change })
       continue

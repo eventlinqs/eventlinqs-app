@@ -103,11 +103,20 @@ export function factChange(
    * Bendigo night to a Geelong branch. A known night with no recorded city is still compared, as before.
    */
   citySlug: string | null = null,
+  /**
+   * Everything the source states this read. A listed night whose OWN start the source still states has not moved: a found
+   * night beside it the same day is a second session (the Little Mermaid's 1:30 pm and 7:00 pm, Geelong Arts Centre, 6
+   * November 2026), never that night's time changed.
+   */
+  found: readonly FoundEvent[] = [],
 ): { eventId: string; change: 'time_changed' | 'venue_changed' } | null {
   const key = keyOf(e)
+  const stillStated = (k: KnownEvent) =>
+    found.some((f) => f !== e && Math.abs(new Date(f.startsAt).getTime() - new Date(k.startsAt).getTime()) < 60_000 && sameVenue(k, keyOf(f)) && titleShare(k.title, f.title) >= SAME_TITLE_SHARE)
   for (const k of known) {
     if (citySlug && k.citySlug && k.citySlug.toLowerCase() !== citySlug.toLowerCase()) continue
     if (titleShare(k.title, e.title) < SAME_TITLE_SHARE || !sharesEnoughWords(k.title, e.title)) continue
+    if (stillStated(k)) continue
     const apart = Math.abs(new Date(k.startsAt).getTime() - new Date(e.startsAt).getTime())
     const venue = sameVenue(k, key)
     if (venue && apart > SAME_START_WITHIN_MS && sameDay(k.startsAt, e.startsAt)) return { eventId: k.eventId, change: 'time_changed' }
