@@ -56,12 +56,20 @@ async function every<T>(read: (from: number, to: number) => PromiseLike<{ data: 
     if (!data || data.length < 1000) return out
   }
 }
-async function inChunks<T>(ids: string[], read: (chunk: string[]) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<T[]> {
+/**
+ * Read by groups of ids, each group read whole: a group past Supabase's silent thousand-row cap would lose rows. The first
+ * corrected run (21:41) read listing_checks in groups of 200 series unpaged, a group of daily confirmations passed 1,000, and
+ * 27 listings with a source on record were reported as having none.
+ */
+async function inChunks<T>(ids: string[], read: (chunk: string[], from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<T[]> {
   const out: T[] = []
-  for (let i = 0; i < ids.length; i += 200) {
-    const { data, error } = await read(ids.slice(i, i + 200))
-    if (error) throw new Error(error.message)
-    out.push(...((data ?? []) as T[]))
+  for (let i = 0; i < ids.length; i += 100) {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await read(ids.slice(i, i + 100), from, from + 999)
+      if (error) throw new Error(error.message)
+      out.push(...((data ?? []) as T[]))
+      if (!data || data.length < 1000) break
+    }
   }
   return out
 }
@@ -72,13 +80,13 @@ const events = await every<Ev>((a, b) =>
   db.from('events').select('id, title, start_date, timezone, venue_name, venue_address, city_primary, listing_series_id').eq('status', 'published').gt('start_date', now.toISOString()).not('listing_series_id', 'is', null).order('start_date').range(a, b),
 )
 const seriesIds = [...new Set(events.map((e) => e.listing_series_id))]
-const checks = await inChunks<{ series_id: string; source_url: string; checked_at: string }>(seriesIds, (c) => db.from('listing_checks').select('series_id, source_url, checked_at').in('series_id', c))
-const rules = new Map((await inChunks<{ id: string; rule: string }>(seriesIds, (c) => db.from('event_series').select('id, rule').in('id', c))).map((s) => [s.id, s.rule]))
+const checks = await inChunks<{ series_id: string; source_url: string; checked_at: string }>(seriesIds, (c, a, b) => db.from('listing_checks').select('id, series_id, source_url, checked_at').in('series_id', c).order('id').range(a, b))
+const rules = new Map((await inChunks<{ id: string; rule: string }>(seriesIds, (c, a, b) => db.from('event_series').select('id, rule').in('id', c).order('id').range(a, b))).map((s) => [s.id, s.rule]))
 const sourceOf = new Map<string, string>()
 for (const c of checks.sort((a, b) => b.checked_at.localeCompare(a.checked_at))) {
   if (!sourceOf.has(c.series_id) && /^https?:\/\//.test(c.source_url)) sourceOf.set(c.series_id, c.source_url)
 }
-const links = await inChunks<{ event_id: string; price_from_cents: number | null; availability: string }>(events.map((e) => e.id), (c) => db.from('event_booking_links').select('event_id, price_from_cents, availability').in('event_id', c))
+const links = await inChunks<{ event_id: string; price_from_cents: number | null; availability: string }>(events.map((e) => e.id), (c, a, b) => db.from('event_booking_links').select('id, event_id, price_from_cents, availability').in('event_id', c).order('id').range(a, b))
 
 // The polite reader, the verifier's own rules.
 const lastHit = new Map<string, number>()
