@@ -17,6 +17,7 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { judgeCandidate, type CandidateReason, type Confidence } from './judge'
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
+import { canaryOpen, inCanaryTenth } from './canary'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -398,6 +399,13 @@ export async function runCollection(
                  seller. A 404 or 410 holds it for a person (link_unreached); robots barring the link, or no answer, does not. */
               if (byRule && plan.kind === 'new' && plan.event.links[0] && (await linkUnreached(fetcher, plan.event.links[0].url, robotsByOrigin, pauseMs))) {
                 reasons.push('link_unreached')
+                confidence = 'low'
+                byRule = false
+              }
+              /* LAW 19 SECTION 7.4, THE RECORDS CANARY: while the source's canary is open, a rule publishes only the
+                 records in its tenth (./canary.ts); every other record waits for a person until the canary widens. */
+              if (byRule && plan.kind === 'new' && canaryOpen(source) && !inCanaryTenth({ sourceId: source.id, pageUrl: plan.event.pageUrl, startsAt: plan.event.startsAt })) {
+                reasons.push('canary_hold')
                 confidence = 'low'
                 byRule = false
               }

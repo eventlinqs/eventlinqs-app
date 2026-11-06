@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { runCollection, type CandidateRow, type CollectionStore, type Fetcher, type RunRow } from '@/lib/listings/collect-run'
 import type { KnownEvent, RegisteredSource } from '@/lib/listings/collect'
+import { inCanaryTenth } from '@/lib/listings/canary'
 
 /* Item 19's run: robots.txt before the page, only due sources whose terms allow it, a second source a link. */
 
@@ -387,6 +388,32 @@ describe("the hunt's rule", () => {
     expect(huntPublished).toEqual(['A Big Show @ Rod Laver Arena'])
     expect(m.published).toEqual([])
     expect(r).toMatchObject({ acceptedByRule: 1, queued: 0 })
+  })
+
+  /* LAW 19 section 7.4, the records canary: while a source's canary is open, the rule publishes only the records in its
+     tenth (src/lib/listings/canary.ts); every other record waits for a person as canary_hold, until the canary widens. */
+  it('while its canary is open, publishes only the records in its tenth; the rest wait as canary_hold', async () => {
+    const at = (day: number) => `2026-11-${String(day).padStart(2, '0')}T20:00:00+11:00`
+    const iso = (day: number) => new Date(at(day)).toISOString()
+    const days = Array.from({ length: 20 }, (_, i) => i + 8)
+    const inside = days.find((d) => inCanaryTenth({ sourceId: 'rla', pageUrl: arena, startsAt: iso(d) }))!
+    const outside = days.find((d) => !inCanaryTenth({ sourceId: 'rla', pageUrl: arena, startsAt: iso(d) }))!
+    const night = (day: number) => ({
+      '@type': 'MusicEvent',
+      name: `A Big Show ${day}`,
+      startDate: at(day),
+      location: { name: 'Rod Laver Arena', address: 'Olympic Boulevard, Melbourne VIC 3001' },
+      offers: { url: `https://www.ticketmaster.com.au/a-big-show/event/${day}`, availability: 'InStock' },
+    })
+    const body = `<script type="application/ld+json">${JSON.stringify([night(inside), night(outside)])}</script>`
+    const m = memoryStore([hunted({ canary: { openedAt: '2026-10-26T00:00:00Z', release: 'abc1234' } })])
+    const huntPublished: string[] = []
+    m.store.publishHuntNight = async (row) => {
+      huntPublished.push(row.title)
+    }
+    await runCollection(m.store, sites({ ...open, [arena]: { status: 200, body } }).fetcher, NOW)
+    expect(huntPublished).toEqual([`A Big Show ${inside}`])
+    expect(m.landed.find((r) => r.title === `A Big Show ${outside}`)).toMatchObject({ decidedBy: 'person', confidence: 'low', reasons: ['canary_hold'] })
   })
 
   it('leaves a night the page states at another venue for a person', async () => {

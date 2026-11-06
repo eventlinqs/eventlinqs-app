@@ -38,6 +38,8 @@ export type CandidateReason =
   | 'multi_day_span'
   /** Its ticket link answers 404 or 410 at the seller (LAW 19 section 4.2 (5); migration 20261106090001). */
   | 'link_unreached'
+  /** Its source's canary is open and this record is outside the canary's tenth (LAW 19 section 7.4; migration 20261106170001). */
+  | 'canary_hold'
 
 export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   source_unverified: 'Source not verified',
@@ -52,6 +54,7 @@ export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   implausible_time: 'Starts before 10 am for its kind',
   multi_day_span: 'Spans several days with no performance named',
   link_unreached: 'Its ticket link does not reach the seller',
+  canary_hold: 'Its source is in a canary; held until the canary passes',
 }
 
 export type Confidence = 'high' | 'low'

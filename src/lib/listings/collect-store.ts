@@ -35,6 +35,11 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
         )
       if (error) throw new Error(`the register could not be read: ${error.message}`)
+      /* LAW 19 section 7.4, each source's open canary (migration 20261106170001). Read on its own, so a database without
+         the columns yet (before Lawal applies it) gives no canary and the run goes on exactly as before. */
+      const canaries = new Map<string, { openedAt: string; release: string }>()
+      const { data: open, error: canaryError } = await db.from('listing_sources').select('id, canary_opened_at, canary_release').not('canary_opened_at', 'is', null)
+      if (!canaryError) for (const c of open ?? []) canaries.set(c.id as string, { openedAt: c.canary_opened_at as string, release: (c.canary_release as string | null) ?? '' })
       return (data ?? []).map((s) => {
         const org = (Array.isArray(s.organisation) ? s.organisation[0] : s.organisation) as { slug: string } | null
         const venue = (Array.isArray(s.venue) ? s.venue[0] : s.venue) as { name: string; address: string | null; claimed_at: string | null; city_slug: string | null } | null
@@ -60,6 +65,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
           citySlug: (s.city_slug as string | null) ?? null,
           hunt: huntFor(s.page_url as string),
+          canary: canaries.get(s.id as string) ?? null,
         }
       })
     },
@@ -163,7 +169,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
          (listing_candidates_reasons_known). The night still lands for a person, held, with the nearest reason it allows
          ('midnight_start', a fact not to be trusted), never published and never lost. */
       if (error && /listing_candidates_reasons_known/.test(error.message)) {
-        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached']
+        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached', 'canary_hold']
         const allowed = [...new Set(row.reasons.map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
         ;({ data, error } = await write(allowed))
       }
