@@ -102,14 +102,20 @@ export function VenueMap({ venueName, address, city, state, country, latitude, l
           {(hasCoords || placeQuery.trim().length > 0) && <OsmAttribution className="mt-1" />}
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <Link
-            href={directionsLink}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
-          >
-            Get directions
-          </Link>
+          {/* GET DIRECTIONS ONCE (LAUNCH-READINESS row 17, read on production at 390 on 7 November 2026): the event page
+              drew this button in the map card and its own 'Get directions' link under it, the same words twice a thumb
+              apart. Bare, the map belongs to the event page's venue section, which owns the link: it is server rendered
+              beside the address, so it is there before this lazy card loads and when it never does. */}
+          {!bare && (
+            <Link
+              href={directionsLink}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
+            >
+              Get directions
+            </Link>
+          )}
           <Link
             href={mapsLink}
             target="_blank"

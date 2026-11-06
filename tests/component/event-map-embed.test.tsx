@@ -48,6 +48,18 @@ describe('the event page map', () => {
     expect(src.searchParams.get('q')).toBe('Federation Square, Swanston St & Flinders St, Melbourne, VIC, Australia')
   })
 
+  /*
+   * GET DIRECTIONS ONCE (LAUNCH-READINESS row 17, production at 390, 7 November 2026): the event page showed this card's
+   * 'Get directions' and its venue section's own 'Get directions' link a thumb apart. Bare, as the event page draws it,
+   * the card leaves the link to the section, which renders it on the server beside the address.
+   */
+  it('drawn bare on an event page, leaves Get directions to the venue section and keeps Open in Maps', () => {
+    render(<VenueMap {...base} bare />)
+    expect(screen.queryByRole('link', { name: 'Get directions' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Open in Maps' })).toBeInTheDocument()
+    expect(screen.getByTitle('Map of Federation Square')).toBeInTheDocument()
+  })
+
   it('keeps our own plate when no browser key is set, and never an empty frame', () => {
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = ''
     render(<VenueMap {...base} />)
