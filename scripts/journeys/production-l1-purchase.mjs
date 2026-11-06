@@ -43,6 +43,45 @@ function refuse(why) {
   console.error(`REFUSED, nothing bought: ${why}`)
   process.exit(2)
 }
+
+/** Dollars in the text as cents, every amount found ('AUD 2.65', '$2.00'). */
+const amounts = (text) => [...text.matchAll(/(?:A\$|AUD\s?|\$)\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2})?)/g)].map((m) => Math.round(Number(m[1].replace(/,/g, '')) * 100))
+
+/*
+ * THE REHEARSAL (the CONTROLLER's 05:20 of 7 November 2026: 'rehearse both on TEST first'). `--rehearse <a TEST-reading
+ * site> --slug <a TEST event sold through EventLinqs>`: the sign in page's way in, then the event page's buy button,
+ * pressed to open the ticket selector, and the add and checkout controls inside it, by the same locators this script uses.
+ * It never presses add or checkout (checkout holds a ticket), never types a card, and refuses production.
+ */
+const REHEARSE = argOf('--rehearse')
+if (REHEARSE) {
+  const base = REHEARSE.replace(/\/$/, '')
+  if (base === PRODUCTION || /eventlinqs\.com\.au/.test(base)) refuse('a rehearsal never runs against production')
+  if (!SLUG) refuse('--slug names the TEST event to rehearse on')
+  const b = await chromium.launch({ headless: true })
+  const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage()
+  const checks = []
+  const has = async (what, locator) => checks.push(`${(await locator.count()) > 0 ? 'FOUND  ' : 'MISSING'} ${what}`)
+  let r = await p.goto(`${base}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  checks.push(`HTTP ${r?.status()} /login`)
+  r = await p.goto(`${base}/events/${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await p.waitForTimeout(2500)
+  checks.push(`HTTP ${r?.status()} /events/${SLUG}: '${((await p.locator('h1').first().innerText().catch(() => '')) || '').trim()}'`)
+  const buy = p.getByRole('button', { name: /^(get tickets|buy tickets|select tickets|book now)/i }).first()
+  await has('the buy button', buy)
+  if ((await buy.count()) > 0) {
+    await buy.click()
+    await p.waitForTimeout(3000)
+    await has('the add control in the selector', p.locator('button[aria-label*="ncrease" i], button[aria-label*="add" i]').first())
+    await has('the checkout button', p.getByRole('button', { name: /^checkout\b/i }).first())
+    checks.push(`amounts on the page: ${JSON.stringify(amounts((await p.locator('main').innerText().catch(() => '')).replace(/\s+/g, ' ')).slice(0, 8))}`)
+  }
+  await b.close()
+  console.log(checks.join('\n'))
+  const missing = checks.filter((c) => c.startsWith('MISSING') || /^HTTP (?!200)/.test(c))
+  console.log(missing.length ? `REHEARSAL: ${missing.length} problem(s)` : 'REHEARSAL: every control this script presses before the card form is there')
+  process.exit(missing.length ? 1 : 0)
+}
 if (!YES || !/CONTROLLER/.test(YES) || !/Lawal/.test(YES) || !/yes/i.test(YES)) refuse("--yes must carry the CONTROLLER line that quotes Lawal's yes")
 if (BASE !== PRODUCTION) refuse(`this script is for production only (${PRODUCTION}); the TEST forms are scripts/journeys/j3.mjs and j4.mjs`)
 if (!SLUG || !TITLE || !OUT) refuse('--slug, --title and --out are all required')
@@ -55,8 +94,6 @@ const note = (step, detail) => {
   console.log(line)
   writeFileSync(join(OUT, 'notes.txt'), notes.join('\n') + '\n')
 }
-/** Dollars in the text as cents, every amount found ('AUD 2.65', '$2.00'). */
-const amounts = (text) => [...text.matchAll(/(?:A\$|AUD\s?|\$)\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2})?)/g)].map((m) => Math.round(Number(m[1].replace(/,/g, '')) * 100))
 const ask = async (q) => {
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   const a = await rl.question(q)
