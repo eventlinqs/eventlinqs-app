@@ -27,7 +27,7 @@ describe('the resolver file', () => {
   it('a price hold withholds the price, both columns at once, and records the hold', () => {
     const sql = resolverSql([ruled({ ruling: 'hold', value: null, scope: 'fact', reason: 'officials_disagree' })])
     expect(sql).toContain(`update public.event_booking_links set price_from_cents = null, price_checked_at = null where event_id = '${EV}';`)
-    expect(sql).toContain("insert into public.listing_holds (event_id, series_id, field, scope, reason, readings)")
+    expect(sql).toContain('insert into public.listing_holds (event_id, series_id, field, scope, reason, readings, next_source, next_check_at)')
   })
   /*
    * THE TABLE'S OWN RULE, event_booking_links_price_with_its_check (20261027130001):
@@ -83,6 +83,11 @@ describe('the resolver file', () => {
     // the price correction 1, the start correction 0 (a note), the fact hold 2, the night hold 2
     expect(out.statements).toBe(5)
     expect(out.readBack).toMatch(/^select count\(\*\) as open_holds/)
+  })
+  it('every new hold names its next action: its first page, read again a day on (CONTROLLER 16:55 (1))', () => {
+    const sql = resolverSql([ruled({ ruling: 'hold', value: null, scope: 'fact', reason: 'officials_disagree', readings: [{ kind: 'venue', url: 'https://v/', value: '1' }, { kind: 'seller', url: 'https://s/', value: '2' }] })])
+    expect(sql).toContain("insert into public.listing_holds (event_id, series_id, field, scope, reason, readings, next_source, next_check_at)")
+    expect(sql).toContain("'https://v/', now() + interval '1 day');")
   })
   it('a ruling to keep writes nothing', () => {
     expect(resolverSql([ruled({ ruling: 'keep' })]).split('\n').filter((l) => /^(update|insert)/.test(l))).toEqual([])
