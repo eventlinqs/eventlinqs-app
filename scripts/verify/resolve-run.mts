@@ -1,7 +1,7 @@
 /**
  * THE RESOLVER, RUN READ ONLY OVER THE SWEEP'S WRONG FACTS AND UNREADABLE LISTINGS (the CONTROLLER's 06:21 of 7 November
  * 2026: 'run it over the 45 wrong facts and the 94 unreadable before anything is hidden; the counts corrected, re-sourced and
- * quarantined go in the report'). Nothing is written to the database: each fact gets the ruling the resolver WOULD apply
+ * held go in the report'; the rulings of the CONTROLLER's 10:50). Nothing is written to the database: each fact gets the ruling the resolver WOULD apply
  * (src/lib/listings/resolver.ts), with every page read and what it stated, into a report.
  *
  * For each listing it reads, through the polite reader (robots.txt first, the collector's agent, one request a second per
@@ -25,7 +25,9 @@ const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
 const { readPage, readByRule } = pick((await import('@/lib/events/link-check')) as typeof import('@/lib/events/link-check'))
 const { statedInWords } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
-const { resolveFact } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
+const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
+const { resolveFact, isListingSite } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
+const asField = (f: string) => (f === 'session' ? 'session' : f) as import('@/lib/listings/resolver').Field
 type Reading = import('@/lib/listings/resolver').Reading
 
 const args = process.argv.slice(2)
@@ -117,7 +119,10 @@ async function statedBy(u: string, field: string, e: EventRow): Promise<string |
     const at = new Date(e.start_date).getTime()
     if (found.some((f) => Math.abs(new Date(f.startsAt).getTime() - at) < 60_000)) return e.start_date
     if (statedInWords(p.body, e.start_date, zone) === 'both') return e.start_date
-    return found.length ? 'another time' : null
+    /* Another time is a value only when it is THE night: the page's one night of this title. A page of several nights
+       that does not state this one says nothing of it (the first run 'corrected' three nights to the words 'another time'). */
+    const same = found.filter((f) => fold(f.title) === fold(e.title))
+    return same.length === 1 ? new Date(same[0].startsAt).toISOString() : null
   }
   return null
 }
@@ -128,20 +133,21 @@ const storedOf = (field: string, e: EventRow): string | null => {
   return e.start_date
 }
 
-type Row = { title: string; field: string; ruling: string; value: string | null; reason: string | null; readings: string }
+type Row = { title: string; field: string; ruling: string; value: string | null; scope: string | null; reason: string | null; readings: string }
 const rows: Row[] = []
 async function resolveOne(e: EventRow, field: string, ownUrl: string): Promise<void> {
   const stored = storedOf(field, e) ?? ''
   const urls = [ownUrl, ...(e.links ?? []).map((l) => l.url)].filter((u, i, all) => /^https?:\/\//.test(u) && all.indexOf(u) === i)
   const readings: Reading[] = []
-  for (const u of urls) readings.push({ kind: u === ownUrl ? 'listing' : 'seller', url: u, value: await statedBy(u, field, e) })
-  const out = resolveFact({ stored, ownUrl, readings })
+  for (const u of urls) readings.push({ kind: u === ownUrl ? (isListingSite(u) ? 'listing' : 'venue') : 'seller', url: u, value: await statedBy(u, field, e) })
+  const out = resolveFact({ field: asField(field), stored, ownUrl, readings })
   rows.push({
     title: e.title,
     field,
     ruling: out.kind,
-    value: out.kind === 'quarantine' ? null : out.value,
-    reason: out.kind === 'quarantine' ? out.reason : null,
+    value: out.kind === 'hold' ? null : out.value,
+    scope: out.kind === 'hold' ? out.scope : null,
+    reason: out.kind === 'hold' ? out.reason : null,
     readings: readings.map((r) => `${new URL(r.url).host}: ${r.value ?? pages.get(r.url)?.why ?? 'does not state it'}`).join('; '),
   })
 }
@@ -159,8 +165,9 @@ const tally = (list: Row[]) => ({
   correct: list.filter((r) => r.ruling === 'correct').length,
   keep: list.filter((r) => r.ruling === 'keep').length,
   resource: list.filter((r) => r.ruling === 'resource').length,
-  quarantine: list.filter((r) => r.ruling === 'quarantine').length,
-  reasons: Object.fromEntries(['sources_disagree', 'single_source', 'unverifiable'].map((k) => [k, list.filter((r) => r.reason === k).length])),
+  holdFact: list.filter((r) => r.ruling === 'hold' && r.scope === 'fact').length,
+  holdNight: list.filter((r) => r.ruling === 'hold' && r.scope === 'night').length,
+  reasons: Object.fromEntries(['officials_disagree', 'no_official_page'].map((k) => [k, list.filter((r) => r.reason === k).length])),
 })
 const wrongRows = rows.slice(0, rows.length - sweep.unreadable.filter((u) => byId.has(u.eventId)).length)
 const unreadRows = rows.slice(wrongRows.length)
