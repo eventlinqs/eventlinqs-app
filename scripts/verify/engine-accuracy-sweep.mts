@@ -34,7 +34,7 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody, COLLECT_AHEAD_DAYS } = pick((await import('@/lib/listings/collect')) as typeof import('@/lib/listings/collect'))
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
-const { statedInWords, statedWeekly, statedSeasonal } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
+const { statedInWords, statedWeekly, statedSeasonal, statedByGates, statedInDatedList } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { titleShare, SAME_TITLE_SHARE } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
 type Found = import('@/lib/listings/collect').FoundEvent
 
@@ -310,6 +310,9 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
     // A season stated in one sentence (fbbg.org.au: 'Free Tours on Sunday at 11.00a.m. during September, ...'), 7 November.
     const seasonal = statedSeasonal(page.body, e.title, e.start_date, zone)
     if (seasonal === 'seasonal') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its season in words)`, source: src, eventId: e.id }); continue }
+    // The CONTROLLER's 17:05 bar: what a person reads is never 'silent' (a festival's gates; a dated list beside the title).
+    if (statedByGates(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its gates)`, source: src, eventId: e.id }); continue }
+    if (statedInDatedList(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated list and session time)`, source: src, eventId: e.id }); continue }
     if (seasonal === 'outside_season') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the months the page states`, source: src, eventId: e.id }); continue }
     const timedMine = mine.filter(timed)
     if (timedMine.length > 0 && !recurring) {

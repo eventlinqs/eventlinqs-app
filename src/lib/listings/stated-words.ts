@@ -171,3 +171,57 @@ export function statedSeasonal(html: string, title: string, iso: string, zone: s
   }
   return outside ? 'outside_season' : null
 }
+
+/** Every clock time on one lowercased line ('12:30pm', '6.00 pm', '7pm', '19:00'), as minutes past midnight, in order. */
+function clockTimes(line: string): number[] {
+  const out: number[] = []
+  const re = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b|(?<![\d.:])([01]?\d|2[0-3]):(\d{2})(?!\d)/g
+  for (const m of line.replace(/([ap])\.m\.?/g, '$1m').matchAll(re)) {
+    if (m[3]) out.push(((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0))
+    else out.push(Number(m[4]) * 60 + Number(m[5]))
+  }
+  return out
+}
+const minutesOf = (p: ReturnType<typeof localParts>) => p.h24 * 60 + Number(p.min)
+
+/**
+ * A FESTIVAL DAY STARTS AT ITS GATES (redhotsummertour.com.au, 7 November 2026: '07 NOVEMBER 2026', '12:30pm ═ GATES',
+ * then each act's set). True when the page states the night's date and exactly one gates time, and that time is the
+ * night's start. A set time is never the start; a page of several gates times names none.
+ */
+export function statedByGates(html: string, iso: string, zone: string): boolean {
+  if (statedInWords(html, iso, zone) === null) return false
+  const gates = new Set(visibleLines(html).filter((l) => /\bgates?\b/.test(l)).map((l) => clockTimes(l)[0]).filter((t) => t !== undefined))
+  return gates.size === 1 && gates.has(minutesOf(localParts(iso, zone)))
+}
+
+/**
+ * A NIGHT LISTED BY DATE BESIDE ITS TITLE, WITH THE PAGE'S ONE SESSION TIME (sovereignhill.com.au, 7 November 2026: 'Friday
+ * 13 November: 12 COLLABORATION', 'Friday 13 March: 09 ESSENCE', ... and once '6:00pm-8:00pm AEDT'). True when one line names
+ * the night's date (its weekday, if written, its own) and a word of its title, and the page states exactly one session time
+ * (a line that is only a time or a time range), which is the night's start. Opening hours carry other words and are never a
+ * session; two session times name no start.
+ */
+export function statedInDatedList(html: string, title: string, iso: string, zone: string): boolean {
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const words = fold(title)
+    .split(' ')
+    .filter((w) => w.length >= 4 && !w.endsWith('day') && !MONTHS.includes(w))
+  if (words.length === 0) return false
+  const [, mm, dd] = p.ymd.split('-')
+  const month = MONTHS[Number(mm) - 1]
+  const dated = new RegExp(`(?:^|[^0-9])${Number(dd)}(?:st|nd|rd|th)?\\s+${month}\\b`)
+  const weekdayNamed = /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b/
+  const listed = lines.some(
+    (l) => dated.test(l) && words.some((w) => new RegExp(`\\b${w}\\b`).test(l)) && (!weekdayNamed.test(l) || new RegExp(`\\b${p.weekday}\\b`).test(l)),
+  )
+  if (!listed) return false
+  const sessions = new Set(
+    lines
+      .filter((l) => /^\s*\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?\s*(?:(?:-|to)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)?\s*(?:aedt|aest)?\s*$/.test(l))
+      .map((l) => clockTimes(l)[0])
+      .filter((t) => t !== undefined),
+  )
+  return sessions.size === 1 && sessions.has(minutesOf(p))
+}
