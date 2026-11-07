@@ -13,6 +13,7 @@ import { canTransition } from '@/lib/event-lifecycle'
 import { resolveVenueCoordinates } from '@/lib/geo/venue-coordinates'
 import { deploymentEnvironment, judgeVenueSave } from '@/lib/geo/venue-save-rule'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
+import { addressNamingItsPlace } from '@/lib/venues/format-venue-address'
 import { venueSlugify } from '@/lib/venues/venue-slug'
 import type { EventStatus } from '@/types/database'
 import { occurrenceSlug, type ExistingOccurrence } from './occurrence-plan'
@@ -50,6 +51,8 @@ type VenueRow = {
   name: string
   slug: string | null
   address: string | null
+  /** The locality on record from the venue's coordinates; named after the street where the street does not name it. */
+  suburb: string | null
   city: string | null
   city_slug: string | null
   state: string | null
@@ -94,7 +97,7 @@ export function occurrenceStore(): OccurrenceStore {
         const { data } = await reread(`venue ${id}`, () =>
           admin
             .from('venues')
-            .select('id, name, slug, address, city, city_slug, state, country, postal_code, latitude, longitude, removed_at')
+            .select('id, name, slug, address, suburb, city, city_slug, state, country, postal_code, latitude, longitude, removed_at')
             .eq('id', id)
             .maybeSingle(),
         )
@@ -291,7 +294,9 @@ export function occurrenceStore(): OccurrenceStore {
           occurrence_date: date,
           venue_id: venue.id,
           venue_name: venue.name,
-          venue_address: venue.address,
+          // The street naming its place (src/lib/venues/format-venue-address.ts): "800 High Street" in Thornbury is never
+          // copied as if it were in Melbourne.
+          venue_address: addressNamingItsPlace(venue.address, venue.suburb, venue.city),
           venue_city: venue.city,
           venue_state: venue.state,
           venue_country: venue.country,

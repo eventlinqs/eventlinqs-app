@@ -142,3 +142,22 @@ export function formatVenueWithAddress(parts: VenueAddressParts): string | null 
   const joined = joinUnique([parts.name, parts.address, ...afterAddress(parts)])
   return joined.length > 0 ? joined.join(', ') : null
 }
+
+/**
+ * THE STREET ADDRESS NAMING ITS PLACE (8 November 2026, WINDOW 5A; found on the read back of A Moment of Sanity, whose
+ * page said "800 High Street, Melbourne": High Street runs through several suburbs and the venue is in Thornbury). A
+ * venue whose locality is on record (its suburb, from its coordinates) but missing from the street it was given has the
+ * locality added after the street, so every page, card and directions link that reads the address names the right
+ * place. Kept as it is: an address that already names its suburb or its city, and a suburb that is the city itself
+ * (Melbourne, Melbourne CBD, Ballarat Central, Bendigo City). Pure.
+ */
+export function addressNamingItsPlace(address: string | null, suburb: string | null, city: string | null): string | null {
+  const street = (address ?? '').trim()
+  const place = (suburb ?? '').trim()
+  if (street === '' || place === '') return address
+  const names = (word: string) => new RegExp(`(^|[^a-z])${word.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(street.toLowerCase())
+  if (names(place)) return address
+  const town = (city ?? '').trim().toLowerCase()
+  if (town !== '' && ([town, `${town} cbd`, `${town} central`, `${town} city`].includes(place.toLowerCase()) || names(town))) return address
+  return `${street}, ${place}`
+}
