@@ -11,6 +11,7 @@ import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mj
 import { githubActionsNames } from '@/lib/env/manifest.mjs'
 import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { overallStatus as rollUp, type HealthResult, type Severity } from '@/lib/health/result'
+import { checkOrderAttribution } from '@/lib/health/attribution-check'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -726,6 +727,8 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('manifest', () => checkEnvManifest()),
     timed('order_access', () => checkOrderAccess()),
     timed('image_pipeline', () => checkImagePipeline()),
+    // Lawal's order (the CONTROLLER's 15:35 of 7 November 2026): every paid order records where its buyer came from.
+    timed('order_attribution', () => checkOrderAttribution(createAdminClient())),
   ])
 
   if (!drill) return results
