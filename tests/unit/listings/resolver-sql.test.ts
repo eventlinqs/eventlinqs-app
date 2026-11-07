@@ -24,10 +24,34 @@ describe('the resolver file', () => {
   it('a status correction writes the official status', () => {
     expect(resolverSql([ruled({ field: 'status', value: 'sold_out' })])).toContain("set availability = 'sold_out'")
   })
-  it('a price hold withholds the price and records the hold', () => {
+  it('a price hold withholds the price, both columns at once, and records the hold', () => {
     const sql = resolverSql([ruled({ ruling: 'hold', value: null, scope: 'fact', reason: 'officials_disagree' })])
-    expect(sql).toContain(`update public.event_booking_links set price_checked_at = null where event_id = '${EV}';`)
+    expect(sql).toContain(`update public.event_booking_links set price_from_cents = null, price_checked_at = null where event_id = '${EV}';`)
     expect(sql).toContain("insert into public.listing_holds (event_id, series_id, field, scope, reason, readings)")
+  })
+  /*
+   * THE TABLE'S OWN RULE, event_booking_links_price_with_its_check (20261027130001):
+   * check ((price_from_cents is null) = (price_checked_at is null)). The first apply on production was refused by it
+   * (7 November 2026, 16:03, 'violates check constraint "event_booking_links_price_with_its_check"'): the price hold
+   * cleared the check time and left the price. Every booking link statement the resolver writes sets both or neither,
+   * and sets them null together or valued together.
+   */
+  it('every booking link statement keeps a price and its check time together, as the table requires', () => {
+    const sql = resolverSql([
+      ruled({}),
+      ruled({ field: 'status', value: 'sold_out' }),
+      ruled({ ruling: 'hold', value: null, scope: 'fact', reason: 'officials_disagree' }),
+      ruled({ ruling: 'resource', value: '4500' }),
+    ])
+    const updates = sql.split('\n').filter((l) => l.startsWith('update public.event_booking_links set '))
+    expect(updates.length).toBe(4)
+    for (const u of updates) {
+      const set = u.slice('update public.event_booking_links set '.length, u.indexOf(' where '))
+      const price = /price_from_cents = (\S+?),?(?: |$)/.exec(set)?.[1]
+      const checked = /price_checked_at = (\S+?),?(?: |$)/.exec(set)?.[1]
+      expect(price === undefined, u).toBe(checked === undefined)
+      if (price !== undefined) expect(price === 'null', u).toBe(checked === 'null')
+    }
   })
   it('a night hold makes the night private, never deletes it, and records the hold', () => {
     const sql = resolverSql([ruled({ field: 'start', ruling: 'hold', value: null, scope: 'night', reason: 'no_official_page' })])
