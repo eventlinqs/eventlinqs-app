@@ -251,7 +251,7 @@ export default async function MyTicketsPage() {
                       )}
                       {!t.seat && t.event?.organiser_assigns_seats && t.status === 'valid' && (
                         <p className="mt-1 text-sm text-ink-600">
-                          Seat: allocated by the organiser before the event - it will appear here
+                          Seat: allocated by the organiser before the event. It will appear here
                           and on your ticket automatically.
                         </p>
                       )}

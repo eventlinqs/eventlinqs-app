@@ -468,6 +468,8 @@
  *   compound-modifiers-hyphenated a listed compound modifier before its noun carries its
  *                              hyphen and no em or en dash stands in the platform's copy
  *                              (law 6, 31 October 2026)
+ *   no-spaced-hyphen-in-copy  no spaced hyphen stands in the JSX text or read attributes of
+ *                              any .tsx (law 6, 8 November 2026)
  *   community-layer-protected the 21 communities, their 20 cities, the faith pages and the
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
@@ -2453,6 +2455,10 @@ const GUARDS = [
   // modifier before its noun carries its hyphen, and no em or en dash stands in copy. The list is the communication
   // gateway's own, copied into src/. Drilled red and green.
   'scripts/guards/compound-modifiers-hyphenated.mjs',
+  // Law 6 again (8 November 2026): no spaced hyphen in what a visitor reads. Found on the enrol button of Lawal's first
+  // admin sign in; the guard reads every .tsx as TypeScript, so code's subtractions never trip it. Drilled red (8) and
+  // green on the real tree.
+  'scripts/guards/no-spaced-hyphen-in-copy.mjs',
   // Close-out C18 FINAL (7 September 2026): the community layer and the categories
   // are approved and recorded; nothing may be lost from the source or the database,
   // and every addition is recorded in docs/scope/community-layer-approved.json.
