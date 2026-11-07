@@ -211,6 +211,39 @@ export function statedEveryWeekday(html: string, title: string, iso: string, zon
   return breaks.some(([from, to]) => from <= p.ymd && p.ymd <= to) ? 'in_break' : 'weekly'
 }
 
+/**
+ * A DAILY TIME OVER A STATED RANGE OF DATES (caravanshow.com.au, 7 November 2026: '20th November - 22nd November 2026:',
+ * '9am - 4pm - Fri - Sun'). True when a line states a range of dates (ordinals allowed, the first month taken from the
+ * second when it is not written) that holds the night's date, and the page states exactly one daily time line (a time range,
+ * then perhaps its days, 'Fri - Sun'), whose start is the night's and whose days, when written, hold the night's weekday.
+ * The middle days of a range are named by the range alone; a person reads them in one look.
+ */
+export function statedDailyInRange(html: string, iso: string, zone: string): boolean {
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const M = MONTHS.join('|')
+  const span = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(${M}))?\\s*(?:-|to)\\s*(?:[a-z]+day\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+(${M}),?\\s+(\\d{4})`, 'g')
+  const ymd = (y: string, mon: string, day: string) => `${y}-${String(MONTHS.indexOf(mon) + 1).padStart(2, '0')}-${day.padStart(2, '0')}`
+  const inRange = lines.some((l) =>
+    [...l.matchAll(span)].some((m) => ymd(m[5], m[2] ?? m[4], m[1]) <= p.ymd && p.ymd <= ymd(m[5], m[4], m[3])),
+  )
+  if (!inRange) return false
+  const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+  const daily = new RegExp(
+    `^\\s*(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)\\s*(?:-|to)\\s*\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)(?:\\s*-\\s*(${DAYS.join('|')})[a-z]*\\s*(?:-|to)\\s*(${DAYS.join('|')})[a-z]*)?\\s*$`,
+  )
+  const stated = lines.map((l) => daily.exec(l)).filter((m): m is RegExpExecArray => m !== null)
+  const starts = new Set(stated.map((m) => ((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0)))
+  if (starts.size !== 1 || !starts.has(minutesOf(p))) return false
+  const day = DAYS.indexOf(p.weekday.slice(0, 3))
+  return stated.every((m) => {
+    if (!m[4] || !m[5]) return true
+    const from = DAYS.indexOf(m[4])
+    const to = DAYS.indexOf(m[5])
+    return from <= to ? from <= day && day <= to : day >= from || day <= to
+  })
+}
+
 /** Every clock time on one lowercased line ('12:30pm', '6.00 pm', '7pm', '19:00'), as minutes past midnight, in order. */
 function clockTimes(line: string): number[] {
   const out: number[] = []

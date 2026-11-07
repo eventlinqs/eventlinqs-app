@@ -24,7 +24,7 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof import('@/lib/listings/collect'))
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
 const { readPage, readByRule } = pick((await import('@/lib/events/link-check')) as typeof import('@/lib/events/link-check'))
-const { statedInWords, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
+const { statedInWords, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { resolveFact, isListingSite } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
 const { resolverSql } = pick((await import('@/lib/listings/resolver-sql')) as typeof import('@/lib/listings/resolver-sql'))
@@ -123,6 +123,7 @@ async function statedBy(u: string, field: string, e: EventRow): Promise<string |
     if (statedSeasonal(p.body, e.title, e.start_date, zone) === 'seasonal') return e.start_date
     if (statedByGates(p.body, e.start_date, zone) || statedInDatedList(p.body, e.title, e.start_date, zone)) return e.start_date
     if (statedEveryWeekday(p.body, e.title, e.start_date, zone) === 'weekly') return e.start_date
+    if (statedDailyInRange(p.body, e.start_date, zone)) return e.start_date
     /* Another time is a value only when it is THE night: the page's one night of this title. A page of several nights
        that does not state this one says nothing of it (the first run 'corrected' three nights to the words 'another time'). */
     const same = found.filter((f) => fold(f.title) === fold(e.title))
