@@ -13,6 +13,8 @@ import { recordDemand, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/l
  *   - "Follow an organiser" => a row in `saved_organisers`.
  *   - "Follow an artist"    => a row in `follows` (followable_type='artist').
  *   - "Follow a scene"      => a row in `follows` (followable_type='subgenre').
+ *   - "Follow a venue"      => a row in `follows` (followable_type='venue'), the host of every night EventLinqs lists
+ *     there (car 57, migration 20261108110001).
  *
  * Every action is guarded by an authenticated session (getUser) and returns the
  * NEW follow state so the client can settle its optimistic toggle. The shape
@@ -46,7 +48,7 @@ const SlugSchema = z
  * its own state client-side, the same shape as SaveEventButton's session read.
  */
 export async function getFollowState(input: {
-  type: 'organiser' | 'artist' | 'subgenre'
+  type: 'organiser' | 'artist' | 'subgenre' | 'venue'
   id: string
 }): Promise<FollowResult> {
   const supabase = await createClient()
@@ -68,7 +70,7 @@ export async function getFollowState(input: {
     return { following: Boolean(data) }
   }
 
-  const idSchema = input.type === 'artist' ? UuidSchema : SlugSchema
+  const idSchema = input.type === 'artist' || input.type === 'venue' ? UuidSchema : SlugSchema
   const parsed = idSchema.safeParse(input.id)
   if (!parsed.success) return { following: false, error: 'Invalid id' }
 
@@ -153,9 +155,9 @@ async function recordFollowOnEvent(eventId: string, organisationId: string, user
   })
 }
 
-/** Shared follows-table toggle for artist / subgenre. */
+/** Shared follows-table toggle for artist / subgenre / venue. */
 async function toggleFollow(
-  type: 'artist' | 'subgenre',
+  type: 'artist' | 'subgenre' | 'venue',
   followableId: string,
 ): Promise<FollowResult> {
   const supabase = await createClient()
@@ -208,4 +210,14 @@ export async function toggleFollowScene(subgenreSlug: string): Promise<FollowRes
   const parsed = SlugSchema.safeParse(subgenreSlug)
   if (!parsed.success) return { following: false, error: 'Invalid scene' }
   return toggleFollow('subgenre', parsed.data)
+}
+
+/**
+ * Toggle following a venue, the host of a night EventLinqs lists (car 57). Writes to `follows` with
+ * followable_type='venue'; the id is the venue's.
+ */
+export async function toggleFollowVenue(venueId: string): Promise<FollowResult> {
+  const parsed = UuidSchema.safeParse(venueId)
+  if (!parsed.success) return { following: false, error: 'Invalid venue id' }
+  return toggleFollow('venue', parsed.data)
 }

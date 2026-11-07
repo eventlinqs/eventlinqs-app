@@ -1706,6 +1706,37 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
                 )}
+                {/* FOLLOW THE HOST (car 57; Lawal, 7 November 06:57: every event shows Follow the host). A night EventLinqs
+                    lists names its venue as its host, never the listings organisation (shown-organiser.ts), so exactly
+                    where the organiser card is hidden, the venue's own card stands, in that card's design: one link to
+                    the venue's page and Follow beside it, a sibling, never nested (Humanitix's host card:
+                    C:\dev\EVIDENCE\EL-8NOV\follow-host\leaders-follow-host.md). A follow brings every night we list
+                    there into the follower's feed. */}
+                {event.organisation && shownOrganiser(event, event.organisation).slug === null && event.venue_id && event.venue_name && (
+                <Reveal as="div" className="mt-10" data-host-card="venue">
+                  <SectionHeader eyebrow="Hosted by" title={shownVenueName(event) ?? event.venue_name} size="sm" />
+                  <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
+                    <div className="flex flex-wrap items-start gap-4">
+                      <Link
+                        href={`/venues/${venueSlugify(event.venue_name)}`}
+                        aria-label={`View venue: ${shownVenueName(event) ?? event.venue_name}`}
+                        className="group flex min-w-0 flex-1 items-start gap-4 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400 transition-transform duration-200 ease-out group-hover:scale-[1.03]">
+                          {(shownVenueName(event) ?? event.venue_name).slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-ink-600">Follow to see every night we list here in your feed.</p>
+                          <span className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand-accent-strong)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong-hover)]">
+                            View venue
+                          </span>
+                        </div>
+                      </Link>
+                      <FollowButton type="venue" id={event.venue_id} className="shrink-0" />
+                    </div>
+                  </div>
+                </Reveal>
+                )}
                 </EventSection>
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow

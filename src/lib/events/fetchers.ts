@@ -1522,6 +1522,14 @@ async function resolveAffinitySignals(
       .map(r => r.followable_id.toLowerCase()),
   )
 
+  // Followed venues (car 57) -> their names, which is how an event row names its venue.
+  const followedVenueIds = followRows.filter(r => r.followable_type === 'venue').map(r => r.followable_id)
+  let followedVenueNames = new Set<string>()
+  if (followedVenueIds.length > 0) {
+    const { data: vs } = await supabase.from('venues').select('name').in('id', followedVenueIds)
+    followedVenueNames = new Set((vs ?? []).map(v => String(v.name ?? '').trim().toLowerCase()).filter(Boolean))
+  }
+
   // Followed artists -> the upcoming events those artists play, via event_artists.
   let followedArtistEventIds = new Set<string>()
   if (followedArtistIds.length > 0) {
@@ -1558,6 +1566,8 @@ async function resolveAffinitySignals(
     savedCategoryIds,
     followedArtistEventIds,
     followedSceneSlugs,
+    followedVenueNames,
+    followedVenueIds: new Set(followedVenueIds),
     savedEventCategoryIds,
     preferredCity,
   }
@@ -1603,6 +1613,10 @@ export async function fetchForYouFeed(
   }
   if (signals.followedArtistEventIds.size > 0) {
     orFilters.push(`id.in.(${[...signals.followedArtistEventIds].join(',')})`)
+  }
+  // Followed venues, the hosts of listed nights (car 57): every night at them joins the pool.
+  if ((signals.followedVenueIds?.size ?? 0) > 0) {
+    orFilters.push(`venue_id.in.(${[...(signals.followedVenueIds ?? [])].join(',')})`)
   }
   if (signals.preferredCity) {
     orFilters.push(`venue_city.ilike.%${signals.preferredCity}%`)
