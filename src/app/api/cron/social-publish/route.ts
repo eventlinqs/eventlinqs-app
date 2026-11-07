@@ -3,6 +3,7 @@ import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { publishDuePieces, scheduleApprovedPieces } from '@/lib/social/store'
+import { metaPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -11,8 +12,9 @@ export const dynamic = 'force-dynamic'
  * APPROVED PIECES SCHEDULE THEMSELVES (the release checklist B5; the project manager's 20:17 of 28 October 2026). At 40
  * past each hour: every piece whose newest version a person approved is given its moment on Instagram and Facebook by
  * the cadence; then every moment that has come is published, or, while the switch social_auto_publish is off (until
- * Meta approves the app), only said: nothing is written and nothing goes. No Meta publisher is connected yet, so with
- * the switch on a due piece is held with that reason, never sent another way.
+ * Meta approves the app), only said: nothing is written and nothing goes. The Meta publisher (car 58,
+ * src/lib/social/meta-publisher.ts) is passed in once Lawal's script has written the five META_ names; until then, with
+ * the switch on, a due piece is held with "no Meta publisher is connected", never sent another way.
  */
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
     const db = createAdminClient()
     const now = new Date()
     const scheduled = await scheduleApprovedPieces(db, now)
-    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: null })
+    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: metaPublisherFromEnv(db, now) })
     console.log(
       `[cron/social-publish] ${scheduled.scheduled.length} piece(s) scheduled; ${published.due} due; switch ${published.switchOn ? 'ON' : 'OFF'}: ` +
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
