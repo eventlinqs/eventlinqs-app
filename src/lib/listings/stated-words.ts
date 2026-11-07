@@ -139,3 +139,33 @@ export function statedWeekly(html: string, title: string, venue: string, iso: st
   const terms = termRanges(visibleLines(html).join('\n'), Number(p.ymd.slice(0, 4)))
   return terms.length > 0 && !terms.some(([from, to]) => from <= p.ymd && p.ymd <= to) ? 'outside_term' : 'weekly'
 }
+
+/**
+ * A SEASON'S STATEMENT OF THE NIGHT, IN ONE SENTENCE (fbbg.org.au, 7 November 2026: 'Free Tours on Sunday at 11.00a.m.
+ * during September, October, November, February, March April. No need to book.'). The sentence must name a word of the
+ * night's title (four letters or more, a weekday name aside), the night's weekday and its start ('a.m.' read as 'am'),
+ * and the months it runs: 'seasonal' when the night's month is one of them; 'outside_season' when the weekday and start
+ * are stated but its month is not (listed for a person, never passed); null when no sentence states it. Another sentence
+ * on the same page (a meeting on the 4th Wednesday at 10.00 a.m.) never vouches for the night.
+ */
+export function statedSeasonal(html: string, title: string, iso: string, zone: string): 'seasonal' | 'outside_season' | null {
+  const p = localParts(iso, zone)
+  const words = fold(title)
+    .split(' ')
+    .filter((w) => w.length >= 4 && !w.endsWith('day'))
+  if (words.length === 0) return null
+  const month = MONTHS[Number(p.ymd.slice(5, 7)) - 1]
+  const sentences = visibleLines(html)
+    .join(' ')
+    .replace(/([ap])\.m\.?/g, '$1m')
+    .split(/(?<=[.!?])\s+/)
+  let outside = false
+  for (const s of sentences) {
+    if (!words.some((w) => new RegExp(`\\b${w}`).test(s))) continue
+    const named = MONTHS.filter((m) => new RegExp(`\\b${m}\\b`).test(s))
+    if (named.length === 0 || !statesWeekdayAndStart(s, p)) continue
+    if (named.includes(month)) return 'seasonal'
+    outside = true
+  }
+  return outside ? 'outside_season' : null
+}
