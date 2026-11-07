@@ -42,13 +42,14 @@ export async function getCityPhoto(slug: string): Promise<string | null> {
 export interface CityBanner {
   src: string
   page: string
-  licence: 'CC BY-SA 4.0' | 'Public domain'
+  licence: 'CC BY-SA 4.0' | 'CC0 1.0' | 'Public domain'
   /** What the page draws: the author and the licence's link, or null where the licence asks for no credit. */
   credit: { author: string; licenceUrl: string } | null
   position: string
 }
 
 const BY_SA_4 = 'https://creativecommons.org/licenses/by-sa/4.0/'
+const CC0_1 = 'https://creativecommons.org/publicdomain/zero/1.0/'
 
 const CITY_BANNERS: Record<string, CityBanner> = {
   // Eastern Beach from the hill: the palms, the bathing enclosure and the bay.
@@ -67,6 +68,13 @@ const CITY_BANNERS: Record<string, CityBanner> = {
   bendigo: {
     src: '/images/library/city-banner-bendigo.jpg', page: 'https://commons.wikimedia.org/wiki/File:Central_bendigo_from_botanic_gardens.jpg',
     licence: 'Public domain', credit: null, position: '50% 44%',
+  },
+  // Canberra from the Mount Ainslie lookout (Lawal's ruling of 8 November 2026, 07:05 (1)): Anzac Parade from the
+  // Australian War Memorial's dome to Lake Burley Griffin, both Parliament Houses on the axis and the Brindabellas
+  // behind. CC0 asks for no credit; the ruling asks for one, so the author and the dedication are drawn all the same.
+  canberra: {
+    src: '/images/library/city-banner-canberra.jpg', page: 'https://commons.wikimedia.org/wiki/File:Canberra_from_Mount_Ainslie_Lookout.jpg',
+    licence: 'CC0 1.0', credit: { author: 'Orion Kahza', licenceUrl: CC0_1 }, position: '50% 50%',
   },
 }
 
