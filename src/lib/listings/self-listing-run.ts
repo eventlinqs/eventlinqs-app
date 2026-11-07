@@ -16,6 +16,7 @@ import { readBookingPage } from './booking-page'
 import { SUBMISSION_BUCKET } from './submission-store'
 import { AUTHORITY_WORDS, PHOTO_OWNED_WORDS, SUBMISSION_ROLE_WORDS, type SubmissionRole } from './submission'
 import { judgeSelfListing, localParts, type Correction, type PublishFacts, type SelfListingVerdict } from './self-listing'
+import { addSelfListedPhoto } from '@/lib/social/store'
 
 /**
  * ORGANISER SELF-LISTING, THE RUN (Lawal's rulings of 8 November 2026, 07:01 (3) and 07:05 (2); the submission alert of
@@ -160,27 +161,20 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   const url = admin.storage.from('event-images').getPublicUrl(object).data.publicUrl
   const approver = await founderAdminId(admin)
   if (!approver) return 'sent, but no founder account approves it, so the listing has none yet'
-  const asset = await admin.from('social_assets').insert({
-    asset_state: 'organiser_authorised',
-    asset_type: 'photo',
-    event_id: eventId,
-    asset_url: url,
-    source_url: sub.booking_url,
-    rights_holder: rightsHolder,
-    attribution_text: rightsHolder,
-    permission_evidence: `"${sub.permission_words}" given by ${sub.name} (${SUBMISSION_ROLE_WORDS[sub.role]}) at ${sub.permission_given_at}, with "${PHOTO_OWNED_WORDS}" and "${AUTHORITY_WORDS}" ticked on the form; listing submission ${sub.id}.`,
-    scope: 'site',
-    archival: false,
-    original_file: sub.photo_path,
-    received_on: sub.created_at.slice(0, 10),
-    permitted_uses: "This event's own EventLinqs page and its event cards. A social post waits for Lawal's approval in /admin/social.",
+  const asset = await addSelfListedPhoto(admin, {
+    eventId,
+    assetUrl: url,
+    sourceUrl: sub.booking_url,
+    rightsHolder,
+    permissionEvidence: `"${sub.permission_words}" given by ${sub.name} (${SUBMISSION_ROLE_WORDS[sub.role]}) at ${sub.permission_given_at}, with "${PHOTO_OWNED_WORDS}" and "${AUTHORITY_WORDS}" ticked on the form; listing submission ${sub.id}.`,
+    originalFile: sub.photo_path,
+    receivedOn: sub.created_at.slice(0, 10),
+    permittedUses: "This event's own EventLinqs page and its event cards. A social post waits for Lawal's approval in /admin/social.",
     restrictions: "Approved for the listing by the self-listing checks under Lawal's ruling of 8 November 2026, 07:01.",
-    approval_status: 'approved',
-    approved_by: approver,
-    approved_at: new Date().toISOString(),
-    withdrawal_status: 'current',
+    approvedBy: approver,
+    now: new Date(),
   })
-  if (asset.error) return `sent, but its rights record could not be written (${asset.error.message}), so the listing has none yet`
+  if (asset.state === 'refused') return `sent, but its rights record could not be written (${asset.reason}), so the listing has none yet`
   const locked = await lockPhotoToEvent({ eventId, hashes, imageUrl: url, role: 'cover' }, lockRpc)
   if (!locked.ok) return 'sent, but it is already used for another event, so the listing has none'
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)

@@ -772,7 +772,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */
-async function partnerLink(db: Db, eventId: string, by: string): Promise<{ id: string; url: string } | null> {
+async function partnerLink(db: Db, eventId: string, by: string | null): Promise<{ id: string; url: string } | null> {
   const { data: own, error } = await db.from('share_links').insert({ event_id: eventId, channel: 'other', code: generateShareCode(), created_by: by }).select('id, code').single()
   return error || !own ? null : { id: own.id as string, url: buildShortUrl(ORIGIN, own.code as string) }
 }
@@ -804,9 +804,10 @@ export type CampaignPlanned = { readonly campaignId: string; readonly weekStart:
  * "Plan this week": ONE campaign for the week, found again on a second press (F7), each piece kept once (the
  * database's social_pieces_once) with its first revision. Planning writes the campaign, its pieces, their first
  * revisions, each partner's own link and the drafted image requests; nothing is approved and nothing is published
- * here (F9).
+ * here (F9). plannedBy is the person who pressed it, or null when the daily social run planned it (car 58: the daily
+ * picks wait in /admin/social for Lawal's approval; the run never writes his name on what he did not press).
  */
-export async function planCampaignWeek(db: Db, input: { readonly plannedBy: string; readonly now: Date }): Promise<CampaignPlanned> {
+export async function planCampaignWeek(db: Db, input: { readonly plannedBy: string | null; readonly now: Date }): Promise<CampaignPlanned> {
   const weekStart = weekStartOf(input.now)
   const { error: cerr } = await db
     .from('social_campaigns')
@@ -1218,6 +1219,55 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     if (error.code === '23514') return { state: 'refused', reason: 'Every field is needed, the addresses must be https, someone else\'s work needs their permission in their words, the original file, the day it came and what it may be used for, and an archival photograph says so in its credit.' }
     return { state: 'refused', reason: refusalOf(error.message) ?? error.message }
   }
+  return { state: 'done' }
+}
+
+/**
+ * AN ORGANISER'S SELF-LISTED PHOTO (organiser self-listing, Lawal's ruling of 8 November 2026, 07:01 (3): a submission
+ * "publishes with the organiser's own photo through the photo lock and its credit"). Entered approved, for this night's
+ * own page and cards only (scope 'site'): the organiser ticked that they own it and gave permission in the form's own
+ * words, the self-listing checks verified the event against their booking page, and Lawal's ruling is the standing
+ * approval, named in approved_by as the founder. Never a social post: a post still needs a person's approval of a piece.
+ * Here, so the register keeps its one writer (scripts/guards/social-one-writer.mjs).
+ */
+export async function addSelfListedPhoto(
+  db: Db,
+  input: {
+    readonly eventId: string
+    readonly assetUrl: string
+    readonly sourceUrl: string
+    readonly rightsHolder: string
+    readonly permissionEvidence: string
+    readonly originalFile: string
+    readonly receivedOn: string
+    readonly permittedUses: string
+    readonly restrictions: string
+    readonly approvedBy: string
+    readonly now: Date
+  },
+): Promise<Done> {
+  if (isLibraryPhoto(input.assetUrl)) return { state: 'refused', reason: 'A library photograph never stands for a named night (K3).' }
+  const { error } = await db.from('social_assets').insert({
+    asset_state: 'organiser_authorised',
+    asset_type: 'photo',
+    event_id: input.eventId,
+    asset_url: input.assetUrl,
+    source_url: input.sourceUrl,
+    rights_holder: input.rightsHolder,
+    attribution_text: input.rightsHolder,
+    permission_evidence: input.permissionEvidence,
+    scope: 'site',
+    archival: false,
+    original_file: input.originalFile,
+    received_on: input.receivedOn,
+    permitted_uses: input.permittedUses,
+    restrictions: input.restrictions,
+    approval_status: 'approved',
+    approved_by: input.approvedBy,
+    approved_at: input.now.toISOString(),
+    created_by: null,
+  })
+  if (error) return { state: 'refused', reason: refusalOf(error.message) ?? error.message }
   return { state: 'done' }
 }
 
