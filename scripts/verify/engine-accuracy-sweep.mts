@@ -255,6 +255,20 @@ const pages = [...byPage.keys()].sort((a, b) => new URL(a).host.localeCompare(ne
 const horizon = now.getTime() + COLLECT_AHEAD_DAYS * 86_400_000
 type Unread = { e: Ev; src: string; why: string; host: string }
 
+/* LEARNING PART 3 (the CONTROLLER's 08:42 of 7 November 2026; src/lib/listings/source-patterns.ts): on each listing's own
+   source page (the first pass, never a booking page), which kind of schedule words vouched for it today, or that none did.
+   A listing whose nights are all unvouched is an observation of null; one vouched night is enough to match. */
+type PatternKind = import('@/lib/listings/source-patterns').PatternKind
+const observed = new Map<string, { host: string; sourceUrl: string; title: string; matched: PatternKind | null; eventIds: string[] }>()
+function observe(e: Ev, src: string, host: string, kind: PatternKind | null, sourcePage: boolean): void {
+  if (!sourcePage) return
+  const key = `${src}|${e.title}`
+  const o = observed.get(key) ?? { host, sourceUrl: src, title: e.title, matched: null, eventIds: [] }
+  if (kind !== null) o.matched = o.matched ?? kind
+  else o.eventIds.push(e.id)
+  observed.set(key, o)
+}
+
 /**
  * One page judged for the listings it holds; what it cannot judge is returned. `sessions` counts the page's own nights
  * against our listings, done on a listing's source page only, so a booking page read second never counts a night twice.
@@ -301,24 +315,24 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
     // Asked of every listing, not only a weekly series: the libraries' storytimes are stored one dated night at a time, and
     // their page states each branch's weekday and start under the session's own heading (37 nights read so, 7 November).
     const weekly = words !== 'both' ? statedWeekly(page.body, e.title, e.venue_name ?? '', e.start_date, zone) : null
-    if (words === 'both' || weekly === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
-    if (statedInGigList(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated gig list)`, source: src, eventId: e.id }); continue }
-    if (statedEveryInRange(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (every weekday in its stated range)`, source: src, eventId: e.id }); continue }
-    if (statedMonthly(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its monthly words)`, source: src, eventId: e.id }); continue }
-    if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
-    if (weekly === 'outside_term') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
+    if (words === 'both' || weekly === 'weekly') { observe(e, src, host, 'weekly_words', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (in the page's words)`, source: src, eventId: e.id }); continue }
+    if (statedInGigList(page.body, e.start_date, zone)) { observe(e, src, host, 'dated_gig_list', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated gig list)`, source: src, eventId: e.id }); continue }
+    if (statedEveryInRange(page.body, e.start_date, zone)) { observe(e, src, host, 'every_in_range', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (every weekday in its stated range)`, source: src, eventId: e.id }); continue }
+    if (statedMonthly(page.body, e.start_date, zone)) { observe(e, src, host, 'monthly_words', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its monthly words)`, source: src, eventId: e.id }); continue }
+    if (statedBesideTitle(page.body, e.title, e.start_date, zone)) { observe(e, src, host, 'weekly_beside_title', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its weekday and start beside its title)`, source: src, eventId: e.id }); continue }
+    if (weekly === 'outside_term') { observe(e, src, host, null, sessions); facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the term the page states`, source: src, eventId: e.id }); continue }
     // A season stated in one sentence (fbbg.org.au: 'Free Tours on Sunday at 11.00a.m. during September, ...'), 7 November.
     const seasonal = statedSeasonal(page.body, e.title, e.start_date, zone)
-    if (seasonal === 'seasonal') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its season in words)`, source: src, eventId: e.id }); continue }
+    if (seasonal === 'seasonal') { observe(e, src, host, 'season_words', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its season in words)`, source: src, eventId: e.id }); continue }
     // The CONTROLLER's 17:05 bar: what a person reads is never 'silent' (a festival's gates; a dated list beside the title).
-    if (statedUnderName(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its days and hours under its name)`, source: src, eventId: e.id }); continue }
-    if (statedDailyInRange(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its daily time over its stated range)`, source: src, eventId: e.id }); continue }
-    if (statedByGates(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its gates)`, source: src, eventId: e.id }); continue }
+    if (statedUnderName(page.body, e.title, e.start_date, zone)) { observe(e, src, host, 'under_name', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its days and hours under its name)`, source: src, eventId: e.id }); continue }
+    if (statedDailyInRange(page.body, e.start_date, zone)) { observe(e, src, host, 'daily_in_range', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its daily time over its stated range)`, source: src, eventId: e.id }); continue }
+    if (statedByGates(page.body, e.start_date, zone)) { observe(e, src, host, 'gates', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its gates)`, source: src, eventId: e.id }); continue }
     const every = statedEveryWeekday(page.body, e.title, e.start_date, zone)
-    if (every === 'weekly') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (every weekday under its title)`, source: src, eventId: e.id }); continue }
-    if (every === 'in_break') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, inside a break the page states`, source: src, eventId: e.id }); continue }
-    if (statedInDatedList(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated list and session time)`, source: src, eventId: e.id }); continue }
-    if (seasonal === 'outside_season') { facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the months the page states`, source: src, eventId: e.id }); continue }
+    if (every === 'weekly') { observe(e, src, host, 'every_weekday', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (every weekday under its title)`, source: src, eventId: e.id }); continue }
+    if (every === 'in_break') { observe(e, src, host, null, sessions); facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, inside a break the page states`, source: src, eventId: e.id }); continue }
+    if (statedInDatedList(page.body, e.title, e.start_date, zone)) { observe(e, src, host, 'dated_list', sessions); facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its dated list and session time)`, source: src, eventId: e.id }); continue }
+    if (seasonal === 'outside_season') { observe(e, src, host, null, sessions); facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}, outside the months the page states`, source: src, eventId: e.id }); continue }
     const timedMine = mine.filter(timed)
     if (timedMine.length > 0 && !recurring) {
       facts.push({ field: 'start', ok: false, host, title: e.title, detail: `ours ${clock(e.start_date, zone)}; the page states ${timedMine.slice(0, 4).map((f) => clock(f.startsAt, zone)).join(', ')}`, source: src, eventId: e.id })
@@ -330,6 +344,7 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
       : found.length > 0
         ? 'the page does not state this night (it may have ended its run, been cancelled or moved)'
         : 'no reader of ours finds a night on this page'
+    observe(e, src, host, null, sessions)
     left.push({ e, src, why, host })
   }
   // Sessions: every timed night the page states for a title we list here, inside the horizon, has its own listing.
@@ -377,6 +392,27 @@ const rate = (w: number, n: number) => (n === 0 ? 'none checked' : `${w} of ${n}
 const fields = ['start', 'venue', 'price', 'status', 'session'] as const
 const hosts = [...new Set(facts.map((f) => f.host))].sort()
 const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
+/* Each source's schedule, remembered (learning part 3): patterns.json beside the trend, one pattern per listing per page. A
+   page that stops vouching for a schedule it stated breaks the pattern, and its nights' unreadable entries carry the reason,
+   so the resolver holds them rather than letting the old words publish them. */
+const patternsBroken: { title: string; host: string; kind: string; firstSeen: string; lastMatched: string; misses: number; why: string; eventIds: readonly string[] }[] = []
+{
+  const { learnPatterns } = pick((await import('@/lib/listings/source-patterns')) as typeof import('@/lib/listings/source-patterns'))
+  const patternFile = `${OUT}/patterns.json`
+  const memory = existsSync(patternFile) ? (JSON.parse(readFileSync(patternFile, 'utf8')) as import('@/lib/listings/source-patterns').Pattern[]) : []
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const { patterns, broken, learned } = learnPatterns(memory, [...observed.values()], today)
+  writeFileSync(patternFile, JSON.stringify(patterns, null, 1))
+  for (const b of broken) {
+    patternsBroken.push({ title: b.pattern.title, host: b.pattern.host, kind: b.pattern.kind, firstSeen: b.pattern.firstSeen, lastMatched: b.pattern.lastMatched, misses: b.pattern.misses, why: b.why, eventIds: b.eventIds })
+    for (const id of b.eventIds) {
+      const u = unreadable.find((x) => x.eventId === id)
+      if (u) u.why = `${b.why} (${u.why})`
+    }
+  }
+  console.log(`[sweep] schedules: ${patterns.filter((x) => !x.retired).length} remembered, ${learned} learned today, ${broken.length} broken, in ${patternFile}`)
+  for (const b of broken) console.log(`[sweep]   BROKEN ${b.pattern.host} ${b.pattern.title}: ${b.eventIds.length} night(s) to the resolver`)
+}
 mkdirSync(OUT, { recursive: true })
 const whyCounts = [...unreadable.reduce((m, x) => m.set(x.why, (m.get(x.why) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
 const lines = [
@@ -405,7 +441,7 @@ const lines = [
   ...unreadable.map((x) => `- ${x.title}, ${x.when.slice(0, 16)}, ${x.city ?? ''}: ${x.why} (${x.source || 'no source'})`),
 ]
 writeFileSync(`${OUT}/sweep-${stamp}.md`, lines.join('\n') + '\n')
-writeFileSync(`${OUT}/sweep-${stamp}.json`, JSON.stringify({ at: new Date().toISOString(), events: events.length, pages: pages.length, facts, unreadable }, null, 1))
+writeFileSync(`${OUT}/sweep-${stamp}.json`, JSON.stringify({ at: new Date().toISOString(), events: events.length, pages: pages.length, facts, unreadable, patternsBroken }, null, 1))
 /* THE TREND (learning part 1 of the CONTROLLER's 08:42 of 7 November 2026): one row a run, appended to trend.jsonl beside the
    runs; a rate above the day before's last run is said here, for a CONTROLLER line (src/lib/listings/accuracy-trend.ts). */
 {

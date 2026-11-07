@@ -13,7 +13,19 @@
  * running is retired: the page has changed its schedule, and the resolver's holds carry it from there.
  */
 
-export type PatternKind = 'weekly_beside_title' | 'monthly_words' | 'dated_gig_list' | 'every_in_range'
+/** The schedule words the accuracy sweep reads (scripts/verify/engine-accuracy-sweep.mts), one kind each. */
+export type PatternKind =
+  | 'weekly_words'
+  | 'weekly_beside_title'
+  | 'monthly_words'
+  | 'dated_gig_list'
+  | 'every_in_range'
+  | 'season_words'
+  | 'under_name'
+  | 'daily_in_range'
+  | 'gates'
+  | 'every_weekday'
+  | 'dated_list'
 
 export type Pattern = {
   readonly key: string
