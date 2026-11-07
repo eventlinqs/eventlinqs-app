@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStep, holdWalkSql, DAY_MS, WEEK_MS, type OpenHold } from '@/lib/listings/hold-walk'
+import { nextStep, holdWalkSql, holdsVerdict, DAY_MS, WEEK_MS, type OpenHold } from '@/lib/listings/hold-walk'
 
 /*
  * A HOLD IS NEVER LEFT HANGING (Lawal, 7 November 2026; the CONTROLLER's 16:55 (1)). The resolver walks every open hold
@@ -46,6 +46,27 @@ describe('the next step of an open hold', () => {
       const s = nextStep(hold({ sources: [] }), answer, NOW)
       expect(s.kind === 'next' && s.nextSource && s.nextCheckAt).toBeTruthy()
     }
+  })
+})
+
+describe('the verifier on the open holds', () => {
+  const at = (ms: number) => new Date(NOW.getTime() + ms).toISOString()
+  it('reds a hold with no next action, and one whose check is more than a day overdue', () => {
+    const red = holdsVerdict(
+      [
+        { id: 'a', title: 'Granny Bingo', nextSource: null, nextCheckAt: null },
+        { id: 'b', title: 'The Peter Tobin Oration', nextSource: 'https://v/', nextCheckAt: at(-2 * DAY_MS) },
+        { id: 'c', title: 'Fine', nextSource: 'https://v/', nextCheckAt: at(DAY_MS) },
+        { id: 'd', title: 'Just due', nextSource: 'https://v/', nextCheckAt: at(-60 * 60 * 1000) },
+      ],
+      NOW,
+    )
+    expect(red.map((r) => r.id)).toEqual(['a', 'b'])
+    expect(red[0].why).toContain('no next action')
+    expect(red[1].why).toContain('overdue')
+  })
+  it('no open hold, nothing red', () => {
+    expect(holdsVerdict([], NOW)).toEqual([])
   })
 })
 

@@ -47,6 +47,22 @@ export function nextStep(hold: OpenHold, answer: Answer, now: Date): Step {
   }
 }
 
+/**
+ * The verifier's read of the open holds: a hold with no next action, or one whose next check is more than a day overdue (the
+ * walk did not run, or failed), is red, by name. Pure.
+ */
+export function holdsVerdict(
+  holds: readonly { id: string; title: string; nextSource: string | null; nextCheckAt: string | null }[],
+  now: Date,
+): { id: string; title: string; why: string }[] {
+  const red: { id: string; title: string; why: string }[] = []
+  for (const h of holds) {
+    if (!h.nextSource || !h.nextCheckAt) red.push({ id: h.id, title: h.title, why: 'an open hold with no next action (no next source or no time)' })
+    else if (now.getTime() - Date.parse(h.nextCheckAt) > DAY_MS) red.push({ id: h.id, title: h.title, why: `its next check (${h.nextCheckAt}) is more than a day overdue` })
+  }
+  return red
+}
+
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`
 
 export function holdWalkSql(steps: readonly { hold: OpenHold; step: Step }[]): string {
