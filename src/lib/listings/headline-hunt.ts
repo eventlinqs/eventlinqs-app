@@ -21,10 +21,12 @@ import { wallClockToIso } from './collect'
  * A HUNTED NIGHT'S CATEGORY (class O, read from production on 7 November 2026). A title naming two sides ('A vs B', 'A v B')
  * is a match, so sport, whatever the venue: the hunt took the venue's usual category when the classifier could not read a
  * title, and listed seven Melbourne United and South East Melbourne Phoenix games at John Cain Arena as Music. Otherwise
- * the classifier's reading, then the venue's usual category, as before. Pure.
+ * the classifier's reading, then the venue's usual category, as before. Two sides are a match only at a sporting venue:
+ * 'Grease vs Rocky Horror Show' is a musical (read from production, 7 November 2026, 11:16). Pure.
  */
-export function huntCategory(title: string, usual: GuideCategory): GuideCategory {
-  if (/\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
+const SPORTING_VENUE = /\b(arena|stadium|ground|oval|park|racecourse)\b/i
+export function huntCategory(title: string, usual: GuideCategory, venue: string): GuideCategory {
+  if (SPORTING_VENUE.test(venue) && /\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
   return (classify({ title }).primary as GuideCategory | null) ?? usual
 }
 

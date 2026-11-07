@@ -311,7 +311,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         venueId = made.id as string
       }
 
-      const slug = huntCategory(row.title, hunt.usualCategory)
+      const slug = huntCategory(row.title, hunt.usualCategory, venueName)
       const { data: category, error: catError } = await db.from('event_categories').select('id').eq('slug', slug).maybeSingle()
       if (catError || !category) throw new Error(`category ${slug} is not in the database`)
       const local = toZonedInputValue(row.startsAt, city.timezone as string)
