@@ -420,8 +420,8 @@ export const fedSquare: PageRule = {
  * BIRD'S BASEMENT (birdsbasement.com, 11 Singers Lane). Read 6 November 2026 through the polite reader: robots.txt allows its
  * show pages; each page under /show/<id>/<slug> carries one schema.org Event per date with a DATE ONLY startDate, and states
  * its times in words, once for every date: 'Early Show Starts: 7:30 pm' (/show/1779) and, on some, 'Late Show Starts: 10:00
- * pm' as well (/show/1773). Where the page states exactly one show time, every date starts at it (from the words); where it
- * states two, which dates run which show is not stated, so every date stays date only and nothing is guessed.
+ * pm' as well (/show/1773). Every stated show start is a session on every date the page lists (Lawal's ruling of 7 November
+ * 2026: a date range with two show times is three dates with two sessions each); a doors time is never a session.
  */
 export const birdsBasement: PageRule = {
   host: 'birdsbasement.com',
@@ -436,16 +436,22 @@ export const birdsBasement: PageRule = {
       .map((m) => clock(m[1]))
       .filter((c): c is [number, number] => c !== null)
     const times = [...new Set(stated.map(([h, mi]) => `${h}:${mi}`))]
-    if (times.length !== 1) return found
-    const [h, mi] = times[0].split(':').map(Number)
-    return found.map((f): FoundEvent => {
-      if (f.timeStatus !== 'date_only') return f
+    if (times.length === 0) return found
+    /* Every stated show start is a session on every date (Lawal, 7 November 2026 16:53: 'A date range with two show times
+       is three dates with two sessions each'): /show/1773's 'Early Show Starts: 7:30 pm' and 'Late Show Starts: 10:00 pm'
+       over Thursday 19 to Saturday 21 November are six sessions. A doors time is never a session. */
+    return found.flatMap((f): FoundEvent[] => {
+      if (f.timeStatus !== 'date_only') return [f]
       const [y, mo, d] = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
         .format(new Date(f.startsAt))
         .split('-')
         .map(Number)
-      const at = wallClockToIso(y, mo, d, h, mi, 0, ZONE)
-      return at ? { ...f, startsAt: at, timeStatus: 'exact', timeFromWords: true } : f
+      const sessions = times.flatMap((t) => {
+        const [h, mi] = t.split(':').map(Number)
+        const at = wallClockToIso(y, mo, d, h, mi, 0, ZONE)
+        return at ? [{ ...f, startsAt: at, timeStatus: 'exact' as const, timeFromWords: true }] : []
+      })
+      return sessions.length > 0 ? sessions.sort((a, b) => a.startsAt.localeCompare(b.startsAt)) : [f]
     })
   },
 }
