@@ -263,7 +263,9 @@ const minutesOf = (p: ReturnType<typeof localParts>) => p.h24 * 60 + Number(p.mi
  */
 export function statedByGates(html: string, iso: string, zone: string): boolean {
   if (statedInWords(html, iso, zone) === null) return false
-  const gates = new Set(visibleLines(html).filter((l) => /\bgates?\b/.test(l)).map((l) => clockTimes(l)[0]).filter((t) => t !== undefined))
+  // A page's one doors time is its opening too (Tipsy Sketching, 7 November: 'Doors open from 6:00pm with drawing starting
+  // from 6:30pm'); an early and a late doors time name none.
+  const gates = new Set(visibleLines(html).filter((l) => /\bgates?\b|\bdoors?\s+open/.test(l)).map((l) => clockTimes(l)[0]).filter((t) => t !== undefined))
   return gates.size === 1 && gates.has(minutesOf(localParts(iso, zone)))
 }
 

@@ -22,6 +22,17 @@ describe('a festival day starts at its gates', () => {
     // Saturday 7 November 2026, 12:30 pm in Melbourne
     expect(statedByGates(RHST, '2026-11-07T01:30:00Z', ZONE)).toBe(true)
   })
+  it("a page's one doors time is its opening too (Fine Lines & Wine: 'Doors open from 6:00pm with drawing starting from 6:30pm')", () => {
+    const tipsy = `<main><h1>Fine Lines &amp; Wine, 18th November @ Archive Wine Bar</h1><p>A$35.00</p>${'<p>Bring a friend.</p>'.repeat(40)}
+<p>Doors open from 6:00pm with drawing starting from 6:30pm.</p></main>`
+    // Wednesday 18 November 2026, 6 pm in Melbourne
+    expect(statedByGates(tipsy, '2026-11-18T07:00:00Z', ZONE)).toBe(true)
+    expect(statedByGates(tipsy, '2026-11-18T07:30:00Z', ZONE)).toBe(false)
+  })
+  it('two doors times (an early and a late show) name no opening', () => {
+    const two = '<main><p>Thursday 19 November 2026</p><p>Early Doors Open: 6:00 pm</p><p>Late Doors Open: 9:20 pm</p></main>'
+    expect(statedByGates(two, '2026-11-19T07:00:00Z', ZONE)).toBe(false)
+  })
   it('a set time is never the start, and another date is never vouched for', () => {
     expect(statedByGates(RHST, '2026-11-07T02:10:00Z', ZONE)).toBe(false)
     expect(statedByGates(RHST, '2026-11-08T01:30:00Z', ZONE)).toBe(false)
