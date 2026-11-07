@@ -155,12 +155,14 @@ export function statedSeasonal(html: string, title: string, iso: string, zone: s
     .filter((w) => w.length >= 4 && !w.endsWith('day'))
   if (words.length === 0) return null
   const month = MONTHS[Number(p.ymd.slice(5, 7)) - 1]
-  const sentences = visibleLines(html)
-    .join(' ')
-    .replace(/([ap])\.m\.?/g, '$1m')
-    .split(/(?<=[.!?])\s+/)
+  /* A sentence never crosses a line (a block element): joined, Gallery Tots' title, its 'Every Friday, 9.30 to 10.15am'
+     and its break 'No sessions from Friday 18 December 2026 to Friday 22 January 2027' read as one season of December
+     and January (the first sweep with this reader, 7 November 16:45). */
+  const sentences = visibleLines(html).flatMap((line) => line.replace(/([ap])\.m\.?/g, '$1m').split(/(?<=[.!?])\s+/))
   let outside = false
   for (const s of sentences) {
+    // A sentence that says there is none (a break, a closure, an exception) is never a season.
+    if (/\b(no (sessions?|tours?|classes|events?)|closed|except|excluding|not (running|held|on))\b/.test(s)) continue
     if (!words.some((w) => new RegExp(`\\b${w}`).test(s))) continue
     const named = MONTHS.filter((m) => new RegExp(`\\b${m}\\b`).test(s))
     if (named.length === 0 || !statesWeekdayAndStart(s, p)) continue

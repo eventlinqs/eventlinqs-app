@@ -34,4 +34,27 @@ describe('a season stated in words', () => {
   it('needs a word of the title in the sentence', () => {
     expect(statedSeasonal(PAGE, 'Plant Sale', '2026-11-08T00:00:00Z', ZONE)).toBe(null)
   })
+  /*
+   * THE FIRST SWEEP WITH THIS READER (7 November 2026, 16:45) called nine Gallery Tots Fridays 'outside the months the page
+   * states', all of them right: geelonggallery.org.au/events/gallery-tots/ says, line by line, 'Gallery Tots', 'Every
+   * Friday, 9.30 to 10.15am', 'No sessions from Friday 18 December 2026 to Friday 22 January 2027'. The lines were joined
+   * into one 'sentence', and the break's months were read as the season. A sentence never crosses a line, and a sentence
+   * that says there are no sessions is never a season.
+   */
+  const TOTS = `<html><body><main>
+<h1>Gallery Tots</h1>
+<p>Every Friday, 9.30 to 10.15am</p>
+<p>No sessions from Friday 18 December 2026 to Friday 22 January 2027</p>
+<p>Introduce your little one to the wonderful world of art through stories, conversation and creative play.</p>
+</main></body></html>`
+  it('never reads a break as the season: Gallery Tots on Friday 20 November is not outside its months', () => {
+    // Friday 20 November 2026, 9.30 am in Melbourne
+    expect(statedSeasonal(TOTS, 'Gallery Tots', '2026-11-19T22:30:00Z', ZONE)).toBe(null)
+    // Friday 5 February 2027, 9.30 am in Melbourne
+    expect(statedSeasonal(TOTS, 'Gallery Tots', '2027-02-04T22:30:00Z', ZONE)).toBe(null)
+  })
+  it('a sentence saying there is none is never a season, even on one line with the title', () => {
+    const one = '<p>Gallery Tots: no sessions on Friday at 9.30am during December and January.</p>'
+    expect(statedSeasonal(one, 'Gallery Tots', '2026-11-19T22:30:00Z', ZONE)).toBe(null)
+  })
 })
