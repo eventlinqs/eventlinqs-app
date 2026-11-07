@@ -3,7 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { runOccurrences } from '@/lib/listings/occurrence-run'
 import { occurrenceStore } from '@/lib/listings/occurrence-store'
 import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
-import { selfListWaiting } from '@/lib/listings/self-listing-run'
+import { attachApprovedPhotos, selfListWaiting } from '@/lib/listings/self-listing-run'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
       try {
         selfListed = (await selfListWaiting(new Date())).map((o) => o.state)
         if (selfListed.length) console.log(`[cron/listing-occurrences] organiser submissions checked: ${selfListed.join(', ')}`)
+        // A photo Lawal approved for a submission accepted before self-listing (the PM's 06:52), marked by a reviewed write.
+        for (const line of await attachApprovedPhotos()) console.log(`[cron/listing-occurrences] approved photo: ${line}`)
       } catch (error) {
         console.error('[cron/listing-occurrences] the waiting submissions were not checked:', error instanceof Error ? error.message : error)
       }

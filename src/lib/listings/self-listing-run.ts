@@ -334,3 +334,34 @@ export async function selfListWaiting(now: Date = new Date(), most = 5): Promise
   }
   return out
 }
+
+/**
+ * A PHOTO LAWAL APPROVED FOR A SUBMISSION ACCEPTED BEFORE SELF-LISTING (the PM's 06:52 of 8 November 2026: "A Moment of
+ * Sanity's artwork is published once the photo path is proved"). Those submissions were listed by the checked import, so
+ * the run never carried their photo. A row marked by a reviewed write (check_result.photo_approved true, with the event it
+ * became in published_event_id) has its own photo put on that event here, through the same path a self-listed photo
+ * takes: the photo lock, its rights record named to the founder, its credit. Never any other row: Kyivska Perepichka's
+ * screenshot is not marked and is never published. Once done, check_result.photo says so and it is not done again.
+ */
+export async function attachApprovedPhotos(most = 5): Promise<string[]> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('listing_submissions')
+    .select('id, created_at, name, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at, published_event_id, check_result')
+    .eq('status', 'accepted')
+    .not('photo_path', 'is', null)
+    .not('published_event_id', 'is', null)
+    .limit(50)
+  const out: string[] = []
+  for (const r of (data ?? []) as (SubmissionRecord & { published_event_id: string; check_result: Record<string, unknown> | null })[]) {
+    if (out.length >= most) break
+    const result = r.check_result ?? {}
+    if (result.photo_approved !== true || typeof result.photo === 'string') continue
+    // The credit the reviewed write names (the rights holder, e.g. the organiser's business), else the sender's name.
+    const credit = typeof result.credit === 'string' && result.credit.trim().length >= 2 ? result.credit.trim() : r.name
+    const photo = await attachPhoto(admin, r, r.published_event_id, credit.slice(0, 200))
+    await admin.from('listing_submissions').update({ check_result: { ...result, photo } }).eq('id', r.id)
+    out.push(`${cleanTitle(r.title)}: ${photo}`)
+  }
+  return out
+}
