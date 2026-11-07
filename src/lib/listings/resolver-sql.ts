@@ -5,7 +5,8 @@ import type { Reading } from './resolver'
  * run first, applied on APPLY, logged; the CONTROLLER's 10:50 of 7 November 2026). Each ruling of scripts/verify/resolve-run.mts
  * becomes statements in one begin and rollback file for scripts/ops/apply-reviewed-sql-production.mjs:
  *   correct / resource  the official page's value written to that night's link (price and checked time, or status)
- *   hold, fact          a price withheld (its checked time cleared, so the page shows 'See tickets' until a read confirms it)
+ *   hold, fact          a price withheld (the price and its checked time cleared together, as the table requires, so the
+ *                       page shows 'See tickets' until a read confirms it; the hold's readings keep what each page stated)
  *   hold, night         the dated night made private (hidden from every public surface), never deleted
  * and every hold a row in public.listing_holds (migration 20261107120001) with the pages read. A start, venue or session is
  * never corrected here: those are held (LAW 19 section 4 asks two consecutive reads before a date, time or venue moves). Pure.
@@ -42,7 +43,9 @@ export function resolverSql(rows: readonly Ruled[]): string {
     }
     if (r.ruling !== 'hold' || !r.scope || !r.reason) continue
     if (r.scope === 'night') out.push(`update public.events set visibility = 'private' where id = ${id} and visibility = 'public';`)
-    else if (r.field === 'price') out.push(`update public.event_booking_links set price_checked_at = null where event_id = ${id};`)
+    // Both columns at once: the table holds a price only with its check time (event_booking_links_price_with_its_check);
+    // what each page stated stays in the hold's readings.
+    else if (r.field === 'price') out.push(`update public.event_booking_links set price_from_cents = null, price_checked_at = null where event_id = ${id};`)
     out.push(
       `insert into public.listing_holds (event_id, series_id, field, scope, reason, readings) values (${id}, ${r.seriesId ? q(r.seriesId) : 'null'}, ${q(r.field)}, ${q(r.scope)}, ${q(r.reason)}, ${q(JSON.stringify(r.readings))}::jsonb);`,
     )
