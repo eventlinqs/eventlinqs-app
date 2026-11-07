@@ -34,7 +34,7 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody, COLLECT_AHEAD_DAYS } = pick((await import('@/lib/listings/collect')) as typeof import('@/lib/listings/collect'))
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
-const { statedInWords, statedWeekly, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
+const { statedInWords, statedWeekly, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange, statedUnderName } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { titleShare, SAME_TITLE_SHARE } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
 type Found = import('@/lib/listings/collect').FoundEvent
 
@@ -311,6 +311,7 @@ async function judgePage(src: string, listed: Ev[], sessions: boolean): Promise<
     const seasonal = statedSeasonal(page.body, e.title, e.start_date, zone)
     if (seasonal === 'seasonal') { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its season in words)`, source: src, eventId: e.id }); continue }
     // The CONTROLLER's 17:05 bar: what a person reads is never 'silent' (a festival's gates; a dated list beside the title).
+    if (statedUnderName(page.body, e.title, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its days and hours under its name)`, source: src, eventId: e.id }); continue }
     if (statedDailyInRange(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its daily time over its stated range)`, source: src, eventId: e.id }); continue }
     if (statedByGates(page.body, e.start_date, zone)) { facts.push({ field: 'start', ok: true, host, title: e.title, detail: `${clock(e.start_date, zone)} (its gates)`, source: src, eventId: e.id }); continue }
     const every = statedEveryWeekday(page.body, e.title, e.start_date, zone)

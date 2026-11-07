@@ -244,6 +244,33 @@ export function statedDailyInRange(html: string, iso: string, zone: string): boo
   })
 }
 
+/**
+ * A GROUP NAMED IN OUR TITLE, ITS DAYS AND HOURS UNDER ITS NAME (Goldfields Libraries' 'Genealogy Groups at Goldfields
+ * Libraries', 7 November 2026: 'Bendigo Family History Group', its address, site and email, 'Library assistance at the
+ * Bendigo Library', then 'Wednesdays and Saturdays, 10am-2pm'). The name is our title or the part of it in brackets ('Genealogy
+ * Research Help (Bendigo Family History Group)'); the first line after a line that is that name naming a weekday and a time
+ * states the days (plural, joined by 'and' or commas) and the start (a range's am or pm written once is its start's too).
+ * True when that line holds the night's weekday and its start. Another group's lines are never read: only the first such line.
+ */
+export function statedUnderName(html: string, title: string, iso: string, zone: string): boolean {
+  const names = [fold(title), ...[...title.matchAll(/\(([^)]+)\)/g)].map((m) => fold(m[1]))].filter((n) => n.length >= 6)
+  if (names.length === 0) return false
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const weekdayWord = /\b(mon|tues|wednes|thurs|fri|satur|sun)days?\b/
+  const range = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:-|to)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/
+  for (let i = 0; i < lines.length; i++) {
+    if (!names.includes(fold(lines[i]))) continue
+    const line = lines.slice(i + 1, i + 9).find((l) => weekdayWord.test(l) && (range.test(l) || clockTimes(l).length > 0))
+    if (!line) return false
+    if (!new RegExp(`\\b${p.weekday}s?\\b`).test(line)) return false
+    const m = range.exec(line)
+    const start = m ? ((Number(m[1]) % 12) + ((m[3] ?? m[6]) === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0) : clockTimes(line)[0]
+    return start === minutesOf(p)
+  }
+  return false
+}
+
 /** Every clock time on one lowercased line ('12:30pm', '6.00 pm', '7pm', '19:00'), as minutes past midnight, in order. */
 function clockTimes(line: string): number[] {
   const out: number[] = []
