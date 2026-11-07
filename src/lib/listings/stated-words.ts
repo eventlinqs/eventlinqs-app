@@ -57,7 +57,10 @@ export function statedInWords(html: string, iso: string, zone: string): 'both' |
   const monthLong = part({ month: 'long' })
   const monthShort = monthLong.slice(0, 3)
   // A leading zero too ('07 NOVEMBER 2026', 'SAT 07 NOV'): tour sites write the day that way (Red Hot Summer Tour, 5 November).
-  const dateForms = [...new Set([`${d} ${monthLong}`, `${d} ${monthShort}`, `${dd} ${monthLong}`, `${dd} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`])]
+  // Its ordinal too ('WEDNESDAY 23RD DECEMBER 2026', Carols by Candlelight Geelong, 7 November): 1st, 2nd, 3rd, 11th to 13th, 21st.
+  const n = Number(d)
+  const ord = `${d}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`
+  const dateForms = [...new Set([`${d} ${monthLong}`, `${d} ${monthShort}`, `${dd} ${monthLong}`, `${dd} ${monthShort}`, `${ord} ${monthLong}`, `${ord} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`])]
   const { h24, h12, min, ampm } = localParts(iso, zone)
   const timeForms = [`${h12}:${min}${ampm}`, `${h12}.${min}${ampm}`, `${String(h24).padStart(2, '0')}:${min}`, ...(min === '00' ? [`${h12}${ampm}`] : [])]
   const at = (form: string) => {
