@@ -3761,36 +3761,48 @@ export type Database = {
           field: string
           held_at: string
           id: string
+          next_check_at: string | null
+          next_source: string | null
           readings: Json
           reason: string
           released_at: string | null
           released_by: string | null
           scope: string
           series_id: string | null
+          sources_tried: Json
+          state: string
         }
         Insert: {
           event_id?: string | null
           field: string
           held_at?: string
           id?: string
+          next_check_at?: string | null
+          next_source?: string | null
           readings?: Json
           reason: string
           released_at?: string | null
           released_by?: string | null
           scope: string
           series_id?: string | null
+          sources_tried?: Json
+          state?: string
         }
         Update: {
           event_id?: string | null
           field?: string
           held_at?: string
           id?: string
+          next_check_at?: string | null
+          next_source?: string | null
           readings?: Json
           reason?: string
           released_at?: string | null
           released_by?: string | null
           scope?: string
           series_id?: string | null
+          sources_tried?: Json
+          state?: string
         }
         Relationships: [
           {
