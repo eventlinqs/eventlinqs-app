@@ -10,7 +10,7 @@
  * (src/lib/events/link-check.ts readByRule, then readPage), the start by the collector's readers (a page rule, else the
  * page's Event data) and the page's own words (src/lib/listings/stated-words.ts).
  *
- *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/resolve-run.mts <sweep.json> [--out dir]
+ *   scripts\ops\with-supabase-token.ps1 node node_modules/tsx/dist/cli.mjs scripts/verify/resolve-run.mts <sweep.json> [--out dir] [--emit-sql]
  */
 import Module from 'node:module'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -27,6 +27,7 @@ const { readPage, readByRule } = pick((await import('@/lib/events/link-check')) 
 const { statedInWords } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { resolveFact, isListingSite } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
+const { resolverSql } = pick((await import('@/lib/listings/resolver-sql')) as typeof import('@/lib/listings/resolver-sql'))
 const asField = (f: string) => (f === 'session' ? 'session' : f) as import('@/lib/listings/resolver').Field
 type Reading = import('@/lib/listings/resolver').Reading
 
@@ -52,9 +53,9 @@ async function sql<T>(query: string): Promise<T[]> {
   return res.json() as Promise<T[]>
 }
 const ids = [...new Set([...wrong.map((f) => f.eventId), ...sweep.unreadable.map((u) => u.eventId)])].filter((id) => /^[0-9a-f-]{36}$/.test(id))
-type EventRow = { id: string; title: string; start_date: string; timezone: string | null; links: { url: string; price_from_cents: number | null; availability: string | null }[] | null }
+type EventRow = { id: string; series_id: string | null; title: string; start_date: string; timezone: string | null; links: { url: string; price_from_cents: number | null; availability: string | null }[] | null }
 const events = await sql<EventRow>(`
-  select e.id, e.title, e.start_date, e.timezone,
+  select e.id, e.listing_series_id as series_id, e.title, e.start_date, e.timezone,
          (select json_agg(json_build_object('url', l.url, 'price_from_cents', l.price_from_cents, 'availability', l.availability) order by l.position)
             from public.event_booking_links l where l.event_id = e.id) as links
     from public.events e where e.id in (${ids.map((id) => `'${id}'`).join(',')})`)
@@ -135,6 +136,7 @@ const storedOf = (field: string, e: EventRow): string | null => {
 
 type Row = { title: string; field: string; ruling: string; value: string | null; scope: string | null; reason: string | null; readings: string }
 const rows: Row[] = []
+const ruled: import('@/lib/listings/resolver-sql').Ruled[] = []
 async function resolveOne(e: EventRow, field: string, ownUrl: string): Promise<void> {
   const stored = storedOf(field, e) ?? ''
   const urls = [ownUrl, ...(e.links ?? []).map((l) => l.url)].filter((u, i, all) => /^https?:\/\//.test(u) && all.indexOf(u) === i)
@@ -149,6 +151,17 @@ async function resolveOne(e: EventRow, field: string, ownUrl: string): Promise<v
     scope: out.kind === 'hold' ? out.scope : null,
     reason: out.kind === 'hold' ? out.reason : null,
     readings: readings.map((r) => `${new URL(r.url).host}: ${r.value ?? pages.get(r.url)?.why ?? 'does not state it'}`).join('; '),
+  })
+  ruled.push({
+    eventId: e.id,
+    seriesId: e.series_id,
+    field: asField(field),
+    linkUrl: e.links?.[0]?.url ?? null,
+    ruling: out.kind,
+    value: out.kind === 'hold' ? null : out.value,
+    scope: out.kind === 'hold' ? out.scope : null,
+    reason: out.kind === 'hold' ? out.reason : null,
+    readings,
   })
 }
 
@@ -181,6 +194,12 @@ const report = {
   rows,
 }
 writeFileSync(`${OUT}/resolve-run-${stamp}.json`, JSON.stringify(report, null, 1))
+/* --emit-sql: the rulings as ONE reviewed begin and rollback file for scripts/ops/apply-reviewed-sql-production.mjs (dry
+   run first, applied on APPLY, logged): nothing here writes; the file is the proposal (src/lib/listings/resolver-sql.ts). */
+if (args.includes('--emit-sql')) {
+  writeFileSync(`${OUT}/resolve-run-${stamp}.sql`, resolverSql(ruled))
+  console.log(`[resolve-run] ${OUT}/resolve-run-${stamp}.sql: the reviewed file, for the dry run and APPLY`)
+}
 console.log(`[resolve-run] wrong facts ${JSON.stringify(report.wrongFacts)}`)
 console.log(`[resolve-run] unreadable ${JSON.stringify(report.unreadable)}`)
 console.log(`[resolve-run] ${OUT}/resolve-run-${stamp}.json; nothing written to the database`)

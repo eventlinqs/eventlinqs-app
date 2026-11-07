@@ -3755,6 +3755,60 @@ export type Database = {
           },
         ]
       }
+      listing_holds: {
+        Row: {
+          event_id: string | null
+          field: string
+          held_at: string
+          id: string
+          readings: Json
+          reason: string
+          released_at: string | null
+          released_by: string | null
+          scope: string
+          series_id: string | null
+        }
+        Insert: {
+          event_id?: string | null
+          field: string
+          held_at?: string
+          id?: string
+          readings?: Json
+          reason: string
+          released_at?: string | null
+          released_by?: string | null
+          scope: string
+          series_id?: string | null
+        }
+        Update: {
+          event_id?: string | null
+          field?: string
+          held_at?: string
+          id?: string
+          readings?: Json
+          reason?: string
+          released_at?: string | null
+          released_by?: string | null
+          scope?: string
+          series_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_holds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_holds_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_source_runs: {
         Row: {
           accepted_by_rule: number
