@@ -8,12 +8,16 @@ import { POLICIES } from '@/lib/rate-limit/policies'
 import { getSiteUrl } from '@/lib/site-url'
 import { judgeSubmission } from '@/lib/listings/submission'
 import { recordSubmission, sentPhoto } from '@/lib/listings/submission-store'
+import { readSubmissionChoices } from '@/lib/listings/submission-choices'
+import { selfListSubmission, type SelfListingOutcome } from '@/lib/listings/self-listing-run'
 
 /**
  * THE SUBMISSION FORM (release checklist H1). Public and unauthenticated, because the organiser of an event sold
  * elsewhere has no EventLinqs account: held to the listing-submission rate limit by address before anything is read
  * or written; a filled hidden field (a form robot) is answered as if sent and writes nothing. What passes is one row
- * in the review queue (/admin/submissions) with its photo; nothing is published from here. Works with no script.
+ * with its photo, checked at once against the organiser's own booking page (organiser self-listing, Lawal's rulings of
+ * 8 November 2026, 07:01 and 07:05): live when the page bears it out, held for a person when it cannot be verified. A
+ * check that fails to finish leaves the row waiting, and the hourly listings run takes it. Works with no script.
  */
 export async function submitEvent(formData: FormData): Promise<void> {
   const field = (name: string) => String(formData.get(name) ?? '')
@@ -24,6 +28,7 @@ export async function submitEvent(formData: FormData): Promise<void> {
   if (!rl.ok) back(`problem=${encodeURIComponent('Too many events sent from here just now. Wait a few minutes and try again.')}`)
   if (field('website') !== '') back('sent=1')
 
+  const choices = await readSubmissionChoices()
   const judged = judgeSubmission(
     {
       name: field('name'),
@@ -35,6 +40,7 @@ export async function submitEvent(formData: FormData): Promise<void> {
       venueName: field('venue_name'),
       venueAddress: field('venue_address'),
       city: field('city'),
+      category: field('category'),
       bookingUrl: field('booking_url'),
       entry: field('entry'),
       price: field('price'),
@@ -45,12 +51,23 @@ export async function submitEvent(formData: FormData): Promise<void> {
       permission: field('permission') === 'yes',
     },
     new Date(),
+    choices.context,
   )
   if (!judged.ok) back(`problem=${encodeURIComponent(judged.problem)}`)
   else {
     const photo = formData.get('photo')
     const done = await recordSubmission(createAdminClient(), judged.row, photo instanceof File ? photo : null)
     if (done.state === 'refused') back(`problem=${encodeURIComponent(done.reason)}`)
-    back('sent=1')
+    else {
+      let outcome: SelfListingOutcome | null = null
+      try {
+        outcome = await selfListSubmission(done.id)
+      } catch (err) {
+        console.error('[submit-event] the self-listing check did not finish; the hourly run takes it:', err instanceof Error ? err.message : String(err))
+      }
+      if (outcome?.state === 'published') back(`sent=1&live=${encodeURIComponent(outcome.slug)}`)
+      if (outcome?.state === 'held') back('sent=1&held=1')
+      back('sent=1')
+    }
   }
 }

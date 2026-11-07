@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { runOccurrences } from '@/lib/listings/occurrence-run'
 import { occurrenceStore } from '@/lib/listings/occurrence-store'
 import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
+import { selfListWaiting } from '@/lib/listings/self-listing-run'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,19 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error('[cron/listing-occurrences] the venue photos were not dealt:', error instanceof Error ? error.message : error)
     }
-    return NextResponse.json({ ok: true, ...result, dealt })
+    // ORGANISER SELF-LISTING'S BACKSTOP (Lawal's rulings of 8 November 2026, 07:01 and 07:05): a submission whose own
+    // check never finished when it was sent is checked here, a few at a time, so none waits for a person. Skipped when
+    // the run above used its budget; the next hour takes them.
+    let selfListed: string[] = []
+    if (!result.stoppedEarly && Date.now() < started + RUN_BUDGET_MS - 60_000) {
+      try {
+        selfListed = (await selfListWaiting(new Date())).map((o) => o.state)
+        if (selfListed.length) console.log(`[cron/listing-occurrences] organiser submissions checked: ${selfListed.join(', ')}`)
+      } catch (error) {
+        console.error('[cron/listing-occurrences] the waiting submissions were not checked:', error instanceof Error ? error.message : error)
+      }
+    }
+    return NextResponse.json({ ok: true, ...result, dealt, selfListed })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)
     return NextResponse.json({ error: 'listing occurrences failed' }, { status: 500 })

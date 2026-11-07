@@ -374,6 +374,21 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'A system health check went critical or recovered.',
   },
   {
+    /*
+     * ORGANISER SELF-LISTING (Lawal's rulings of 8 November 2026, 06:42 and 07:01): Lawal hears of every organiser's
+     * event the moment it is live, or held with its reason, with one link.
+     *
+     * DECLARED `concernsOrganiserEvent: false`, with the reason written here: it is not about the organiser's money,
+     * orders or attendees, and the organiser is never left out of what it says. They are told on the form's own result
+     * line in the same moment ("Your event is live on EventLinqs. See your event", or that a person is looking at it),
+     * by the page they sent it from (src/app/submit-event/page.tsx).
+     */
+    type: 'organiser_submission_alert',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: "An organiser's event went live through the self-listing checks, or was held with its reason.",
+  },
+  {
     type: 'platform_sentinel_alert',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,

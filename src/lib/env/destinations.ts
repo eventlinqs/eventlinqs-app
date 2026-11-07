@@ -61,6 +61,15 @@ export function alertDestination(): string {
   return process.env.PAYMENT_ALERT_EMAIL?.trim() || PLATFORM_INBOX
 }
 
+/**
+ * Lawal's own mailbox, for what he asked to hear himself: every organiser submission, the moment it is live or held
+ * (his ruling of 8 November 2026, 06:42: "alerts Lawal at lawal@"). The founder role of the one contact domain, the
+ * mailbox he sends organiser outreach from, so it is the address he reads.
+ */
+export function founderDestination(): string {
+  return contactAddress('founder')
+}
+
 /** Where a customer support escalation lands. */
 export function supportDestination(): string {
   return process.env.SUPPORT_INBOX_EMAIL?.trim() || PLATFORM_INBOX
