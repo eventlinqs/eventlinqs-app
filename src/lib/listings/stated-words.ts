@@ -172,6 +172,42 @@ export function statedSeasonal(html: string, title: string, iso: string, zone: s
   return outside ? 'outside_season' : null
 }
 
+/**
+ * EVERY WEEKDAY UNDER ITS TITLE (geelonggallery.org.au, 7 November 2026: 'Gallery Tots', then 'Every Friday, 9.30 to
+ * 10.15am', then 'No sessions from Friday 18 December 2026 to Friday 22 January 2027'). Within the three lines after a line
+ * that is the night's title, a line 'every <weekday>' whose first time is the night's start: a range's am or pm, written
+ * once after its end, is the start's too. 'weekly' when it is and the night is outside every break the page states
+ * ('no sessions from <date> to <date>'); 'in_break' when it falls inside one (a wrong fact, never a pass); null otherwise.
+ */
+export function statedEveryWeekday(html: string, title: string, iso: string, zone: string): 'weekly' | 'in_break' | null {
+  const want = fold(title)
+  if (want.length < 4) return null
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const range = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:to|-)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/
+  const stated = lines.some((l, i) => {
+    if (fold(l) !== want) return false
+    return lines.slice(i + 1, i + 4).some((n) => {
+      if (!new RegExp(`\\bevery\\s+${p.weekday}\\b`).test(n)) return false
+      const m = range.exec(n)
+      const startMin = m
+        ? ((Number(m[1]) % 12) + ((m[3] ?? m[6]) === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0)
+        : clockTimes(n)[0]
+      return startMin === minutesOf(p)
+    })
+  })
+  if (!stated) return null
+  const breaks = lines
+    .filter((l) => /\bno (sessions?|classes|tours?)\b/.test(l))
+    .flatMap((l) => {
+      const dates = [...l.matchAll(new RegExp(`(\\d{1,2})\\s+(${MONTHS.join('|')})\\s+(\\d{4})`, 'g'))].map(
+        (d) => `${d[3]}-${String(MONTHS.indexOf(d[2]) + 1).padStart(2, '0')}-${d[1].padStart(2, '0')}`,
+      )
+      return dates.length === 2 ? [[dates[0], dates[1]] as const] : []
+    })
+  return breaks.some(([from, to]) => from <= p.ymd && p.ymd <= to) ? 'in_break' : 'weekly'
+}
+
 /** Every clock time on one lowercased line ('12:30pm', '6.00 pm', '7pm', '19:00'), as minutes past midnight, in order. */
 function clockTimes(line: string): number[] {
   const out: number[] = []
