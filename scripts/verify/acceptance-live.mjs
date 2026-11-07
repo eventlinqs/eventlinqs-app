@@ -37,7 +37,18 @@ const arg = (name, fallback) => {
 }
 const BASE = arg('base', 'https://www.eventlinqs.com.au').replace(/\/$/, '')
 const OUT = arg('out', '.')
-const CITIES = arg('cities', 'geelong,melbourne,ballarat,bendigo').split(',')
+/*
+ * IN PARTS (7 November 2026: the host stopped long background runs for low memory three times, and this run is about 55
+ * minutes, most of it the taps). --no-cities leaves the city checks out of a run; --tap-paths and --wide-paths name the
+ * pages tapped at 390 and at 1440 ('none' for none), so the taps run in parts that each fit a foreground run. Without
+ * them the run is the whole of it, as before.
+ */
+const CITIES = process.argv.includes('--no-cities') ? [] : arg('cities', 'geelong,melbourne,ballarat,bendigo').split(',').filter(Boolean)
+const pathsArg = (name, fallback) => {
+  const v = arg(name, null)
+  if (v === null) return fallback
+  return v === 'none' ? [] : v.split(',').filter(Boolean)
+}
 const REF = 'gndnldyfudbytbboxesk'
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 if (!TOKEN) {
@@ -168,8 +179,8 @@ for (const path of ['/', '/events']) {
 if (process.argv.includes('--skip-taps')) {
   console.log('NOT RUN every-tap-works: --skip-taps')
 } else {
-  const TAP_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026', '/login', '/signup']
-  const taps = await everyTap(browser, BASE, TAP_PATHS, join(OUT, 'every-tap'))
+  const TAP_PATHS = pathsArg('tap-paths', ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events', '/events/boyz-ii-men-mt-duneed-estate-2026-11-28', '/events/amcf-2026', '/login', '/signup'])
+  const taps = TAP_PATHS.length ? await everyTap(browser, BASE, TAP_PATHS, join(OUT, 'every-tap')) : []
   for (const path of TAP_PATHS) {
     const mine = taps.filter((t) => t.path === path)
     const bad = mine.filter((t) => !t.ok)
@@ -178,8 +189,8 @@ if (process.argv.includes('--skip-taps')) {
   // AND AT 1440 (the CONTROLLER's 15:10 of 4 November (1): 'at 390 and 1440 on /, /city/geelong, /city/melbourne,
   // /city/ballarat, /city/bendigo, /state/victoria and one event page'): the desktop layout, a touch-capable screen so
   // the same press is made.
-  const WIDE_PATHS = ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events/amcf-2026']
-  const wide = await everyTap(browser, BASE, WIDE_PATHS, join(OUT, 'every-tap-1440'), { viewport: { width: 1440, height: 900 }, hasTouch: true, isMobile: false, deviceScaleFactor: 1 })
+  const WIDE_PATHS = pathsArg('wide-paths', ['/', '/city/geelong', '/city/melbourne', '/city/ballarat', '/city/bendigo', '/state/victoria', '/events/amcf-2026'])
+  const wide = WIDE_PATHS.length ? await everyTap(browser, BASE, WIDE_PATHS, join(OUT, 'every-tap-1440'), { viewport: { width: 1440, height: 900 }, hasTouch: true, isMobile: false, deviceScaleFactor: 1 }) : []
   for (const path of WIDE_PATHS) {
     const mine = wide.filter((t) => t.path === path)
     const bad = mine.filter((t) => !t.ok)

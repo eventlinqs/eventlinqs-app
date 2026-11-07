@@ -31,6 +31,39 @@ const YES = argOf('--yes')
 const EMAIL = argOf('--email')
 const OUT = argOf('--out')
 const BASE = (process.env.BASE ?? PRODUCTION).replace(/\/$/, '')
+
+/*
+ * THE REHEARSAL (the CONTROLLER's 05:20 of 7 November 2026: 'rehearse both on TEST first'). `--rehearse <a TEST-reading
+ * site>` loads every page this script drives that a signed-out visitor can load and checks every control it presses or fills
+ * is there, by the same locator; it submits nothing and writes nothing, and it refuses production. The steps behind a
+ * sign-in are the person's own (the script waits for them), so the rehearsal checks the ways in.
+ */
+const REHEARSE = argOf('--rehearse')
+if (REHEARSE) {
+  const base = REHEARSE.replace(/\/$/, '')
+  if (base === PRODUCTION || /eventlinqs\.com\.au/.test(base)) {
+    console.error('REFUSED: a rehearsal never runs against production')
+    process.exit(2)
+  }
+  const b = await chromium.launch({ headless: true })
+  const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage()
+  const checks = []
+  const has = async (where, what, locator) => checks.push(`${(await locator.count()) > 0 ? 'FOUND  ' : 'MISSING'} ${where}: ${what}`)
+  for (const [path, list] of [
+    ['/signup', [['email', (q) => q.getByLabel(/email/i).first()], ['password', (q) => q.getByLabel(/password/i).first()], ['the submit button', (q) => q.getByRole('button', { name: /sign up|create account|continue/i }).first()]]],
+    ['/login', [['email', (q) => q.getByLabel(/email/i).first()], ['password', (q) => q.getByLabel(/password/i).first()], ['the sign in button', (q) => q.getByRole('button', { name: /sign in|log in/i }).first()]]],
+  ]) {
+    const r = await p.goto(`${base}${path}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await p.waitForTimeout(2500)
+    checks.push(`HTTP ${r?.status()} ${path}`)
+    for (const [what, loc] of list) await has(path, what, loc(p))
+  }
+  await b.close()
+  console.log(checks.join('\n'))
+  const missing = checks.filter((c) => c.startsWith('MISSING') || /^HTTP (?!200)/.test(c))
+  console.log(missing.length ? `REHEARSAL: ${missing.length} problem(s)` : 'REHEARSAL: every control this script presses on a signed-out page is there')
+  process.exit(missing.length ? 1 : 0)
+}
 const DAY = new Date().toISOString().slice(0, 10)
 const ORG = `EventLinqs L1 Test Organiser ${DAY}`
 const EVENT = `EventLinqs L1 Test Event ${DAY}`
@@ -134,7 +167,26 @@ try {
     note('row 5: launch kit cards', `${imgs.filter((i) => i.ok).length} of ${imgs.length} rendered`)
   }
 
-  // Row 7: attendees, orders, and the GST report.
+  /*
+   * THE HAND OVER TO THE PURCHASE (found reading both scripts for the CONTROLLER's 05:20 rehearsal, 7 November 2026): the
+   * purchase, rows 9 to 12, buys and refunds a ticket on THIS event, so it runs here, after publish and before row 6.
+   * Row 6 used to delete this event and the cleanup to delete the account, which would have left the purchase nothing to
+   * buy; and once an order exists the database keeps its money records, so this event is archived, never deleted, and
+   * row 6 runs on a second, zero-sales event.
+   */
+  let bought = false
+  if (eventId) {
+    const db = createClient(`https://${REF}.supabase.co`, await serviceKey(), { auth: { persistSession: false } })
+    const { data: ev } = await db.from('events').select('slug, title').eq('id', eventId).maybeSingle()
+    note('hand over', `the purchase runs now on slug '${ev?.slug}', title '${ev?.title}'`)
+    const answer = await ask(
+      `Run the purchase now, in the second window (RUN-THIS-L1-PURCHASE.ps1 with slug ${ev?.slug}); when its refund is done type BOUGHT, or SKIPPED if no purchase was made, then Enter: `,
+    )
+    bought = /^bought$/i.test(answer)
+    note('hand over', bought ? 'the purchase and its refund are done' : 'no purchase made')
+  }
+
+  // Row 7: attendees, orders, and the GST report, read after the purchase so the order and its refund are on them.
   if (eventId) {
     for (const [path, name] of [[`/dashboard/events/${eventId}/attendees`, '7-attendees'], [`/dashboard/events/${eventId}/orders`, '7-orders'], ['/dashboard/reports/gst', '7-gst']]) {
       note(`row 7: ${path}`, `HTTP ${await go(path, name)}; ${(await main()).slice(0, 100)}`)
@@ -148,17 +200,26 @@ try {
   await ask(`Read every email ${EMAIL} received (confirmation, publish, any other) and that each renders; press Enter: `)
   note('row 15', 'emails read by the person; record which arrived in the notes by hand')
 
-  // Row 6, last, which also removes the event: pause, unpause, archive, restore, delete.
+  // Row 6, last, on a SECOND, zero-sales event: pause, unpause, archive, restore, delete. The paid event is archived.
   if (eventId) {
-    for (const act of ['Pause', 'Unpause', 'Archive', 'Restore', 'Delete']) {
-      await go(`/dashboard/events/${eventId}`, `6-before-${act.toLowerCase()}`)
-      await ask(`Press ${act} on the event (confirm if asked); press Enter: `)
-      await page.waitForTimeout(2000)
-      note(`row 6: ${act}`, (await main()).slice(0, 120))
-      await shot(`6-after-${act.toLowerCase()}`)
+    await go('/dashboard/events/create', '6-create-second')
+    await ask(`In the browser: create '${EVENT} (row 6)' as a draft with no tickets sold, and publish it; press Enter when its dashboard page is open: `)
+    const second = page.url().match(/\/dashboard\/events\/([0-9a-f-]{36})/)?.[1] ?? null
+    note('row 6: the zero-sales event', second ?? `NO EVENT ID IN ${page.url()}`)
+    if (second) {
+      for (const act of ['Pause', 'Unpause', 'Archive', 'Restore', 'Delete']) {
+        await go(`/dashboard/events/${second}`, `6-before-${act.toLowerCase()}`)
+        await ask(`Press ${act} on the zero-sales event (confirm if asked); press Enter: `)
+        await page.waitForTimeout(2000)
+        note(`row 6: ${act}`, (await main()).slice(0, 120))
+        await shot(`6-after-${act.toLowerCase()}`)
+      }
+      const after = await page.goto(`${BASE}/dashboard/events/${second}`, { waitUntil: 'domcontentloaded' })
+      note('row 6: the deleted event', `HTTP ${after?.status()}`)
     }
-    const after = await page.goto(`${BASE}/dashboard/events/${eventId}`, { waitUntil: 'domcontentloaded' })
-    note('row 6: the deleted event', `HTTP ${after?.status()}`)
+    await go(`/dashboard/events/${eventId}`, '6-archive-paid')
+    await ask(bought ? 'Press Archive on the paid test event (its refunded order is a money record and stays); press Enter: ' : 'Press Delete on the test event (no order was made); press Enter: ')
+    note('the paid test event', (await main()).slice(0, 120))
   }
 } catch (err) {
   note('STOPPED', String(err).slice(0, 300))
@@ -166,7 +227,10 @@ try {
 } finally {
   await browser.close()
   // The cleanup: the test account, through the one way an account is deleted; it fails the run if the account remains.
-  try {
+  // An account holding an order is kept: its money records are preserved (LAW 19 (d)), and that is written in the notes.
+  if (bought) {
+    note('cleanup', `the test account ${EMAIL} is KEPT: it holds the refunded A$2.00 order, a money record the database preserves; its event is archived`)
+  } else try {
     const db = createClient(`https://${REF}.supabase.co`, await serviceKey(), { auth: { persistSession: false } })
     const { data } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const user = data?.users?.find((u) => u.email?.toLowerCase() === EMAIL.toLowerCase())

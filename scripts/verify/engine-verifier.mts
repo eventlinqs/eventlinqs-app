@@ -31,6 +31,10 @@ const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as type
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { statedInWords, statedWeekly } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { verifierVerdict, sourcesToSwitchOff, asksTheWords, SOURCE_DISAGREES, PDF_SOURCE, OUTSIDE_TERM } = pick((await import('@/lib/listings/verifier-verdict')) as typeof import('@/lib/listings/verifier-verdict'))
+const { expectedOfferCents, liveOfferCents, priceAgrees, categoryShown } = pick((await import('@/lib/listings/verifier-fields')) as typeof import('@/lib/listings/verifier-fields'))
+const { BOOKING_LINK_COLUMNS, toBookingLink } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
+type BookingLink = import('@/lib/events/booking-links').BookingLink
+type BookingLinkRow = import('@/lib/events/booking-links').BookingLinkRow
 
 const args = process.argv.slice(2)
 const valueOf = (flag: string): string | null => (args.includes(flag) ? args[args.indexOf(flag) + 1] ?? null : null)
@@ -87,8 +91,8 @@ if (!anon || !service) {
 const db = createClient(`https://${REF}.supabase.co`, anon, { auth: { persistSession: false } })
 const records = createClient(`https://${REF}.supabase.co`, service, { auth: { persistSession: false } })
 
-type Row = { id: string; title: string; slug: string; start_date: string; timezone: string | null; venue_name: string | null; city_primary: string | null; external_ticket_url: string | null; listing_series_id: string | null }
-const cols = 'id, title, slug, start_date, timezone, venue_name, city_primary, external_ticket_url, listing_series_id'
+type Row = { id: string; title: string; slug: string; start_date: string; timezone: string | null; venue_name: string | null; city_primary: string | null; external_ticket_url: string | null; listing_series_id: string | null; category_id: string | null }
+const cols = 'id, title, slug, start_date, timezone, venue_name, city_primary, external_ticket_url, listing_series_id, category_id'
 const nowIso = new Date().toISOString()
 const { data: critical } = await db.from('events').select(cols).in('title', ONLY ? [ONLY] : CRITICAL_TITLES).eq('status', 'published').gt('start_date', nowIso).order('start_date')
 const sample: Row[] = []
@@ -117,6 +121,17 @@ for (const c of (checks ?? []).sort((a, b) => String(b.source_date).localeCompar
   if (/^https?:\/\//.test(String(c.source_url)) && !list.includes(c.source_url as string)) list.push(c.source_url as string)
   sourcesOf.set(c.series_id as string, list)
 }
+
+/* PRICE AND CATEGORY (src/lib/listings/verifier-fields.ts): each night's booking links and its category's name, read once,
+   so the live page's offered price and hero category are judged against what is stored. */
+const nightIds = nights.map((n) => n.id)
+const { data: linkRows } = await records.from('event_booking_links').select(`event_id, ${BOOKING_LINK_COLUMNS}`).in('event_id', nightIds).order('position')
+const linksOf = new Map<string, BookingLink[]>()
+for (const r of (linkRows ?? []) as unknown as (BookingLinkRow & { event_id: string })[]) linksOf.set(r.event_id, [...(linksOf.get(r.event_id) ?? []), toBookingLink(r)])
+const catIds = [...new Set(nights.map((n) => n.category_id).filter(Boolean))] as string[]
+const { data: cats } = await records.from('event_categories').select('id, name').in('id', catIds)
+const catName = new Map(((cats ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]))
+const dollars = (c: number | null) => (c === null ? 'no price' : `$${(c / 100).toFixed(2)}`)
 
 const lastHit = new Map<string, number>()
 const stopped = new Set<string>()
@@ -152,7 +167,7 @@ const timeOnly = (iso: string, zone: string) =>
    tests/unit/listings/stated-words.test.ts (North Central Goldfields Regional Library's storytimes, 5 November). */
 
 
-type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'; why: string; sourceUrl: string; critical: boolean }
+type Result = { title: string; city: string; stored: string; source: string; live390: string; live1440: string; price: string; category: string; verdict: 'PASS' | 'FAIL' | 'NOT JUDGED' | 'UNVERIFIABLE'; why: string; sourceUrl: string; critical: boolean }
 const results: Result[] = []
 const browser = await chromium.launch()
 async function judgeNight(n: Row): Promise<void> {
@@ -217,11 +232,26 @@ async function judgeNight(n: Row): Promise<void> {
     source = `states ${disagree.join('; ')}`
   }
   const live: Record<number, { ok: boolean; text: string }> = {}
+  let priceOk = true
+  let priceText = 'not read'
+  let categoryOk = true
+  let categoryText = 'not read'
   for (const width of [390, 1440]) {
     const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } })
     try {
       await page.goto(`${BASE}/events/${n.slug}`, { waitUntil: 'domcontentloaded', timeout: 45000 })
       const html = await page.content()
+      if (width === 390) {
+        const links = linksOf.get(n.id) ?? []
+        const expected = links.length ? expectedOfferCents(links, new Date()) : null
+        const offered = liveOfferCents(html)
+        priceOk = links.length === 0 || priceAgrees(expected, offered)
+        priceText = links.length === 0 ? 'no booking link, not compared' : `${dollars(expected)} stored, ${dollars(offered)} live`
+        const category = n.category_id ? catName.get(n.category_id) ?? null : null
+        const shownCategory = categoryShown(await page.locator('main').innerText().catch(() => ''), n.title, category)
+        categoryOk = shownCategory !== false
+        categoryText = shownCategory === null ? 'none stored' : `${category} ${shownCategory ? 'shown' : 'NOT shown'}`
+      }
       const ldStarts = [...html.matchAll(/"startDate"\s*:\s*"([^"]+)"/g)].map((m) => m[1])
       // '7:30 pm' and '7:30pm' are one time: the walk in pages write it without the space.
       const shown = (await page.locator('body').innerText()).replace(/\u202f/g, ' ').toLowerCase().replace(/\s+(am|pm)\b/g, '$1')
@@ -236,14 +266,25 @@ async function judgeNight(n: Row): Promise<void> {
       await page.close()
     }
   }
-  const liveOk = live[390].ok && live[1440].ok
+  const liveOk = live[390].ok && live[1440].ok && priceOk && categoryOk
   /* The verdict, one rule: src/lib/listings/verifier-verdict.ts (UNVERIFIABLE with its reason, a page that gave no answer
      among them; a source going quiet is never read as a cancellation; each is listed for a person's re-check). */
   const verdict: Result['verdict'] = verifierVerdict({ sourceOk, liveOk, source })
-  const why = sourceOk === false ? SOURCE_DISAGREES : !liveOk ? 'the live page disagrees with the stored row' : sourceOk === null ? source : 'source, stored and live agree'
-  results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
+  const why =
+    sourceOk === false
+      ? SOURCE_DISAGREES
+      : !priceOk
+        ? 'the live price disagrees with the stored links'
+        : !categoryOk
+          ? 'the live page does not show the stored category'
+          : !liveOk
+            ? 'the live page disagrees with the stored row'
+            : sourceOk === null
+              ? source
+              : 'source, stored and live agree'
+  results.push({ title: n.title, city: n.city_primary ?? '', stored, source, live390: live[390].text, live1440: live[1440].text, price: priceText, category: categoryText, verdict, why, sourceUrl: src, critical: criticalIds.has(n.id) })
   if (!criticalIds.has(n.id) && (verdict === 'PASS' || verdict === 'FAIL')) judgedIn.set(n.city_primary ?? '', (judgedIn.get(n.city_primary ?? '') ?? 0) + 1)
-  console.log(`${verdict.padEnd(10)} ${n.title.slice(0, 44).padEnd(44)} stored ${stored} | source: ${source} | 390: ${live[390].text} | 1440: ${live[1440].text}`)
+  console.log(`${verdict.padEnd(10)} ${n.title.slice(0, 44).padEnd(44)} stored ${stored} | source: ${source} | 390: ${live[390].text} | 1440: ${live[1440].text} | price: ${priceText} | category: ${categoryText}`)
 }
 /* First each city to its count of judged nights; then, where a city's coming nights run out of judgeable ones (most of
    Bendigo's are library sessions), the other cities make up the sample, a night from each in turn, so the bar always
@@ -277,9 +318,9 @@ const md = [
   '',
   baselineLine,
   '',
-  '| Verdict | Night | City | Stored (local) | Source now | Live 390 | Live 1440 | Why |',
-  '|---|---|---|---|---|---|---|---|',
-  ...results.map((r) => `| ${r.verdict} | ${r.title} | ${r.city} | ${r.stored} | ${r.source} | ${r.live390} | ${r.live1440} | ${r.why} |`),
+  '| Verdict | Night | City | Stored (local) | Source now | Live 390 | Live 1440 | Price | Category | Why |',
+  '|---|---|---|---|---|---|---|---|---|---|',
+  ...results.map((r) => `| ${r.verdict} | ${r.title} | ${r.city} | ${r.stored} | ${r.source} | ${r.live390} | ${r.live1440} | ${r.price} | ${r.category} | ${r.why} |`),
 ].join('\n')
 writeFileSync(`${OUT}/verifier-${stamp}.md`, md + '\n')
 writeFileSync(`${OUT}/verifier-${stamp}.json`, JSON.stringify(results, null, 1))
