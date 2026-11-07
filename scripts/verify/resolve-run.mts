@@ -53,9 +53,9 @@ async function sql<T>(query: string): Promise<T[]> {
   return res.json() as Promise<T[]>
 }
 const ids = [...new Set([...wrong.map((f) => f.eventId), ...sweep.unreadable.map((u) => u.eventId)])].filter((id) => /^[0-9a-f-]{36}$/.test(id))
-type EventRow = { id: string; series_id: string | null; title: string; start_date: string; timezone: string | null; links: { url: string; price_from_cents: number | null; availability: string | null }[] | null }
+type EventRow = { id: string; series_id: string | null; title: string; start_date: string; timezone: string | null; venue_name: string | null; venue_address: string | null; links: { url: string; price_from_cents: number | null; availability: string | null }[] | null }
 const events = await sql<EventRow>(`
-  select e.id, e.listing_series_id as series_id, e.title, e.start_date, e.timezone,
+  select e.id, e.listing_series_id as series_id, e.title, e.start_date, e.timezone, e.venue_name, e.venue_address,
          (select json_agg(json_build_object('url', l.url, 'price_from_cents', l.price_from_cents, 'availability', l.availability) order by l.position)
             from public.event_booking_links l where l.event_id = e.id) as links
     from public.events e where e.id in (${ids.map((id) => `'${id}'`).join(',')})`)
@@ -125,12 +125,38 @@ async function statedBy(u: string, field: string, e: EventRow): Promise<string |
     const same = found.filter((f) => fold(f.title) === fold(e.title))
     return same.length === 1 ? new Date(same[0].startsAt).toISOString() : null
   }
-  return null
+  if (field === 'venue') {
+    /* The place this page gives THE night (the same minute, else its one night), judged by the sweep's own rule
+       (engine-accuracy-sweep.mts samePlace): the street where both give one, else the names folded. The same place answers
+       with ours, so it keeps; another place answers with the page's own name and address. The first run had no venue
+       reader, so Macbeth's venue read as unstated and its night would have been held for a missing reader, not a doubt. */
+    const rule = pageRuleFor(u)
+    const found = rule ? rule.read(p.body, u) : eventsFromBody(p.body, u)
+    const at = new Date(e.start_date).getTime()
+    const night = found.find((f) => Math.abs(new Date(f.startsAt).getTime() - at) < 60_000) ?? (found.length === 1 ? found[0] : undefined)
+    if (!night?.venueName) return null
+    return samePlace(e, night.venueName, night.venueAddress ?? null) ? (e.venue_name ?? night.venueName) : `${night.venueName}${night.venueAddress ? ` (${night.venueAddress})` : ''}`
+  }
+  throw new Error(`no reader for the field '${field}': a field nobody reads must never hold a night`)
+}
+/** The street a venue address names (its first number and street word), as the sweep reads it. */
+const street = (address: string | null) => {
+  const m = fold(address ?? '').match(/\b(\d+[a-z]?)\s+([a-z]+)/)
+  return m ? `${m[1]} ${m[2]}` : null
+}
+function samePlace(e: EventRow, name: string, address: string | null): boolean {
+  const a = street(e.venue_address)
+  const b = street(address)
+  if (a && b) return a === b
+  const x = fold(e.venue_name ?? '').replace(/^the /, '')
+  const y = fold(name).replace(/^the /, '')
+  return x !== '' && (x === y || x.includes(y) || y.includes(x))
 }
 const storedOf = (field: string, e: EventRow): string | null => {
   const l = e.links?.[0]
   if (field === 'price') return l?.price_from_cents == null ? null : String(l.price_from_cents)
   if (field === 'status') return l?.availability ?? null
+  if (field === 'venue') return e.venue_name
   return e.start_date
 }
 
