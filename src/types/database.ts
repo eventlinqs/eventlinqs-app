@@ -3797,6 +3797,13 @@ export type Database = {
             foreignKeyName: "listing_holds_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_holds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
