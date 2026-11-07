@@ -17,6 +17,7 @@ import { venueSlugify } from '@/lib/venues/venue-slug'
 import type { EventStatus } from '@/types/database'
 import { occurrenceSlug, type ExistingOccurrence } from './occurrence-plan'
 import type { CreateOccurrence, ListingNight, OccurrenceStore, StoreResult } from './occurrence-run'
+import { bornVisibility, holdRowFor } from './held-night'
 
 /**
  * THE DAILY RUN'S DATABASE (WI2 Part 1, docs/walk-in/WI2-PLAN.md section 7a).
@@ -220,6 +221,18 @@ export function occurrenceStore(): OccurrenceStore {
       const createdBy = await ownerOf(night.organisationId)
       if (!createdBy) return refused('the organisation that holds the night has no owner')
 
+      // A series whose nights are held stays held as its dates roll on (src/lib/listings/held-night.ts): the new date is
+      // born private with its own hold. Fail closed: a hold that cannot be read makes no night, and the next run retries.
+      const { data: hold, error: holdError } = await admin
+        .from('listing_holds')
+        .select('field, reason')
+        .eq('series_id', night.id)
+        .eq('scope', 'night')
+        .is('released_at', null)
+        .limit(1)
+        .maybeSingle()
+      if (holdError) return refused(`whether the night is held could not be read: ${holdError.message}`)
+
       // Coordinates once per venue, by the organiser's own rule, stored on the venue.
       let latitude = venue.latitude
       let longitude = venue.longitude
@@ -269,7 +282,7 @@ export function occurrenceStore(): OccurrenceStore {
           slug,
           description: null,
           event_type: 'in_person',
-          visibility: 'public',
+          visibility: bornVisibility(hold),
           status: 'draft',
           entry_mode: soldElsewhere ? 'tickets' : 'walk_in',
           ...(soldElsewhere ? { is_free: links.every((l) => l.kind === 'free_register') } : {}),
@@ -302,6 +315,11 @@ export function occurrenceStore(): OccurrenceStore {
       const { data: inserted, error: insertError } = attempt
       if (insertError || !inserted) return refused(`the occurrence could not be written: ${insertError?.message ?? 'no row'}`)
       const eventId = inserted.id as string
+
+      if (hold) {
+        const { error: heldError } = await admin.from('listing_holds').insert(holdRowFor(eventId, night.id, hold))
+        if (heldError) return takeAway(eventId, `its hold could not be written: ${heldError.message}`)
+      }
 
       const { error: guideError } = await admin.from('event_guides').upsert({ event_id: eventId, days: [guideDay] }, { onConflict: 'event_id' })
       if (guideError) return takeAway(eventId, `its hours could not be written: ${guideError.message}`)
