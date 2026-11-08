@@ -535,7 +535,7 @@ export function CityGuide({
         {/* 6 HOSTING AN EVENT: existing routes only, and only offers the platform really makes (a claim only while claims are open). */}
         <section aria-label={`Hosting an event in ${city.name}?`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
           <SectionHead eyebrow="For organisers" title={`Hosting an event in ${city.name}?`} />
-          <ul className={`mt-4 grid grid-cols-1 gap-3 ${claimsOn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+          <ul className={`mt-4 grid grid-cols-1 gap-3 ${claimsOn ? 'md:grid-cols-2' : ''}`}>
             {claimsOn ? (
               <li>
                 <a href="#city-calendar" className={ORGANISER_LINK}>

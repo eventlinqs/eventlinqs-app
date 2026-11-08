@@ -41,7 +41,7 @@ describe('the header at 320', () => {
   test("the bar's 'Get Started' is shown from 390 up only, so the menu button always fits", () => {
     const { container } = render(<SiteHeaderClient location={LOCATION} user={null} />)
     const sheet = container.ownerDocument.getElementById('mobile-nav-sheet') as HTMLElement
-    const inBar = [...container.querySelectorAll('a[href="/start"]')].filter((a) => !sheet.contains(a))
+    const inBar = [...container.querySelectorAll('a[href="/signup"]')].filter((a) => !sheet.contains(a))
     expect(inBar).toHaveLength(1)
     const holder = inBar[0].parentElement as HTMLElement
     expect(holder.className.split(' ')).toEqual(expect.arrayContaining(['hidden', 'min-[390px]:block']))
@@ -50,7 +50,7 @@ describe('the header at 320', () => {
   test("below 390 'Get Started' is still one tap away, in the menu sheet", () => {
     render(<SiteHeaderClient location={LOCATION} user={null} />)
     const sheet = document.getElementById('mobile-nav-sheet') as HTMLElement
-    expect([...sheet.querySelectorAll('a[href="/start"]')].some((a) => /Get Started/.test(a.textContent ?? ''))).toBe(true)
+    expect([...sheet.querySelectorAll('a[href="/signup"]')].some((a) => /Get Started/.test(a.textContent ?? ''))).toBe(true)
   })
 })
 

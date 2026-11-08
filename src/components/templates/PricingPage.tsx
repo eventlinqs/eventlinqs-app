@@ -316,7 +316,7 @@ export async function PricingPage() {
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button variant="primary" size="lg" href="/organisers/signup">
+              <Button variant="primary" size="lg" href="/start?src=pricing">
                 Start selling tickets
               </Button>
               <Button variant="secondary" size="lg" href="/contact?topic=organiser">

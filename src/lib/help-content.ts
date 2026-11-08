@@ -56,7 +56,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "There are two ways, and both start from 'Get Started' at the top of any page. To sell tickets on EventLinqs, create your organiser account, build your event and press Publish: it goes live straight away once it passes the automatic checks (a date still to come, a cover photo, a venue for an in-person event, and a payout account for paid tickets). If you already sell tickets on another site, choose 'List your event' instead: paste the link to your booking page and add a photo you own. We check the event against that page and list it free, usually within minutes, with a button straight to your booking page.",
+        a: "There are two ways, and both start from 'Sell tickets' at the foot of any page. To sell tickets on EventLinqs, create your organiser account, build your event and press Publish: it goes live straight away once it passes the automatic checks (a date still to come, a cover photo, a venue for an in-person event, and a payout account for paid tickets). If you already sell tickets on another site, choose 'List your event' instead: paste the link to your booking page and add a photo you own. We check the event against that page and list it free, usually within minutes, with a button straight to your booking page.",
       },
       {
         q: 'Is it free to create an account?',

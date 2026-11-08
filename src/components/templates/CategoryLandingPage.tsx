@@ -252,7 +252,7 @@ export function CategoryLandingPage({
             <Button
               variant="primary"
               size="lg"
-              href="/organisers/signup"
+              href="/start?src=category"
             >
               Start selling tickets
             </Button>

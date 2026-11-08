@@ -65,10 +65,20 @@ describe('every organiser entry leads to the door', () => {
     expect(FOR_ORGANISERS.find((l) => l.label === 'Sell tickets')?.href).toBe('/start?src=footer')
   })
 
-  it("the header's Get Started, in the bar and in the menu sheet", () => {
+  it("home's List your event, and Start selling tickets on the category and pricing pages, each with its source", () => {
+    expect(read('src/components/features/home/home-hero.tsx')).toContain('href="/start?src=home"')
+    expect(read('src/components/templates/CategoryLandingPage.tsx')).toContain('href="/start?src=category"')
+    expect(read('src/components/templates/PricingPage.tsx')).toContain('href="/start?src=pricing"')
+  })
+
+  it("the header's Get Started stays the account sign up for everyone, and that page offers a host the door", () => {
+    // /signup opens 'Create your account' for a ticket buyer; sending it to 'How are you selling tickets?' would ask a
+    // buyer a seller's question (Eventbrite keeps Sign Up apart from Create Events in its header, read 9 November).
     const header = read('src/components/layout/site-header-client.tsx')
-    expect(header.match(/<Button href="\/start"/g)?.length).toBe(2)
-    expect(header).not.toMatch(/<Button href="\/signup"/)
+    expect(header.match(/<Button href="\/signup"/g)?.length).toBe(2)
+    const signup = read('src/app/(auth)/signup/page.tsx')
+    expect(signup).toContain('Hosting an event?')
+    expect(signup).toContain('href="/start?src=signup"')
   })
 
   it("/organisers' closing band offers one button to the door, not two paths chosen for the visitor", () => {
