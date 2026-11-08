@@ -385,6 +385,17 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'The organiser who sent an event in hears that it is live on EventLinqs, with its link.',
   },
   {
+    /**
+     * The sell-through report (Lawal's ruling of 8 November 2026, 16:13, build 3): the day after a listed event ends, the
+     * organiser who sent it in gets the people EventLinqs counted for it, once (src/lib/listings/sell-through-report.ts).
+     * organiser_report_email turns it off.
+     */
+    type: 'organiser_sell_through_report',
+    roles: ['organiser'],
+    concernsOrganiserEvent: true,
+    what: 'The organiser who sent an event in hears, the day after it ends, how many people EventLinqs counted for it.',
+  },
+  {
     type: 'platform_sentinel_alert',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,

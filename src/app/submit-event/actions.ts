@@ -49,6 +49,7 @@ export async function submitEvent(formData: FormData): Promise<void> {
       photoOwned: field('photo_owned') === 'yes',
       authority: field('authority') === 'yes',
       permission: field('permission') === 'yes',
+      offers: field('offers') === 'yes',
     },
     new Date(),
     choices.context,

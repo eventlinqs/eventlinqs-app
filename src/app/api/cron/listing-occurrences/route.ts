@@ -4,6 +4,7 @@ import { runOccurrences } from '@/lib/listings/occurrence-run'
 import { occurrenceStore } from '@/lib/listings/occurrence-store'
 import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
 import { attachApprovedPhotos, selfListWaiting } from '@/lib/listings/self-listing-run'
+import { sendSellThroughReports } from '@/lib/listings/sell-through-report'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +69,19 @@ export async function GET(request: NextRequest) {
         console.error('[cron/listing-occurrences] the waiting submissions were not checked:', error instanceof Error ? error.message : error)
       }
     }
-    return NextResponse.json({ ok: true, ...result, dealt, selfListed })
+    // THE SELL-THROUGH REPORT (Lawal's ruling of 8 November 2026, 16:13, build 3): the day after a listed event ends, its
+    // organiser hears what EventLinqs counted for it, once (src/lib/listings/sell-through-report.ts). Rides this run, so
+    // no cron is added; skipped when the run is near its budget, and the next hour takes them.
+    let reports: string[] = []
+    if (!result.stoppedEarly && Date.now() < started + RUN_BUDGET_MS - 60_000) {
+      try {
+        reports = await sendSellThroughReports(new Date())
+        for (const line of reports) console.log(`[cron/listing-occurrences] report: ${line}`)
+      } catch (error) {
+        console.error('[cron/listing-occurrences] the reports were not run:', error instanceof Error ? error.message : error)
+      }
+    }
+    return NextResponse.json({ ok: true, ...result, dealt, selfListed, reports: reports.length })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)
     return NextResponse.json({ error: 'listing occurrences failed' }, { status: 500 })

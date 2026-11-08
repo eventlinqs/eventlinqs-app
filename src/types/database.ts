@@ -4116,6 +4116,8 @@ export type Database = {
           held_because: string | null
           id: string
           name: string
+          offers_consent_at: string | null
+          offers_consent_words: string | null
           permission_given_at: string
           permission_words: string
           photo_owned: boolean
@@ -4124,6 +4126,8 @@ export type Database = {
           published_event_id: string | null
           published_series_id: string | null
           refused_because: string | null
+          report_outcome: string | null
+          report_sent_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           role: string
@@ -4150,6 +4154,8 @@ export type Database = {
           held_because?: string | null
           id?: string
           name: string
+          offers_consent_at?: string | null
+          offers_consent_words?: string | null
           permission_given_at: string
           permission_words: string
           photo_owned?: boolean
@@ -4158,6 +4164,8 @@ export type Database = {
           published_event_id?: string | null
           published_series_id?: string | null
           refused_because?: string | null
+          report_outcome?: string | null
+          report_sent_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role: string
@@ -4184,6 +4192,8 @@ export type Database = {
           held_because?: string | null
           id?: string
           name?: string
+          offers_consent_at?: string | null
+          offers_consent_words?: string | null
           permission_given_at?: string
           permission_words?: string
           photo_owned?: boolean
@@ -4192,6 +4202,8 @@ export type Database = {
           published_event_id?: string | null
           published_series_id?: string | null
           refused_because?: string | null
+          report_outcome?: string | null
+          report_sent_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role?: string

@@ -86,6 +86,15 @@ export const SUBMISSION_PRIVACY_LINE =
 /** Asked only when a photo is sent; a submission never needs one (K: discovery never stops for want of an image). */
 export const PHOTO_OWNED_WORDS = 'I own this photo or have the right to share it.'
 
+/**
+ * THE ORGANISER'S YES TO HEAR ABOUT SELLING ON EVENTLINQS (Lawal's ruling of 8 November 2026, 16:13, build 3). Asked
+ * unticked and never required. A yes is kept with these exact words and its moment (listing_submissions.offers_consent_*);
+ * the words change only by a new constant, and every earlier yes keeps the words it agreed to. Only an organiser who
+ * ticked it is invited, in their event's report, to sell their next event on EventLinqs: an offer makes a message
+ * commercial under the Spam Act 2003, and ACMA prefers express consent and puts the proof on the sender.
+ */
+export const OFFERS_CONSENT_WORDS = 'Yes, tell me about selling tickets on EventLinqs. I can unsubscribe at any time.'
+
 export const SUBMISSION_ZONE = 'Australia/Melbourne'
 
 /** The furthest ahead an event may start, so a mistyped year is caught. */
@@ -112,6 +121,8 @@ export interface SubmissionInput {
   readonly photoOwned: boolean
   readonly authority: boolean
   readonly permission: boolean
+  /** The unticked box OFFERS_CONSENT_WORDS; optional, so a caller from before 9 November still judges. */
+  readonly offers?: boolean
 }
 
 export interface SubmissionRow {
@@ -133,6 +144,9 @@ export interface SubmissionRow {
   readonly authority_confirmed: true
   readonly permission_words: string
   readonly permission_given_at: string
+  /** Present only when the organiser ticked OFFERS_CONSENT_WORDS: the words and the moment, kept as agreed. */
+  readonly offers_consent_words?: string
+  readonly offers_consent_at?: string
 }
 
 export type SubmissionJudgement = { readonly ok: true; readonly row: SubmissionRow } | { readonly ok: false; readonly problem: string }
@@ -226,6 +240,7 @@ export function judgeSubmission(input: SubmissionInput, now: Date, context: Subm
       authority_confirmed: true,
       permission_words: PERMISSION_WORDS,
       permission_given_at: now.toISOString(),
+      ...(input.offers === true ? { offers_consent_words: OFFERS_CONSENT_WORDS, offers_consent_at: now.toISOString() } : {}),
     },
   }
 }
