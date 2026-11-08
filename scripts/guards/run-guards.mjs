@@ -674,6 +674,11 @@
  *   one-photo-one-event        every photo is assigned to one event: the hash unique on its own,
  *                              a near copy refused, one reader picks a night's photo, one video
  *                              link per event, and the rows agree (31 October 2026)
+ *   organiser-photo-before-publish  an organiser's event never goes up without the photo they
+ *                              sent: the self-listing run gates publishing on it, the backstop
+ *                              waits for no mark, and every accepted or published submission
+ *                              with a photo has a published event showing it (Lawal's law of
+ *                              8 November 2026, 13:32)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -3412,6 +3417,10 @@ const GUARDS = [
   // through src/components/ui/section-answers.tsx or a reviewed form, and every answer holder drawn by a page. Drilled
   // red twice.
   'scripts/guards/form-answers-outlive-the-form.mjs',
+  // Lawal's law of 8 November 2026, 13:32: an organiser's event never goes up without the photo they sent. Three were
+  // published text only that morning. The self-listing run gates publishing on the photo (src/lib/listings/
+  // organiser-photo-rule.ts), the hourly backstop waits for no mark, and the rows agree. Drilled red twice.
+  'scripts/guards/organiser-photo-before-publish.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

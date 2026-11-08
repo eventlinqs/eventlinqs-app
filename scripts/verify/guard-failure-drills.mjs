@@ -11455,6 +11455,27 @@ const DRILLS = [
     replace: 'before insert or update of listing_series_id on public.events',
     expect: 'P10',
   },
+  /*
+   * organiser-photo-before-publish (WINDOW 5A, 8 November 2026, Lawal's law of 13:32), one drill per way an
+   * organiser's event goes up without the photo they sent: the self-listing run's gate switched off, and the hourly
+   * backstop waiting for a per-row mark again (the way three organisers' photos were withheld that morning).
+   */
+  {
+    name: 'organiser photo before publish: the self-listing run no longer gates publishing on the photo',
+    guard: `${GUARDS}/organiser-photo-before-publish.mjs`,
+    file: 'src/lib/listings/self-listing-run.ts',
+    find: '  if (!mayStayPublished(sub, photo)) {',
+    replace: '  if (false && !mayStayPublished(sub, photo)) {',
+    expect: 'no longer stands the photo gate',
+  },
+  {
+    name: 'organiser photo before publish: the backstop waits for an approval mark again',
+    guard: `${GUARDS}/organiser-photo-before-publish.mjs`,
+    file: 'src/lib/listings/self-listing-run.ts',
+    find: '    if (!photoStillOwed(r, result)) continue',
+    replace: '    if (result.photo_approved !== true || !photoStillOwed(r, result)) continue',
+    expect: 'waits for a photo_approved mark again',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

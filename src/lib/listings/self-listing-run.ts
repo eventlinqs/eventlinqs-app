@@ -17,6 +17,8 @@ import { SUBMISSION_BUCKET } from './submission-store'
 import { AUTHORITY_WORDS, PHOTO_OWNED_WORDS, SUBMISSION_ROLE_WORDS, type SubmissionRole } from './submission'
 import { judgeSelfListing, localParts, type Correction, type PublishFacts, type SelfListingVerdict } from './self-listing'
 import { addSelfListedPhoto } from '@/lib/social/store'
+import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
+import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStillOwed, type PhotoAttach } from './organiser-photo-rule'
 
 /**
  * ORGANISER SELF-LISTING, THE RUN (Lawal's rulings of 8 November 2026, 07:01 (3) and 07:05 (2); the submission alert of
@@ -61,6 +63,9 @@ export type SelfListingOutcome =
   | { readonly state: 'skipped'; readonly reason: string }
 
 const STALE_CLAIM_MS = 10 * 60_000
+
+/** Who takes a night away when its organiser's photo could not go on: the self-listing run, recorded in the audit. */
+const RUN_ACTOR = { id: null, email: null, role: 'self-listing-run' } as const
 
 /** A title as the listing shows it: no leading '#' or other marks, one space at a time. Pure. */
 export function cleanTitle(t: string): string {
@@ -145,22 +150,25 @@ function oneNight(seriesId: string): OccurrenceStore {
   return { ...base, nights: async (now: Date) => (await base.nights(now)).filter((n) => n.id === seriesId) }
 }
 
-async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string, rightsHolder: string): Promise<string> {
-  if (!sub.photo_path) return 'none sent'
+/** Puts the organiser's own photo on its event: stored whole, its rights record, its lock, the cover. The answer says
+ * whether it is on (organiser-photo-rule.ts), and in words why not. */
+async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string, rightsHolder: string): Promise<PhotoAttach> {
+  if (!sub.photo_path) return { attached: false, words: 'none sent' }
+  const not = (words: string): PhotoAttach => ({ attached: false, words })
   const file = await admin.storage.from(SUBMISSION_BUCKET).download(sub.photo_path)
-  if (file.error || !file.data) return 'sent, but it could not be read, so the listing has none yet'
+  if (file.error || !file.data) return not('sent, but it could not be read')
   const bytes = Buffer.from(await file.data.arrayBuffer())
   const hashes = await photoHashes(bytes)
   const lockRpc = { rpc: (name: string, args: Record<string, unknown>) => (admin.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>)(name, args) }
-  if (await photoLockedElsewhere(hashes, eventId, lockRpc)) return 'sent, but it is already used for another event, so the listing has none'
+  if (await photoLockedElsewhere(hashes, eventId, lockRpc)) return not('sent, but it is already used for another event')
   const ext = sub.photo_path.split('.').pop() ?? 'jpg'
-  const object = `submissions/${sub.id}/cover.${ext}`
+  const object = organiserCoverObject(sub.id, ext)
   const contentType = ext === 'webp' ? 'image/webp' : ext === 'avif' ? 'image/avif' : 'image/jpeg'
   const up = await admin.storage.from('event-images').upload(object, bytes, { upsert: true, contentType })
-  if (up.error) return 'sent, but it could not be stored, so the listing has none yet'
+  if (up.error) return not('sent, but it could not be stored')
   const url = admin.storage.from('event-images').getPublicUrl(object).data.publicUrl
   const approver = await founderAdminId(admin)
-  if (!approver) return 'sent, but no founder account approves it, so the listing has none yet'
+  if (!approver) return not('sent, but no founder account approves it')
   const asset = await addSelfListedPhoto(admin, {
     eventId,
     assetUrl: url,
@@ -174,12 +182,12 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
     approvedBy: approver,
     now: new Date(),
   })
-  if (asset.state === 'refused') return `sent, but its rights record could not be written (${asset.reason}), so the listing has none yet`
+  if (asset.state === 'refused') return not(`sent, but its rights record could not be written (${asset.reason})`)
   const locked = await lockPhotoToEvent({ eventId, hashes, imageUrl: url, role: 'cover' }, lockRpc)
-  if (!locked.ok) return 'sent, but it is already used for another event, so the listing has none'
+  if (!locked.ok) return not('sent, but it is already used for another event')
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)
-  if (cover.error) return `sent, but it could not be set as the cover (${cover.error.message})`
-  return `yes, the organiser's own, credited "Photo: ${rightsHolder}"`
+  if (cover.error) return not(`sent, but it could not be set as the cover (${cover.error.message})`)
+  return { attached: true, words: `yes, the organiser's own, credited "Photo: ${rightsHolder}"` }
 }
 
 async function tellLawal(subject: string, text: string): Promise<boolean> {
@@ -293,9 +301,24 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
 
   const rightsHolder = (facts.host ?? sub.name).slice(0, 200)
   const photo = await attachPhoto(admin, sub, made.id as string, rightsHolder.length >= 2 ? rightsHolder : sub.name)
+  // LAWAL'S LAW OF 8 NOVEMBER 2026, 13:32 (organiser-photo-rule.ts): a night whose organiser sent a photo is never left up
+  // without it. The series is paused so the hourly run does not make it again, the night is taken away, the submission
+  // is held with the reason, and Lawal is told; the window puts the photo on and lists it again.
+  if (!mayStayPublished(sub, photo)) {
+    await admin.from('event_series').update({ status: 'paused' }).eq('id', seriesId)
+    const gone = await deleteEventEverywhere({ eventId: made.id as string, actor: RUN_ACTOR, deleteWith: admin, revalidateFrom: 'route-handler' })
+    const reason = `Its photo could not be put on its page (${photo.words}), and ${ORGANISER_PHOTO_LAW}.${gone.ok ? '' : ` The night could not be taken away either: ${gone.message}`}`
+    await admin
+      .from('listing_submissions')
+      .update({ status: 'held', held_because: reason.slice(0, 300), reviewed_at: now.toISOString(), published_series_id: seriesId, check_result: { ...checkResult, photo: photo.words, photo_attached: false } })
+      .eq('id', sub.id)
+    const told = await tellLawal(`Organiser event held: ${title}`, `${title}, sent by ${sub.name}, is held: ${reason} The window deals with it.`)
+    if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
+    return { state: 'held', reason }
+  }
   await admin
     .from('listing_submissions')
-    .update({ status: 'published', reviewed_at: now.toISOString(), published_series_id: seriesId, published_event_id: made.id, corrections: verdict.corrections, check_result: { ...checkResult, photo } })
+    .update({ status: 'published', reviewed_at: now.toISOString(), published_series_id: seriesId, published_event_id: made.id, corrections: verdict.corrections, check_result: { ...checkResult, photo: photo.words, photo_attached: photo.attached } })
     .eq('id', sub.id)
 
   const link = `${getSiteUrl()}/events/${made.slug as string}`
@@ -305,7 +328,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
     `New organiser event live on EventLinqs: ${title}`,
     `${title} is live on EventLinqs. It passed the self-listing checks against the organiser's own booking page.\n\n` +
       `When: ${when}\nWhere: ${facts.venueName}, ${city.name as string}\nOrganiser: ${sub.name} (${SUBMISSION_ROLE_WORDS[sub.role]})\n` +
-      `Price: ${priceWords(facts.entry, facts.priceFromCents)}\nPhoto: ${photo}\nCorrected from their booking page: ${corrected}\n\nSee it: ${link}`,
+      `Price: ${priceWords(facts.entry, facts.priceFromCents)}\nPhoto: ${photo.words}\nCorrected from their booking page: ${corrected}\n\nSee it: ${link}`,
   )
   if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
   return { state: 'published', eventId: made.id as string, slug: made.slug as string, corrections: verdict.corrections }
@@ -336,12 +359,14 @@ export async function selfListWaiting(now: Date = new Date(), most = 5): Promise
 }
 
 /**
- * A PHOTO LAWAL APPROVED FOR A SUBMISSION ACCEPTED BEFORE SELF-LISTING (the PM's 06:52 of 8 November 2026: "A Moment of
- * Sanity's artwork is published once the photo path is proved"). Those submissions were listed by the checked import, so
- * the run never carried their photo. A row marked by a reviewed write (check_result.photo_approved true, with the event it
- * became in published_event_id) has its own photo put on that event here, through the same path a self-listed photo
- * takes: the photo lock, its rights record named to the founder, its credit. Never any other row: Kyivska Perepichka's
- * screenshot is not marked and is never published. Once done, check_result.photo says so and it is not done again.
+ * EVERY ACCEPTED SUBMISSION'S OWN PHOTO GOES ON ITS EVENT (Lawal's law of 8 November 2026, 13:32 (1): "an event whose
+ * organiser supplied a photo NEVER goes up without that photo ... used as they supplied it"; it withdrew the PM's 06:52
+ * ruling that held Kyivska Perepichka's screenshot back, so no row waits for a mark any more). A submission accepted by
+ * hand is listed by the checked import, which carries no photo; any such row that names the event it became
+ * (published_event_id) has its own photo put on that event here, through the same path a self-listed photo takes: the
+ * photo lock, its rights record named to the founder, its credit. It is tried each hour until check_result.photo_attached
+ * says it is on (organiser-photo-rule.ts, photoStillOwed); scripts/guards/organiser-photo-before-publish.mjs fails the
+ * build meanwhile.
  */
 export async function attachApprovedPhotos(most = 5): Promise<string[]> {
   const admin = createAdminClient()
@@ -356,12 +381,12 @@ export async function attachApprovedPhotos(most = 5): Promise<string[]> {
   for (const r of (data ?? []) as (SubmissionRecord & { published_event_id: string; check_result: Record<string, unknown> | null })[]) {
     if (out.length >= most) break
     const result = r.check_result ?? {}
-    if (result.photo_approved !== true || typeof result.photo === 'string') continue
-    // The credit the reviewed write names (the rights holder, e.g. the organiser's business), else the sender's name.
+    if (!photoStillOwed(r, result)) continue
+    // The credit a reviewed write names (the rights holder, e.g. the organiser's business), else the sender's name.
     const credit = typeof result.credit === 'string' && result.credit.trim().length >= 2 ? result.credit.trim() : r.name
     const photo = await attachPhoto(admin, r, r.published_event_id, credit.slice(0, 200))
-    await admin.from('listing_submissions').update({ check_result: { ...result, photo } }).eq('id', r.id)
-    out.push(`${cleanTitle(r.title)}: ${photo}`)
+    await admin.from('listing_submissions').update({ check_result: { ...result, photo: photo.words, photo_attached: photo.attached } }).eq('id', r.id)
+    out.push(`${cleanTitle(r.title)}: ${photo.words}`)
   }
   return out
 }
