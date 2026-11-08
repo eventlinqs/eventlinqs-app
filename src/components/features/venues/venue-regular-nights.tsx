@@ -48,7 +48,7 @@ export function VenueRegularNights({ venueName, series }: { venueName: string; s
               </ul>
               {s.listing_source === 'eventlinqs' && (
                 <p className="mt-4 text-xs text-ink-600">
-                  Hosted by {venueName}. Listed by EventLinqs from public information.{checked ? ` ${checked}.` : ''}
+                  At {venueName}. Listed by EventLinqs from public information.{checked ? ` ${checked}.` : ''}
                 </p>
               )}
             </li>

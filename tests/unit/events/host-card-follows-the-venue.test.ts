@@ -17,7 +17,9 @@ const MIGRATION = read('supabase/migrations/20261108110001_follows_take_a_venue.
 describe('the host card on a listed night', () => {
   test('it stands exactly where the organiser card is hidden, and only with a venue to name', () => {
     expect(PAGE).toContain('shownOrganiser(event, event.organisation).slug === null && event.venue_id && event.venue_name && (')
-    expect(PAGE).toContain('<SectionHeader eyebrow="Hosted by"')
+    expect(PAGE).toContain('<SectionHeader eyebrow="The venue"')
+    // Never "Hosted by": EventLinqs holds the venue of a night it lists, not always who runs it.
+    expect(PAGE).not.toContain('eyebrow="Hosted by"')
   })
   test("it links the venue's own page by the route's own handle, and Follow is a sibling, never inside the link", () => {
     const card = PAGE.indexOf('data-host-card="venue"')
