@@ -35,9 +35,11 @@ const LABEL = 'block text-sm font-medium text-[var(--text-primary)]'
  * the page bears it out (src/lib/listings/self-listing.ts); only one that cannot be verified waits for a person. The
  * listing's one button goes to the organiser's own booking page. A plain form post; it works with no script.
  */
-export default async function SubmitEventPage({ searchParams }: { searchParams: Promise<{ sent?: string; problem?: string; live?: string; held?: string }> }) {
-  const { sent, problem, live, held } = await searchParams
+export default async function SubmitEventPage({ searchParams }: { searchParams: Promise<{ sent?: string; problem?: string; live?: string; held?: string; city?: string }> }) {
+  const { sent, problem, live, held, city: fromGuide } = await searchParams
   const choices = await readSubmissionChoices()
+  // A city guide's "List your event" names its city, so the form opens on it; anything not on the list opens on none.
+  const startCity = choices.cities.some((c) => c.slug === fromGuide) ? (fromGuide as string) : ''
   const guideCities = choices.cities.filter((c) => c.guide)
   const otherCities = choices.cities.filter((c) => !c.guide)
   const liveSlug = live && /^[a-z0-9-]{1,200}$/.test(live) ? live : null
@@ -87,7 +89,7 @@ export default async function SubmitEventPage({ searchParams }: { searchParams: 
                   <label htmlFor="se-city" className={LABEL}>
                     City
                   </label>
-                  <select id="se-city" name="city" required className={SELECT} defaultValue="">
+                  <select id="se-city" name="city" required className={SELECT} defaultValue={startCity}>
                     <option value="" disabled>
                       Choose a city
                     </option>

@@ -547,7 +547,9 @@ export function CityGuide({
               </li>
             ) : null}
             <li>
-              <Link href="/submit-event" className={ORGANISER_LINK}>
+              {/* The form opens on this city (Lawal's 13:35 of 8 November 2026: Canberra's guide sent an organiser to a
+                  form that offered only the Victorian cities). */}
+              <Link href={`/submit-event?city=${encodeURIComponent(city.slug)}#submit`} className={ORGANISER_LINK}>
                 <span className="font-display text-base font-bold text-[var(--text-primary)]">List your event</span>
                 <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">Add a night that is not here yet.</span>
               </Link>
