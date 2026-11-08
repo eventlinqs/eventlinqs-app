@@ -165,15 +165,17 @@ export async function CityGuideScreen({
         {!onState && (freeWeek || suburbs.length > 0) ? (
         <section aria-label={`More of ${city.name}`} className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
           <h2 className="type-rail-heading font-headline font-extrabold text-[var(--text-primary)]">More of {city.name}</h2>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {freeWeek ? (
+          {/* Drawn only when it holds the free week link: an empty list left a gap under the heading (Canberra, read on
+              www 8 November 2026, beside Melbourne's). */}
+          {freeWeek ? (
+            <ul className="mt-3 flex flex-wrap gap-2">
               <li>
                 <Link href={`/free/${city.slug}/this-week`} className={MORE_LINK}>
                   Free in {city.name} this week
                 </Link>
               </li>
-            ) : null}
-          </ul>
+            </ul>
+          ) : null}
           {suburbs.length > 0 ? (
             <>
               <h3 className="mt-6 font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">By suburb</h3>
