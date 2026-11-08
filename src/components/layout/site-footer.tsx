@@ -3,10 +3,10 @@ import { FirstNationsFlags } from '@/components/features/home/first-nations-flag
 import { FooterAccordion } from '@/components/layout/footer-accordion'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { withSignupSource } from '@/lib/organisers/signup-source'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
 import { SOCIAL_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
-import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -69,7 +69,8 @@ export const COMMUNITIES = [
  * than saying nothing.
  */
 export const FOR_ORGANISERS = [
-  { label: 'Sell tickets',        href: withSignupSource(ORGANISER_SIGNUP_PATH, 'footer') },
+  // One door (Lawal's 16:13 of 8 November 2026): selling or listing, chosen at /start.
+  { label: 'Sell tickets',        href: withSignupSource('/start', 'footer') },
   { label: 'Pricing',             href: '/pricing' },
   // Close-out FT1. The free forecast tool, in the footer because FT1 asks for
   // it to be reachable from here and because a page nothing links to is a page

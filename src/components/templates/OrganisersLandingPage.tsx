@@ -72,7 +72,10 @@ const FAQ_ARTICLES = SELLING_TICKETS_TOPIC
 const STATS = [
   { stat: 'All-in', label: 'pricing', body: 'What buyers see at checkout is what they pay. Zero hidden fees, every event.' },
   { stat: '5 days', label: 'to payout', body: PAYOUT_LINE },
-  { stat: 'Same day', label: 'to go live', body: 'Most events are approved the same business day. No gatekeeping on organisers.' },
+  // No human review (Lawal's ruling of 8 November 2026, 16:13, build 2): publishEvent in
+  // src/app/(dashboard)/dashboard/events/actions.ts runs the automatic checks (refuseUnlessPublishable: dates, cover,
+  // payouts ready for a paid tier) and publishes in the same request; no person approves an event.
+  { stat: 'Instant', label: 'to go live', body: 'Your event is live the moment you publish it. No approval queue, no waiting on anyone.' },
   { stat: 'Every', label: 'community', body: 'Built for every event type and every community across Australia.' },
 ]
 
@@ -143,7 +146,7 @@ const BANDS: FeatureBand[] = [
 const HOW_IT_WORKS = [
   { step: 1, title: 'Create your account', detail: 'About a minute. Your name, your payout account, and you are in.' },
   { step: 2, title: 'Build your event', detail: 'Title, description, ticket tiers, and pricing. 5 to 15 minutes.' },
-  { step: 3, title: 'Submit for review', detail: 'Checked against our content and safety policy. Most approved the same business day.' },
+  { step: 3, title: 'Publish', detail: 'Live the moment you publish, with your own event page to share. No approval queue.' },
   { step: 4, title: 'Go live and sell', detail: `Share your page anywhere. Payout: ${PAYOUT_LINE.charAt(0).toLowerCase()}${PAYOUT_LINE.slice(1)}` },
 ]
 
@@ -774,18 +777,13 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
               Sign up in minutes. No upfront fees, no approval gate. Build your first event and
               start selling straight away.
             </p>
+            {/* One door (Lawal's ruling of 8 November 2026, 16:13, build 1): the two buttons that were here, selling on
+                EventLinqs and listing an event sold elsewhere, are one, to the choice between them (/start). */}
             <div className="mt-8">
-              <Button variant="primary" size="lg" href={withSignupSource(ORGANISER_SIGNUP_PATH)}>
-                Start selling tickets
+              <Button variant="primary" size="lg" href={withSignupSource('/start')}>
+                Get started
               </Button>
             </div>
-            {/* Release checklist H1: an organiser selling on another site sends the event for a free listing. */}
-            <p className="mt-6 text-sm text-white/85">
-              Selling on another site?{' '}
-              <Link href="/submit-event" className="inline-flex min-h-[44px] items-center font-semibold text-white underline underline-offset-2 hover:text-[var(--brand-accent)]">
-                List your event free
-              </Link>
-            </p>
           </div>
         </div>
       </section>

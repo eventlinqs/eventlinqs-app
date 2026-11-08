@@ -56,7 +56,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "Sign up as an organiser in minutes. Go to 'Event Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
+        a: "There are two ways, and both start from 'Get Started' at the top of any page. To sell tickets on EventLinqs, create your organiser account, build your event and press Publish: it goes live straight away once it passes the automatic checks (a date still to come, a cover photo, a venue for an in-person event, and a payout account for paid tickets). If you already sell tickets on another site, choose 'List your event' instead: paste the link to your booking page and add a photo you own. We check the event against that page and list it free, usually within minutes, with a button straight to your booking page.",
       },
       {
         q: 'Is it free to create an account?',
@@ -147,8 +147,8 @@ export const helpTopics: HelpTopic[] = [
         a: "Sign up for an EventLinqs account, then click 'Become an organiser' from your dashboard. You will be asked for your organisation or artist name, a contact email, and a payout account for when your events earn revenue. That is it. You can start building your first event immediately.",
       },
       {
-        q: 'How does event review work?',
-        a: "Every event you submit for publishing is reviewed against our content and safety policy. We check that event details are accurate, that pricing is fair, and that the event complies with our platform terms. Most reviews are completed the same business day. Once approved, your event goes live immediately on the platform. For returning organisers with a clean track record, reviews become faster over time.",
+        q: 'Does someone review my event before it goes live?',
+        a: "No. Your event goes live the moment you publish it, once it passes the automatic checks: a date still to come, a cover photo, a venue for an in-person event, ticket types that can be sold, and a payout account for paid tickets. If something is missing, the publish screen tells you what and where to add it.",
       },
       {
         q: 'What does it cost to sell tickets on EventLinqs?',

@@ -319,7 +319,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, p
                     button and 273 without, and the menu button is its last item, so below 390 it was pushed off
                     the right edge and the menu could not be opened. Below 390 'Get Started' is in the menu sheet. */}
                 <div className="hidden min-[390px]:block">
-                  <Button href="/signup" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
+                  <Button href="/start" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
                     Get Started
                   </Button>
                 </div>
@@ -458,7 +458,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, p
             </>
           ) : (
             <>
-              <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+              <Button href="/start" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
                 Get Started
               </Button>
               <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
