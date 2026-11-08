@@ -23,6 +23,7 @@
     "src/lib/walk-in/reminder-store.ts"
   ],
   "notLetters": {
-    "src/lib/campaigner/sink.ts": "an organiser's own campaign, in the organiser's words and signed by the organiser's identity line; signing it 'The EventLinqs team' would put our name on their message"
+    "src/lib/campaigner/sink.ts": "an organiser's own campaign, in the organiser's words and signed by the organiser's identity line; signing it 'The EventLinqs team' would put our name on their message",
+    "src/lib/listings/organiser-live-notice.ts": "a founder-voice message in Lawal's own format (the PM's ruling of 8 November 2026, 15:00, item 3): it greets 'Hi <first name>,' and signs 'Kind regards, Lawal Adams, Founder, EventLinqs', not 'The EventLinqs team', and every one of its words is judged before any send by the gateway's own checks (src/lib/outreach/voice-gate.ts), tested in tests/unit/listings/organiser-live-notice.test.ts"
   }
 }
