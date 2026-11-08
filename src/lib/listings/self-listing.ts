@@ -254,11 +254,14 @@ export function judgeSelfListing(
     matchedBy = 'structured_data'
     pageHost = e.organiser
     if (e.status && /cancel|postpon/i.test(e.status)) return hold('Its booking page says the event is cancelled or postponed.')
+    // The stated start read once, apart from hasClock's narrowing: a type guard's false branch takes string away from
+    // e.startDate altogether, though a day-only date such as '2026-12-05' is a string that reaches that branch.
+    const stated: string | null = e.startDate
     if (hasClock(e.startDate)) correctStart(new Date(e.startDate).toISOString())
-    else if (e.startDate && /^\d{4}-\d{2}-\d{2}/.test(e.startDate)) {
+    else if (stated && /^\d{4}-\d{2}-\d{2}/.test(stated)) {
       // The page states the day only: the day is corrected, the organiser's own clock kept.
       const mine = localParts(startsAt, tz)
-      if (e.startDate.slice(0, 10) !== mine.date) correctStart(fromZonedInputValue(`${e.startDate.slice(0, 10)}T${mine.time}`, tz))
+      if (stated.slice(0, 10) !== mine.date) correctStart(fromZonedInputValue(`${stated.slice(0, 10)}T${mine.time}`, tz))
     }
     if (hasClock(e.endDate) && Date.parse(e.endDate) > Date.parse(startsAt) && !sameInstant(e.endDate, endsAt)) {
       corrections.push({ field: 'end', submitted: endsAt, page: new Date(e.endDate).toISOString() })

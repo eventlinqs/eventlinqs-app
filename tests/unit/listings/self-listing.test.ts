@@ -173,6 +173,19 @@ describe('a submission the page bears out publishes itself', () => {
     expect(v.corrections.map((c) => c.field)).toEqual(['start', 'end'])
   })
 
+  test('a page that states the day only corrects the day and keeps the organiser\'s own clock', () => {
+    const dayOnly = (day: string) => TRYBOOKING.replace('2026-12-05T18:30:00.000+11:00', day).replace('2026-12-05T21:00:00.000+11:00', day)
+    const moved = judgeSelfListing(KYIV, read(dayOnly('2026-12-06')), [], NOW)
+    expect(moved.verdict).toBe('publish')
+    if (moved.verdict !== 'publish') return
+    expect(moved.facts.startsAt).toBe('2026-12-06T08:00:00.000Z')
+    expect(moved.corrections.map((c) => c.field)).toEqual(['start'])
+    const same = judgeSelfListing(KYIV, read(dayOnly('2026-12-05')), [], NOW)
+    expect(same.verdict).toBe('publish')
+    if (same.verdict !== 'publish') return
+    expect(same.facts.startsAt).toBe('2026-12-05T08:00:00.000Z')
+    expect(same.corrections).toEqual([])
+  })
   test('a wrong price and a wrong venue are corrected from the page, never held', () => {
     const v = judgeSelfListing({ ...KYIV, priceFromCents: 6000, venueName: 'Melbourne Town Hall', venueAddress: '90 Swanston St' }, read(TRYBOOKING), [], NOW)
     expect(v.verdict).toBe('publish')
