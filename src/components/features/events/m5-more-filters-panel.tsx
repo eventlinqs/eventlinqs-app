@@ -196,7 +196,7 @@ export function MoreFiltersPanel({ initial, hasGeoSignal, onApply }: Props) {
         {!hasGeoSignal && (
           <p id={distanceHelpId} className="flex items-start gap-1.5 text-xs text-ink-400">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Requires location access. You can still apply this filter - it activates once you grant
+            Requires location access. You can still apply this filter; it activates once you grant
             location or pick a city.
           </p>
         )}

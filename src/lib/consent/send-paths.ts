@@ -221,6 +221,18 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Alerts the platform when the auth provider drifts.',
   },
   {
+    file: 'src/lib/listings/organiser-live-notice.ts',
+    kind: 'transactional',
+    purpose: 'organiser_operations',
+    reason: 'Tells the organiser who sent an event in that it is now live, with its link: about what they themselves did, once, and behind organiser_live_email (OFF until Lawal says yes).',
+  },
+  {
+    file: 'src/lib/listings/self-listing-run.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason: "Tells the founder that an organiser's submitted event went live or is held (organiser_submission_alert, to founderDestination()); it never writes to the organiser.",
+  },
+  {
     file: 'src/app/api/cron/webhook-sentinel/route.ts',
     kind: 'operations',
     purpose: 'platform_operations',

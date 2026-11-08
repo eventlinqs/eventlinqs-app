@@ -219,3 +219,26 @@ describe('hasAnyAffinitySignal', () => {
     expect(hasAnyAffinitySignal(s)).toBe(true)
   })
 })
+
+describe('a followed venue, the host of a listed night (car 57)', () => {
+  it('brings every night at that venue into the feed, matched on its name whatever its case', () => {
+    const atVenue = evt({ id: 'v', venue_name: 'The Story House', organisation: { id: 'org-listings', name: 'EventLinqs listings', slug: 'eventlinqs-listings' }, category: null })
+    const elsewhere = evt({ id: 'w', venue_name: 'Woodbin Theatre', organisation: { id: 'org-listings', name: 'EventLinqs listings', slug: 'eventlinqs-listings' }, category: null })
+    const signals = emptySignals()
+    signals.followedVenueNames = new Set(['the story house'])
+    signals.followedVenueIds = new Set(['venue-1'])
+    const ranked = rankEventsByAffinity([elsewhere, atVenue], signals, NOW)
+    expect(ranked.map(r => r.event.id)).toEqual(['v'])
+    expect(ranked[0].reasons).toContain('followed-venue')
+    expect(hasAnyAffinitySignal(signals)).toBe(true)
+  })
+
+  it('ranks below a followed artist and above a followed scene, as a direct follow of a place', () => {
+    expect(AFFINITY_WEIGHTS.followedVenue).toBeLessThan(AFFINITY_WEIGHTS.followedArtist)
+    expect(AFFINITY_WEIGHTS.followedVenue).toBeGreaterThan(AFFINITY_WEIGHTS.followedScene)
+  })
+
+  it('no venue followed is no venue signal (the field is optional, older callers unchanged)', () => {
+    expect(hasAnyAffinitySignal(emptySignals())).toBe(false)
+  })
+})

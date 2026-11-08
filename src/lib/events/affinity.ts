@@ -11,6 +11,8 @@
  *                               event_artists to the events those artists play
  *   - followedSceneSlugs      : follows(followable_type='subgenre'), matched
  *                               against an event's community/scene tags
+ *   - followedVenueNames      : follows(followable_type='venue'), the host of a
+ *                               listed night (car 57), matched on the venue's name
  *   - savedEventCategoryIds   : the categories of the user's saved_events, used
  *                               as a soft "more like what you saved" signal
  *   - preferredCity           : profiles.preferred_city
@@ -31,6 +33,10 @@ export interface AffinitySignals {
   followedArtistEventIds: Set<string>
   /** Scene/subgenre slugs the user follows, lowercased. */
   followedSceneSlugs: Set<string>
+  /** The names of the venues the user follows, lowercased (car 57). Optional: absent means none. */
+  followedVenueNames?: Set<string>
+  /** Their ids, for the feed's candidate pool (a name can hold a comma; an id cannot). */
+  followedVenueIds?: Set<string>
   /** Categories of the user's saved_events - a soft "similar to saved" signal. */
   savedEventCategoryIds: Set<string>
   /** The user's preferred city name (already extracted from the json), or null. */
@@ -54,6 +60,7 @@ export interface ScoredEvent {
 export const AFFINITY_WEIGHTS = {
   followedOrganiser: 100,
   followedArtist: 90,
+  followedVenue: 80,
   followedScene: 60,
   savedCategory: 40,
   preferredCity: 25,
@@ -117,6 +124,12 @@ function scoreEvent(
   if (signals.followedArtistEventIds.has(event.id)) {
     score += AFFINITY_WEIGHTS.followedArtist
     reasons.push('followed-artist')
+  }
+
+  const venue = (event.venue_name ?? '').trim().toLowerCase()
+  if (venue && signals.followedVenueNames?.has(venue)) {
+    score += AFFINITY_WEIGHTS.followedVenue
+    reasons.push('followed-venue')
   }
 
   const catId = event.category?.id ?? null
@@ -185,6 +198,7 @@ export function hasAnyAffinitySignal(signals: AffinitySignals): boolean {
     signals.savedCategoryIds.size > 0 ||
     signals.followedArtistEventIds.size > 0 ||
     signals.followedSceneSlugs.size > 0 ||
+    (signals.followedVenueNames?.size ?? 0) > 0 ||
     signals.savedEventCategoryIds.size > 0 ||
     Boolean(signals.preferredCity)
   )

@@ -584,6 +584,89 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
 
+  // ── The Meta publisher (car 58, 8 November 2026) ─────────────────────────────
+  // Written only by Lawal's SET-META-SECRETS.ps1 (each value at a hidden prompt, on the Vercel CLI's standard input).
+  {
+    name: 'META_APP_ID',
+    describe: "EventLinqs Publisher's Meta app id",
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding these could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\ops\\SET-META-SECRETS.ps1 (C:\\dev\\GROWTH\\META-CONNECTION-7NOV.md, step 5); until all five META_ names exist the social run passes no publisher and holds a due piece with that reason (src/lib/social/meta-wiring.ts), and social_auto_publish stays OFF until Lawal says yes',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'META_APP_SECRET',
+    describe: "EventLinqs Publisher's Meta app secret",
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding these could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\ops\\SET-META-SECRETS.ps1 (C:\\dev\\GROWTH\\META-CONNECTION-7NOV.md, step 5); until all five META_ names exist the social run passes no publisher and holds a due piece with that reason (src/lib/social/meta-wiring.ts), and social_auto_publish stays OFF until Lawal says yes',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'META_PAGE_ID',
+    describe: "The EventLinqs Facebook Page's id, found by the script from Lawal's token",
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding these could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\ops\\SET-META-SECRETS.ps1 (C:\\dev\\GROWTH\\META-CONNECTION-7NOV.md, step 5); until all five META_ names exist the social run passes no publisher and holds a due piece with that reason (src/lib/social/meta-wiring.ts), and social_auto_publish stays OFF until Lawal says yes',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'META_PAGE_ACCESS_TOKEN',
+    describe: "The EventLinqs Page's long lived access token, which also publishes to its Instagram (Facebook Login)",
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding these could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\ops\\SET-META-SECRETS.ps1 (C:\\dev\\GROWTH\\META-CONNECTION-7NOV.md, step 5); until all five META_ names exist the social run passes no publisher and holds a due piece with that reason (src/lib/social/meta-wiring.ts), and social_auto_publish stays OFF until Lawal says yes',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
+    name: 'META_IG_USER_ID',
+    describe: 'The Instagram professional account linked to the EventLinqs Page',
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding these could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\ops\\SET-META-SECRETS.ps1 (C:\\dev\\GROWTH\\META-CONNECTION-7NOV.md, step 5); until all five META_ names exist the social run passes no publisher and holds a due piece with that reason (src/lib/social/meta-wiring.ts), and social_auto_publish stays OFF until Lawal says yes',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+
   // ── Scheduled work and queue integrity ────────────────────────────────────
   {
     name: 'CRON_SECRET',

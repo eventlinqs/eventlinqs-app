@@ -85,6 +85,9 @@ export const DECLARED = {
     git: 'reads the origin remote to name the repository when GITHUB_REPOSITORY is unset.',
     token: 'GITHUB_TOKEN, to list the open pull requests. Without it there is nothing to count and the guard says so.',
   },
+  'scripts/guards/organiser-photo-before-publish.mjs': {
+    token: "the service-role key, through scripts/guards/lib/table-read-credential.mjs, to read every accepted or published listing submission that carries a photo and the published events on an organiser's photo (Lawal's law of 8 November 2026, 13:32). Without it the guard prints NOT JUDGED [no-credential] for the rows; its code clause still runs.",
+  },
   'scripts/guards/positioning-lock.mjs': {
     docs: 'scans docs/marketing for the banned positioning, and names docs/audit, docs/roast and docs/verification as directories it deliberately does NOT judge, since those record what was said rather than say it.',
   },

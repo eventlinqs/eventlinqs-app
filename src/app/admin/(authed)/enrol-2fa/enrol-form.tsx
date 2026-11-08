@@ -57,7 +57,7 @@ export function EnrolForm({ enrolToken }: EnrolFormProps) {
           }}
           className="mt-6 w-full rounded-md bg-[var(--brand-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:opacity-90"
         >
-          I have saved them - continue
+          I have saved them, continue
         </button>
       </section>
     )

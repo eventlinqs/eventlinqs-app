@@ -297,6 +297,9 @@ export function headlineFor(state) {
   }
   if (state.main?.conclusion === 'failure') return { word: 'MAIN IS RED', colour: CORAL_600, urgent: true }
   if (state.stall?.stalled) return { word: 'THE BUILD HAS STALLED', colour: CORAL_600, urgent: true }
+  // THE DAILY READ OF PRODUCTION'S SUBMISSIONS (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour
+  // after it was sent in is a missed organiser, so the day cannot read ALL GREEN while one sits. Target 0.
+  if ((state.business?.submissionsNotLive ?? 0) > 0) return { word: 'AN ORGANISER EVENT IS NOT LIVE', colour: CORAL_600, urgent: true }
   // A blind spot outranks a red branch, because the branch is a known finding
   // and the blind spot may be hiding a worse one. It can never read ALL GREEN.
   if ((state.unreadable ?? []).length > 0) {
@@ -506,6 +509,7 @@ export function sectionsFor(state) {
           `${biz.ticketsSold ?? 0} tickets sold in total, ${biz.ticketsSold24h ?? 0} of them in the last 24 hours.`,
           `${biz.ordersPaid24h ?? 0} paid orders in the last 24 hours.`,
           `${biz.newOrganisers24h ?? 0} new organisers in the last 24 hours.`,
+          `${biz.submissionsNotLive ?? 0} organiser events sent in and not live after an hour (target 0)${(biz.submissionsNotLive ?? 0) > 0 ? ', each at the top of /admin/today' : ''}.`,
         ],
   })
 

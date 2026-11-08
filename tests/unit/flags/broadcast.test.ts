@@ -91,8 +91,11 @@ describe('broadcast flag resolver', () => {
       // The claim switch (the project manager, 27 October 2026). OFF until Lawal approves the privacy
       // version that names claims, and OFF when the table cannot be read.
       listing_claims: false,
+      // The organiser's own live notice (the PM's 15:00 of 8 November 2026). OFF until Lawal says yes, and OFF when the
+      // table cannot be read.
+      organiser_live_email: false,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(14)
+    expect(BROADCAST_FLAGS).toHaveLength(15)
   })
 
   test('paid promotions stay OFF when the flags table cannot be read or has no row', async () => {

@@ -468,6 +468,8 @@
  *   compound-modifiers-hyphenated a listed compound modifier before its noun carries its
  *                              hyphen and no em or en dash stands in the platform's copy
  *                              (law 6, 31 October 2026)
+ *   no-spaced-hyphen-in-copy  no spaced hyphen stands in the JSX text or read attributes of
+ *                              any .tsx (law 6, 8 November 2026)
  *   community-layer-protected the 21 communities, their 20 cities, the faith pages and the
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
@@ -672,6 +674,11 @@
  *   one-photo-one-event        every photo is assigned to one event: the hash unique on its own,
  *                              a near copy refused, one reader picks a night's photo, one video
  *                              link per event, and the rows agree (31 October 2026)
+ *   organiser-photo-before-publish  an organiser's event never goes up without the photo they
+ *                              sent: the self-listing run gates publishing on it, the backstop
+ *                              waits for no mark, and every accepted or published submission
+ *                              with a photo has a published event showing it (Lawal's law of
+ *                              8 November 2026, 13:32)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -2453,6 +2460,10 @@ const GUARDS = [
   // modifier before its noun carries its hyphen, and no em or en dash stands in copy. The list is the communication
   // gateway's own, copied into src/. Drilled red and green.
   'scripts/guards/compound-modifiers-hyphenated.mjs',
+  // Law 6 again (8 November 2026): no spaced hyphen in what a visitor reads. Found on the enrol button of Lawal's first
+  // admin sign in; the guard reads every .tsx as TypeScript, so code's subtractions never trip it. Drilled red (8) and
+  // green on the real tree.
+  'scripts/guards/no-spaced-hyphen-in-copy.mjs',
   // Close-out C18 FINAL (7 September 2026): the community layer and the categories
   // are approved and recorded; nothing may be lost from the source or the database,
   // and every addition is recorded in docs/scope/community-layer-approved.json.
@@ -3406,6 +3417,10 @@ const GUARDS = [
   // through src/components/ui/section-answers.tsx or a reviewed form, and every answer holder drawn by a page. Drilled
   // red twice.
   'scripts/guards/form-answers-outlive-the-form.mjs',
+  // Lawal's law of 8 November 2026, 13:32: an organiser's event never goes up without the photo they sent. Three were
+  // published text only that morning. The self-listing run gates publishing on the photo (src/lib/listings/
+  // organiser-photo-rule.ts), the hourly backstop waits for no mark, and the rows agree. Drilled red twice.
+  'scripts/guards/organiser-photo-before-publish.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

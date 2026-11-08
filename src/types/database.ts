@@ -3761,36 +3761,48 @@ export type Database = {
           field: string
           held_at: string
           id: string
+          next_check_at: string | null
+          next_source: string | null
           readings: Json
           reason: string
           released_at: string | null
           released_by: string | null
           scope: string
           series_id: string | null
+          sources_tried: Json
+          state: string
         }
         Insert: {
           event_id?: string | null
           field: string
           held_at?: string
           id?: string
+          next_check_at?: string | null
+          next_source?: string | null
           readings?: Json
           reason: string
           released_at?: string | null
           released_by?: string | null
           scope: string
           series_id?: string | null
+          sources_tried?: Json
+          state?: string
         }
         Update: {
           event_id?: string | null
           field?: string
           held_at?: string
           id?: string
+          next_check_at?: string | null
+          next_source?: string | null
           readings?: Json
           reason?: string
           released_at?: string | null
           released_by?: string | null
           scope?: string
           series_id?: string | null
+          sources_tried?: Json
+          state?: string
         }
         Relationships: [
           {
@@ -4088,14 +4100,20 @@ export type Database = {
       }
       listing_submissions: {
         Row: {
+          alerted_at: string | null
           authority_confirmed: boolean
           booking_url: string
+          category_slug: string | null
+          check_result: Json | null
+          checked_at: string | null
           city_slug: string
+          corrections: Json
           created_at: string
           description: string | null
           email: string
           ends_at: string | null
           entry: string
+          held_because: string | null
           id: string
           name: string
           permission_given_at: string
@@ -4103,6 +4121,8 @@ export type Database = {
           photo_owned: boolean
           photo_path: string | null
           price_from_cents: number | null
+          published_event_id: string | null
+          published_series_id: string | null
           refused_because: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -4114,14 +4134,20 @@ export type Database = {
           venue_name: string
         }
         Insert: {
+          alerted_at?: string | null
           authority_confirmed: boolean
           booking_url: string
+          category_slug?: string | null
+          check_result?: Json | null
+          checked_at?: string | null
           city_slug: string
+          corrections?: Json
           created_at?: string
           description?: string | null
           email: string
           ends_at?: string | null
           entry: string
+          held_because?: string | null
           id?: string
           name: string
           permission_given_at: string
@@ -4129,6 +4155,8 @@ export type Database = {
           photo_owned?: boolean
           photo_path?: string | null
           price_from_cents?: number | null
+          published_event_id?: string | null
+          published_series_id?: string | null
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -4140,14 +4168,20 @@ export type Database = {
           venue_name: string
         }
         Update: {
+          alerted_at?: string | null
           authority_confirmed?: boolean
           booking_url?: string
+          category_slug?: string | null
+          check_result?: Json | null
+          checked_at?: string | null
           city_slug?: string
+          corrections?: Json
           created_at?: string
           description?: string | null
           email?: string
           ends_at?: string | null
           entry?: string
+          held_because?: string | null
           id?: string
           name?: string
           permission_given_at?: string
@@ -4155,6 +4189,8 @@ export type Database = {
           photo_owned?: boolean
           photo_path?: string | null
           price_from_cents?: number | null
+          published_event_id?: string | null
+          published_series_id?: string | null
           refused_because?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -4165,7 +4201,36 @@ export type Database = {
           venue_address?: string
           venue_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listing_submissions_city_is_known"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "listing_submissions_published_event_id_fkey"
+            columns: ["published_event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_submissions_published_event_id_fkey"
+            columns: ["published_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_submissions_published_series_id_fkey"
+            columns: ["published_series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_attribution: {
         Row: {

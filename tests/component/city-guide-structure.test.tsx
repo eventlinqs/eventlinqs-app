@@ -133,7 +133,7 @@ describe('the Geelong reference page, section by section', () => {
     // feature_flags.listing_claims (OFF on production, read 14:30: until Lawal approves the privacy version naming claims).
     guide()
     const host = screen.getByRole('region', { name: 'Hosting an event in Geelong?' })
-    expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/submit-event', '/organisers'])
+    expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/submit-event?city=geelong#submit', '/organisers'])
     expect(host.textContent).not.toMatch(/claim/i)
   })
 
@@ -146,7 +146,7 @@ describe('the Geelong reference page, section by section', () => {
       />,
     )
     const host = screen.getByRole('region', { name: 'Hosting an event in Geelong?' })
-    expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#city-calendar', '/submit-event', '/organisers'])
+    expect([...host.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#city-calendar', '/submit-event?city=geelong#submit', '/organisers'])
   })
 
   it('the Victoria page (scope state) holds the state\u2019s listed cities and says so; Victoria is its current chip', () => {

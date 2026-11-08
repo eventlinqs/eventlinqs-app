@@ -24,7 +24,7 @@ const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof import('@/lib/listings/collect'))
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
 const { readPage, readByRule } = pick((await import('@/lib/events/link-check')) as typeof import('@/lib/events/link-check'))
-const { statedInWords } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
+const { statedInWords, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange, statedUnderName } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { resolveFact, isListingSite } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
 const { resolverSql } = pick((await import('@/lib/listings/resolver-sql')) as typeof import('@/lib/listings/resolver-sql'))
@@ -34,13 +34,15 @@ type Reading = import('@/lib/listings/resolver').Reading
 const args = process.argv.slice(2)
 const SWEEP = args.find((a) => a.endsWith('.json'))
 const OUT = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'C:/dev/EVIDENCE/ENGINE-P0/resolver'
-if (!SWEEP) throw new Error('usage: resolve-run.mts <sweep.json> [--out dir]')
+// --walk-holds: every open hold whose next check is due, its next source read and its next step written (hold-walk.ts).
+const WALK = args.includes('--walk-holds')
+if (!SWEEP && !WALK) throw new Error('usage: resolve-run.mts <sweep.json> [--out dir] [--emit-sql] | --walk-holds')
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 if (!TOKEN) throw new Error('REFUSED: run under scripts\\ops\\with-supabase-token.ps1 (production is read, never written)')
 
 type Fact = { field: string; ok: boolean; host: string; title: string; detail: string; source: string; eventId: string }
 type Unreadable = { title: string; when: string; source: string; why: string; eventId: string; city: string; host: string }
-const sweep = JSON.parse(readFileSync(SWEEP, 'utf8')) as { at: string; facts: Fact[]; unreadable: Unreadable[] }
+const sweep = (SWEEP ? JSON.parse(readFileSync(SWEEP, 'utf8')) : { at: '', facts: [], unreadable: [] }) as { at: string; facts: Fact[]; unreadable: Unreadable[] }
 const wrong = sweep.facts.filter((f) => !f.ok)
 
 async function sql<T>(query: string): Promise<T[]> {
@@ -54,7 +56,7 @@ async function sql<T>(query: string): Promise<T[]> {
 }
 const ids = [...new Set([...wrong.map((f) => f.eventId), ...sweep.unreadable.map((u) => u.eventId)])].filter((id) => /^[0-9a-f-]{36}$/.test(id))
 type EventRow = { id: string; series_id: string | null; title: string; start_date: string; timezone: string | null; venue_name: string | null; venue_address: string | null; links: { url: string; price_from_cents: number | null; availability: string | null }[] | null }
-const events = await sql<EventRow>(`
+const events = ids.length === 0 ? [] : await sql<EventRow>(`
   select e.id, e.listing_series_id as series_id, e.title, e.start_date, e.timezone, e.venue_name, e.venue_address,
          (select json_agg(json_build_object('url', l.url, 'price_from_cents', l.price_from_cents, 'availability', l.availability) order by l.position)
             from public.event_booking_links l where l.event_id = e.id) as links
@@ -120,6 +122,11 @@ async function statedBy(u: string, field: string, e: EventRow): Promise<string |
     const at = new Date(e.start_date).getTime()
     if (found.some((f) => Math.abs(new Date(f.startsAt).getTime() - at) < 60_000)) return e.start_date
     if (statedInWords(p.body, e.start_date, zone) === 'both') return e.start_date
+    if (statedSeasonal(p.body, e.title, e.start_date, zone) === 'seasonal') return e.start_date
+    if (statedByGates(p.body, e.start_date, zone) || statedInDatedList(p.body, e.title, e.start_date, zone)) return e.start_date
+    if (statedEveryWeekday(p.body, e.title, e.start_date, zone) === 'weekly') return e.start_date
+    if (statedDailyInRange(p.body, e.start_date, zone)) return e.start_date
+    if (statedUnderName(p.body, e.title, e.start_date, zone)) return e.start_date
     /* Another time is a value only when it is THE night: the page's one night of this title. A page of several nights
        that does not state this one says nothing of it (the first run 'corrected' three nights to the words 'another time'). */
     const same = found.filter((f) => fold(f.title) === fold(e.title))
@@ -229,3 +236,49 @@ if (args.includes('--emit-sql')) {
 console.log(`[resolve-run] wrong facts ${JSON.stringify(report.wrongFacts)}`)
 console.log(`[resolve-run] unreadable ${JSON.stringify(report.unreadable)}`)
 console.log(`[resolve-run] ${OUT}/resolve-run-${stamp}.json; nothing written to the database`)
+
+/*
+ * --walk-holds (the CONTROLLER's 16:55 (1): 'The resolver walks the open holds on every run'). Every open hold whose next
+ * check is due is asked of its next source by the readers above: the page states our value, the hold is released; the page
+ * calls the night off (the collector's calledOff), the night is cancelled; anything else, the next source (hold-walk.ts).
+ * Read only: the steps are written as ONE reviewed file for the dry run and APPLY. Needs migration 20261107170001.
+ */
+if (WALK) {
+  const { nextStep, holdWalkSql } = pick((await import('@/lib/listings/hold-walk')) as typeof import('@/lib/listings/hold-walk'))
+  type Tried = import('@/lib/listings/hold-walk').Tried
+  type HoldRow = EventRow & { hold_id: string; scope: 'fact' | 'night'; field: string; state: 'held' | 'unconfirmed'; next_source: string | null; sources_tried: Tried[] | null; readings: Reading[] | null }
+  const due = await sql<HoldRow>(`
+    select h.id as hold_id, h.scope, h.field, h.state, h.next_source, h.sources_tried, h.readings,
+           e.id, e.listing_series_id as series_id, e.title, to_json(e.start_date)#>>'{}' as start_date, e.timezone, e.venue_name, e.venue_address,
+           (select json_agg(json_build_object('url', l.url, 'price_from_cents', l.price_from_cents, 'availability', l.availability) order by l.position)
+              from public.event_booking_links l where l.event_id = e.id) as links
+      from public.listing_holds h join public.events e on e.id = h.event_id
+     where h.released_at is null and (h.next_check_at is null or h.next_check_at <= now())`)
+  const calledOffBy = async (u: string, e: EventRow): Promise<boolean> => {
+    const p = await read(u)
+    if (p.why) return false
+    const rule = pageRuleFor(u)
+    const found = rule ? rule.read(p.body, u) : eventsFromBody(p.body, u)
+    const at = new Date(e.start_date).getTime()
+    return found.some((f) => Math.abs(new Date(f.startsAt).getTime() - at) < 60_000 && (f as { calledOff?: boolean }).calledOff === true)
+  }
+  const steps: { hold: import('@/lib/listings/hold-walk').OpenHold; step: import('@/lib/listings/hold-walk').Step }[] = []
+  for (const h of due) {
+    const sources = [...new Set([...(h.readings ?? []).map((r) => r.url), ...(h.links ?? []).map((l) => l.url)])].filter((u) => /^https?:\/\//.test(u))
+    const hold = { id: h.hold_id, eventId: h.id, scope: h.scope, field: h.field, state: h.state, nextSource: h.next_source ?? sources[0] ?? null, sourcesTried: h.sources_tried ?? [], sources }
+    let answer: import('@/lib/listings/hold-walk').Answer = { kind: 'silent', why: 'no source to read' }
+    if (hold.nextSource) {
+      const value = await statedBy(hold.nextSource, h.field === 'session' ? 'start' : h.field, h)
+      const stored = storedOf(h.field, h)
+      if (value !== null && value === stored) answer = { kind: 'states', words: `its ${h.field} '${value}'` }
+      else if ((h.field === 'start' || h.field === 'session') && (await calledOffBy(hold.nextSource, h))) answer = { kind: 'cancelled', words: 'the night called off' }
+      else answer = { kind: 'silent', why: value !== null ? `states another ${h.field}: ${value}` : (pages.get(hold.nextSource)?.why ?? 'does not state it') }
+    }
+    steps.push({ hold, step: nextStep(hold, answer, new Date()) })
+  }
+  mkdirSync(OUT, { recursive: true })
+  const wstamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
+  writeFileSync(`${OUT}/holds-walk-${wstamp}.sql`, holdWalkSql(steps))
+  const kinds = (k: string) => steps.filter((s) => s.step.kind === k).length
+  console.log(`[resolve-run] holds walked: ${steps.length} due; ${kinds('release')} released, ${kinds('cancel')} cancelled, ${kinds('next')} to their next source; ${OUT}/holds-walk-${wstamp}.sql, the reviewed file; nothing written`)
+}

@@ -13,13 +13,36 @@ import { FREE_REGISTRATION_REQUIRED } from '@/lib/events/cta'
  * never inferred from a missing price, and a price is taken only for a paid event.
  */
 
+/** The four Victorian guide cities, which the form lists first. Any city in public.cities may be named (below). */
 export const SUBMISSION_CITIES = ['melbourne', 'geelong', 'ballarat', 'bendigo'] as const
-export type SubmissionCity = (typeof SUBMISSION_CITIES)[number]
-export const SUBMISSION_CITY_WORDS: Readonly<Record<SubmissionCity, string>> = {
+/**
+ * A submission's city: any city EventLinqs knows (public.cities), named by its slug. NO ORGANISER IS TURNED AWAY FOR
+ * LOCATION (Lawal's ruling of 8 November 2026, 07:01 (1)): a city with no guide yet still gets its event page, in the
+ * sitemap and findable, and stays out of the Victorian guides until its own opens.
+ */
+export type SubmissionCity = string
+export const SUBMISSION_CITY_WORDS: Readonly<Record<string, string>> = {
   melbourne: 'Melbourne',
   geelong: 'Geelong',
   ballarat: 'Ballarat',
   bendigo: 'Bendigo',
+}
+
+/** One city the form offers: its shown name and the zone its times are typed in. */
+export type SubmissionCityChoice = { readonly name: string; readonly state: string; readonly timezone: string }
+
+/**
+ * What the judgement checks a submission against: the cities it may name, and the live category slugs it may choose.
+ * The default is the four Victorian guide cities in Melbourne time and no category list, which is what the form offered
+ * before 8 November 2026, so a caller that passes none judges exactly as before.
+ */
+export type SubmissionContext = {
+  readonly cities: ReadonlyMap<string, SubmissionCityChoice>
+  readonly categories: ReadonlySet<string> | null
+}
+export const DEFAULT_SUBMISSION_CONTEXT: SubmissionContext = {
+  cities: new Map(SUBMISSION_CITIES.map((c) => [c, { name: SUBMISSION_CITY_WORDS[c], state: 'VIC', timezone: 'Australia/Melbourne' }])),
+  categories: null,
 }
 
 export const SUBMISSION_ROLES = ['organiser', 'venue', 'promoter'] as const
@@ -78,6 +101,8 @@ export interface SubmissionInput {
   readonly venueName: string
   readonly venueAddress: string
   readonly city: string
+  /** The live category slug the organiser chose; optional, so a caller from before 8 November still judges. */
+  readonly category?: string
   readonly bookingUrl: string
   readonly entry: string
   readonly price: string
@@ -99,6 +124,7 @@ export interface SubmissionRow {
   readonly venue_name: string
   readonly venue_address: string
   readonly city_slug: SubmissionCity
+  readonly category_slug: string | null
   readonly booking_url: string
   readonly entry: SubmissionEntry
   readonly price_from_cents: number | null
@@ -132,28 +158,32 @@ export function priceCents(v: string): number | null {
   return cents > 0 ? cents : null
 }
 
-export function judgeSubmission(input: SubmissionInput, now: Date): SubmissionJudgement {
+export function judgeSubmission(input: SubmissionInput, now: Date, context: SubmissionContext = DEFAULT_SUBMISSION_CONTEXT): SubmissionJudgement {
   const no = (problem: string): SubmissionJudgement => ({ ok: false, problem })
   if (!within(input.name, 120)) return no('Give your name.')
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim()) || input.email.trim().length > 320) return no('Give an email address we can reply to.')
   if (!(SUBMISSION_ROLES as readonly string[]).includes(input.role)) return no('Say how you are connected to the event.')
   if (!within(input.title, 200)) return no('Give the name of the event.')
 
-  const startsAt = fromZonedInputValue(input.startsLocal, SUBMISSION_ZONE)
+  // The times are typed in the event's own city's time, so a Perth or Brisbane night is never read in Melbourne time.
+  const zone = context.cities.get(input.city)?.timezone ?? SUBMISSION_ZONE
+  const startsAt = fromZonedInputValue(input.startsLocal, zone)
   if (startsAt === '') return no('Give the date and time the event starts.')
   const starts = new Date(startsAt).getTime()
   if (starts <= now.getTime()) return no('The start is in the past. Give a date and time still to come.')
   if (starts > now.getTime() + FURTHEST_AHEAD_DAYS * 86_400_000) return no('The start is more than 18 months away. Check the year.')
   let endsAt: string | null = null
   if (input.endsLocal.trim() !== '') {
-    endsAt = fromZonedInputValue(input.endsLocal, SUBMISSION_ZONE)
+    endsAt = fromZonedInputValue(input.endsLocal, zone)
     if (endsAt === '') return no('Give the end as a date and time, or leave it empty.')
     if (new Date(endsAt).getTime() <= starts) return no('The end comes before the start.')
   }
 
   if (!within(input.venueName, 160)) return no('Give the name of the venue.')
   if (!within(input.venueAddress, 300)) return no('Give the venue address.')
-  if (!(SUBMISSION_CITIES as readonly string[]).includes(input.city)) return no('Choose the city it is in.')
+  if (!context.cities.has(input.city)) return no('Choose the city it is in.')
+  const category = (input.category ?? '').trim()
+  if (context.categories !== null && !context.categories.has(category)) return no('Choose what kind of event it is.')
 
   const bookingUrl = httpsAddress(input.bookingUrl)
   if (bookingUrl === null) return no('Give the booking or event page as a full https address.')
@@ -186,7 +216,8 @@ export function judgeSubmission(input: SubmissionInput, now: Date): SubmissionJu
       ends_at: endsAt,
       venue_name: input.venueName.trim(),
       venue_address: input.venueAddress.trim(),
-      city_slug: input.city as SubmissionCity,
+      city_slug: input.city,
+      category_slug: category === '' ? null : category,
       booking_url: bookingUrl,
       entry,
       price_from_cents: price,

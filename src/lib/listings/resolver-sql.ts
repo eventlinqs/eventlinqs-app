@@ -46,8 +46,11 @@ export function resolverSql(rows: readonly Ruled[]): string {
     // Both columns at once: the table holds a price only with its check time (event_booking_links_price_with_its_check);
     // what each page stated stays in the hold's readings.
     else if (r.field === 'price') out.push(`update public.event_booking_links set price_from_cents = null, price_checked_at = null where event_id = ${id};`)
+    // A hold is never left hanging (CONTROLLER 16:55 (1), migration 20261107170001): its next action is its first page, read
+    // again a day on; the walk (src/lib/listings/hold-walk.ts) moves it on from there.
+    const next = r.readings[0]?.url ?? r.linkUrl
     out.push(
-      `insert into public.listing_holds (event_id, series_id, field, scope, reason, readings) values (${id}, ${r.seriesId ? q(r.seriesId) : 'null'}, ${q(r.field)}, ${q(r.scope)}, ${q(r.reason)}, ${q(JSON.stringify(r.readings))}::jsonb);`,
+      `insert into public.listing_holds (event_id, series_id, field, scope, reason, readings, next_source, next_check_at) values (${id}, ${r.seriesId ? q(r.seriesId) : 'null'}, ${q(r.field)}, ${q(r.scope)}, ${q(r.reason)}, ${q(JSON.stringify(r.readings))}::jsonb, ${next ? q(next) : 'null'}, now() + interval '1 day');`,
     )
   }
   if (rows.some((r) => r.ruling === 'hold' && r.scope && r.reason)) out.push('select count(*) as open_holds from public.listing_holds where released_at is null;')

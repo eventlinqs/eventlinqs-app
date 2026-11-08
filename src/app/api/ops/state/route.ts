@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,10 @@ export const maxDuration = 30
  *                     `confirmed` is the status the Stripe webhook sets when the
  *                     money has actually been taken.
  *   newOrganisers24h  organisations created in the last 24 hours.
+ *   submissionsNotLive  organiser submissions neither live nor refused an hour after
+ *                     they arrived (src/lib/listings/submission-watch-rule.ts). The
+ *                     target is 0; the daily email marks any other number (the PM's
+ *                     ruling of 8 November 2026, 15:00).
  */
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
@@ -49,15 +54,17 @@ export async function GET(request: NextRequest) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
   try {
-    const [live, tickets, tickets24, orders24, organisations24] = await Promise.all([
+    const hourAgo = new Date(Date.now() - SUBMISSION_LIVE_WITHIN_MINUTES * 60_000).toISOString()
+    const [live, tickets, tickets24, orders24, organisations24, notLive] = await Promise.all([
       admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null).gte('created_at', since),
       admin.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('confirmed_at', since),
       admin.from('organisations').select('id', { count: 'exact', head: true }).gte('created_at', since),
+      admin.from('listing_submissions').select('id', { count: 'exact', head: true }).or(NOT_LIVE_FILTER).lt('created_at', hourAgo),
     ])
 
-    const failed = [live, tickets, tickets24, orders24, organisations24].find((r) => r.error)
+    const failed = [live, tickets, tickets24, orders24, organisations24, notLive].find((r) => r.error)
     if (failed?.error) {
       // Named, never swallowed. A daily state that quietly reports zero events
       // live would be worse than one that says it could not count them.
@@ -74,6 +81,7 @@ export async function GET(request: NextRequest) {
         ticketsSold24h: tickets24.count ?? 0,
         ordersPaid24h: orders24.count ?? 0,
         newOrganisers24h: organisations24.count ?? 0,
+        submissionsNotLive: notLive.count ?? 0,
       },
     })
   } catch (err) {

@@ -57,7 +57,10 @@ export function statedInWords(html: string, iso: string, zone: string): 'both' |
   const monthLong = part({ month: 'long' })
   const monthShort = monthLong.slice(0, 3)
   // A leading zero too ('07 NOVEMBER 2026', 'SAT 07 NOV'): tour sites write the day that way (Red Hot Summer Tour, 5 November).
-  const dateForms = [...new Set([`${d} ${monthLong}`, `${d} ${monthShort}`, `${dd} ${monthLong}`, `${dd} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`])]
+  // Its ordinal too ('WEDNESDAY 23RD DECEMBER 2026', Carols by Candlelight Geelong, 7 November): 1st, 2nd, 3rd, 11th to 13th, 21st.
+  const n = Number(d)
+  const ord = `${d}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`
+  const dateForms = [...new Set([`${d} ${monthLong}`, `${d} ${monthShort}`, `${dd} ${monthLong}`, `${dd} ${monthShort}`, `${ord} ${monthLong}`, `${ord} ${monthShort}`, `${monthLong} ${d}`, `${monthShort} ${d}`, `${dd}/${mm}`, `${d}/${m}/`])]
   const { h24, h12, min, ampm } = localParts(iso, zone)
   const timeForms = [`${h12}:${min}${ampm}`, `${h12}.${min}${ampm}`, `${String(h24).padStart(2, '0')}:${min}`, ...(min === '00' ? [`${h12}${ampm}`] : [])]
   const at = (form: string) => {
@@ -138,4 +141,188 @@ export function statedWeekly(html: string, title: string, venue: string, iso: st
   if (!stated) return null
   const terms = termRanges(visibleLines(html).join('\n'), Number(p.ymd.slice(0, 4)))
   return terms.length > 0 && !terms.some(([from, to]) => from <= p.ymd && p.ymd <= to) ? 'outside_term' : 'weekly'
+}
+
+/**
+ * A SEASON'S STATEMENT OF THE NIGHT, IN ONE SENTENCE (fbbg.org.au, 7 November 2026: 'Free Tours on Sunday at 11.00a.m.
+ * during September, October, November, February, March April. No need to book.'). The sentence must name a word of the
+ * night's title (four letters or more, a weekday name aside), the night's weekday and its start ('a.m.' read as 'am'),
+ * and the months it runs: 'seasonal' when the night's month is one of them; 'outside_season' when the weekday and start
+ * are stated but its month is not (listed for a person, never passed); null when no sentence states it. Another sentence
+ * on the same page (a meeting on the 4th Wednesday at 10.00 a.m.) never vouches for the night.
+ */
+export function statedSeasonal(html: string, title: string, iso: string, zone: string): 'seasonal' | 'outside_season' | null {
+  const p = localParts(iso, zone)
+  const words = fold(title)
+    .split(' ')
+    .filter((w) => w.length >= 4 && !w.endsWith('day'))
+  if (words.length === 0) return null
+  const month = MONTHS[Number(p.ymd.slice(5, 7)) - 1]
+  /* A sentence never crosses a line (a block element): joined, Gallery Tots' title, its 'Every Friday, 9.30 to 10.15am'
+     and its break 'No sessions from Friday 18 December 2026 to Friday 22 January 2027' read as one season of December
+     and January (the first sweep with this reader, 7 November 16:45). */
+  const sentences = visibleLines(html).flatMap((line) => line.replace(/([ap])\.m\.?/g, '$1m').split(/(?<=[.!?])\s+/))
+  let outside = false
+  for (const s of sentences) {
+    // A sentence that says there is none (a break, a closure, an exception) is never a season.
+    if (/\b(no (sessions?|tours?|classes|events?)|closed|except|excluding|not (running|held|on))\b/.test(s)) continue
+    if (!words.some((w) => new RegExp(`\\b${w}`).test(s))) continue
+    const named = MONTHS.filter((m) => new RegExp(`\\b${m}\\b`).test(s))
+    if (named.length === 0 || !statesWeekdayAndStart(s, p)) continue
+    if (named.includes(month)) return 'seasonal'
+    outside = true
+  }
+  return outside ? 'outside_season' : null
+}
+
+/**
+ * EVERY WEEKDAY UNDER ITS TITLE (geelonggallery.org.au, 7 November 2026: 'Gallery Tots', then 'Every Friday, 9.30 to
+ * 10.15am', then 'No sessions from Friday 18 December 2026 to Friday 22 January 2027'). Within the three lines after a line
+ * that is the night's title, a line 'every <weekday>' whose first time is the night's start: a range's am or pm, written
+ * once after its end, is the start's too. 'weekly' when it is and the night is outside every break the page states
+ * ('no sessions from <date> to <date>'); 'in_break' when it falls inside one (a wrong fact, never a pass); null otherwise.
+ */
+export function statedEveryWeekday(html: string, title: string, iso: string, zone: string): 'weekly' | 'in_break' | null {
+  const want = fold(title)
+  if (want.length < 4) return null
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const range = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:to|-)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/
+  const stated = lines.some((l, i) => {
+    if (fold(l) !== want) return false
+    return lines.slice(i + 1, i + 4).some((n) => {
+      if (!new RegExp(`\\bevery\\s+${p.weekday}\\b`).test(n)) return false
+      const m = range.exec(n)
+      const startMin = m
+        ? ((Number(m[1]) % 12) + ((m[3] ?? m[6]) === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0)
+        : clockTimes(n)[0]
+      return startMin === minutesOf(p)
+    })
+  })
+  if (!stated) return null
+  const breaks = lines
+    .filter((l) => /\bno (sessions?|classes|tours?)\b/.test(l))
+    .flatMap((l) => {
+      const dates = [...l.matchAll(new RegExp(`(\\d{1,2})\\s+(${MONTHS.join('|')})\\s+(\\d{4})`, 'g'))].map(
+        (d) => `${d[3]}-${String(MONTHS.indexOf(d[2]) + 1).padStart(2, '0')}-${d[1].padStart(2, '0')}`,
+      )
+      return dates.length === 2 ? [[dates[0], dates[1]] as const] : []
+    })
+  return breaks.some(([from, to]) => from <= p.ymd && p.ymd <= to) ? 'in_break' : 'weekly'
+}
+
+/**
+ * A DAILY TIME OVER A STATED RANGE OF DATES (caravanshow.com.au, 7 November 2026: '20th November - 22nd November 2026:',
+ * '9am - 4pm - Fri - Sun'). True when a line states a range of dates (ordinals allowed, the first month taken from the
+ * second when it is not written) that holds the night's date, and the page states exactly one daily time line (a time range,
+ * then perhaps its days, 'Fri - Sun'), whose start is the night's and whose days, when written, hold the night's weekday.
+ * The middle days of a range are named by the range alone; a person reads them in one look.
+ */
+export function statedDailyInRange(html: string, iso: string, zone: string): boolean {
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const M = MONTHS.join('|')
+  const span = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(${M}))?\\s*(?:-|to)\\s*(?:[a-z]+day\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+(${M}),?\\s+(\\d{4})`, 'g')
+  const ymd = (y: string, mon: string, day: string) => `${y}-${String(MONTHS.indexOf(mon) + 1).padStart(2, '0')}-${day.padStart(2, '0')}`
+  const inRange = lines.some((l) =>
+    [...l.matchAll(span)].some((m) => ymd(m[5], m[2] ?? m[4], m[1]) <= p.ymd && p.ymd <= ymd(m[5], m[4], m[3])),
+  )
+  if (!inRange) return false
+  const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+  const daily = new RegExp(
+    `^\\s*(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)\\s*(?:-|to)\\s*\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)(?:\\s*-\\s*(${DAYS.join('|')})[a-z]*\\s*(?:-|to)\\s*(${DAYS.join('|')})[a-z]*)?\\s*$`,
+  )
+  const stated = lines.map((l) => daily.exec(l)).filter((m): m is RegExpExecArray => m !== null)
+  const starts = new Set(stated.map((m) => ((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0)))
+  if (starts.size !== 1 || !starts.has(minutesOf(p))) return false
+  const day = DAYS.indexOf(p.weekday.slice(0, 3))
+  return stated.every((m) => {
+    if (!m[4] || !m[5]) return true
+    const from = DAYS.indexOf(m[4])
+    const to = DAYS.indexOf(m[5])
+    return from <= to ? from <= day && day <= to : day >= from || day <= to
+  })
+}
+
+/**
+ * A GROUP NAMED IN OUR TITLE, ITS DAYS AND HOURS UNDER ITS NAME (Goldfields Libraries' 'Genealogy Groups at Goldfields
+ * Libraries', 7 November 2026: 'Bendigo Family History Group', its address, site and email, 'Library assistance at the
+ * Bendigo Library', then 'Wednesdays and Saturdays, 10am-2pm'). The name is our title or the part of it in brackets ('Genealogy
+ * Research Help (Bendigo Family History Group)'); the first line after a line that is that name naming a weekday and a time
+ * states the days (plural, joined by 'and' or commas) and the start (a range's am or pm written once is its start's too).
+ * True when that line holds the night's weekday and its start. Another group's lines are never read: only the first such line.
+ */
+export function statedUnderName(html: string, title: string, iso: string, zone: string): boolean {
+  const names = [fold(title), ...[...title.matchAll(/\(([^)]+)\)/g)].map((m) => fold(m[1]))].filter((n) => n.length >= 6)
+  if (names.length === 0) return false
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const weekdayWord = /\b(mon|tues|wednes|thurs|fri|satur|sun)days?\b/
+  const range = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:-|to)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/
+  for (let i = 0; i < lines.length; i++) {
+    if (!names.includes(fold(lines[i]))) continue
+    const line = lines.slice(i + 1, i + 9).find((l) => weekdayWord.test(l) && (range.test(l) || clockTimes(l).length > 0))
+    if (!line) return false
+    if (!new RegExp(`\\b${p.weekday}s?\\b`).test(line)) return false
+    const m = range.exec(line)
+    const start = m ? ((Number(m[1]) % 12) + ((m[3] ?? m[6]) === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0) : clockTimes(line)[0]
+    return start === minutesOf(p)
+  }
+  return false
+}
+
+/** Every clock time on one lowercased line ('12:30pm', '6.00 pm', '7pm', '19:00'), as minutes past midnight, in order. */
+function clockTimes(line: string): number[] {
+  const out: number[] = []
+  const re = /(?<![\d.:])(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b|(?<![\d.:])([01]?\d|2[0-3]):(\d{2})(?!\d)/g
+  for (const m of line.replace(/([ap])\.m\.?/g, '$1m').matchAll(re)) {
+    if (m[3]) out.push(((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0))
+    else out.push(Number(m[4]) * 60 + Number(m[5]))
+  }
+  return out
+}
+const minutesOf = (p: ReturnType<typeof localParts>) => p.h24 * 60 + Number(p.min)
+
+/**
+ * A FESTIVAL DAY STARTS AT ITS GATES (redhotsummertour.com.au, 7 November 2026: '07 NOVEMBER 2026', '12:30pm ═ GATES',
+ * then each act's set). True when the page states the night's date and exactly one gates time, and that time is the
+ * night's start. A set time is never the start; a page of several gates times names none.
+ */
+export function statedByGates(html: string, iso: string, zone: string): boolean {
+  if (statedInWords(html, iso, zone) === null) return false
+  // A page's one doors time is its opening too (Tipsy Sketching, 7 November: 'Doors open from 6:00pm with drawing starting
+  // from 6:30pm'); an early and a late doors time name none.
+  const gates = new Set(visibleLines(html).filter((l) => /\bgates?\b|\bdoors?\s+open/.test(l)).map((l) => clockTimes(l)[0]).filter((t) => t !== undefined))
+  return gates.size === 1 && gates.has(minutesOf(localParts(iso, zone)))
+}
+
+/**
+ * A NIGHT LISTED BY DATE BESIDE ITS TITLE, WITH THE PAGE'S ONE SESSION TIME (sovereignhill.com.au, 7 November 2026: 'Friday
+ * 13 November: 12 COLLABORATION', 'Friday 13 March: 09 ESSENCE', ... and once '6:00pm-8:00pm AEDT'). True when one line names
+ * the night's date (its weekday, if written, its own) and a word of its title, and the page states exactly one session time
+ * (a line that is only a time or a time range), which is the night's start. Opening hours carry other words and are never a
+ * session; two session times name no start.
+ */
+export function statedInDatedList(html: string, title: string, iso: string, zone: string): boolean {
+  const p = localParts(iso, zone)
+  const lines = visibleLines(html)
+  const words = fold(title)
+    .split(' ')
+    .filter((w) => w.length >= 4 && !w.endsWith('day') && !MONTHS.includes(w))
+  if (words.length === 0) return false
+  const [, mm, dd] = p.ymd.split('-')
+  const month = MONTHS[Number(mm) - 1]
+  const dated = new RegExp(`(?:^|[^0-9])${Number(dd)}(?:st|nd|rd|th)?\\s+${month}\\b`)
+  const weekdayNamed = /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b/
+  const listed = lines.some(
+    (l) => dated.test(l) && words.some((w) => new RegExp(`\\b${w}\\b`).test(l)) && (!weekdayNamed.test(l) || new RegExp(`\\b${p.weekday}\\b`).test(l)),
+  )
+  if (!listed) return false
+  const sessions = new Set(
+    lines
+      .filter((l) => /^\s*\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?\s*(?:(?:-|to)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)?\s*(?:aedt|aest)?\s*$/.test(l))
+      .map((l) => clockTimes(l)[0])
+      .filter((t) => t !== undefined),
+  )
+  return sessions.size === 1 && sessions.has(minutesOf(p))
 }

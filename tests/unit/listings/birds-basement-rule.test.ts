@@ -39,12 +39,37 @@ describe("Bird's Basement's page rule", () => {
     expect(unpriced[0].links.every((l) => l.priceFromCents === null)).toBe(true)
   })
 
-  it('an early and a late show, not tied to dates, leave every date date only: nothing is guessed', () => {
+  /*
+   * LAWAL'S RULING, 7 November 2026 16:53 (the CONTROLLER's 17:05): 'A date range with two show times is three dates with two
+   * sessions each; a person reads it in one look.' The case before this said 'nothing is guessed' and left all three dates
+   * date only; that was wrong, and 'the source does not say' is never written while a person reading the page can tell.
+   * /show/1773's own lines (read 7 November, C:\dev\EVIDENCE\ENGINE-P0\readers-62\birdsbasement.txt): the dates Thursday 19
+   * to Saturday 21 November 2026, 'Early Doors Open: 6:00 pm', 'Early Show Starts: 7:30 pm', 'Late Doors Open: 9:20 pm',
+   * 'Late Show Starts: 10:00 pm'; its Event data three date only nights; its ticket page refused (robots.txt answered 403).
+   */
+  it('an early and a late show on a range of dates are every date twice: one session at each stated start', () => {
     const found = pageRuleFor(url)!.read(
-      page(['2026-11-19', '2026-11-20', '2026-11-21'], '<p>Early Show Starts: 7:30 pm</p><p>Late Doors Open: 9:20 pm</p><p>Late Show Starts: 10:00 pm</p>'),
+      page(
+        ['2026-11-19', '2026-11-20', '2026-11-21'],
+        '<p>Early Doors Open: 6:00 pm</p><p>Early Show Starts: 7:30 pm</p><p>Late Doors Open: 9:20 pm</p><p>Late Show Starts: 10:00 pm</p>',
+      ),
       url,
     )
-    expect(found).toHaveLength(3)
-    expect(found.every((f) => f.timeStatus === 'date_only')).toBe(true)
+    expect(found).toHaveLength(6)
+    const local = (iso: string) =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .format(new Date(iso))
+        .replace(',', '')
+    expect(found.map((f) => local(f.startsAt))).toEqual([
+      '2026-11-19 19:30', '2026-11-19 22:00',
+      '2026-11-20 19:30', '2026-11-20 22:00',
+      '2026-11-21 19:30', '2026-11-21 22:00',
+    ])
+    expect(found.every((f) => f.timeStatus === 'exact' && f.timeFromWords === true)).toBe(true)
+  })
+  it('a doors time is never a session: only a show start makes one', () => {
+    const found = pageRuleFor(url)!.read(page(['2026-11-19'], '<p>Early Doors Open: 6:00 pm</p><p>Early Show Starts: 7:30 pm</p><p>Late Doors Open: 9:20 pm</p><p>Late Show Starts: 10:00 pm</p>'), url)
+    expect(found).toHaveLength(2)
+    expect(found.map((f) => melbourne(f.startsAt)).join(' | ')).not.toMatch(/6:00|9:20/)
   })
 })

@@ -3,12 +3,14 @@
  * the database (it reads none); it reads the sweep's own files.
  *   node node_modules/tsx/dist/cli.mjs scripts/verify/accuracy-trend.mts backfill [dir]   trend.jsonl from every sweep-*.json, oldest first
  *   node node_modules/tsx/dist/cli.mjs scripts/verify/accuracy-trend.mts weekly [dir]     this week's proof, in plain words, to weekly-<date>.md
+ *   node node_modules/tsx/dist/cli.mjs scripts/verify/accuracy-trend.mts trust [dir]      each source's trust record (learning part 4), to trust-<date>.md
  * The sweep itself appends a row on every run (scripts/verify/engine-accuracy-sweep.mts).
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { trendRow, weeklyProof } = pick((await import('@/lib/listings/accuracy-trend')) as typeof import('@/lib/listings/accuracy-trend'))
+const { trustReport } = pick((await import('@/lib/listings/source-trust')) as typeof import('@/lib/listings/source-trust'))
 type TrendRow = import('@/lib/listings/accuracy-trend').TrendRow
 
 const [mode, dirArg] = process.argv.slice(2)
@@ -33,6 +35,15 @@ if (mode === 'backfill') {
   writeFileSync(out, text + '\n')
   console.log(text)
   console.log(`[trend] written to ${out}`)
+} else if (mode === 'trust') {
+  // Learning part 4: a record printed and read, never a switch, until Lawal rules on the gate (car 56's plan).
+  const rows = existsSync(TREND) ? readFileSync(TREND, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as TrendRow) : []
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const text = trustReport(rows, today)
+  const out = join(DIR, `trust-${today}.md`)
+  writeFileSync(out, text + '\n')
+  console.log(text)
+  console.log(`[trend] written to ${out}`)
 } else {
-  throw new Error('usage: accuracy-trend.mts <backfill|weekly> [dir]')
+  throw new Error('usage: accuracy-trend.mts <backfill|weekly|trust> [dir]')
 }

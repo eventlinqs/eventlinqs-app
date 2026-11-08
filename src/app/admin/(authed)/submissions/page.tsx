@@ -93,7 +93,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
               <div className="flex flex-col gap-4 md:flex-row">
                 {s.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a staff preview through a ten minute signed address to a private bucket, never a public image
-                  <img src={s.photoUrl} alt={`The photo sent with ${s.title}`} className="h-40 w-full rounded-lg object-cover md:w-56" />
+                  <img src={s.photoUrl} alt={`The photo sent with ${s.title}`} className="h-40 w-full rounded-lg bg-black/30 object-contain md:w-56" />
                 ) : (
                   <p data-no-photo className="flex h-40 w-full items-center justify-center rounded-lg border border-white/10 px-3 text-center text-xs text-white/50 md:w-56">
                     {s.photoSent ? 'The photo could not be shown' : 'No photo sent. Design it from the details.'}
@@ -101,12 +101,17 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                 )}
                 <div className="min-w-0 flex-1 text-sm text-white/70">
                   <h3 className="font-display text-lg font-semibold text-white">{s.title}</h3>
+                  {s.heldBecause ? (
+                    <p data-held className="mt-1 font-medium text-amber-200">
+                      Held by the self-listing checks: {s.heldBecause}
+                    </p>
+                  ) : null}
                   <p className="mt-1">
                     {WHEN.format(new Date(s.startsAt))}
                     {s.endsAt ? ` to ${WHEN.format(new Date(s.endsAt))}` : ''}
                   </p>
                   <p className="mt-1">
-                    {s.venueName}, {s.venueAddress} ({SUBMISSION_CITY_WORDS[s.city]})
+                    {s.venueName}, {s.venueAddress} ({SUBMISSION_CITY_WORDS[s.city] ?? s.city})
                   </p>
                   <p className="mt-1">
                     {SUBMISSION_ENTRY_WORDS[s.entry]}

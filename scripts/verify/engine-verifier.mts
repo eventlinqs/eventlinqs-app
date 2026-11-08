@@ -350,4 +350,29 @@ if (args.includes('--enforce')) {
     }
   }
 }
-process.exitCode = count('FAIL') > 0 ? 1 : 0
+/*
+ * EVERY OPEN HOLD CARRIES ITS NEXT ACTION (Lawal, 7 November 2026; the CONTROLLER's 16:55 (1)): a hold with no next source or
+ * time, or one whose next check is more than a day overdue, is red by name (src/lib/listings/hold-walk.ts holdsVerdict). While
+ * migration 20261107170001 is not on the target, its columns are missing and the check says NOT JUDGED, never a pass.
+ */
+const { holdsVerdict } = pick((await import('@/lib/listings/hold-walk')) as typeof import('@/lib/listings/hold-walk'))
+const { data: openHolds, error: holdsError } = await records
+  .from('listing_holds')
+  .select('id, next_source, next_check_at, event:events(title)')
+  .is('released_at', null)
+let holdsRed = 0
+if (holdsError) {
+  console.log(`[engine-verifier] open holds: NOT JUDGED (${holdsError.message}; migration 20261107170001 may not be on ${TARGET} yet)`)
+} else {
+  const red = holdsVerdict(
+    (openHolds ?? []).map((h) => {
+      const ev = (Array.isArray(h.event) ? h.event[0] : h.event) as { title?: string } | null
+      return { id: h.id as string, title: ev?.title ?? '(no night)', nextSource: h.next_source as string | null, nextCheckAt: h.next_check_at as string | null }
+    }),
+    new Date(),
+  )
+  holdsRed = red.length
+  console.log(`[engine-verifier] open holds: ${(openHolds ?? []).length}, ${red.length} red`)
+  for (const r of red) console.log(`[engine-verifier] FAIL open hold ${r.id} (${r.title}): ${r.why}`)
+}
+process.exitCode = count('FAIL') > 0 || holdsRed > 0 ? 1 : 0

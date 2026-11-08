@@ -8,10 +8,11 @@ import {
   toggleFollowOrganiser,
   toggleFollowArtist,
   toggleFollowScene,
+  toggleFollowVenue,
   type FollowResult,
 } from '@/app/actions/follow'
 
-type FollowType = 'organiser' | 'artist' | 'subgenre'
+type FollowType = 'organiser' | 'artist' | 'subgenre' | 'venue'
 type Variant = 'solid' | 'outline'
 
 /**
@@ -86,6 +87,7 @@ export function FollowButton({
   const runToggle = async (): Promise<FollowResult> => {
     if (type === 'organiser') return toggleFollowOrganiser(id, fromEventId)
     if (type === 'artist') return toggleFollowArtist(id)
+    if (type === 'venue') return toggleFollowVenue(id)
     return toggleFollowScene(id)
   }
 

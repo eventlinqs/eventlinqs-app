@@ -16,7 +16,7 @@ type Admin = ReturnType<typeof createAdminClient>
 
 export const SUBMISSION_BUCKET = 'listing-submissions'
 
-export type Recorded = { readonly state: 'recorded' } | { readonly state: 'refused'; readonly reason: string }
+export type Recorded = { readonly state: 'recorded'; readonly id: string } | { readonly state: 'refused'; readonly reason: string }
 
 /** True when a file was chosen; an empty file input posts a nameless empty File. */
 export function sentPhoto(photo: unknown): photo is File {
@@ -26,8 +26,8 @@ export function sentPhoto(photo: unknown): photo is File {
 export async function recordSubmission(admin: Admin, row: SubmissionRow, photo: File | null): Promise<Recorded> {
   if (!sentPhoto(photo)) {
     // No photo is a whole submission: the listing is designed from its details (the checklist's section K, path B).
-    const { error } = await admin.from('listing_submissions').insert({ ...row, photo_path: null, photo_owned: false })
-    return error ? { state: 'refused', reason: 'Your event could not be sent just now. Try again in a minute.' } : { state: 'recorded' }
+    const { data, error } = await admin.from('listing_submissions').insert({ ...row, photo_path: null, photo_owned: false }).select('id').single()
+    return error || !data ? { state: 'refused', reason: 'Your event could not be sent just now. Try again in a minute.' } : { state: 'recorded', id: data.id as string }
   }
   if (photo.size > MAX_IMAGE_BYTES) return { state: 'refused', reason: 'The photo must be under 10MB.' }
   let processed
@@ -56,12 +56,12 @@ export async function recordSubmission(admin: Admin, row: SubmissionRow, photo: 
   })
   if (storeError) return { state: 'refused', reason: 'Your event could not be sent just now. Try again in a minute.' }
 
-  const { error } = await admin.from('listing_submissions').insert({ ...row, photo_path: path })
-  if (error) {
+  const { data, error } = await admin.from('listing_submissions').insert({ ...row, photo_path: path }).select('id').single()
+  if (error || !data) {
     await admin.storage.from(SUBMISSION_BUCKET).remove([path])
     return { state: 'refused', reason: 'Your event could not be sent just now. Try again in a minute.' }
   }
-  return { state: 'recorded' }
+  return { state: 'recorded', id: data.id as string }
 }
 
 export interface Submission {
@@ -86,14 +86,17 @@ export interface Submission {
   readonly photoSent: boolean
   /** A signed address good for ten minutes, or null when none was sent or it could not be signed. */
   readonly photoUrl: string | null
+  /** Why the self-listing checks held it, in plain words; null while it waits for its check. */
+  readonly heldBecause: string | null
 }
 
-/** What waits for a person, soonest event first. Throws when it cannot be read, so the page says so. */
+/** What waits for a person, soonest event first: every one the self-listing checks held, and any still waiting for its
+ * check. Throws when it cannot be read, so the page says so. */
 export async function waitingSubmissions(admin: Admin): Promise<Submission[]> {
   const { data, error } = await admin
     .from('listing_submissions')
-    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, booking_url, entry, price_from_cents, description, permission_words, permission_given_at, photo_path')
-    .eq('status', 'waiting')
+    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, booking_url, entry, price_from_cents, description, permission_words, permission_given_at, photo_path, held_because')
+    .in('status', ['waiting', 'held'])
     .order('starts_at', { ascending: true })
     .limit(200)
   if (error) throw new Error(`listing submissions could not be read: ${error.message}`)
@@ -124,6 +127,7 @@ export async function waitingSubmissions(admin: Admin): Promise<Submission[]> {
     permissionGivenAt: r.permission_given_at as string,
     photoSent: r.photo_path !== null,
     photoUrl: r.photo_path === null ? null : (signed.get(r.photo_path as string) ?? null),
+    heldBecause: (r.held_because as string | null) ?? null,
   }))
 }
 
@@ -143,7 +147,7 @@ export async function reviewSubmission(
       refused_because: outcome.status === 'refused' ? outcome.because : null,
     })
     .eq('id', id)
-    .eq('status', 'waiting')
+    .in('status', ['waiting', 'held'])
     .select('id')
   if (error) return 'error'
   return (data ?? []).length === 1 ? 'done' : 'gone'

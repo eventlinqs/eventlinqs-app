@@ -9,7 +9,7 @@
 // whose name IS part of its address and one whose name is not. Both are here.
 
 import { describe, expect, test } from 'vitest'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { addressNamingItsPlace, formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 /** The real event, exactly as the row reads on production. */
 const QUAKERS = {
@@ -159,5 +159,31 @@ describe('a postcode sits where an Australian address expects it', () => {
         country: 'Australia',
       }),
     ).toBe('Geelong Arena, 1 Bay Street, Geelong, VIC, 3220, Australia')
+  })
+})
+
+describe('the street names its place (8 November 2026: "800 High Street, Melbourne" was in Thornbury)', () => {
+  test.each([
+    ['800 High Street', 'Thornbury', 'Melbourne', '800 High Street, Thornbury'],
+    ['30 Aberdeen Street', 'Geelong West', 'Geelong', '30 Aberdeen Street, Geelong West'],
+    ['91 Inglis Street', 'West Bendigo', 'Bendigo', '91 Inglis Street, West Bendigo'],
+    ['717 Flinders St', 'Docklands', 'Melbourne', '717 Flinders St, Docklands'],
+    ['Outside Pipers Cafe, 403 Wendouree Pde', 'Lake Wendouree', 'Ballarat', 'Outside Pipers Cafe, 403 Wendouree Pde, Lake Wendouree'],
+  ])('%s in %s gains its suburb', (address, suburb, city, expected) => {
+    expect(addressNamingItsPlace(address, suburb, city)).toBe(expected)
+  })
+  test.each([
+    ['Downstairs, 586 Little Bourke St', 'Melbourne CBD', 'Melbourne'],
+    ['17 Lydiard Street South', 'Ballarat Central', 'Ballarat'],
+    ['Kardinia Park Precinct, Geelong VIC 3220', 'South Geelong', 'Geelong'],
+    ['31 Sturt St Southbank 3006', 'Southbank', 'Melbourne'],
+    ['176 Little Lonsdale Street', 'Melbourne', 'Melbourne'],
+    ['800 High Street, Thornbury', 'Thornbury', 'Melbourne'],
+  ])('%s (%s) is kept as it is', (address, suburb, city) => {
+    expect(addressNamingItsPlace(address, suburb, city)).toBe(address)
+  })
+  test('nothing to add without a street or a suburb', () => {
+    expect(addressNamingItsPlace(null, 'Thornbury', 'Melbourne')).toBeNull()
+    expect(addressNamingItsPlace('800 High Street', null, 'Melbourne')).toBe('800 High Street')
   })
 })
