@@ -4510,6 +4510,19 @@ const DRILLS = [
     expect: 'which is not a byte count',
   },
   /*
+   * A page route with no mark (WINDOW 5A, 9 November 2026): car 57's /start reached Vercel unmarked and its preview
+   * failed in postbuild (PR #257), because only the postbuild half knew the clause. The contract half now reads the
+   * page routes from src/app; removing a real route's mark must be named before any build.
+   */
+  {
+    name: 'a page route in src/app loses its mark, and only a build would have said so',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '    "/about": 163563,\n',
+    replace: '',
+    expect: '/about is a page route in src/app with no mark',
+  },
+  /*
    * Clause 6, the attributedMoves register. Five drills rather than one,
    * because a single planted fault cannot tell a guard that checks six things
    * from a guard that checks one and returns early, which is how three blind
@@ -4560,8 +4573,10 @@ const DRILLS = [
     name: 'the mark moves again and leaves its explanation behind',
     guard: `${GUARDS}/initial-bundle-budget.mjs`,
     file: 'perf-budget.json',
-    find: '"/waitlist": 175939,',
-    replace: '"/waitlist": 176939,',
+    // The anchor follows the mark (175939 became 175942 at a later re-measure, which left this drill stale on main);
+    // the drill still moves it 1,000 bytes from its explanation's 175937.
+    find: '"/waitlist": 175942,',
+    replace: '"/waitlist": 176942,',
     expect: 'past the 64-byte jitter allowance',
   },
   /*

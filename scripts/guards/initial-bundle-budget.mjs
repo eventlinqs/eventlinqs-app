@@ -110,7 +110,7 @@
  * effective date in scripts/guards/no-ai-authorship.mjs.
  */
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
@@ -309,7 +309,49 @@ function judgeContract() {
     )
   }
 
+  /*
+   * EVERY PAGE ROUTE HAS ITS MARK BEFORE ANY PUSH (WINDOW 5A, 9 November 2026). Car 57 added /start with no mark;
+   * every local check passed, because the unmarked-route clause lives only in the postbuild half and the light gate
+   * builds nothing, and Vercel's preview of 222503c2 failed on it (PR #257). The routes are read from the source, so this
+   * half can see the class: each page file under src/app, its route groups and parallel slots removed, must name a
+   * mark. A mark is MEASURED, never copied from a neighbour: build, then
+   * `node scripts/perf/first-load-budget.mjs --route <route>`, then add that number.
+   */
+  const pageRoutes = pageRoutesInSource(join(ROOT, 'src', 'app'))
+  for (const route of pageRoutes) {
+    judged += 1
+    if (baseline.marks?.[route] === undefined) {
+      failures.push(
+        `${route} is a page route in src/app with no mark in ${BASELINE_FILE}, so the postbuild half will refuse every ` +
+          `build of it (Vercel's included). Build locally, measure it with ` +
+          `\`node scripts/perf/first-load-budget.mjs --route "${route}"\`, and add that measured number.`,
+      )
+    }
+  }
+
   return { judged, failures }
+}
+
+/** Every page route under src/app, as the build names it: route groups '(x)' and parallel slots '@x' removed. */
+function pageRoutesInSource(appDir) {
+  const out = new Set()
+  const walk = (dir, segs) => {
+    let entries
+    try {
+      entries = readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    if (entries.some((e) => e.isFile() && /^page\.(tsx|ts|jsx|js|mdx)$/.test(e.name))) out.add('/' + segs.join('/'))
+    for (const e of entries) {
+      if (!e.isDirectory()) continue
+      const grouped = e.name.startsWith('(') && e.name.endsWith(')')
+      const slot = e.name.startsWith('@')
+      walk(join(dir, e.name), grouped || slot ? segs : [...segs, e.name])
+    }
+  }
+  walk(appDir, [])
+  return [...out].map((r) => (r === '/' ? '/' : r.replace(/\/$/, '')))
 }
 
 /** The proof half. Needs a build. */
