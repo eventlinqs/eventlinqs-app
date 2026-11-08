@@ -11476,6 +11476,18 @@ const DRILLS = [
     replace: '    if (result.photo_approved !== true || !photoStillOwed(r, result)) continue',
     expect: 'waits for a photo_approved mark again',
   },
+  /*
+   * no-spaced-hyphen-in-copy (WINDOW 5A, 8 November 2026, Lawal's writing rule, CLAUDE.md law 6): a spaced hyphen put
+   * back into words a visitor reads, the city guide's own "List your event" line.
+   */
+  {
+    name: 'no spaced hyphen in copy: a visitor reads one in the city guide again',
+    guard: `${GUARDS}/no-spaced-hyphen-in-copy.mjs`,
+    file: 'src/components/features/city-guide/city-guide.tsx',
+    find: 'Add a night that is not here yet.',
+    replace: 'Add a night - not here yet.',
+    expect: 'spaced hyphen(s) in copy a visitor reads',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

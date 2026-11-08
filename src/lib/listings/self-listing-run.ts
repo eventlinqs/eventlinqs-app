@@ -18,6 +18,8 @@ import { AUTHORITY_WORDS, PHOTO_OWNED_WORDS, SUBMISSION_ROLE_WORDS, type Submiss
 import { judgeSelfListing, localParts, type Correction, type PublishFacts, type SelfListingVerdict } from './self-listing'
 import { addSelfListedPhoto } from '@/lib/social/store'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
+import { hasRealCover } from '@/lib/events/publish-gate'
+import { FREE_REGISTRATION_REQUIRED } from '@/lib/events/cta'
 import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStillOwed, type PhotoAttach } from './organiser-photo-rule'
 
 /**
@@ -89,7 +91,7 @@ export function summaryFrom(description: string | null, title: string, venue: st
 
 function priceWords(entry: string, cents: number | null): string {
   if (entry === 'free') return 'Free'
-  if (entry === 'free_registration') return 'Free, registration required'
+  if (entry === 'free_registration') return FREE_REGISTRATION_REQUIRED
   return cents === null ? 'Paid (no price given)' : `From A$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`
 }
 
@@ -185,6 +187,9 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   if (asset.state === 'refused') return not(`sent, but its rights record could not be written (${asset.reason})`)
   const locked = await lockPhotoToEvent({ eventId, hashes, imageUrl: url, role: 'cover' }, lockRpc)
   if (!locked.ok) return not('sent, but it is already used for another event')
+  // The publish gate's own cover rule (src/lib/events/publish-gate.ts): only a real cover takes the place of the night's
+  // typographic one; the listings run made the night published with that typographic cover, so it is never without one.
+  if (!hasRealCover(url)) return not('sent, but its stored address is not a real cover')
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)
   if (cover.error) return not(`sent, but it could not be set as the cover (${cover.error.message})`)
   return { attached: true, words: `yes, the organiser's own, credited "Photo: ${rightsHolder}"` }
