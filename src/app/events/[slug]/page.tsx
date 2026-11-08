@@ -1715,8 +1715,8 @@ export default async function EventDetailPage({ params }: Props) {
                 {event.organisation && shownOrganiser(event, event.organisation).slug === null && event.venue_id && event.venue_name && (
                 <Reveal as="div" className="mt-10" data-host-card="venue">
                   {/* "The venue", never "Hosted by": EventLinqs holds the venue of a night it lists, not always who runs the
-                      night (read on www 8 November 2026: Kyivska Perepichka is the Ukrainian Multicultural Society's
-                      night at a hired Wheeler Centre; Cosi is Geelong Repertory Theatre Company's at the Woodbin). */}
+                      night (read on www 8 November 2026: Kyivska Perepichka is a community society's night at a hired
+                      Wheeler Centre; Cosi is Geelong Repertory Theatre Company's at the Woodbin). */}
                   <SectionHeader eyebrow="The venue" title={shownVenueName(event) ?? event.venue_name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex flex-wrap items-start gap-4">
