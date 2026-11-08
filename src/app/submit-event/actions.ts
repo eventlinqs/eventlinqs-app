@@ -10,7 +10,6 @@ import { judgeSubmission } from '@/lib/listings/submission'
 import { recordSubmission, sentPhoto } from '@/lib/listings/submission-store'
 import { readSubmissionChoices } from '@/lib/listings/submission-choices'
 import { selfListSubmission, type SelfListingOutcome } from '@/lib/listings/self-listing-run'
-import { alertArrival } from '@/lib/listings/submission-watch'
 
 /**
  * THE SUBMISSION FORM (release checklist H1). Public and unauthenticated, because the organiser of an event sold
@@ -60,13 +59,6 @@ export async function submitEvent(formData: FormData): Promise<void> {
     const done = await recordSubmission(createAdminClient(), judged.row, photo instanceof File ? photo : null)
     if (done.state === 'refused') back(`problem=${encodeURIComponent(done.reason)}`)
     else {
-      // The PM's 15:00 of 8 November 2026: Lawal hears of every submission the moment it arrives, before its checks run,
-      // so a check that never finishes can never hide one (src/lib/listings/submission-watch.ts).
-      try {
-        await alertArrival(done.id)
-      } catch (err) {
-        console.error('[submit-event] the arrival alert was not sent; the hourly backstop still raises it:', err instanceof Error ? err.message : String(err))
-      }
       let outcome: SelfListingOutcome | null = null
       try {
         outcome = await selfListSubmission(done.id)

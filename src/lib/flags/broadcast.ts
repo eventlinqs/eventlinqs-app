@@ -77,7 +77,7 @@ export const BROADCAST_FLAGS = [
   /*
    * The organiser's own "your event is live" email (the PM's 15:00 of 8 November 2026, item 3): sent by the system the
    * moment a self-listed event is live, in Lawal's format and through the gateway's checks (src/lib/outreach/voice-gate.ts).
-   * OFF until Lawal says yes.
+   * ON by Lawal's ruling of 8 November 2026, 16:13 (2); this switch turns it off with no deploy.
    */
   'organiser_live_email',
 ] as const
@@ -131,7 +131,7 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // OFF. The safe posture when the flags table cannot be read is the posture production holds until Lawal approves
   // the privacy version that names claims: no claim taken.
   listing_claims: false,
-  organiser_live_email: false,
+  organiser_live_email: true,
 }
 
 /**
@@ -181,7 +181,7 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
   listing_claims:
     'project manager 2026-10-27 21:33: OFF in production until Lawal approves the new dated privacy policy version that names listing claims and removal requests (what is collected, its one purpose, how long it is kept). ON only on his written YES, through the governed switch.',
   organiser_live_email:
-    'project manager 2026-11-08 15:00: OFF until Lawal says yes. When on, an organiser whose self-listed event goes live is emailed once, from the platform sender, in Lawal\'s own format, only when the gateway\'s checks pass; Lawal hears what was sent or why not in his own alert (src/lib/listings/organiser-live-notice.ts).',
+    'lawal 2026-11-08 16:13: ON. An organiser whose self-listed event goes live is emailed once, automatically, from the platform sender, in Lawal\'s own format, only when the gateway\'s checks pass (src/lib/listings/organiser-live-notice.ts); he is never in the loop. The switch turns it off with no deploy.',
   event_availability_and_access:
     'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }

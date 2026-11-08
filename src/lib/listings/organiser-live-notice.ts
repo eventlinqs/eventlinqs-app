@@ -8,11 +8,11 @@ import { liveNoticeMessage, type LiveNoticeFacts } from './organiser-live-notice
  * THE ORGANISER'S OWN "YOUR EVENT IS LIVE" EMAIL (the PM's ruling of 8 November 2026, 15:00, item 3): sent by the system
  * the moment a self-listed event is live, in Lawal's own format (the three drafts of that day in
  * C:\dev\START-16OCT\EL-LIVE-NOTICES-8NOV.md), and only through the gateway's checks, ported line for line in
- * src/lib/outreach/voice-gate.ts. Behind organiser_live_email, OFF until Lawal says yes. The answer is words for Lawal's
- * own alert: sent, or why not.
+ * src/lib/outreach/voice-gate.ts. ON by Lawal's ruling of 8 November 2026, 16:13 (2); organiser_live_email turns it off
+ * with no deploy. The answer is words for the run's log: sent, or why not.
  */
 export async function sendOrganiserLiveNotice(facts: LiveNoticeFacts): Promise<string> {
-  if (!(await isFeatureEnabled('organiser_live_email'))) return 'not sent: the organiser_live_email switch is OFF until Lawal says yes'
+  if (!(await isFeatureEnabled('organiser_live_email'))) return 'not sent: the organiser_live_email switch is off'
   const msg = liveNoticeMessage(facts, resolveFrom())
   const problems = voiceProblems(msg, readVoicePolicy())
   if (problems.length) return `not sent, held by the gateway's checks: ${problems.join('; ')}`

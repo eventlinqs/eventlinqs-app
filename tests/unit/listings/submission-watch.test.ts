@@ -1,40 +1,19 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import {
-  arrivalEmail,
-  isLate,
-  isLive,
-  lateAndNotYetTold,
-  lateEmail,
-  NOT_LIVE_FILTER,
-  priceWords,
-  SUBMISSION_LIVE_WITHIN_MINUTES,
-  type WatchedSubmission,
-} from '../../../src/lib/listings/submission-watch-rule'
+import { isLate, isLive, NOT_LIVE_FILTER, priceWords, SUBMISSION_LIVE_WITHIN_MINUTES, type WatchedSubmission } from '../../../src/lib/listings/submission-watch-rule'
 
 /**
- * NO SUBMISSION IS EVER MISSED AGAIN (the PM's ruling of 8 November 2026, 15:00): the arrival alert (1), the hour's
- * backstop and the top of /admin/today (4), and the daily read of production in the state email (5). The rules on cases,
- * then where each is wired.
+ * NO SUBMISSION IS EVER MISSED, AND NONE GOES THROUGH LAWAL (the PM's ruling of 8 November 2026, 15:00, as Lawal's
+ * rulings of 15:48 (2) and (6) changed it): what is not live an hour after it arrived is shown on /admin/today and counted
+ * in the daily state email, the read of production; nothing in the listing path is sent to Lawal.
  */
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8').replace(/\r\n/g, '\n')
 const NOW = new Date('2026-11-08T05:00:00Z')
 const sub = (over: Partial<WatchedSubmission> = {}): WatchedSubmission => ({
-  id: '52d2f81d-04e4-4d98-a675-716d441ad890',
   created_at: '2026-11-08T03:30:00Z',
   status: 'waiting',
-  title: 'Kyivska Perepichka: Ukrainian Theatre in Melbourne',
-  name: 'Iryna Karanets',
-  role: 'organiser',
-  starts_at: '2026-12-05T07:30:00Z',
-  city_slug: 'melbourne',
-  entry: 'paid',
-  price_from_cents: 8000,
-  photo_path: 'bfd3be94.jpg',
   published_event_id: null,
-  held_because: null,
-  check_result: null,
   ...over,
 })
 
@@ -55,34 +34,8 @@ describe('live and late', () => {
     expect(isLate(sub({ status: 'refused' }), NOW)).toBe(false)
     expect(isLate(sub({ status: 'published' }), NOW)).toBe(false)
   })
-  test('a late one is raised once', () => {
-    expect(lateAndNotYetTold(sub(), NOW)).toBe(true)
-    expect(lateAndNotYetTold(sub({ check_result: { late_alert_at: '2026-11-08T04:10:00Z' } }), NOW)).toBe(false)
-  })
-  test("the database filter names the same three not-live states the rule does", () => {
+  test('the database filter names the same three not-live states the rule does', () => {
     expect(NOT_LIVE_FILTER).toBe('status.in.(waiting,held),and(status.eq.accepted,published_event_id.is.null)')
-  })
-})
-
-describe('the two alerts to Lawal', () => {
-  test('the arrival alert carries the event, its date, city, organiser, price, photo yes or no, and one link', () => {
-    const m = arrivalEmail(sub(), { name: 'Melbourne', timezone: 'Australia/Melbourne' }, 'https://www.eventlinqs.com.au/admin/submissions')
-    expect(m.subject).toBe('New organiser event sent in: Kyivska Perepichka: Ukrainian Theatre in Melbourne')
-    expect(m.text).toContain('When: Saturday 5 December')
-    expect(m.text).toContain('6:30')
-    expect(m.text).toContain('City: Melbourne')
-    expect(m.text).toContain('Organiser: Iryna Karanets (I organise it)')
-    expect(m.text).toContain('Price: From A$80')
-    expect(m.text).toContain('Photo: yes')
-    expect(m.text.match(/https:\/\/\S+/g)).toEqual(['https://www.eventlinqs.com.au/admin/submissions'])
-    expect(arrivalEmail(sub({ photo_path: null }), { name: 'Melbourne', timezone: 'Australia/Melbourne' }, 'x').text).toContain('Photo: no')
-  })
-  test('the late alert says how long, and why it is not live', () => {
-    expect(lateEmail(sub(), 'L', NOW).text).toContain('90 minutes ago')
-    expect(lateEmail(sub(), 'L', NOW).text).toContain('still waiting for its checks')
-    expect(lateEmail(sub({ status: 'held', held_because: 'Its booking page could not be read.' }), 'L', NOW).text).toContain('held: Its booking page could not be read.')
-    expect(lateEmail(sub({ status: 'accepted' }), 'L', NOW).text).toContain('accepted, and not joined to a live event')
-    expect(lateEmail(sub(), 'L', NOW).subject).toBe('Not live after an hour: Kyivska Perepichka: Ukrainian Theatre in Melbourne')
   })
   test('the price is in one set of words', () => {
     expect(priceWords('free', null)).toBe('Free')
@@ -92,25 +45,8 @@ describe('the two alerts to Lawal', () => {
   })
 })
 
-describe('where each is wired', () => {
-  test('(1) the form tells Lawal the moment a submission is recorded, before its checks run', () => {
-    const action = read('src/app/submit-event/actions.ts')
-    const recorded = action.indexOf('const done = await recordSubmission(')
-    const told = action.indexOf('await alertArrival(done.id)')
-    const checked = action.indexOf('outcome = await selfListSubmission(done.id)')
-    expect(recorded).toBeGreaterThan(-1)
-    expect(told).toBeGreaterThan(recorded)
-    expect(checked).toBeGreaterThan(told)
-  })
-  test("(4) the hourly run raises the late ones even when its own budget ran out", () => {
-    const cron = read('src/app/api/cron/listing-occurrences/route.ts')
-    const budget = cron.indexOf('if (!result.stoppedEarly')
-    const late = cron.indexOf('late = await alertLateSubmissions(new Date())')
-    expect(late).toBeGreaterThan(-1)
-    // Outside the budget's own block: after it closes, before the answer.
-    expect(late).toBeGreaterThan(cron.indexOf('\n    }\n', budget))
-  })
-  test('(4) /admin/today leads with them', async () => {
+describe('where it is shown, and where it is never sent', () => {
+  test('/admin/today leads with them', async () => {
     const { SOURCE_KEYS, SECTION_TITLES } = await import('../../../src/lib/admin/today-math')
     expect(SOURCE_KEYS[0]).toBe('submissions')
     expect(SECTION_TITLES.submissions).toBe('Organiser events not live after an hour')
@@ -118,7 +54,7 @@ describe('where each is wired', () => {
     expect(today).toContain("{ key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions }")
     expect(today).toContain('.or(NOT_LIVE_FILTER)')
   })
-  test('(5) the daily state email reads production for them and cannot read ALL GREEN while one sits', async () => {
+  test('the daily state email reads production for them and cannot read ALL GREEN while one sits', async () => {
     const route = read('src/app/api/ops/state/route.ts')
     expect(route).toContain('submissionsNotLive: notLive.count ?? 0')
     const { headlineFor } = (await import('../../../scripts/lib/state-report.mjs')) as { headlineFor: (s: unknown) => { word: string; urgent: boolean } }
@@ -126,5 +62,13 @@ describe('where each is wired', () => {
     const one = headlineFor({ business: { submissionsNotLive: 1 } })
     expect(one.word).toBe('AN ORGANISER EVENT IS NOT LIVE')
     expect(one.urgent).toBe(true)
+  })
+  test("Lawal is never in the listing path: the form, the run and the hourly backstop send him nothing (15:48 (2))", () => {
+    for (const path of ['src/app/submit-event/actions.ts', 'src/lib/listings/self-listing-run.ts', 'src/app/api/cron/listing-occurrences/route.ts']) {
+      const src = read(path)
+      expect(src, path).not.toMatch(/founderDestination|tellLawal|alertArrival|alertLateSubmissions|organiser_submission_alert/)
+    }
+    const run = read('src/lib/listings/self-listing-run.ts')
+    expect(run).not.toContain("from '@/lib/email/send'")
   })
 })

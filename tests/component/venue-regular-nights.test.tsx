@@ -41,7 +41,7 @@ describe('VenueRegularNights', () => {
 
   it('says an EventLinqs listing is listed from public information and when it was checked', () => {
     render(<VenueRegularNights venueName="Hop Temple" series={[night({})]} />)
-    expect(screen.getByText('Hosted by Hop Temple. Listed by EventLinqs from public information. Last checked 18 October.')).toBeInTheDocument()
+    expect(screen.getByText('At Hop Temple. Listed by EventLinqs from public information. Last checked 18 October.')).toBeInTheDocument()
   })
 
   it("says nothing of the kind for the organiser's own night", () => {
