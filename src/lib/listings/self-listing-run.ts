@@ -19,7 +19,8 @@ import { judgeSelfListing, localParts, type Correction, type PublishFacts, type 
 import { addSelfListedPhoto } from '@/lib/social/store'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
 import { hasRealCover } from '@/lib/events/publish-gate'
-import { FREE_REGISTRATION_REQUIRED } from '@/lib/events/cta'
+import { priceWords, whenWords } from './submission-watch-rule'
+import { sendOrganiserLiveNotice } from './organiser-live-notice'
 import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStillOwed, type PhotoAttach } from './organiser-photo-rule'
 
 /**
@@ -42,6 +43,7 @@ type SubmissionRecord = {
   id: string
   created_at: string
   name: string
+  email: string
   role: SubmissionRole
   title: string
   starts_at: string
@@ -87,12 +89,6 @@ export function summaryFrom(description: string | null, title: string, venue: st
     out = (out + ' ' + s).trim()
   }
   return out || `${title} at ${venue}.`
-}
-
-function priceWords(entry: string, cents: number | null): string {
-  if (entry === 'free') return 'Free'
-  if (entry === 'free_registration') return FREE_REGISTRATION_REQUIRED
-  return cents === null ? 'Paid (no price given)' : `From A$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`
 }
 
 async function founderAdminId(admin: Admin): Promise<string | null> {
@@ -195,7 +191,9 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   return { attached: true, words: `yes, the organiser's own, credited "Photo: ${rightsHolder}"` }
 }
 
-async function tellLawal(subject: string, text: string): Promise<boolean> {
+/** Lawal is told, at his own address, as an operations alert; false when the mailer refused, said in the log. Shared by
+ * the arrival and hourly alerts (submission-watch.ts), so there is one way he hears of a submission. */
+export async function tellLawal(subject: string, text: string): Promise<boolean> {
   try {
     await sendEmail({ to: founderDestination(), subject, text, html: `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`, messageType: 'organiser_submission_alert', recipientRole: 'platform_owner' })
     return true
@@ -216,7 +214,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
     .eq('id', id)
     .eq('status', 'waiting')
     .or(`checked_at.is.null,checked_at.lt.${stale}`)
-    .select('id, created_at, name, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at')
+    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at')
   if (claim.error) return { state: 'skipped', reason: `the submission could not be claimed: ${claim.error.message}` }
   const sub = (claim.data ?? [])[0] as SubmissionRecord | undefined
   if (!sub) return { state: 'skipped', reason: 'already taken or no longer waiting' }
@@ -327,13 +325,16 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
     .eq('id', sub.id)
 
   const link = `${getSiteUrl()}/events/${made.slug as string}`
-  const when = `${new Date(facts.startsAt).toLocaleString('en-AU', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })}`
+  const when = whenWords(facts.startsAt, tz)
+  // The organiser hears it is live, in Lawal's format and through the gateway's checks, behind organiser_live_email (the
+  // PM's 15:00 of 8 November 2026, item 3); Lawal's own alert says what happened.
+  const organiserTold = await sendOrganiserLiveNotice({ to: sub.email, name: sub.name, title, when, venue: facts.venueName, link })
   const corrected = verdict.corrections.length ? verdict.corrections.map((c) => `${c.field} (${c.submitted ?? 'none'} became ${c.page ?? 'none'})`).join('; ') : 'nothing'
   const told = await tellLawal(
     `New organiser event live on EventLinqs: ${title}`,
     `${title} is live on EventLinqs. It passed the self-listing checks against the organiser's own booking page.\n\n` +
       `When: ${when}\nWhere: ${facts.venueName}, ${city.name as string}\nOrganiser: ${sub.name} (${SUBMISSION_ROLE_WORDS[sub.role]})\n` +
-      `Price: ${priceWords(facts.entry, facts.priceFromCents)}\nPhoto: ${photo.words}\nCorrected from their booking page: ${corrected}\n\nSee it: ${link}`,
+      `Price: ${priceWords(facts.entry, facts.priceFromCents)}\nPhoto: ${photo.words}\nCorrected from their booking page: ${corrected}\nOrganiser told: ${organiserTold}\n\nSee it: ${link}`,
   )
   if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
   return { state: 'published', eventId: made.id as string, slug: made.slug as string, corrections: verdict.corrections }
@@ -377,7 +378,7 @@ export async function attachApprovedPhotos(most = 5): Promise<string[]> {
   const admin = createAdminClient()
   const { data } = await admin
     .from('listing_submissions')
-    .select('id, created_at, name, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at, published_event_id, check_result')
+    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at, published_event_id, check_result')
     .eq('status', 'accepted')
     .not('photo_path', 'is', null)
     .not('published_event_id', 'is', null)

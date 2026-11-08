@@ -221,6 +221,12 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Alerts the platform when the auth provider drifts.',
   },
   {
+    file: 'src/lib/listings/organiser-live-notice.ts',
+    kind: 'transactional',
+    purpose: 'organiser_operations',
+    reason: 'Tells the organiser who sent an event in that it is now live, with its link: about what they themselves did, once, and behind organiser_live_email (OFF until Lawal says yes).',
+  },
+  {
     file: 'src/lib/listings/self-listing-run.ts',
     kind: 'operations',
     purpose: 'platform_operations',

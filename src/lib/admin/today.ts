@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
 import { failuresInARow, queueOf, removalItem, reportsOverdue, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
@@ -234,11 +235,40 @@ async function removalsOpen(admin: Admin): Promise<QueueItem[]> {
   return (data ?? []).map(removalItem)
 }
 
+/**
+ * ORGANISER EVENTS NOT LIVE AFTER AN HOUR (the PM's 15:00 of 8 November 2026): waiting, held, or accepted with no event,
+ * an hour after they were sent in (src/lib/listings/submission-watch-rule.ts). Read first; the target is none.
+ */
+async function submissionsNotLive(admin: Admin, now: Date): Promise<QueueItem[]> {
+  const hourAgo = new Date(now.getTime() - SUBMISSION_LIVE_WITHIN_MINUTES * 60_000).toISOString()
+  const { data, error } = await admin
+    .from('listing_submissions')
+    .select('id, title, name, status, held_because, created_at')
+    .or(NOT_LIVE_FILTER)
+    .lt('created_at', hourAgo)
+    .order('created_at', { ascending: true })
+    .limit(LIST_CAP)
+  if (error) fail(error)
+  return (data ?? []).map((r) => ({
+    id: `submission:${r.id as string}`,
+    what: `${String(r.title)}, sent in by ${String(r.name)}`,
+    why:
+      r.status === 'held'
+        ? `Held: ${String(r.held_because ?? 'no reason recorded')}`
+        : r.status === 'accepted'
+          ? 'Accepted, and not joined to a live event'
+          : 'Still waiting for its checks',
+    since: r.created_at as string,
+    href: '/admin/submissions',
+  }))
+}
+
 /** Lawal's queue, read now. */
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const runs = admin as unknown as RunsDb
-  const [plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports] = await Promise.all([
+  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports] = await Promise.all([
+    attempt(() => submissionsNotLive(admin, now)),
     attempt(() => playsToApprove(admin), OUTREACH),
     attempt(() => pausedPlays(admin), OUTREACH),
     attempt(() => repliesToRead(admin), OUTREACH),
@@ -251,6 +281,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
   ])
   const sources: Source[] = [
+    { key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions },
     { key: 'plays', section: 'plays', name: 'Outreach plays', read: plays },
     { key: 'paused', section: 'paused_sends', name: 'Paused plays', read: paused },
     { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: replies },

@@ -389,6 +389,17 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: "An organiser's event went live through the self-listing checks, or was held with its reason.",
   },
   {
+    /*
+     * THE ORGANISER'S OWN "YOUR EVENT IS LIVE" EMAIL (the PM's ruling of 8 November 2026, 15:00, item 3): the organiser who
+     * sent the event in hears, once, that it is live, with its link, in Lawal's format and only through the gateway's
+     * checks (src/lib/listings/organiser-live-notice.ts). Behind organiser_live_email, OFF until Lawal says yes.
+     */
+    type: 'organiser_live_notice',
+    roles: ['organiser'],
+    concernsOrganiserEvent: true,
+    what: 'The organiser who sent an event in hears that it is live on EventLinqs, with its link.',
+  },
+  {
     type: 'platform_sentinel_alert',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,

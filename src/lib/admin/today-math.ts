@@ -14,10 +14,13 @@
  * Pure.
  */
 
-export const SOURCE_KEYS = ['plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
+// 'submissions' leads (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour after it was sent in is
+// the first thing Lawal sees.
+export const SOURCE_KEYS = ['submissions', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
 export type SectionKey = (typeof SOURCE_KEYS)[number]
 
 export const SECTION_TITLES: Readonly<Record<SectionKey, string>> = {
+  submissions: 'Organiser events not live after an hour',
   plays: 'Plays to approve',
   paused_sends: 'Sends paused',
   unclear_replies: 'Replies to read',
