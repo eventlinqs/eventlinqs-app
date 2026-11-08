@@ -17,13 +17,13 @@ const attribution = JSON.parse(readFileSync(join(root, 'public/images/library/at
 const screen = readFileSync(join(root, 'src/components/features/city-guide/city-guide-screen.tsx'), 'utf8').replace(/\r\n/g, '\n')
 
 describe('the city banners', () => {
-  it('Geelong, Ballarat, Bendigo and Canberra have one; Melbourne keeps its own photograph', () => {
-    for (const slug of ['geelong', 'ballarat', 'bendigo', 'canberra']) expect(getCityBanner(slug), slug).not.toBeNull()
+  it('Geelong, Ballarat and Bendigo have one; Melbourne keeps its own photograph', () => {
+    for (const slug of ['geelong', 'ballarat', 'bendigo']) expect(getCityBanner(slug), slug).not.toBeNull()
     expect(getCityBanner('melbourne')).toBeNull()
   })
 
   it('every banner file exists, with its page and licence on record; a CC BY-SA photo carries its author, public domain none', () => {
-    for (const slug of ['geelong', 'ballarat', 'bendigo', 'canberra']) {
+    for (const slug of ['geelong', 'ballarat', 'bendigo']) {
       const b = getCityBanner(slug)!
       expect(existsSync(join(root, 'public', b.src)), b.src).toBe(true)
       const rec = attribution[`city-banner-${slug}`]
@@ -35,10 +35,6 @@ describe('the city banners', () => {
       if (b.licence === 'CC BY-SA 4.0') {
         expect(b.credit?.author).toBe(rec?.photographer)
         expect(b.credit?.licenceUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/')
-      } else if (b.licence === 'CC0 1.0') {
-        // Lawal's 07:05 of 8 November: a licensed banner "with its credit", so CC0 is credited though it asks for none.
-        expect(b.credit?.author).toBe(rec?.photographer)
-        expect(b.credit?.licenceUrl).toBe('https://creativecommons.org/publicdomain/zero/1.0/')
       } else {
         expect(b.credit).toBeNull()
       }

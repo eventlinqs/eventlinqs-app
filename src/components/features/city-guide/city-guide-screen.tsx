@@ -58,7 +58,7 @@ export async function CityGuideScreen({
 }) {
   const city = getCity(citySlug)
   if (!city) return null
-  // The city's licensed banner where one is kept (Geelong, Ballarat, Bendigo, Canberra), its credit drawn where its licence asks; else the
+  // The city's licensed banner where one is kept (Geelong, Ballarat, Bendigo), its credit drawn where its licence asks; else the
   // page's own photo.
   const banner = getCityBanner(city.slug)
   const photo = banner?.src ?? heroImage
