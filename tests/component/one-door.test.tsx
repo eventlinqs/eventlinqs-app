@@ -16,7 +16,7 @@ vi.mock('@/components/layout/PageShell', () => ({
 }))
 
 const { default: StartPage } = await import('@/app/start/page')
-const { FOUNDING_TERMS } = await import('@/lib/payments/founding-waiver')
+const { FOUNDING_INITIAL_MONTHS_WORD } = await import('@/lib/payments/founding-waiver')
 const { FOR_ORGANISERS } = await import('@/components/layout/site-footer')
 
 async function door(params: Record<string, string> = {}) {
@@ -40,8 +40,11 @@ describe('/start: one question, both paths', () => {
 
   it('renders the organiser offer from its one module, never typed', async () => {
     await door()
-    expect(screen.getByText(FOUNDING_TERMS.initial)).toBeInTheDocument()
-    expect(read('src/app/start/page.tsx')).not.toMatch(/six months|6 months/i)
+    const sell = document.querySelector('[data-door-path="sell"]') as HTMLElement
+    expect(sell.textContent).toContain(`no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months from the day you register`)
+    // Comments stripped first, as offer-is-one-rule does: the page's comment quotes Lawal's ruling word for word.
+    const code = read('src/app/start/page.tsx').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(code).not.toMatch(/\b(six|6) months/i)
   })
 
   it('sends a visitor with no source to the sign up as the door, and to the listing form', async () => {
