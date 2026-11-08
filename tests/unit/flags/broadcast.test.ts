@@ -91,9 +91,9 @@ describe('broadcast flag resolver', () => {
       // The claim switch (the project manager, 27 October 2026). OFF until Lawal approves the privacy
       // version that names claims, and OFF when the table cannot be read.
       listing_claims: false,
-      // The organiser's own live notice (the PM's 15:00 of 8 November 2026). OFF until Lawal says yes, and OFF when the
-      // table cannot be read.
-      organiser_live_email: false,
+      // The organiser's own live notice: ON by Lawal's ruling of 8 November 2026, 16:13 (2), and ON when the table cannot
+      // be read, so an organiser is never left unanswered because a read failed.
+      organiser_live_email: true,
     })
     expect(BROADCAST_FLAGS).toHaveLength(15)
   })

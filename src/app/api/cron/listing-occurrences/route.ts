@@ -4,7 +4,6 @@ import { runOccurrences } from '@/lib/listings/occurrence-run'
 import { occurrenceStore } from '@/lib/listings/occurrence-store'
 import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
 import { attachApprovedPhotos, selfListWaiting } from '@/lib/listings/self-listing-run'
-import { alertLateSubmissions } from '@/lib/listings/submission-watch'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,16 +68,7 @@ export async function GET(request: NextRequest) {
         console.error('[cron/listing-occurrences] the waiting submissions were not checked:', error instanceof Error ? error.message : error)
       }
     }
-    // THE HOUR'S BACKSTOP (the PM's 15:00 of 8 November 2026): every submission not live an hour after it arrived is
-    // raised to Lawal, once each. Cheap, so it runs even when the run above used its budget.
-    let late: string[] = []
-    try {
-      late = await alertLateSubmissions(new Date())
-      for (const line of late) console.log(`[cron/listing-occurrences] not live after an hour: ${line}`)
-    } catch (error) {
-      console.error('[cron/listing-occurrences] the late submissions were not read:', error instanceof Error ? error.message : error)
-    }
-    return NextResponse.json({ ok: true, ...result, dealt, selfListed, late: late.length })
+    return NextResponse.json({ ok: true, ...result, dealt, selfListed })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)
     return NextResponse.json({ error: 'listing occurrences failed' }, { status: 500 })

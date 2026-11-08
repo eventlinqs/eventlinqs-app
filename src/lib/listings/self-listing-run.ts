@@ -1,7 +1,5 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail } from '@/lib/email/send'
-import { founderDestination } from '@/lib/env/destinations'
 import { getSiteUrl } from '@/lib/site-url'
 import { venueSlugify } from '@/lib/venues/venue-slug'
 import { composeGeocodeQuery, geocodeAddress, serverGeocodingAvailable } from '@/lib/geo/geocode'
@@ -30,9 +28,11 @@ import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStill
  *   PUBLISHED: its venue (found or made), its one-off night (event_series) and its listing check (basis
  *     organiser_submission) are written, the listings run makes its dated event at once for that night alone, and the
  *     organiser's own photo becomes the event's cover through the photo lock with its credit on record (a register row in
- *     social_assets, scope 'site': the listing only; a social post still waits for Lawal in /admin/social). Lawal is told
- *     after it is live, with its one link.
- *   HELD: the reason is kept on the row in plain words, the window deals with it, and Lawal gets a one line note.
+ *     social_assets, scope 'site': the listing only; a social post still waits for Lawal in /admin/social). The organiser
+ *     is emailed that it is live (organiser-live-notice.ts); the run logs what it did.
+ *   HELD: the reason is kept on the row in plain words and the window deals with it. Nothing in this path is sent to
+ *     Lawal (his ruling of 8 November 2026, 15:48 (2)): what is not live is counted in the daily state email and shown on
+ *     /admin/today.
  * It runs inside the form's own action the moment the organiser presses send, so they see their live link at once, and
  * the hourly listings run takes any still waiting as its backstop, so a submission never waits for a person.
  */
@@ -191,16 +191,11 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   return { attached: true, words: `yes, the organiser's own, credited "Photo: ${rightsHolder}"` }
 }
 
-/** Lawal is told, at his own address, as an operations alert; false when the mailer refused, said in the log. Shared by
- * the arrival and hourly alerts (submission-watch.ts), so there is one way he hears of a submission. */
-export async function tellLawal(subject: string, text: string): Promise<boolean> {
-  try {
-    await sendEmail({ to: founderDestination(), subject, text, html: `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`, messageType: 'organiser_submission_alert', recipientRole: 'platform_owner' })
-    return true
-  } catch (err) {
-    console.error('[self-listing] Lawal could not be told:', err instanceof Error ? err.message : String(err))
-    return false
-  }
+/** What the run did with a submission, in the log (Lawal's ruling of 8 November 2026, 15:48 (2) and (6): nothing in the
+ * listing path is sent to Lawal; failures are the platform's and the window's to retry and fix, counted in the daily
+ * state email and shown on /admin/today). */
+function logOutcome(subject: string, text: string): void {
+  console.log(`[self-listing] ${subject}: ${text.replace(/\n+/g, ' | ')}`)
 }
 
 export async function selfListSubmission(id: string, now: Date = new Date()): Promise<SelfListingOutcome> {
@@ -239,8 +234,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
 
   if (verdict.verdict === 'hold') {
     await admin.from('listing_submissions').update({ status: 'held', held_because: verdict.reason.slice(0, 300), reviewed_at: now.toISOString(), check_result: checkResult }).eq('id', sub.id)
-    const told = await tellLawal(`Organiser event held: ${title}`, `${title}, sent by ${sub.name}, is held: ${verdict.reason} The window deals with it.`)
-    if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
+    logOutcome(`held: ${title}`, `${title}, sent by ${sub.name}, is held: ${verdict.reason} The window deals with it.`)
     return { state: 'held', reason: verdict.reason }
   }
 
@@ -306,7 +300,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
   const photo = await attachPhoto(admin, sub, made.id as string, rightsHolder.length >= 2 ? rightsHolder : sub.name)
   // LAWAL'S LAW OF 8 NOVEMBER 2026, 13:32 (organiser-photo-rule.ts): a night whose organiser sent a photo is never left up
   // without it. The series is paused so the hourly run does not make it again, the night is taken away, the submission
-  // is held with the reason, and Lawal is told; the window puts the photo on and lists it again.
+  // is held with the reason, in the log; the window puts the photo on and lists it again.
   if (!mayStayPublished(sub, photo)) {
     await admin.from('event_series').update({ status: 'paused' }).eq('id', seriesId)
     const gone = await deleteEventEverywhere({ eventId: made.id as string, actor: RUN_ACTOR, deleteWith: admin, revalidateFrom: 'route-handler' })
@@ -315,8 +309,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
       .from('listing_submissions')
       .update({ status: 'held', held_because: reason.slice(0, 300), reviewed_at: now.toISOString(), published_series_id: seriesId, check_result: { ...checkResult, photo: photo.words, photo_attached: false } })
       .eq('id', sub.id)
-    const told = await tellLawal(`Organiser event held: ${title}`, `${title}, sent by ${sub.name}, is held: ${reason} The window deals with it.`)
-    if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
+    logOutcome(`held: ${title}`, `${title}, sent by ${sub.name}, is held: ${reason} The window deals with it.`)
     return { state: 'held', reason }
   }
   await admin
@@ -326,17 +319,16 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
 
   const link = `${getSiteUrl()}/events/${made.slug as string}`
   const when = whenWords(facts.startsAt, tz)
-  // The organiser hears it is live, in Lawal's format and through the gateway's checks, behind organiser_live_email (the
-  // PM's 15:00 of 8 November 2026, item 3); Lawal's own alert says what happened.
+  // The organiser hears it is live, in Lawal's format and through the gateway's checks (Lawal's ruling of 8 November 2026,
+  // 16:13 (2): automatic, for every event that goes live); the log says what happened.
   const organiserTold = await sendOrganiserLiveNotice({ to: sub.email, name: sub.name, title, when, venue: facts.venueName, link })
   const corrected = verdict.corrections.length ? verdict.corrections.map((c) => `${c.field} (${c.submitted ?? 'none'} became ${c.page ?? 'none'})`).join('; ') : 'nothing'
-  const told = await tellLawal(
-    `New organiser event live on EventLinqs: ${title}`,
+  logOutcome(
+    `live: ${title}`,
     `${title} is live on EventLinqs. It passed the self-listing checks against the organiser's own booking page.\n\n` +
       `When: ${when}\nWhere: ${facts.venueName}, ${city.name as string}\nOrganiser: ${sub.name} (${SUBMISSION_ROLE_WORDS[sub.role]})\n` +
       `Price: ${priceWords(facts.entry, facts.priceFromCents)}\nPhoto: ${photo.words}\nCorrected from their booking page: ${corrected}\nOrganiser told: ${organiserTold}\n\nSee it: ${link}`,
   )
-  if (told) await admin.from('listing_submissions').update({ alerted_at: new Date().toISOString() }).eq('id', sub.id)
   return { state: 'published', eventId: made.id as string, slug: made.slug as string, corrections: verdict.corrections }
 }
 

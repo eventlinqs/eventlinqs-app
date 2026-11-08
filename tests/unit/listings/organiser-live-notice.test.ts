@@ -9,7 +9,7 @@ import { MESSAGE_TYPES } from '../../../src/lib/notifications/recipient-matrix'
 /**
  * THE ORGANISER'S OWN "YOUR EVENT IS LIVE" EMAIL (the PM's ruling of 8 November 2026, 15:00, item 3): Lawal's format,
  * judged by the gateway's own checks (the platform's line for line port, src/lib/outreach/voice-gate.ts, on the policy
- * generated from his two files), behind organiser_live_email, OFF until he says yes.
+ * generated from his two files); ON by his ruling of 16:13 (2), organiser_live_email turning it off.
  */
 const FROM = 'EventLinqs <hello@eventlinqs.com>'
 const SNOTBOTTOM = {
@@ -34,8 +34,8 @@ describe("the organiser's live notice", () => {
     const msg = liveNoticeMessage({ ...SNOTBOTTOM, title: 'Stinky Silly Show - Canberra' }, FROM)
     expect(voiceProblems(msg, readVoicePolicy()).join(' ')).toMatch(/dash|hyphen/i)
   })
-  test('it is OFF until Lawal says yes, declared for the organiser, and the send asks the switch first', () => {
-    expect(BROADCAST_FLAG_DEFAULTS.organiser_live_email).toBe(false)
+  test("it is ON by Lawal's ruling of 16:13, declared for the organiser, and the send asks the switch first", () => {
+    expect(BROADCAST_FLAG_DEFAULTS.organiser_live_email).toBe(true)
     const declared = MESSAGE_TYPES.find((m) => m.type === 'organiser_live_notice')
     expect(declared?.roles).toEqual(['organiser'])
     const send = readFileSync(join(process.cwd(), 'src/lib/listings/organiser-live-notice.ts'), 'utf8').replace(/\r\n/g, '\n')
