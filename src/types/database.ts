@@ -9521,6 +9521,30 @@ export type Database = {
           },
         ]
       }
+      site_searches: {
+        Row: {
+          id: number
+          results: number | null
+          searched_at: string
+          surface: string
+          term: string
+        }
+        Insert: {
+          id?: never
+          results?: number | null
+          searched_at?: string
+          surface: string
+          term: string
+        }
+        Update: {
+          id?: never
+          results?: number | null
+          searched_at?: string
+          surface?: string
+          term?: string
+        }
+        Relationships: []
+      }
       social_approvals: {
         Row: {
           approved_at: string
