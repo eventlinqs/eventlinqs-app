@@ -26,6 +26,7 @@ export type PolicyName =
   | 'share-link-mint'
   | 'share-track'
   | 'ledger-demand'
+  | 'web-vitals'
   | 'waitlist-join'
   | 'listing-claim'
   | 'event-reminder'
@@ -189,6 +190,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
+  },
+  'web-vitals': {
+    keyPrefix: 'web-vitals',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      "The real visitor record (Lawal's law of 10 November 2026, 13:30) per IP per minute. A page view reports at most three measures (LCP, INP, CLS), so a visitor reading twenty pages a minute fits; a script filling the table does not. Numbers only, nothing identifying, so fail-open (the default) loses nothing worth refusing a write for.",
   },
   'ledger-demand': {
     keyPrefix: 'ledger-dmd',

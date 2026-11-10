@@ -7327,6 +7327,36 @@ export type Database = {
         }
         Relationships: []
       }
+      page_vitals: {
+        Row: {
+          device: string
+          id: number
+          metric: string
+          page_type: string
+          rating: string | null
+          recorded_at: string
+          value: number
+        }
+        Insert: {
+          device: string
+          id?: never
+          metric: string
+          page_type: string
+          rating?: string | null
+          recorded_at?: string
+          value: number
+        }
+        Update: {
+          device?: string
+          id?: never
+          metric?: string
+          page_type?: string
+          rating?: string | null
+          recorded_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       paid_campaign_spend: {
         Row: {
           amount_cents: number
@@ -13245,6 +13275,16 @@ export type Database = {
       outreach_unsubscribe_by_token: {
         Args: { p_comment?: string; p_reason?: string; p_token: string }
         Returns: string
+      }
+      page_vitals_p75: {
+        Args: { days?: number }
+        Returns: {
+          device: string
+          measurements: number
+          metric: string
+          p75: number
+          page_type: string
+        }[]
       }
       paid_campaign_approve: {
         Args: { p_by: string; p_campaign: string }
