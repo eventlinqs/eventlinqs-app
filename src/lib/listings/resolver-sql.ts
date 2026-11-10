@@ -24,10 +24,23 @@ export type Ruled = {
   readings: Reading[]
 }
 
+/**
+ * The holds that already stand on a night (WINDOW 5A, 10 November 2026). On that day the resolver proposed hiding 86 public
+ * nights: 32 a person had released on 7 November under the CONTROLLER's 16:55 (each night stated by its venue's own page,
+ * the sweep reading only a tourism page whose robots.txt forbids it), and 19 already held. It now leaves both alone and says
+ * so in the file: an open hold is never held twice, and a person's release stands until a person reopens it. Keyed
+ * `${eventId}|${scope}|${field}` (standingKey).
+ */
+export type Standing = { readonly open: ReadonlySet<string>; readonly releasedBy: ReadonlyMap<string, string> }
+export const NO_STANDING: Standing = { open: new Set(), releasedBy: new Map() }
+export const standingKey = (eventId: string, scope: string, field: string) => `${eventId}|${scope}|${field}`
+/** A release the resolver or the hold walk wrote names itself 'the resolver: ...'; any other is a person's. */
+export const releasedByPerson = (releasedBy: string | null) => Boolean(releasedBy) && !/^the resolver\b/i.test(releasedBy ?? '')
+
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`
 const STATUS = new Set(['on_sale', 'not_yet', 'sold_out', 'dead'])
 
-export function resolverSql(rows: readonly Ruled[]): string {
+export function resolverSql(rows: readonly Ruled[], standing: Standing = NO_STANDING): string {
   const out: string[] = ['begin;', "-- The resolver's corrections and holds (scripts/verify/resolve-run.mts --emit-sql), for apply-reviewed-sql-production.mjs."]
   for (const r of rows) {
     const id = q(r.eventId)
@@ -42,6 +55,16 @@ export function resolverSql(rows: readonly Ruled[]): string {
       continue
     }
     if (r.ruling !== 'hold' || !r.scope || !r.reason) continue
+    const key = standingKey(r.eventId, r.scope, r.field)
+    if (standing.open.has(key)) {
+      out.push(`-- ${r.field} of ${r.eventId}: a hold is already open on it; not held twice.`)
+      continue
+    }
+    const released = standing.releasedBy.get(key)
+    if (released) {
+      out.push(`-- ${r.field} of ${r.eventId}: released by a person (${released.replace(/\s+/g, ' ').slice(0, 120)}); a person reopens it, not the resolver.`)
+      continue
+    }
     if (r.scope === 'night') out.push(`update public.events set visibility = 'private' where id = ${id} and visibility = 'public';`)
     // Both columns at once: the table holds a price only with its check time (event_booking_links_price_with_its_check);
     // what each page stated stays in the hold's readings.
@@ -53,7 +76,7 @@ export function resolverSql(rows: readonly Ruled[]): string {
       `insert into public.listing_holds (event_id, series_id, field, scope, reason, readings, next_source, next_check_at) values (${id}, ${r.seriesId ? q(r.seriesId) : 'null'}, ${q(r.field)}, ${q(r.scope)}, ${q(r.reason)}, ${q(JSON.stringify(r.readings))}::jsonb, ${next ? q(next) : 'null'}, now() + interval '1 day');`,
     )
   }
-  if (rows.some((r) => r.ruling === 'hold' && r.scope && r.reason)) out.push('select count(*) as open_holds from public.listing_holds where released_at is null;')
+  if (out.some((line) => line.startsWith('insert into public.listing_holds'))) out.push('select count(*) as open_holds from public.listing_holds where released_at is null;')
   out.push('rollback;')
   return out.join('\n') + '\n'
 }

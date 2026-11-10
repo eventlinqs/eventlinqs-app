@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolverSql, type Ruled } from '@/lib/listings/resolver-sql'
+import { NO_STANDING, releasedByPerson, resolverSql, standingKey, type Ruled } from '@/lib/listings/resolver-sql'
 import { reviewedBody } from '../../../scripts/ops/apply-reviewed-sql-production.mjs'
 
 /*
@@ -91,5 +91,42 @@ describe('the resolver file', () => {
   })
   it('a ruling to keep writes nothing', () => {
     expect(resolverSql([ruled({ ruling: 'keep' })]).split('\n').filter((l) => /^(update|insert)/.test(l))).toEqual([])
+  })
+})
+
+/*
+ * THE HOLDS ALREADY STANDING (WINDOW 5A, 10 November 2026). That day's run proposed hiding 86 public nights: 32 a person had
+ * released on 7 November under the CONTROLLER's 16:55, and 19 already held. An open hold is never held twice, and a person's
+ * release stands until a person reopens it; each is named in the file, and nothing is written for it.
+ */
+describe('the resolver file and the holds already standing', () => {
+  const night = ruled({ field: 'start', linkUrl: null, ruling: 'hold', value: null, scope: 'night', reason: 'no_official_page', readings: [{ kind: 'venue', url: 'https://www.visitballarat.com.au/x', value: null }] })
+  const writes = (sql: string) => sql.split('\n').filter((l) => /^(update|insert)/.test(l))
+
+  it('an open hold on the same night and field is not held twice', () => {
+    const sql = resolverSql([night], { open: new Set([standingKey(EV, 'night', 'start')]), releasedBy: new Map() })
+    expect(writes(sql)).toEqual([])
+    expect(sql).toContain(`-- start of ${EV}: a hold is already open on it; not held twice.`)
+    expect(sql).not.toContain('select count(*) as open_holds')
+  })
+  it("a person's release stands: the night stays public and the file says who released it", () => {
+    const who = "WINDOW 5A, CONTROLLER 16:55: the venue's own page https://hoptemple.com.au/ states 'Every Thursday'"
+    const sql = resolverSql([night], { open: new Set(), releasedBy: new Map([[standingKey(EV, 'night', 'start'), who]]) })
+    expect(writes(sql)).toEqual([])
+    expect(sql).toContain(`-- start of ${EV}: released by a person (WINDOW 5A, CONTROLLER 16:55:`)
+  })
+  it("a release the resolver wrote is not a person's, so the night can be held again", () => {
+    expect(releasedByPerson("the resolver: https://petertobinoration2026.eventbrite.com.au states its price '1200'")).toBe(false)
+    expect(releasedByPerson('WINDOW 5A, CONTROLLER 16:55: the venue page states it')).toBe(true)
+    expect(releasedByPerson(null)).toBe(false)
+  })
+  it('a hold on another field of the same night is still written', () => {
+    const sql = resolverSql([night], { open: new Set([standingKey(EV, 'fact', 'price')]), releasedBy: new Map() })
+    expect(writes(sql)).toHaveLength(2)
+    expect(sql).toContain('select count(*) as open_holds')
+  })
+  it('with no standing holds the file is as before', () => {
+    expect(resolverSql([night])).toBe(resolverSql([night], NO_STANDING))
+    expect(writes(resolverSql([night]))).toHaveLength(2)
   })
 })

@@ -27,7 +27,7 @@ const { readPage, readByRule } = pick((await import('@/lib/events/link-check')) 
 const { statedInWords, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange, statedUnderName } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
 const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
 const { resolveFact, isListingSite } = pick((await import('@/lib/listings/resolver')) as typeof import('@/lib/listings/resolver'))
-const { resolverSql } = pick((await import('@/lib/listings/resolver-sql')) as typeof import('@/lib/listings/resolver-sql'))
+const { resolverSql, standingKey, releasedByPerson } = pick((await import('@/lib/listings/resolver-sql')) as typeof import('@/lib/listings/resolver-sql'))
 const asField = (f: string) => (f === 'session' ? 'session' : f) as import('@/lib/listings/resolver').Field
 type Reading = import('@/lib/listings/resolver').Reading
 
@@ -226,11 +226,24 @@ const report = {
   unreadable: { count: unreadRows.length, ...tally(unreadRows) },
   rows,
 }
-writeFileSync(`${OUT}/resolve-run-${stamp}.json`, JSON.stringify(report, null, 1))
+// A walk-only run (no sweep) writes no resolver report: on 9 and 10 November its empty report, under the same minute's
+// stamp, replaced the real one.
+if (SWEEP) writeFileSync(`${OUT}/resolve-run-${stamp}.json`, JSON.stringify(report, null, 1))
 /* --emit-sql: the rulings as ONE reviewed begin and rollback file for scripts/ops/apply-reviewed-sql-production.mjs (dry
    run first, applied on APPLY, logged): nothing here writes; the file is the proposal (src/lib/listings/resolver-sql.ts). */
 if (args.includes('--emit-sql')) {
-  writeFileSync(`${OUT}/resolve-run-${stamp}.sql`, resolverSql(ruled))
+  // The holds already standing on these nights: an open one is not held twice; a person's release stands (resolver-sql.ts).
+  const ids = [...new Set(ruled.filter((r) => r.ruling === 'hold').map((r) => r.eventId))]
+  const held = ids.length
+    ? await sql<{ event_id: string; scope: string; field: string; released_at: string | null; released_by: string | null }>(
+        `select event_id, scope, field, released_at, released_by from public.listing_holds where event_id in (${ids.map((i) => `'${i}'`).join(', ')})`,
+      )
+    : []
+  const open = new Set(held.filter((h) => h.released_at === null).map((h) => standingKey(h.event_id, h.scope, h.field)))
+  const releasedBy = new Map(
+    held.filter((h) => h.released_at !== null && releasedByPerson(h.released_by)).map((h) => [standingKey(h.event_id, h.scope, h.field), h.released_by ?? ''] as const),
+  )
+  writeFileSync(`${OUT}/resolve-run-${stamp}.sql`, resolverSql(ruled, { open, releasedBy }))
   console.log(`[resolve-run] ${OUT}/resolve-run-${stamp}.sql: the reviewed file, for the dry run and APPLY`)
 }
 console.log(`[resolve-run] wrong facts ${JSON.stringify(report.wrongFacts)}`)
