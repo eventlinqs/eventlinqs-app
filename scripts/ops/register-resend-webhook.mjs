@@ -36,9 +36,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const SITE = 'https://www.eventlinqs.com.au'
+/** A constant read from its one source file, so this script never types a host (scripts/guards/canonical-host.mjs). */
+function declared(file, name) {
+  const m = readFileSync(resolve(REPO, ...file.split('/')), 'utf8').match(new RegExp(`const ${name} = '([^']+)'`))
+  if (!m) throw new Error(`${name} is not declared in ${file}`)
+  return m[1]
+}
+const SITE = `https://${declared('src/lib/site-url.ts', 'CANONICAL_HOST')}`
 const ROUTE = `${SITE}/api/webhooks/resend`
-const SENDING_DOMAIN = 'eventlinqs.com'
+const SENDING_DOMAIN = declared('src/lib/email/sender.ts', 'DEFAULT_SENDER_DOMAIN')
 const VAR = 'RESEND_WEBHOOK_SECRET'
 const WRITES_LOG = 'C:\\dev\\PRODUCTION-WRITES.txt'
 const args = process.argv.slice(2)
