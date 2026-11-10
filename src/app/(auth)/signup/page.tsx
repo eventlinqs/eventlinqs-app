@@ -35,6 +35,16 @@ export default async function SignupPage({ searchParams }: Props) {
           <Link href="/login" className="font-medium text-ink-900 underline-offset-2 hover:text-gold-600 hover:underline">
             Sign in
           </Link>
+          {/* One door (Lawal's 16:13 of 8 November 2026): the header's Get Started opens this page for everyone, so a
+              host is one tap from the choice between selling on EventLinqs and listing an event sold elsewhere. */}
+          {isOrganiser ? null : (
+            <span className="mt-2 block">
+              Hosting an event?{' '}
+              <Link href="/start?src=signup" className="font-medium text-ink-900 underline-offset-2 hover:text-gold-600 hover:underline">
+                Start here
+              </Link>
+            </span>
+          )}
         </>
       }
     >

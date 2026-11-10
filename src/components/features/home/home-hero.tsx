@@ -225,7 +225,7 @@ export async function HomeHero({ featuredEvent }: Props) {
                   shortly.
                 </p>
                 <Link
-                  href="/organisers/signup"
+                  href="/start?src=home"
                   className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[var(--color-navy-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)]"
                 >
                   List your event

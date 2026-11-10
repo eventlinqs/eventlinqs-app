@@ -141,6 +141,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/communities', klass: 'always', why: 'the community index, its own content' },
   { route: '/contact', klass: 'always', why: 'marketing' },
   { route: '/partners', klass: 'always', why: 'marketing: the partners and the enquiry form' },
+  { route: '/start', klass: 'always', why: 'one door for organisers (Lawal 8 November 2026, 16:13): sell tickets on EventLinqs, or list an event sold elsewhere' },
   { route: '/submit-event', klass: 'always', why: 'List your event: an organiser selling elsewhere sends an event for review (release checklist H1), linked from /organisers' },
   { route: '/partners/[slug]', klass: 'always', why: 'a live partner\'s own page, labelled Partner; a draft answers not found' },
   { route: '/events', klass: 'always', why: 'the catalogue index; meaningful with or without events' },

@@ -20,6 +20,11 @@ vi.mock('@/components/features/events/event-media-lazy', async () => {
   const video = await import('@/components/features/events/event-video')
   return { EventGalleryLazy: gallery.EventGallery, EventVideoLazy: video.EventVideo }
 })
+vi.mock('@/components/features/events/event-page-lazy', async () => {
+  const share = await import('@/components/features/events/event-share-bar')
+  const soldOut = await import('@/components/features/events/event-sold-out')
+  return { EventShareBarLazy: share.EventShareBar, EventSoldOutLazy: soldOut.EventSoldOut }
+})
 vi.mock('@/app/actions/follow', () => ({
   getFollowState: vi.fn(async () => ({ following: false })),
   toggleFollowOrganiser: vi.fn(),

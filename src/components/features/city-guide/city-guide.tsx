@@ -535,7 +535,7 @@ export function CityGuide({
         {/* 6 HOSTING AN EVENT: existing routes only, and only offers the platform really makes (a claim only while claims are open). */}
         <section aria-label={`Hosting an event in ${city.name}?`} className="mt-12 rounded-2xl border border-[var(--surface-2)] bg-white p-5 shadow-[var(--shadow-card)] md:p-8">
           <SectionHead eyebrow="For organisers" title={`Hosting an event in ${city.name}?`} />
-          <ul className={`mt-4 grid grid-cols-1 gap-3 ${claimsOn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+          <ul className={`mt-4 grid grid-cols-1 gap-3 ${claimsOn ? 'md:grid-cols-2' : ''}`}>
             {claimsOn ? (
               <li>
                 <a href="#city-calendar" className={ORGANISER_LINK}>
@@ -547,17 +547,12 @@ export function CityGuide({
               </li>
             ) : null}
             <li>
-              {/* The form opens on this city (Lawal's 13:35 of 8 November 2026: Canberra's guide sent an organiser to a
-                  form that offered only the Victorian cities). */}
-              <Link href={`/submit-event?city=${encodeURIComponent(city.slug)}#submit`} className={ORGANISER_LINK}>
-                <span className="font-display text-base font-bold text-[var(--text-primary)]">List your event</span>
-                <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">Add a night that is not here yet.</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="/organisers" className={ORGANISER_LINK}>
-                <span className="font-display text-base font-bold text-[var(--text-primary)]">Sell tickets on EventLinqs</span>
-                <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">Your own checkout, your own buyers.</span>
+              {/* One door (Lawal's ruling of 8 November 2026, 16:13, build 1): selling on EventLinqs and listing an event
+                  sold elsewhere are one choice at /start, which carries this city on to the listing form (his 13:35:
+                  Canberra's guide had sent an organiser to a form offering only the Victorian cities). */}
+              <Link href={`/start?city=${encodeURIComponent(city.slug)}&src=city-guide`} className={ORGANISER_LINK}>
+                <span className="font-display text-base font-bold text-[var(--text-primary)]">Get your event on EventLinqs</span>
+                <span className="mt-1 block font-display text-sm text-[var(--text-secondary)]">Sell tickets with us, or list an event you sell elsewhere.</span>
               </Link>
             </li>
           </ul>

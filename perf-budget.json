@@ -248,6 +248,7 @@
     "/squad/[token]": 166180,
     "/squad/[token]/pay/[member_id]": 164389,
     "/state/[state]": 180082,
+    "/start": 157851,
     "/submit-event": 164379,
     "/t/[code]": 159883,
     "/t/[code]/watch": 158751,

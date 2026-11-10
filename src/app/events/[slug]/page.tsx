@@ -53,7 +53,9 @@ import { EventSection } from '@/components/events/event-page/event-sections'
 import { EventVenueSection } from '@/components/events/event-page/event-venue-section'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { describeRefundPolicy, refundPolicyBadge, policyFromEvent } from '@/lib/refunds/policy'
-import { EventSoldOut } from '@/components/features/events/event-sold-out'
+// The sold-out panel and the share bar load their JavaScript after the first paint (event-page-lazy.tsx: main went red
+// with this route at 198.0 KB, inside CI's 2 KB margin under the 200 KB budget).
+import { EventSoldOutLazy as EventSoldOut, EventShareBarLazy as EventShareBar } from '@/components/features/events/event-page-lazy'
 import { TicketsEnded, TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventPageState } from '@/lib/events/event-state'
 import {
@@ -87,7 +89,6 @@ import { eventOpenGraph } from '@/lib/seo/og-type'
 import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
 import { AccessibilitySection } from '@/components/features/accessibility/accessibility-section'
 import { accessibilityItems, hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
-import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
