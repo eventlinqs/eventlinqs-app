@@ -78,6 +78,8 @@ async function connection() {
     return { url, key, label: 'TEST' }
   }
   if (PROJECT === 'production') {
+    // A dry run reads public files only: no key, no approval. Uploading is Lawal's to approve and needs the key.
+    if (!APPLY) return { url: `https://${PRODUCTION}.supabase.co`, key: null, label: 'PRODUCTION' }
     if (!APPROVED || APPROVED.trim().length < 10) fail('production needs --approved-by-founder "<Lawal\'s words>": a production storage write is his to approve.')
     const token = process.env.SUPABASE_ACCESS_TOKEN
     if (!token) fail('run under scripts/ops/with-supabase-token.ps1: SUPABASE_ACCESS_TOKEN is not set.')
