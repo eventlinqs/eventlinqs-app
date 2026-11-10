@@ -339,8 +339,11 @@ function pageRoutesInSource(appDir) {
     let entries
     try {
       entries = readdirSync(dir, { withFileTypes: true })
-    } catch {
-      return
+    } catch (error) {
+      // A folder under src/app that cannot be read would hide its routes from this check, so the check stops instead.
+      throw new Error(
+        `[initial-bundle-budget] could not read ${dir} to list the page routes: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
     if (entries.some((e) => e.isFile() && /^page\.(tsx|ts|jsx|js|mdx)$/.test(e.name))) out.add('/' + segs.join('/'))
     for (const e of entries) {
