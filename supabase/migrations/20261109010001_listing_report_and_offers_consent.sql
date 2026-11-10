@@ -58,7 +58,10 @@ begin
 end;
 $once$;
 
+-- Only an update of the four columns it judges fires it (scripts/guards/a-referential-null-is-not-an-edit.mjs: a trigger on
+-- every update would re-judge the whole row when a parent delete sets published_event_id, published_series_id or
+-- reviewed_by to null, and could refuse that delete; the shape organisations.trg_founding_waiver_cap uses).
 drop trigger if exists listing_report_is_recorded_once on public.listing_submissions;
 create trigger listing_report_is_recorded_once
-  before update on public.listing_submissions
+  before update of report_sent_at, report_outcome, offers_consent_at, offers_consent_words on public.listing_submissions
   for each row execute function public.listing_report_is_recorded_once();
