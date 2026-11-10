@@ -11511,8 +11511,8 @@ const DRILLS = [
     name: 'source reads are polite: outreach-basis reads organisers pages with a bare fetch again',
     guard: `${GUARDS}/source-reads-are-polite.mjs`,
     file: 'scripts/ops/outreach-basis.mjs',
-    find: 'const read = politeReader()',
-    replace: "const read = async (u) => { const r = await fetch(u); return { url: r.url, html: await r.text(), type: r.headers.get('content-type') ?? '' } }",
+    find: 'const readPage = politeReader()',
+    replace: "const readPage = async (u) => { const r = await fetch(u); return { url: r.url, html: await r.text(), type: r.headers.get('content-type') ?? '' } }",
     expect: 'outreach-basis.mjs: reads 1 page address',
   },
 ]

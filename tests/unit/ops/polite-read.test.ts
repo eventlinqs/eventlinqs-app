@@ -110,11 +110,19 @@ describe('the polite reader', () => {
 })
 
 describe('outreach-basis reads through it', () => {
+  test('the script and the reader parse: a text check alone let a duplicate name through (11 November 2026)', async () => {
+    const { spawnSync } = await import('node:child_process')
+    for (const file of ['scripts/ops/outreach-basis.mjs', 'scripts/lib/polite-read.mjs']) {
+      const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' })
+      expect([file, r.status, r.stderr.trim()]).toEqual([file, 0, ''])
+    }
+  })
+
   test('its pages come from the polite reader, one organiser at a time, never a bare fetch of a page', async () => {
     const { readFileSync } = await import('node:fs')
     const src = readFileSync('scripts/ops/outreach-basis.mjs', 'utf8').replace(/\r\n/g, '\n')
     expect(src).toContain("import { politeReader } from '../lib/polite-read.mjs'")
-    expect(src).toContain('const page = await read(url)')
+    expect(src).toContain('const page = await readPage(url)')
     expect(src).not.toContain("redirect: 'follow'")
     expect(src).not.toContain('Promise.all([worker(), worker()')
   })

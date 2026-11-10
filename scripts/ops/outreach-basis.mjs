@@ -100,9 +100,11 @@ const domainOf = (u) => {
  * first run hung for half an hour on a site that sent its headers and then stalled. An unreadable page is an answer (no
  * basis from it), and the reader says why.
  */
-const read = politeReader()
+// Named readPage, never read: the run's read back at its end is `const read` (11 November 2026, the first run of this
+// change died on 'Identifier 'read' has already been declared'; tests/unit/ops/polite-read.test.ts now parses the file).
+const readPage = politeReader()
 async function get(url) {
-  const page = await read(url)
+  const page = await readPage(url)
   if (!page || !page.type.includes('html')) return null
   return { url: page.url, html: page.html }
 }
