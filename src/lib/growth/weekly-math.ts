@@ -137,6 +137,8 @@ export interface OrderRow {
    * never rewrites it, so the margin takes the refunded share of it off here. Absent where the reader does not know.
    */
   readonly refundedCents?: number
+  /** The tickets the order issued (the six numbers' paid tickets, ./six-numbers.ts). Absent where the reader does not know. */
+  readonly ticketCount?: number
 }
 
 /** The kept fee a refund gave back: the refunded share of the order (refund.ts refunds the fee in proportion). */
