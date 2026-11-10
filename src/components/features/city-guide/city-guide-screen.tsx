@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { rowsAGuideCanShow } from '@/lib/cities/guide-rows'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { loadGuideUpcoming } from '@/lib/events/guide-queries'
@@ -152,7 +153,9 @@ export async function CityGuideScreen({
           stateCityNames={stateCityNames}
           quickCities={quickCities.map((c) => ({ slug: c.slug, name: c.name }))}
           allCities={allCities}
-          rows={data.rows}
+          // Only the rows this guide's own filter can reach (src/lib/cities/guide-rows.ts): the city's nights and those
+          // within the widest distance, or the state's on the state page. The Geelong guide carried 832 rows, 325 its own.
+          rows={rowsAGuideCanShow(data.rows, { name: city.name, lat: city.latitude, lng: city.longitude }, scope, stateCityNames)}
           days={data.days}
           worth={worth}
           claimsOn={claimsOn}

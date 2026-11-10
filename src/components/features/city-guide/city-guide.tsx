@@ -2,6 +2,7 @@
 
 import Link, { useLinkStatus } from 'next/link'
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { GUIDE_RADII, inGuideCity, inGuideState, withinGuideRadius } from '@/lib/cities/guide-rows'
 import { createPortal } from 'react-dom'
 import {
   ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
@@ -37,7 +38,9 @@ const WHEN: { key: When; label: string }[] = [
   { key: 'three', label: 'Next 3 months' },
   { key: 'all', label: 'All dates' },
 ]
-const RADII = [0, 25, 50] as const
+// The distances, the distance and the place rules live once, beside the server's choice of rows
+// (src/lib/cities/guide-rows.ts: a guide is sent only the rows its own filter can reach).
+const RADII = GUIDE_RADII
 const PRICES: { key: Price; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'free', label: 'Free' },
@@ -89,14 +92,6 @@ const CHOSEN_DAY_IS_A_WALL_CALENDAR_DAY_ZONE = 'UTC'
 /** '7 November' for a chosen date key (YYYY-MM-DD), read as that calendar day. */
 function dateWords(key: string): string {
   return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', timeZone: CHOSEN_DAY_IS_A_WALL_CALENDAR_DAY_ZONE }).format(new Date(`${key}T12:00:00Z`))
-}
-
-function km(aLat: number, aLng: number, bLat: number, bLng: number): number {
-  const r = (d: number) => (d * Math.PI) / 180
-  const dLat = r(bLat - aLat)
-  const dLng = r(bLng - aLng)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLng / 2) ** 2
-  return 2 * 6371 * Math.asin(Math.sqrt(h))
 }
 
 function chip(on: boolean): string {
@@ -175,10 +170,10 @@ export function CityGuide({
   const wholeState = scope === 'state'
 
   const name = city.name.toLowerCase()
-  const inCity = (r: DirectoryRow) => r.cityKey.includes(name)
-  const near = (r: DirectoryRow) =>
-    radius > 0 && r.lat !== null && r.lng !== null && km(city.lat, city.lng, r.lat, r.lng) <= radius
-  const inState = (r: DirectoryRow) => stateCityNames.some((n) => r.cityKey.includes(n))
+  const place = { name: city.name, lat: city.lat, lng: city.lng }
+  const inCity = (r: DirectoryRow) => inGuideCity(r, place)
+  const near = (r: DirectoryRow) => withinGuideRadius(r, place, radius)
+  const inState = (r: DirectoryRow) => inGuideState(r, stateCityNames)
   const live = rows.filter((r) => r.until === undefined || r.until >= nowMs)
   const here = live.filter((r) => (wholeState ? inState(r) : inCity(r) || near(r)))
   const placeName = wholeState ? stateName : city.name
