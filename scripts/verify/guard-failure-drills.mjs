@@ -11503,6 +11503,18 @@ const DRILLS = [
     replace: 'Add a night - not here yet.',
     expect: 'spaced hyphen(s) in copy a visitor reads',
   },
+  /*
+   * source-reads-are-polite (WINDOW 5A, 11 November 2026, law 14 (k)): outreach-basis reads organisers' own pages with
+   * a bare fetch again, no robots.txt and no spacing, exactly as it did until 11 November.
+   */
+  {
+    name: 'source reads are polite: outreach-basis reads organisers pages with a bare fetch again',
+    guard: `${GUARDS}/source-reads-are-polite.mjs`,
+    file: 'scripts/ops/outreach-basis.mjs',
+    find: 'const read = politeReader()',
+    replace: "const read = async (u) => { const r = await fetch(u); return { url: r.url, html: await r.text(), type: r.headers.get('content-type') ?? '' } }",
+    expect: 'outreach-basis.mjs: reads 1 page address',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

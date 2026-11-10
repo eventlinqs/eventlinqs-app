@@ -679,6 +679,9 @@
  *                              waits for no mark, and every accepted or published submission
  *                              with a photo has a published event showing it (Lawal's law of
  *                              8 November 2026, 13:32)
+ *   source-reads-are-polite    every script that reads a source or organiser page reads it
+ *                              through robots handling (law 14 (k)); outreach-basis did not
+ *                              until 11 November 2026
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -3421,6 +3424,12 @@ const GUARDS = [
   // published text only that morning. The self-listing run gates publishing on the photo (src/lib/listings/
   // organiser-photo-rule.ts), the hourly backstop waits for no mark, and the rows agree. Drilled red twice.
   'scripts/guards/organiser-photo-before-publish.mjs',
+
+  // Law 14 (k): every read of a source or organiser page goes through a polite reader (robots.txt first, one a second
+  // per host, a stop at the first 403 or 429, a named agent). scripts/ops/outreach-basis.mjs read organisers' pages four
+  // at a time with none of it until 11 November 2026 (PM order 3); it now reads through scripts/lib/polite-read.mjs,
+  // held to src/lib/listings/collect.ts by tests/unit/ops/polite-read.test.ts. Drilled red on main's copy of it.
+  'scripts/guards/source-reads-are-polite.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
