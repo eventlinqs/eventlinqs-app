@@ -7,6 +7,12 @@
  *
  *   <base>/storage/v1/object/public/event-images/stock/<role>/<key?>/<city?>/<descriptor>-<width>.avif
  *
+ * and, beside the largest of them, a JPEG master <descriptor>-<width>.jpg (scripts/ops/spine-jpeg-masters.mjs,
+ * WINDOW 5A, 10 November 2026), which is what a page names. Vercel's optimiser serves an AVIF source BYTE FOR BYTE
+ * whatever width is asked (measured on www: Melbourne's hero at w=640 and w=828 both 200,228 bytes, the source
+ * 200,228), while it sizes a JPEG source per request (the same hero from its JPEG master: 29,460 bytes at w=640,
+ * 46,424 at w=828). Lawal's law of 10 November, 13:30: every page's main content in one second on a phone.
+ *
  * so we don't read the manifest at runtime - we build the URL from a committed
  * slot registry below. Each slot resolves to the LARGEST guaranteed rendition
  * (>= the ingest dimension floor for its role); next/image then downscales per
@@ -70,7 +76,8 @@ function buildUrl(slot: SpineSlot): string | null {
   if (!base) return null
   const width = ROLE_WIDTH[slot.role]
   const path = [slot.role, slot.key, slot.city, slot.descriptor].filter(Boolean).join('/')
-  return `${base}/${path}-${width}.avif`
+  // The JPEG master, never the AVIF: the optimiser resizes a JPEG and passes an AVIF through whole (see the top).
+  return `${base}/${path}-${width}.jpg`
 }
 
 export interface SpineImage {
