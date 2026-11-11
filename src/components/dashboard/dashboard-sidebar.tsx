@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { useState } from 'react'
 import {
   // BarChart3 import removed alongside the hidden /dashboard/insights
@@ -88,7 +88,7 @@ type Props = {
 const COOKIE_KEY = 'el_sidebar_collapsed'
 
 export function DashboardSidebar({ profile, initialCollapsed = false, paidPromotionsOpen = false }: Props) {
-  const pathname = usePathname()
+  const pathname = useRoutePathname()
   const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed)
 
   const toggle = () => {

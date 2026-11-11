@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { Home, CalendarDays, Ticket, User } from 'lucide-react'
 import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
 
@@ -40,7 +40,7 @@ const TABS: TabConfig[] = [
 ]
 
 export function BottomNav() {
-  const pathname = usePathname()
+  const pathname = useRoutePathname()
   // Events opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)).
   const eventsHref = useChosenEventsHref()
 

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { useEffect, useState } from 'react'
 import { Home, LayoutGrid, Search, Heart, User } from 'lucide-react'
 import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
@@ -79,7 +79,7 @@ const ITEMS = [
 ] as const
 
 export function MobileBottomNav() {
-  const pathname = usePathname() ?? '/'
+  const pathname = useRoutePathname()
   // Browse opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)).
   const eventsHref = useChosenEventsHref()
   const [hidden, setHidden] = useState(false)
