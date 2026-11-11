@@ -70,8 +70,10 @@ export type DirectoryRow = {
   readonly thumbAlt?: string | null
   /** The instant the night leaves every list (listingUntil, epoch ms): the guide drops it there, in the browser too. */
   readonly until?: number
-  /** Its own organiser listed it with us (listing_source 'organiser'). */
+  /** Its own organiser listed it with us: listing_source 'organiser', or a submission we published (own-listings.ts). */
   readonly own?: boolean
+  /** The photograph's credit line ('Photo: ...') where the register holds one (own-listings.ts), else null. */
+  readonly thumbCredit?: string | null
   /** The event's own one line, where it says more than the row already does (rowTeaser); else null. */
   readonly teaser?: string | null
   /** When the listing was first published, as epoch ms, else null. */

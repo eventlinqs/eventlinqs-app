@@ -65,7 +65,7 @@ describe('the sections (items 1 to 4)', () => {
     expect(s.big.map((e) => e.row.id)).toEqual(['b2'])
   })
   it('no listing appears twice on one page, the list included', () => {
-    const all = [s.big, s.announced, s.weekend, s.free, s.soon, s.rest].flat().map((e) => listingKey(e.row))
+    const all = [s.big, s.announced, s.organisers, s.weekend, s.free, s.soon, s.rest].flat().map((e) => listingKey(e.row))
     expect(new Set(all).size).toBe(all.length)
     // Law 18: story time at a library is tier 4, never Just announced; it stays in the month list.
     expect(s.announced.map((e) => e.row.id)).toEqual([])

@@ -63,6 +63,21 @@ export const BIG_VENUES: readonly RegExp[] = [
 ]
 const OUR_OWN = /^(Book|Register) on EventLinqs$/
 
+/**
+ * AN ORGANISER'S OWN EVENT (Lawal, 11 November 2026, 16:26: the organisers' own original events are what make EventLinqs
+ * profitable, and an organiser's event always goes up with its photo): listed with us by its organiser (`own`, which
+ * discovery-data.ts sets for a self listing and for every published submission), or sold on EventLinqs itself. It leads
+ * its city guide: first in Just announced for its first 14 days, then in From the organisers, and first in its month.
+ * His ruling is the newer and the more particular, so it holds over law 18 (c) and (d) for these events alone: an
+ * organiser's own event leads whatever its tier, and From the organisers is the one rail he named.
+ */
+export function isOwnRow(r: Pick<DirectoryRow, 'own' | 'source'>): boolean {
+  return r.own === true || OUR_OWN.test(r.source)
+}
+
+/** An organiser's own event first, then tier and the soonest (law 18). */
+export const ownFirst = (a: DirectoryRow, b: DirectoryRow): number => Number(isOwnRow(b)) - Number(isOwnRow(a)) || relevanceFirst(a, b)
+
 /** Law 18: a guide row's tier (src/lib/events/relevance.ts), from its own fields. */
 export function rowTier(r: DirectoryRow): Tier {
   return tierOf({ title: r.title, venue: r.venue, categorySlug: r.categorySlug, ticketed: r.format === 'ticketed' && !r.free })
@@ -79,7 +94,7 @@ export function isBigNight(r: DirectoryRow): boolean {
   if (atBigVenue && r.format === 'ticketed' && !r.free) return true
   // A FESTIVAL ITS ORGANISER LISTED WITH US, however it is entered (round 5 fault 2): the booking label alone left out
   // every free, walk in festival ('Free · Walk in' is not 'Book on EventLinqs'), AMCF at Fed Square among them.
-  return r.categorySlug === 'festival' && (OUR_OWN.test(r.source) || r.own === true)
+  return r.categorySlug === 'festival' && isOwnRow(r)
 }
 // Big nights ranks PHOTO FIRST, then date, and nothing else (Lawal, 3 November 2026, 12:29, through the CONTROLLER's
 // 12:31: a show without a permitted photograph is not forced in; featuring is what an organiser gains by sending photos).
@@ -112,10 +127,14 @@ export function foldListings(rows: readonly DirectoryRow[], all: readonly Direct
 }
 
 export const JUST_ANNOUNCED_DAYS = 14
+/** How many of an organiser's own events From the organisers holds; any beyond it lead their month in All events. */
+export const FROM_THE_ORGANISERS_CAP = 24
 
 export type GuideSections = {
   readonly big: Entry[]
   readonly announced: Entry[]
+  /** An organiser's own events not already shown above, soonest first (Lawal, 11 November 2026, 16:26). */
+  readonly organisers: Entry[]
   readonly weekend: Entry[]
   readonly free: Entry[]
   readonly soon: Entry[]
@@ -141,16 +160,19 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
   // never tier 4; Free and community and Further ahead by tier then date, tier 4 last; the month list in date order with
   // tier 4 at the end of each month (monthOrder, byMonth).
   const big = take(rows.filter(isBigNight), 3, relevanceFirst)
-  const announced = take(
-    rows.filter((r) => rowTier(r) !== 4 && typeof r.listedAt === 'number' && nowMs - r.listedAt <= JUST_ANNOUNCED_DAYS * 24 * 60 * 60 * 1000),
-    8,
-    relevanceFirst,
-  )
+  // Lawal's 16:26 of 11 November: an organiser's own event leads Just announced for its first 14 days, whatever its tier,
+  // ahead of every other new listing; then it sits in From the organisers, right below.
+  const fresh = (r: DirectoryRow) => typeof r.listedAt === 'number' && nowMs - r.listedAt <= JUST_ANNOUNCED_DAYS * 24 * 60 * 60 * 1000
+  const announced = take(rows.filter((r) => fresh(r) && (isOwnRow(r) || rowTier(r) !== 4)), 8, ownFirst)
+  const organisers = take(rows.filter(isOwnRow), FROM_THE_ORGANISERS_CAP, (a, b) => a.ts - b.ts)
   const weekend = take(rows.filter((r) => rowTier(r) !== 4 && days.weekendKeys.includes(r.dayKey)), 8, relevanceFirst)
   const free = take(rows.filter((r) => r.free && r.dayKey <= threeEnd), 6, relevanceFirst)
   const soon = take(rows.filter((r) => r.dayKey > threeEnd), 6, relevanceFirst)
-  const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && !shown.has(listingKey(r))), rows))
-  return { big, announced, weekend, free, soon, rest }
+  // The month list holds every listing no section above has shown, AND every organiser's own event, first in its month:
+  // Lawal's 16:26 names three places for it (Just announced, From the organisers, and first in its month under All
+  // events), so for these events alone the round 3 rule of once on the page gives way to his newer, particular one.
+  const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && (!shown.has(listingKey(r)) || isOwnRow(r))), rows))
+  return { big, announced, organisers, weekend, free, soon, rest }
 }
 
 /**
@@ -158,8 +180,12 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
  * tier 4 in date order. The list pages 20 at a time in this order, so a month's tier 4 always follows its others.
  */
 export function monthOrder(entries: readonly Entry[]): Entry[] {
-  const last = (e: Entry) => (rowTier(e.row) === 4 ? 1 : 0)
-  return [...entries].sort((a, b) => a.row.dayKey.slice(0, 7).localeCompare(b.row.dayKey.slice(0, 7)) || last(a) - last(b) || a.row.ts - b.row.ts)
+  // An organiser's own event first in its month (Lawal, 11 November 2026, 16:26), and never with the month's tier 4.
+  const first = (e: Entry) => (isOwnRow(e.row) ? 0 : 1)
+  const last = (e: Entry) => (!isOwnRow(e.row) && rowTier(e.row) === 4 ? 1 : 0)
+  return [...entries].sort(
+    (a, b) => a.row.dayKey.slice(0, 7).localeCompare(b.row.dayKey.slice(0, 7)) || first(a) - first(b) || last(a) - last(b) || a.row.ts - b.row.ts,
+  )
 }
 
 /** The one fold that holds a month's tier 4 (the spec's rule 5, its words). */
@@ -171,7 +197,8 @@ export function byMonth(entries: readonly Entry[]): { key: string; label: string
   for (const e of [...entries].sort((a, b) => a.row.ts - b.row.ts)) {
     const k = e.row.dayKey.slice(0, 7)
     const g = groups.get(k) ?? { entries: [], later: [] }
-    ;(rowTier(e.row) === 4 ? g.later : g.entries).push(e)
+    // An organiser's own event is never folded away with the month's tier 4 (Lawal, 11 November 2026, 16:26).
+    ;(rowTier(e.row) === 4 && !isOwnRow(e.row) ? g.later : g.entries).push(e)
     groups.set(k, g)
   }
   return [...groups.entries()]
@@ -179,7 +206,8 @@ export function byMonth(entries: readonly Entry[]): { key: string; label: string
     .map(([key, g]) => ({
       key,
       label: new Date(`${key}-01T00:00:00Z`).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
-      entries: g.entries,
+      // First in its month: an organiser's own events lead, each group keeping its date order (a stable sort).
+      entries: [...g.entries].sort((a, b) => Number(isOwnRow(b.row)) - Number(isOwnRow(a.row))),
       later: g.later,
     }))
 }
