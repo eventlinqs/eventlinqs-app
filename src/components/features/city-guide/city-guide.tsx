@@ -682,15 +682,19 @@ function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
   )
 }
 
-/** A photograph WHOLE at its own shape inside its box, over its own blurred copy (law 15), only where one is permitted. */
-function WholePhoto({ src, alt, className }: { src: string; alt?: string | null; className: string }) {
+/**
+ * A photograph WHOLE at its own shape inside its box, over its own blurred copy (law 15), only where one is permitted.
+ * Its box is named by the caller (`variant`), because one size hint for three boxes sent the 112px row hint to the
+ * full-width Big nights and rail cards, and phones fetched a 128px photograph for a 356px slot (11 November 2026).
+ */
+function WholePhoto({ src, alt, className, variant }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb' }) {
   return (
     <span data-row-thumb className={`relative block overflow-hidden bg-[var(--surface-1)] ${className}`}>
       <span className="ledger-blur" aria-hidden="true">
-        <EventCardMedia src={src} alt="" variant="row-thumb" />
+        <EventCardMedia src={src} alt="" variant={variant} />
       </span>
       {/* What the photograph shows, from the cover's own alt, written from a look (round 5 fault 5). */}
-      <EventCardMedia src={src} alt={alt ?? ''} variant="row-thumb" objectFit="contain" />
+      <EventCardMedia src={src} alt={alt ?? ''} variant={variant} objectFit="contain" />
     </span>
   )
 }
@@ -703,7 +707,7 @@ function BigCard({ e }: { e: Entry }) {
       href={r.href}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
     >
-      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[3/2] w-full" /> : null}
+      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[3/2] w-full" variant="guide-big-card" /> : null}
       <span className="flex flex-1 flex-col gap-2 p-4">
         <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)] [overflow-wrap:anywhere]">
           {[r.category, r.venue].filter(Boolean).join(' · ')}
@@ -736,7 +740,7 @@ function CardRail({ entries }: { entries: readonly Entry[] }) {
             href={e.row.href}
             className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
           >
-            {e.row.thumb ? <WholePhoto src={e.row.thumb} alt={e.row.thumbAlt} className="aspect-[4/3] w-full" /> : null}
+            {e.row.thumb ? <WholePhoto src={e.row.thumb} alt={e.row.thumbAlt} className="aspect-[4/3] w-full" variant="guide-rail-card" /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
               <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
@@ -892,7 +896,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         </span>
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" /> : null}
+      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" /> : null}
     </Link>
   )
 }
