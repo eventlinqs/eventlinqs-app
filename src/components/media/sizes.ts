@@ -251,6 +251,16 @@ export const MEDIA_SIZES = {
    *  (160px) from md, a 4:3 box, the photograph contained in it whole (law 15). */
   rowThumb: '(min-width: 768px) 160px, 112px',
 
+  /** The photograph on a city guide's Big nights card (BigCard: `grid grid-cols-1 md:grid-cols-3`, the photo `w-full`).
+   *  It wore rowThumb until 11 November 2026, so a phone fetched a 128 to 256px image for a 356px slot and AMCF's lead
+   *  photograph on Melbourne's guide showed blocky. Measured on www that day (C:\dev\EVIDENCE\EL-11NOV\spine-masters\
+   *  guide-slots.json): 286px at 320, 356 at 390, 227 at 768, 307 at 1024, 433 at 1440 (the container's cap). */
+  guideBigCard: '(max-width: 767px) 100vw, (max-width: 1399px) 33vw, 435px',
+
+  /** The photograph on a city guide rail card (CardRail's cell: `w-[78%] shrink-0 sm:w-64`, the photo `w-full`): 78% of
+   *  the phone's content width, 256px from sm. It too wore rowThumb until 11 November 2026. */
+  guideRailCard: '(min-width: 640px) 256px, 78vw',
+
   /* THE FIVE AVATAR SLOTS ARE ALSO DECLARED IN `./avatar-sizes`, AS FINISHED
    * STRINGS IN BOTH PLACES, AND THAT DUPLICATION IS DELIBERATE.
    *

@@ -113,7 +113,9 @@ const SHOT_WIDTHS = [390, 768, 1440]
 const DELIBERATE_UNDERFETCH = '(max-width: 768px) 75vw, 1920px'
 
 const rawPaths = args.filter(a => a.startsWith('--path=')).map(a => a.split('=')[1])
-const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'communities', 'organisers', 'about', 'waitlist']).map(p => {
+// The city guides joined the default set on 11 November 2026: the guide has been the main public page since the
+// city-first directive of 1 November, and its Big nights and rail cards wore the 112px row hint unmeasured until then.
+const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'city/melbourne', 'city/geelong', 'communities', 'organisers', 'about', 'waitlist']).map(p => {
   if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) {
     console.error(
       `${TAG} REFUSING: --path=${p} arrived with a leading slash or a drive letter.\n` +
