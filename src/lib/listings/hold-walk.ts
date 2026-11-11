@@ -9,6 +9,8 @@
  * Every step that keeps a hold open names its next source and its time. Pure; holdWalkSql turns the steps into one begin and
  * rollback file for scripts/ops/apply-reviewed-sql-production.mjs (dry run first, applied on APPLY, logged).
  */
+import { resolveFact, type Field, type Reading } from './resolver'
+
 export const DAY_MS = 24 * 60 * 60 * 1000
 export const WEEK_MS = 7 * DAY_MS
 
@@ -44,6 +46,41 @@ export function nextStep(hold: OpenHold, answer: Answer, now: Date): Step {
     nextSource: hold.sources[0] ?? source,
     nextCheckAt: new Date(now.getTime() + WEEK_MS).toISOString(),
     tried,
+  }
+}
+
+/**
+ * A FACT HOLD IS RELEASED ONLY ON THE RESOLVER'S OWN RULING (WINDOW 5A, 11 November 2026). The walk used to read a fact
+ * hold's next source alone and release it when that one page stated our value. The Peter Tobin Oration's price was held
+ * because the officials disagree (the venue's page 1500, Eventbrite 1200, ours 1200): the walk read Eventbrite, saw 1200 and
+ * would release, while the resolver, reading both, would hold it again the same day. Left out of the walk by hand on
+ * 10 November, the hold went a day overdue and the engine verifier went red on 11 November.
+ *
+ * So a fact hold is answered by resolveFact itself over a fresh reading of every official the hold recorded (each keeping
+ * the kind the resolver gave it): released only when the resolver would keep our value (keep, or a resource that corrects
+ * nothing); the officials still disagreeing, or none stating it, or all agreeing on another value, keeps it held, with the
+ * readings named. The walk and the resolver are one rule and cannot release and re-hold the same fact. Pure.
+ */
+export function factHoldAnswer(field: Field, stored: string, ownUrl: string, fresh: readonly Reading[]): Answer {
+  const said = (rs: readonly Reading[]) =>
+    rs.map((r) => `${hostOf(r.url)} ${r.value === null ? 'does not state it' : `'${r.value}'`}`).join(', ')
+  const out = resolveFact({ field, stored, ownUrl, readings: fresh })
+  if (out.kind === 'keep' || (out.kind === 'resource' && !out.corrected)) {
+    return { kind: 'states', words: `its ${field} '${stored}', as every official that states it does (${said(fresh.filter((r) => r.value !== null))})` }
+  }
+  if (out.kind === 'hold') {
+    return {
+      kind: 'silent',
+      why: out.reason === 'officials_disagree' ? `the officials still disagree on its ${field} (${said(fresh)})` : `no official states its ${field} (${said(fresh)})`,
+    }
+  }
+  return { kind: 'silent', why: `the officials agree on another ${field}, '${out.value}' (${said(fresh)}); the resolver's run corrects it` }
+}
+const hostOf = (u: string) => {
+  try {
+    return new URL(u).host
+  } catch {
+    return u
   }
 }
 
