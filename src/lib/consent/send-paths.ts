@@ -221,6 +221,12 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Alerts the platform when the auth provider drifts.',
   },
   {
+    file: 'src/lib/listings/sell-through-report.ts',
+    kind: 'transactional',
+    purpose: 'organiser_operations',
+    reason: 'Tells the organiser who sent an event in what EventLinqs counted for that event, once, the day after it ends: about their own listing, which the form\'s notice names ("to contact you about its listing"). The one line inviting them to sell their next event on EventLinqs, which would make it commercial, is said ONLY to an organiser who ticked the unticked OFFERS_CONSENT_WORDS box, whose words and moment are kept on the submission (listing_submissions.offers_consent_*), so the consent is evidence, not an assumption. Every report names its sender (Lawal Adams, Founder, EventLinqs, from the platform address) and carries the opt out with its unsubscribe link, and none goes to an address on outreach_unsubscribes. organiser_report_email turns it off.'
+  },
+  {
     file: 'src/lib/listings/organiser-live-notice.ts',
     kind: 'transactional',
     purpose: 'organiser_operations',

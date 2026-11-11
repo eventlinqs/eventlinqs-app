@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import {
   AUTHORITY_WORDS,
+  OFFERS_CONSENT_WORDS,
   PERMISSION_WORDS,
   PHOTO_OWNED_WORDS,
   SUBMISSION_ENTRIES,
@@ -222,6 +223,12 @@ export default async function SubmitEventPage({ searchParams }: { searchParams: 
                 <label className="flex min-h-[44px] items-start gap-3 text-sm text-[var(--text-primary)]">
                   <input type="checkbox" name="permission" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
                   <span data-permission-words>{PERMISSION_WORDS}</span>
+                </label>
+                {/* Never ticked for them and never required (Lawal's 16:13 of 8 November 2026, build 3; ACMA: consent is
+                    given, not assumed). A yes is kept with these words; only then does their report invite them to sell. */}
+                <label className="flex min-h-[44px] items-start gap-3 text-sm text-[var(--text-primary)]">
+                  <input type="checkbox" name="offers" value="yes" className="mt-0.5 h-5 w-5 shrink-0" />
+                  <span data-offers-words>{OFFERS_CONSENT_WORDS}</span>
                 </label>
               </fieldset>
 

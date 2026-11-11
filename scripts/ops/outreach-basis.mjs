@@ -27,6 +27,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { productionSelect } from '../lib/production-select.mjs'
 import { roleRefusal } from '../lib/outreach-basis-role.mjs'
+import { politeReader } from '../lib/polite-read.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const args = process.argv.slice(2)
@@ -92,24 +93,20 @@ const domainOf = (u) => {
 }
 
 /**
- * One page, or null. The 15 second limit covers the body as well as the headers: the first run hung for half an hour on
- * a site that sent its headers and then stalled, because the timer was cleared before the body was read.
+ * One page, or null, read politely (law 14 (k)): robots.txt first for each host, one request a second per host, a host
+ * stopped at its first 403 or 429, redirects followed host by host, the collector's named agent (scripts/lib/polite-read.mjs,
+ * held to src/lib/listings/collect.ts by tests/unit/ops/polite-read.test.ts). Until 11 November 2026 this read four
+ * organisers at a time with no robots.txt and no spacing. The 15 second limit covers the body as well as the headers: the
+ * first run hung for half an hour on a site that sent its headers and then stalled. An unreadable page is an answer (no
+ * basis from it), and the reader says why.
  */
+// Named readPage, never read: the run's read back at its end is `const read` (11 November 2026, the first run of this
+// change died on 'Identifier 'read' has already been declared'; tests/unit/ops/polite-read.test.ts now parses the file).
+const readPage = politeReader()
 async function get(url) {
-  const ctl = new AbortController()
-  const timer = setTimeout(() => ctl.abort(), 15000)
-  try {
-    const r = await fetch(url, { redirect: 'follow', signal: ctl.signal, headers: { 'user-agent': 'EventLinqs listing check (hello@eventlinqs.com)' } })
-    const type = r.headers.get('content-type') ?? ''
-    if (!r.ok || !type.includes('html')) return null
-    return { url: r.url, html: await r.text() }
-  } catch (error) {
-    // An unreadable page is an answer (no basis from it), but it is said, with the reason, never swallowed.
-    console.warn(`  ${url} could not be read: ${error?.cause?.code ?? error?.name ?? error}`)
-    return null
-  } finally {
-    clearTimeout(timer)
-  }
+  const page = await readPage(url)
+  if (!page || !page.type.includes('html')) return null
+  return { url: page.url, html: page.html }
 }
 
 const organisers = await sql(`select o.id, o.name, o.website_url, o.found_on, o.notes,
@@ -121,7 +118,7 @@ const organisers = await sql(`select o.id, o.name, o.website_url, o.found_on, o.
 
 const report = []
 let recorded = 0
-// Four organisers at a time: the pages are slow to answer, not heavy to read.
+// One organiser at a time: the reader serves one page at a time anyway, so more workers would only queue.
 async function check(o, n) {
   console.log(`[${n}/${organisers.length}] ${o.name}`)
   const known = o.emails.map((e) => e.address)
@@ -222,7 +219,7 @@ async function worker() {
     await check(o, n)
   }
 }
-await Promise.all([worker(), worker(), worker(), worker()])
+await worker()
 
 // One report per run, never overwritten: a one-organiser run once replaced the full run's report of the same day.
 const reportFile = join(evidence, `basis-report-${new Date().toISOString().replace(/[:.]/g, '-')}${arg('--organiser') ? '-one-organiser' : ''}.json`)

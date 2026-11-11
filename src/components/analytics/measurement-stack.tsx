@@ -1,6 +1,8 @@
 'use client'
 
 import { ReferralCapture } from '@/components/growth/referral-capture'
+import { WebVitalsRecord } from './web-vitals-record'
+import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
 import { ArrivalCapture } from '@/components/growth/arrival-capture'
 import { ClickIdentifierRelay } from '@/components/growth/click-identifier-relay'
 import { ConsentProvider } from './consent-provider'
@@ -65,6 +67,11 @@ export default function MeasurementStack() {
        *  anything at all before that. Plausible, in the layout, is outside this
        *  gate on purpose: it is cookieless and stores nothing on the device
        *  (see lib/analytics/providers.ts). */}
+      {/* THE REAL VISITOR RECORD (Lawal's law of 10 November 2026, 13:30, internal only): LCP, INP and CLS as numbers
+       *  only, through Next.js's own web vitals hook, to the platform's own route. Cookieless and identifying nobody, so
+       *  it stands outside the consent question as Plausible does (the cookie page); here, in the deferred tree, it
+       *  adds nothing to any first load, and the one kill switch stops it with every other sender. */}
+      {MEASUREMENT_OFF ? null : <WebVitalsRecord />}
       <ConsentProvider>
         <GatedAnalytics />
         <FunnelLanded />

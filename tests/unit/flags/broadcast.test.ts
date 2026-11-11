@@ -94,8 +94,12 @@ describe('broadcast flag resolver', () => {
       // The organiser's own live notice: ON by Lawal's ruling of 8 November 2026, 16:13 (2), and ON when the table cannot
       // be read, so an organiser is never left unanswered because a read failed.
       organiser_live_email: true,
+      // ON by Lawal's 16:13 of 8 November 2026, build 3: the day after a listed event ends, its organiser's report.
+      organiser_report_email: true,
+      // ON by the PM's order 3 of 11 November 2026 (addition 3): IndexNow names only public pages, so a failed read sends.
+      indexnow_ping: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(15)
+    expect(BROADCAST_FLAGS).toHaveLength(17)
   })
 
   test('paid promotions stay OFF when the flags table cannot be read or has no row', async () => {

@@ -5,6 +5,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readTodayQueue } from '@/lib/admin/today'
 import { readFounderDashboard } from '@/lib/admin/founder-dashboard'
+import { readGrowthWeek } from '@/lib/growth/weekly'
 import { byException, rhythm, type DashboardFigure } from '@/lib/admin/founder-dashboard-math'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 
@@ -33,7 +34,15 @@ export default async function AdminTodayPage() {
   await recordAuditEvent({ action: 'admin.today.view', session })
 
   const now = new Date()
-  const [queue, dashboard] = await Promise.all([readTodayQueue(now), readFounderDashboard(now)])
+  // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
+  const [queue, dashboard, growth] = await Promise.all([
+    readTodayQueue(now),
+    readFounderDashboard(now),
+    readGrowthWeek(now).then(
+      (g) => ({ ok: true as const, g }),
+      (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+    ),
+  ])
   const exceptions = byException(dashboard)
   const cadence = rhythm(dashboard)
   const count = new Intl.NumberFormat('en-AU')
@@ -127,6 +136,40 @@ export default async function AdminTodayPage() {
             Not counted: {exceptions.notCounted.map((f) => `${f.label}${f.note ? ` (${f.note})` : ''}`).join('; ')}.
           </p>
         ) : null}
+      </section>
+
+      <section data-section="six-numbers" aria-label="The six numbers, week on week" className="mt-10">
+        <h2 className="font-display text-2xl font-bold tracking-tight">The six numbers, week on week</h2>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          Internal only. Each is last week beside the week before, marked real or estimated, with the rows it is counted from. A press out to another seller is never a
+          sale, and contribution is what was kept, never what was sold.
+        </p>
+        {growth.ok ? (
+          <ul className="mt-6 space-y-3">
+            {growth.g.six.last.map((f, i) => {
+              const before = growth.g.six.before[i]
+              return (
+                <li key={f.key} data-six={f.key} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                    <h3 className="font-display text-base font-semibold text-white">{f.label}</h3>
+                    <span className={`shrink-0 text-xs font-semibold uppercase tracking-[0.12em] ${f.basis === 'real' ? 'text-emerald-300' : 'text-amber-200'}`}>{f.basis}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-white">
+                    <span className="font-semibold">{f.display ?? (f.value === null ? 'Not counted' : count.format(f.value))}</span>
+                    <span className="text-white/60"> last week; </span>
+                    <span>{before ? (before.display ?? (before.value === null ? 'not counted' : count.format(before.value))) : 'not counted'}</span>
+                    <span className="text-white/60"> the week before</span>
+                  </p>
+                  <p className="mt-2 text-xs text-white/50">Counted from {f.source}.</p>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p data-six="not-read" className="mt-4 text-sm text-amber-200">
+            Not counted: the growth rows could not be read ({growth.why}). No figure is shown as 0.
+          </p>
+        )}
       </section>
 
       <section data-section="rhythm" aria-label="Daily, weekly and monthly" className="mt-10">

@@ -80,6 +80,18 @@ export const BROADCAST_FLAGS = [
    * ON by Lawal's ruling of 8 November 2026, 16:13 (2); this switch turns it off with no deploy.
    */
   'organiser_live_email',
+  /*
+   * The sell-through report (Lawal's ruling of 8 November 2026, 16:13, build 3): the day after a listed event ends, its
+   * organiser gets the people EventLinqs counted for it, in Lawal's service form and through the gateway's checks
+   * (src/lib/listings/sell-through-report.ts). ON by that ruling; this switch turns it off with no deploy.
+   */
+  'organiser_report_email',
+  /*
+   * IndexNow (the PM's order 3 of 11 November 2026, addition 3, on Lawal's locked direction of 00:56): the hourly
+   * listings run tells Bing and the engines that share its notices which public event pages changed
+   * (src/lib/seo/indexnow.ts). ON by that order; this switch turns it off with no deploy.
+   */
+  'indexnow_ping',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -132,6 +144,9 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // the privacy version that names claims: no claim taken.
   listing_claims: false,
   organiser_live_email: true,
+  organiser_report_email: true,
+  // ON. An unreadable table still sends: the notice names only public pages, and a refusal costs nothing.
+  indexnow_ping: true,
 }
 
 /**
@@ -182,6 +197,10 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'project manager 2026-10-27 21:33: OFF in production until Lawal approves the new dated privacy policy version that names listing claims and removal requests (what is collected, its one purpose, how long it is kept). ON only on his written YES, through the governed switch.',
   organiser_live_email:
     'lawal 2026-11-08 16:13: ON. An organiser whose self-listed event goes live is emailed once, automatically, from the platform sender, in Lawal\'s own format, only when the gateway\'s checks pass (src/lib/listings/organiser-live-notice.ts); he is never in the loop. The switch turns it off with no deploy.',
+  organiser_report_email:
+    'lawal 2026-11-08 16:13 (build 3): ON. The day after a listed event ends, its organiser is emailed once, automatically, with the people EventLinqs counted for it (opened its page, saved it, asked to be reminded, went on to the booking page), only when the gateway\'s checks pass, never to an address on outreach_unsubscribes; the offer to sell the next event only to an organiser who ticked the unticked box. OFF stops every report with no deploy.',
+  indexnow_ping:
+    'project manager 2026-11-11 01:12 (order 3, addition 3, on Lawal\'s locked direction of 00:56): ON. The hourly listings run sends IndexNow the public event pages changed in the last 70 minutes and their city guides, once a run, never a draft, a private or a held night (src/lib/seo/indexnow.ts). OFF stops every notice with no deploy.',
   event_availability_and_access:
     'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }

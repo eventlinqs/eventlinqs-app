@@ -4116,6 +4116,8 @@ export type Database = {
           held_because: string | null
           id: string
           name: string
+          offers_consent_at: string | null
+          offers_consent_words: string | null
           permission_given_at: string
           permission_words: string
           photo_owned: boolean
@@ -4124,6 +4126,8 @@ export type Database = {
           published_event_id: string | null
           published_series_id: string | null
           refused_because: string | null
+          report_outcome: string | null
+          report_sent_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           role: string
@@ -4150,6 +4154,8 @@ export type Database = {
           held_because?: string | null
           id?: string
           name: string
+          offers_consent_at?: string | null
+          offers_consent_words?: string | null
           permission_given_at: string
           permission_words: string
           photo_owned?: boolean
@@ -4158,6 +4164,8 @@ export type Database = {
           published_event_id?: string | null
           published_series_id?: string | null
           refused_because?: string | null
+          report_outcome?: string | null
+          report_sent_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role: string
@@ -4184,6 +4192,8 @@ export type Database = {
           held_because?: string | null
           id?: string
           name?: string
+          offers_consent_at?: string | null
+          offers_consent_words?: string | null
           permission_given_at?: string
           permission_words?: string
           photo_owned?: boolean
@@ -4192,6 +4202,8 @@ export type Database = {
           published_event_id?: string | null
           published_series_id?: string | null
           refused_because?: string | null
+          report_outcome?: string | null
+          report_sent_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role?: string
@@ -7315,6 +7327,36 @@ export type Database = {
         }
         Relationships: []
       }
+      page_vitals: {
+        Row: {
+          device: string
+          id: number
+          metric: string
+          page_type: string
+          rating: string | null
+          recorded_at: string
+          value: number
+        }
+        Insert: {
+          device: string
+          id?: never
+          metric: string
+          page_type: string
+          rating?: string | null
+          recorded_at?: string
+          value: number
+        }
+        Update: {
+          device?: string
+          id?: never
+          metric?: string
+          page_type?: string
+          rating?: string | null
+          recorded_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       paid_campaign_spend: {
         Row: {
           amount_cents: number
@@ -9478,6 +9520,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_searches: {
+        Row: {
+          id: number
+          results: number | null
+          searched_at: string
+          surface: string
+          term: string
+        }
+        Insert: {
+          id?: never
+          results?: number | null
+          searched_at?: string
+          surface: string
+          term: string
+        }
+        Update: {
+          id?: never
+          results?: number | null
+          searched_at?: string
+          surface?: string
+          term?: string
+        }
+        Relationships: []
       }
       social_approvals: {
         Row: {
@@ -13233,6 +13299,16 @@ export type Database = {
       outreach_unsubscribe_by_token: {
         Args: { p_comment?: string; p_reason?: string; p_token: string }
         Returns: string
+      }
+      page_vitals_p75: {
+        Args: { days?: number }
+        Returns: {
+          device: string
+          measurements: number
+          metric: string
+          p75: number
+          page_type: string
+        }[]
       }
       paid_campaign_approve: {
         Args: { p_by: string; p_campaign: string }

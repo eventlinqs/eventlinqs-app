@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
+import { after } from 'next/server'
+import { headers } from 'next/headers'
 import { Suspense } from 'react'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { recordSearch, searchToRecord } from '@/lib/analytics/search-record'
 import {
   fetchPublicEvents,
   fetchPublicEventsCached,
@@ -100,6 +104,19 @@ export default async function EventsPage({ searchParams }: Props) {
     ? fetchPublicEventsCached({ filters: effectiveFilters, page, pageSize: 24 })
     : fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin })
   const categories = await fetchActiveCategoriesCached()
+
+  // INTERNAL SEARCHES, FIRST PARTY (PM order 3 of 11 November 2026, addition 1; src/lib/analytics/search-record.ts):
+  // a typed search is recorded after this page has answered, never before it. Only when a query is present, so the
+  // plain /events stays as it was; the agent is read here because after() in a page may not read request data itself.
+  if (searchQuery) {
+    const term = searchToRecord(searchQuery, (await headers()).get('user-agent'))
+    if (term) {
+      after(async () => {
+        const result = await resultPromise.catch(() => null)
+        await recordSearch(createAdminClient(), term, result ? result.total : null)
+      })
+    }
+  }
 
   /*
    * STRUCTURED DATA ON THE CANONICAL VIEW ONLY.

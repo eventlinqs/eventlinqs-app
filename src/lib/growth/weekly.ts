@@ -4,6 +4,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { channelForVisit } from './traffic-channel'
 import { getAllCities } from '@/lib/cities/data'
 import { bestOfWeek, figuresFor, lastWeeks, refundedOf, stateScorecard, type DemandRow, type Rows, type Week, type WeekFigures, type Best, type StateScorecard } from './weekly-math'
+import { sixNumbersFor, type SixFigure } from './six-numbers'
 
 /**
  * READING THE ROWS BEHIND THE GROWTH PAGE. Every read here is a READ; the
@@ -53,12 +54,18 @@ export interface GrowthWeek {
   readonly victoria: StateScorecard
   /** Page view rows whose key could not be read as event, visitor and day: shown when not zero. */
   readonly unreadVisitRows: number
+  /** The six numbers of /admin/today, last week and the week before (./six-numbers.ts), from these same rows. */
+  readonly six: { readonly last: readonly SixFigure[]; readonly before: readonly SixFigure[] }
 }
 
 export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek> {
   const { last, before } = lastWeeks(now)
   const { rows, unreadVisitRows } = await readGrowthRows(before.from, last.to)
-  return { last, before, lastFigures: figuresFor(rows, last), beforeFigures: figuresFor(rows, before), best: bestOfWeek(rows, last), victoria: stateScorecard(rows, last, before, VICTORIA), unreadVisitRows }
+  return {
+    last, before, lastFigures: figuresFor(rows, last), beforeFigures: figuresFor(rows, before), best: bestOfWeek(rows, last),
+    victoria: stateScorecard(rows, last, before, VICTORIA), unreadVisitRows,
+    six: { last: sixNumbersFor(rows, last), before: sixNumbersFor(rows, before) },
+  }
 }
 
 /**
@@ -111,10 +118,10 @@ export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<
     readEveryRow<{ confirmed_at: string | null }>('the new subscribers for the growth page', (from, to) =>
       admin.from('email_subscribers').select('confirmed_at').gte('confirmed_at', spanFrom).lt('confirmed_at', spanTo).order('id', { ascending: true }).range(from, to),
     ),
-    readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>('the orders for the growth page', (from, to) =>
+    readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null; tickets: { count: number }[] | null }>('the orders for the growth page', (from, to) =>
       admin
         .from('orders')
-        .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents, refunds(amount_cents, status)')
+        .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents, refunds(amount_cents, status), tickets(count)')
         .eq('currency', 'AUD')
         .lt('created_at', spanTo)
         .order('id', { ascending: true })
@@ -165,6 +172,8 @@ export async function readGrowthRows(spanFrom: string, spanTo: string): Promise<
       retainedCents: o.platform_fee_retained_cents === null ? null : Number(o.platform_fee_retained_cents),
       processingCents: o.stripe_processing_estimate_cents === null ? null : Number(o.stripe_processing_estimate_cents),
       refundedCents: refundedOf(o.refunds),
+      // PostgREST's embedded count answers [{ count }]; anything else leaves the order's tickets unknown, never zero.
+      ...(Array.isArray(o.tickets) && typeof o.tickets[0]?.count === 'number' ? { ticketCount: o.tickets[0].count } : {}),
     })),
     refunds: refundRows.map((r) => ({ amountCents: Number(r.amount_cents ?? 0), status: r.status, at: iso(r.created_at) })),
   }
