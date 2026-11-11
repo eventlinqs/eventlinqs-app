@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { usePathname } from 'next/navigation'
+import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { bottomNavHiddenOn } from './mobile-bottom-nav'
 
 /**
@@ -38,7 +38,7 @@ import { bottomNavHiddenOn } from './mobile-bottom-nav'
  * passed through untouched and stay server-rendered.
  */
 export function MainContentFrame({ children }: { children: ReactNode }) {
-  const pathname = usePathname() ?? '/'
+  const pathname = useRoutePathname()
   const barAbsent = bottomNavHiddenOn(pathname)
   return (
     <div id="main-content" className={barAbsent ? undefined : 'pb-16 md:pb-0'}>

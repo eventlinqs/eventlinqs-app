@@ -54,12 +54,12 @@ describe('edge cached pages read flags through the public client', () => {
     expect(uncached(readFileSync(join(ROOT, file), 'utf8'))).toEqual([])
   })
 
-  it("the home's Featured row stays per request FOR NOW (car 40: its cached render logged React #418 on the Vercel preview)", () => {
+  it("the home's Featured row reads cached, so the home is in the edge cache (car 40's #418 found and fixed, 11 November 2026)", () => {
     const src = readFileSync(join(ROOT, 'src/lib/promotions/promotions.ts'), 'utf8')
     const body = src.slice(src.indexOf('export async function featuredForPage'))
     const firstCall = body.split(/\r?\n/).find((l) => l.includes("isFeatureEnabled('paid_promotions'")) ?? ''
-    // When the #418 cause is found and fixed, this flips back to the cached read and the home joins the edge cache.
-    expect(firstCall).toMatch(/isFeatureEnabled\('paid_promotions'\)/)
+    // The cause was the root's render made for "/index" (src/lib/navigation/route-pathname.ts), not this read.
+    expect(firstCall).toMatch(/isFeatureEnabled\('paid_promotions', \{ client: createPublicClient\(\), cachedPage: true \}\)/)
   })
 
   it('the judge sees an uncached call (drill)', () => {

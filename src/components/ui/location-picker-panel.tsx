@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePortalReady } from '@/lib/hooks/use-portal-ready'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { reportClientError } from '@/lib/observability/client-error-report'
 import { MapPinIcon } from './location-picker-icons'
 import type { DetectedLocation } from '@/lib/geo/detect'
@@ -194,7 +195,7 @@ export function LocationPickerPanel({
   const [geoError, setGeoError] = useState<string | null>(null)
 
   const router = useRouter()
-  const pathname = usePathname()
+  const pathname = useRoutePathname()
   const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
