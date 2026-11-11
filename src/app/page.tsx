@@ -71,6 +71,8 @@ export const metadata: Metadata = {
  * the community thread LAST, never dominating. Each is a flag in src/lib/home/after-the-guide.ts: a section that stops
  * helping a visitor find what's on is switched off there, never deleted, so it can come back.
  */
+const EXPERIMENT_NO_AFTER = true
+
 export default async function HomePage() {
   const nowIso = new Date().toISOString()
   const featured = await featuredForPage('homepage')
@@ -79,7 +81,8 @@ export default async function HomePage() {
       citySlug="geelong"
       heroImage={await getCityHeroPhoto('geelong')}
       after={
-        <>
+        // EXPERIMENT 2 (11 November 2026, never merged): nothing after the guide, to bisect the cached home's #418.
+        EXPERIMENT_NO_AFTER ? null : <>
           {AFTER_THE_GUIDE.featuredSlots ? <FeaturedRow items={featured} where="homepage" /> : null}
           {AFTER_THE_GUIDE.everyCity ? (
             <Suspense fallback={<CityRailSkeleton />}>
