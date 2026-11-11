@@ -14,6 +14,7 @@ import { isStillListed, weekendWindowUtc } from '@/lib/events/listing-window'
 import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { ownEventIds, readOwnListings, readThumbCredits, withOwnAndCredits } from '@/lib/events/own-listings'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { withVenueThumbs } from '@/lib/events/venue-thumbs'
 
 /**
  * The day keys the guide's chips and sections use. weekendKeys is EVERY day of the platform's ONE weekend
@@ -69,7 +70,7 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
   // its credit where the register holds one (src/lib/events/own-listings.ts).
   const dayRows = directoryDays(listed, now, thumbs).flatMap((d) => d.rows)
   const credits = await readThumbCredits(createAdminClient, dayRows, now)
-  const flat = withOwnAndCredits(dayRows, ownEventIds(listed, ownListings), credits)
+  const flat = await withVenueThumbs(withOwnAndCredits(dayRows, ownEventIds(listed, ownListings), credits))
 
   // Featured, for the city's slider: the next FORTNIGHT (the CONTROLLER's 16:41 (3)), an authorised photograph, one night
   // of a series, soonest first.

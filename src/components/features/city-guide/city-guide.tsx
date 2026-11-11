@@ -1,7 +1,7 @@
 'use client'
 
 import Link, { useLinkStatus } from 'next/link'
-import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { GUIDE_RADII, inGuideCity, inGuideState, withinGuideRadius } from '@/lib/cities/guide-rows'
 import { createPortal } from 'react-dom'
 import {
@@ -11,7 +11,7 @@ import {
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
-import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
+import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, sectionOrder, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 
@@ -340,66 +340,73 @@ export function CityGuide({
 
         {/* ROUND 3, LOCKED BY LAWAL (2 November 2026, 17:00 to 17:10; ROUND3-DIRECTIVE-2NOV.md): the sections, chosen by
             stated rules in src/lib/events/guide-sections.ts, photo first then date, never paid; no listing twice on the
-            page. When the visitor filters, the list below is the whole answer and the sections step aside. */}
-        {!filtered && sections.big.length > 0 ? (
+            page. When the visitor filters, the list below is the whole answer and the sections step aside.
+            PHOTO-LED (Lawal, 12 November 2026, 01:01): each section opens with a real photograph where one is permitted
+            (leadWithPhoto), and the sections that open with one come first, the text-heavy ones below (sectionOrder);
+            every section and every event stays on the page. */}
+        {!filtered ? sectionOrder(sections).map((key, at) => (
+          <Fragment key={key}>
+        {key === 'big' ? (
           <section aria-label={`Big nights in ${placeName}`} className="mt-12">
             <RailHead title="Big nights" onAll={() => { setWhen('all'); toList() }} />
             <p className="mt-1 font-display text-sm text-[var(--text-secondary)]">
               The biggest shows coming to {placeName}, picked by our editors, never paid.
             </p>
             <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              {sections.big.map((e) => (
+              {sections.big.map((e, i) => (
                 <li key={e.row.id}>
-                  <BigCard e={e} />
+                  <BigCard e={e} priority={at === 0 && i === 0} />
                 </li>
               ))}
             </ul>
           </section>
         ) : null}
-        {!filtered && sections.announced.length > 0 ? (
+        {key === 'announced' ? (
           <section aria-label={`Just announced in ${placeName}`} className="mt-12">
             <RailHead title="Just announced" />
-            <CardRail entries={sections.announced} />
+            <CardRail entries={sections.announced} priorityFirst={at === 0} />
           </section>
         ) : null}
         {/* FROM THE ORGANISERS (Lawal, 11 November 2026, 16:26): every event an organiser submitted or sells on EventLinqs
             leads its city's guide; past its 14 days in Just announced it sits here, the existing rail and card, soonest first. */}
-        {!filtered && sections.organisers.length > 0 ? (
+        {key === 'organisers' ? (
           <section aria-label={`From the organisers in ${placeName}`} className="mt-12">
             <RailHead title="From the organisers" />
-            <CardRail entries={sections.organisers} />
+            <CardRail entries={sections.organisers} priorityFirst={at === 0} />
           </section>
         ) : null}
-        {!filtered && sections.weekend.length > 0 ? (
+        {key === 'weekend' ? (
           <section aria-label={`This weekend in ${placeName}`} className="mt-12">
             <RailHead title="This weekend" onAll={() => { setWhen('weekend'); toList() }} />
-            <CardRail entries={sections.weekend} />
+            <CardRail entries={sections.weekend} priorityFirst={at === 0} />
           </section>
         ) : null}
-        {!filtered && sections.free.length > 0 ? (
+        {key === 'free' ? (
           <section aria-label={`Free and community in ${placeName}`} className="mt-12">
             <RailHead title="Free and community" onAll={() => { setPrice('free'); toList() }} />
             <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-              {sections.free.map((e) => (
+              {sections.free.map((e, i) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
-                  <Row e={e} cityName={name} />
+                  <Row e={e} cityName={name} priority={at === 0 && i === 0} />
                 </li>
               ))}
             </ul>
           </section>
         ) : null}
-        {!filtered && sections.soon.length > 0 ? (
+        {key === 'soon' ? (
           <section aria-label={`Further ahead in ${placeName}`} className="mt-12">
             <RailHead title="Further ahead" onAll={() => { setWhen('all'); toList() }} />
             <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-              {sections.soon.map((e) => (
+              {sections.soon.map((e, i) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
-                  <Row e={e} cityName={name} />
+                  <Row e={e} cityName={name} priority={at === 0 && i === 0} />
                 </li>
               ))}
             </ul>
           </section>
         ) : null}
+          </Fragment>
+        )) : null}
 
         {/* EXPLORE BY INTEREST, after the sections: Big nights leads the page (the CONTROLLER 22:16 (1), the locked brief item 1). */}
         {tiles.length > 0 ? (
@@ -695,34 +702,51 @@ function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
  * Its box is named by the caller (`variant`), because one size hint for three boxes sent the 112px row hint to the
  * full-width Big nights and rail cards, and phones fetched a 128px photograph for a 356px slot (11 November 2026).
  */
-function WholePhoto({ src, alt, className, variant }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb' }) {
+function WholePhoto({ src, alt, className, variant, priority = false }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb'; priority?: boolean }) {
+  // The one second law (Lawal, 12 November 2026, 01:01, item 5): only the page's first photograph is fetched first; every
+  // other is lazy. Both layers name the same source and size, so the browser fetches it once.
   return (
     <span data-row-thumb className={`relative block overflow-hidden bg-[var(--surface-1)] ${className}`}>
       <span className="ledger-blur" aria-hidden="true">
-        <EventCardMedia src={src} alt="" variant={variant} />
+        <EventCardMedia src={src} alt="" variant={variant} priority={priority} />
       </span>
       {/* What the photograph shows, from the cover's own alt, written from a look (round 5 fault 5). */}
-      <EventCardMedia src={src} alt={alt ?? ''} variant={variant} objectFit="contain" />
+      <EventCardMedia src={src} alt={alt ?? ''} variant={variant} objectFit="contain" priority={priority} />
     </span>
   )
 }
 
-function BigCard({ e }: { e: Entry }) {
+/**
+ * THE PHOTOGRAPH A CARD DRAWS (Lawal, 12 November 2026, 01:01): the night's own, with its credit; else the venue's own
+ * photograph the photo lock dealt to this night (src/lib/events/venue-thumbs.ts), labelled as the venue beside its
+ * licence credit, so the venue is never presented as the act; else none, never a stand-in.
+ */
+export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: string | null } | null {
+  if (r.thumb) return { src: r.thumb, alt: r.thumbAlt ?? '', credit: r.thumbCredit ?? null }
+  if (r.venueThumb) {
+    const venue = r.venue ? `The venue, ${r.venue}` : 'The venue'
+    return { src: r.venueThumb, alt: r.venue ? `${r.venue}, the venue` : 'The venue', credit: [venue, r.venueThumbCredit].filter(Boolean).join('. ') }
+  }
+  return null
+}
+
+function BigCard({ e, priority = false }: { e: Entry; priority?: boolean }) {
   const r = e.row
   const b = bookingLine(r)
+  const photo = cardPhoto(r)
   return (
     <Link
       href={r.href}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
     >
-      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[3/2] w-full" variant="guide-big-card" /> : null}
+      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[3/2] w-full" variant="guide-big-card" priority={priority} /> : null}
       <span className="flex flex-1 flex-col gap-2 p-4">
         <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)] [overflow-wrap:anywhere]">
           {[r.category, r.venue].filter(Boolean).join(' · ')}
         </span>
         <span className="font-headline text-xl font-extrabold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{r.title}</span>
         {r.teaser ? <span className="line-clamp-3 font-body text-sm text-[var(--text-secondary)]">{r.teaser}</span> : null}
-        {r.thumb && r.thumbCredit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{r.thumbCredit}</span> : null}
+        {photo?.credit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{photo.credit}</span> : null}
         <span className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
           {/^From /.test(r.price) ? (
@@ -740,21 +764,23 @@ function BigCard({ e }: { e: Entry }) {
   )
 }
 
-function CardRail({ entries }: { entries: readonly Entry[] }) {
+function CardRail({ entries, priorityFirst = false }: { entries: readonly Entry[]; priorityFirst?: boolean }) {
   return (
     <ul className="relative -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
-      {entries.map((e) => (
+      {entries.map((e, i) => {
+        const photo = cardPhoto(e.row)
+        return (
         <li key={e.row.id} className="w-[78%] shrink-0 sm:w-64">
           <Link
             href={e.row.href}
             className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
           >
-            {e.row.thumb ? <WholePhoto src={e.row.thumb} alt={e.row.thumbAlt} className="aspect-[4/3] w-full" variant="guide-rail-card" /> : null}
+            {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-full" variant="guide-rail-card" priority={priorityFirst && i === 0} /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
               <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
               {e.row.teaser ? <span className="line-clamp-2 font-body text-sm text-[var(--text-secondary)]">{e.row.teaser}</span> : null}
-              {e.row.thumb && e.row.thumbCredit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{e.row.thumbCredit}</span> : null}
+              {photo?.credit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{photo.credit}</span> : null}
               <span className="mt-auto pt-1 font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
                 {bookingLine(e.row).book ?? bookingLine(e.row).said ?? e.row.venue ?? ''}
                 {bookingLine(e.row).outbound ? <span className="sr-only"> (another site)</span> : null}
@@ -762,7 +788,8 @@ function CardRail({ entries }: { entries: readonly Entry[] }) {
             </span>
           </Link>
         </li>
-      ))}
+        )
+      })}
     </ul>
   )
 }
@@ -865,11 +892,12 @@ export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>):
   return { said, book: null, outbound: false }
 }
 
-function Row({ e, cityName }: { e: Entry; cityName: string }) {
+function Row({ e, cityName, priority = false }: { e: Entry; cityName: string; priority?: boolean }) {
   const r = e.row
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
   const b = bookingLine(r)
+  const photo = cardPhoto(r)
   const booking = b.book ? (
     <span className="guide-row-book">
       {b.book}
@@ -904,10 +932,10 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
           {[r.category, b.said, moreDatesLine(e)].filter(Boolean).join(' · ')}
         </span>
-        {r.thumb && r.thumbCredit ? <span className="mt-1 block font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{r.thumbCredit}</span> : null}
+        {photo?.credit ? <span className="mt-1 block font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{photo.credit}</span> : null}
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" /> : null}
+      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" priority={priority} /> : null}
     </Link>
   )
 }
