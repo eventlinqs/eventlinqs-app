@@ -104,6 +104,7 @@
     "/admin/campaigns": 158891,
     "/admin/campaigns/[id]/proof": 157306,
     "/admin/collected": 157450,
+    "/admin/crm/organisers/[id]": 157450,
     "/admin/disputes": 157306,
     "/admin/disputes/[id]": 159299,
     "/admin/enrol-2fa": 158876,
