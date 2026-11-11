@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
@@ -191,7 +192,8 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
               return (
                 <tr key={r.id} className={`${ADMIN_ROW} align-top`}>
                   <td className={`${ADMIN_CELL_NAME} text-white`}>
-                    {r.name}
+                    {/* The organiser's whole record: everything that happened, pending and next (Growth OS, Release 1). */}
+                    <Link href={`/admin/crm/organisers/${r.id}`} className="underline-offset-2 hover:underline">{r.name}</Link>
                     <span className="block text-xs text-white/50">
                       {r.city ? `${r.city.replace(/-/g, ' ')}${r.citySource === 'source_file' ? ' (from its source file)' : ''}` : 'No city on record'}
                     </span>
