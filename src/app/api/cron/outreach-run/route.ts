@@ -7,6 +7,7 @@ import { handleInbox } from '@/lib/outreach/replies'
 import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
+import { syncGrowthTasks } from '@/lib/crm/tasks'
 
 /**
  * THE OUTREACH RUN, EVERY 15 MINUTES (window 6, 28 October 2026; the engine plan's FULL AUTOMATION).
@@ -80,7 +81,19 @@ export async function GET(request: NextRequest) {
     const refreshed = await db.rpc('organiser_acquisition_refresh_all', { p_proved_by: 'outreach-run' })
     const acquisition = refreshed.error ? { error: refreshed.error.message } : { changed: refreshed.data }
     if (refreshed.error) console.error('[cron/outreach-run] acquisition states not refreshed:', refreshed.error.message)
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition })
+
+    // THE GROWTH OS'S TASKS (Release 1): every item that waits for a person kept as a task with its status, owner and due
+    // date, and closed when resolved at its source (src/lib/crm/tasks.ts). In this run, never a cron of its own. A failure
+    // here is reported in the answer and logged, and never stops the run above, which has already done its work.
+    let tasks: unknown
+    try {
+      tasks = await syncGrowthTasks(db, now)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[cron/outreach-run] growth tasks not kept:', message)
+      tasks = { error: message }
+    }
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })
