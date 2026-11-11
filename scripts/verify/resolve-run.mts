@@ -295,6 +295,8 @@ if (WALK) {
       else if ((h.field === 'start' || h.field === 'session') && (await calledOffBy(hold.nextSource, h))) answer = { kind: 'cancelled', words: 'the night called off' }
       else answer = { kind: 'silent', why: value !== null ? `states another ${h.field}: ${value}` : (pages.get(hold.nextSource)?.why ?? 'does not state it') }
     }
+    // Each hold's answer is printed, so the walk's record names what every source said, not only what it decided.
+    console.log(`[resolve-run] hold ${h.hold_id} (${h.title}, ${h.scope} ${h.field}): ${answer.kind === 'silent' ? `kept: ${answer.why}` : `${answer.kind}: ${answer.words}`}`)
     steps.push({ hold, step: nextStep(hold, answer, new Date()) })
   }
   mkdirSync(OUT, { recursive: true })
