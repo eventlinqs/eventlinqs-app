@@ -168,7 +168,10 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
   const weekend = take(rows.filter((r) => rowTier(r) !== 4 && days.weekendKeys.includes(r.dayKey)), 8, relevanceFirst)
   const free = take(rows.filter((r) => r.free && r.dayKey <= threeEnd), 6, relevanceFirst)
   const soon = take(rows.filter((r) => r.dayKey > threeEnd), 6, relevanceFirst)
-  const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && !shown.has(listingKey(r))), rows))
+  // The month list holds every listing no section above has shown, AND every organiser's own event, first in its month:
+  // Lawal's 16:26 names three places for it (Just announced, From the organisers, and first in its month under All
+  // events), so for these events alone the round 3 rule of once on the page gives way to his newer, particular one.
+  const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && (!shown.has(listingKey(r)) || isOwnRow(r))), rows))
   return { big, announced, organisers, weekend, free, soon, rest }
 }
 

@@ -48,12 +48,17 @@ describe("an organiser's own event", () => {
     expect(ids.slice(3).every((id) => id.startsWith('e'))).toBe(true)
   })
 
-  it('past its 14 days it sits in From the organisers, soonest first, never left to the month list', () => {
+  it('past its 14 days it sits in From the organisers, soonest first, and is also first in its month under All events', () => {
     expect(JUST_ANNOUNCED_DAYS).toBe(14)
     const s = guideSections([...engine, oldOwn, sold], days, NOW)
     expect(s.announced.map((e) => e.row.id).some((id) => id.startsWith('own'))).toBe(false)
     expect(s.organisers.map((e) => e.row.id)).toEqual(['own4', 'own3'])
-    expect(s.rest.map((e) => e.row.id)).not.toContain('own3')
+    // Lawal's third place for it: first in its month (own4 in November, own3 in December).
+    const rest = s.rest.map((e) => e.row.id)
+    expect(rest).toContain('own3')
+    expect(rest).toContain('own4')
+    const november = s.rest.filter((e) => e.row.dayKey.startsWith('2026-11')).map((e) => e.row.id)
+    expect(november[0]).toBe('own4')
   })
 
   it('an own event over Just announced\'s eight still leads: it goes to From the organisers', () => {
@@ -64,10 +69,12 @@ describe("an organiser's own event", () => {
     expect([...s.announced, ...s.organisers].map((e) => e.row.id).sort()).toEqual(many.map((r) => r.id).sort())
   })
 
-  it('is shown once on the page', () => {
+  it('is shown once in the sections above, and again only as the first in its month; every other listing once on the page', () => {
     const s = guideSections([...engine, sanity, kyivska, oldOwn, sold, workshop], days, NOW)
-    const all = [s.big, s.announced, s.organisers, s.weekend, s.free, s.soon, s.rest].flat().map((e) => listingKey(e.row))
-    expect(new Set(all).size).toBe(all.length)
+    const sections = [s.big, s.announced, s.organisers, s.weekend, s.free, s.soon].flat().map((e) => listingKey(e.row))
+    expect(new Set(sections).size).toBe(sections.length)
+    const twice = s.rest.filter((e) => sections.includes(listingKey(e.row)))
+    expect(twice.every((e) => isOwnRow(e.row))).toBe(true)
   })
 
   it('leads its month in All events, and is never folded away with the month\'s tier 4', () => {

@@ -99,7 +99,11 @@ describe('the Geelong reference page, section by section', () => {
     expect(within(weekend).getByText('Katie Noonan')).toBeInTheDocument()
     expect(within(weekend).getByText('Saturday Market')).toBeInTheDocument()
     expect(within(weekend).queryByText('Open Mic Comedy')).toBeNull()
-    for (const t of ['Open Mic Comedy', 'Katie Noonan', 'Saturday Market', 'Our Own Night']) expect(screen.getAllByText(t)).toHaveLength(1)
+    for (const t of ['Open Mic Comedy', 'Katie Noonan', 'Saturday Market']) expect(screen.getAllByText(t)).toHaveLength(1)
+    // An organiser's own night (sold on EventLinqs) is in its lead rail AND first in its month under All events: Lawal's
+    // 16:26 of 11 November names both places, so for it alone once on the page gives way to his newer ruling.
+    expect(screen.getAllByText('Our Own Night')).toHaveLength(2)
+    expect(within(screen.getByRole('region', { name: 'From the organisers in Geelong' })).getByText('Our Own Night')).toBeInTheDocument()
   })
 
   it('5: All events in Geelong never shows another city; suburb and price filter it, and then it is the whole answer', () => {
