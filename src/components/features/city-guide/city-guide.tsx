@@ -362,6 +362,14 @@ export function CityGuide({
             <CardRail entries={sections.announced} />
           </section>
         ) : null}
+        {/* FROM THE ORGANISERS (Lawal, 11 November 2026, 16:26): every event an organiser submitted or sells on EventLinqs
+            leads its city's guide; past its 14 days in Just announced it sits here, the existing rail and card, soonest first. */}
+        {!filtered && sections.organisers.length > 0 ? (
+          <section aria-label={`From the organisers in ${placeName}`} className="mt-12">
+            <RailHead title="From the organisers" />
+            <CardRail entries={sections.organisers} />
+          </section>
+        ) : null}
         {!filtered && sections.weekend.length > 0 ? (
           <section aria-label={`This weekend in ${placeName}`} className="mt-12">
             <RailHead title="This weekend" onAll={() => { setWhen('weekend'); toList() }} />
@@ -714,6 +722,7 @@ function BigCard({ e }: { e: Entry }) {
         </span>
         <span className="font-headline text-xl font-extrabold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{r.title}</span>
         {r.teaser ? <span className="line-clamp-3 font-body text-sm text-[var(--text-secondary)]">{r.teaser}</span> : null}
+        {r.thumb && r.thumbCredit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{r.thumbCredit}</span> : null}
         <span className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[var(--color-ink-200)] px-3 py-1 font-display text-xs font-semibold text-[var(--text-primary)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
           {/^From /.test(r.price) ? (
@@ -745,6 +754,7 @@ function CardRail({ entries }: { entries: readonly Entry[] }) {
               <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
               {e.row.teaser ? <span className="line-clamp-2 font-body text-sm text-[var(--text-secondary)]">{e.row.teaser}</span> : null}
+              {e.row.thumb && e.row.thumbCredit ? <span className="font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{e.row.thumbCredit}</span> : null}
               <span className="mt-auto pt-1 font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
                 {bookingLine(e.row).book ?? bookingLine(e.row).said ?? e.row.venue ?? ''}
                 {bookingLine(e.row).outbound ? <span className="sr-only"> (another site)</span> : null}
@@ -894,6 +904,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         <span className="mt-1 block font-display text-xs font-semibold text-[var(--text-muted)] [overflow-wrap:anywhere]">
           {[r.category, b.said, moreDatesLine(e)].filter(Boolean).join(' · ')}
         </span>
+        {r.thumb && r.thumbCredit ? <span className="mt-1 block font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{r.thumbCredit}</span> : null}
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
       {r.thumb ? <WholePhoto src={r.thumb} alt={r.thumbAlt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" /> : null}

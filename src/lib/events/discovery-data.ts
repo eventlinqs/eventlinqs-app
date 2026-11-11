@@ -12,6 +12,7 @@ import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { toEventCardData, type LedgerRow } from '@/lib/events/ledger-data'
 import { isStillListed, weekendWindowUtc } from '@/lib/events/listing-window'
 import { addDays, chipsOf, dayKey, directoryDays, type DirectoryRow } from '@/lib/events/whats-on-directory'
+import { ownEventIds, readOwnListings, readThumbCredits, withOwnAndCredits } from '@/lib/events/own-listings'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -50,17 +51,25 @@ export async function discoveryData(rows: readonly LedgerRow[], now: Date): Prom
   // to nearby places only when the visitor chooses (the city-first directive of 1 November 2026, section 3).
   const listed = rows.filter((r) => isStillListed(r, now))
   const photo = (r: LedgerRow) => Boolean(r.cover_image_url) && !isComposedCover(r.cover_image_url)
-  const rights = await readCoverRights(
-    createAdminClient,
-    listed.filter((r) => photo(r) && !r.image_credit).map((r) => r.id),
-  )
+  // The organisers' own submissions are read beside the cover rights, in parallel, so the guide waits no longer.
+  const [rights, ownListings] = await Promise.all([
+    readCoverRights(
+      createAdminClient,
+      listed.filter((r) => photo(r) && !r.image_credit).map((r) => r.id),
+    ),
+    readOwnListings(createAdminClient),
+  ])
   // THE NIGHT'S OWN PHOTOGRAPH ONLY (round 5 fault 5, the CONTROLLER's 09:20 of 3 November): a venue photograph the image
   // chain applied (image_credit set) is NOT drawn as a night's image on the guide: it shows the venue, never the act, and
   // its CC BY or BY-SA credit lived only in a title attribute nobody sees. It comes off until a credited design is
   // approved (law 7). What remains is a cover whose rights the database records (organiser authorised, separately licensed).
   const authorised = (r: LedgerRow) => photo(r) && !r.image_credit && RECORDED.has(rights.get(r.id) ?? '')
   const thumbs = new Map(listed.filter(authorised).map((r) => [r.id, r.cover_image_url as string]))
-  const flat = directoryDays(listed, now, thumbs).flatMap((d) => d.rows)
+  // An organiser's own event (Lawal, 11 November 2026, 16:26) is marked by where it came from, and every photograph carries
+  // its credit where the register holds one (src/lib/events/own-listings.ts).
+  const dayRows = directoryDays(listed, now, thumbs).flatMap((d) => d.rows)
+  const credits = await readThumbCredits(createAdminClient, dayRows, now)
+  const flat = withOwnAndCredits(dayRows, ownEventIds(listed, ownListings), credits)
 
   // Featured, for the city's slider: the next FORTNIGHT (the CONTROLLER's 16:41 (3)), an authorised photograph, one night
   // of a series, soonest first.
