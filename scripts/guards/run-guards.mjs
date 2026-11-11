@@ -3431,6 +3431,12 @@ const GUARDS = [
   // held to src/lib/listings/collect.ts by tests/unit/ops/polite-read.test.ts. Drilled red on main's copy of it.
   'scripts/guards/source-reads-are-polite.mjs',
 
+  // THE FOUNDER STEP LAW (Lawal, 12 November 2026, 01:16: "make sure it doesn't repeat itself ever"): a step handed to
+  // Lawal at 00:44 had never been run as he would run it, the folder it named moved, and at 01:14 it did nothing. No
+  // founder step on or after the law reaches him without its READ BACK, every migrate:production names its --expect,
+  // and every script a founder step names prints where it runs. NOT JUDGED on a host without the notes (CI, Vercel).
+  'scripts/guards/founder-steps-read-back.mjs',
+
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
   // git and a token it needs. Registered LAST on purpose - it reads the source

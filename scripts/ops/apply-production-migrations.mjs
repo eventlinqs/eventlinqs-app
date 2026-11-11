@@ -44,15 +44,25 @@
  * (vkapkibzokmfaxqogypq) and reads the ref back, so the CLI never rests linked
  * to production. A password is never read, never passed, never printed.
  *
- * Usage (PowerShell, from the repo):
- *   npm run migrate:production               # list, confirm, apply, prove, rest on TEST
- *   npm run migrate:production -- --dry-run  # list what is pending and stop
+ * THE FOUNDER STEP LAW (Lawal, 12 November 2026, 01:16). At 00:44 Lawal was handed `npm run migrate:production` in a
+ * folder that a window then moved to another branch; at 01:14 it read "0 pending ... Nothing to apply" and did nothing,
+ * and nothing said which folder it had read. So now:
+ *   - it prints first the folder, the branch and the commit it runs from (scripts/lib/founder-where.mjs);
+ *   - it takes the migrations the step is FOR: --expect <file>[,<file>...]. Unless the pending set is EXACTLY that list,
+ *     it stops BEFORE asking for the ref, and says in plain words where it is, what it found and what was expected
+ *     (checkExpected below). An expected file already applied, missing from this folder, or a pending file not expected,
+ *     each stops it. Without --expect it lists and stops: nothing is applied on a step that did not say what it is for.
+ *
+ * Usage (PowerShell, from the folder the step names):
+ *   npm run migrate:production -- --expect 20261111230001_growth_os_tasks.sql   # list, check, confirm, apply, prove
+ *   npm run migrate:production -- --dry-run                                     # list what is pending and stop
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
+import { sayWhere } from '../lib/founder-where.mjs'
 import { computePendingMigrations, fetchAppliedMigrations, MIGRATIONS_DIR, PRODUCTION_PROJECT_REF } from './production-parity.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -153,6 +163,67 @@ export function decide({ pending, dryRun = false, typed = null, ref = PRODUCTION
 }
 
 /**
+ * The migrations a founder step is FOR: every value after --expect, comma separated or repeated, file names only.
+ * @param {string[]} argv
+ * @returns {string[] | null} null when no --expect was given
+ */
+export function parseExpect(argv) {
+  const out = []
+  let seen = false
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    let value = null
+    if (a === '--expect') { seen = true; value = argv[i + 1] ?? ''; i++ }
+    else if (a.startsWith('--expect=')) { seen = true; value = a.slice('--expect='.length) }
+    if (value !== null) for (const f of value.split(',')) if (f.trim()) out.push(f.trim().replace(/^.*[\\/]/, ''))
+  }
+  return seen ? [...new Set(out)] : null
+}
+
+/**
+ * THE FOUNDER STEP LAW's check: the pending set must be EXACTLY what the step expects, or nothing is asked for and
+ * nothing is applied. Every reason is said in plain words, with where the script is running.
+ * @param {{ expected: string[] | null, pending: Array<{ file: string }>, files: string[], applied: Set<string | null>, where: { folder: string, branch: string, commit: string } }} input
+ * @returns {{ ok: boolean, lines: string[] }}
+ */
+export function checkExpected({ expected, pending, files, applied, where }) {
+  const here = `this folder, ${where.folder}, on ${where.branch} at ${where.commit.slice(0, 12)}`
+  if (expected === null) {
+    return {
+      ok: false,
+      lines: [
+        `NOT APPLIED: no --expect was given, so this step did not say which migration(s) it is for.`,
+        `  ${here}, has ${pending.length} pending: ${pending.map((p) => p.file).join(', ') || 'none'}.`,
+        '  A founder step names its migrations: npm run migrate:production -- --expect <file>[,<file>...]',
+      ],
+    }
+  }
+  if (expected.length === 0) return { ok: false, lines: ['NOT APPLIED: --expect was given with no file name.'] }
+  const pendingSet = new Set(pending.map((p) => p.file))
+  const inTree = new Set(files)
+  const lines = []
+  for (const f of expected) {
+    if (pendingSet.has(f)) continue
+    const version = f.split('_')[0]
+    if (!inTree.has(f)) lines.push(`  expected ${f}, but ${here}, does not have that file.`)
+    else if (applied.has(version)) lines.push(`  expected ${f}, but production has already applied it.`)
+    else lines.push(`  expected ${f}, but it is not pending here.`)
+  }
+  const extra = pending.filter((p) => !expected.includes(p.file))
+  for (const p of extra) lines.push(`  ${p.file} is pending here but the step did not expect it.`)
+  if (lines.length === 0) return { ok: true, lines: [`the pending set is exactly what the step expects: ${expected.join(', ')}.`] }
+  return {
+    ok: false,
+    lines: [
+      `NOT APPLIED: what is pending here is not what this step is for. Nothing linked, nothing pushed.`,
+      `  Found pending: ${pending.map((p) => p.file).join(', ') || 'none'}. Expected: ${expected.join(', ')}.`,
+      ...lines,
+      '  The folder, branch or step is wrong: the window that wrote the step must read it back and correct it.',
+    ],
+  }
+}
+
+/**
  * The pending files whose version sorts before the newest one production has
  * applied. The CLI refuses a push carrying any of them, quoted from its source
  * (supabase/cli apps/cli-go/pkg/migration/apply.go, develop, read 29 October
@@ -232,7 +303,10 @@ function restOnTest() {
 const isSql = (f) => f.endsWith('.sql')
 
 async function main() {
+  // Where this runs, before anything else (the founder step law): a wrong folder is seen on the first two lines.
+  const where = sayWhere(TAG, ROOT)
   const dryRun = process.argv.includes('--dry-run')
+  const expected = parseExpect(process.argv.slice(2))
   const token = process.env.SUPABASE_ACCESS_TOKEN
   if (!token) {
     fail('SUPABASE_ACCESS_TOKEN is not set, so what production has applied cannot be listed, and this script does not guess.')
@@ -257,6 +331,18 @@ async function main() {
   const pending = computePendingMigrations(files, listed.applied)
   say(`${files.length} migration(s) in the tree, ${listed.applied.size} applied on production, ${pending.length} pending`)
   for (const p of pending) say(`    ${p.file}`)
+
+  // THE FOUNDER STEP LAW: unless the pending set is exactly what the step expects, stop before asking for the ref. A
+  // dry run only lists, so it is never stopped here; it still says what --expect would find.
+  const expectation = checkExpected({ expected, pending, files, applied: listed.applied, where })
+  if (dryRun) {
+    if (expected !== null) for (const line of expectation.lines) say(line)
+  } else if (!expectation.ok) {
+    for (const line of expectation.lines) fail(line)
+    return 1
+  } else {
+    say(expectation.lines[0])
+  }
 
   let typed = null
   if (pending.length > 0 && !dryRun) {

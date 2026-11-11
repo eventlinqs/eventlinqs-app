@@ -157,7 +157,7 @@ const installed = await select(
 )
 if (!installed[0]?.slots || !installed[0]?.entries) {
   console.error(`${TAG} REFUSING: production has no ledger tables, so there is no curve to render yet.`)
-  console.error(`${TAG} The migration is the founder's step: npm run migrate:production`)
+  console.error(`${TAG} The migration is the founder's step: npm run migrate:production -- --expect <the ledger migration's file>`)
   process.exit(1)
 }
 
