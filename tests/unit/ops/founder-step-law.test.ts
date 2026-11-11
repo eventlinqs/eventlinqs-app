@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { checkExpected, parseExpect } from '../../../scripts/ops/apply-production-migrations.mjs'
-import { EFFECTIVE, isFounderStep, judgeList, judgeNotes, judgeScripts, scriptsNamed, stampOf } from '../../../scripts/guards/lib/founder-steps.mjs'
+import { EFFECTIVE, isFounderStep, judgeList, judgeNotes, judgeScripts, printsWhere, scriptsNamed, stampOf } from '../../../scripts/guards/lib/founder-steps.mjs'
 
 /*
  * THE FOUNDER STEP LAW (Lawal, 12 November 2026, 01:16): "Fix this error in every other place ... make sure it doesn't
@@ -97,6 +97,11 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(scriptsNamed(step, npm)).toEqual(['scripts/ops/apply-production-migrations.mjs'])
     const without = judgeScripts([step], npm, () => 'console.log(1)')
     expect(without.faults[0]).toContain('does not print where it runs')
+    // A comment naming the helper is not printing where it runs (the guard's drill found this, 12 November 2026).
+    const named = judgeScripts([step], npm, () => "// prints where it runs (scripts/lib/founder-where.mjs)\nimport { sayWhere } from '../lib/where.mjs'\nsayWhere(TAG)")
+    expect(named.faults[0]).toContain('does not print where it runs')
+    expect(printsWhere("import { sayWhere } from '../lib/founder-where.mjs'\nconst w = sayWhere(TAG, ROOT)")).toBe(true)
+    expect(printsWhere("import { sayWhere } from '../lib/founder-where.mjs'\n")).toBe(false)
     const real = (rel: string) => { try { return readFileSync(join(process.cwd(), rel), 'utf8') } catch { return null } }
     expect(judgeScripts([step], npm, real).faults).toEqual([])
   })

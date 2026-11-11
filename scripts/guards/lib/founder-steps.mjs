@@ -90,6 +90,18 @@ export function judgeList(text) {
 }
 
 /**
+ * Whether a script prints where it runs: it IMPORTS sayWhere from founder-where.mjs and CALLS it. A file that only names
+ * founder-where.mjs (in a comment) does not: the guard's own drill found that, 12 November 2026, when the migration
+ * script's import was broken and its header comment alone still passed.
+ * @param {string} src
+ */
+export function printsWhere(src) {
+  const imports = /import\s*\{[^}]*\bsayWhere\b[^}]*\}\s*from\s*['"][^'"]*\/founder-where\.mjs['"]/.test(src)
+  const calls = /(^|[^\w.])sayWhere\(/m.test(src.replace(/import\s*\{[^}]*\}\s*from\s*['"][^'"]*['"]/g, ''))
+  return imports && calls
+}
+
+/**
  * Rule 4: every script an open founder step names prints where it runs.
  * @param {string[]} steps
  * @param {Record<string, string>} npmScripts
@@ -104,7 +116,7 @@ export function judgeScripts(steps, npmScripts, read) {
       seen.add(rel)
       const src = read(rel)
       if (src === null) faults.push(`${rel}, named by a founder step, is not in this tree`)
-      else if (!/founder-where\.mjs/.test(src)) faults.push(`${rel}, named by a founder step, does not print where it runs (import scripts/lib/founder-where.mjs and call sayWhere first)`)
+      else if (!printsWhere(src)) faults.push(`${rel}, named by a founder step, does not print where it runs (import scripts/lib/founder-where.mjs and call sayWhere first)`)
     }
   }
   return { faults, judged: seen.size }
