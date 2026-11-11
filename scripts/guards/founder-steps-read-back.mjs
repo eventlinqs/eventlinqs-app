@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * FOUNDER STEPS ARE READ BACK BEFORE THEY REACH LAWAL (the founder step law, Lawal, 12 November 2026, 01:16).
  *

@@ -14,11 +14,13 @@
 import { spawnSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gitEnv } from './git-env.mjs'
 
 const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), '..', '..'))
 
 function git(args, cwd) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  // Inherited GIT_ variables cleared (scripts/lib/git-env.mjs): inside a hook GIT_DIR would name another repository.
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv() })
   return r.status === 0 ? r.stdout.trim() : null
 }
 
