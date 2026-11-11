@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isAcquisitionState } from '@/lib/outreach/acquisition-states'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { recordOf, type OrganiserRecord, type Sources } from './timeline-math'
 
 /**
@@ -38,6 +39,8 @@ export async function readOrganiserRecord(db: Admin, organiserId: string, now: D
     .maybeSingle()
   if (error) throw new RecordReadError('organiser', error.message)
   if (!org) return null
+  // The platform's own listings organisation is not an organiser and has no record (src/lib/growth/platform-organiser.ts).
+  if ((await readPlatformOrganiserIds(db)).has(organiserId)) return null
   const rawState = String(org.acquisition_state)
   const state = isAcquisitionState(rawState) ? rawState : 'discovered'
   const organisationId = (org.organisation_id as string | null) ?? null
@@ -63,13 +66,15 @@ export async function readOrganiserRecord(db: Admin, organiserId: string, now: D
   const nightIds = nights.map((n) => n.id)
   const claimFilter = [venueIds.length ? `venue_id.in.(${venueIds.join(',')})` : null, nightIds.length ? `event_id.in.(${nightIds.join(',')})` : null].filter(Boolean).join(',')
 
-  const [claims, submissions, permissions, photos, tiers, orders] = await Promise.all([
+  const [claims, submissions, permissions, imageRights, tiers, orders] = await Promise.all([
     claimFilter ? rows<Sources['claims'][number]>('claims', db.from('listing_claims').select('id, status, created_at, verified_at, event_id, venue_id').or(claimFilter)) : Promise.resolve([]),
     nightIds.length ? rows<Sources['submissions'][number]>('submissions', db.from('listing_submissions').select('id, title, status, created_at, published_event_id, held_because').in('published_event_id', nightIds)) : Promise.resolve([]),
     organisationId || nightIds.length
       ? rows<Sources['permissions'][number]>('permissions', db.from('organiser_permissions').select('id, scope, granted_at, withdrawn_at').or([organisationId ? `organisation_id.eq.${organisationId}` : null, nightIds.length ? `event_id.in.(${nightIds.join(',')})` : null].filter(Boolean).join(',')))
       : Promise.resolve([]),
-    nightIds.length ? rows<Sources['photos'][number]>('photos', db.from('photo_assignments').select('event_id, assigned_at, rights_holder, retired_at').in('event_id', nightIds)) : Promise.resolve([]),
+    // Each image's legal basis (the directive's section 7), from the rights record; the photo itself is drawn only through
+    // the venue photo chain, so this record reads the basis, never the photo.
+    nightIds.length ? rows<Sources['imageRights'][number]>('image rights', db.from('event_image_rights').select('event_id, rights_state, provenance, derived_at, rights_expire_at').in('event_id', nightIds)) : Promise.resolve([]),
     nightIds.length ? rows<{ event_id: string; is_active: boolean; is_visible: boolean; price: number }>('ticket tiers', db.from('ticket_tiers').select('event_id, is_active, is_visible, price').in('event_id', nightIds)) : Promise.resolve([]),
     nightIds.length
       ? rows<Sources['paidOrders'][number]>('orders', db.from('orders').select('order_number, total_cents, confirmed_at, event_id').in('event_id', nightIds).in('status', ['confirmed', 'partially_refunded']).gt('total_cents', 0))
@@ -94,7 +99,7 @@ export async function readOrganiserRecord(db: Admin, organiserId: string, now: D
     claims,
     submissions,
     permissions,
-    photos,
+    imageRights,
     ticketing: { ticketingActivated, paidOrders: orders.length, paidMonths },
     paidOrders: orders,
   }

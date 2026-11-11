@@ -14,7 +14,7 @@ import { CHANNEL_WORDS, nextStepWords, notReady, openInApp, stepWords, type Queu
 import { markSentAction } from './actions'
 import { DailyQueueItem } from './daily-queue-item'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
-import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
+import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_ROW_CONTROL, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
 /**
  * THE ORGANISER PIPELINE, IN ADMIN (window 6, 30 October 2026; the growth blueprint's rulings 3, 4 and 5). Every
@@ -193,7 +193,7 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
                 <tr key={r.id} className={`${ADMIN_ROW} align-top`}>
                   <td className={`${ADMIN_CELL_NAME} text-white`}>
                     {/* The organiser's whole record: everything that happened, pending and next (Growth OS, Release 1). */}
-                    <Link href={`/admin/crm/organisers/${r.id}`} className="underline-offset-2 hover:underline">{r.name}</Link>
+                    <Link href={`/admin/crm/organisers/${r.id}`} className={`${ADMIN_ROW_CONTROL} underline-offset-2 hover:underline`}>{r.name}</Link>
                     <span className="block text-xs text-white/50">
                       {r.city ? `${r.city.replace(/-/g, ' ')}${r.citySource === 'source_file' ? ' (from its source file)' : ''}` : 'No city on record'}
                     </span>

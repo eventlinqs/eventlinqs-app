@@ -23,7 +23,8 @@ export interface Sources {
   readonly claims: readonly { id: string; status: string; created_at: string; verified_at: string | null; event_id: string | null; venue_id: string | null }[]
   readonly submissions: readonly { id: string; title: string; status: string; created_at: string; published_event_id: string | null; held_because: string | null }[]
   readonly permissions: readonly { id: string; scope: string | null; granted_at: string; withdrawn_at: string | null }[]
-  readonly photos: readonly { event_id: string | null; assigned_at: string; rights_holder: string | null; retired_at: string | null }[]
+  /** Each image's legal basis on their nights (event_image_rights): its state, where the basis came from, and its expiry. */
+  readonly imageRights: readonly { event_id: string; rights_state: string; provenance: string | null; derived_at: string; rights_expire_at: string | null }[]
   readonly ticketing: TicketingFacts
   readonly paidOrders: readonly { order_number: string; total_cents: number; confirmed_at: string | null; event_id: string }[]
 }
@@ -90,7 +91,10 @@ export function recordOf(s: Sources): OrganiserRecord {
     add(p.granted_at, 'permission', `Permission given${p.scope ? `: ${p.scope}` : ''}`)
     add(p.withdrawn_at, 'permission', 'Permission withdrawn')
   }
-  for (const p of s.photos) add(p.assigned_at, 'photo', `Photo locked to a night${p.rights_holder ? `, rights held by ${p.rights_holder}` : ''}${p.retired_at ? ' (since retired)' : ''}`)
+  const nightTitle = new Map(s.nights.map((n) => [n.id, n.title]))
+  for (const r of s.imageRights) {
+    add(r.derived_at, 'photo', `Image basis for ${nightTitle.get(r.event_id) ?? 'a night'}: ${r.rights_state.replace(/_/g, ' ')}${r.provenance ? `, from ${r.provenance.replace(/_/g, ' ')}` : ''}${r.rights_expire_at ? `, until ${r.rights_expire_at.slice(0, 10)}` : ''}`)
+  }
   for (const o of s.paidOrders) add(o.confirmed_at, 'sale', `Paid order ${o.order_number}: ${dollars(o.total_cents)}`, `/admin/orders`)
 
   lines.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))

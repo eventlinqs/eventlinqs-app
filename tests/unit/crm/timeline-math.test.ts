@@ -19,7 +19,7 @@ const base: Sources = {
   claims: [],
   submissions: [],
   permissions: [],
-  photos: [],
+  imageRights: [],
   ticketing: { ticketingActivated: false, paidOrders: 0, paidMonths: 0 },
   paidOrders: [],
 }
