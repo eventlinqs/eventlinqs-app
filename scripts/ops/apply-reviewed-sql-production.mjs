@@ -130,6 +130,8 @@ async function main() {
  * cannot revalidate for it (the PM's 19:20 of 11 November 2026). The guides are revalidated by the dispatch-only
  * workflow .github/workflows/revalidate-guides.yml, which holds the production cron secret; this starts it. The outcome
  * is printed either way, with the one command to run when it could not be started.
+ * @param {(command: string, args: string[], options: { encoding: 'utf8' }) => { status: number | null, stderr?: string | null, error?: Error }} [run]
+ *   how the command is run: spawnSync, or a stand-in in a test.
  */
 export function askForGuideRevalidation(run = spawnSync) {
   const args = ['workflow', 'run', 'revalidate-guides.yml', '-R', 'eventlinqs/eventlinqs-app']
