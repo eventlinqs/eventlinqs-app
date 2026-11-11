@@ -45,7 +45,11 @@ export function withCredits(gallery: readonly GalleryImage[], credits: ReadonlyM
 /** The printed line for one credit, the same words the cards and posters print. */
 export function creditLine(credit: string | null | undefined): string | null {
   const words = credit?.trim()
-  return words ? `Photo: ${words}` : null
+  if (!words) return null
+  // A credit recorded with its own 'Photo:' is printed once: AMCF's register reads 'Photo: AMCF, past festival (2024)',
+  // and the guide, its event page and its gallery printed 'Photo: Photo: AMCF' (found looking at the photo-led sample,
+  // 12 November 2026).
+  return /^photo(graph)?\s*(by)?\s*:/i.test(words) ? words : `Photo: ${words}`
 }
 
 /** Reads one night's credits on the server (service role). A failed read credits nothing and says so to the caller. */

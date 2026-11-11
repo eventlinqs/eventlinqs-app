@@ -43,6 +43,10 @@ describe('withCredits and creditLine', () => {
   it('prints "Photo: <credit>", and nothing for no credit', () => {
     expect(creditLine('AMCF, past festival')).toBe('Photo: AMCF, past festival')
     expect(creditLine(undefined)).toBeNull()
+    // A credit recorded with its own 'Photo:' is printed once (the guide read 'Photo: Photo: AMCF' on 12 November 2026).
+    expect(creditLine('Photo: AMCF, past festival (2024)')).toBe('Photo: AMCF, past festival (2024)')
+    expect(creditLine('photo by: Jane Citizen')).toBe('photo by: Jane Citizen')
+    expect(creditLine('Photographer Jane')).toBe('Photo: Photographer Jane')
     expect(creditLine(' ')).toBeNull()
   })
 })

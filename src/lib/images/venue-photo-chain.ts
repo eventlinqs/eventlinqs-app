@@ -1,4 +1,5 @@
 import { isOwnPhoto } from '@/lib/images/event-media'
+import { creditLine } from '@/lib/media/photo-credits'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { eventCoversFor, type VenuePhoto, type VenuePhotosRpc, type VenueUse } from '@/lib/venues/venue-photos-read'
 
@@ -40,8 +41,7 @@ export function venueCreditLine(photo: VenuePhoto): string | null {
     const who = (photo.author ?? photo.credit).trim()
     return who ? `Photo: ${who}, ${licenceLabel(photo)}` : null
   }
-  const words = photo.credit.trim()
-  return words ? `Photo: ${words}` : null
+  return creditLine(photo.credit)
 }
 
 function publicDeps(): ChainDeps {
