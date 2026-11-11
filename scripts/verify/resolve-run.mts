@@ -257,7 +257,7 @@ console.log(`[resolve-run] ${OUT}/resolve-run-${stamp}.json; nothing written to 
  * Read only: the steps are written as ONE reviewed file for the dry run and APPLY. Needs migration 20261107170001.
  */
 if (WALK) {
-  const { nextStep, holdWalkSql } = pick((await import('@/lib/listings/hold-walk')) as typeof import('@/lib/listings/hold-walk'))
+  const { nextStep, holdWalkSql, factHoldAnswer } = pick((await import('@/lib/listings/hold-walk')) as typeof import('@/lib/listings/hold-walk'))
   type Tried = import('@/lib/listings/hold-walk').Tried
   type HoldRow = EventRow & { hold_id: string; scope: 'fact' | 'night'; field: string; state: 'held' | 'unconfirmed'; next_source: string | null; sources_tried: Tried[] | null; readings: Reading[] | null }
   const due = await sql<HoldRow>(`
@@ -280,13 +280,23 @@ if (WALK) {
     const sources = [...new Set([...(h.readings ?? []).map((r) => r.url), ...(h.links ?? []).map((l) => l.url)])].filter((u) => /^https?:\/\//.test(u))
     const hold = { id: h.hold_id, eventId: h.id, scope: h.scope, field: h.field, state: h.state, nextSource: h.next_source ?? sources[0] ?? null, sourcesTried: h.sources_tried ?? [], sources }
     let answer: import('@/lib/listings/hold-walk').Answer = { kind: 'silent', why: 'no source to read' }
-    if (hold.nextSource) {
+    const officials = [...new Map((h.readings ?? []).filter((r) => /^https?:\/\//.test(r.url)).map((r) => [r.url, r] as const)).values()]
+    if (h.scope === 'fact' && officials.length > 0) {
+      // A fact hold is answered by the resolver's own rule over a fresh reading of every official it recorded, never by its
+      // next source alone (factHoldAnswer in hold-walk.ts: the Peter Tobin Oration's price, 11 November 2026).
+      const fresh: Reading[] = []
+      for (const r of officials) fresh.push({ kind: r.kind, url: r.url, value: await statedBy(r.url, h.field, h) })
+      const ownUrl = officials.find((r) => r.kind === 'venue' || r.kind === 'listing')?.url ?? officials[0].url
+      answer = factHoldAnswer(asField(h.field), storedOf(h.field, h) ?? '', ownUrl, fresh)
+    } else if (hold.nextSource) {
       const value = await statedBy(hold.nextSource, h.field === 'session' ? 'start' : h.field, h)
       const stored = storedOf(h.field, h)
       if (value !== null && value === stored) answer = { kind: 'states', words: `its ${h.field} '${value}'` }
       else if ((h.field === 'start' || h.field === 'session') && (await calledOffBy(hold.nextSource, h))) answer = { kind: 'cancelled', words: 'the night called off' }
       else answer = { kind: 'silent', why: value !== null ? `states another ${h.field}: ${value}` : (pages.get(hold.nextSource)?.why ?? 'does not state it') }
     }
+    // Each hold's answer is printed, so the walk's record names what every source said, not only what it decided.
+    console.log(`[resolve-run] hold ${h.hold_id} (${h.title}, ${h.scope} ${h.field}): ${answer.kind === 'silent' ? `kept: ${answer.why}` : `${answer.kind}: ${answer.words}`}`)
     steps.push({ hold, step: nextStep(hold, answer, new Date()) })
   }
   mkdirSync(OUT, { recursive: true })

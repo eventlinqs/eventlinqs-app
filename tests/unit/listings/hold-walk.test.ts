@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { nextStep, holdWalkSql, holdsVerdict, DAY_MS, WEEK_MS, type OpenHold } from '@/lib/listings/hold-walk'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { nextStep, holdWalkSql, holdsVerdict, factHoldAnswer, DAY_MS, WEEK_MS, type OpenHold } from '@/lib/listings/hold-walk'
+import { resolveFact, type Reading } from '@/lib/listings/resolver'
 
 /*
  * A HOLD IS NEVER LEFT HANGING (Lawal, 7 November 2026; the CONTROLLER's 16:55 (1)). The resolver walks every open hold
@@ -101,5 +104,78 @@ describe("the walk's reviewed file", () => {
   it('a fact hold released never touches the night', () => {
     const sql = holdWalkSql([{ hold: hold({ scope: 'fact', field: 'price' }), step: { kind: 'release', by: 'x' } }])
     expect(sql).not.toContain('update public.events')
+  })
+})
+
+/*
+ * A FACT HOLD IS RELEASED ONLY ON THE RESOLVER'S OWN RULING (WINDOW 5A, 11 November 2026). The Peter Tobin Oration's price
+ * was held because its officials disagree (the venue's page 1500, Eventbrite 1200, ours 1200). The walk read Eventbrite
+ * alone, saw our 1200 and would have released it, while the resolver, reading both, holds it again: left out of the walk by
+ * hand, the hold went a day overdue and the engine verifier went red. The walk now asks resolveFact over every official.
+ */
+describe('a fact hold is answered by the resolver over every official', () => {
+  const VENUE = 'https://eurekacentreballarat.com.au/events/oration-cathy-mcgowan/'
+  const SELLER = 'https://petertobinoration2026.eventbrite.com.au'
+  const read = (venue: string | null, seller: string | null): Reading[] => [
+    { kind: 'venue', url: VENUE, value: venue },
+    { kind: 'seller', url: SELLER, value: seller },
+  ]
+
+  it('the Peter Tobin Oration: the seller states our price but the venue still states another, so it stays held', () => {
+    const answer = factHoldAnswer('price', '1200', VENUE, read('1500', '1200'))
+    expect(answer.kind).toBe('silent')
+    expect(answer).toMatchObject({ why: expect.stringContaining('the officials still disagree on its price') })
+    expect(answer).toMatchObject({ why: expect.stringContaining("eurekacentreballarat.com.au '1500'") })
+    expect(answer).toMatchObject({ why: expect.stringContaining("petertobinoration2026.eventbrite.com.au '1200'") })
+  })
+
+  it('every official that states it states our price: released, naming each', () => {
+    const answer = factHoldAnswer('price', '1200', VENUE, read('1200', '1200'))
+    expect(answer).toEqual({
+      kind: 'states',
+      words: "its price '1200', as every official that states it does (eurekacentreballarat.com.au '1200', petertobinoration2026.eventbrite.com.au '1200')",
+    })
+  })
+
+  it('one official silent and the other stating our price: released on the one that states it', () => {
+    expect(factHoldAnswer('price', '1200', VENUE, read(null, '1200')).kind).toBe('states')
+  })
+
+  it('no official states it: stays held, never released on silence', () => {
+    const answer = factHoldAnswer('price', '1200', VENUE, read(null, null))
+    expect(answer.kind).toBe('silent')
+    expect(answer).toMatchObject({ why: expect.stringContaining('no official states its price') })
+  })
+
+  it('the officials agree on another value: stays held for the resolver to correct, never released as if ours were right', () => {
+    const answer = factHoldAnswer('price', '1200', VENUE, read('1500', '1500'))
+    expect(answer.kind).toBe('silent')
+    expect(answer).toMatchObject({ why: expect.stringContaining("the officials agree on another price, '1500'") })
+  })
+
+  it('a listing site alone never releases a fact hold (it is not an official)', () => {
+    const listing: Reading[] = [{ kind: 'listing', url: 'https://whatson.melbourne.vic.gov.au/x', value: '1200' }]
+    expect(factHoldAnswer('price', '1200', listing[0].url, listing).kind).toBe('silent')
+  })
+
+  it('the walk releases exactly when the resolver would keep our value, over every combination of two officials', () => {
+    const values = [null, '1200', '1500']
+    for (const venue of values) {
+      for (const seller of values) {
+        const readings = read(venue, seller)
+        const ruling = resolveFact({ field: 'price', stored: '1200', ownUrl: VENUE, readings })
+        const keeps = ruling.kind === 'keep' || (ruling.kind === 'resource' && !ruling.corrected)
+        expect(factHoldAnswer('price', '1200', VENUE, readings).kind === 'states', `venue ${venue}, seller ${seller}`).toBe(keeps)
+      }
+    }
+  })
+
+  it('the walk asks factHoldAnswer for every fact hold, over every official the hold recorded (the class cannot return)', () => {
+    const src = readFileSync(join(__dirname, '..', '..', '..', 'scripts', 'verify', 'resolve-run.mts'), 'utf8').replace(/\r\n/g, '\n')
+    const walk = src.slice(src.indexOf('if (WALK) {'))
+    expect(walk).toContain("if (h.scope === 'fact' && officials.length > 0) {")
+    expect(walk).toContain('for (const r of officials) fresh.push({ kind: r.kind, url: r.url, value: await statedBy(r.url, h.field, h) })')
+    expect(walk).toContain("answer = factHoldAnswer(asField(h.field), storedOf(h.field, h) ?? '', ownUrl, fresh)")
+    expect(walk.indexOf('factHoldAnswer(asField')).toBeLessThan(walk.indexOf('} else if (hold.nextSource) {'))
   })
 })
