@@ -1,6 +1,7 @@
 import 'server-only'
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
@@ -290,7 +291,8 @@ export async function featuredForPage(placement: Placement, citySlug: string | n
     // Vercel preview of that home logged React's hydration error #418 (errors-in-console, best-practices 0.96, the
     // Lighthouse mobile gate red); the home rendered per request (car 39, live today) passed it at 1.00. The cause is
     // open and named in BP-STATE; until it is found the home keeps its per-request render.
-    if (!(await isFeatureEnabled('paid_promotions'))) return []
+    // EXPERIMENT (11 November 2026, never merged): read cached, so the home is a cached page again, to find car 40's #418.
+    if (!(await isFeatureEnabled('paid_promotions', { client: createPublicClient(), cachedPage: true }))) return []
     return await featuredNow(createAdminClient(), placement, new Date(), citySlug)
   } catch {
     return []
