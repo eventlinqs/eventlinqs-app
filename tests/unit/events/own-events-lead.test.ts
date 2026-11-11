@@ -124,10 +124,12 @@ describe('the guide draws them (source)', () => {
     expect(just).toBeGreaterThan(0)
     expect(from).toBeGreaterThan(just)
     expect(weekend).toBeGreaterThan(from)
-    expect(src.slice(from, from + 120)).toContain('<CardRail entries={sections.organisers} />')
+    // The existing rail; the first section on the page fetches its first photograph first (Lawal, 12 November 2026).
+    expect(src.slice(from, from + 120)).toContain('<CardRail entries={sections.organisers}')
   })
 
   it('every card that draws a photograph prints its credit where one is held', () => {
-    expect(src.match(/thumbCredit \? <span/g)?.length).toBe(3)
+    // One card photograph rule (cardPhoto): the night's own credit, or the venue named with its licence credit.
+    expect(src.match(/photo\?\.credit \? <span/g)?.length).toBe(3)
   })
 })

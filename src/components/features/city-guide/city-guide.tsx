@@ -385,9 +385,9 @@ export function CityGuide({
           <section aria-label={`Free and community in ${placeName}`} className="mt-12">
             <RailHead title="Free and community" onAll={() => { setPrice('free'); toList() }} />
             <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-              {sections.free.map((e, i) => (
+              {sections.free.map((e) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
-                  <Row e={e} cityName={name} priority={at === 0 && i === 0} />
+                  <Row e={e} cityName={name} />
                 </li>
               ))}
             </ul>
@@ -397,9 +397,9 @@ export function CityGuide({
           <section aria-label={`Further ahead in ${placeName}`} className="mt-12">
             <RailHead title="Further ahead" onAll={() => { setWhen('all'); toList() }} />
             <ul className="relative mt-3 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">
-              {sections.soon.map((e, i) => (
+              {sections.soon.map((e) => (
                 <li key={e.row.id} className="border-b border-[var(--surface-2)] last:border-b-0">
-                  <Row e={e} cityName={name} priority={at === 0 && i === 0} />
+                  <Row e={e} cityName={name} />
                 </li>
               ))}
             </ul>
@@ -703,8 +703,9 @@ function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
  * full-width Big nights and rail cards, and phones fetched a 128px photograph for a 356px slot (11 November 2026).
  */
 function WholePhoto({ src, alt, className, variant, priority = false }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb'; priority?: boolean }) {
-  // The one second law (Lawal, 12 November 2026, 01:01, item 5): only the page's first photograph is fetched first; every
-  // other is lazy. Both layers name the same source and size, so the browser fetches it once.
+  // The one second law (Lawal, 12 November 2026, 01:01, item 5): only the first section's first big or rail photograph,
+  // the first screen's candidate, is fetched first; every other, and every small row photograph, is lazy. Both layers
+  // name the same source and size, so the browser fetches it once.
   return (
     <span data-row-thumb className={`relative block overflow-hidden bg-[var(--surface-1)] ${className}`}>
       <span className="ledger-blur" aria-hidden="true">
@@ -892,7 +893,7 @@ export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>):
   return { said, book: null, outbound: false }
 }
 
-function Row({ e, cityName, priority = false }: { e: Entry; cityName: string; priority?: boolean }) {
+function Row({ e, cityName }: { e: Entry; cityName: string }) {
   const r = e.row
   // The city is the page's own, so a row names a place only when it is a nearby one the visitor widened to.
   const elsewhere = r.city && !r.cityKey.includes(cityName) ? r.city : null
@@ -935,7 +936,7 @@ function Row({ e, cityName, priority = false }: { e: Entry; cityName: string; pr
         {photo?.credit ? <span className="mt-1 block font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{photo.credit}</span> : null}
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" priority={priority} /> : null}
+      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" /> : null}
     </Link>
   )
 }
