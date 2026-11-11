@@ -26,7 +26,7 @@
  * Usage: node scripts/verify/acceptance-live.mjs --base https://www.eventlinqs.com.au --out <dir> [--cities geelong,melbourne,ballarat,bendigo]
  * Exit 0 only when every check passes.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { everyTap } from './every-tap.mjs'
@@ -80,6 +80,17 @@ const nights = await sql(`
      and coalesce(e.end_date, ((date_trunc('day', e.start_date at time zone coalesce(e.timezone, 'Australia/Melbourne')) + interval '1 day')
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) >= now()`)
 const bySlug = new Map(nights.map((n) => [n.slug, n]))
+// A public list drops a night LIST_END_LEAD_MS before its end (car 43, src/lib/events/listing-window.ts), so law 16 can
+// only demand a night that still had more than that to run when its guide was read. Read from its one source.
+// (10 November 2026: 'MISSING 1: disaster preparation at home|geelong west library' read at 11:26:00, four minutes
+// before its 11:30 end, was the check's fault, not the guide's.) no-ended-night keeps the true end, because a cached
+// page may carry a night into its lead until the five minute purge runs.
+const LEAD_MS = (() => {
+  const src = readFileSync(join(process.cwd(), 'src', 'lib', 'events', 'listing-window.ts'), 'utf8')
+  const m = src.match(/export const LIST_END_LEAD_MS = ([0-9][0-9 *]*)/)
+  if (!m) throw new Error('LIST_END_LEAD_MS is not declared in src/lib/events/listing-window.ts')
+  return m[1].split('*').reduce((a, x) => a * Number(x.trim()), 1)
+})()
 const listingOf = (n) => `${n.title.trim().toLowerCase()}|${(n.venue_name ?? '').trim().toLowerCase()}`
 const [{ now: dbNow }] = await sql('select now()')
 
@@ -94,6 +105,7 @@ const pageData = {}
 for (const city of CITIES) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
   await page.goto(`${BASE}/city/${city}`, { waitUntil: 'networkidle' })
+  const readAt = Date.now() // the guide was rendered before this instant, so it judged no later than this plus its lead
   await page.waitForTimeout(1500)
   // The first look: Big nights' links in order, and every photograph drawn inside a night's link.
   const big = await page.$$eval('section[aria-label^="Big nights in"] a[href^="/events/"]', (as) => [...new Set(as.map((a) => a.getAttribute('href')))])
@@ -114,7 +126,7 @@ for (const city of CITIES) {
     await more.first().click()
   }
   const linked = await page.$$eval('a[href^="/events/"]', (as) => [...new Set(as.map((a) => a.getAttribute('href').replace(/^\/events\//, '').split(/[?#]/)[0]))])
-  pageData[city] = { big, photos, linked }
+  pageData[city] = { big, photos, linked, readAt }
   await page.close()
 }
 
@@ -129,12 +141,14 @@ if (pageData.melbourne) {
 
 // 3: law 16, per city, listing by listing.
 for (const city of CITIES) {
-  const mine = nights.filter((n) => n.city.includes(city))
+  const inCity = nights.filter((n) => n.city.includes(city))
+  const mine = inCity.filter((n) => Date.parse(n.until) >= pageData[city].readAt + LEAD_MS)
+  const inLead = inCity.length - mine.length
   const listings = new Map()
   for (const n of mine) listings.set(listingOf(n), [...(listings.get(listingOf(n)) ?? []), n.slug])
   const linked = new Set(pageData[city].linked)
   const missing = [...listings.entries()].filter(([, slugs]) => !slugs.some((s) => linked.has(s))).map(([k, slugs]) => `${k} (${slugs[0]})`)
-  record('law16-reachable', city, missing.length === 0, `${listings.size - missing.length} of ${listings.size} listings (${mine.length} nights) reachable with All dates${missing.length ? `; MISSING ${missing.length}: ${missing.slice(0, 8).join('; ')}` : ''}`)
+  record('law16-reachable', city, missing.length === 0, `${listings.size - missing.length} of ${listings.size} listings (${mine.length} nights) reachable with All dates${inLead ? ` (${inLead} night(s) inside their last ${LEAD_MS / 60000} minutes not required)` : ''}${missing.length ? `; MISSING ${missing.length}: ${missing.slice(0, 8).join('; ')}` : ''}`)
 }
 
 // 4: no ended night linked.
