@@ -23,7 +23,8 @@
  *   TEST, from a checkout whose .env.local is TEST's (dry run, then --apply):
  *     node --env-file=.env.local scripts/ops/spine-jpeg-masters.mjs --project test [--apply]
  *   PRODUCTION, under the token wrapper (the service key is read from the Management API and held in memory only),
- *   and only with Lawal's approval quoted:
+ *   and only with Lawal's approval quoted; an upload also needs ALLOW_PRODUCTION_SUPABASE=1, the opt-in every production
+ *   write in this repository answers to (scripts/guards/no-unguarded-production-write.mjs), set in the bash the wrapper runs:
  *     powershell -File scripts/ops/with-supabase-token.ps1 node scripts/ops/spine-jpeg-masters.mjs --project production --approved-by-founder "<his words>" [--apply]
  */
 import { appendFileSync, readFileSync, readSync } from 'node:fs'
@@ -34,7 +35,7 @@ import sharp from 'sharp'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const BUCKET = 'event-images'
-const PRODUCTION = 'gndnldyfudbytbboxesk'
+const PROD_REF = 'gndnldyfudbytbboxesk'
 const WRITES_LOG = 'C:\\dev\\PRODUCTION-WRITES.txt'
 const QUALITY = 92
 const args = process.argv.slice(2)
@@ -74,21 +75,26 @@ async function connection() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
     if (!url || !key) fail('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required (run with --env-file=.env.local).')
-    if (url.includes(PRODUCTION)) fail('--project test was given, but the environment names PRODUCTION.')
+    if (url.includes(PROD_REF)) fail('--project test was given, but the environment names PRODUCTION.')
     return { url, key, label: 'TEST' }
   }
   if (PROJECT === 'production') {
     // A dry run reads public files only: no key, no approval. Uploading is Lawal's to approve and needs the key.
-    if (!APPLY) return { url: `https://${PRODUCTION}.supabase.co`, key: null, label: 'PRODUCTION' }
+    if (!APPLY) return { url: `https://${PROD_REF}.supabase.co`, key: null, label: 'PRODUCTION' }
     if (!APPROVED || APPROVED.trim().length < 10) fail('production needs --approved-by-founder "<Lawal\'s words>": a production storage write is his to approve.')
+    // The opt-in every production write in this repository answers to (scripts/ops/copy-spine-category-objects.mjs).
+    if (process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
+      console.error(`REFUSED: the upload targets PRODUCTION (${PROD_REF}) and ALLOW_PRODUCTION_SUPABASE is not 1; set it beside Lawal's quoted approval.`)
+      process.exit(1)
+    }
     const token = process.env.SUPABASE_ACCESS_TOKEN
     if (!token) fail('run under scripts/ops/with-supabase-token.ps1: SUPABASE_ACCESS_TOKEN is not set.')
-    const res = await fetch(`https://api.supabase.com/v1/projects/${PRODUCTION}/api-keys?reveal=true`, { headers: { Authorization: `Bearer ${token}` } })
+    const res = await fetch(`https://api.supabase.com/v1/projects/${PROD_REF}/api-keys?reveal=true`, { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) fail(`could not read the project's API keys (HTTP ${res.status}).`)
     const keys = await res.json()
     const service = (Array.isArray(keys) ? keys : []).find((k) => k?.name === 'service_role' && typeof k.api_key === 'string' && k.api_key.length > 0)
     if (!service) fail('no service_role key was returned; nothing was written.')
-    return { url: `https://${PRODUCTION}.supabase.co`, key: service.api_key, label: 'PRODUCTION' }
+    return { url: `https://${PROD_REF}.supabase.co`, key: service.api_key, label: 'PRODUCTION' }
   }
   return fail('--project test or --project production is required.')
 }
