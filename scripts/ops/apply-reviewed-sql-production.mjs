@@ -16,6 +16,7 @@
  */
 import { appendFileSync, readFileSync, readSync } from 'node:fs'
 import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
 const REF = 'gndnldyfudbytbboxesk'
@@ -120,7 +121,26 @@ async function main() {
     })
     console.log(`READ BACK, the file's own select, read only (HTTP ${back.status}):\n${await back.text()}`)
   } else console.log('Read the result back by direct query.')
+  askForGuideRevalidation()
   return 0
+}
+
+/**
+ * A reviewed write can hold, release or correct what a guide lists, and it never passes through the app, so the app
+ * cannot revalidate for it (the PM's 19:20 of 11 November 2026). The guides are revalidated by the dispatch-only
+ * workflow .github/workflows/revalidate-guides.yml, which holds the production cron secret; this starts it. The outcome
+ * is printed either way, with the one command to run when it could not be started.
+ */
+export function askForGuideRevalidation(run = spawnSync) {
+  const args = ['workflow', 'run', 'revalidate-guides.yml', '-R', 'eventlinqs/eventlinqs-app']
+  const r = run('gh', args, { encoding: 'utf8' })
+  if (r.status === 0) {
+    console.log('GUIDES: revalidation started (workflow revalidate-guides); read its run with: gh run list -w revalidate-guides.yml -L 1')
+    return true
+  }
+  const why = String(r.stderr || r.error?.message || `exit ${r.status}`).trim().slice(0, 300)
+  console.log(`GUIDES NOT YET REVALIDATED (${why}). Run: gh ${args.join(' ')}`)
+  return false
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = await main()

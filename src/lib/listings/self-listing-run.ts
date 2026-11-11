@@ -16,6 +16,7 @@ import { AUTHORITY_WORDS, PHOTO_OWNED_WORDS, SUBMISSION_ROLE_WORDS, type Submiss
 import { judgeSelfListing, localParts, type Correction, type PublishFacts, type SelfListingVerdict } from './self-listing'
 import { addSelfListedPhoto } from '@/lib/social/store'
 import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
+import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
 import { hasRealCover } from '@/lib/events/publish-gate'
 import { priceWords, whenWords } from './submission-watch-rule'
 import { sendOrganiserLiveNotice } from './organiser-live-notice'
@@ -316,6 +317,10 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
     .from('listing_submissions')
     .update({ status: 'published', reviewed_at: now.toISOString(), published_series_id: seriesId, published_event_id: made.id, corrections: verdict.corrections, check_result: { ...checkResult, photo: photo.words, photo_attached: photo.attached } })
     .eq('id', sub.id)
+  // THE GUIDES SHOW IT AS IT NOW STANDS (the PM's 19:20 of 11 November 2026). The occurrence run revalidated when it
+  // made the event, BEFORE its photo was put on and before this submission named it the organiser's own (the guide
+  // leads with an organiser's own events from published_event_id), so every surface it is on is invalidated again here.
+  await revalidateEventSurfacesFromRouteHandlerById(admin, made.id as string)
 
   const link = `${getSiteUrl()}/events/${made.slug as string}`
   const when = whenWords(facts.startsAt, tz)
@@ -384,6 +389,8 @@ export async function attachApprovedPhotos(most = 5): Promise<string[]> {
     const credit = typeof result.credit === 'string' && result.credit.trim().length >= 2 ? result.credit.trim() : r.name
     const photo = await attachPhoto(admin, r, r.published_event_id, credit.slice(0, 200))
     await admin.from('listing_submissions').update({ check_result: { ...result, photo: photo.words, photo_attached: photo.attached } }).eq('id', r.id)
+    // The photo is on its card now: every surface the night is on is invalidated, so no guide keeps the card without it.
+    if (photo.attached) await revalidateEventSurfacesFromRouteHandlerById(admin, r.published_event_id)
     out.push(`${cleanTitle(r.title)}: ${photo.words}`)
   }
   return out
