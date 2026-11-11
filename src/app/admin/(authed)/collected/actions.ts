@@ -11,6 +11,7 @@ import type { FoundLink } from '@/lib/listings/collect'
 import { LISTINGS_ORG_SLUG } from '@/lib/listings/collect-store'
 import { partnerSourceRow } from '@/lib/listings/partner-feed'
 import { REFUSAL_REASONS } from './reasons'
+import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
 
 /**
  * A PERSON'S REVIEW OF WHAT THE COLLECTION RUN FOUND (item 19: "everything reviewed before publishing").
@@ -57,6 +58,8 @@ export async function acceptCandidateAction(formData: FormData): Promise<void> {
     } catch {
       redirect('/admin/collected?status=error')
     }
+    // The event's page and every list it is on now carry the new booking links, never a cached render without them.
+    await revalidateEventSurfacesById(db, c.event_id as string)
   }
 
   const { data: done, error: uerr } = await db

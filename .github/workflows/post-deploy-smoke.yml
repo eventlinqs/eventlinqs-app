@@ -170,6 +170,22 @@ jobs:
               --report smoke-report.json
           fi
 
+      - name: Revalidate every guide on the new deployment
+        # The PM's 19:20 of 11 November 2026: every deploy revalidates the guides. The new deployment starts from the
+        # renders its build made; this replaces them with the live data now, on every city, suburb and state guide, the
+        # home and /events (src/app/api/revalidate-guides/route.ts). It runs after the smoke has proved the deploy is
+        # the commit under test, and is skipped on the forced-failure drill, which smokes a host that does not exist.
+        if: ${{ github.event.inputs.force_failure != 'true' }}
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          code=$(curl -sS -o revalidate.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" -H 'content-type: application/json' --data '{}' \
+            "$PROD_URL/api/revalidate-guides")
+          cat revalidate.json; echo
+          if [ "$code" != "200" ]; then echo "::error::/api/revalidate-guides answered HTTP $code, so the guides keep their build renders"; exit 1; fi
+
       - name: Browser-level map guard (post-deploy)
         # Opt-in blocking: enable the repo variable MAP_GUARD_ENABLED=true once
         # production maps are confirmed live (env key baked, code deployed, event

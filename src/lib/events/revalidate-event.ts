@@ -373,3 +373,35 @@ export function revalidateEventSurfacesFromRouteHandler(event: RevalidatableEven
   revalidateTag('picker-cities', { expire: 0 })
   return invalidated
 }
+
+/**
+ * EVERY GUIDE, AT ONCE: the home, /events, every city guide, every suburb page and every state page, with every data
+ * cache under them expired immediately. The route-handler form (revalidateTag with expire 0), so a deploy hook and a
+ * production write script can call it through /api/revalidate-guides.
+ *
+ * WHY (the PM's 19:20 of 11 November 2026): the plain /city/melbourne went on serving a render without the organisers'
+ * own events while a fresh render had them. A guide that is revalidated only by its time window keeps its last render
+ * until a visitor arrives after the window, and that visitor is served the old render while the new one is made
+ * (stale-while-revalidate, node_modules/next/dist/docs/01-app/02-guides/how-revalidation-works.md), so a quiet guide can
+ * show a page of any age once. Every write that changes a list therefore invalidates it on demand, and every production
+ * deploy calls this.
+ *
+ * The route patterns are passed with the 'page' type, which invalidates every page the pattern renders
+ * (node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidatePath.md).
+ */
+export function revalidateEveryGuideFromRouteHandler(): string[] {
+  const invalidated: string[] = []
+  for (const path of ['/', '/events', '/sitemap.xml']) {
+    revalidatePath(path)
+    invalidated.push(path)
+  }
+  for (const pattern of ['/city/[slug]', '/city/[slug]/[suburb]', '/state/[state]']) {
+    revalidatePath(pattern, 'page')
+    invalidated.push(pattern)
+  }
+  for (const tag of EVENT_DATA_CACHE_TAGS) {
+    revalidateTag(tag, { expire: 0 })
+  }
+  revalidateTag('picker-cities', { expire: 0 })
+  return invalidated
+}

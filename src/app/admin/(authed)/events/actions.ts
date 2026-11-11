@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
 import { applyEventAction, deleteEventAsAdmin, setEventFeatured } from '@/lib/admin/events'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
 
 const ActionSchema = z.object({
   eventId: z.string().uuid(),
@@ -35,6 +37,9 @@ export async function eventActionForm(formData: FormData): Promise<void> {
   const res = await applyEventAction({ eventId, action, reason }, session)
   if (res.invalidTransition) redirect(appendNotice(base, 'stale'))
   if (!res.ok) redirect(appendNotice(base, 'error'))
+  // A pause, cancel, takedown, archive, resume or restore moves the event onto or off every public list, so every
+  // surface it is on is invalidated at once, never left to a cached render's window (the PM's 19:20 of 11 November 2026).
+  await revalidateEventSurfacesById(createAdminClient(), eventId)
   redirect(appendNotice(base, 'done', action))
 }
 
@@ -84,6 +89,8 @@ export async function eventFeatureForm(formData: FormData): Promise<void> {
   const res = await setEventFeatured({ eventId: parsed.data.eventId, featured: parsed.data.featured === 'true' }, session)
   const base = `/admin/events/${parsed.data.eventId}`
   if (!res.ok) redirect(`${base}?notice=error`)
+  // Featured or not changes where the event sits on the public lists: every surface it is on is invalidated at once.
+  await revalidateEventSurfacesById(createAdminClient(), parsed.data.eventId)
   redirect(`${base}?notice=${parsed.data.featured === 'true' ? 'featured' : 'unfeatured'}`)
 }
 

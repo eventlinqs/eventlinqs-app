@@ -1,0 +1,50 @@
+name: revalidate guides
+
+# EVERY GUIDE REVALIDATED AFTER A PRODUCTION WRITE MADE BY SCRIPT (the PM's 19:20 of 11 November 2026: every publish,
+# change or hold of an event revalidates its city guide, the state page, the home and its own page).
+#
+# A hold, a release or a correction applied through scripts/ops/apply-reviewed-sql-production.mjs changes what a guide
+# lists without passing through any server action or route handler, so nothing inside the app can revalidate it. That
+# script starts this workflow after its APPLY, and this workflow asks production to revalidate through
+# /api/revalidate-guides with the cron secret, which lives here and on Vercel and is never copied to a laptop.
+#
+# Started by hand or by that script only: no schedule, no push or pull request trigger. One curl, no checkout.
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_ids:
+        description: 'Optional: the ids of the events the write touched, comma separated (at most 100)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: revalidate-guides
+  cancel-in-progress: false
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PROD_URL: https://www.eventlinqs.com.au
+    steps:
+      - name: Revalidate every guide
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # Through the environment, never interpolated into the script body.
+          EVENT_IDS: ${{ github.event.inputs.event_ids }}
+        run: |
+          set -u
+          # GitHub runs bash with -e and pipefail, so a grep that keeps nothing (no ids given) must not end the step.
+          ids=$(printf '%s\n' "${EVENT_IDS:-}" | tr -d ' ' | tr ',' '\n' | { grep -E '^[0-9a-fA-F-]{36}$' || true; } | head -100 | sed 's/.*/"&"/' | paste -sd, -)
+          body='{}'
+          if [ -n "$ids" ]; then body="{\"eventIds\":[$ids]}"; fi
+          code=$(curl -sS -o revalidate.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" -H 'content-type: application/json' --data "$body" \
+            "$PROD_URL/api/revalidate-guides")
+          cat revalidate.json; echo
+          if [ "$code" != "200" ]; then echo "::error::/api/revalidate-guides answered HTTP $code"; exit 1; fi
