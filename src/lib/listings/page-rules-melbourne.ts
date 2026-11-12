@@ -501,7 +501,55 @@ export const memoMusicHall: PageRule = {
   },
 }
 
+/**
+ * CHERRY BAR (cherrybar.com.au, 68 Little Collins Street). Read 13 November 2026 by the polite reader: robots.txt allows
+ * its pages; no terms page restricts reuse; no schema.org Event data. Its own sitemap (wp-sitemap-posts-cherry_event-1.xml)
+ * lists its current shows under /events/. Each page has one h1 (the show, often ending with its own short date, ', SAT
+ * DEC 12th', which is dropped as the date is kept apart), 'Starts Saturday 12 December 2026 . 8:00pm' and 'Finishes
+ * Saturday 12 December 2026 . 11:00pm', and where tickets are sold a link to the seller ('Get tickets on Eventbrite').
+ * Its street is in its own page header. Facts only; no price is stated on the page, so none is taken.
+ */
+const CHERRY_WHEN = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})\D{1,6}?(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+
+export const cherryBar: PageRule = {
+  host: 'cherrybar.com.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1
+      ? textOf(h1[1]).replace(/(?:,\s*|\s+)(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\s*$/i, '').trim()
+      : ''
+    const text = textOf(html.replace(/<\/(p|div|li|span|h[1-6])>/gi, '\n'))
+    const starts = /Starts\s+([^\n]{6,60})/i.exec(text)
+    const finishes = /Finishes\s+([^\n]{6,60})/i.exec(text)
+    const at = (line: string | undefined) => {
+      const m = line ? CHERRY_WHEN.exec(line) : null
+      const mo = m ? MONTHS[m[2].toLowerCase()] : undefined
+      const c = m ? clock(m[4]) : null
+      return m && mo && c ? wallClockToIso(Number(m[3]), mo, Number(m[1]), c[0], c[1], 0, ZONE) : null
+    }
+    const startsAt = at(starts?.[1])
+    if (!title || !startsAt) return []
+    const endsAt = at(finishes?.[1])
+    const seller = /<a\b[^>]*href="(https:\/\/(?:www\.)?eventbrite\.[^"]+)"/i.exec(html)
+    return [{
+      title,
+      startsAt,
+      endsAt: endsAt && endsAt > startsAt ? endsAt : null,
+      venueName: 'Cherry Bar',
+      // Its own page header (read 13 November 2026): '68 LITTLE COLLINS STREET, MELBOURNE'.
+      venueAddress: '68 Little Collins Street, Melbourne VIC',
+      pageUrl,
+      imageUrl: null,
+      description: null,
+      links: [{ url: seller ? decode(seller[1]) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+      timeStatus: 'exact',
+      timeFromWords: true,
+    }]
+  },
+}
+
 export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [
   comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark,
-  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare, birdsBasement, memoMusicHall,
+  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare, birdsBasement, memoMusicHall, cherryBar,
 ]
