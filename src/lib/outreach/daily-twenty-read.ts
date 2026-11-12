@@ -5,8 +5,18 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { isAcquisitionState, STATE_WORDS } from './acquisition-states'
 import { contactRefusal } from './crm'
-import { buildDailyTwenty, contactFor, EXPIRED_REFUSAL, groupOf, type DailyCandidate, type DailyTwenty, type StoredContact } from './daily-twenty'
+import {
+  buildDailyTwenty,
+  contactFor,
+  EXPIRED_REFUSAL,
+  groupOf,
+  withoutANightToName,
+  type DailyCandidate,
+  type DailyTwenty,
+  type StoredContact,
+} from './daily-twenty'
 import { readOrganiserScores } from './organiser-score-read'
+import { readTheirNights } from './their-nights'
 import { writtenBefore } from './written-before'
 
 /**
@@ -25,8 +35,19 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
 
   // The platform's own listings organisation is never one of the day's twenty (src/lib/growth/platform-organiser.ts).
   const organisers = withoutPlatformOrganisers(
-    await readEveryRow<{ id: string; name: string; acquisition_state: string; instagram_handle: string | null }>('the organisers', (a, b) =>
-      db.from('organisers').select('id, name, acquisition_state, instagram_handle').order('id', { ascending: true }).range(a, b),
+    await readEveryRow<{
+      id: string
+      name: string
+      acquisition_state: string
+      instagram_handle: string | null
+      organisation_id: string | null
+      website_url: string | null
+    }>('the organisers', (a, b) =>
+      db
+        .from('organisers')
+        .select('id, name, acquisition_state, instagram_handle, organisation_id, website_url')
+        .order('id', { ascending: true })
+        .range(a, b),
     ),
     await readPlatformOrganiserIds(db),
   )
@@ -64,6 +85,21 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
     if (!seen || t.sent_at > seen.at) lastContact.set(org, { contactId: t.contact_id, at: t.sent_at })
   }
 
+  // A first message in Lawal's format names their next night on EventLinqs (./twenty-letters.ts), read through the one
+  // reader the drafter uses (./their-nights.ts), so a conversion organiser with none listed cannot take a place in the
+  // twenty (./daily-twenty.ts NO_NIGHT_TO_NAME). Read eight organisers at a time.
+  const conversion = grouped.filter((o) => o.group === 'conversion' && scores.get(o.id) !== 'stopped')
+  const nightless = new Set<string>()
+  for (let i = 0; i < conversion.length; i += 8) {
+    const part = conversion.slice(i, i + 8)
+    const found = await Promise.all(
+      part.map((o) => readTheirNights(db, { id: o.id, organisation_id: o.organisation_id, website_url: o.website_url }, now, 1)),
+    )
+    part.forEach((o, k) => {
+      if (found[k].length === 0) nightless.add(o.id)
+    })
+  }
+
   const candidates: DailyCandidate[] = []
   for (const o of grouped) {
     const score = scores.get(o.id)
@@ -77,6 +113,7 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
       theirs.push({ id: c.id, channel: c.channel, address: c.address, personName: c.person_name, refusal })
     }
     const due = dueOn.get(o.id)
+    const contact = contactFor(theirs, lastContact.get(o.id)?.contactId ?? null)
     candidates.push({
       organiserId: o.id,
       organiserName: o.name,
@@ -84,7 +121,7 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
       score: score ?? 0,
       city: cities.get(o.id) ?? null,
       why: o.group === 'follow_up' && o.state === 'contacted' && due ? `${STATE_WORDS[o.state]}; next step due ${due}` : STATE_WORDS[o.state],
-      contact: contactFor(theirs, lastContact.get(o.id)?.contactId ?? null),
+      contact: nightless.has(o.id) ? withoutANightToName(contact) : contact,
       socialHandle: o.instagram_handle ? `@${o.instagram_handle.replace(/^@/, '')}` : null,
     })
   }
