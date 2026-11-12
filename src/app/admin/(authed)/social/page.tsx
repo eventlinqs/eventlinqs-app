@@ -66,7 +66,7 @@ function Results({ r }: { r: PostRow['result'] }) {
 function Post({ p }: { p: PostRow }) {
   const card = `/admin/social/card/${p.id}`
   return (
-    <li data-post={p.id} data-format={p.format} className="grid grid-cols-1 gap-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-[180px_minmax(0,1fr)]">
+    <li id={`post-${p.id}`} data-post={p.id} data-format={p.format} className="scroll-mt-24 grid grid-cols-1 gap-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-[180px_minmax(0,1fr)]">
       {/* eslint-disable-next-line @next/next/no-img-element -- a staff preview of a rendered card, never a public image */}
       <img src={card} alt={`${FORMAT_NAME[p.format].one} for ${p.eventTitle}`} loading="lazy" className="w-full max-w-[180px] rounded-lg border border-white/[0.08]" />
       <div className="min-w-0">
@@ -168,7 +168,7 @@ const ASSET_STATE_NAME: Record<string, string> = {
 function Piece({ p }: { p: PieceRow }) {
   const r = p.revision
   return (
-    <li data-piece={p.id} data-kind={p.kind} data-state={p.state} data-version={r.version} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
+    <li id={`piece-${p.id}`} data-piece={p.id} data-kind={p.kind} data-state={p.state} data-version={r.version} className="scroll-mt-24 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-base font-semibold text-white">
           {KIND_NAME[p.kind]}

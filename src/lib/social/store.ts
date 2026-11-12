@@ -164,51 +164,53 @@ export async function planWeek(db: Db, input: { readonly plannedBy: string; read
   const held: { eventId: string; reason: string }[] = []
   let planned = 0
   for (const item of items) {
-    const context = await contextFor(db, item.eventId, input.now)
-    if (context === null) {
-      held.push({ eventId: item.eventId, reason: 'The event could not be read.' })
-      continue
-    }
-    const told = toCaptionInput(context)
-    /* The organiser's description is quoted only where it does not carry the banned word (words.ts quotableSummary). */
-    const caption = { ...told, summary: quotableSummary(told.summary, [told.title, told.organiserName]) }
-
-    const kit = await getOrCreateShareLink({ eventId: item.eventId, channel: item.platform, createdBy: input.plannedBy, eventSlug: context.slug })
-    if (kit === null) {
-      held.push({ eventId: item.eventId, reason: 'The Launch Kit link could not be read, so no second link was made.' })
-      continue
-    }
-    const { data: link, error: lerr } = await db
-      .from('share_links')
-      .insert({ event_id: item.eventId, channel: item.platform, code: generateShareCode(), created_by: input.plannedBy })
-      .select('id, code')
-      .single()
-    if (lerr || !link) {
-      held.push({ eventId: item.eventId, reason: `No link of its own could be made: ${lerr?.message ?? 'no row'}.` })
-      continue
-    }
-    const url = buildShortUrl(ORIGIN, link.code as string)
-    const facts = factsOf(caption)
-    const { data: post, error: perr } = await db
-      .from('social_posts')
-      .insert({ event_id: item.eventId, platform: item.platform, format: item.format, share_link_id: link.id, link: url, facts, planned_by: input.plannedBy, planned_at: input.now.toISOString() })
-      .select('id')
-      .single()
-    if (perr || !post) {
-      held.push({ eventId: item.eventId, reason: `The post could not be kept: ${perr?.message ?? 'no row'}.` })
-      continue
-    }
-    planned += 1
-    const words = kitCaption(caption, item.platform, url)
-    const why = wordsRefusal(words, url, facts, [caption.title, caption.organiserName])
-    if (why !== null) {
-      held.push({ eventId: item.eventId, reason: `The Launch Kit's words were not kept: ${why}` })
-      continue
-    }
-    const { error: derr } = await db.from('social_drafts').insert({ post_id: post.id, version: 1, caption: words, written_by: 'kit', drafted_at: input.now.toISOString() })
-    if (derr) held.push({ eventId: item.eventId, reason: refusalOf(derr.message) ?? derr.message })
+    const one = await planPost(db, item, input)
+    if (one.kept) planned += 1
+    if (one.held !== null) held.push({ eventId: item.eventId, reason: one.held })
   }
   return { planned, held }
+}
+
+/**
+ * One post planned the way the week's posts are: its own share link (after the Launch Kit's for the same network), the
+ * facts, and the kit's own caption as version 1. kept says the post row was made; held says why anything was not.
+ * The organiser spotlight (./three-posts.ts) plans its one post through here, so it is never a second way of posting.
+ */
+export async function planPost(
+  db: Db,
+  item: { readonly eventId: string; readonly platform: SocialPlatform; readonly format: SocialFormat },
+  input: { readonly plannedBy: string; readonly now: Date },
+): Promise<{ readonly kept: boolean; readonly postId: string | null; readonly held: string | null }> {
+  if ((await plannedKeys(db, [item.eventId])).has(postKey(item.eventId, item.platform, item.format))) {
+    return { kept: false, postId: null, held: 'That post is already planned.' }
+  }
+  const context = await contextFor(db, item.eventId, input.now)
+  if (context === null) return { kept: false, postId: null, held: 'The event could not be read.' }
+  const told = toCaptionInput(context)
+  /* The organiser's description is quoted only where it does not carry the banned word (words.ts quotableSummary). */
+  const caption = { ...told, summary: quotableSummary(told.summary, [told.title, told.organiserName]) }
+
+  const kit = await getOrCreateShareLink({ eventId: item.eventId, channel: item.platform, createdBy: input.plannedBy, eventSlug: context.slug })
+  if (kit === null) return { kept: false, postId: null, held: 'The Launch Kit link could not be read, so no second link was made.' }
+  const { data: link, error: lerr } = await db
+    .from('share_links')
+    .insert({ event_id: item.eventId, channel: item.platform, code: generateShareCode(), created_by: input.plannedBy })
+    .select('id, code')
+    .single()
+  if (lerr || !link) return { kept: false, postId: null, held: `No link of its own could be made: ${lerr?.message ?? 'no row'}.` }
+  const url = buildShortUrl(ORIGIN, link.code as string)
+  const facts = factsOf(caption)
+  const { data: post, error: perr } = await db
+    .from('social_posts')
+    .insert({ event_id: item.eventId, platform: item.platform, format: item.format, share_link_id: link.id, link: url, facts, planned_by: input.plannedBy, planned_at: input.now.toISOString() })
+    .select('id')
+    .single()
+  if (perr || !post) return { kept: false, postId: null, held: `The post could not be kept: ${perr?.message ?? 'no row'}.` }
+  const words = kitCaption(caption, item.platform, url)
+  const why = wordsRefusal(words, url, facts, [caption.title, caption.organiserName])
+  if (why !== null) return { kept: true, postId: post.id as string, held: `The Launch Kit's words were not kept: ${why}` }
+  const { error: derr } = await db.from('social_drafts').insert({ post_id: post.id, version: 1, caption: words, written_by: 'kit', drafted_at: input.now.toISOString() })
+  return { kept: true, postId: post.id as string, held: derr ? (refusalOf(derr.message) ?? derr.message) : null }
 }
 
 export type Done = { readonly state: 'done' } | { readonly state: 'refused'; readonly reason: string }

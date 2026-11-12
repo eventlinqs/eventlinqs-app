@@ -13,6 +13,8 @@ import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 import { readPlanGates } from '@/lib/growth/plan-gates'
 import { readSentRecently, readTwentyView } from '@/lib/outreach/twenty-view'
 import { SentRecentlySection, TwentySection } from './twenty-section'
+import { readThreePosts } from '@/lib/social/three-posts'
+import { PostsSection } from './posts-section'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -64,6 +66,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   )
   // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
   const sentRecently = await readSentRecently(createAdminClient(), now).then(
+    (v) => ({ ok: true as const, v }),
+    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+  )
+  // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
+  const threePosts = await readThreePosts(createAdminClient(), now).then(
     (v) => ({ ok: true as const, v }),
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
   )
@@ -164,6 +171,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       )}
       <TwentySection view={twenty} />
       <SentRecentlySection view={sentRecently} />
+      <PostsSection view={threePosts} />
 
       {queue.sections.map((section) => (
         <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
