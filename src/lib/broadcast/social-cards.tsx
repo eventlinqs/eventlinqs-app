@@ -26,6 +26,7 @@ import {
   type DisplayTitleFit,
 } from '@/lib/broadcast/social-card-layout'
 import { captureException } from '@/lib/observability/sentry'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * THE SOCIAL CARD SET.
@@ -540,7 +541,7 @@ function Wordmark({ input, px, size }: { input: SocialCardInput; px: Px; size: n
             letterSpacing: px(0.4),
           }}
         >
-          <span>{`Photo: ${input.photoCredit}`}</span>
+          <span>{creditLine(input.photoCredit)}</span>
         </div>
       ) : null}
     </div>

@@ -43,13 +43,20 @@ export function withCredits(gallery: readonly GalleryImage[], credits: ReadonlyM
 }
 
 /** The printed line for one credit, the same words the cards and posters print. */
-export function creditLine(credit: string | null | undefined): string | null {
-  const words = credit?.trim()
-  if (!words) return null
-  // A credit recorded with its own 'Photo:' is printed once: AMCF's register reads 'Photo: AMCF, past festival (2024)',
-  // and the guide, its event page and its gallery printed 'Photo: Photo: AMCF' (found looking at the photo-led sample,
-  // 12 November 2026).
-  return /^photo(graph)?\s*(by)?\s*:/i.test(words) ? words : `Photo: ${words}`
+export function creditLine(credit: string | null | undefined, options: { readonly plural?: boolean } = {}): string | null {
+  const words = creditWords(credit)
+  return words ? `${options.plural ? 'Photos' : 'Photo'}: ${words}` : null
+}
+
+/**
+ * THE CREDIT IS PRINTED ONCE (the PM's 09:19 of 12 November 2026, item 4): a credit recorded with its own prefix
+ * ('Photo: AMCF, past festival (2024)', 'Photos: ...', 'Photograph by: ...') keeps only its words, so every surface
+ * prints one 'Photo:'. The guide, the event page and the gallery printed 'Photo: Photo: AMCF' on live until then.
+ * Every place that prints a credit goes through creditLine (scripts/guards/credit-printed-once.mjs).
+ */
+export function creditWords(credit: string | null | undefined): string | null {
+  const words = credit?.trim().replace(/^(photo(graph)?s?\s*(by)?\s*:\s*)+/i, '').trim()
+  return words || null
 }
 
 /** Reads one night's credits on the server (service role). A failed read credits nothing and says so to the caller. */
