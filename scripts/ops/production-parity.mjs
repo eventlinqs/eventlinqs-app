@@ -60,7 +60,7 @@
  * holds that).
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ENV_MANIFEST, policyFor, shapeFor } from '../../src/lib/env/manifest.mjs'
 import { checkShape, fingerprint } from '../../src/lib/env/manifest-checks.mjs'
@@ -224,10 +224,11 @@ async function schemaParity() {
   }
   fail(`FAIL schema: production ${project} is BEHIND this tree by ${pending.length} migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:`)
   for (const p of pending) fail(`    ${p.file}`)
-  fail('  Applying a migration to production is the founder\'s step (CLAUDE.md, Verification and gates, Migrations). One command, in PowerShell from the repo:')
-  fail('    npm run migrate:production')
-  fail('  It lists these files, asks for the production ref typed back, hands over the CLI\'s own prompts, proves the result and rests the CLI on TEST')
-  fail('  (scripts/ops/apply-production-migrations.mjs; add `-- --dry-run` to list only).')
+  fail('  Applying a migration to production is the founder\'s step (CLAUDE.md, Verification and gates, Migrations). One command, in PowerShell from THIS folder:')
+  fail(`    cd ${resolve(ROOT)}; npm run migrate:production -- --expect ${pending.map((p) => p.file).join(',')}`)
+  fail('  It prints where it runs, refuses unless exactly these files are pending (the founder step law, 12 November 2026), asks for the')
+  fail('  production ref typed back, hands over the CLI\'s own prompts, proves the result and rests the CLI on TEST')
+  fail('  (scripts/ops/apply-production-migrations.mjs; add `-- --dry-run` to list only). The window that hands this to Lawal reads it back first.')
   fail('  Until then this tree cannot reach production, so it does not reach main.')
   return false
 }

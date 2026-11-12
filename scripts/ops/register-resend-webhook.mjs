@@ -34,6 +34,7 @@ import { spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync, readSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { sayWhere } from '../lib/founder-where.mjs'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 /** A constant read from its one source file, so this script never types a host (scripts/guards/canonical-host.mjs). */
@@ -106,6 +107,8 @@ function askLine(question) {
 }
 
 async function main() {
+  // Where this founder script runs, first (the founder step law, 12 November 2026): a wrong folder shows at once.
+  sayWhere('[register-resend-webhook]', REPO)
   if (PROVE) {
     const p = await probe()
     console.log(`  unsigned POST ${ROUTE}: ${p.status} ${p.body}`)

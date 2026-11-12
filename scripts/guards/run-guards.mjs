@@ -682,6 +682,10 @@
  *   source-reads-are-polite    every script that reads a source or organiser page reads it
  *                              through robots handling (law 14 (k)); outreach-basis did not
  *                              until 11 November 2026
+ *   founder-steps-read-back    no founder step reaches Lawal without its read back, every
+ *                              migrate:production names its --expect, and every script a
+ *                              founder step names prints where it runs (the founder step law,
+ *                              Lawal, 12 November 2026, 01:16)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -3430,6 +3434,12 @@ const GUARDS = [
   // at a time with none of it until 11 November 2026 (PM order 3); it now reads through scripts/lib/polite-read.mjs,
   // held to src/lib/listings/collect.ts by tests/unit/ops/polite-read.test.ts. Drilled red on main's copy of it.
   'scripts/guards/source-reads-are-polite.mjs',
+
+  // THE FOUNDER STEP LAW (Lawal, 12 November 2026, 01:16: "make sure it doesn't repeat itself ever"): a step handed to
+  // Lawal at 00:44 had never been run as he would run it, the folder it named moved, and at 01:14 it did nothing. No
+  // founder step on or after the law reaches him without its READ BACK, every migrate:production names its --expect,
+  // and every script a founder step names prints where it runs. NOT JUDGED on a host without the notes (CI, Vercel).
+  'scripts/guards/founder-steps-read-back.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

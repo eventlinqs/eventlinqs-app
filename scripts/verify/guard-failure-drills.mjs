@@ -11515,6 +11515,38 @@ const DRILLS = [
     replace: "const readPage = async (u) => { const r = await fetch(u); return { url: r.url, html: await r.text(), type: r.headers.get('content-type') ?? '' } }",
     expect: 'outreach-basis.mjs: reads 1 page address',
   },
+  /*
+   * founder-steps-read-back (WINDOW 5A, 12 November 2026, the founder step law, Lawal's 01:16): the 00:44 step again,
+   * handed to Lawal with no read back; a migrate:production line with no --expect; and the migration script no longer
+   * printing where it runs. The notes are the repository's own fixtures, so the drills fail on every host.
+   */
+  {
+    name: 'founder steps read back: a step reaches Lawal with no READ BACK beside it',
+    guard: `${GUARDS}/founder-steps-read-back.mjs`,
+    env: { FOUNDER_STEP_NOTES: 'tests/fixtures/founder-steps/notes-unread-step.md', FOUNDER_STEP_LIST: 'tests/fixtures/founder-steps/absent-list.md' },
+    expect: 'a founder step with no READ BACK beside it',
+  },
+  {
+    name: 'founder steps read back: npm run migrate:production with no --expect',
+    guard: `${GUARDS}/founder-steps-read-back.mjs`,
+    env: { FOUNDER_STEP_NOTES: 'tests/fixtures/founder-steps/notes-no-expect.md', FOUNDER_STEP_LIST: 'tests/fixtures/founder-steps/absent-list.md' },
+    expect: 'names npm run migrate:production with no --expect',
+  },
+  {
+    name: 'founder steps read back: the migration script stops printing where it runs',
+    guard: `${GUARDS}/founder-steps-read-back.mjs`,
+    env: { FOUNDER_STEP_NOTES: 'tests/fixtures/founder-steps/notes-read-back.md', FOUNDER_STEP_LIST: 'tests/fixtures/founder-steps/absent-list.md' },
+    file: 'scripts/ops/apply-production-migrations.mjs',
+    find: "import { sayWhere } from '../lib/founder-where.mjs'",
+    replace: "import { sayWhere } from '../lib/where.mjs'",
+    expect: 'does not print where it runs',
+  },
+  {
+    name: 'founder steps read back: a step written as the law asks stays quiet',
+    guard: `${GUARDS}/founder-steps-read-back.mjs`,
+    env: { FOUNDER_STEP_NOTES: 'tests/fixtures/founder-steps/notes-read-back.md', FOUNDER_STEP_LIST: 'tests/fixtures/founder-steps/absent-list.md' },
+    expectPass: 'each read back',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

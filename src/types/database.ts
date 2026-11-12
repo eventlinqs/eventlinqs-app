@@ -3290,6 +3290,69 @@ export type Database = {
         }
         Relationships: []
       }
+      growth_tasks: {
+        Row: {
+          attempts: number
+          created_at: string
+          done_at: string | null
+          due_on: string | null
+          failure_reason: string | null
+          id: string
+          kind: string
+          last_action: string | null
+          last_action_at: string | null
+          next_action: string | null
+          owner_id: string | null
+          record_id: string | null
+          record_type: string
+          source_key: string
+          status: string
+          title: string
+          updated_at: string
+          workflow: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          due_on?: string | null
+          failure_reason?: string | null
+          id?: string
+          kind: string
+          last_action?: string | null
+          last_action_at?: string | null
+          next_action?: string | null
+          owner_id?: string | null
+          record_id?: string | null
+          record_type: string
+          source_key: string
+          status?: string
+          title: string
+          updated_at?: string
+          workflow: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          due_on?: string | null
+          failure_reason?: string | null
+          id?: string
+          kind?: string
+          last_action?: string | null
+          last_action_at?: string | null
+          next_action?: string | null
+          owner_id?: string | null
+          record_id?: string | null
+          record_type?: string
+          source_key?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          workflow?: string
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -6588,6 +6651,54 @@ export type Database = {
           },
         ]
       }
+      organiser_merges: {
+        Row: {
+          dropped_organiser_id: string
+          dropped_organiser_name: string
+          id: string
+          kept_organiser_id: string
+          merged_at: string
+          merged_by: string
+          moved: Json
+          reason: string
+        }
+        Insert: {
+          dropped_organiser_id: string
+          dropped_organiser_name: string
+          id?: string
+          kept_organiser_id: string
+          merged_at?: string
+          merged_by: string
+          moved: Json
+          reason: string
+        }
+        Update: {
+          dropped_organiser_id?: string
+          dropped_organiser_name?: string
+          id?: string
+          kept_organiser_id?: string
+          merged_at?: string
+          merged_by?: string
+          moved?: Json
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_merges_kept_organiser_id_fkey"
+            columns: ["kept_organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_merges_kept_organiser_id_fkey"
+            columns: ["kept_organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+        ]
+      }
       organiser_night_reports: {
         Row: {
           event_id: string
@@ -6813,6 +6924,7 @@ export type Database = {
           name_key: string | null
           notes: string | null
           organisation_id: string | null
+          owner_id: string | null
           website_key: string | null
           website_url: string | null
         }
@@ -6827,6 +6939,7 @@ export type Database = {
           name_key?: string | null
           notes?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           website_key?: string | null
           website_url?: string | null
         }
@@ -6841,6 +6954,7 @@ export type Database = {
           name_key?: string | null
           notes?: string | null
           organisation_id?: string | null
+          owner_id?: string | null
           website_key?: string | null
           website_url?: string | null
         }

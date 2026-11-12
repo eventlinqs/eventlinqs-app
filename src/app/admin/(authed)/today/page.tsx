@@ -8,6 +8,8 @@ import { readFounderDashboard } from '@/lib/admin/founder-dashboard'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { byException, rhythm, type DashboardFigure } from '@/lib/admin/founder-dashboard-math'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,15 +37,19 @@ export default async function AdminTodayPage() {
 
   const now = new Date()
   // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
-  const [queue, dashboard, growth] = await Promise.all([
+  const [queue, dashboard, growth, centre] = await Promise.all([
     readTodayQueue(now),
     readFounderDashboard(now),
     readGrowthWeek(now).then(
       (g) => ({ ok: true as const, g }),
       (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
     ),
+    // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
+    readCommandCentre(createAdminClient(), now),
   ])
   const exceptions = byException(dashboard)
+  // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
+  const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))
   const cadence = rhythm(dashboard)
   const count = new Intl.NumberFormat('en-AU')
 
@@ -60,6 +66,54 @@ export default async function AdminTodayPage() {
               : `Nothing waits in what was read at ${formatPlatformDateTime(now.toISOString())}, but not every source could be read; each is named below.`}
         </p>
       </header>
+
+      {/* THE COMMAND CENTRE (the Growth OS directive, section 5): the kept tasks, overdue first, each with its status, owner,
+          due date and link; failed jobs stay here until fixed. Approving in one press arrives with Release 2, where an
+          approval sends; until then each task opens the page that acts on it. */}
+      <section data-section="command-centre" aria-label="Command Centre" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 sm:p-6">
+        <h2 className="font-display text-lg font-semibold text-white">Command Centre</h2>
+        {centre.state === 'not_landed' ? (
+          <p className="mt-2 text-sm text-amber-200">The task list is not on this database yet: its migration (20261111230001) waits for Lawal to apply it.</p>
+        ) : centre.state === 'failed' ? (
+          <p className="mt-2 text-sm text-amber-200">The task list could not be read just now ({centre.reason}). Nothing in it is lost.</p>
+        ) : (
+          <>
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div><dt className="text-white/50">Overdue</dt><dd className="font-display text-xl font-bold text-white">{centre.overdue}</dd></div>
+              <div><dt className="text-white/50">Waiting for approval</dt><dd className="font-display text-xl font-bold text-white">{centre.waitingApproval}</dd></div>
+              <div><dt className="text-white/50">Failed</dt><dd className="font-display text-xl font-bold text-white">{centre.failed}</dd></div>
+              <div><dt className="text-white/50">Done in the last day</dt><dd className="font-display text-xl font-bold text-white">{centre.doneLastDay}</dd></div>
+            </dl>
+            {centre.open.length === 0 ? (
+              <p className="mt-3 text-sm text-white/60">No task is open.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-white/[0.06]">
+                {centre.open.map((t) => {
+                  const href = hrefOf.get(t.source_key) ?? null
+                  return (
+                    <li key={t.id} data-task={t.source_key} className="py-3">
+                      <p className="text-sm font-semibold text-white">{t.title}</p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {t.status === 'waiting_approval' ? 'Waiting for approval' : t.status === 'failed' ? 'Failed' : 'Open'}
+                        {', '}
+                        {t.due_on ? (isOverdue(t, now) ? `Overdue since ${t.due_on}` : `Due ${t.due_on}`) : 'No due date'}
+                        {', '}
+                        Owner: {t.owner_id ? 'a staff member' : 'Lawal'}
+                      </p>
+                      {t.failure_reason ? <p className="mt-1 text-sm text-amber-200">{t.failure_reason}</p> : t.next_action ? <p className="mt-1 text-sm text-white/60">{t.next_action}</p> : null}
+                      {href ? (
+                        <Link href={href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline">
+                          Open
+                        </Link>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </section>
 
       {queue.sections.map((section) => (
         <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">

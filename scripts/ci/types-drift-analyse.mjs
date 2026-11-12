@@ -745,7 +745,8 @@ export function renderVerdict(result, { committedPath, projectId, migrationsDir,
     p('schema the merged tree compiles against. Do NOT regenerate them from the live')
     p('database: that would replace correct types with the pre-migration shape.')
     p()
-    p("Apply them with 'npm run migrate:production' (the founder's one command) when the")
+    p("Apply them with 'npm run migrate:production -- --expect <each pending file above>' (the founder's")
+    p('one command; it refuses unless exactly those are pending in its folder) when the')
     p('ordering is safe. Until then this state is expected, and this guard will keep')
     p('reporting it by name.')
     return { lines: L, exitCode: 0 }
