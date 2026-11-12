@@ -224,6 +224,18 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (error) throw new Error(error.message)
     },
 
+    async stopSource(sourceId: string, because: string, at: Date): Promise<void> {
+      /* Law 14 (k): back to 'ask', so dueSources never picks it again, with its stop recorded (20261101161501's check:
+         a stop carries its reason). Only a source still read is stopped, so a person's own decision is never overwritten. */
+      const when = at.toISOString()
+      const { error } = await db
+        .from('listing_sources')
+        .update({ collection: 'ask', stopped_at: when, stopped_because: because, updated_at: when })
+        .eq('id', sourceId)
+        .eq('collection', 'read')
+      if (error) throw new Error(error.message)
+    },
+
     async publishPartnerNight(row): Promise<void> {
       const { data: c, error } = await db
         .from('listing_candidates')

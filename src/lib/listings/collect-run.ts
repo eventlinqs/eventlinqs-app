@@ -84,6 +84,13 @@ export type CollectionStore = {
   land(row: CandidateRow): Promise<boolean>
   /** succeeded: the source's page or feed was read, so its last successful collection moves to at. */
   record(sourceId: string, outcome: string, at: Date, succeeded: boolean): Promise<void>
+  /**
+   * STOPS A SOURCE THAT REFUSED US (law 14 (k): 'a stop at the first 403 or 429'; the PM's 09:05 (2) of 13 November 2026):
+   * puts it back to 'ask', so no run reads it again until a person re-opens it, and records when and why
+   * (listing_sources.stopped_at, stopped_because). Forum Melbourne answered 403 on 18 runs in a row from 5 November
+   * because a refusal was retried daily like an outage. The nights it already gave stay listed.
+   */
+  stopSource?(sourceId: string, because: string, at: Date): Promise<void>
   /** Appends the run's row to the source's run log. */
   logRun(row: RunRow): Promise<void>
   /**
@@ -282,6 +289,9 @@ export async function runCollection(
     let queued = 0
     let ruled = 0
     let succeeded = false
+    /* The status a site refused us with (403 or 429), on its robots.txt, its page or any page a rule reads: the source is
+       then stopped, never read again by a run until a person re-opens it (law 14 (k)). */
+    let refusedWith: number | null = null
     const unpublished: string[] = []
     try {
       if (!source.permits.facts) {
@@ -298,12 +308,14 @@ export async function runCollection(
         if (robotsVerdict(robots.status, robots.body, page.pathname + page.search) === 'disallowed') {
           outcome = robots.status === null || robots.status >= 500 ? 'robots.txt unreachable: nothing read' : 'robots.txt disallows this page: nothing read'
           httpStatus = robots.status
+          if (robots.status === 429) refusedWith = 429
           result.skipped += 1
         } else {
           const res = await get(fetcher, source.pageUrl)
           httpStatus = res.status
           if (res.status === null || res.status < 200 || res.status >= 300) {
             outcome = `the page answered ${res.status ?? 'nothing'}: nothing read`
+            if (res.status === 403 || res.status === 429) refusedWith = res.status
             result.skipped += 1
           } else {
             result.read += 1
@@ -336,6 +348,7 @@ export async function runCollection(
                 const one = await get(fetcher, url)
                 if (one.status === 403 || one.status === 429) {
                   stoppedBy = `the site answered ${one.status} on ${url}: reading stopped`
+                  refusedWith = one.status
                   break
                 }
                 if (one.status !== null && one.status >= 200 && one.status < 300) raw.push(...rule.read(one.body, url))
@@ -479,10 +492,22 @@ export async function runCollection(
     result.acceptedByRule += ruled
     result.sources.push({ sourceId: source.id, name: source.name, outcome, landed, queued, acceptedByRule: ruled })
     const at = now.toISOString()
+    if (refusedWith !== null) outcome += `; stopped: it answered ${refusedWith}, so no run reads it until a person re-opens it`
     try {
       await store.record(source.id, outcome.slice(0, 500), now, succeeded)
     } catch (err) {
       console.error(`[collection] ${source.name}: its check could not be recorded:`, err)
+    }
+    if (refusedWith !== null && store.stopSource) {
+      try {
+        await store.stopSource(
+          source.id,
+          `It answered ${refusedWith} to our named agent on ${at.slice(0, 10)}. Law 14 (k) stops at the first 403 or 429 and never reads around it; a person re-opens it once the site answers us, or takes its nights from the venue's own feed or submission.`,
+          now,
+        )
+      } catch (err) {
+        console.error(`[collection] ${source.name}: its stop could not be recorded:`, err)
+      }
     }
     try {
       await store.logRun({
