@@ -62,9 +62,10 @@ describe('Lawal\u2019s 19:17 notes', () => {
     expect(AFTER_THE_GUIDE).toEqual({ featuredSlots: true, everyCity: true, communities: true })
   })
 
+  // The home is Melbourne's guide since the PM's 09:19 of 12 November 2026 (Lawal's MELBOURNE FIRST); it was Geelong's.
   it('the home names itself a What\u2019s On guide and keeps the brand line\u2019s source untouched', () => {
     const home = readFileSync(join(process.cwd(), 'src/app/page.tsx'), 'utf8')
-    expect(home).toMatch(/title: 'What\u2019s on in Geelong: /)
+    expect(home).toMatch(/title: 'What\u2019s on in Melbourne: /)
     expect(home).not.toContain('Every community. Every event. One platform.')
     expect(home).toContain('where events get made')
   })
