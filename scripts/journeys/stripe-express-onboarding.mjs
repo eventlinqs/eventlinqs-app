@@ -380,9 +380,11 @@ async function chooseToggle(frame, field) {
     // "Does your business have an Australian business number (ABN)?" with radios labelled only Yes and No: answer No.
     const asksAbn = /business number|\babn\b/i.test(field.group ?? '')
     if (asksAbn && /^no$/i.test((field.label ?? '').trim())) {
-      // A styled radio can refuse a plain check: then a forced one, then a click on its own label.
-      const done = await el.check({ timeout: 8000 }).then(() => true).catch(() => false)
-        || await el.check({ timeout: 8000, force: true }).then(() => true).catch(() => false)
+      // The radio named 'No' itself, never the group's first radio (run 7 checked 'Yes' that way and Stripe took the
+      // company path); a styled radio that refuses a plain check is checked forced, then its label clicked.
+      const no = frame.getByRole('radio', { name: /^no$/i }).first()
+      const done = await no.check({ timeout: 8000 }).then(() => true).catch(() => false)
+        || await no.check({ timeout: 8000, force: true }).then(() => true).catch(() => false)
         || await frame.getByText(/^No$/).first().click({ timeout: 8000 }).then(() => true).catch(() => false)
       return done
     }
@@ -685,7 +687,8 @@ export async function completeExpressOnboarding(page, { values: supplied = STRIP
  * back again.
  */
 async function pressPrimary(page, log) {
-  const named = /^(continue|submit|next|done|save|agree and submit|agree & submit|accept and submit)$/i
+  // 'Continue with no owners' and its kind end a step that lists nobody (Stripe's Business owners, run 7).
+  const named = /^(continue|continue with no (owners|directors|executives)|submit|next|done|save|agree and submit|agree & submit|accept and submit)$/i
   for (const frame of page.frames()) {
     const go = frame
       .locator('button[type=submit], input[type=submit]')
