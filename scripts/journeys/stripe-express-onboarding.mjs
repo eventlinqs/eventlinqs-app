@@ -146,7 +146,15 @@ async function readFrame(frame) {
           '',
         checked: e.type === 'radio' || e.type === 'checkbox' ? e.checked : undefined,
         // The question a radio answers, where its own label is only "Yes" or "No" (Stripe's ABN step, 13 November 2026).
-        group: (e.closest('fieldset, [role=radiogroup]')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+        group: (() => {
+          // The nearest ancestor whose own text asks a question, whatever its tag (Stripe's ABN radios sit in no fieldset).
+          let n = e.parentElement
+          for (let i = 0; n && i < 8; i += 1, n = n.parentElement) {
+            const t = (n.textContent || '').replace(/\s+/g, ' ').trim()
+            if (t.includes('?') && t.length < 600) return t.slice(0, 200)
+          }
+          return ''
+        })(),
         options: e.tagName === 'SELECT' ? [...e.options].map(o => ({ v: o.value, t: o.textContent.trim() })).slice(0, 30) : null,
         value: e.value,
       }))
@@ -372,8 +380,11 @@ async function chooseToggle(frame, field) {
     // "Does your business have an Australian business number (ABN)?" with radios labelled only Yes and No: answer No.
     const asksAbn = /business number|\babn\b/i.test(field.group ?? '')
     if (asksAbn && /^no$/i.test((field.label ?? '').trim())) {
-      await el.check({ timeout: 8000 }).catch(() => {})
-      return true
+      // A styled radio can refuse a plain check: then a forced one, then a click on its own label.
+      const done = await el.check({ timeout: 8000 }).then(() => true).catch(() => false)
+        || await el.check({ timeout: 8000, force: true }).then(() => true).catch(() => false)
+        || await frame.getByText(/^No$/).first().click({ timeout: 8000 }).then(() => true).catch(() => false)
+      return done
     }
     if (/no abn|do not have an abn|don.t have an abn/.test(label)) {
       await el.check({ timeout: 8000 }).catch(() => {})
