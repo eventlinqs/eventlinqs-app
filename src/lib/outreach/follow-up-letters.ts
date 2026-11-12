@@ -12,7 +12,7 @@ import { dayWords } from './twenty-letters'
  */
 
 export interface FollowUpLetter extends TemplateRow {
-  readonly key: 'twenty_day4'
+  readonly key: 'twenty_day4' | 'twenty_day10'
   readonly source: string
 }
 
@@ -37,7 +37,36 @@ export const TWENTY_DAY4: FollowUpLetter = {
   source: "Lawal's format (VOICE-EVENTLINQS.md), the PM's 19:12 of 12 November 2026; samples in C:\\dev\\START-16OCT\\EL-FOLLOWUP-SAMPLES-12NOV.md",
 }
 
-export const FOLLOW_UP_LETTERS: readonly FollowUpLetter[] = [TWENTY_DAY4]
+/**
+ * THE DAY 10 LETTER, way B of the PM's 19:56 (2): the night's own tracked link, no imagery, and the same one question,
+ * until Lawal approves a photograph whole share card (way A, law 7). The link is the night's /e/ short link minted for
+ * this letter, so every arrival through it is counted (share_link_events), and nothing is claimed about it that the link
+ * does not do.
+ */
+export const TWENTY_DAY10: FollowUpLetter = {
+  key: 'twenty_day10',
+  channel: 'email',
+  purpose: 'cadence',
+  step: 3,
+  subject: 'Re: [thread subject]',
+  body: [
+    'Hi [greeting],',
+    "I hope you're well. Here's a link to [event] on [event day] that records how many people it brings, to share wherever you like: [tracked link]",
+    'If you could change one thing about selling tickets for your events, what would it be?',
+    "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
+    'Kind regards,',
+    'Lawal Adams',
+    'Founder, EventLinqs',
+    '',
+    '[unsubscribe]',
+  ].join('\n'),
+  source: "Lawal's format (VOICE-EVENTLINQS.md), the PM's 19:56 of 12 November 2026 (way B)",
+}
+
+export const FOLLOW_UP_LETTERS: readonly FollowUpLetter[] = [TWENTY_DAY4, TWENTY_DAY10]
+
+/** The day 10 letter is due from the tenth Melbourne day after the FIRST letter was sent, once day 4 was sent. */
+export const DAY10_AFTER_DAYS = 10
 
 /** How many people have opened the night's page, said only when the ledger holds a number above zero. */
 export function seenWords(viewers: number): string {
