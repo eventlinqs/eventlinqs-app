@@ -11547,6 +11547,18 @@ const DRILLS = [
     env: { FOUNDER_STEP_NOTES: 'tests/fixtures/founder-steps/notes-read-back.md', FOUNDER_STEP_LIST: 'tests/fixtures/founder-steps/absent-list.md' },
     expectPass: 'each read back',
   },
+  /*
+   * credit-printed-once (WINDOW 5A, 12 November 2026, the PM's 09:19 item 4): the treatment layout builds its own
+   * 'Photo: <credit>' again, the way six places did while 'Photo: Photo: AMCF' was live.
+   */
+  {
+    name: 'credit printed once: the treatment layout builds its own Photo prefix again',
+    guard: `${GUARDS}/credit-printed-once.mjs`,
+    file: 'src/lib/broadcast/treatment-layout.ts',
+    find: '    const credit = creditLine(w.credit)',
+    replace: '    const credit = w.credit ? `Photo: ${w.credit}` : null',
+    expect: 'builds its own credit prefix',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -79,8 +79,9 @@ export function tasksFromQueue(queue: Queue, now: Date): TaskRow[] {
       })
     }
     // A source the queue could not read is a failed job, kept until the source reads again (one task a source a day,
-    // so a source failing all day is one task, not ninety-six).
-    for (const words of section.unread) {
+    // so a source failing all day is one task, not ninety-six). A source not on this database yet is not a failure: it is
+    // said on the Command Centre and is never a task (12 November 2026: one was kept as failed on production).
+    for (const words of section.failed) {
       const day = dueAfter(new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString())
       out.push({
         source_key: clip(`unread:${section.key}:${day}:${words.slice(0, 60)}`, 200),

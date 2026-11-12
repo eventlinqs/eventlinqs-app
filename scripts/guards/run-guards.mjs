@@ -686,6 +686,9 @@
  *                              migrate:production names its --expect, and every script a
  *                              founder step names prints where it runs (the founder step law,
  *                              Lawal, 12 November 2026, 01:16)
+ *   credit-printed-once        every photograph credit is printed through creditLine, so a
+ *                              recorded 'Photo:' prints once ('Photo: Photo: AMCF' was live
+ *                              until 12 November 2026)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -3440,6 +3443,9 @@ const GUARDS = [
   // founder step on or after the law reaches him without its READ BACK, every migrate:production names its --expect,
   // and every script a founder step names prints where it runs. NOT JUDGED on a host without the notes (CI, Vercel).
   'scripts/guards/founder-steps-read-back.mjs',
+  // THE CREDIT IS PRINTED ONCE (the PM's 09:19 of 12 November 2026, item 4): 'Photo: Photo: AMCF' was live on the
+  // guide, the event page and the gallery; every credit now goes through creditLine, and a hand built prefix fails here.
+  'scripts/guards/credit-printed-once.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

@@ -65,7 +65,7 @@ describe('every guide photograph names its box (the class cannot return)', () =>
 
   it('WholePhoto takes its box from the caller, with no default to fall back on', () => {
     const decl = src.slice(src.indexOf('function WholePhoto('), src.indexOf('function BigCard('))
-    expect(decl).toContain("variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb' }")
+    expect(decl).toContain("variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb'; priority?: boolean }")
     expect(decl).not.toMatch(/variant\s*=\s*'/)
     expect(decl.match(/variant=\{variant\}/g)?.length).toBe(2)
     expect(decl).not.toContain('variant="row-thumb"')

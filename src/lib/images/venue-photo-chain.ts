@@ -1,4 +1,5 @@
 import { isOwnPhoto } from '@/lib/images/event-media'
+import { creditLine, creditWords } from '@/lib/media/photo-credits'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { eventCoversFor, type VenuePhoto, type VenuePhotosRpc, type VenueUse } from '@/lib/venues/venue-photos-read'
 
@@ -37,11 +38,10 @@ function licenceLabel(photo: VenuePhoto): string {
 export function venueCreditLine(photo: VenuePhoto): string | null {
   if (photo.licence === 'cc0' || photo.licence === 'public_domain') return null
   if (photo.licence === 'cc_by' || photo.licence === 'cc_by_sa') {
-    const who = (photo.author ?? photo.credit).trim()
-    return who ? `Photo: ${who}, ${licenceLabel(photo)}` : null
+    const who = creditWords(photo.author ?? photo.credit)
+    return who ? creditLine(`${who}, ${licenceLabel(photo)}`) : null
   }
-  const words = photo.credit.trim()
-  return words ? `Photo: ${words}` : null
+  return creditLine(photo.credit)
 }
 
 function publicDeps(): ChainDeps {

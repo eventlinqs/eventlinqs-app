@@ -4,6 +4,7 @@ import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -413,7 +414,7 @@ export function tagsFor(city: CampaignCity, extra: string | null): string {
 
 export function creditsOf(nights: readonly CampaignNight[]): string {
   const credits = [...new Set(nights.map((n) => (n.approvedPhotoUrl ? n.photoCredit : null)).filter((c): c is string => Boolean(c)))]
-  return credits.length === 0 ? '' : credits.map((c) => `Photo: ${c}`).join('\n')
+  return credits.map((c) => creditLine(c)).filter((c): c is string => Boolean(c)).join('\n')
 }
 
 /**
@@ -792,7 +793,8 @@ export function planCampaign(input: {
     const hook = 'Say yes to this weekend.'
     const line = `Gigs, festivals, markets and free nights across ${input.cities.map((c) => c.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, in one place.`
     const photo = input.brandPhoto ?? null
-    const body = [line, ...(photo ? ['', `Photo: ${photo.credit}`] : [])]
+    const brandCredit = photo ? creditLine(photo.credit) : null
+    const body = [line, ...(brandCredit ? ['', brandCredit] : [])]
     pieces.push({
       kind: 'brand_campaign',
       city: 'victoria',

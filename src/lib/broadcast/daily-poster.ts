@@ -17,6 +17,7 @@
  */
 import type { Cta } from '@/lib/events/cta'
 import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { creditLine } from '@/lib/media/photo-credits'
 import { FitError, GEOMETRY, GOLD, INK, NAVY, breakLines, fit, groundFor, type Block, type Layout, type Measurers, type Run, type TreatmentFormat } from './treatment-layout'
 
 /** The verified facts of one night a poster is made from. */
@@ -123,7 +124,7 @@ export function posterWords(n: PosterNight, format: TreatmentFormat): PosterWord
     venue,
     freeBadge: verifiedFree ? `FREE IN ${n.cityName.toUpperCase()}` : null,
     chips,
-    credit: n.photo ? `Photo: ${n.photo.credit}${n.photo.archival && !/past event/i.test(n.photo.credit) ? ', past event' : ''}` : null,
+    credit: n.photo ? creditLine(`${n.photo.credit}${n.photo.archival && !/past event/i.test(n.photo.credit) ? ', past event' : ''}`) : null,
     footer: format === 'portrait' ? 'Link in bio' : (n.shortLink as string),
   }
 }

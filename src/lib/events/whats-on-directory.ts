@@ -74,6 +74,13 @@ export type DirectoryRow = {
   readonly own?: boolean
   /** The photograph's credit line ('Photo: ...') where the register holds one (own-listings.ts), else null. */
   readonly thumbCredit?: string | null
+  /** THE VENUE'S OWN PHOTOGRAPH, for a night with none of its own (Lawal, 12 November 2026, 01:01: 'venue photos on cards
+   * ... labelled as the venue'): the photo the photo lock dealt to this night (event_cover_photos_for, one photo one
+   * night), never a photograph of another venue. Drawn with venueThumbCredit, and NEVER counted as the night's own
+   * photograph: Big nights still asks for `thumb` (law 18). Null where the night has its own photo or none was dealt. */
+  readonly venueThumb?: string | null
+  /** The venue photo's printed credit and licence ('Photo: <author>, CC BY-SA 4.0'), or null where the licence asks none. */
+  readonly venueThumbCredit?: string | null
   /** The event's own one line, where it says more than the row already does (rowTeaser); else null. */
   readonly teaser?: string | null
   /** When the listing was first published, as epoch ms, else null. */

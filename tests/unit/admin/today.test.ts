@@ -31,6 +31,9 @@ describe('queueOf', () => {
     expect(q.allClear).toBe(false)
     expect(q.sections[1].unread).toEqual(['Plays: not on this database yet (window 6).'])
     expect(q.sections[4].unread).toEqual(['Claims: could not be read just now (timeout).'])
+    // Only a source that failed to read now is a failure (the Growth OS's failed tasks); one not built yet is not.
+    expect(q.sections[1].failed).toEqual([])
+    expect(q.sections[4].failed).toEqual(['Claims: could not be read just now (timeout).'])
   })
 
   it('is clear only when every source was read and none has an item', () => {

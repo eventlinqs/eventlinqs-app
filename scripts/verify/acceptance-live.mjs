@@ -12,10 +12,11 @@
  *   no-ended-night        no night past its end is linked on any guide.
  *   headline-reachable    Boyz II Men is reachable on the Geelong guide (Lawal 12:29, the CONTROLLER's 12:31: Big nights
  *                         stays photo first then date, so a show without a permitted photograph is reachable, not forced in).
- *   photo-credit-alt      every photograph drawn on a night is the night's own, rights recorded, with alt text; a third
- *                         party photograph (a venue photo) is never drawn there without its visible credit.
+ *   photo-credit-alt      every photograph drawn on a night is the night's own, rights recorded, with alt text; or
+ *                         (Lawal, 12 November 2026, 01:01) the venue photograph the photo lock dealt to that night,
+ *                         the card naming it as the venue and printing the credit its licence asks for.
  *   cards-no-uncredited   the CONTROLLER's 12:55 (3), one rule everywhere: no event card on / or /events draws a
- *                         photograph whose licence needs a visible credit (a Wikimedia Commons venue photo).
+ *                         Wikimedia Commons (venue) photograph without 'The venue' and, where its licence asks, its credit.
  *   every-tap-works       the CONTROLLER's 14:10: at 390 with a touch profile, every link, chip, tab and button on /, the
  *                         four guides, the Victoria page, /events, one event page and AMCF lands on a 200 page or visibly
  *                         changes state within 300 ms; no 404, no dead tap, no scroll only (scripts/verify/every-tap.mjs).
@@ -73,6 +74,8 @@ const nights = await sql(`
   select e.slug, e.title, e.venue_name, lower(coalesce(e.venue_city, '')) as city, e.start_date, e.end_date, e.timezone,
          e.cover_image_url, nullif(btrim(coalesce(e.cover_image_alt, '')), '') as cover_alt,
          (select r.rights_state from public.event_image_rights r where r.event_id = e.id and r.image_role = 'cover' limit 1) as cover_rights,
+         (select c.image_url from public.event_cover_photos_for(array[e.id], 'event_card') c limit 1) as venue_photo,
+         (select c.licence from public.event_cover_photos_for(array[e.id], 'event_card') c limit 1) as venue_licence,
          coalesce(e.end_date, ((date_trunc('day', e.start_date at time zone coalesce(e.timezone, 'Australia/Melbourne')) + interval '1 day')
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) as until
     from public.events e
@@ -112,7 +115,12 @@ for (const city of CITIES) {
   const photos = await page.$$eval('a[href^="/events/"] img', (imgs) =>
     imgs
       .filter((i) => !i.closest('[aria-hidden="true"]'))
-      .map((i) => ({ href: i.closest('a').getAttribute('href'), src: i.currentSrc || i.getAttribute('src') || '', alt: i.getAttribute('alt') ?? '' })),
+      .map((i) => ({
+        href: i.closest('a').getAttribute('href'),
+        src: i.currentSrc || i.getAttribute('src') || '',
+        alt: i.getAttribute('alt') ?? '',
+        card: i.closest('a').textContent ?? '',
+      })),
   )
   await page.screenshot({ path: join(OUT, `${city}-390-top.png`), fullPage: false })
   const bigBox = page.locator('section[aria-label^="Big nights in"]')
@@ -163,18 +171,30 @@ if (pageData.geelong) {
   record('headline-reachable', 'geelong', boyz.length > 0, boyz.length ? `Boyz II Men is linked (${boyz[0]}); Big nights reads ${JSON.stringify(pageData.geelong.big)}` : 'Boyz II Men is linked nowhere on the guide, All dates and every Show more pressed')
 }
 
-// 6: every photograph on a night is its own, rights recorded, with alt text.
+// 6: every photograph on a night is its own, rights recorded, with alt text; OR (Lawal, 12 November 2026, 01:01: venue
+// photos on cards, labelled as the venue) the venue photograph the photo lock dealt to THAT night, with the card naming
+// the venue and printing the credit its licence asks for.
+const NO_CREDIT_ASKED = new Set(['cc0', 'public_domain'])
 for (const city of CITIES) {
   const bad = []
+  let venueShown = 0
   for (const p of pageData[city].photos) {
     const n = bySlug.get(p.href.replace(/^\/events\//, ''))
+    const src = decodeURIComponent(p.src)
     const file = n?.cover_image_url ? decodeURIComponent(n.cover_image_url).split('/').pop() : null
-    const own = Boolean(file) && decodeURIComponent(p.src).includes(file)
+    const own = Boolean(file) && src.includes(file)
     const recorded = n && ['organiser_authorised', 'separately_licensed'].includes(n.cover_rights)
-    if (!own || !recorded) bad.push(`${p.href} draws ${own ? 'its cover with rights ' + (n?.cover_rights ?? 'none') : 'an image that is not its own cover (' + decodeURIComponent(p.src).slice(-60) + ')'}`)
+    const venueFile = n?.venue_photo ? decodeURIComponent(n.venue_photo).split('/').pop() : null
+    const venue = !own && Boolean(venueFile) && src.includes(venueFile)
+    if (venue) {
+      venueShown += 1
+      if (!p.card.includes('The venue')) bad.push(`${p.href} draws its venue's photograph without naming it as the venue`)
+      else if (!NO_CREDIT_ASKED.has(n.venue_licence) && !p.card.includes('Photo: ')) bad.push(`${p.href} draws its venue's ${n.venue_licence} photograph without its credit`)
+      else if (!p.alt.trim()) bad.push(`${p.href} draws its venue's photograph with no alt text`)
+    } else if (!own || !recorded) bad.push(`${p.href} draws ${own ? 'its cover with rights ' + (n?.cover_rights ?? 'none') : 'an image that is neither its own cover nor the venue photo dealt to it (' + src.slice(-60) + ')'}`)
     else if (!p.alt.trim()) bad.push(`${p.href} draws its own photograph with no alt text`)
   }
-  record('photo-credit-alt', city, bad.length === 0, bad.length ? `${bad.length}: ${bad.slice(0, 6).join('; ')}` : `${pageData[city].photos.length} photograph(s), each the night's own, rights recorded, with alt`)
+  record('photo-credit-alt', city, bad.length === 0, bad.length ? `${bad.length}: ${bad.slice(0, 6).join('; ')}` : `${pageData[city].photos.length} photograph(s): ${pageData[city].photos.length - venueShown} the night's own, rights recorded; ${venueShown} the venue's, dealt to that night, named and credited; each with alt`)
 }
 
 // 7: one rule everywhere, the home rails and /events cards.
@@ -182,10 +202,17 @@ for (const path of ['/', '/events']) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  // A Commons photograph on a card is a venue's, and it is drawn only with its credit in words on that card (Lawal,
+  // 12 November 2026, 01:01); the CONTROLLER's 12:55 (3) rule, no uncredited Commons photograph on a card, stands.
   const commons = await page.$$eval('a[href^="/events/"] img', (imgs) =>
-    imgs.map((i) => ({ href: i.closest('a').getAttribute('href'), src: decodeURIComponent(i.currentSrc || i.getAttribute('src') || '') }))
+    imgs.filter((i) => !i.closest('[aria-hidden="true"]'))
+      .map((i) => ({ href: i.closest('a').getAttribute('href'), src: decodeURIComponent(i.currentSrc || i.getAttribute('src') || ''), card: i.closest('a').textContent ?? '' }))
       .filter((p) => /upload\.wikimedia\.org|commons\.wikimedia\.org/.test(p.src)))
-  record('cards-no-uncredited', path, commons.length === 0, commons.length ? `${commons.length}: ${commons.slice(0, 5).map((p) => `${p.href} (${p.src.slice(-50)})`).join('; ')}` : 'no event card draws a Commons photograph')
+  const uncredited = commons.filter((p) => {
+    const n = bySlug.get(p.href.replace(/^\/events\//, ''))
+    return !p.card.includes('The venue') || (!NO_CREDIT_ASKED.has(n?.venue_licence) && !p.card.includes('Photo: '))
+  })
+  record('cards-no-uncredited', path, uncredited.length === 0, uncredited.length ? `${uncredited.length}: ${uncredited.slice(0, 5).map((p) => `${p.href} (${p.src.slice(-50)})`).join('; ')}` : `${commons.length} Commons photograph(s) on cards, each named as the venue with its credit`)
   await page.close()
 }
 

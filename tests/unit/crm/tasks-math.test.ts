@@ -10,11 +10,11 @@ import { dueAfter, queueOrder, resolvedAtSource, tasksFromQueue } from '@/lib/cr
 const NOW = new Date('2026-11-12T01:00:00Z')
 const queue = (over: Partial<Queue> = {}): Queue => ({
   sections: [
-    { key: 'submissions', title: 's', items: [{ id: 'submission:3f2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', what: 'Mr Snotbottom is not live', why: 'held: no photo', since: '2026-11-10T00:00:00Z', href: '/admin/submissions' }], unread: [] },
-    { key: 'plays', title: 'p', items: [{ id: 'play:9a2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', what: 'A play to approve', why: 'waits for Lawal', since: '2026-11-11T22:00:00Z', href: '/admin/today' }], unread: [] },
-    { key: 'paused_sends', title: 'ps', items: [], unread: [] },
-    { key: 'unclear_replies', title: 'r', items: [], unread: [] },
-    { key: 'exceptions', title: 'e', items: [{ id: 'collected:waiting', what: '3 collected nights wait', why: 'review them', since: '2026-11-11T00:00:00Z', href: '/admin/collected' }], unread: ['Listing runs: could not be read just now (timeout).'] },
+    { key: 'submissions', title: 's', items: [{ id: 'submission:3f2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', what: 'Mr Snotbottom is not live', why: 'held: no photo', since: '2026-11-10T00:00:00Z', href: '/admin/submissions' }], unread: [], failed: [] },
+    { key: 'plays', title: 'p', items: [{ id: 'play:9a2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', what: 'A play to approve', why: 'waits for Lawal', since: '2026-11-11T22:00:00Z', href: '/admin/today' }], unread: [], failed: [] },
+    { key: 'paused_sends', title: 'ps', items: [], unread: ['Paused sends: not on this database yet (window 6).'], failed: [] },
+    { key: 'unclear_replies', title: 'r', items: [], unread: [], failed: [] },
+    { key: 'exceptions', title: 'e', items: [{ id: 'collected:waiting', what: '3 collected nights wait', why: 'review them', since: '2026-11-11T00:00:00Z', href: '/admin/collected' }], unread: ['Listing runs: could not be read just now (timeout).'], failed: ['Listing runs: could not be read just now (timeout).'] },
   ],
   waiting: 3,
   allClear: false,
@@ -41,6 +41,12 @@ describe('tasks from the queue', () => {
     expect(failed).toHaveLength(1)
     expect(failed[0]).toMatchObject({ record_type: 'job', kind: 'source_unread', failure_reason: 'Listing runs: could not be read just now (timeout).' })
     expect(tasksFromQueue(queue(), new Date(NOW.getTime() + 15 * 60 * 1000)).filter((t) => t.status === 'failed')[0].source_key).toBe(failed[0].source_key)
+  })
+
+  it('a source not on this database yet is said on the page but is never a failed task', () => {
+    const t = tasksFromQueue(queue(), NOW)
+    expect(t.some((x) => x.title.includes('not on this database yet'))).toBe(false)
+    expect(t.filter((x) => x.status === 'failed')).toHaveLength(1)
   })
 
   it('is due the Melbourne day after it began waiting', () => {

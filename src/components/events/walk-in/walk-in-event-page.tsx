@@ -56,6 +56,7 @@ import { HoursList } from './hours-list'
 import { ReportListingLink } from '@/components/events/report-listing-link'
 import { listingClaimable } from '@/lib/listings/claimable'
 import { shownVenueName } from '@/lib/venues/shown-venue-name'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -314,9 +315,9 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
               <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
                 {/* One credit: for the set when the mosaic is drawn, else for the cover. */}
                 {heroMosaic.length > 0 ? (
-                  <>Photos: {guide.cover_credit.replace(/\bfestival$/, 'festivals')}</>
+                  <>{creditLine(guide.cover_credit.replace(/\bfestival$/, 'festivals'), { plural: true })}</>
                 ) : (
-                  <>Photo: {guide.cover_credit}</>
+                  <>{creditLine(guide.cover_credit)}</>
                 )}
               </figcaption>
             )}
@@ -488,7 +489,7 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                   <EventGallery images={gallery} eventTitle={event.title} layout="walk-in" />
                   {guide.photo_credit && (
                     <p data-text-source={source} className="text-xs text-ink-600 lg:text-[13px]">
-                      Photos: {guide.photo_credit}.
+                      {creditLine(guide.photo_credit, { plural: true })}.
                     </p>
                   )}
                 </Reveal>

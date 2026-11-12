@@ -310,6 +310,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/marketing/preferences', klass: 'never', why: 'a privacy rights form, linked from the privacy policy and from every message rather than from search' },
   { route: '/marketing/preferences/[token]', klass: 'never', why: 'one person consent history behind their own message token' },
   { route: '/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
+  { route: '/photos/[contact]/[proof]', klass: 'never', why: "an organiser photo page, reached only by the secure link in Lawal's own message to them (media permissions)" },
   { route: '/unsubscribe/digest/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/recovery/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/outreach', klass: 'never', why: 'the unsubscribe form linked from the founder outreach emails, reached from a message rather than from search' },

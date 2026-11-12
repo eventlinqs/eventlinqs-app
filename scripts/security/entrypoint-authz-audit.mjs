@@ -186,6 +186,8 @@ const PRIVILEGED = /createAdminClient\s*\(|\badmin(?:Client)?\s*\.\s*from\s*\(/
 
 /** Deliberately public surfaces, with the reason each is safe unauthenticated. */
 const PUBLIC_BY_DESIGN = {
+  'photos/[contact]/[proof]/actions.ts::givePhotosAction':
+    'an organiser\'s photo page press (media permissions, Lawal\'s 12:01 of 12 November 2026, src/lib/listings/photo-permission.ts), reached only by the secure link in Lawal\'s own message to them, by an organiser who holds no account, so requiring a caller identity would defeat it. The credential is the link: the press reads the contact by its id and refuses unless the proof is the one derived from that contact\'s own token (src/lib/outreach/photo-link.ts proofMatches, constant time), before anything is read or written. It writes only that contact\'s yes for one of their own public nights (social_log_organiser_yes) and their images PENDING Lawal\'s approval through the register\'s one writer, never publishes anything, and is rate limited per IP (policies.ts photo-permission).',
   'out/[slug]/GET':
     'a curated listing button out to the organiser own booking site, pressed by anyone signed out (27 October 2026, src/lib/broadcast/outbound.ts). It reads only a public listing through the public visibility rule, writes at most one de-duplicated outbound count per visitor per link per day, and answers a 302 to a destination the external ticket rule has validated; it changes nothing a person owns.',
   'go/[piece]/GET':

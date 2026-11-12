@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
     if (now.getUTCMinutes() < 15) {
       try {
         twenty = await draftTheTwenty(db, { now, origin })
+        console.log(`[cron/outreach-run] the twenty: ${JSON.stringify(twenty)}`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[cron/outreach-run] the twenty not drafted:', message)

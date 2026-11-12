@@ -149,8 +149,7 @@ export type GuideSections = {
 export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, nowMs: number): GuideSections {
   const shown = new Set<string>()
   const take = (pick: readonly DirectoryRow[], cap: number, order: (a: DirectoryRow, b: DirectoryRow) => number = photoFirst) => {
-    const entries = foldListings(pick.filter((r) => !shown.has(listingKey(r))), rows)
-      .sort((a, b) => order(a.row, b.row))
+    const entries = leadWithPhoto(foldListings(pick.filter((r) => !shown.has(listingKey(r))), rows).sort((a, b) => order(a.row, b.row)))
       .slice(0, cap)
     for (const e of entries) shown.add(listingKey(e.row))
     return entries
@@ -173,6 +172,39 @@ export function guideSections(rows: readonly DirectoryRow[], days: GuideDays, no
   // events), so for these events alone the round 3 rule of once on the page gives way to his newer, particular one.
   const rest = monthOrder(foldListings(rows.filter((r) => r.dayKey <= threeEnd && (!shown.has(listingKey(r)) || isOwnRow(r))), rows))
   return { big, announced, organisers, weekend, free, soon, rest }
+}
+
+/**
+ * A SECTION OPENS WITH A REAL PHOTOGRAPH (Lawal, 12 November 2026, 01:01, item 1): its first entry is the first, in the
+ * section's own law 18 order, whose night has its OWN permitted photograph (an organiser's own, rights recorded); else the
+ * first whose venue's own photograph the photo lock dealt to it; else the section is left exactly as it was, never a
+ * stand-in. Only that one entry moves; every other keeps its place, and nothing leaves the section's pick.
+ */
+export function leadWithPhoto(entries: readonly Entry[]): Entry[] {
+  const at = entries.findIndex((e) => Boolean(e.row.thumb))
+  const lead = at >= 0 ? at : entries.findIndex((e) => Boolean(e.row.venueThumb))
+  if (lead <= 0) return [...entries]
+  return [entries[lead], ...entries.slice(0, lead), ...entries.slice(lead + 1)]
+}
+
+/** The guide's sections above the month list, in their base order (round 3; Lawal's 16:26 put From the organisers third). */
+export const SECTION_KEYS = ['big', 'announced', 'organisers', 'weekend', 'free', 'soon'] as const
+export type SectionKey = (typeof SECTION_KEYS)[number]
+
+/** Whether a section opens with a photograph of its own or its venue's (leadWithPhoto). */
+export function opensWithPhoto(entries: readonly Entry[]): boolean {
+  const first = entries[0]?.row
+  return Boolean(first && (first.thumb || first.venueThumb))
+}
+
+/**
+ * THE FIRST SCREEN READS AS A PLACE TO GO OUT (Lawal, 12 November 2026, 01:01, item 3): the photo-led sections first, the
+ * text-heavy ones below, each group in its base order. Every section with an entry is kept and none is emptied: this
+ * orders, it never removes (law 16), and an empty section stays hidden as it always was.
+ */
+export function sectionOrder(sections: Pick<GuideSections, SectionKey>): SectionKey[] {
+  const shown = SECTION_KEYS.filter((k) => sections[k].length > 0)
+  return [...shown.filter((k) => opensWithPhoto(sections[k])), ...shown.filter((k) => !opensWithPhoto(sections[k]))]
 }
 
 /**

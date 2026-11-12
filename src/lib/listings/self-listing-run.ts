@@ -21,6 +21,7 @@ import { hasRealCover } from '@/lib/events/publish-gate'
 import { priceWords, whenWords } from './submission-watch-rule'
 import { sendOrganiserLiveNotice } from './organiser-live-notice'
 import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStillOwed, type PhotoAttach } from './organiser-photo-rule'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * ORGANISER SELF-LISTING, THE RUN (Lawal's rulings of 8 November 2026, 07:01 (3) and 07:05 (2); the submission alert of
@@ -189,7 +190,7 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   if (!hasRealCover(url)) return not('sent, but its stored address is not a real cover')
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)
   if (cover.error) return not(`sent, but it could not be set as the cover (${cover.error.message})`)
-  return { attached: true, words: `yes, the organiser's own, credited "Photo: ${rightsHolder}"` }
+  return { attached: true, words: `yes, the organiser's own, credited "${creditLine(rightsHolder)}"` }
 }
 
 /** What the run did with a submission, in the log (Lawal's ruling of 8 November 2026, 15:48 (2) and (6): nothing in the

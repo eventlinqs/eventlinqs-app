@@ -19,6 +19,8 @@
  * holds every run to its box, the safe area and its contrast. All numbers are in 1080-wide design units.
  */
 
+import { creditLine } from '@/lib/media/photo-credits'
+
 export type Treatment = 'photo' | 'type' | 'graphic'
 export type TreatmentFormat = 'portrait' | 'square' | 'story'
 export type Measure = (text: string, size: number) => number
@@ -303,7 +305,7 @@ function bottomRow(g: Geometry, t: Treatment, w: NightWords | BrandWords, m: Mea
   const blocks: Block[] = []
   if (t === 'photo') {
     const size = 28
-    const credit = w.credit ? `Photo: ${w.credit}` : null
+    const credit = creditLine(w.credit)
     const creditW = credit ? Math.ceil(m.manrope600(credit, 20)) + 4 : 0
     const labelW = Math.ceil(m.manrope800(w.label, 26)) + 4
     const room = widthIn(g) - Math.max(creditW, labelW) - 40 - 52
