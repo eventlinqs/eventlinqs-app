@@ -3,12 +3,17 @@
  * one second, internal only; the PM's ruling of 15:05 (2); WINDOW 5A). Pure, read by the browser
  * (src/components/analytics/web-vitals-record.tsx) and the server (src/app/api/vitals/route.ts).
  *
- * Numbers only: the kind of page (never its address), phone or desktop, one of three measures and its value. Nothing
+ * Numbers only: the kind of page (never its address), phone or desktop, one of five measures and its value. Nothing
  * identifies a person or a device, nothing is set on the device, and the rows are read only internally, at the 75th
  * percentile (public.page_vitals_p75); no screen shows them.
+ *
+ * TTFB AND FCP (WINDOW 5A, 13 November 2026; C:\dev\EVIDENCE\EL-12NOV\speed\PLAN-vitals-breakdown.md): the first byte
+ * and the first paint beside each page view's LCP, so what a slow page is made of is read from real visitors. And ONE
+ * BEACON PER PAGE VIEW (vitalsRows): the browser sends its measures together, so five measures cost fewer calls than
+ * the three did one beacon each.
  */
 
-export const VITAL_METRICS = ['LCP', 'INP', 'CLS'] as const
+export const VITAL_METRICS = ['LCP', 'INP', 'CLS', 'TTFB', 'FCP'] as const
 export type VitalMetric = (typeof VITAL_METRICS)[number]
 const RATINGS = ['good', 'needs-improvement', 'poor'] as const
 type Rating = (typeof RATINGS)[number]
@@ -74,4 +79,26 @@ export function vitalsRow(body: unknown): { page_type: string; device: 'mobile' 
   const rating = b.r === null || b.r === undefined ? null : (RATINGS as readonly string[]).includes(String(b.r)) ? (b.r as Rating) : undefined
   if (rating === undefined) return null
   return { page_type: b.p, device: b.d, metric: b.m as VitalMetric, value: b.v, rating }
+}
+
+export type VitalsRow = NonNullable<ReturnType<typeof vitalsRow>>
+
+/** A page view sends at most one of each measure. */
+export const MAX_MEASURES_PER_VIEW = VITAL_METRICS.length
+
+/**
+ * The rows the server keeps from one beacon: a page view's measures together (an array), or the single measure a page
+ * opened before this change still sends. Measures this record does not accept are left out and the rest kept; a beacon
+ * with nothing to keep, more measures than a view has, or one measure twice is refused whole (null).
+ */
+export function vitalsRows(body: unknown): VitalsRow[] | null {
+  if (!Array.isArray(body)) {
+    const one = vitalsRow(body)
+    return one ? [one] : null
+  }
+  if (body.length === 0 || body.length > MAX_MEASURES_PER_VIEW) return null
+  const rows = body.map(vitalsRow).filter((r): r is VitalsRow => r !== null)
+  if (rows.length === 0) return null
+  if (new Set(rows.map((r) => r.metric)).size !== rows.length) return null
+  return rows
 }

@@ -3,7 +3,7 @@ import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
-import { vitalsRow } from '@/lib/analytics/vitals-record'
+import { vitalsRows } from '@/lib/analytics/vitals-record'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,17 +30,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (isPreviewCrawler(request.headers.get('user-agent'))) return new NextResponse(null, { status: 204 })
 
   const text = await request.text()
-  if (text.length > 512) return NextResponse.json({ ok: false, error: 'too_large' }, { status: 413 })
+  // One page view's measures together (vitalsRows): five at about 60 bytes each; the old single measure is far smaller.
+  if (text.length > 1024) return NextResponse.json({ ok: false, error: 'too_large' }, { status: 413 })
   let body: unknown
   try {
     body = JSON.parse(text)
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 })
   }
-  const row = vitalsRow(body)
-  if (!row) return NextResponse.json({ ok: false, error: 'invalid_body' }, { status: 400 })
+  const rows = vitalsRows(body)
+  if (!rows) return NextResponse.json({ ok: false, error: 'invalid_body' }, { status: 400 })
 
-  const { error } = await createAdminClient().from('page_vitals').insert(row)
+  const { error } = await createAdminClient().from('page_vitals').insert(rows)
   if (error) console.warn('[vitals] a measure was not recorded:', error.message)
   return new NextResponse(null, { status: 204 })
 }
