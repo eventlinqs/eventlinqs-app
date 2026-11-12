@@ -150,4 +150,63 @@ export const mtDuneedEstate: PageRule = {
   },
 }
 
-export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate]
+/**
+ * SAILORS REST (sailorsrestgeelong.com.au, a Geelong waterfront venue running its own nights). Read 13 November 2026 by
+ * the polite reader: robots.txt allows its pages; no schema.org Event data; its own /event-sitemap.xml lists each event page
+ * under /event/. Each page has one h1 (the title), a line 'Event Date: December 4, 2026', then the night's programme as
+ * lines with a ' | ' before their times ('Live Acoustic by Riley Catherall | 5-8 PM', 'DJ | 8 PM-Late'), then the venue's
+ * own opening hours ('Friday 3:00pm to Late'), which are never the night's time. Its terms publish no restriction and its
+ * robots.txt allows it: the shape of AAMI Park's source, which Lawal turned to 'read' on 5 November, reading its own
+ * programme for facts only; the PM's 09:05 of 13 November turns such a source to 'read' once it has a reader.
+ *
+ * The start is the earliest time in the programme lines; a page with none is that day with no time ('date_only', held for
+ * a person by the publication gate, law 19 (d)), never a filled in time. 'FREE' on one item is never the night's price
+ * (checklist E6: never infer free).
+ */
+const SAILORS_REST_TIME = /\|\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:[-\u2013\u2014]|to)\s*(?:\d{1,2}(?:[:.]\d{2})?\s*(am|pm)|late)|\|\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/gi
+
+export const sailorsRest: PageRule = {
+  host: 'sailorsrestgeelong.com.au',
+  eventPath: /^\/event\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1 ? titleOf(h1[1]) : ''
+    const text = decode(html.replace(/\r/g, '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<\/(p|div|h[1-6]|li|span|td|dt|dd)>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
+    const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    const at = lines.findIndex((l) => /^Event Date:/i.test(l))
+    const date = at < 0 ? null : /^Event Date:\s*([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/i.exec(lines[at])
+    const mo = date ? MONTHS[date[1].slice(0, 3).toLowerCase()] : undefined
+    if (!title || !date || !mo) return []
+    const [y, d] = [Number(date[3]), Number(date[2])]
+    let earliest: [number, number] | null = null
+    for (const line of lines.slice(at + 1, at + 25)) {
+      if (!line.includes('|')) continue
+      for (const m of line.matchAll(SAILORS_REST_TIME)) {
+        // A range takes its meridiem from its end ('5-8 PM' is 5 pm); a lone time carries its own.
+        const h = m[1] ?? m[5]
+        const mi = m[2] ?? m[6]
+        const ap = m[3] ?? m[4] ?? m[7]
+        const c = h && ap ? clock(`${h}${mi ? `:${mi}` : ''} ${ap}`) : null
+        if (c && (!earliest || c[0] * 60 + c[1] < earliest[0] * 60 + earliest[1])) earliest = c
+      }
+    }
+    const startsAt = earliest ? wallClockToIso(y, mo, d, earliest[0], earliest[1], 0, ZONE) : wallClockToIso(y, mo, d, 0, 0, 0, ZONE)
+    if (!startsAt) return []
+    return [{
+      title,
+      startsAt,
+      endsAt: null,
+      venueName: 'Sailors Rest',
+      venueAddress: null,
+      pageUrl,
+      imageUrl: null,
+      description: null,
+      links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+      timeStatus: earliest ? 'exact' : 'date_only',
+      timeFromWords: true,
+    }]
+  },
+}
+
+export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest]
