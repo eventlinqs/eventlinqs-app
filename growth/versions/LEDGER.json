@@ -4,6 +4,8 @@
     { "file": "growth/versions/2026-11-01.json", "version": 1, "set_on": "2026-11-01", "sha256_lf": "2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3" },
     { "file": "growth/versions/2026-11-01-v2.json", "version": 2, "set_on": "2026-11-01", "sha256_lf": "0373a1ed30bfa710ad85f7d1594fc0b1a6a725f9ed3b80c5bf318c0cf8e3c30e" },
     { "file": "growth/versions/2026-11-01-v3.json", "version": 3, "set_on": "2026-11-01", "sha256_lf": "449f92d3f8a719a0dda9de7a32b0e2d9a726e7036ad323f31e001c78f8408938" },
-    { "file": "growth/versions/2026-11-01-v4.json", "version": 4, "set_on": "2026-11-01", "sha256_lf": "ca5535adc9793231ce0853ab4d306469cf67cdfe46d64755b5e00e2b7aebb734" }
+    { "file": "growth/versions/2026-11-01-v4.json", "version": 4, "set_on": "2026-11-01", "sha256_lf": "ca5535adc9793231ce0853ab4d306469cf67cdfe46d64755b5e00e2b7aebb734" },
+    { "file": "growth/versions/2026-11-01-v5.json", "version": 5, "set_on": "2026-11-01", "sha256_lf": "3ab1430cb889a00f2e07f46088e6f12e1876d7c1d9191ca3f097adf723788d8a" },
+    { "file": "growth/versions/2026-11-12-v6.json", "version": 6, "set_on": "2026-11-12", "sha256_lf": "d66f1a033d5c97852883deecbc1a791675ee1006123179720448d0a91e0a1e26" }
   ]
 }

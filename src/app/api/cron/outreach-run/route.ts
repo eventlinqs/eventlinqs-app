@@ -8,6 +8,8 @@ import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
+import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
+import { draftTheSpotlight } from '@/lib/social/three-posts'
 
 /**
  * THE OUTREACH RUN, EVERY 15 MINUTES (window 6, 28 October 2026; the engine plan's FULL AUTOMATION).
@@ -93,7 +95,31 @@ export async function GET(request: NextRequest) {
       console.error('[cron/outreach-run] growth tasks not kept:', message)
       tasks = { error: message }
     }
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks })
+    // TOMORROW'S TWENTY (Lawal's 11:11 and the PM's 11:58 of 12 November 2026): the day's conversion asks and first
+    // messages drafted HELD in his October format from verified rows (src/lib/outreach/twenty-drafts.ts), in the first
+    // run of each hour only, so the twenty is read 24 times a day, not 96. Nothing is sent; a failure is reported and
+    // logged and never stops the run above.
+    let twenty: unknown = 'not drafted in this run: the first run of each hour drafts'
+    let spotlight: unknown = 'not drafted in this run: the first run of each hour drafts'
+    if (now.getUTCMinutes() < 15) {
+      try {
+        twenty = await draftTheTwenty(db, { now, origin })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] the twenty not drafted:', message)
+        twenty = { error: message }
+      }
+      // The week's organiser spotlight drafted the same hour (src/lib/social/three-posts.ts), in the founder's name.
+      try {
+        const founder = await founderAccount(db)
+        spotlight = founder.id === null ? `not drafted: ${founder.why}` : await draftTheSpotlight(db, { now, plannedBy: founder.id })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] the spotlight not drafted:', message)
+        spotlight = { error: message }
+      }
+    }
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

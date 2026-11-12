@@ -269,6 +269,12 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // The outreach run drafts the week's organiser spotlight through the social store's planner (planPost), which
+    // reaches the card rasteriser (12 November 2026), so it is pinned as every route that reaches it is.
+    '/api/cron/outreach-run': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     // An organiser's self-listing runs inside the form's own action, and its photo's rights row is written through the
     // social store, the one writer, which reaches the rasteriser (card-raster-traced, 8 November 2026).
     '/submit-event': [

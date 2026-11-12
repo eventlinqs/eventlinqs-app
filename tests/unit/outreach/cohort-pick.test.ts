@@ -10,18 +10,19 @@ const c = (id: string, city: string | null, score: number, email = true): Candid
 describe('the first cohort', () => {
   it('carries the ruling exactly: 100, and the four city shares adding to the whole', () => {
     expect(COHORT_SIZE).toBe(100)
-    expect(CITY_SHARES).toEqual({ geelong: 0.45, melbourne: 0.35, ballarat: 0.1, bendigo: 0.1 })
+    // Melbourne first since Lawal's 09:16 of 12 November 2026 (growth plan version 6).
+    expect(CITY_SHARES).toEqual({ melbourne: 0.45, geelong: 0.35, ballarat: 0.1, bendigo: 0.1 })
     expect(Object.values(CITY_SHARES).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10)
   })
 
   it('takes each city its share, highest score first', () => {
     const pool = [c('g1', 'geelong', 50), c('g2', 'geelong', 90), c('g3', 'geelong', 70), c('m1', 'melbourne', 80), c('m2', 'melbourne', 60), c('b1', 'ballarat', 40), c('d1', 'bendigo', 30)]
     const picked = pickCohort(pool, 10)
-    // Of 10: 4.5, 3.5, 1 and 1. Rounding each would ask for 11; the largest remainders give the one left over to the
-    // first city in the ruling's order, so the quotas add to the size: 5, 3, 1, 1.
-    expect(picked.quota).toEqual({ geelong: 5, melbourne: 3, ballarat: 1, bendigo: 1 })
+    // Of 10: 4.5, 3.5, 1 and 1 (Melbourne first since 12 November 2026). Rounding each would ask for 11; the largest
+    // remainders give the one left over to the first city in the ruling's order, so the quotas add to the size: 5, 3, 1, 1.
+    expect(picked.quota).toEqual({ melbourne: 5, geelong: 3, ballarat: 1, bendigo: 1 })
     expect(Object.values(picked.quota).reduce((a, b) => a + b, 0)).toBe(10)
-    expect(pickCohort([], 100).quota).toEqual({ geelong: 45, melbourne: 35, ballarat: 10, bendigo: 10 })
+    expect(pickCohort([], 100).quota).toEqual({ melbourne: 45, geelong: 35, ballarat: 10, bendigo: 10 })
     expect(picked.byCity.geelong.map((x) => x.id)).toEqual(['g2', 'g3', 'g1'])
     expect(picked.byCity.melbourne.map((x) => x.id)).toEqual(['m1', 'm2'])
   })
@@ -29,9 +30,9 @@ describe('the first cohort', () => {
   it('never fills one city\'s gap from another, and says what is short', () => {
     const pool = [c('g1', 'geelong', 50), c('m1', 'melbourne', 80), c('m2', 'melbourne', 70), c('m3', 'melbourne', 60), c('m4', 'melbourne', 50), c('m5', 'melbourne', 40)]
     const picked = pickCohort(pool, 10)
-    expect(picked.byCity.melbourne.map((x) => x.id)).toEqual(['m1', 'm2', 'm3'])
-    expect(picked.short).toEqual({ geelong: 4, melbourne: 0, ballarat: 1, bendigo: 1 })
-    expect(picked.total).toBe(4)
+    expect(picked.byCity.melbourne.map((x) => x.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5'])
+    expect(picked.short).toEqual({ melbourne: 0, geelong: 2, ballarat: 1, bendigo: 1 })
+    expect(picked.total).toBe(6)
   })
 
   it('leaves out an organiser outside the four cities, or with no city, and counts them', () => {
@@ -55,7 +56,8 @@ describe('the first cohort', () => {
   })
 
   it('breaks a tie by id, so the cohort never moves between runs', () => {
-    const picked = pickCohort([c('g2', 'geelong', 50), c('g1', 'geelong', 50), c('g3', 'geelong', 50)], 4)
+    // Of 6: Melbourne 2.7, Geelong 2.1, Ballarat and Bendigo 0.6; Geelong's quota is 2, so the tie of three is broken by id.
+    const picked = pickCohort([c('g2', 'geelong', 50), c('g1', 'geelong', 50), c('g3', 'geelong', 50)], 6)
     expect(picked.byCity.geelong.map((x) => x.id)).toEqual(['g1', 'g2'])
   })
 })

@@ -54,8 +54,15 @@ describe('the growth plan is valid', () => {
     expect(planProblems({ ...plan(), never: [] }).join(' ')).toMatch(/never/)
   })
 
-  test('version 4 (Lawal 1 November 2026 05:39) names the focus market and its rule', () => {
-    expect(plan().version).toBe(4)
+  test('version 6 (Lawal 12 November 2026, 09:16 to 09:19) puts Melbourne first and carries the master plan gates', () => {
+    expect(plan().version).toBe(6)
+    expect(plan().focus_market.name).toMatch(/^Melbourne first/)
+    expect(plan().cities.open[0]).toBe('Melbourne')
+    expect(plan().master_plan_gates.gates).toHaveLength(6)
+  })
+
+  test('version 4 (Lawal 1 November 2026 05:39) names the focus market and its rule, and every later version keeps it', () => {
+    expect(plan().version).toBeGreaterThanOrEqual(4)
     expect(planProblems({ ...plan(), focus_market: undefined }).join(' ')).toMatch(/focus_market/)
     expect(planProblems({ ...plan(), focus_market: { ...plan().focus_market, rule: '' } }).join(' ')).toMatch(/focus_market\.rule/)
   })
@@ -71,7 +78,7 @@ describe('the growth plan keeps every dated version', () => {
 
   test('version 1 is still kept whole beside version 2 (Law 8: a new dated version, never an overwrite)', () => {
     const ledger = JSON.parse(read('growth/versions/LEDGER.json'))
-    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3, 4])
+    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3, 4, 5, 6])
     expect(JSON.parse(read('growth/versions/2026-11-01.json')).version).toBe(1)
     expect(sha256Lf(read('growth/versions/2026-11-01.json'))).toBe('2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3')
   })

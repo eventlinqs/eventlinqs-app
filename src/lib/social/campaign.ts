@@ -45,7 +45,8 @@ export type PieceKind =
  * Spotlight plan only for these; a city joins by one line here, on the project manager's word. The week ahead and the
  * weekend guide still plan for every guide city, as before.
  */
-export const EDITION_CITIES: readonly string[] = ['geelong', 'melbourne']
+// Melbourne first (Lawal, 12 November 2026, 09:16 to 09:19; growth plan version 6): the weekly edition starts with it.
+export const EDITION_CITIES: readonly string[] = ['melbourne', 'geelong']
 
 /** A Category Spotlight needs this many of one category's nights in a city's week. */
 export const SPOTLIGHT_MIN_NIGHTS = 3

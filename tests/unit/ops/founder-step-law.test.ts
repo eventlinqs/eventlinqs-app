@@ -84,6 +84,13 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(judgeNotes(ok).faults).toEqual([])
     expect(judgeNotes(`EL | 12 Nov 2026 00:44 | LAWAL, ONE STEP: npm run migrate:production`).faults).toEqual([])
   })
+  it('a read back is said in any case, never as "not read back" or "unread" (WINDOW 6\'s sweep of 12 November, 11:22)', () => {
+    const step = `${at('11:22')} WINDOW 6, THE FOUNDER STEP LAW SWEPT for LAWAL: go-live.ps1 and npm run env:check`
+    expect(judgeNotes(`${step}, every step read back beside each.`).faults).toEqual([])
+    expect(judgeNotes(`${step}, not read back yet.`).faults).toHaveLength(1)
+    expect(judgeNotes(`${step}, still unread.`).faults).toHaveLength(1)
+    expect(judgeNotes(step).faults).toHaveLength(1)
+  })
   it("every open row of Lawal's list carries READ BACK; the Removed section is history", () => {
     const list = ['| # | Click |', '|---|---|', '| 4 | Pay the invoice | READ BACK 01:55: open, US$110.03 |', '| 6 | Run npm run migrate:production |', '## Removed, with evidence', '| 9 | old |'].join('\n')
     const r = judgeList(list)

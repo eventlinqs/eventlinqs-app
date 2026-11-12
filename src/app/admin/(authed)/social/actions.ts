@@ -19,6 +19,7 @@ import {
   editPiece,
   excludeNight,
   planCampaignWeek,
+  planPost,
   planWeek,
   recordPiecePosting,
   recordPosting,
@@ -30,6 +31,8 @@ import {
 } from '@/lib/social/store'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { captureException } from '@/lib/observability/sentry'
+import { pickSpotlight } from '@/lib/social/spotlight-math'
+import { readSpotlightNights } from '@/lib/social/three-posts'
 
 /**
  * THE PRESSES ON /admin/social (item 11, the social engine; docs/SOCIAL-ENGINE.md): plan the week, change a post's
@@ -327,4 +330,26 @@ export async function decideAssetAction(formData: FormData): Promise<void> {
   await recordAuditEvent({ action: `admin.social.asset.${decision}`, targetType: 'social_asset', targetId: asset, session })
   revalidatePath('/admin/social')
   back(decision === 'approved' ? 'Approved for its scope until it expires.' : 'Refused. It is used for nothing.')
+}
+
+/**
+ * THE ORGANISER SPOTLIGHT'S POST (Lawal, 12 November 2026, 11:11, item 3): the night the rule picks
+ * (src/lib/social/spotlight-math.ts) gets its Instagram feed post planned the way every week's post is
+ * (store.ts planPost): its own tracked link and the Launch Kit's own words as version 1, which he can change on
+ * /admin/social. Nothing is approved or posted here. Pressed from the Command Centre, it answers there.
+ */
+export async function planSpotlightAction(): Promise<void> {
+  const session = await staff()
+  const home = (said: string): never => redirect(`/admin/today?said=${encodeURIComponent(said)}#posts`)
+  const now = new Date()
+  const db = createAdminClient()
+  const night = pickSpotlight(await readSpotlightNights(db, now), now)
+  if (night === null) home('No Melbourne organiser has a night of their own in the next fortnight, so there is no spotlight to plan.')
+  const picked = night as NonNullable<typeof night>
+  const done = await planPost(db, { eventId: picked.eventId, platform: 'instagram', format: 'feed' }, { plannedBy: session.userId, now })
+  await recordAuditEvent({ action: 'admin.social.spotlight', targetType: 'event', targetId: picked.eventId, metadata: { kept: done.kept, held: done.held }, session })
+  revalidatePath('/admin/social')
+  revalidatePath('/admin/today')
+  if (!done.kept) home(`Not planned: ${done.held ?? 'no reason was given'}`)
+  home(`The spotlight on ${picked.title} is drafted.${done.held ? ` ${done.held}` : ''} Read it, change the words if you like, approve it, post it from your phone, then press Posted.`)
 }

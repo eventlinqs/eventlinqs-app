@@ -32,7 +32,7 @@ describe('the growth desk', () => {
     expect(out).toContain('Plan against actual, the year to October 2027')
     expect(out).toContain('10x stretch')
     expect(out).toContain('Upcoming events selling through EventLinqs')
-    expect(out).toContain('Focus market: Geelong and Melbourne, one weekend market.')
+    expect(out).toContain('Focus market: Melbourne first, then the other big Australian cities, then the regional cities.')
     expect(out).toMatch(/Send 5 conversion asks today, within the 20 outreach messages/)
     expect(out).toMatch(/The 10x stretch is A\$[\d,]+ a year short on today&#x27;s run rate\./)
   })

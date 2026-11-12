@@ -7,6 +7,7 @@ import { isAcquisitionState, STATE_WORDS } from './acquisition-states'
 import { contactRefusal } from './crm'
 import { buildDailyTwenty, contactFor, EXPIRED_REFUSAL, groupOf, type DailyCandidate, type DailyTwenty, type StoredContact } from './daily-twenty'
 import { readOrganiserScores } from './organiser-score-read'
+import { writtenBefore } from './written-before'
 
 /**
  * THE DAILY TWENTY FROM PRODUCTION'S OWN ROWS (V3 item 5; the rules are ./daily-twenty.ts, pure). Reads, writes nothing:
@@ -17,6 +18,7 @@ import { readOrganiserScores } from './organiser-score-read'
  */
 
 type Admin = SupabaseClient<Database>
+
 
 export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promise<DailyTwenty> {
   const todayInMelbourne = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(now)
@@ -41,7 +43,11 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
   if (grouped.length === 0) return buildDailyTwenty([])
 
   const scores = new Map<string, number | 'stopped'>()
-  for (const s of await readOrganiserScores(db, now)) scores.set(s.id, s.state === 'scored' ? s.score : 'stopped')
+  const cities = new Map<string, string | null>()
+  for (const s of await readOrganiserScores(db, now)) {
+    scores.set(s.id, s.state === 'scored' ? s.score : 'stopped')
+    cities.set(s.id, s.city)
+  }
 
   const contacts = await readEveryRow<{ id: string; organiser_id: string; channel: string; address: string; person_name: string | null }>('their contacts', (a, b) =>
     db.from('organiser_contacts').select('id, organiser_id, channel, address, person_name').order('id', { ascending: true }).range(a, b),
@@ -62,8 +68,11 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
   for (const o of grouped) {
     const score = scores.get(o.id)
     if (score === 'stopped') continue
+    const own = contacts.filter((x) => x.organiser_id === o.id)
+    // Lawal already wrote to them outside the CRM (the PM's 11:58 of 12 November): never a cold first message again.
+    if (own.some((c) => c.channel === 'email' && writtenBefore(c.address))) continue
     const theirs: StoredContact[] = []
-    for (const c of contacts.filter((x) => x.organiser_id === o.id)) {
+    for (const c of own) {
       const refusal = o.state === 'expired' ? EXPIRED_REFUSAL : await contactRefusal(db, c.id)
       theirs.push({ id: c.id, channel: c.channel, address: c.address, personName: c.person_name, refusal })
     }
@@ -73,6 +82,7 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
       organiserName: o.name,
       group: o.group,
       score: score ?? 0,
+      city: cities.get(o.id) ?? null,
       why: o.group === 'follow_up' && o.state === 'contacted' && due ? `${STATE_WORDS[o.state]}; next step due ${due}` : STATE_WORDS[o.state],
       contact: contactFor(theirs, lastContact.get(o.id)?.contactId ?? null),
       socialHandle: o.instagram_handle ? `@${o.instagram_handle.replace(/^@/, '')}` : null,

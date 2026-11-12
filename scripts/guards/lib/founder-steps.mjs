@@ -32,6 +32,14 @@ export function stampOf(line) {
 
 const RUNS = /npm run [\w:.-]+|\bcd [A-Za-z]:\\|\.ps1\b|\bnode scripts[\\/]|\bnpx [\w@./-]+/
 
+/**
+ * The read back, said: READ BACK in any case (WINDOW 6's sweep of 12 November 2026, 11:22 wrote "read back beside
+ * each"), never in a line that says it was not read back or is unread.
+ */
+export function saysReadBack(line) {
+  return /\bread back\b/i.test(line) && !/\b(?:not|never|no)\s+(?:yet\s+)?read back\b|\bunread\b/i.test(line)
+}
+
 /** A line that hands Lawal something to run. */
 export function isFounderStep(line) {
   return (/\bLAWAL\b/.test(line) || /\bFOUNDER STEP\b/.test(line)) && RUNS.test(line)
@@ -61,7 +69,7 @@ export function judgeNotes(text, effective = EFFECTIVE) {
     if (!at || at < effective) return
     if (isFounderStep(line)) {
       steps.push(line)
-      if (!/\bREAD BACK\b/.test(line)) faults.push(`line ${i + 1} (${at}): a founder step with no READ BACK beside it: ${line.slice(0, 110)}`)
+      if (!saysReadBack(line)) faults.push(`line ${i + 1} (${at}): a founder step with no READ BACK beside it: ${line.slice(0, 110)}`)
     }
     if (/npm run migrate:production/.test(line) && !/--expect\s+\S/.test(line)) {
       faults.push(`line ${i + 1} (${at}): names npm run migrate:production with no --expect: ${line.slice(0, 110)}`)
