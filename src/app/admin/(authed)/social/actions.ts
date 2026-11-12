@@ -43,12 +43,20 @@ import { readSpotlightNights } from '@/lib/social/three-posts'
 
 const back = (said: string): never => redirect(`/admin/social?said=${encodeURIComponent(said)}`)
 
-async function staff() {
+/**
+ * Where an approval returns (order 4, Release 1 item 3): the Command Centre when pressed there, the studio otherwise.
+ * Only these two, never an address a form carries.
+ */
+type ReturnTo = '/admin/today' | '/admin/social'
+const returnTo = (formData: FormData | undefined): ReturnTo => (formData?.get('from') === 'today' ? '/admin/today' : '/admin/social')
+const backTo = (to: ReturnTo, said: string): never => redirect(`${to}?said=${encodeURIComponent(said)}`)
+
+async function staff(to: ReturnTo = '/admin/social') {
   const session = await requireAdminSession()
-  if (!can(session, 'admin.network.manage')) back('Your role cannot plan or approve posts.')
+  if (!can(session, 'admin.network.manage')) backTo(to, 'Your role cannot plan or approve posts.')
   /* The release checklist F4: every press is limited by the admin's own id (policies.ts admin-social-press). */
   const limited = await actionRateLimit('admin-social-press', session.userId)
-  if (!limited.ok) back(`Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
+  if (!limited.ok) backTo(to, `Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
   return session
 }
 
@@ -131,27 +139,31 @@ const PieceSchema = z.object({ piece: z.string().uuid() })
 const ReasonSchema = z.object({ piece: z.string().uuid(), reason: z.string().trim().min(3).max(500) })
 
 export async function approvePieceAction(formData: FormData): Promise<void> {
-  const session = await staff()
+  const to = returnTo(formData)
+  const session = await staff(to)
   const parsed = PieceSchema.safeParse({ piece: formData.get('piece') })
-  if (!parsed.success) back('That piece could not be read.')
+  if (!parsed.success) backTo(to, 'That piece could not be read.')
   const { piece } = parsed.data as z.infer<typeof PieceSchema>
   const done = await approvePieceChecked(createAdminClient(), { pieceId: piece, by: session.userId, now: new Date(), siteOrigin: await siteOrigin() })
-  if (done.state === 'refused') back(done.reason)
+  if (done.state === 'refused') backTo(to, done.reason)
   await recordAuditEvent({ action: 'admin.social.piece.approve', targetType: 'social_piece', targetId: piece, session })
   revalidatePath('/admin/social')
-  back('Approved. Post it, then record where it went.')
+  revalidatePath('/admin/today')
+  backTo(to, 'Approved. Post it, then record where it went.')
 }
 
 /** The week in one press (B3): every piece still waiting through the same checks; each held one said with its reason. */
-export async function approveWeekAction(): Promise<void> {
-  const session = await staff()
+export async function approveWeekAction(formData?: FormData): Promise<void> {
+  const to = returnTo(formData)
+  const session = await staff(to)
   const done = await approveWeekChecked(createAdminClient(), { by: session.userId, now: new Date(), siteOrigin: await siteOrigin() })
-  if (done === null) back('Plan this week first.')
+  if (done === null) backTo(to, 'Plan this week first.')
   const { approved, held } = done as WeekApproved
   for (const piece of approved) await recordAuditEvent({ action: 'admin.social.piece.approve', targetType: 'social_piece', targetId: piece, session, metadata: { by: 'approve-week' } })
   revalidatePath('/admin/social')
+  revalidatePath('/admin/today')
   const said = approved.length === 0 && held.length === 0 ? 'Nothing is waiting: every piece is approved, rejected or gone already.' : `${approved.length} piece${approved.length === 1 ? '' : 's'} approved.`
-  back(`${said}${held.length === 0 ? '' : ` Held: ${held.map((h) => `${h.label}: ${h.reason}`).join(' ')}`}`)
+  backTo(to, `${said}${held.length === 0 ? '' : ` Held: ${held.map((h) => `${h.label}: ${h.reason}`).join(' ')}`}`)
 }
 
 export async function rejectPieceAction(formData: FormData): Promise<void> {

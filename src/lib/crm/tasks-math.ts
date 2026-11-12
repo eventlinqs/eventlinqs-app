@@ -42,6 +42,7 @@ const BY_PREFIX: Readonly<Record<string, { record: RecordType; workflow: Workflo
   submission: { record: 'submission', workflow: 'operations' },
   source: { record: 'source', workflow: 'operations' },
   swept: { record: 'social_piece', workflow: 'marketing' },
+  piece: { record: 'social_piece', workflow: 'marketing' },
   removal: { record: 'removal', workflow: 'operations' },
   report: { record: 'event', workflow: 'operations' },
 }
@@ -71,7 +72,7 @@ export function tasksFromQueue(queue: Queue, now: Date): TaskRow[] {
         workflow: mapped?.workflow ?? 'operations',
         kind: section.key,
         title: clip(item.what, 300),
-        status: section.key === ('plays' satisfies SectionKey) ? 'waiting_approval' : 'open',
+        status: section.key === ('plays' satisfies SectionKey) || section.key === ('pieces' satisfies SectionKey) ? 'waiting_approval' : 'open',
         due_on: dueAfter(item.since),
         last_action: null,
         next_action: clip(item.why, 500),

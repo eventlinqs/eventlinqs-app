@@ -75,3 +75,18 @@ describe('tasks from the queue', () => {
     expect(rows.slice().sort((a, b) => queueOrder(a, b, today)).map((r) => r.id)).toEqual(['overdue', 'today-approve', 'today-open', 'later'])
   })
 })
+
+describe('a post waiting for the yes is a task (order 4, Release 1 item 3)', () => {
+  it('a piece of the week is a social piece task in marketing, waiting for approval', () => {
+    const q: Queue = {
+      sections: [
+        { key: 'pieces', title: 'Posts to approve', items: [{ id: 'piece:7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f', what: 'Week ahead, Melbourne', why: 'Waiting for your yes.', since: '2026-11-11T22:00:00Z', href: '/admin/social#piece-7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f', approvePiece: '7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f' }], unread: [], failed: [] },
+      ],
+      waiting: 1,
+      allClear: false,
+    }
+    expect(tasksFromQueue(q, NOW)).toEqual([
+      expect.objectContaining({ source_key: 'piece:7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f', record_type: 'social_piece', record_id: '7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f', workflow: 'marketing', kind: 'pieces', status: 'waiting_approval' }),
+    ])
+  })
+})
