@@ -34,7 +34,8 @@ async function onTheList(db: Admin, request: ConfirmRequest): Promise<boolean> {
   return r.data?.[0]?.status === 'granted'
 }
 
-export async function readConfirmLink(db: Admin, token: string, now: number): Promise<ConfirmLink> {
+/** `now` defaults to the clock here, not in the page, so the page's render stays pure (react-hooks purity). */
+export async function readConfirmLink(db: Admin, token: string, now: number = Date.now()): Promise<ConfirmLink> {
   const secret = resolveConfirmSecret()
   if (!secret) return { state: 'unavailable' }
   const opened = openConfirmRequest(token, secret, now)

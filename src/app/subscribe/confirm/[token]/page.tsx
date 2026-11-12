@@ -27,7 +27,7 @@ export default async function ConfirmCityGuidePage({ params }: Props) {
   const { token } = await params
   let link: ConfirmLink
   try {
-    link = await readConfirmLink(createAdminClient(), token, Date.now())
+    link = await readConfirmLink(createAdminClient(), token)
   } catch (error) {
     console.error('[subscribe/confirm] the link could not be checked:', error instanceof Error ? error.message : String(error))
     link = { state: 'unavailable' }
