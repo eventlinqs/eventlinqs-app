@@ -89,6 +89,11 @@ export interface Section {
   readonly items: readonly QueueItem[]
   /** Sources of this section that were not read, each in words. */
   readonly unread: readonly string[]
+  /**
+   * Those of them that failed to read now, each in the same words: a source not on this database yet is said above but
+   * is not a failure, so only these become failed tasks (src/lib/crm/tasks-math.ts).
+   */
+  readonly failed: readonly string[]
 }
 
 export interface Queue {
@@ -113,7 +118,8 @@ export function queueOf(sources: readonly Source[]): Queue {
           ? [`${s.name}: could not be read just now (${s.read.reason}).`]
           : [],
     )
-    return { key, title: SECTION_TITLES[key], items, unread }
+    const failed = mine.flatMap((s) => (s.read.state === 'failed' ? [`${s.name}: could not be read just now (${s.read.reason}).`] : []))
+    return { key, title: SECTION_TITLES[key], items, unread, failed }
   })
   const waiting = sections.reduce((n, s) => n + s.items.length, 0)
   const allClear = waiting === 0 && sections.every((s) => s.unread.length === 0)
