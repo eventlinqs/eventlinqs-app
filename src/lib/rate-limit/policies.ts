@@ -34,6 +34,7 @@ export type PolicyName =
   | 'newsletter-subscribe'
   | 'partner-enquiry'
   | 'listing-submission'
+  | 'photo-permission'
   | 'listing-report'
   | 'organiser-media'
   | 'admin-social-press'
@@ -267,6 +268,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The List your event form on /submit-event per IP per 10 min (release checklist H1, 28 October 2026). It is public, unauthenticated, stores a photo and writes a row to the admin queue, so it is a table and storage flooding target. Five covers an organiser sending two or three events and correcting one; a scripted flood is bounded.',
+  },
+  'photo-permission': {
+    keyPrefix: 'photo-perm',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      "An organiser's photo page, /photos/<contact>/<proof>, per IP per 10 min (Lawal's 12:01 of 12 November 2026, media permissions). It is reached only by the secure link in Lawal's own message to them, but it is unauthenticated, stores up to five images a press and logs a permission, so it is a storage flooding target. Five covers an organiser adding a night's photos in a few goes; a scripted flood is bounded. Its own bucket, apart from the List your event form's.",
   },
   'listing-report': {
     keyPrefix: 'listing-rep',

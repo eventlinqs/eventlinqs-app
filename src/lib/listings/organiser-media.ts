@@ -57,7 +57,7 @@ function chosen(file: File | null): file is File {
  * refusal. NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P8 and P9): one already locked to an event other
  * than eventId (any event when null) is refused here, before it is stored.
  */
-async function storeImage(
+export async function storeImage(
   folder: string,
   file: File | null,
   eventId: string | null,
