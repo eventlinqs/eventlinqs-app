@@ -275,6 +275,12 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // An organiser's photo page registers each image through the social store's one writer, which reaches the
+    // card rasteriser (media permissions, 12 November 2026).
+    '/photos/[contact]/[proof]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     // An organiser's self-listing runs inside the form's own action, and its photo's rights row is written through the
     // social store, the one writer, which reaches the rasteriser (card-raster-traced, 8 November 2026).
     '/submit-event': [
