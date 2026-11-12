@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { readTheirNights } from '@/lib/outreach/their-nights'
 
 /*
- * A NIGHT THE FOUNDER LISTED FOR THEM IS THEIRS (WINDOW 5A, 12 November 2026, 21:18). The African Music and Cultural
- * Festival's contact opened his photo page and read "No nights of yours are listed ahead right now" while the festival of
+ * A NIGHT THE FOUNDER LISTED FOR THEM IS THEIRS (WINDOW 5A, 12 November 2026, 21:18). AMCF's contact (the festival at
+ * Fed Square) opened his photo page and read "No nights of yours are listed ahead right now" while the festival of
  * 20 November was published: Lawal listed it in an organisation his own account owns, named for them with their own
  * website, and the reader had no road from the organiser to it. These cases hold the road open, and hold it narrow: only
  * the founder's organisations, only by the organiser's own website host, never a website-less one (EventLinqs listings),

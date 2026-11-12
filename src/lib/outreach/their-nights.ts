@@ -17,7 +17,7 @@ import { ownHost } from './own-host'
  *      sell or publish there). This is how a promoter's nights at a hired venue are theirs without linking them to the
  *      venue, which would claim every other organiser's nights there.
  *   4. it is under an organisation the FOUNDER holds for them: Lawal lists a night himself, in an organisation his own
- *      account owns, named for them and carrying their own website (the African Music and Cultural Festival, 26 October
+ *      account owns, named for them and carrying their own website (AMCF, the festival at Fed Square, 26 October
  *      2026; its contact's photo page said "No nights of yours are listed ahead" for the festival of 20 November, found
  *      12 November 2026, 21:18). Their own website is the key, read by ./own-host.ts as in 3: an organisation with no
  *      website (EventLinqs listings) is never theirs, and one a stranger owns never is, since only the founder's own are
