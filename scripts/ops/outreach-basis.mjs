@@ -27,6 +27,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { productionSelect } from '../lib/production-select.mjs'
 import { roleRefusal } from '../lib/outreach-basis-role.mjs'
+import { linkedPages } from '../lib/outreach-basis-links.mjs'
 import { politeReader } from '../lib/polite-read.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
@@ -72,7 +73,9 @@ const AGAINST = [
   /\b(we\s+do\s+not|we\s+don'?t)\s+(accept|want|welcome)\s+(solicitations|marketing|sales)\b/i,
 ]
 
-const PATHS = ['', '/contact', '/contact-us', '/about', '/about-us']
+// A venue's bookings or events address is published on its hire, bookings and functions pages as often as on its contact
+// page (the PM's 08:25 of 13 November 2026, (a)): those are read too, and the footer of every page read is in its HTML.
+const PATHS = ['', '/contact', '/contact-us', '/about', '/about-us', '/hire', '/venue-hire', '/bookings', '/functions', '/enquiries']
 const today = new Date().toISOString().slice(0, 10)
 
 function text(html) {
@@ -131,6 +134,11 @@ async function check(o, n) {
   const pages = []
   for (const p of PATHS) {
     const page = await get(site.replace(/\/+$/, '') + p)
+    if (page && !pages.some((x) => x.url === page.url)) pages.push(page)
+  }
+  // The pages its own home page links to for contact, hire, bookings, functions or enquiries, on its own domain only.
+  for (const href of linkedPages(pages[0], siteDomain)) {
+    const page = await get(href)
     if (page && !pages.some((x) => x.url === page.url)) pages.push(page)
   }
   if (o.found_on && domainOf(o.found_on) === siteDomain) {
