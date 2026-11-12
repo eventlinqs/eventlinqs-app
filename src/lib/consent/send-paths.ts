@@ -138,6 +138,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Sign-in links, verification and password resets, each one asked for by the person.',
   },
   {
+    file: 'src/lib/newsletter/confirmation-email.ts',
+    kind: 'transactional',
+    purpose: 'newsletter_confirmation',
+    reason:
+      'The double opt in confirmation a person asked for on the city newsletter panel, to the address they typed: what they asked for, one button to confirm it, and to ignore it if it was not them; no events, no offer. The consent is their form (ACMA, acma.gov.au/avoid-sending-spam); the editions, which ARE marketing, wait for this confirmation and go through the resolver.',
+  },
+  {
     file: 'src/lib/listings/claim.ts',
     kind: 'transactional',
     purpose: 'listing_claim_code',

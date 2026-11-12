@@ -200,7 +200,10 @@ const PUBLIC_BY_DESIGN = {
   'api/auth/recover/POST': 'password reset request; generic response, rate limited',
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
   'api/auth/resend-verification/POST': 'verification resend; generic response, rate limited',
-  'api/newsletter/subscribe/POST': 'public newsletter opt-in',
+  'api/newsletter/subscribe/POST':
+    'public newsletter opt-in. Since 12 November 2026 it records nothing: it emails the address typed one confirmation link (double opt in, src/lib/newsletter/confirmation-email.ts), rate limited per IP and per address, both fail closed (policies.ts newsletter-subscribe, newsletter-confirm-address).',
+  'subscribe/confirm/[token]/actions.ts::confirmCityGuideAction':
+    'the Confirm press on a city guide confirmation page (double opt in), reached only by the link emailed to the person who asked, who may hold no account, so requiring a caller identity would defeat it. The credential is the link: AES-256-GCM sealed with a key derived from ORDER_ACCESS_SECRET (src/lib/newsletter/confirm-token.ts), so an altered or foreign link opens to nothing. It writes one digest consent for the address and city sealed inside, once, through the one writer recordPlatformDigestConsent, and returns void, so nothing is enumerable.',
   'api/remind/stop/[token]/POST':
     'WI1 Remind me, the RFC 8058 one-click stop named by the List-Unsubscribe header of the two Remind me emails. Public by necessity for the reason the marketing one-click route gives: the caller is a mailbox provider posting on the recipient behalf and holds no account here. The per-row unsubscribe token in the path is the credential and the only thing it can do is stop mail to the one address it belongs to. It answers the same whatever the token, reads nothing back, sends nothing, and is idempotent. Rate limited by marketing-one-click, keyed by the token.',
   'api/marketing/one-click-unsubscribe/[token]/POST':

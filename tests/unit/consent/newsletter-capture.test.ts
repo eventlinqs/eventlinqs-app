@@ -18,29 +18,39 @@ const PANEL = readFileSync(
   'utf8',
 )
 
-describe('the endpoint stores what it claims to store', () => {
-  it('persists through the consent recorder rather than a log line', () => {
-    expect(ROUTE).toContain('recordPlatformDigestConsent')
+const CONFIRM = readFileSync('src/lib/newsletter/confirm.ts', 'utf8')
+
+describe('the endpoint does what it says: double opt in (Release 2, item 8)', () => {
+  it('records nothing itself: the consent is written only by the Confirm press', () => {
+    expect(ROUTE).not.toContain('recordPlatformDigestConsent')
+    expect(CONFIRM).toContain('recordPlatformDigestConsent')
   })
 
-  it('writes into the table the weekly digest actually reads', () => {
+  it('the press writes into the table the weekly digest actually reads', () => {
     // recordPlatformDigestConsent is the only writer of marketing_consents,
     // which is the only table fetchDigestRecipients reads for consent rows.
     const recorder = readFileSync('src/lib/consent/record.ts', 'utf8')
     expect(recorder).toContain("from('marketing_consents')")
   })
 
-  it('never reports success when the write failed', () => {
-    expect(ROUTE).toMatch(/if \(!stored\)[\s\S]*status: 500/)
+  it('emails the confirmation link and never reports success when it was not sent', () => {
+    expect(ROUTE).toContain('sendConfirmationEmail')
+    expect(ROUTE).toMatch(/catch \(error\)[\s\S]*not_sent[\s\S]*status: 500/)
   })
 
-  it('refuses a locality that has no digest, rather than storing an unreachable row', () => {
+  it('refuses a locality that has no digest, rather than confirming an unreachable row', () => {
     expect(ROUTE).toMatch(/if \(!citySlug\)[\s\S]*status: 400/)
   })
 
-  it('is rate limited, being public, unauthenticated and now a writer', () => {
-    expect(ROUTE).toContain('newsletter-subscribe')
+  it('is rate limited per network AND per address, being public, unauthenticated and a sender', () => {
+    expect(ROUTE).toContain("POLICIES['newsletter-subscribe']")
+    expect(ROUTE).toContain("POLICIES['newsletter-confirm-address']")
     expect(ROUTE).toMatch(/status: 429/)
+  })
+
+  it('tells the person what is true: check the inbox, not subscribed', () => {
+    expect(PANEL).toContain('Check your inbox. We have sent you a link to confirm your weekly guide.')
+    expect(PANEL).not.toContain('Subscribed.')
   })
 })
 

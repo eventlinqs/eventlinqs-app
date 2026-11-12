@@ -312,6 +312,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/photos/[contact]/[proof]', klass: 'never', why: "an organiser photo page, reached only by the secure link in Lawal's own message to them (media permissions)" },
   { route: '/unsubscribe/digest/[token]', klass: 'never', why: 'a one-time token' },
+  { route: '/subscribe/confirm/[token]', klass: 'never', why: 'a sealed link emailed only to the person who asked for a city guide (double opt in)' },
   { route: '/unsubscribe/recovery/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/outreach', klass: 'never', why: 'the unsubscribe form linked from the founder outreach emails, reached from a message rather than from search' },
   { route: '/verify-email-sent', klass: 'never', why: 'authentication' },
