@@ -11,8 +11,8 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 import { readPlanGates } from '@/lib/growth/plan-gates'
-import { readTwentyView } from '@/lib/outreach/twenty-view'
-import { TwentySection } from './twenty-section'
+import { readSentRecently, readTwentyView } from '@/lib/outreach/twenty-view'
+import { SentRecentlySection, TwentySection } from './twenty-section'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -59,6 +59,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   )
   // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
   const twenty = await readTwentyView(createAdminClient(), now).then(
+    (v) => ({ ok: true as const, v }),
+    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+  )
+  // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
+  const sentRecently = await readSentRecently(createAdminClient(), now).then(
     (v) => ({ ok: true as const, v }),
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
   )
@@ -158,6 +163,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         </p>
       )}
       <TwentySection view={twenty} />
+      <SentRecentlySection view={sentRecently} />
 
       {queue.sections.map((section) => (
         <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">

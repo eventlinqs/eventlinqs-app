@@ -89,3 +89,58 @@ export async function readTwentyView(db: Admin, now: Date = new Date()): Promise
   }
   return twentyView(day, contacts, newestDraftByContact(held.touches))
 }
+
+/**
+ * WHAT CAME BACK (Lawal's 11:11, item 2: "stops the sequence on a reply, an unsubscribe or a bounce he marks"). Each
+ * message sent in the last fortnight that nothing has come back on yet, so he can mark a reply, a request to stop or a
+ * bounce in one press. An unsubscribe through the message's own link is recorded by /unsubscribe/outreach without him.
+ */
+export interface SentRecent {
+  readonly touchId: string
+  readonly contactId: string
+  readonly organiserName: string
+  readonly address: string
+  readonly step: number
+  readonly sentAt: string
+}
+
+/** The sent messages with no reply logged on their contact since they went, newest first. Pure. */
+export function awaitingAnswer(
+  sent: readonly SentRecent[],
+  replies: readonly { readonly contactId: string; readonly receivedAt: string }[],
+): SentRecent[] {
+  const lastReply = new Map<string, string>()
+  for (const r of replies) {
+    const seen = lastReply.get(r.contactId)
+    if (!seen || r.receivedAt > seen) lastReply.set(r.contactId, r.receivedAt)
+  }
+  return sent
+    .filter((s) => {
+      const r = lastReply.get(s.contactId)
+      return !r || r < s.sentAt
+    })
+    .sort((a, b) => (a.sentAt < b.sentAt ? 1 : a.sentAt > b.sentAt ? -1 : 0))
+}
+
+export const SENT_RECENT_DAYS = 14
+
+export async function readSentRecently(db: Admin, now: Date = new Date()): Promise<SentRecent[]> {
+  const since = new Date(now.getTime() - SENT_RECENT_DAYS * 86_400_000).toISOString()
+  const t = await db
+    .from('outreach_touches')
+    .select('id, contact_id, step, sent_at, organiser_contacts!inner(address, organisers(name))')
+    .eq('state', 'sent')
+    .gte('sent_at', since)
+    .order('sent_at', { ascending: false })
+    .limit(200)
+  if (t.error) throw new Error(`the messages sent could not be read: ${t.error.message}`)
+  const sent: SentRecent[] = (t.data ?? []).flatMap((r) => {
+    if (!r.sent_at) return []
+    const c = r.organiser_contacts as unknown as { address: string; organisers: { name: string } | null } | null
+    return [{ touchId: r.id, contactId: r.contact_id, organiserName: c?.organisers?.name ?? 'Unknown organiser', address: c?.address ?? '', step: r.step, sentAt: r.sent_at }]
+  })
+  if (sent.length === 0) return []
+  const rep = await db.from('outreach_replies').select('contact_id, received_at').in('contact_id', [...new Set(sent.map((s) => s.contactId))])
+  if (rep.error) throw new Error(`the replies could not be read: ${rep.error.message}`)
+  return awaitingAnswer(sent, (rep.data ?? []).map((r) => ({ contactId: r.contact_id, receivedAt: r.received_at })))
+}

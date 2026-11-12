@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { newestDraftByContact, twentyView } from '@/lib/outreach/twenty-view'
+import { awaitingAnswer, newestDraftByContact, twentyView } from '@/lib/outreach/twenty-view'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { DailyTwenty } from '@/lib/outreach/daily-twenty'
 import type { QueueTouch } from '@/lib/outreach/daily-queue-math'
 
@@ -41,5 +43,27 @@ describe('the twenty with each basis and draft', () => {
       ['o2', null, null],
       ['o3', null, null],
     ])
+  })
+})
+
+describe('what came back', () => {
+  const sent = (touchId: string, contactId: string, sentAt: string) => ({ touchId, contactId, organiserName: 'A', address: 'a@example.com.au', step: 1, sentAt })
+  it('keeps a sent message until a reply is logged on its contact after it went, newest first', () => {
+    const out = awaitingAnswer(
+      [sent('t1', 'c1', '2026-11-12T01:00:00Z'), sent('t2', 'c2', '2026-11-12T02:00:00Z'), sent('t3', 'c3', '2026-11-12T03:00:00Z')],
+      [
+        { contactId: 'c1', receivedAt: '2026-11-12T05:00:00Z' }, // answered after it went: off the list
+        { contactId: 'c2', receivedAt: '2026-11-01T00:00:00Z' }, // an older reply does not answer a newer message
+      ],
+    )
+    expect(out.map((s) => s.touchId)).toEqual(['t3', 't2'])
+  })
+  it('the Record press logs the reply on the contact of the sent message, read from the database, never from the form', () => {
+    const src = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/acquisition/actions.ts'), 'utf8').replace(/\r\n/g, '\n')
+    const fn = src.slice(src.indexOf('export async function logReplyAction'))
+    expect(fn).toMatch(/\.eq\('state', 'sent'\)/)
+    expect(fn).toMatch(/contactId: sent\.contact_id/)
+    expect(fn).not.toMatch(/formData\.get\('contact'\)/)
+    expect(fn.indexOf("can(session, 'admin.network.manage')")).toBeLessThan(fn.indexOf('logReply('))
   })
 })
