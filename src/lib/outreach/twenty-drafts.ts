@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readDailyTwenty } from './daily-twenty-read'
 import { draftFromTemplate } from './drafts'
 import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight, type TwentyLetter } from './twenty-letters'
@@ -115,6 +116,9 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
   const letters = await storeTwentyLetters(db, founder.id)
 
   const day = await readDailyTwenty(db, input.now)
+  // The platform's own listings organisation is never written to (src/lib/growth/platform-organiser.ts); the twenty
+  // already leaves it out, and the drafter says so again before it reads any organiser.
+  const platform = await readPlatformOrganiserIds(db)
   const waitingRows = await db.from('outreach_touches').select('contact_id').in('state', ['held', 'queued', 'sending'])
   if (waitingRows.error) throw new Error(`the messages waiting could not be read: ${waitingRows.error.message}`)
   const waitingFor = new Set((waitingRows.data ?? []).map((t) => t.contact_id as string))
@@ -129,6 +133,10 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
     for (const a of group.actions) {
       if (a.channel !== 'email' || !a.contactId) {
         skipped.push({ organiser: a.organiserName, why: 'not an email contact' })
+        continue
+      }
+      if (platform.has(a.organiserId)) {
+        skipped.push({ organiser: a.organiserName, why: "the platform's own listings organisation" })
         continue
       }
       if (waitingFor.has(a.contactId)) {

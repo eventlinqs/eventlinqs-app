@@ -1,4 +1,5 @@
 import 'server-only'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -23,11 +24,10 @@ export function melbourneMidnight(now: Date): string {
 
 export async function readPlanGates(now: Date = new Date()): Promise<GateStanding[]> {
   const admin = createAdminClient()
-  const nowIso = now.toISOString()
   const [nights, paid, supply, sentToday] = await Promise.all([
     readEveryRow<{ id: string; organisation_id: string | null; city_primary: string | null }>('the nights ahead that could sell', (f, t) =>
       admin.from('events').select('id, organisation_id, city_primary').match(PUBLIC_EVENT_MATCH).is('external_ticket_url', null)
-        .gte('start_date', nowIso).order('id', { ascending: true }).range(f, t),
+        .or(listingWindowOrPredicate(now)).order('id', { ascending: true }).range(f, t),
     ),
     readEveryRow<{ event_id: string; confirmed_at: string | null }>('the paid orders', (f, t) =>
       admin.from('orders').select('event_id, confirmed_at').in('status', ['confirmed', 'partially_refunded']).gt('total_cents', 0)
@@ -42,16 +42,18 @@ export async function readPlanGates(now: Date = new Date()): Promise<GateStandin
   const ids = nights.map((n) => n.id)
   const selling = new Set<string>()
   for (let i = 0; i < ids.length; i += 200) {
-    const tiers = await admin.from('ticket_tiers').select('event_id, price').in('event_id', ids.slice(i, i + 200)).eq('is_active', true).eq('is_visible', true).gt('price', 0)
-    if (tiers.error) throw new Error(`the ticket tiers could not be read: ${tiers.error.message}`)
-    for (const t of tiers.data ?? []) selling.add(t.event_id as string)
+    const tiers = await readEveryRow<{ event_id: string }>('the ticket tiers', (f, t) =>
+      admin.from('ticket_tiers').select('id, event_id').in('event_id', ids.slice(i, i + 200)).eq('is_active', true).eq('is_visible', true).gt('price', 0)
+        .order('id', { ascending: true }).range(f, t),
+    )
+    for (const t of tiers) selling.add(t.event_id)
   }
 
   // Recurring: the organisations behind paid orders, in two or more months.
   const orderEvents = [...new Set(paid.map((o) => o.event_id))]
   const orgOf = new Map<string, string | null>()
   for (let i = 0; i < orderEvents.length; i += 200) {
-    const rows = await admin.from('events').select('id, organisation_id').in('id', orderEvents.slice(i, i + 200))
+    const rows = await admin.from('events').select('id, organisation_id').in('id', orderEvents.slice(i, i + 200)).limit(200)
     if (rows.error) throw new Error(`the paid orders' events could not be read: ${rows.error.message}`)
     for (const r of rows.data ?? []) orgOf.set(r.id as string, (r.organisation_id as string | null) ?? null)
   }

@@ -104,7 +104,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         <div data-section="plan-gates" className="mt-3">
           <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-white/60">The plan&apos;s gates</h3>
           {gates.ok ? (
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {gates.g.map((s) => (
                 <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
                   <p className="text-sm font-semibold text-white">{s.gate.label}</p>

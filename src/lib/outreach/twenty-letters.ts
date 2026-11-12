@@ -8,7 +8,9 @@ import type { TemplateRow } from './rules'
  * his signature) from verified CRM facts, through the gateway's checks. Template the opening line from the event's own
  * verified facts; never invent. The API drafting option stays built and switched off until he says yes himself").
  *
- * The words are his, from his sent mail of 10 and 11 October (C:\dev\START-16OCT\VOICE-EVENTLINQS.md: the greeting,
+ * The words are his, from his sent mail of 10 and 11 October, save one: "ticketing" is left out of "a new Australian
+ * ticketing platform", by the owner's positioning ruling of 7 September 2026 (scripts/guards/positioning-lock.mjs:
+ * EventLinqs is the platform where events get made, never a ticketing platform) (C:\dev\START-16OCT\VOICE-EVENTLINQS.md: the greeting,
  * "I hope you're well.", "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds
  * a community around every event it lists.", the one question, "Even a one-line reply would help me build the right
  * thing, and I'll write back to tell you what I did with it.") and, for a conversion ask, from his own first message to
@@ -39,7 +41,7 @@ export const TWENTY_ADVICE: TwentyLetter = {
   body: [
     'Hi [greeting],',
     "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs.",
-    "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds a community around every event it lists. I'm not writing to ask you to change how you sell tickets. You've been running events far longer than I have, and I'd love to learn from that.",
+    "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. I'm not writing to ask you to change how you sell tickets. You've been running events far longer than I have, and I'd love to learn from that.",
     'If you could change one thing about selling tickets, what would it be?',
     "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
     ...CLOSE,
@@ -56,7 +58,7 @@ export const TWENTY_OFFER: TwentyLetter = {
   body: [
     'Hi [greeting],',
     "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs.",
-    "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds a community around every event it lists.",
+    "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists.",
     "You could start with a small allocation of tickets alongside how you sell now. There's [offer], and you keep the full face value of every ticket sold.",
     'Would you be open to having a look at https://www.eventlinqs.com.au/organisers and telling me what you think?',
     ...CLOSE,
