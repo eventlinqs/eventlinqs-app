@@ -223,4 +223,56 @@ export const centralGeelong: PageRule = {
   read: (html, pageUrl) => eventsFromHtml(html, pageUrl),
 }
 
-export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest, centralGeelong]
+/**
+ * GEELONG GALLERY (geelonggallery.org.au, 55 Little Malop Street). Read 13 November 2026 by the polite reader: robots.txt
+ * allows every page; no terms page restricts reuse; no schema.org Event data. Its own sitemap (cpt_event-sitemap.xml)
+ * lists each event page under /events/. Each page names the event in its h1 and lists each session as a date line
+ * ('Saturday 5 December 2026') followed by its times ('11.00am to 3.30pm'); the gallery's own opening hours ('from 10am
+ * to 5pm') follow no date line and are never a session. Every session is one night (Lawal's ruling of 7 November 2026).
+ * Its prices name tiers (members and others), so none is taken (checklist E6). Facts only.
+ */
+// Its own /visit/ page (read 13 November 2026): '55 Little Malop Street, Geelong, VIC 3220'.
+const GALLERY_STREET = '55 Little Malop Street, Geelong VIC 3220'
+
+export const geelongGallery: PageRule = {
+  host: 'geelonggallery.org.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    // A dash joining two words reads as a colon ('Workshop: Inspired by ...'); titleOf makes every other dash a hyphen.
+    const title = h1 ? titleOf(h1[1].replace(/([A-Za-z])\s*[\u2013\u2014]\s*([A-Za-z])/g, '$1: $2')) : ''
+    if (!title) return []
+    const lines = decode(html.replace(/\r/g, '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<\/(p|div|li|span|h[1-6]|td|dt|dd)>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
+      .split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    const out: FoundEvent[] = []
+    for (let i = 0; i < lines.length - 1; i += 1) {
+      const d = /^(?:[A-Za-z]{6,9}\s+)?(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(lines[i])
+      const mo = d ? MONTHS[d[2].slice(0, 3).toLowerCase()] : undefined
+      const t = /^(\d{1,2}(?:[.:]\d{2})?\s*(?:am|pm))\s+to\s+(\d{1,2}(?:[.:]\d{2})?\s*(?:am|pm))$/i.exec(lines[i + 1])
+      if (!d || !mo || !t) continue
+      const start = clock(t[1].replace(/\s+/g, ''))
+      const end = clock(t[2].replace(/\s+/g, ''))
+      if (!start) continue
+      const startsAt = wallClockToIso(Number(d[3]), mo, Number(d[1]), start[0], start[1], 0, ZONE)
+      const endsAt = end ? wallClockToIso(Number(d[3]), mo, Number(d[1]), end[0], end[1], 0, ZONE) : null
+      if (!startsAt || out.some((e) => e.startsAt === startsAt)) continue
+      out.push({
+        title,
+        startsAt,
+        endsAt: endsAt && endsAt > startsAt ? endsAt : null,
+        venueName: 'Geelong Gallery',
+        venueAddress: GALLERY_STREET,
+        pageUrl,
+        imageUrl: null,
+        description: null,
+        links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+        timeStatus: 'exact',
+        timeFromWords: true,
+      })
+    }
+    return out
+  },
+}
+
+export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest, centralGeelong, geelongGallery]
