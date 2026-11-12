@@ -8,7 +8,8 @@ import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
-import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
+import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
+import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
 
 /**
@@ -120,7 +121,21 @@ export async function GET(request: NextRequest) {
         spotlight = { error: message }
       }
     }
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight })
+    // LAWAL'S SENT ITEMS (Release 2, item 5): what he sent from the outreach mailbox, recorded on each organiser's
+    // timeline (src/lib/outreach/sent-sync.ts). Reading only, so it runs while the sender is on hold too, once Graph can
+    // read the mailbox; nothing sends. A failure is reported and logged and never stops the run above.
+    let sentItems: unknown = 'not synced: no Graph credentials'
+    if (graph) {
+      try {
+        sentItems = await syncSentItems(db, graph, { sinceIso: new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString() })
+        console.log(`[cron/outreach-run] sent items: ${JSON.stringify(sentItems)}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] sent items not synced:', message)
+        sentItems = { error: message }
+      }
+    }
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, sentItems })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

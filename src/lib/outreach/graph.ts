@@ -145,3 +145,63 @@ export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchIm
   }
   return out
 }
+
+/** A message Lawal sent from the outreach mailbox, as its Sent Items folder holds it. */
+export type SentMessage = {
+  graphId: string
+  internetMessageId: string
+  subject: string
+  /** Every To and Cc address, lower case. */
+  toAddresses: string[]
+  sentAt: string
+  text: string
+}
+
+type GraphSentMessage = {
+  id: string
+  internetMessageId?: string
+  subject?: string
+  sentDateTime: string
+  toRecipients?: { emailAddress?: { address?: string } }[]
+  ccRecipients?: { emailAddress?: { address?: string } }[]
+  body?: { content?: string }
+}
+
+/**
+ * Sent Items messages sent at or after `sinceIso`, oldest first, at most `maxPages` pages (Release 2, item 5: "Sent
+ * Items and replies synced back into each organiser's timeline automatically"). The well-known folder name is
+ * sentitems (https://learn.microsoft.com/en-us/graph/api/resources/mailfolder?view=graph-rest-1.0, read 12 November
+ * 2026); the list call, its paging and the text body header are the inbox reader's own (the user-list-messages page
+ * above). Application permission Mail.Read, scoped to the one mailbox by C:\dev\GRAPH-CONSENT-12NOV.ps1.
+ */
+export async function graphReadSentItems(cfg: GraphConfig, sinceIso: string, fetchImpl: Fetch = fetch, maxPages = 5): Promise<SentMessage[]> {
+  const token = await graphToken(cfg, fetchImpl)
+  const params = new URLSearchParams([
+    ['$filter', `sentDateTime ge ${sinceIso}`],
+    ['$orderby', 'sentDateTime asc'],
+    ['$top', String(INBOX_PAGE_SIZE)],
+    ['$select', 'id,internetMessageId,subject,toRecipients,ccRecipients,sentDateTime,body'],
+  ])
+  let url: string | null = `${GRAPH}/users/${encodeURIComponent(cfg.mailbox)}/mailFolders/sentitems/messages?${params.toString()}`
+  const out: SentMessage[] = []
+  for (let page = 0; url && page < maxPages; page++) {
+    const res: Response = await fetchImpl(url, { headers: { authorization: `Bearer ${token}`, prefer: 'outlook.body-content-type="text"' } })
+    if (!res.ok) throw new GraphError('read', res.status, await res.text())
+    const json = (await res.json()) as { value: GraphSentMessage[]; '@odata.nextLink'?: string }
+    for (const m of json.value) {
+      const to = [...(m.toRecipients ?? []), ...(m.ccRecipients ?? [])]
+        .map((r) => (r.emailAddress?.address ?? '').trim().toLowerCase())
+        .filter((a) => a.length > 0)
+      out.push({
+        graphId: m.id,
+        internetMessageId: m.internetMessageId ?? '',
+        subject: m.subject ?? '',
+        toAddresses: [...new Set(to)],
+        sentAt: m.sentDateTime,
+        text: m.body?.content ?? '',
+      })
+    }
+    url = json['@odata.nextLink'] ?? null
+  }
+  return out
+}
