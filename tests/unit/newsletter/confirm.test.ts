@@ -9,7 +9,7 @@ vi.mock('@/lib/consent/record', () => ({
 }))
 
 import { confirmCityGuide, readConfirmLink } from '@/lib/newsletter/confirm'
-import { sealConfirmRequest } from '@/lib/newsletter/confirm-token'
+import { resolveConfirmSecret, sealConfirmRequest } from '@/lib/newsletter/confirm-token'
 import { cityNewsletterConsentWording } from '@/lib/consent/wording'
 import { confirmationEmail } from '@/lib/newsletter/confirmation-email'
 
@@ -18,7 +18,9 @@ import { confirmationEmail } from '@/lib/newsletter/confirmation-email'
  * the wording the panel showed, and a second press, or a person already on that city's list, writes nothing more.
  */
 const NOW = Date.UTC(2026, 10, 12, 6, 0, 0)
-const SECRET = 'eventlinqs-dev-only-newsletter-confirm-secret' // the test environment's own fallback key
+// The key this environment resolves, as the page will: ORDER_ACCESS_SECRET when the env file sets it, else the
+// development fallback (so the test holds with and without --env-file).
+const SECRET = resolveConfirmSecret() as string
 const token = () =>
   sealConfirmRequest(
     { email: 'jo@example.com.au', citySlug: 'geelong', cityName: 'Geelong', consentVersion: 'v1', source: 'newsletter-city', requestedAt: NOW - 3_600_000 },
