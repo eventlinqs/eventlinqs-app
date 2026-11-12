@@ -46,6 +46,18 @@ describe('the daily twenty', () => {
     expect(by.recurring.short).toBe(5)
   })
 
+  it("fills only the places the four groups leave empty with the next first asks, to twenty (Lawal's 11:11 of 12 November)", () => {
+    const day = buildDailyTwenty([...many('conversion', 30), ...many('recurring', 1), ...many('partnership_reactivation', 3)])
+    const by = Object.fromEntries(day.groups.map((g) => [g.key, g]))
+    expect(by.conversion.actions.map((a) => a.organiserId)).toEqual([0, 1, 2, 3, 4].map((i) => `conversion-${i}`))
+    expect(by.first_contact.actions.map((a) => a.organiserId)).toEqual(Array.from({ length: 11 }, (_, i) => `conversion-${i + 5}`))
+    expect(by.first_contact.actions.every((a) => a.group === 'first_contact')).toBe(true)
+    expect(day.groups.flatMap((g) => g.actions)).toHaveLength(20)
+    // A full day has no fifth group at all.
+    const full = buildDailyTwenty([...many('conversion', 8), ...many('follow_up', 8), ...many('recurring', 8), ...many('partnership_reactivation', 8)])
+    expect(full.groups.map((g) => g.key)).not.toContain('first_contact')
+  })
+
   it('takes one action per organiser a day: a follow up first, then a conversion ask, never both', () => {
     const day = buildDailyTwenty([
       candidate({ organiserId: 'barwon-club', group: 'conversion', score: 99 }),

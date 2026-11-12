@@ -40,7 +40,9 @@ const fromFor = (channel: ContactChannel): string =>
 
 export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
   const category = voiceCategoryOf(t.purpose, t.step)
-  const person = (t.personName ?? '').trim()
+  // The greeting is the first name, as every template writes it ("Hi {first},", the voice file; facts.ts 'first name'):
+  // the contact row may hold a whole name, and a draft saying "Hi Fred," was refused for not saying "Hi Fred Alale,".
+  const person = (t.personName ?? '').trim().split(/\s+/)[0] ?? ''
   const organiser = (t.organiserName ?? '').trim()
   return {
     channel: t.channel,

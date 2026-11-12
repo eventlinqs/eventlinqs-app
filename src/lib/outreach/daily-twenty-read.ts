@@ -7,6 +7,7 @@ import { isAcquisitionState, STATE_WORDS } from './acquisition-states'
 import { contactRefusal } from './crm'
 import { buildDailyTwenty, contactFor, EXPIRED_REFUSAL, groupOf, type DailyCandidate, type DailyTwenty, type StoredContact } from './daily-twenty'
 import { readOrganiserScores } from './organiser-score-read'
+import { writtenBefore } from './written-before'
 
 /**
  * THE DAILY TWENTY FROM PRODUCTION'S OWN ROWS (V3 item 5; the rules are ./daily-twenty.ts, pure). Reads, writes nothing:
@@ -18,17 +19,6 @@ import { readOrganiserScores } from './organiser-score-read'
 
 type Admin = SupabaseClient<Database>
 
-/**
- * ORGANISERS ALREADY WRITTEN TO OUTSIDE THE CRM (Lawal's 11:11 of 12 November 2026: "Only organisers not already
- * contacted (dedupe against every recorded touch, including the 20 he sent ... if they can be identified)"). The CRM has
- * recorded no send yet (production, 12 November 11:43: 0 sent); of the 31 addresses known to be written to from his own
- * mailbox, these organisers' contacts are in the CRM. Named by id, never by address. Each comes off this list once its
- * real touch is recorded in the CRM, which then dedupes it by itself.
- */
-export const WRITTEN_OUTSIDE_THE_CRM: ReadonlySet<string> = new Set([
-  'e65ba437-cc9f-4b87-84d9-54b64559a4b1', // African Music and Cultural Festival (Lawal's own correspondence since October)
-  'd55b0beb-eb52-4ae6-bb89-e72a6e95bcc8', // Nigerian Society of VIC
-])
 
 export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promise<DailyTwenty> {
   const todayInMelbourne = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(now)
@@ -46,7 +36,6 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
   const dueOn = new Map(pipeline.filter((p) => p.organiser_id).map((p) => [p.organiser_id as string, p.next_due_on]))
 
   const grouped = organisers.flatMap((o) => {
-    if (WRITTEN_OUTSIDE_THE_CRM.has(o.id)) return []
     if (!isAcquisitionState(o.acquisition_state)) return []
     const group = groupOf(o.acquisition_state, dueOn.get(o.id) ?? null, todayInMelbourne)
     return group ? [{ ...o, state: o.acquisition_state, group }] : []
@@ -79,8 +68,11 @@ export async function readDailyTwenty(db: Admin, now: Date = new Date()): Promis
   for (const o of grouped) {
     const score = scores.get(o.id)
     if (score === 'stopped') continue
+    const own = contacts.filter((x) => x.organiser_id === o.id)
+    // Lawal already wrote to them outside the CRM (the PM's 11:58 of 12 November): never a cold first message again.
+    if (own.some((c) => c.channel === 'email' && writtenBefore(c.address))) continue
     const theirs: StoredContact[] = []
-    for (const c of contacts.filter((x) => x.organiser_id === o.id)) {
+    for (const c of own) {
       const refusal = o.state === 'expired' ? EXPIRED_REFUSAL : await contactRefusal(db, c.id)
       theirs.push({ id: c.id, channel: c.channel, address: c.address, personName: c.person_name, refusal })
     }

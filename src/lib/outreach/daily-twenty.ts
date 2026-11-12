@@ -11,7 +11,10 @@
  *
  * Rules, each pinned by tests/unit/outreach/daily-twenty.test.ts:
  *   - five of each group at most; a short group stays short and says how many it is short, never topped up from
- *     another group, so the day keeps the plan's shape;
+ *     another group, so the day keeps the plan's shape; the places they leave empty are filled, in a fifth group of
+ *     their own, with the next first asks (Lawal, 12 November 2026, 11:11: "20 organisers from the CRM, Melbourne
+ *     first, ranked by the score, 5 of them conversion asks"), first messages that ask their advice, so the day is
+ *     twenty organisers while nobody has yet been written to;
  *   - one action per organiser a day, across every group: a follow up first (a conversation already open), then a
  *     conversion ask, then the recurring and the partnership groups; every dropped duplicate is counted;
  *   - within a group, Melbourne first, then the other big cities, then the regional cities (cityRank, Lawal's 12 November
@@ -38,6 +41,11 @@ export const DAILY_TWENTY_GROUPS = [
 ] as const
 
 export type DailyGroup = (typeof DAILY_TWENTY_GROUPS)[number]['key']
+
+/** The fifth group: first asks beyond the five conversion asks, filling only the places the four leave short. */
+export const FIRST_CONTACT_GROUP = { key: 'first_contact', words: 'First messages, asking their advice' } as const
+export const DAILY_TWENTY_SIZE = 20
+export type DailyGroupKey = DailyGroup | (typeof FIRST_CONTACT_GROUP)['key']
 
 /** Which group wins when one organiser is a candidate in two: an open conversation first. */
 const PRIORITY: Readonly<Record<DailyGroup, number>> = { follow_up: 0, conversion: 1, recurring: 2, partnership_reactivation: 3 }
@@ -71,7 +79,7 @@ export interface DailyCandidate {
 export interface DailyAction {
   readonly organiserId: string
   readonly organiserName: string
-  readonly group: DailyGroup
+  readonly group: DailyGroupKey
   readonly score: number
   readonly city: string | null
   /** The contact the message goes to, so its held draft can be shown beside it. */
@@ -83,7 +91,7 @@ export interface DailyAction {
 }
 
 export interface DailyGroupResult {
-  readonly key: DailyGroup
+  readonly key: DailyGroupKey
   readonly words: string
   readonly size: number
   readonly actions: readonly DailyAction[]
@@ -142,29 +150,40 @@ export function buildDailyTwenty(candidates: readonly DailyCandidate[]): DailyTw
     else research.push({ organiserId: c.organiserId, organiserName: c.organiserName, because })
   }
 
-  const groups = DAILY_TWENTY_GROUPS.map((g) => {
+  const toAction = (c: DailyCandidate, group: DailyGroupKey): DailyAction[] => {
+    const contact = c.contact
+    if (!contact) return []
+    return [{
+      organiserId: c.organiserId,
+      organiserName: c.organiserName,
+      group,
+      score: c.score,
+      city: c.city ?? null,
+      contactId: contact.id ?? null,
+      why: c.why,
+      channel: contact.channel,
+      address: contact.address,
+      sender: DAILY_TWENTY_SENDER,
+    }]
+  }
+  const groups: DailyGroupResult[] = DAILY_TWENTY_GROUPS.map((g) => {
     const actions = messageable
       .filter((c) => c.group === g.key)
       .sort(byRank)
       .slice(0, g.size)
-      .flatMap((c) => {
-        const contact = c.contact
-        if (!contact) return []
-        return [{
-          organiserId: c.organiserId,
-          organiserName: c.organiserName,
-          group: c.group,
-          score: c.score,
-          city: c.city ?? null,
-          contactId: contact.id ?? null,
-          why: c.why,
-          channel: contact.channel,
-          address: contact.address,
-          sender: DAILY_TWENTY_SENDER,
-        }]
-      })
+      .flatMap((c) => toAction(c, c.group))
     return { key: g.key, words: g.words, size: g.size, actions, short: g.size - actions.length }
   })
+  const open = DAILY_TWENTY_SIZE - groups.reduce((n, g) => n + g.actions.length, 0)
+  if (open > 0) {
+    const taken = new Set(groups.flatMap((g) => g.actions.map((a) => a.organiserId)))
+    const next = messageable
+      .filter((c) => c.group === 'conversion' && !taken.has(c.organiserId))
+      .sort(byRank)
+      .slice(0, open)
+      .flatMap((c) => toAction(c, FIRST_CONTACT_GROUP.key))
+    if (next.length > 0) groups.push({ key: FIRST_CONTACT_GROUP.key, words: FIRST_CONTACT_GROUP.words, size: open, actions: next, short: open - next.length })
+  }
 
   const byName = (a: { organiserName: string; organiserId: string }, b: { organiserName: string; organiserId: string }) =>
     a.organiserName.localeCompare(b.organiserName) || a.organiserId.localeCompare(b.organiserId)

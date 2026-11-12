@@ -139,9 +139,13 @@ export function fillTemplate(text: string, fields: Record<string, string | null 
   })
 }
 
-/** The unsubscribe line every email ends with. */
+/**
+ * The unsubscribe line every email ends with: Lawal's own words from his sent mail (VOICE-EVENTLINQS.md), which the
+ * communication gateway requires of a first message (voice-gate.ts OPT_OUT). Until 12 November 2026 it read "If you'd
+ * rather not hear from me again", so every templated draft failed the gateway at the Sent press.
+ */
 export function unsubscribeLine(unsubscribeUrl: string): string {
-  return `If you'd rather not hear from me again, unsubscribe here: ${unsubscribeUrl}`
+  return `If you'd rather I didn't write again, just reply and say so, or unsubscribe here: ${unsubscribeUrl}`
 }
 
 /** The email closing: the template's own sign-off line, then the signature, then the unsubscribe line. */
