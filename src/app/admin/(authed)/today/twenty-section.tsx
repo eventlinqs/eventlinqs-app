@@ -128,7 +128,7 @@ export function SentRecentlySection({ view }: { view: { ok: true; v: readonly Se
               <li key={s.touchId} data-sent={s.touchId} className="py-4">
                 <p className="text-sm font-semibold text-white">
                   {s.organiserName}
-                  <span className="font-normal text-white/60"> | message {s.step} sent {formatPlatformDateTime(s.sentAt)}</span>
+                  <span className="font-normal text-white/60"> | {s.step === null ? 'a message' : `message ${s.step}`} sent {formatPlatformDateTime(s.sentAt)}</span>
                 </p>
                 <p className="mt-1 text-xs text-white/60 [overflow-wrap:anywhere]">To {s.address}</p>
                 <form action={logReplyAction} className="mt-3 flex flex-wrap items-center gap-2">

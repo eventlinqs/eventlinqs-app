@@ -100,7 +100,8 @@ export interface SentRecent {
   readonly contactId: string
   readonly organiserName: string
   readonly address: string
-  readonly step: number
+  /** The cadence step, 1 to 3; null for a message outside the cadence (outreach_touches.step). */
+  readonly step: number | null
   readonly sentAt: string
 }
 
