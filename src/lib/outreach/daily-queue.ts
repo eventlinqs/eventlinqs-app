@@ -31,6 +31,16 @@ type HeldRow = {
 }
 
 export async function readDailyQueue(db: Admin, now: Date): Promise<QueueChannel[]> {
+  const { touches, sentToday } = await readHeldTouches(db, now)
+  return buildDailyQueue(touches, sentToday)
+}
+
+/**
+ * Every held draft, judged by the gateway and the database's refusal, with the contact it goes to; and what each channel
+ * has sent today. The daily queue (/admin/acquisition) caps it per channel; the Command Centre's twenty (/admin/today)
+ * shows each beside its organiser. One reading of the drafts for both.
+ */
+export async function readHeldTouches(db: Admin, now: Date): Promise<{ touches: QueueTouch[]; sentToday: Partial<Record<ContactChannel, number>> }> {
   // The communication gateway's policy; unreadable means the queue is not shown at all (POLICY_UNAVAILABLE, stop).
   const policy = readVoicePolicy()
   const dayStart = melbourneDayStart(now, 0).toISOString()
@@ -83,6 +93,7 @@ export async function readDailyQueue(db: Admin, now: Date): Promise<QueueChannel
     })
     touches.push({
       touchId: r.id,
+      contactId: r.contact_id,
       step: r.step,
       purpose: r.purpose,
       heldBecause: r.held_because ?? [],
@@ -103,7 +114,7 @@ export async function readDailyQueue(db: Admin, now: Date): Promise<QueueChannel
     const ch = r.organiser_contacts?.channel as ContactChannel | undefined
     if (ch) sentToday[ch] = (sentToday[ch] ?? 0) + 1
   }
-  return buildDailyQueue(touches, sentToday)
+  return { touches, sentToday }
 }
 
 /** One held message as the gateway reads it, from what is stored now: the Sent press judges these words, never the page's. */

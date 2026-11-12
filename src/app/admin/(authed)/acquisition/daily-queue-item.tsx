@@ -22,7 +22,10 @@ export function DailyQueueItem({
   openHref,
   openLabel,
   action,
+  from,
 }: {
+  /** Where Sent returns: the Command Centre's twenty ('today'), else this page. */
+  from?: 'today'
   touchId: string
   /** The exact words shown, so Sent approves these and no others (voice-gate.ts). */
   contentHash: string
@@ -59,6 +62,7 @@ export function DailyQueueItem({
         <input type="hidden" name="touch" value={touchId} />
         <input type="hidden" name="contentHash" value={contentHash} />
         <input type="hidden" name="policyVersion" value={policyVersion} />
+        {from ? <input type="hidden" name="from" value={from} /> : null}
         <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-white/80">
           <input type="checkbox" name="checked" required className="h-5 w-5 shrink-0" />
           I opened their page and it says nothing against messages.

@@ -11,6 +11,8 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 import { readPlanGates } from '@/lib/growth/plan-gates'
+import { readTwentyView } from '@/lib/outreach/twenty-view'
+import { TwentySection } from './twenty-section'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -31,7 +33,9 @@ export const metadata = {
  * measures. The rules are in src/lib/admin/founder-dashboard-math.ts (byException, rhythm) and the figures in
  * founder-dashboard.ts. The weekly figures in full stay on /admin/growth.
  */
-export default async function AdminTodayPage() {
+export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
+  // What a press of Sent in the twenty answered (the same words /admin/acquisition shows).
+  const { said } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.dashboard.view')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.today.view', session })
@@ -51,6 +55,11 @@ export default async function AdminTodayPage() {
   // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
   const gates = await readPlanGates(now).then(
     (g) => ({ ok: true as const, g }),
+    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+  )
+  // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
+  const twenty = await readTwentyView(createAdminClient(), now).then(
+    (v) => ({ ok: true as const, v }),
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
   )
   const exceptions = byException(dashboard)
@@ -142,6 +151,13 @@ export default async function AdminTodayPage() {
           </>
         )}
       </section>
+
+      {said === undefined ? null : (
+        <p role="status" data-said className="mb-4 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+          {said}
+        </p>
+      )}
+      <TwentySection view={twenty} />
 
       {queue.sections.map((section) => (
         <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">

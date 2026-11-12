@@ -79,4 +79,18 @@ describe('the daily twenty', () => {
     const input = [...many('conversion', 6), ...many('recurring', 6)]
     expect(buildDailyTwenty([...input].reverse())).toEqual(buildDailyTwenty(input))
   })
+
+  // Lawal, 12 November 2026, 09:16 and 11:11: "20 organisers from the CRM, Melbourne first, ranked by the score".
+  it('puts Melbourne first, then the other big cities, then the regional cities, then an unknown city; the score orders each', () => {
+    const day = buildDailyTwenty([
+      candidate({ organiserId: 'geelong-high', group: 'conversion', score: 99, city: 'geelong' }),
+      candidate({ organiserId: 'nowhere', group: 'conversion', score: 98, city: null }),
+      candidate({ organiserId: 'melbourne-low', group: 'conversion', score: 40, city: 'melbourne' }),
+      candidate({ organiserId: 'sydney', group: 'conversion', score: 90, city: 'sydney' }),
+      candidate({ organiserId: 'melbourne-high', group: 'conversion', score: 80, city: 'melbourne' }),
+    ])
+    const conversion = day.groups.find((g) => g.key === 'conversion')
+    expect(conversion?.actions.map((a) => a.organiserId)).toEqual(['melbourne-high', 'melbourne-low', 'sydney', 'geelong-high', 'nowhere'])
+    expect(conversion?.actions[0].city).toBe('melbourne')
+  })
 })

@@ -59,7 +59,8 @@ describe('the contact an action goes to', () => {
   })
   test('with no contact eligible, the best one comes back with the database refusal, so the day can say why', () => {
     const picked = contactFor([c('a', 'email', 'info@venue.example', 'refused: no basis recorded')], null)
-    expect(picked).toEqual({ channel: 'email', address: 'info@venue.example', eligible: false, refusal: 'refused: no basis recorded' })
+    // The contact's id rides along, so the Command Centre's twenty can show the draft written to it (12 November 2026).
+    expect(picked).toEqual({ id: 'a', channel: 'email', address: 'info@venue.example', eligible: false, refusal: 'refused: no basis recorded' })
     expect(contactFor([], null)).toBeNull()
   })
 })

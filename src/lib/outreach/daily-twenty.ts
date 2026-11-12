@@ -14,7 +14,8 @@
  *     another group, so the day keeps the plan's shape;
  *   - one action per organiser a day, across every group: a follow up first (a conversation already open), then a
  *     conversion ask, then the recurring and the partnership groups; every dropped duplicate is counted;
- *   - within a group, the highest score first, then the organiser's name, then its id, so the same input is the same
+ *   - within a group, Melbourne first, then the other big cities, then the regional cities (cityRank, Lawal's 12 November
+ *     2026), and inside each the highest score first, then the organiser's name, then its id, so the same input is the same
  *     day whatever order it arrives in;
  *   - a candidate whose contact is missing or not eligible is never a message: with a public social handle it is a
  *     social first touch (tagging them in a city post needs no email consent), otherwise research;
@@ -42,6 +43,8 @@ export type DailyGroup = (typeof DAILY_TWENTY_GROUPS)[number]['key']
 const PRIORITY: Readonly<Record<DailyGroup, number>> = { follow_up: 0, conversion: 1, recurring: 2, partnership_reactivation: 3 }
 
 export interface DailyContact {
+  /** The stored contact's id, so the Command Centre can show the held draft written to it; absent in a hand made case. */
+  readonly id?: string
   readonly channel: string
   readonly address: string
   /** The database's own answer (outreach_contact_refusal_for is null): eligible to be written to now. */
@@ -56,6 +59,8 @@ export interface DailyCandidate {
   readonly group: DailyGroup
   /** The prioritisation score (item 4's open formula); higher first. */
   readonly score: number
+  /** The organiser's city as a slug (./organiser-score-read.ts), or null where none is known: Melbourne first. */
+  readonly city?: string | null
   /** Why this organiser is a candidate today, shown beside the action. */
   readonly why: string
   readonly contact: DailyContact | null
@@ -68,6 +73,9 @@ export interface DailyAction {
   readonly organiserName: string
   readonly group: DailyGroup
   readonly score: number
+  readonly city: string | null
+  /** The contact the message goes to, so its held draft can be shown beside it. */
+  readonly contactId: string | null
   readonly why: string
   readonly channel: string
   readonly address: string
@@ -89,8 +97,23 @@ export interface DailyTwenty {
   readonly duplicatesDropped: number
 }
 
+/** The other big Australian cities (growth plan version 6's outreach order); every other known city is regional. */
+export const BIG_CITIES: readonly string[] = ['sydney', 'brisbane', 'perth', 'adelaide', 'canberra', 'gold-coast', 'hobart', 'darwin']
+
+/**
+ * MELBOURNE FIRST (Lawal, 12 November 2026, 09:16 to 09:19, and 11:11: "20 organisers from the CRM, Melbourne first,
+ * ranked by the score"; growth plan version 6): Melbourne, then the other big cities, then the regional cities, then an
+ * organiser whose city is not known; the score orders each.
+ */
+export function cityRank(city: string | null | undefined): number {
+  const slug = (city ?? '').trim().toLowerCase()
+  if (slug === 'melbourne') return 0
+  if (BIG_CITIES.includes(slug)) return 1
+  return slug ? 2 : 3
+}
+
 function byRank(a: DailyCandidate, b: DailyCandidate): number {
-  return b.score - a.score || a.organiserName.localeCompare(b.organiserName) || a.organiserId.localeCompare(b.organiserId)
+  return cityRank(a.city) - cityRank(b.city) || b.score - a.score || a.organiserName.localeCompare(b.organiserName) || a.organiserId.localeCompare(b.organiserId)
 }
 
 export function buildDailyTwenty(candidates: readonly DailyCandidate[]): DailyTwenty {
@@ -132,6 +155,8 @@ export function buildDailyTwenty(candidates: readonly DailyCandidate[]): DailyTw
           organiserName: c.organiserName,
           group: c.group,
           score: c.score,
+          city: c.city ?? null,
+          contactId: contact.id ?? null,
           why: c.why,
           channel: contact.channel,
           address: contact.address,
@@ -208,7 +233,7 @@ const CHANNEL_ORDER = ['email', 'website_form', 'instagram', 'facebook']
  * why it became a social first touch or research.
  */
 export function contactFor(contacts: readonly StoredContact[], conversationContactId: string | null): DailyContact | null {
-  const as = (c: StoredContact): DailyContact => ({ channel: c.channel, address: c.address, eligible: c.refusal === null, refusal: c.refusal })
+  const as = (c: StoredContact): DailyContact => ({ id: c.id, channel: c.channel, address: c.address, eligible: c.refusal === null, refusal: c.refusal })
   const running = contacts.find((c) => c.id === conversationContactId && c.refusal === null)
   if (running) return as(running)
   const ranked = [...contacts].sort((a, b) => {

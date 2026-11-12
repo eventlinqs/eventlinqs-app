@@ -29,6 +29,8 @@ export const CHANNEL_WORDS: Readonly<Record<ContactChannel, string>> = {
 
 export interface QueueTouch {
   readonly touchId: string
+  /** The contact it is written to, so the Command Centre's twenty can show it beside its organiser. */
+  readonly contactId?: string
   /** The cadence step; null for a reply or a relationship message. */
   readonly step: number | null
   readonly purpose: string
