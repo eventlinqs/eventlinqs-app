@@ -1,4 +1,4 @@
-import { wallClockToIso, type FoundEvent } from './collect'
+import { eventsFromHtml, wallClockToIso, type FoundEvent } from './collect'
 import type { PageRule } from './page-rules'
 import { RESTRICTED_TIER } from './open-tier'
 
@@ -209,4 +209,18 @@ export const sailorsRest: PageRule = {
   },
 }
 
-export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest]
+/**
+ * LOVE CENTRAL GEELONG (centralgeelong.com.au, central Geelong's own events guide: Pako Festa, the Geelong Revival, the
+ * Pier music summer concerts and more). Read 13 November 2026 by the polite reader: robots.txt allows its pages (its
+ * content signals: search yes, AI training no, use reference; listing facts with a link back is search use, and nothing
+ * here trains anything); no terms page restricts reuse. Its own sitemap (events-sitemap.xml) lists each event page under
+ * /events/, and each carries schema.org Event data, so the rule is the collector's own JSON-LD reader (as Comedy
+ * Republic's). Facts only, as every source.
+ */
+export const centralGeelong: PageRule = {
+  host: 'centralgeelong.com.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read: (html, pageUrl) => eventsFromHtml(html, pageUrl),
+}
+
+export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest, centralGeelong]
