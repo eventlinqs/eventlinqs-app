@@ -243,6 +243,21 @@ export interface StoredContact {
 /** Why an expired organiser's contacts are not written to again (outreach_touch_is_lawful refuses a fourth step). */
 export const EXPIRED_REFUSAL = 'three messages sent with no reply; a fourth is refused'
 
+/**
+ * Why a conversion organiser is not one of the day's twenty yet (12 November 2026): every first message in Lawal's format
+ * names their next night on EventLinqs (./twenty-letters.ts), so an organiser with none listed cannot be written to in it,
+ * and a place in the twenty spent on them is a place no draft can fill. Read back that day: the twenty took 20 of 70
+ * conversion organisers by rank, most of them with no night here, while Murphy's Geelong, Where You Meet and Friends of
+ * Ballarat Botanical Gardens, each with a night and a lawful email, sat below the cut. They become a social first touch or
+ * research with this reason, and return to the twenty the hour a night of theirs is listed.
+ */
+export const NO_NIGHT_TO_NAME = 'no night of theirs on EventLinqs to name yet'
+
+/** The contact as the day must treat it when the organiser has no night to name: not written to, with the reason. */
+export function withoutANightToName(contact: DailyContact | null): DailyContact | null {
+  return contact ? { ...contact, eligible: false, refusal: NO_NIGHT_TO_NAME } : null
+}
+
 const CHANNEL_ORDER = ['email', 'website_form', 'instagram', 'facebook']
 
 /**
