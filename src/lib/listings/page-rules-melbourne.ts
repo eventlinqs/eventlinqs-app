@@ -506,7 +506,7 @@ export const memoMusicHall: PageRule = {
  * its pages; no terms page restricts reuse; no schema.org Event data. Its own sitemap (wp-sitemap-posts-cherry_event-1.xml)
  * lists its current shows under /events/. Each page has one h1 (the show, often ending with its own short date, ', SAT
  * DEC 12th', which is dropped as the date is kept apart), 'Starts Saturday 12 December 2026 . 8:00pm' and 'Finishes
- * Saturday 12 December 2026 . 11:00pm', and where tickets are sold a link to the seller ('Get tickets on Eventbrite').
+ * Saturday 12 December 2026 . 11:00pm', and where tickets are sold a link to its seller.
  * Its street is in its own page header. Facts only; no price is stated on the page, so none is taken.
  */
 const CHERRY_WHEN = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})\D{1,6}?(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
@@ -531,7 +531,16 @@ export const cherryBar: PageRule = {
     const startsAt = at(starts?.[1])
     if (!title || !startsAt) return []
     const endsAt = at(finishes?.[1])
-    const seller = /<a\b[^>]*href="(https:\/\/(?:www\.)?eventbrite\.[^"]+)"/i.exec(html)
+    // Its seller: the first link to a ticketing platform booking-links.ts names (the one table of platform names), never
+    // its own pages or another site.
+    let seller: string | null = null
+    for (const m of html.matchAll(/href="(https:\/\/[^"]+)"/gi)) {
+      const url = decode(m[1])
+      if (!['other', 'venue', 'organiser_site'].includes(providerOf(url))) {
+        seller = url
+        break
+      }
+    }
     return [{
       title,
       startsAt,
@@ -542,7 +551,7 @@ export const cherryBar: PageRule = {
       pageUrl,
       imageUrl: null,
       description: null,
-      links: [{ url: seller ? decode(seller[1]) : pageUrl, availability: 'on_sale', priceFromCents: null }],
+      links: [{ url: seller ?? pageUrl, availability: 'on_sale', priceFromCents: null }],
       timeStatus: 'exact',
       timeFromWords: true,
     }]
