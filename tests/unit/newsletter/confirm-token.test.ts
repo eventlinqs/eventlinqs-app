@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   CONFIRM_LINK_DAYS,
   openConfirmRequest,
@@ -68,10 +68,23 @@ describe('the sealed confirmation link', () => {
 })
 
 describe('the key', () => {
-  it('comes from ORDER_ACCESS_SECRET; production without it has none, so no link is ever sent unopenable', () => {
-    expect(resolveConfirmSecret({ ORDER_ACCESS_SECRET: 's3', NODE_ENV: 'production' })).toBe('s3')
-    expect(resolveConfirmSecret({ NODE_ENV: 'production' })).toBeNull()
-    expect(resolveConfirmSecret({ ORDER_ACCESS_SECRET: '  ', NODE_ENV: 'production' })).toBeNull()
-    expect(resolveConfirmSecret({ NODE_ENV: 'test' })).toBeTruthy()
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('comes from ORDER_ACCESS_SECRET through its one reader; production without it has none, so no link is sent unopenable', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('ORDER_ACCESS_SECRET', 's3')
+    expect(resolveConfirmSecret()).toBe('s3')
+    vi.stubEnv('ORDER_ACCESS_SECRET', '  ')
+    expect(resolveConfirmSecret()).toBeNull()
+    vi.stubEnv('ORDER_ACCESS_SECRET', '')
+    expect(resolveConfirmSecret()).toBeNull()
+  })
+
+  it('outside production a development key stands in, so the flow can be walked locally', () => {
+    vi.stubEnv('NODE_ENV', 'test')
+    vi.stubEnv('ORDER_ACCESS_SECRET', '')
+    expect(resolveConfirmSecret()).toBeTruthy()
   })
 })

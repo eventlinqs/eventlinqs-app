@@ -20,6 +20,7 @@ import { wrap as moneyNotice } from '@/lib/notifications/organiser-money-notify'
 import { buildSaleEmail } from '@/lib/notifications/organiser-sale-notify'
 import { buildDigestEmail as buildSalesDigestEmail } from '@/lib/notifications/organiser-sales-digest'
 import { claimEmail } from '@/lib/listings/claim'
+import { confirmationEmail } from '@/lib/newsletter/confirmation-email'
 import { buildKitEmail } from '@/lib/launch/kit-email'
 import { compose, composeOffer } from '@/lib/fillrate/message'
 import { buildEmail as buildPayoutEmail } from '@/lib/payouts/email'
@@ -172,6 +173,9 @@ const RENDERS: Record<string, Record<string, () => Rendered>> = {
   },
   'src/lib/listings/claim.ts': {
     'listing claim code': () => claimEmail({ hostName: "Beav's Bar", claimantName: 'Sam', claimantRole: 'Manager', code: '042917' }),
+  },
+  'src/lib/newsletter/confirmation-email.ts': {
+    'city guide confirmation': () => confirmationEmail({ cityName: 'Melbourne', url: URL }),
   },
   'src/lib/launch/kit-email.ts': {
     'launch kit': () => buildKitEmail({ title: 'Gala', url: URL }),

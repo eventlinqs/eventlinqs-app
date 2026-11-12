@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { orderAccessSecret } from '@/lib/orders/order-access'
 
 /**
  * THE CITY GUIDE'S CONFIRMATION LINK (Release 2, item 8 of the Growth OS order: "the weekly email editions for Geelong
@@ -18,7 +19,6 @@ export const CONFIRM_LINK_DAYS = 7
 const VERSION = 1
 const KEY_LABEL = 'eventlinqs:newsletter-confirmation:aes-256-gcm:v1'
 const AAD = Buffer.from('newsletter-confirm:v1', 'utf8')
-const DEV_FALLBACK_SECRET = 'eventlinqs-dev-only-newsletter-confirm-secret'
 
 export interface ConfirmRequest {
   /** Normalised (trimmed, lower case). */
@@ -36,11 +36,9 @@ function keyFrom(secret: string): Buffer {
   return crypto.createHmac('sha256', secret).update(KEY_LABEL, 'utf8').digest()
 }
 
-export function resolveConfirmSecret(env: Record<string, string | undefined> = process.env): string | null {
-  const fromEnv = env.ORDER_ACCESS_SECRET
-  if (fromEnv && fromEnv.trim().length > 0) return fromEnv
-  if (env.NODE_ENV === 'production') return null
-  return DEV_FALLBACK_SECRET
+/** The one reading of ORDER_ACCESS_SECRET (src/lib/orders/order-access.ts); null in production without it. */
+export function resolveConfirmSecret(): string | null {
+  return orderAccessSecret()
 }
 
 export function sealConfirmRequest(request: ConfirmRequest, secret: string): string {

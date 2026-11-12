@@ -13,6 +13,7 @@
     "src/lib/launch/kit-email.ts",
     "src/lib/listings/claim.ts",
     "src/lib/marketplace/notify.ts",
+    "src/lib/newsletter/confirmation-email.ts",
     "src/lib/notifications/dispatch.ts",
     "src/lib/notifications/organiser-event-notify.ts",
     "src/lib/notifications/organiser-money-notify.ts",
