@@ -4,7 +4,9 @@ import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readDailyTwenty } from './daily-twenty-read'
-import { draftFromTemplate } from './drafts'
+import { voidTouch } from './crm'
+import { draftFromTemplate, type DraftRequest } from './drafts'
+import { photoPath } from './photo-link'
 import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight, type TwentyLetter } from './twenty-letters'
 
 /**
@@ -33,6 +35,10 @@ export type TwentyDrafted =
       readonly state: 'drafted'
       readonly letters: readonly string[]
       readonly drafted: number
+      /** Held drafts on an older version of a letter, set aside and drafted again in its current words. */
+      readonly redrafted: number
+      /** Old held first messages on another of the organiser's contacts, set aside for the twenty's letter. */
+      readonly setAside: number
       readonly waiting: number
       readonly held: readonly { readonly organiser: string; readonly why: string }[]
       readonly skipped: readonly { readonly organiser: string; readonly why: string }[]
@@ -119,9 +125,26 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
   // The platform's own listings organisation is never written to (src/lib/growth/platform-organiser.ts); the twenty
   // already leaves it out, and the drafter says so again before it reads any organiser.
   const platform = await readPlatformOrganiserIds(db)
-  const waitingRows = await db.from('outreach_touches').select('contact_id').in('state', ['held', 'queued', 'sending'])
+  // The newest version of each twenty letter: a draft still held on an older one is voided and drafted again, so every
+  // draft Lawal sees carries the letter's current words (version 2 added the photo link, 12 November 2026).
+  const newest = new Map<string, number>()
+  for (const letter of TWENTY_LETTERS) {
+    const v = await db.from('outreach_templates').select('version').eq('key', letter.key).order('version', { ascending: false }).limit(1).maybeSingle()
+    if (v.error) throw new Error(`the template ${letter.key} could not be read: ${v.error.message}`)
+    if (v.data) newest.set(letter.key, v.data.version as number)
+  }
+  const waitingRows = await db.from('outreach_touches').select('id, contact_id, state, outreach_templates(key, version)').in('state', ['held', 'queued', 'sending'])
   if (waitingRows.error) throw new Error(`the messages waiting could not be read: ${waitingRows.error.message}`)
-  const waitingFor = new Set((waitingRows.data ?? []).map((t) => t.contact_id as string))
+  const waitingFor = new Set<string>()
+  const stale = new Map<string, string>()
+  for (const t of waitingRows.data ?? []) {
+    const tp = t.outreach_templates as unknown as { key: string; version: number } | null
+    const old = t.state === 'held' && tp !== null && newest.has(tp.key) && tp.version < (newest.get(tp.key) as number)
+    if (old) stale.set(t.contact_id as string, t.id as string)
+    else waitingFor.add(t.contact_id as string)
+  }
+  let redrafted = 0
+  let setAside = 0
 
   const held: { organiser: string; why: string }[] = []
   const skipped: { organiser: string; why: string }[] = []
@@ -145,7 +168,7 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
       }
       const [org, contact] = await Promise.all([
         db.from('organisers').select('id, organisation_id').eq('id', a.organiserId).single(),
-        db.from('organiser_contacts').select('person_name').eq('id', a.contactId).single(),
+        db.from('organiser_contacts').select('person_name, unsubscribe_token').eq('id', a.contactId).single(),
       ])
       if (org.error || contact.error) {
         skipped.push({ organiser: a.organiserName, why: `could not be read: ${(org.error ?? contact.error)?.message}` })
@@ -157,16 +180,51 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         continue
       }
       const letter = letterFor(group.key, night)
-      const done = await draftFromTemplate(db, {
+      const staleId = stale.get(a.contactId)
+      if (staleId) {
+        const voided = await voidTouch(db, { touchId: staleId, reason: 'The letter has a newer version; drafted again in its current words.' })
+        if (voided.state === 'refused') {
+          refused.push({ organiser: a.organiserName, why: `the older draft could not be set aside: ${voided.reason}` })
+          continue
+        }
+        redrafted += 1
+      }
+      const token = contact.data.unsubscribe_token as string | null
+      const request: DraftRequest = {
         contactId: a.contactId,
         templateKey: letter.key,
         purpose: 'cadence',
         step: 1,
-        extraFields: letterFields({ organiserName: a.organiserName, personName: contact.data.person_name, night }),
+        extraFields: letterFields({
+          organiserName: a.organiserName,
+          personName: contact.data.person_name,
+          night,
+          photoLink: token ? `${input.origin.replace(/\/+$/, '')}${photoPath(a.contactId, token)}` : null,
+        }),
         scheduledFor: input.now,
         origin: input.origin,
         draftedBy: founder.id,
-      })
+      }
+      let done = await draftFromTemplate(db, request)
+      // An old first message still held on another of their contacts (the 22 Instagram, Facebook and form drafts of 30
+      // October, never sent, which the gateway refuses for want of the closing and signature) blocks this one: the
+      // database allows one conversation per organiser. For the day's twenty it is set aside, voided with its reason and
+      // kept, and the letter is drafted once more.
+      if (done.state === 'refused' && /already being contacted through/i.test(done.reason)) {
+        const others = await db
+          .from('outreach_touches')
+          .select('id, organiser_contacts!inner(organiser_id)')
+          .eq('state', 'held')
+          .eq('purpose', 'cadence')
+          .neq('contact_id', a.contactId)
+          .eq('organiser_contacts.organiser_id', a.organiserId)
+        if (others.error) throw new Error(`their other drafts could not be read: ${others.error.message}`)
+        for (const t of others.data ?? []) {
+          const v = await voidTouch(db, { touchId: t.id as string, reason: "Set aside for the day's twenty, which writes to them by email in Lawal's format (12 November 2026)." })
+          if (v.state === 'done') setAside += 1
+        }
+        done = await draftFromTemplate(db, request)
+      }
       if (done.state === 'refused') refused.push({ organiser: a.organiserName, why: done.reason })
       else if (done.value.heldBecause.length > 0) {
         drafted += 1
@@ -174,5 +232,5 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
       } else drafted += 1
     }
   }
-  return { state: 'drafted', letters, drafted, waiting, held, skipped, refused }
+  return { state: 'drafted', letters, drafted, redrafted, setAside, waiting, held, skipped, refused }
 }
