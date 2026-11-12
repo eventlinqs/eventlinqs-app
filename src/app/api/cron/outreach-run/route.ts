@@ -9,7 +9,8 @@ import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
 import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
-import { syncSentItems } from '@/lib/outreach/sent-sync'
+import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-ups'
+import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
 
 /**
@@ -100,8 +101,9 @@ export async function GET(request: NextRequest) {
     // messages drafted HELD in his October format from verified rows (src/lib/outreach/twenty-drafts.ts), in the first
     // run of each hour only, so the twenty is read 24 times a day, not 96. Nothing is sent; a failure is reported and
     // logged and never stops the run above.
-    let twenty: unknown = 'not drafted in this run: the first run of each hour drafts'
+    let twenty: unknown = 'not drafted in this run: the first run of each hour drafts'
     let spotlight: unknown = 'not drafted in this run: the first run of each hour drafts'
+    let followUps: unknown = 'not drafted in this run: the first run of each hour drafts'
     if (now.getUTCMinutes() < 15) {
       try {
         twenty = await draftTheTwenty(db, { now, origin })
@@ -120,6 +122,16 @@ export async function GET(request: NextRequest) {
         console.error('[cron/outreach-run] the spotlight not drafted:', message)
         spotlight = { error: message }
       }
+      // The twenty's follow ups the same hour (src/lib/outreach/follow-ups.ts; the PM's 19:56 and 20:21 of 12 November
+      // 2026): day 4 and day 10 letters drafted HELD in each first letter's thread, from rows only. Nothing is sent.
+      try {
+        followUps = { day4: await draftDay4FollowUps(db, { now, origin }), day10: await draftDay10FollowUps(db, { now, origin }) }
+        console.log(`[cron/outreach-run] the follow ups: ${JSON.stringify(followUps)}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] the follow ups not drafted:', message)
+        followUps = { error: message }
+      }
     }
     // LAWAL'S SENT ITEMS (Release 2, item 5): what he sent from the outreach mailbox, recorded on each organiser's
     // timeline (src/lib/outreach/sent-sync.ts). Reading only, so it runs while the sender is on hold too, once Graph can
@@ -135,7 +147,7 @@ export async function GET(request: NextRequest) {
         sentItems = { error: message }
       }
     }
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, sentItems })
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })
