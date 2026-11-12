@@ -62,6 +62,39 @@ export const HUNT_SOURCES: readonly HuntSource[] = [
   { host: 'hermaj.com', citySlug: 'ballarat', venues: ["Her Majesty's Theatre Ballarat", 'Civic Hall Ballarat'], usualCategory: 'theatre' },
 ]
 
+/**
+ * OWN PROGRAMME SOURCES (Lawal's 10:42 of 13 November 2026: capture 'publishes checked nights' with no person in the loop;
+ * read on production at 10:45 that day: 607 upcoming nights captured and waiting for a person, none accepted by a person in
+ * 7 days). A venue's own page listing its own nights, read under its own rule, publishes a new night by the hunt's rule
+ * at the venues named here: only at high confidence, and every law 19 hold kept (a held reason, a start before 9 am in
+ * Melbourne, a likely duplicate, a ticket link that does not reach its seller, an open canary each waits for a person).
+ * Kept apart from HUNT_SOURCES, so the twice daily big event hunt reads exactly what it read before; these are read by the
+ * collection run at their own pace. Each venue's name is as its own pages give it (fold() matches case and punctuation).
+ */
+export const OWN_PROGRAMME_SOURCES: readonly HuntSource[] = [
+  { host: 'comedyrepublic.com.au', citySlug: 'melbourne', venues: ['Comedy Republic'], usualCategory: 'comedy' },
+  { host: 'thecomicslounge.com.au', citySlug: 'melbourne', venues: ["The Comic's Lounge"], usualCategory: 'comedy' },
+  { host: 'melbournecomedyclub.com.au', citySlug: 'melbourne', venues: ['Melbourne Comedy Club'], usualCategory: 'comedy' },
+  { host: 'birdsbasement.com', citySlug: 'melbourne', venues: ["Bird's Basement"], usualCategory: 'music' },
+  { host: 'memomusichall.com.au', citySlug: 'melbourne', venues: ['MEMO Music Hall'], usualCategory: 'music' },
+  { host: 'cherrybar.com.au', citySlug: 'melbourne', venues: ['Cherry Bar'], usualCategory: 'music' },
+  { host: 'thejazzlab.com.au', citySlug: 'melbourne', venues: ['The JazzLab'], usualCategory: 'music' },
+  { host: 'mjc.org.au', citySlug: 'melbourne', venues: ['The JazzLab'], usualCategory: 'music' },
+  { host: 'sailorsrestgeelong.com.au', citySlug: 'geelong', venues: ['Sailors Rest'], usualCategory: 'music' },
+  { host: 'geelonggallery.org.au', citySlug: 'geelong', venues: ['Geelong Gallery'], usualCategory: 'arts-community' },
+]
+
+/** The own programme entry a registered page belongs to, by its host; null for every other source. */
+export function ownProgrammeFor(pageUrl: string): HuntSource | null {
+  let host: string
+  try {
+    host = new URL(pageUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+  return OWN_PROGRAMME_SOURCES.find((h) => h.host === host) ?? null
+}
+
 const MELBOURNE_HOUR = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' })
 
 /**

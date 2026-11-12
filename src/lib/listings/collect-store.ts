@@ -3,7 +3,7 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntCategory, huntDecision, huntFor, huntSummary } from './headline-hunt'
+import { huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
 import { sourceHostOf } from './judge'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
@@ -66,6 +66,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
           citySlug: (s.city_slug as string | null) ?? null,
           hunt: huntFor(s.page_url as string),
+          ownProgramme: ownProgrammeFor(s.page_url as string),
           canary: canaries.get(s.id as string) ?? null,
         }
       })

@@ -774,6 +774,11 @@ export type RegisteredSource = {
   citySlug?: string | null
   /** A headline venue's own What's on page on the daily big event hunt's list (./headline-hunt.ts), else null. */
   hunt?: HuntSource | null
+  /**
+   * A venue's own programme that publishes by the hunt's rule without joining the hunt's schedule (OWN_PROGRAMME_SOURCES,
+   * ./headline-hunt.ts; Lawal's 10:42 of 13 November 2026), else null.
+   */
+  ownProgramme?: HuntSource | null
   /** Its open records canary (LAW 19 section 7.4, ./canary.ts), else null: a rule then publishes only its tenth. */
   canary?: SourceCanary
 }

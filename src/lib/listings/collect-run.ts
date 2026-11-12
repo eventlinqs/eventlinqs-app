@@ -394,14 +394,17 @@ export async function runCollection(
               /* Car 44b (the CONTROLLER's 01:05 of 5 November 2026): 'For review ends for these sources: a public ticketed
                  event from a headline venue's own page is accepted by rule ... only a likely duplicate is held'. A called off
                  show and a midnight start (a time the page likely did not state) are held with it. */
+              /* The rule's venues: the hunt's, or a venue's own programme (OWN_PROGRAMME_SOURCES, Lawal's 10:42 of
+                 13 November 2026), judged by exactly the same holds. */
+              const ruleSource = source.hunt ?? source.ownProgramme ?? null
               const huntAt =
-                source.hunt &&
+                ruleSource &&
                 plan.kind === 'new' &&
                 !reasons.some((r) => (HUNT_HOLDS as readonly string[]).includes(r)) &&
                 /* Car 44c: a start between midnight and 9 am in Melbourne waits for a person (plausibleHuntStart). */
                 plausibleHuntStart(plan.event.startsAt) &&
-                !likelyDuplicate(plan.event, known, source.hunt.citySlug, (iso) => platformDay(new Date(iso)))
-                  ? huntVenue(source.hunt, plan.event.venueName)
+                !likelyDuplicate(plan.event, known, ruleSource.citySlug, (iso) => platformDay(new Date(iso)))
+                  ? huntVenue(ruleSource, plan.event.venueName)
                   : null
               /* ONE PUBLICATION GATE (car 46; LAW 19 section 4; the independent review's gate gap): a hunt night is listed by
                  the rule only at high confidence, through its candidate row, the way the database's own check
@@ -452,7 +455,7 @@ export async function runCollection(
                 /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
                    run asks again. */
                 try {
-                  if (huntAt && source.hunt && store.publishHuntNight) promoted = (await store.publishHuntNight(row, source.hunt, huntAt)) === 'promoted'
+                  if (huntAt && ruleSource && store.publishHuntNight) promoted = (await store.publishHuntNight(row, ruleSource, huntAt)) === 'promoted'
                   else await store.publishPartnerNight(row)
                 } catch (err) {
                   unpublished.push(err instanceof Error ? err.message : String(err))
