@@ -108,7 +108,7 @@ export async function nextNightOf(
   now: Date,
 ): Promise<TheirNight | null> {
   const [n] = await readTheirNights(db, organiser, now, 1)
-  return n ? { title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
+  return n ? { slug: n.slug, title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
 }
 
 /** How long a recorded read of their own page stands before it is read again (a page changes; never a stale line). */
@@ -231,6 +231,7 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         personName: contact.data.person_name,
         night,
         photoLink: token ? `${input.origin.replace(/\/+$/, '')}${photoPath(a.contactId, token)}` : null,
+        origin: input.origin,
       }),
       lineSource: pageEvent ? { url: pageEvent.pageUrl, readOn: pageEvent.readOn } : null,
       scheduledFor: input.now,

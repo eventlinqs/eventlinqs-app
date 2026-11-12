@@ -128,13 +128,14 @@ describe("their own next event, read from their own page", () => {
 })
 
 describe('the own page letter', () => {
-  it('is the advice letter word for word, save the one line, which says where it was read and never that it is listed', () => {
+  it('is the advice letter word for word, save the line about their event (where it was read, never listed) and its photo line', () => {
     const advice = TWENTY_LETTERS.find((l) => l.key === 'twenty_advice')!
     const own = TWENTY_OWN_PAGE.body.split('\n')
     const listed = advice.body.split('\n')
-    expect(own[1]).toBe("I hope you're well. I saw [event] on [event day] at [event place] on your website. You can add your own photos to EventLinqs here, and choose where they're used: [photo link]")
-    expect(own[1]).not.toMatch(/listed on EventLinqs/)
-    expect(own.filter((_, i) => i !== 1)).toEqual(listed.filter((_, i) => i !== 1))
+    expect(own[1]).toBe("I hope you're well. I saw [event] on [event day] at [event place] on your website.")
+    expect(own[2]).toBe("You can add your own photos to EventLinqs here, and choose where they're used: [photo link]")
+    expect(own.join(' ')).not.toMatch(/listed on EventLinqs|\[event link\]/)
+    expect(own.filter((_, i) => i !== 1 && i !== 2)).toEqual(listed.filter((_, i) => i !== 1 && i !== 2))
     expect(TWENTY_OWN_PAGE.subject).toBe(advice.subject)
   })
 })
