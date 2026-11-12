@@ -145,6 +145,8 @@ async function readFrame(frame) {
           e.placeholder ||
           '',
         checked: e.type === 'radio' || e.type === 'checkbox' ? e.checked : undefined,
+        // The question a radio answers, where its own label is only "Yes" or "No" (Stripe's ABN step, 13 November 2026).
+        group: (e.closest('fieldset, [role=radiogroup]')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200),
         options: e.tagName === 'SELECT' ? [...e.options].map(o => ({ v: o.value, t: o.textContent.trim() })).slice(0, 30) : null,
         value: e.value,
       }))
@@ -367,6 +369,12 @@ async function chooseToggle(frame, field) {
   if (!el) return false
 
   if (field.type === 'radio') {
+    // "Does your business have an Australian business number (ABN)?" with radios labelled only Yes and No: answer No.
+    const asksAbn = /business number|\babn\b/i.test(field.group ?? '')
+    if (asksAbn && /^no$/i.test((field.label ?? '').trim())) {
+      await el.check({ timeout: 8000 }).catch(() => {})
+      return true
+    }
     if (/no abn|do not have an abn|don.t have an abn/.test(label)) {
       await el.check({ timeout: 8000 }).catch(() => {})
       return true
