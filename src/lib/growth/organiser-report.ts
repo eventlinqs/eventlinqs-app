@@ -48,6 +48,23 @@ async function endedNights(admin: Admin, now: Date): Promise<EndedNight[]> {
   return all.map((e) => ({ id: e.id, organisationId: e.organisation_id, endDate: e.end_date, isPublic: isPublic.has(e.id), isSeed: e.is_seed_data === true }))
 }
 
+/**
+ * Distinct people who opened a night's listing: the page view rows' visitor, one row per person per day (the demand
+ * route; our own QA drives never write one). The one count for a night's views, read by the night report and by the
+ * twenty's day 4 letter (src/lib/outreach/follow-ups.ts), so the number a letter states is the number the report shows.
+ */
+export async function readNightViewers(eventId: string, admin: Admin = createAdminClient()): Promise<number> {
+  const slots = await readOrThrow('the night ledger slots', () => admin.from('ledger_slots').select('id').eq('source_ref', eventId).limit(20))
+  const slotIds = (slots ?? []).map((sl) => sl.id)
+  const viewRows =
+    slotIds.length === 0
+      ? []
+      : await readEveryRow<{ occurrence_key: string }>('the night page views', (f, t) =>
+          admin.from('ledger_entries').select('occurrence_key').in('slot_id', slotIds).eq('kind', 'demand').eq('demand_action', 'page_view').order('id', { ascending: true }).range(f, t),
+        )
+  return new Set(viewRows.map((r) => r.occurrence_key.split(':')[1]).filter((v) => v !== undefined && v !== '')).size
+}
+
 /** Everything one night's report keeps: item 20's own figures as it reads them, then what this adds. */
 export async function readNightRows(night: { id: string; endDate: string }, admin: Admin = createAdminClient()): Promise<NightRows> {
   const [numbers, reach] = await Promise.all([readWalkInNumbers(night.id), fetchReachSummary(night.id)])
@@ -70,16 +87,7 @@ export async function readNightRows(night: { id: string; endDate: string }, admi
     orders = rows.map((o) => ({ status: o.status, tickets: Array.isArray(o.tickets) ? o.tickets.length : 0 }))
   }
 
-  // Distinct people who opened the listing: the page view rows' visitor, one row per person per day (the demand route).
-  const slots = await readOrThrow('the night ledger slots', () => admin.from('ledger_slots').select('id').eq('source_ref', night.id).limit(20))
-  const slotIds = (slots ?? []).map((sl) => sl.id)
-  const viewRows =
-    slotIds.length === 0
-      ? []
-      : await readEveryRow<{ occurrence_key: string }>('the night page views', (f, t) =>
-          admin.from('ledger_entries').select('occurrence_key').in('slot_id', slotIds).eq('kind', 'demand').eq('demand_action', 'page_view').order('id', { ascending: true }).range(f, t),
-        )
-  const viewers = new Set(viewRows.map((r) => r.occurrence_key.split(':')[1]).filter((v) => v !== undefined && v !== '')).size
+  const viewers = await readNightViewers(night.id, admin)
 
   // The organiser's own link: a partner kit's link minted for this night (social_pieces.share_link_id), its arrivals.
   const kits =
