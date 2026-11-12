@@ -35,6 +35,11 @@ export type DraftRequest = {
   half?: 'a' | 'b' | null
   /** Message 7: the partner's own tracked link the message carries, which also keeps it to one per kit. */
   trackedLink?: string | null
+  /**
+   * The organiser's own page the line about their event was read from, and the date read (organiser_page_events; Lawal,
+   * 13 November 2026, 06:50, ruling 1), kept on the draft like a basis. Null when the line names a night on EventLinqs.
+   */
+  lineSource?: { readonly url: string; readonly readOn: string } | null
   scheduledFor: Date
   origin: string
   draftedBy: string
@@ -90,6 +95,8 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
       night_report_id: r.nightReportId ?? null,
       half: r.half ?? null,
       tracked_link: r.trackedLink ?? null,
+      line_source_url: r.lineSource?.url ?? null,
+      line_read_on: r.lineSource?.readOn ?? null,
       drafted_by: r.draftedBy,
     })
     .select('id')

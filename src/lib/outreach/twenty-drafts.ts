@@ -8,7 +8,7 @@ import { draftFromTemplate, type DraftRequest } from './drafts'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
 import type { TemplateRow } from './rules'
-import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight } from './twenty-letters'
+import { letterFields, letterFor, TWENTY_LETTERS, TWENTY_OWN_PAGE, type TheirNight } from './twenty-letters'
 
 /**
  * TOMORROW'S TWENTY, DRAFTED EVERY DAY FROM VERIFIED ROWS (Lawal, 12 November 2026, 11:11, item 1: "by 07:00 tomorrow
@@ -111,6 +111,43 @@ export async function nextNightOf(
   return n ? { title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
 }
 
+/** How long a recorded read of their own page stands before it is read again (a page changes; never a stale line). */
+export const PAGE_EVENT_FRESH_DAYS = 30
+
+export type PageEvent = TheirNight & { readonly pageUrl: string; readonly readOn: string }
+
+/**
+ * THEIR OWN NEXT EVENT AS READ FROM THEIR OWN PAGE (Lawal, 13 November 2026, 06:50, ruling 1), for an organiser with no
+ * night listed on EventLinqs: the soonest recorded event that has not yet begun (a Melbourne date), read within the
+ * last PAGE_EVENT_FRESH_DAYS days, from public.organiser_page_events. Null where none stands: never invented, never a
+ * past event, never a read older than its window.
+ */
+export async function nextPageEventOf(db: Admin, organiserId: string, now: Date): Promise<PageEvent | null> {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(now)
+  const freshFrom = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(new Date(now.getTime() - PAGE_EVENT_FRESH_DAYS * 86_400_000))
+  const r = await db
+    .from('organiser_page_events')
+    .select('title, starts_on, place, page_url, read_on')
+    .eq('organiser_id', organiserId)
+    .gte('starts_on', today)
+    .gte('read_on', freshFrom)
+    .order('starts_on', { ascending: true })
+    .order('read_on', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (r.error) throw new Error(`their own page's event could not be read: ${r.error.message}`)
+  if (!r.data) return null
+  return {
+    title: r.data.title,
+    startDate: r.data.starts_on,
+    timezone: 'Australia/Melbourne',
+    venueName: r.data.place,
+    isFree: null,
+    pageUrl: r.data.page_url,
+    readOn: r.data.read_on,
+  }
+}
+
 /** Drafts the day's conversion asks and first messages that have no message waiting. */
 export async function draftTheTwenty(db: Admin, input: { readonly now: Date; readonly origin: string }): Promise<TwentyDrafted> {
   const founder = await founderAccount(db)
@@ -160,7 +197,10 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
       skipped.push({ organiser: a.organiserName, why: `could not be read: ${(org.error ?? contact.error)?.message}` })
       return
     }
-    const night = await nextNightOf(db, { id: org.data.id, organisation_id: org.data.organisation_id, website_url: org.data.website_url }, input.now)
+    const listed = await nextNightOf(db, { id: org.data.id, organisation_id: org.data.organisation_id, website_url: org.data.website_url }, input.now)
+    // No night of theirs listed on EventLinqs: their own next event as read from their own page, where one is recorded.
+    const pageEvent = listed ? null : await nextPageEventOf(db, org.data.id, input.now)
+    const night: TheirNight | null = listed ?? pageEvent
     const staleDraft = stale.get(a.contactId)
     if (!night) {
       // A held draft naming a night that is no longer ahead would put a wrong line in front of Lawal: set aside, with why.
@@ -168,10 +208,10 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         const v = await voidTouch(db, { touchId: staleDraft.id, reason: 'No public night of theirs is ahead to name; set aside rather than drafted again.' })
         if (v.state === 'done') setAside += 1
       }
-      skipped.push({ organiser: a.organiserName, why: 'no public night of theirs to name' })
+      skipped.push({ organiser: a.organiserName, why: 'no public night of theirs to name, and no event of theirs recorded from their own page' })
       return
     }
-    const letter = letterFor(groupKey, night)
+    const letter = pageEvent ? TWENTY_OWN_PAGE : letterFor(groupKey, night)
     if (staleDraft) {
       const voided = await voidTouch(db, { touchId: staleDraft.id, reason: 'The letter has a newer version; drafted again in its current words.' })
       if (voided.state === 'refused') {
@@ -192,6 +232,7 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         night,
         photoLink: token ? `${input.origin.replace(/\/+$/, '')}${photoPath(a.contactId, token)}` : null,
       }),
+      lineSource: pageEvent ? { url: pageEvent.pageUrl, readOn: pageEvent.readOn } : null,
       scheduledFor: input.now,
       origin: input.origin,
       draftedBy: founder.id,
