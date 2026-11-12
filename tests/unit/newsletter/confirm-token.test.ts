@@ -26,7 +26,22 @@ const request: ConfirmRequest = {
 describe('the sealed confirmation link', () => {
   it('opens to exactly the request it sealed', () => {
     const token = sealConfirmRequest(request, SECRET)
-    expect(openConfirmRequest(token, SECRET, NOW + 60_000)).toEqual({ ok: true, request })
+    expect(openConfirmRequest(token, SECRET, NOW + 60_000)).toEqual({ ok: true, request: { ...request, kind: 'guide' } })
+  })
+
+  it('says which form asked: the waitlist when sealed so, and the guide panel when no form is named', () => {
+    const waitlist = sealConfirmRequest({ ...request, consentVersion: 'waitlist-v3', source: 'waitlist-page', kind: 'waitlist' }, SECRET)
+    expect(openConfirmRequest(waitlist, SECRET, NOW + 60_000)).toEqual({
+      ok: true,
+      request: { ...request, consentVersion: 'waitlist-v3', source: 'waitlist-page', kind: 'waitlist' },
+    })
+    const unnamed = openConfirmRequest(sealConfirmRequest(request, SECRET), SECRET, NOW + 60_000)
+    expect(unnamed.ok && unnamed.request.kind).toBe('guide')
+  })
+
+  it('refuses a link naming a form it does not know', () => {
+    const token = sealConfirmRequest({ ...request, kind: 'shop' as unknown as 'guide' }, SECRET)
+    expect(openConfirmRequest(token, SECRET, NOW + 60_000)).toEqual({ ok: false, why: 'invalid' })
   })
 
   it('never carries the address readable, in plain or in base64', () => {

@@ -9,8 +9,10 @@ import { isFlagEnabled } from '@/lib/flags'
 import { sendEmail } from '@/lib/email/send'
 import { getRequestOrigin } from '@/lib/site-origin'
 import { buildWaitlistConfirmationEmail } from '@/lib/waitlist/confirmation-email'
+import { resolveConfirmSecret, sealConfirmRequest } from '@/lib/newsletter/confirm-token'
 import {
   CONSENT_VERSION,
+  WAITLIST_DIGEST_CONSENT_VERSION,
   MARKETING_OPT_IN_LABEL,
   WAITLIST_ROLES,
   getWaitlistCities,
@@ -27,7 +29,7 @@ export type JoinWaitlistResult =
       cityName: string
       foundingCandidate: boolean
       role: WaitlistRole
-      /** Whether the confirmation email was accepted by the mail provider. */
+      /** Whether the email carrying the Confirm link was accepted by the mail provider (the alerts start on Confirm). */
       confirmationEmailed: boolean
     }
   | { ok: false; error: string }
@@ -119,9 +121,32 @@ export async function joinCityWaitlist(input: {
   // Confirmation email (transactional: it confirms the signup and DELIVERS
   // the one-click unsubscribe link). Best-effort: a mail failure never voids
   // the join; the UI reports the state honestly either way.
+  //
+  // DOUBLE OPT IN (WINDOW 5A, 12 November 2026, the waitlist car of Release 2): the join records the waitlist row and
+  // nothing more; the alerts start only when the owner of the address presses Confirm on the page its sealed link opens
+  // (src/lib/newsletter/confirm.ts records the waitlist's own wording then). The digest no longer reads a waitlist row
+  // by itself (src/lib/broadcast/digest.ts, WAITLIST_ROWS_REACH_THE_DIGEST).
   let confirmationEmailed = false
+  let confirmLinkMade = false
   try {
     const origin = await getRequestOrigin()
+    const secret = resolveConfirmSecret()
+    const confirmUrl = secret
+      ? `${origin}/subscribe/confirm/${sealConfirmRequest(
+          {
+            email,
+            citySlug,
+            cityName: city.name,
+            consentVersion: WAITLIST_DIGEST_CONSENT_VERSION,
+            source: 'waitlist-page',
+            requestedAt: Date.now(),
+            kind: 'waitlist',
+          },
+          secret,
+        )}`
+      : null
+    confirmLinkMade = confirmUrl !== null
+    if (!confirmUrl) console.error('[waitlist] no confirmation key: the join email carries no Confirm link')
     const message = buildWaitlistConfirmationEmail({
       cityName: city.name,
       fullName,
@@ -129,6 +154,7 @@ export async function joinCityWaitlist(input: {
       foundingCandidate,
       marketingOptIn,
       unsubscribeUrl: `${origin}/waitlist/unsubscribe/${row.unsubscribe_token}`,
+      confirmUrl,
     })
     const { id } = await sendEmail({
       to: email,
@@ -136,7 +162,7 @@ export async function joinCityWaitlist(input: {
       messageType: 'waitlist_place_available',
       recipientRole: 'prospect',
     })
-    confirmationEmailed = true
+    confirmationEmailed = confirmLinkMade
     console.log(`[waitlist] confirmation sent to ${email} (resend id ${id})`)
   } catch (err) {
     console.error('[waitlist] confirmation email failed (join still recorded):', err)

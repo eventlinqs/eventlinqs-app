@@ -19,6 +19,10 @@ import { firstNameOf, greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATU
  * and gold, table-based HTML for broad client support, with a hand-tuned
  * plain-text part for deliverability. Australian English; no competitor
  * named; no exclamation marks.
+ *
+ * DOUBLE OPT IN (WINDOW 5A, 12 November 2026, the waitlist car of Release 2): with a `confirmUrl` the email asks the
+ * owner of the address to press Confirm, and says the alerts start then; the join alone reaches no alert. Without one
+ * (the confirmation key unreadable), it says the Confirm link could not be made, never that the alerts have started.
  */
 export function buildWaitlistConfirmationEmail(input: {
   cityName: string
@@ -27,8 +31,11 @@ export function buildWaitlistConfirmationEmail(input: {
   foundingCandidate: boolean
   unsubscribeUrl: string
   marketingOptIn: boolean
+  /** The sealed Confirm link (src/lib/newsletter/confirm-token.ts); the alerts start only when it is pressed. */
+  confirmUrl?: string | null
 }): { subject: string; html: string; text: string } {
   const { cityName, fullName, role, foundingCandidate, unsubscribeUrl, marketingOptIn } = input
+  const confirmUrl = input.confirmUrl ?? null
   const firstName = firstNameOf(fullName)
   // Env-driven base: reuse the SAME origin as the (already env-driven)
   // unsubscribe link instead of a hardcoded apex domain, so this email always
@@ -40,7 +47,11 @@ export function buildWaitlistConfirmationEmail(input: {
     // keep the canonical default
   }
 
-  const subject = `You are set up for ${cityName} alerts`
+  const subject = confirmUrl ? `Confirm your ${cityName} alerts` : `You are on the ${cityName} list`
+  const headline = confirmUrl ? `Confirm your ${cityName} alerts.` : `You are on the ${cityName} list.`
+  const confirmLine = confirmUrl
+    ? `Press Confirm my alerts so we know this address is yours. Your ${cityName} alerts start then, and this link works for 7 days.`
+    : `We could not make your Confirm link just now, so no alerts will start yet. Join again in a few minutes for a new one.`
 
   const foundingLine =
     foundingCandidate && role === 'organiser'
@@ -51,12 +62,15 @@ export function buildWaitlistConfirmationEmail(input: {
 
   const optInLine = marketingOptIn
     ? 'You also ticked the box for occasional EventLinqs updates: new tools and organiser offers.'
-    : 'You will receive local event alerts and nothing else.'
+    : 'Once you confirm, you will receive local event alerts and nothing else.'
 
   const text = [
     greetingLine(firstName),
     '',
-    `You are set up for ${cityName} alerts.`,
+    headline,
+    '',
+    confirmLine,
+    ...(confirmUrl ? [`Confirm my alerts: ${confirmUrl}`] : []),
     '',
     foundingLine,
     '',
@@ -83,7 +97,17 @@ export function buildWaitlistConfirmationEmail(input: {
         <td style="padding:28px;">
           ${greetingHtml(firstName, 'font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;')}
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#8A6D1E;margin:0 0 10px;">Local alerts</p>
-          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">You are set up for ${escapeHtml(cityName)} alerts.</h1>
+          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">${escapeHtml(headline)}</h1>
+          <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">${escapeHtml(confirmLine)}</p>${
+            confirmUrl
+              ? `
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr>
+            <td style="background:#0A1628;border-radius:999px;">
+              <a href="${escapeHtml(confirmUrl)}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#FFFFFF;text-decoration:none;">Confirm my alerts</a>
+            </td>
+          </tr></table>`
+              : ''
+          }
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">${foundingLine}</p>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#666666;margin:0 0 20px;">${optInLine}</p>
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>

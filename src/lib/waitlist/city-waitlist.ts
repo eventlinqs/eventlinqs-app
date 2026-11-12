@@ -55,6 +55,13 @@ export type WaitlistRole = (typeof WAITLIST_ROLES)[number]
 export const CONSENT_VERSION = 'v3'
 
 /**
+ * The wording version a CONFIRMED waitlist join is recorded under in the consent ledger (WINDOW 5A, 12 November 2026,
+ * the waitlist car of Release 2: double opt in). Prefixed, so a ledger row says which form's words it carries and never
+ * reads as the guide panel's own 'v1'.
+ */
+export const WAITLIST_DIGEST_CONSENT_VERSION = `waitlist-${CONSENT_VERSION}`
+
+/**
  * The consent versions whose recorded wording expressly covers the weekly
  * local digest, and therefore the ONLY versions the digest audience may draw
  * from.

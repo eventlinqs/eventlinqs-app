@@ -2,15 +2,38 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { contactAddress } from '@/lib/email/sender'
-import { cityNewsletterConsentWording } from '@/lib/consent/wording'
 import { maskAddress } from '@/lib/listings/claim'
-import { readConfirmLink, type ConfirmLink } from '@/lib/newsletter/confirm'
-import { CONFIRM_LINK_DAYS } from '@/lib/newsletter/confirm-token'
+import { confirmWording, readConfirmLink, type ConfirmLink } from '@/lib/newsletter/confirm'
+import { CONFIRM_LINK_DAYS, type ConfirmRequest } from '@/lib/newsletter/confirm-token'
 import { confirmCityGuideAction } from './actions'
 
 export const metadata: Metadata = {
-  title: 'Confirm your weekly guide | EventLinqs',
+  title: 'Confirm your email | EventLinqs',
   robots: { index: false, follow: false },
+}
+
+/**
+ * The page's words follow the form that asked (WINDOW 5A, 12 November 2026, the waitlist car): the guide panel promised
+ * a weekly guide; the city waitlist promised alerts "when there is something on near you" and no cadence, so its
+ * person is never told "weekly".
+ */
+function pageWords(request: ConfirmRequest) {
+  const city = request.cityName
+  return request.kind === 'waitlist'
+    ? {
+        ask: `Confirm your ${city} alerts`,
+        goesTo: 'They go to',
+        stop: 'every email carries a link to stop them.',
+        button: 'Confirm my alerts',
+        started: `Your ${city} alerts start with the next email. Every email carries a link to stop them whenever you like.`,
+      }
+    : {
+        ask: `Confirm your weekly ${city} guide`,
+        goesTo: 'It goes to',
+        stop: 'every edition carries a link to stop it.',
+        button: 'Confirm my weekly guide',
+        started: 'Your weekly guide starts with the next edition. Every edition carries a link to stop it whenever you like.',
+      }
 }
 
 export const dynamic = 'force-dynamic'
@@ -45,22 +68,19 @@ export default async function ConfirmCityGuidePage({ params }: Props) {
         <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-sm">
           {link.state === 'waiting' ? (
             <>
-              <h1 className="font-display text-2xl font-bold text-ink-900">
-                Confirm your weekly {link.request.cityName} guide
-              </h1>
+              <h1 className="font-display text-2xl font-bold text-ink-900">{pageWords(link.request).ask}</h1>
               <p className="mt-3 text-sm text-ink-600">You asked for this on EventLinqs:</p>
-              <p className="mt-2 text-sm font-semibold text-ink-900">
-                {cityNewsletterConsentWording(link.request.cityName)}
-              </p>
+              <p className="mt-2 text-sm font-semibold text-ink-900">{confirmWording(link.request).text}</p>
               <p className="mt-3 text-sm text-ink-600">
-                It goes to {maskAddress(link.request.email) ?? 'your address'}, and every edition carries a link to stop it.
+                {pageWords(link.request).goesTo} {maskAddress(link.request.email) ?? 'your address'}, and{' '}
+                {pageWords(link.request).stop}
               </p>
               <form action={confirmCityGuideAction.bind(null, token)} className="mt-6">
                 <button
                   type="submit"
                   className="inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
                 >
-                  Confirm my weekly guide
+                  {pageWords(link.request).button}
                 </button>
               </form>
             </>
@@ -69,9 +89,7 @@ export default async function ConfirmCityGuidePage({ params }: Props) {
               <h1 className="font-display text-2xl font-bold text-ink-900">
                 You are on the {link.request.cityName} list
               </h1>
-              <p className="mt-3 text-sm text-ink-600">
-                Your weekly guide starts with the next edition. Every edition carries a link to stop it whenever you like.
-              </p>
+              <p className="mt-3 text-sm text-ink-600">{pageWords(link.request).started}</p>
               <Link
                 href={`/city/${link.request.citySlug}`}
                 className="mt-6 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"

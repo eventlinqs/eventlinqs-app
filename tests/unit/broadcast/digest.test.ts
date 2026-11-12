@@ -28,6 +28,7 @@ import {
   fetchDigestEvents,
   fetchDigestRecipients,
   resolveDigestPeriod,
+  WAITLIST_ROWS_REACH_THE_DIGEST,
 } from '@/lib/broadcast/digest'
 import { CONSENT_VERSION } from '@/lib/waitlist/city-waitlist'
 
@@ -133,7 +134,13 @@ describe('consent gating', () => {
     expect(granted?.filters['eq:city_slug']).toBe('geelong')
   })
 
-  test('the bridge: a waitlist signup for the city is a recipient, with its own token', async () => {
+  test('double opt in: the waitlist half is switched off, so an unconfirmed address is never mailed (Release 2, 12 November 2026)', () => {
+    // A join proves nothing about who owns the address; Confirm writes the person's own consent row, which the consent
+    // half reads. Turning this back on would mail unconfirmed addresses: it is a decision, never a tidy-up.
+    expect(WAITLIST_ROWS_REACH_THE_DIGEST).toBe(false)
+  })
+
+  test('a waitlist signup for the city is NOT a recipient until it is confirmed, and its read stays scoped', async () => {
     const calls: Call[] = []
     const client = stubClient((table) => {
       if (table === 'city_waitlist_signups') {
@@ -150,9 +157,7 @@ describe('consent gating', () => {
     }, calls)
 
     const recipients = await fetchDigestRecipients(client, 'geelong')
-    expect(recipients).toEqual([
-      { email: 'promoter@example.com', unsubscribeToken: 'wl-tok', source: 'waitlist' },
-    ])
+    expect(recipients).toEqual([])
 
     // Scoped to the city, and rows that already left are excluded in SQL.
     const waitlistCall = calls.find((c) => c.table === 'city_waitlist_signups')
@@ -199,7 +204,7 @@ describe('consent gating', () => {
     expect(await fetchDigestRecipients(client, 'geelong')).toEqual([])
   })
 
-  test('the city list includes a city whose only audience is the waitlist', async () => {
+  test('the city list leaves out a city whose only audience is unconfirmed waitlist rows', async () => {
     const client = stubClient((table) => {
       if (table === 'city_waitlist_signups') {
         return [
@@ -211,7 +216,7 @@ describe('consent gating', () => {
       return []
     })
 
-    expect(await fetchDigestCities(client)).toEqual(['geelong', 'sydney'])
+    expect(await fetchDigestCities(client)).toEqual(['sydney'])
   })
 })
 
@@ -588,7 +593,8 @@ describe('a person who unsubscribed stays unsubscribed', () => {
 
     const recipients = await fetchDigestRecipients(client, 'geelong')
     expect(recipients.map((r) => r.email)).not.toContain(withdrawnAddress)
-    expect(recipients).toHaveLength(399)
+    // 399 while the waitlist half reaches the digest; none of these unconfirmed rows while it is switched off.
+    expect(recipients).toHaveLength(WAITLIST_ROWS_REACH_THE_DIGEST ? 399 : 0)
 
     // More than one request, because four hundred addresses do not fit in one
     // URL. A single request here is the defect, not an optimisation.

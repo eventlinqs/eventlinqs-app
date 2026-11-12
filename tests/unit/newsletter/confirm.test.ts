@@ -11,6 +11,7 @@ vi.mock('@/lib/consent/record', () => ({
 import { confirmCityGuide, readConfirmLink } from '@/lib/newsletter/confirm'
 import { resolveConfirmSecret, sealConfirmRequest } from '@/lib/newsletter/confirm-token'
 import { cityNewsletterConsentWording } from '@/lib/consent/wording'
+import { WAITLIST_DIGEST_CONSENT_VERSION, joinConsentText } from '@/lib/waitlist/city-waitlist'
 import { confirmationEmail } from '@/lib/newsletter/confirmation-email'
 
 /*
@@ -69,6 +70,31 @@ describe('the confirmation page and its press', () => {
       at: new Date(NOW).toISOString(),
     })
     expect(String(recorded[0].source)).toBe('newsletter-city, confirmed by email (asked 2026-11-12T05:00:00.000Z)')
+  })
+
+  it("a waitlist join's press writes the waitlist's own words and version, never the guide panel's", async () => {
+    const { db } = fakeDb(null)
+    const waitlistToken = sealConfirmRequest(
+      { email: 'jo@example.com.au', citySlug: 'geelong', cityName: 'Geelong', consentVersion: WAITLIST_DIGEST_CONSENT_VERSION, source: 'waitlist-page', requestedAt: NOW - 3_600_000, kind: 'waitlist' },
+      SECRET,
+    )
+    expect((await readConfirmLink(db, waitlistToken, NOW)).state).toBe('waiting')
+    expect(recorded).toEqual([])
+    const link = await confirmCityGuide(db, waitlistToken, NOW)
+    expect(link.state).toBe('confirmed')
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0]).toMatchObject({ citySlug: 'geelong', consentText: joinConsentText('Geelong'), consentVersion: 'waitlist-v3' })
+    expect(String(recorded[0].consentText)).not.toContain('weekly')
+  })
+
+  it('a link whose wording version is not the form it names is asked again, not recorded', async () => {
+    const { db } = fakeDb(null)
+    const crossed = sealConfirmRequest(
+      { email: 'jo@example.com.au', citySlug: 'geelong', cityName: 'Geelong', consentVersion: 'v1', source: 'waitlist-page', requestedAt: NOW - 3_600_000, kind: 'waitlist' },
+      SECRET,
+    )
+    expect((await confirmCityGuide(db, crossed, NOW)).state).toBe('expired')
+    expect(recorded).toEqual([])
   })
 
   it('a person already on the list, or a second press, writes nothing more', async () => {

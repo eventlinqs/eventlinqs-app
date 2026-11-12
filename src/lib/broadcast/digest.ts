@@ -20,6 +20,23 @@ import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 
 /**
+ * A WAITLIST ROW NO LONGER REACHES THE DIGEST BY ITSELF (WINDOW 5A, 12 November 2026, the waitlist car of Release 2:
+ * double opt in). The city waitlist's join was express consent on the page, but it proved nothing about who owns the
+ * address, so anyone could put a stranger's inbox on the weekly email. Its email now carries the sealed Confirm link the
+ * city guide uses; pressing it writes the person's own granted row to the consent ledger with the waitlist's own words
+ * (src/lib/newsletter/confirm.ts), and that row is the consent half of this audience. So the waitlist half is switched
+ * off here, never deleted (law 13): its reads, its suppression and its merge rules stay, tested, and switching this on
+ * again would put unconfirmed addresses back in the send. Production held 0 active waitlist rows when it was switched
+ * off (read 12 November 2026), so no one lost an email.
+ */
+export const WAITLIST_ROWS_REACH_THE_DIGEST = false
+
+/** The waitlist half's rule as the audience applies it: off while unconfirmed rows must not be mailed. */
+export function waitlistRowCoversDigest(version: string | null | undefined): boolean {
+  return WAITLIST_ROWS_REACH_THE_DIGEST && consentVersionCoversDigest(version)
+}
+
+/**
  * The weekly local digest (Broadcast Layer SPEC 3.2): one city-scoped email
  * per week carrying this week's published events. Locality is the existing
  * cities taxonomy, one source of truth.
@@ -113,7 +130,7 @@ export async function fetchDigestCities(admin: Admin): Promise<string[]> {
     if (row.city_slug) cities.add(row.city_slug)
   }
   for (const row of waitlist) {
-    if (row.city_slug && consentVersionCoversDigest(row.consent_version)) {
+    if (row.city_slug && waitlistRowCoversDigest(row.consent_version)) {
       cities.add(row.city_slug)
     }
   }
@@ -230,7 +247,7 @@ export async function fetchDigestRecipients(
     consents,
     waitlist,
     suppressed,
-    coversDigest: consentVersionCoversDigest,
+    coversDigest: waitlistRowCoversDigest,
   })
 }
 
