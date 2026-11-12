@@ -682,6 +682,10 @@
  *   source-reads-are-polite    every script that reads a source or organiser page reads it
  *                              through robots handling (law 14 (k)); outreach-basis did not
  *                              until 11 November 2026
+ *   founder-steps-read-back    no founder step reaches Lawal without its read back, every
+ *                              migrate:production names its --expect, and every script a
+ *                              founder step names prints where it runs (the founder step law,
+ *                              Lawal, 12 November 2026, 01:16)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
