@@ -74,6 +74,15 @@ function resolveSecret(): string | null {
   return DEV_FALLBACK_SECRET
 }
 
+/**
+ * ORDER_ACCESS_SECRET as this deployment resolves it (its development fallback outside production), for a feature that
+ * derives its OWN key from it under its own label, never uses it as is: the city guide's confirmation link
+ * (src/lib/newsletter/confirm-token.ts, 12 November 2026). One place reads the secret.
+ */
+export function orderAccessSecret(): string | null {
+  return resolveSecret()
+}
+
 /** Whether this deployment can issue and honour guest order links at all. */
 export function orderAccessConfigured(): boolean {
   return resolveSecret() !== null

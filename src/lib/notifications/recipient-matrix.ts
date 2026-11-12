@@ -142,6 +142,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'The organiser assigned this holder a seat.',
   },
   {
+    type: 'newsletter_confirmation',
+    roles: ['prospect'],
+    concernsOrganiserEvent: false,
+    what: 'The one email confirming a city weekly guide sign up (double opt in), sent only in reply to the person asking on the newsletter panel, to the address they typed; no marketing in it (src/lib/newsletter/confirmation-email.ts).',
+  },
+  {
     type: 'listing_claim_code',
     roles: ['prospect'],
     concernsOrganiserEvent: false,

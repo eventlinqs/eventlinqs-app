@@ -1,8 +1,8 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { proofMatches } from '@/lib/outreach/photo-link'
+import { readTheirNights } from '@/lib/outreach/their-nights'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { addAsset } from '@/lib/social/store'
 import { CANONICAL_HOST } from '@/lib/site-url'
@@ -51,29 +51,18 @@ export type PhotoPage =
 /** The contact's page, only when the proof is theirs; their own public nights ahead, soonest first. */
 export async function readPhotoPage(db: Db, contactId: string, proof: string, now: Date): Promise<PhotoPage> {
   if (!/^[0-9a-f-]{36}$/i.test(contactId)) return { state: 'not found' }
-  const c = await db.from('organiser_contacts').select('id, organiser_id, person_name, unsubscribe_token, organisers(id, name, organisation_id)').eq('id', contactId).maybeSingle()
+  const c = await db.from('organiser_contacts').select('id, organiser_id, person_name, unsubscribe_token, organisers(id, name, organisation_id, website_url)').eq('id', contactId).maybeSingle()
   if (c.error || !c.data || !proofMatches(proof, c.data.unsubscribe_token as string | null)) return { state: 'not found' }
-  const org = c.data.organisers as unknown as { id: string; name: string; organisation_id: string | null } | null
+  const org = c.data.organisers as unknown as { id: string; name: string; organisation_id: string | null; website_url: string | null } | null
   if (!org) return { state: 'not found' }
-  const venues = await db.from('organiser_venues').select('venue_id').eq('organiser_id', org.id)
-  if (venues.error) throw new Error(`their venues could not be read: ${venues.error.message}`)
-  const read = async (column: 'venue_id' | 'organisation_id', values: string[]) => {
-    if (values.length === 0) return []
-    const r = await applyPublicEventVisibility(db.from('events').select('id, slug, title, start_date, timezone, venue_name'), { now, includeExternal: true })
-      .in(column, values)
-      .gt('end_date', now.toISOString())
-      .order('start_date', { ascending: true })
-      .limit(20)
-    if (r.error) throw new Error(`their nights could not be read: ${r.error.message}`)
-    return (r.data ?? []) as { id: string; slug: string; title: string; start_date: string; timezone: string | null; venue_name: string | null }[]
-  }
-  const rows = [...(await read('venue_id', (venues.data ?? []).map((v) => v.venue_id as string))), ...(await read('organisation_id', org.organisation_id ? [org.organisation_id] : []))]
-  const seen = new Set<string>()
-  const nights = rows
-    .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
-    .sort((a, b) => a.start_date.localeCompare(b.start_date))
-    .slice(0, 12)
-    .map((r) => ({ eventId: r.id, slug: r.slug, title: r.title, startDate: r.start_date, timezone: r.timezone, venueName: r.venue_name }))
+  const nights = (await readTheirNights(db, { id: org.id, organisation_id: org.organisation_id, website_url: org.website_url }, now, 12)).map((n) => ({
+    eventId: n.eventId,
+    slug: n.slug,
+    title: n.title,
+    startDate: n.startDate,
+    timezone: n.timezone,
+    venueName: n.venueName,
+  }))
   const first = ((c.data.person_name as string | null) ?? '').trim().split(/\s+/)[0] ?? ''
   return { state: 'found', contactId, organiserName: org.name, greeting: first || `${org.name} team`, nights }
 }

@@ -32,6 +32,7 @@ export type PolicyName =
   | 'event-reminder'
   | 'forecast-run'
   | 'newsletter-subscribe'
+  | 'newsletter-confirm-address'
   | 'partner-enquiry'
   | 'listing-submission'
   | 'photo-permission'
@@ -252,8 +253,17 @@ export const POLICIES: Record<PolicyName, Policy> = {
     keyPrefix: 'nl-sub',
     limit: 5,
     windowSec: 600,
+    failClosed: true,
     rationale:
-      'City newsletter capture per IP per 10 min. It is public, unauthenticated and now writes a consent row, so it is an email-harvesting and list-poisoning target. Five covers a household signing up for two or three cities; a scripted flood is bounced. Fail-open: losing a legitimate signup to a Redis blip is worse than the bounded abuse, and the row carries its own unsubscribe token either way.',
+      'City newsletter capture per IP per 10 min. Five covers a household signing up for two or three cities; a scripted flood is bounced. FAIL-CLOSED from 12 November 2026: the capture now sends one real email from our sending domain, the double opt in confirmation (src/lib/newsletter/confirmation-email.ts through sendEmail), so it takes the posture of waitlist-join and launch-email by the founder ruling of 19 August 2026 (docs/RATE-LIMIT-DOCTRINE.md section 3: two policies sending from one domain cannot hold opposite postures). Before that it was fail-open because it only wrote a consent row and sent nothing.',
+  },
+  'newsletter-confirm-address': {
+    keyPrefix: 'nl-conf',
+    limit: 3,
+    windowSec: 86400,
+    failClosed: true,
+    rationale:
+      'Confirmation emails per ADDRESS (keyed by a hash of the normalised address, never the address) per day. The per IP limit cannot stop someone using the form, from many addresses or networks, to send one person confirmation after confirmation; three a day lets the real owner ask again after losing the first while bounding that to three unwanted emails. FAIL-CLOSED for the same reason as newsletter-subscribe: it stands in front of a real send from our domain.',
   },
   'partner-enquiry': {
     keyPrefix: 'partner-enq',

@@ -111,6 +111,15 @@ prices the email as a MESSAGE. `launch-email` prices the same send as the DOMAIN
 Both cannot be right, and the one that treats a burned sending domain as
 unrecoverable is the one to keep. Aligned.
 
+**`newsletter-subscribe`, 12 November 2026: the rule applied, not a new ruling.** The
+city newsletter capture became double opt in: one request now sends one real email
+from our domain, the confirmation link (`src/lib/newsletter/confirmation-email.ts`
+through `sendEmail`), public and unauthenticated, with nothing but the limiter in
+front of it. So it took the `waitlist-join` posture, FAIL-CLOSED, and gained a second
+fail-closed policy, `newsletter-confirm-address` (three a day per address, keyed by a
+hash of the address), so the form cannot be used to send one person confirmation
+after confirmation from many networks.
+
 **Why the other three are genuinely different, and this is not inconsistency.** Each
 is bounded by something that is not the limiter: a secret, a session, an ownership
 scope. A missing Upstash config does not open any of them to an anonymous caller,
@@ -120,8 +129,8 @@ nothing else in front of it.
 ### Fail-open policies with no metered spend traced
 
 `health-redis`, `health-sentry-error`, `launch-artefact`, `launch-compose`,
-`launch-compose-daily`, `marketplace-report`, `newsletter-subscribe`,
-`payouts-read`, `share-link-mint`, `share-track`.
+`launch-compose-daily`, `marketplace-report`, `payouts-read`, `share-link-mint`,
+`share-track`. (`newsletter-subscribe` left this list on 12 November 2026: see above.)
 
 Two notes a table cannot hold:
 

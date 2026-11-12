@@ -15,16 +15,15 @@ interface Props {
 }
 
 /**
- * CityNewsletterCapture - email capture for the city CTA panel.
+ * CityNewsletterCapture: email capture for the city CTA panel.
  *
- * Submits to /api/newsletter/subscribe (M9 marketing surface; for now
- * a fire-and-forget POST that logs and returns 200 even when the
- * downstream provider is not yet configured, so the UI doesn't block
- * the founder-pride positioning of the city page).
+ * Submits to /api/newsletter/subscribe, which emails the address a link to
+ * confirm the weekly guide (double opt in, 12 November 2026): the guide starts
+ * only when the owner of the address presses Confirm on that page.
  *
- * Renders inline confirmation when the request succeeds; falls back to
- * an inline error when the network or API returns a 4xx/5xx. Never
- * throws to the boundary - the marketing surface must keep working.
+ * Says "check your inbox" only when the confirmation email was sent; falls
+ * back to an inline error when the network or API returns a 4xx/5xx. Never
+ * throws to the boundary: the marketing surface must keep working.
  */
 export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
   const [email, setEmail] = useState('')
@@ -68,7 +67,7 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
       </p>
       {state === 'ok' ? (
         <p className={`mt-4 rounded-md border px-4 py-3 text-sm ${c.ok}`}>
-          Subscribed. We&apos;ll be in your inbox by next Friday.
+          Check your inbox. We have sent you a link to confirm your weekly guide.
         </p>
       ) : (
         <form method="post" onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
