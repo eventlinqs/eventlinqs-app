@@ -13,7 +13,16 @@ import { orderAccessSecret } from '@/lib/orders/order-access'
  * link. The key is derived from ORDER_ACCESS_SECRET under its own label (an HMAC of the secret with a fixed purpose
  * string), so a confirmation link and a guest order link can never stand for one another and no new production variable
  * is needed. A link is good for seven days.
+ *
+ * TWO FORMS ASK FOR IT (WINDOW 5A, 12 November 2026, the waitlist car of Release 2): the guide panel, and the city
+ * waitlist, whose join reached the weekly email on its recorded wording alone. The link says which form the person
+ * filled in (`kind`), so Confirm records the wording that form showed and no other (the 25 September 2026 rule 6: every
+ * consent keeps the wording the person agreed to). A link sealed before `kind` existed is the guide panel's, which is
+ * what every such link was.
  */
+
+export type ConfirmKind = 'guide' | 'waitlist'
+const KINDS: readonly ConfirmKind[] = ['guide', 'waitlist']
 
 export const CONFIRM_LINK_DAYS = 7
 const VERSION = 1
@@ -30,6 +39,8 @@ export interface ConfirmRequest {
   /** Where the form was, as the consent's capture surface records it. */
   readonly source: string
   readonly requestedAt: number
+  /** Which form asked: the guide panel (the default, and every link sealed before this field) or the city waitlist. */
+  readonly kind?: ConfirmKind
 }
 
 function keyFrom(secret: string): Buffer {
@@ -53,6 +64,7 @@ export function sealConfirmRequest(request: ConfirmRequest, secret: string): str
     w: request.consentVersion,
     s: request.source,
     t: request.requestedAt,
+    k: request.kind ?? 'guide',
   })
   const sealed = Buffer.concat([cipher.update(body, 'utf8'), cipher.final()])
   return Buffer.concat([iv, cipher.getAuthTag(), sealed]).toString('base64url')
@@ -85,7 +97,9 @@ export function openConfirmRequest(token: string, secret: string, now: number): 
   if (p.v !== VERSION || !isText(p.e) || !isText(p.c) || !isText(p.n) || !isText(p.w) || !isText(p.s) || typeof p.t !== 'number') {
     return { ok: false, why: 'invalid' }
   }
+  if (p.k !== undefined && !KINDS.includes(p.k as ConfirmKind)) return { ok: false, why: 'invalid' }
   if (p.t > now + 5 * 60_000) return { ok: false, why: 'invalid' }
   if (now - p.t > CONFIRM_LINK_DAYS * 86_400_000) return { ok: false, why: 'expired' }
-  return { ok: true, request: { email: p.e, citySlug: p.c, cityName: p.n, consentVersion: p.w, source: p.s, requestedAt: p.t } }
+  const kind: ConfirmKind = p.k === undefined ? 'guide' : (p.k as ConfirmKind)
+  return { ok: true, request: { email: p.e, citySlug: p.c, cityName: p.n, consentVersion: p.w, source: p.s, requestedAt: p.t, kind } }
 }

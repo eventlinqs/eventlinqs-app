@@ -2,7 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import { CITY_NEWSLETTER_CONSENT_VERSION, cityNewsletterConsentWording } from '@/lib/consent/wording'
+import { WAITLIST_DIGEST_CONSENT_VERSION, joinConsentText } from '@/lib/waitlist/city-waitlist'
 import { openConfirmRequest, resolveConfirmSecret, type ConfirmRequest } from './confirm-token'
+
+/** The wording and version the form showed, by the form that asked: the guide panel's, or the city waitlist's. */
+export function confirmWording(request: ConfirmRequest): { readonly text: string; readonly version: string } {
+  return request.kind === 'waitlist'
+    ? { text: joinConsentText(request.cityName), version: WAITLIST_DIGEST_CONSENT_VERSION }
+    : { text: cityNewsletterConsentWording(request.cityName), version: CITY_NEWSLETTER_CONSENT_VERSION }
+}
 
 /**
  * WHAT A CONFIRMATION LINK STANDS FOR, AND THE PRESS THAT STARTS THE GUIDE (Release 2, item 8: double opt in). The page
@@ -42,7 +50,7 @@ export async function readConfirmLink(db: Admin, token: string, now: number = Da
   if (!opened.ok) return { state: opened.why }
   // A link from a form whose wording has since changed: the person is asked again, so the consent recorded is always
   // the wording they read, never a newer one standing in for it.
-  if (opened.request.consentVersion !== CITY_NEWSLETTER_CONSENT_VERSION) return { state: 'expired' }
+  if (opened.request.consentVersion !== confirmWording(opened.request).version) return { state: 'expired' }
   return (await onTheList(db, opened.request)) ? { state: 'confirmed', request: opened.request } : { state: 'waiting', request: opened.request }
 }
 
@@ -55,7 +63,7 @@ export async function confirmCityGuide(db: Admin, token: string, now: number): P
     citySlug: r.citySlug,
     source: `${r.source}, confirmed by email (asked ${new Date(r.requestedAt).toISOString()})`,
     at: new Date(now).toISOString(),
-    consentText: cityNewsletterConsentWording(r.cityName),
+    consentText: confirmWording(r).text,
     consentVersion: r.consentVersion,
   })
   if (!stored) throw new Error('the confirmation could not be recorded')
