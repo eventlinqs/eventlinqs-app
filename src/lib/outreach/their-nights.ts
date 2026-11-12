@@ -16,8 +16,31 @@ import { ownHost } from './own-host'
  *      says what counts; a shared ticketing, social, government or education host never does, since many organisers
  *      sell or publish there). This is how a promoter's nights at a hired venue are theirs without linking them to the
  *      venue, which would claim every other organiser's nights there.
+ *   4. it is under an organisation the FOUNDER holds for them: Lawal lists a night himself, in an organisation his own
+ *      account owns, named for them and carrying their own website (AMCF, the festival at Fed Square, 26 October
+ *      2026; its contact's photo page said "No nights of yours are listed ahead" for the festival of 20 November, found
+ *      12 November 2026, 21:18). Their own website is the key, read by ./own-host.ts as in 3: an organisation with no
+ *      website (EventLinqs listings) is never theirs, and one a stranger owns never is, since only the founder's own are
+ *      read. READING ONLY: it links nothing and records no claim, because an organisation is joined to an organiser
+ *      only by the claim flow (migration 20261101132001), and a link would read in the funnel as their own account.
  * Soonest first, each night once.
  */
+
+/** The organisations an enabled founder account holds for an organiser: ones whose own website is the organiser's host. */
+async function heldForThem(db: Admin, host: string): Promise<string[]> {
+  const founders = await db.from('admin_users').select('id').eq('role', 'super_admin').is('disabled_at', null).limit(10)
+  if (founders.error) throw new Error(`the founder accounts could not be read: ${founders.error.message}`)
+  const owners = (founders.data ?? []).map((f) => f.id as string)
+  if (owners.length === 0) return []
+  const held = await db.from('organisations').select('id, website').in('owner_id', owners).not('website', 'is', null).limit(500)
+  if (held.error) throw new Error(`the organisations held for them could not be read: ${held.error.message}`)
+  return (held.data ?? [])
+    .filter((g) => {
+      const site = String(g.website ?? '').trim()
+      return site !== '' && ownHost(/^https?:\/\//i.test(site) ? site : `https://${site}`) === host
+    })
+    .map((g) => g.id as string)
+}
 
 type Admin = SupabaseClient<Database>
 
@@ -63,6 +86,7 @@ export async function readTheirNights(
 
   const host = ownHost(organiser.website_url)
   if (host) {
+    await take('organisation_id', (await heldForThem(db, host)).filter((id) => id !== organiser.organisation_id))
     const ids = new Set<string>()
     for (const pattern of [`%://${host}/%`, `%://www.${host}/%`, `%://${host}`, `%://www.${host}`]) {
       const links = await db.from('event_booking_links').select('event_id').ilike('url', pattern).limit(500)

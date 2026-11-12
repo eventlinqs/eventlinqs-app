@@ -7,7 +7,8 @@ import { voidTouch } from './crm'
 import { draftFromTemplate, type DraftRequest } from './drafts'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
-import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight, type TwentyLetter } from './twenty-letters'
+import type { TemplateRow } from './rules'
+import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight } from './twenty-letters'
 
 /**
  * TOMORROW'S TWENTY, DRAFTED EVERY DAY FROM VERIFIED ROWS (Lawal, 12 November 2026, 11:11, item 1: "by 07:00 tomorrow
@@ -54,13 +55,23 @@ export async function founderAccount(db: Admin): Promise<{ id: string } | { id: 
   return { id: rows[0].id as string }
 }
 
-const sameWords = (a: { channel: string; purpose: string; step: number | null; subject: string | null; body: string }, b: TwentyLetter) =>
+type StoredLetter = TemplateRow & { readonly key: string; readonly source: string }
+
+const sameWords = (a: { channel: string; purpose: string; step: number | null; subject: string | null; body: string }, b: StoredLetter) =>
   a.channel === b.channel && a.purpose === b.purpose && a.step === b.step && a.subject === b.subject && a.body === b.body
 
-/** Stores each letter whose words are not yet the newest version of its key; returns the keys written. */
+/** Stores the twenty's first letters; returns the keys written. */
 export async function storeTwentyLetters(db: Admin, by: string): Promise<string[]> {
+  return storeLetters(db, by, TWENTY_LETTERS)
+}
+
+/**
+ * Stores each letter whose words are not yet the newest version of its key, versioned and never edited (the first
+ * letters here, the follow ups in ./follow-ups.ts); returns the keys written.
+ */
+export async function storeLetters(db: Admin, by: string, letters: readonly StoredLetter[]): Promise<string[]> {
   const written: string[] = []
-  for (const letter of TWENTY_LETTERS) {
+  for (const letter of letters) {
     const newest = await db
       .from('outreach_templates')
       .select('version, channel, purpose, step, subject, body')
