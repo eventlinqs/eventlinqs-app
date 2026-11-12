@@ -50,7 +50,11 @@ export function scriptsNamed(line, npmScripts = {}) {
   const out = new Set()
   for (const m of line.matchAll(/npm run ([\w:.-]+)/g)) {
     const body = npmScripts[m[1]]
-    if (typeof body === 'string') for (const f of body.matchAll(/scripts\/[\w/.-]+\.mjs/g)) out.add(f[0])
+    if (typeof body !== 'string') continue
+    // A file given to node's --import (scripts/lib/src-alias-loader.mjs) is a module hook loaded before the step's script,
+    // not the step's script: the script it loads is the one that must say where it runs (WINDOW 5A, 13 November 2026).
+    const loaders = new Set([...body.matchAll(/--import[= ]+(?:\.\/)?(scripts\/[\w/.-]+\.mjs)/g)].map((x) => x[1]))
+    for (const f of body.matchAll(/scripts\/[\w/.-]+\.mjs/g)) if (!loaders.has(f[0])) out.add(f[0])
   }
   for (const m of line.matchAll(/scripts[\\/](?:ops|lib|verify)[\\/][\w.-]+\.mjs/g)) out.add(m[0].replace(/\\/g, '/'))
   return [...out]
