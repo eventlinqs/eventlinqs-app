@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
+import { readWeeklyDigest } from '@/lib/growth/weekly-report-digest'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,9 +73,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: failed.error.message }, { status: 500 })
     }
 
+    // THE WEEKLY REPORT'S MONDAY COPY (order 4, Release 3; src/lib/growth/weekly-report-digest.ts): only when the morning
+    // run asks (?weekly=1, on a Melbourne Monday), so the hourly stall check never pays for it; its own failure is said
+    // in its own field and never fails the counts above.
+    const weekly = request.nextUrl.searchParams.get('weekly') === '1' ? await readWeeklyDigest(admin) : undefined
+
     return NextResponse.json({
       ok: true,
       since,
+      ...(weekly ? { weekly } : {}),
       counts: {
         eventsLive: live.count ?? 0,
         ticketsSold: tickets.count ?? 0,

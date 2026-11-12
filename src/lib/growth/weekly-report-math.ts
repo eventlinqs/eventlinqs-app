@@ -19,6 +19,21 @@ import { CRM_LINE, FROM_ACQUISITION, stageRank, type CrmStage } from '@/lib/crm/
 
 export type Week = { readonly from: string; readonly to: string }
 
+/**
+ * What proved a move, in words: the page's section and the morning email's Monday copy both read this one map, so the
+ * two never word a proof differently. A table not named here is shown by its own name.
+ */
+const PROOF_WORDS: Readonly<Record<string, string>> = {
+  outreach_touches: 'a message sent',
+  outreach_replies: 'a reply',
+  listing_claims: 'a claim',
+  organiser_venues: 'a venue linked',
+  organisers: 'their record',
+  events: 'a listing',
+  orders: 'an order',
+}
+export const proofWords = (table: string): string => PROOF_WORDS[table] ?? table
+
 export type Transition = {
   readonly organiserId: string
   readonly from: string | null

@@ -1,5 +1,5 @@
 import { CRM_STAGE_WORDS } from '@/lib/crm/stages'
-import type { WeeklyReport } from '@/lib/growth/weekly-report-math'
+import { proofWords, type WeeklyReport } from '@/lib/growth/weekly-report-math'
 
 /**
  * THE WEEKLY REPORT ON /admin/growth (order 4, Release 3, item 10; INTERNAL ONLY, admin only, never shown to anyone
@@ -9,16 +9,6 @@ import type { WeeklyReport } from '@/lib/growth/weekly-report-math'
  * A failed read says which read failed, never a zero. Search Console waits on Lawal's step and says so.
  */
 
-const PROOF_WORDS: Readonly<Record<string, string>> = {
-  outreach_touches: 'a message sent',
-  outreach_replies: 'a reply',
-  listing_claims: 'a claim',
-  organiser_venues: 'a venue linked',
-  organisers: 'their record',
-  events: 'a listing',
-  orders: 'an order',
-}
-const proofWords = (table: string) => PROOF_WORDS[table] ?? table
 const share = (part: number, whole: number) => (whole === 0 ? 'none yet' : `${Math.round((part / whole) * 100)} percent`)
 
 const SECTION = 'mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6'

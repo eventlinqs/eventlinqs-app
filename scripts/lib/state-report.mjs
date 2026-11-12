@@ -329,6 +329,40 @@ const escapeHtml = (value) =>
  */
 export const PARITY_CADENCE = 'The parity check runs on the 1st and the 15th of the month'
 
+/**
+ * LAST WEEK'S REPORT, ON A MONDAY (order 4, Release 3, item 10; INTERNAL ONLY). The platform words it
+ * (src/lib/growth/weekly-report-digest.ts, Lawal's stage words and the shared proof words), so this only lays it out:
+ * the week, the six numbers, who moved on and what proved it, who left the line, conversion to date, tasks past due and
+ * failed jobs. A weekly read that failed says so in place of figures. Returns null when the run did not ask for it.
+ */
+export function weeklySectionFor(weekly) {
+  if (!weekly) return null
+  if (!weekly.ok) return { title: 'Last week, the weekly report', lines: [`Not known: ${weekly.error}.`] }
+  const day = (iso) =>
+    new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso))
+  const lastDay = new Date(new Date(weekly.week.to).getTime() - 1).toISOString()
+  const share = (part, whole) => (whole === 0 ? 'none yet' : `${Math.round((part / whole) * 100)} percent`)
+  const lines = [`${day(weekly.week.from)} to ${day(lastDay)}.`]
+  for (const f of weekly.six) lines.push(`${f.label}: ${f.shown}${f.basis === 'estimated' ? ' (estimated)' : ''}.`)
+  if (weekly.moved.length === 0) lines.push('No organiser moved forward along the line.')
+  for (const m of weekly.moved) {
+    lines.push(`${m.stage}: ${m.organisers} ${m.organisers === 1 ? 'organiser' : 'organisers'}, proved by ${m.provedBy.map((p) => `${p.words} (${p.moves})`).join(', ')}.`)
+  }
+  lines.push(`Left the line: ${weekly.leftTheLine}.`)
+  for (const s of weekly.conversion) lines.push(`${s.from} to ${s.to}: ${s.reachedTo} of ${s.reachedFrom} (${share(s.reachedTo, s.reachedFrom)}).`)
+  lines.push(
+    weekly.overdue.length === 0
+      ? 'Tasks past due: none.'
+      : `Tasks past due: ${weekly.overdue.length}, the oldest: ${weekly.overdue[0].title}${weekly.overdue[0].dueOn ? ` (due ${weekly.overdue[0].dueOn})` : ''}.`,
+  )
+  lines.push(
+    weekly.failed.length === 0
+      ? 'Failed jobs: none.'
+      : `Failed jobs: ${weekly.failed.length}: ${weekly.failed.map((f) => (f.reason ? `${f.title} (${f.reason})` : f.title)).join('; ')}.`,
+  )
+  return { title: 'Last week, the weekly report', lines }
+}
+
 export function sectionsFor(state) {
   const sections = []
 
@@ -512,6 +546,10 @@ export function sectionsFor(state) {
           `${biz.submissionsNotLive ?? 0} organiser events sent in and not live after an hour (target 0)${(biz.submissionsNotLive ?? 0) > 0 ? ', each at the top of /admin/today' : ''}.`,
         ],
   })
+
+  // On a Melbourne Monday the platform also sends last week's report (weeklySectionFor); every other day it is absent.
+  const weekly = weeklySectionFor(biz.error ? null : biz.weekly ?? null)
+  if (weekly) sections.push(weekly)
 
   return sections
 }
