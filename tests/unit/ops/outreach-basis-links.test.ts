@@ -49,3 +49,13 @@ describe('the pages a home page links for an address', () => {
     expect(linkedPages(null, 'thevenue.com.au')).toEqual([])
   })
 })
+
+describe('melbourneDay: a sighting is dated in Melbourne, never in UTC', () => {
+  it('is the next day in Melbourne before 11 am daylight time', async () => {
+    const { melbourneDay } = await import('../../../scripts/lib/outreach-basis-links.mjs')
+    // 10:25 am on 13 November 2026 in Melbourne is 23:25 UTC on the 12th.
+    expect(melbourneDay(new Date('2026-11-12T23:25:23Z'))).toBe('2026-11-13')
+    expect(melbourneDay(new Date('2026-11-12T12:00:00Z'))).toBe('2026-11-12')
+    expect(melbourneDay(new Date('2026-11-13T13:00:00Z'))).toBe('2026-11-14')
+  })
+})

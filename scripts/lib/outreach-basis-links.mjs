@@ -35,3 +35,12 @@ export function linkedPages(page, siteDomain) {
   }
   return out
 }
+
+/**
+ * The day in Melbourne, YYYY-MM-DD, for a contact's seen_on (WINDOW 5A, 13 November 2026): the tool took the UTC date,
+ * so every basis recorded before 11 am Melbourne daylight time was dated the day before (four found that morning,
+ * seen_on 2026-11-12 on the 13th). Pure.
+ */
+export function melbourneDay(at = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
+}

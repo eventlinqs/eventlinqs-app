@@ -27,7 +27,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { productionSelect } from '../lib/production-select.mjs'
 import { roleRefusal } from '../lib/outreach-basis-role.mjs'
-import { linkedPages } from '../lib/outreach-basis-links.mjs'
+import { linkedPages, melbourneDay } from '../lib/outreach-basis-links.mjs'
 import { politeReader } from '../lib/polite-read.mjs'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
@@ -76,7 +76,8 @@ const AGAINST = [
 // A venue's bookings or events address is published on its hire, bookings and functions pages as often as on its contact
 // page (the PM's 08:25 of 13 November 2026, (a)): those are read too, and the footer of every page read is in its HTML.
 const PATHS = ['', '/contact', '/contact-us', '/about', '/about-us', '/hire', '/venue-hire', '/bookings', '/functions', '/enquiries']
-const today = new Date().toISOString().slice(0, 10)
+// The day the page was seen, in Melbourne (never the UTC date, which is a day behind until 11 am here).
+const today = melbourneDay()
 
 function text(html) {
   return html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
