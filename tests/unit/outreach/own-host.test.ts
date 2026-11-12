@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ownHost } from '@/lib/outreach/own-host'
+import { onOwnHost, ownHost } from '@/lib/outreach/own-host'
 
 /*
  * A NIGHT BOOKED ON THE ORGANISER'S OWN WEBSITE IS THEIRS (the PM's 14:12 of 12 November 2026, twenty a day lawfully):
@@ -36,3 +36,27 @@ describe("an organiser's own website host", () => {
     expect(read('src', 'lib', 'outreach', 'their-nights.ts')).toMatch(/ownHost\(organiser\.website_url\)/)
   })
 })
+
+describe("a booking page on their own host (the PM's 06:13 of 13 November 2026, the twenty's supply)", () => {
+  it('is their host, its www, or any subdomain of it: their own box office', () => {
+    expect(onOwnHost('https://sovereignhill.com.au/events', 'sovereignhill.com.au')).toBe(true)
+    expect(onOwnHost('https://www.sovereignhill.com.au/events', 'sovereignhill.com.au')).toBe(true)
+    expect(onOwnHost('https://shtickets.sovereignhill.com.au/book/123', 'sovereignhill.com.au')).toBe(true)
+    expect(onOwnHost('https://tickets.birdsbasement.com/e/1', 'birdsbasement.com')).toBe(true)
+  })
+
+  it('is never a lookalike, another site that only mentions their host, or a malformed address', () => {
+    expect(onOwnHost('https://evilsovereignhill.com.au/', 'sovereignhill.com.au')).toBe(false)
+    expect(onOwnHost('https://sovereignhill.com.au.example.com/', 'sovereignhill.com.au')).toBe(false)
+    expect(onOwnHost('https://www.eventbrite.com.au/e/1?ref=https://shtickets.sovereignhill.com.au/', 'sovereignhill.com.au')).toBe(false)
+    expect(onOwnHost('not a url', 'sovereignhill.com.au')).toBe(false)
+    expect(onOwnHost(null, 'sovereignhill.com.au')).toBe(false)
+  })
+
+  it('is what the reader of their nights confirms every match on', () => {
+    const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), 'utf8')
+    expect(read('src', 'lib', 'outreach', 'their-nights.ts')).toMatch(/onOwnHost\(l\.url as string, host\)/)
+    expect(read('src', 'lib', 'outreach', 'their-nights.ts')).toMatch(/onOwnHost\(e\.external_ticket_url as string \| null, host\)/)
+  })
+})
+

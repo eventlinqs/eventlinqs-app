@@ -26,3 +26,21 @@ export function ownHost(websiteUrl: string | null | undefined): string | null {
   if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return null
   return SHARED.some((re) => re.test(host)) ? null : host
 }
+
+/**
+ * Whether a booking page is on their own host: the host itself, its www, or any subdomain of it (a box office such as
+ * tickets.birdsbasement.com or shtickets.sovereignhill.com.au is the organiser's own; WINDOW 5A, 13 November 2026, the
+ * PM's 06:13 (2a)). Judged on the URL's own hostname, never on text inside it, so another site's link that only mentions
+ * their host in its path or query is never theirs. Pure.
+ */
+export function onOwnHost(url: string | null | undefined, host: string): boolean {
+  if (!url) return false
+  let name: string
+  try {
+    name = new URL(url).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+  return name === host || name.endsWith(`.${host}`)
+}
+
