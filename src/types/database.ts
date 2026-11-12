@@ -3589,6 +3589,7 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          presented_by: string | null
           published_series_id: string | null
           reasons: string[]
           refused_because: string | null
@@ -3614,6 +3615,7 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          presented_by?: string | null
           published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null
@@ -3639,6 +3641,7 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          presented_by?: string | null
           published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null

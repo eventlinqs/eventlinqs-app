@@ -137,6 +137,12 @@ export type FoundEvent = {
   timeFromWords?: boolean
   /** The source marks it postponed or rescheduled (schema.org eventStatus): a person decides. */
   calledOff?: boolean
+  /**
+   * Who presents the night, where its own page names them in a line of its own ('Presented by ...', ./presenter.ts):
+   * the organiser behind a night at a hired hall, kept on its candidate so the outreach pool can grow from them (the PM's
+   * 09:05 (3) of 13 November 2026). A fact, like the title.
+   */
+  presentedBy?: string | null
 }
 
 /** The zone a found night is read in when its source states no zone: the four guide cities are all in Victoria. */

@@ -222,6 +222,8 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
     },
 
     async land(row): Promise<boolean> {
+      /* The presenter, where its page names one (listing_candidates.presented_by, 20261113093001). */
+      let presenter: { presented_by?: string } = row.presentedBy ? { presented_by: row.presentedBy } : {}
       const write = (reasons: readonly string[], confidence: string) => db
         .from('listing_candidates')
         .upsert(
@@ -244,11 +246,18 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
             reasons,
             decided_by: row.decidedBy,
             ...(row.decidedBy === 'partner_rule' ? { status: 'accepted', reviewed_at: row.foundAt } : {}),
+            ...presenter,
           },
           { onConflict: 'source_id,page_url,starts_at', ignoreDuplicates: true },
         )
         .select('id')
       let { data, error } = await write(row.reasons, row.confidence)
+      /* UNTIL THE FOUNDER APPLIES 20261113093001: a database without the presenter's column refuses the field (PostgREST
+         PGRST204, or 42703 from Postgres); the night lands without it, as before, and is never lost. */
+      if (error && presenter.presented_by && /presented_by/.test(error.message)) {
+        presenter = {}
+        ;({ data, error } = await write(row.reasons, row.confidence))
+      }
       /* UNTIL THE FOUNDER APPLIES A NEW HOLD REASON'S MIGRATION (20261105160001 applied 5 November; 20261106090001,
          link_unreached, prepared 6 November): a database that does not yet allow one refuses the row
          (listing_candidates_reasons_known). The night still lands for a person, held, with the nearest reason it allows
