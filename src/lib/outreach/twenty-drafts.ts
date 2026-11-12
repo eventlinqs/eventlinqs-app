@@ -1,12 +1,12 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readDailyTwenty } from './daily-twenty-read'
 import { voidTouch } from './crm'
 import { draftFromTemplate, type DraftRequest } from './drafts'
 import { photoPath } from './photo-link'
+import { readTheirNights } from './their-nights'
 import { letterFields, letterFor, TWENTY_LETTERS, type TheirNight, type TwentyLetter } from './twenty-letters'
 
 /**
@@ -87,32 +87,17 @@ export async function storeTwentyLetters(db: Admin, by: string): Promise<string[
   return written
 }
 
-type NightRow = { title: string; start_date: string; timezone: string | null; venue_name: string | null; is_free: boolean | null }
-
-/** Their next public night, at one of their venues or under their own account; null where none is listed. */
-export async function nextNightOf(db: Admin, organiser: { id: string; organisation_id: string | null }, now: Date): Promise<TheirNight | null> {
-  const venues = await db.from('organiser_venues').select('venue_id').eq('organiser_id', organiser.id)
-  if (venues.error) throw new Error(`their venues could not be read: ${venues.error.message}`)
-  const venueIds = (venues.data ?? []).map((v) => v.venue_id as string)
-  const first = async (column: 'venue_id' | 'organisation_id', values: string[]): Promise<NightRow | null> => {
-    if (values.length === 0) return null
-    const r = await applyPublicEventVisibility(
-      (db as unknown as SupabaseClient).from('events').select('title, start_date, timezone, venue_name, is_free'),
-      { now, includeExternal: true },
-    )
-      .in(column, values)
-      .gt('end_date', now.toISOString())
-      .order('start_date', { ascending: true })
-      .limit(1)
-    if (r.error) throw new Error(`their nights could not be read: ${r.error.message}`)
-    return ((r.data ?? [])[0] as NightRow | undefined) ?? null
-  }
-  const nights = [await first('venue_id', venueIds), await first('organisation_id', organiser.organisation_id ? [organiser.organisation_id] : [])].filter(
-    (n): n is NightRow => n !== null,
-  )
-  nights.sort((a, b) => a.start_date.localeCompare(b.start_date))
-  const n = nights[0]
-  return n ? { title: n.title, startDate: n.start_date, timezone: n.timezone, venueName: n.venue_name, isFree: n.is_free } : null
+/**
+ * Their next public night (./their-nights.ts: at a venue they run, under their own account, or booked on their own
+ * website); null where none is listed.
+ */
+export async function nextNightOf(
+  db: Admin,
+  organiser: { id: string; organisation_id: string | null; website_url: string | null },
+  now: Date,
+): Promise<TheirNight | null> {
+  const [n] = await readTheirNights(db, organiser, now, 1)
+  return n ? { title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
 }
 
 /** Drafts the day's conversion asks and first messages that have no message waiting. */
@@ -167,14 +152,14 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         continue
       }
       const [org, contact] = await Promise.all([
-        db.from('organisers').select('id, organisation_id').eq('id', a.organiserId).single(),
+        db.from('organisers').select('id, organisation_id, website_url').eq('id', a.organiserId).single(),
         db.from('organiser_contacts').select('person_name, unsubscribe_token').eq('id', a.contactId).single(),
       ])
       if (org.error || contact.error) {
         skipped.push({ organiser: a.organiserName, why: `could not be read: ${(org.error ?? contact.error)?.message}` })
         continue
       }
-      const night = await nextNightOf(db, { id: org.data.id, organisation_id: org.data.organisation_id }, input.now)
+      const night = await nextNightOf(db, { id: org.data.id, organisation_id: org.data.organisation_id, website_url: org.data.website_url }, input.now)
       if (!night) {
         skipped.push({ organiser: a.organiserName, why: 'no public night of theirs to name' })
         continue
