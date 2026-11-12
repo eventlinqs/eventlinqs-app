@@ -10,6 +10,7 @@ import { byException, rhythm, type DashboardFigure } from '@/lib/admin/founder-d
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
+import { readPlanGates } from '@/lib/growth/plan-gates'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -47,6 +48,11 @@ export default async function AdminTodayPage() {
     // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
     readCommandCentre(createAdminClient(), now),
   ])
+  // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
+  const gates = await readPlanGates(now).then(
+    (g) => ({ ok: true as const, g }),
+    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+  )
   const exceptions = byException(dashboard)
   // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
   const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))
@@ -72,6 +78,28 @@ export default async function AdminTodayPage() {
           approval sends; until then each task opens the page that acts on it. */}
       <section data-section="command-centre" aria-label="Command Centre" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 sm:p-6">
         <h2 className="font-display text-lg font-semibold text-white">Command Centre</h2>
+        {/* THE PLAN'S GATES (Lawal's master plan, 'full-time in six months'; the PM's 09:19 item 3): each with its target,
+            its day and what each week still needs, counted by the platform's own rules (src/lib/growth/plan-gates-math.ts). */}
+        <div data-section="plan-gates" className="mt-3">
+          <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-white/60">The plan&apos;s gates</h3>
+          {gates.ok ? (
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+              {gates.g.map((s) => (
+                <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
+                  <p className="text-sm font-semibold text-white">{s.gate.label}</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white">
+                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${s.gate.due}` : ' a day'}</span>
+                  </p>
+                  <p className={`mt-1 text-xs ${s.met ? 'text-emerald-300' : s.late ? 'text-amber-200' : 'text-white/60'}`}>
+                    {s.met ? 'Met' : s.late ? `Past its day by ${-(s.daysLeft ?? 0)} days` : s.perWeek !== null ? `${s.perWeek} more a week, ${s.daysLeft} days left` : `${s.gate.target - s.value} more today`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-amber-200">The plan&apos;s gates could not be read just now ({gates.why}).</p>
+          )}
+        </div>
         {centre.state === 'not_landed' ? (
           <p className="mt-2 text-sm text-amber-200">The task list is not on this database yet: its migration (20261111230001) waits for Lawal to apply it.</p>
         ) : centre.state === 'failed' ? (

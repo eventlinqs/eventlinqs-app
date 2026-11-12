@@ -68,7 +68,7 @@ const of = (kind: string, city?: string) => pieces.filter((p) => (p.kind as stri
 
 describe('the edition cities', () => {
   it('are Geelong then Melbourne, held in one place', () => {
-    expect(EDITION_CITIES).toEqual(['geelong', 'melbourne'])
+    expect(EDITION_CITIES).toEqual(['melbourne', 'geelong'])
   })
   it('plan no new edition for a city not yet on the list, however many nights it has', () => {
     expect(of('tonight_tomorrow', 'ballarat')).toHaveLength(0)

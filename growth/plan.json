@@ -1,8 +1,8 @@
 {
   "name": "EventLinqs growth plan",
-  "version": 4,
-  "set_on": "2026-11-01",
-  "set_by": "Lawal Adams, founder, 05:39 Melbourne time (\"Geelong and Melbourne for now... lock that in\")",
+  "version": 6,
+  "set_on": "2026-11-12",
+  "set_by": "Lawal Adams, founder, 09:16 to 09:19 Melbourne time on 12 November 2026, relayed by the PM: 'Melbourne is bigger than Geelong ... Geelong is not the criteria. It's not empirical. Melbourne wins, and you win other big cities. You can then start doing regional cities.'",
   "readable_version": "https://claude.ai/artifact/NiVfqJUKJZhu57Asoh1HLJ (EventLinqs: A against the Fever path); V3 checklist https://claude.ai/artifact/9ry6uA1DMt5RBGvHn8njnp",
   "mission": "The news of events: we know first, we publish first, and we tell people where to get the ticket. Every great event people want to go to, any kind (concerts, festivals, club nights, community and cultural nights, anything), in one place, bought through us. Australia first, then the world.",
   "model": {
@@ -64,8 +64,8 @@
   },
   "cities": {
     "open": [
-      "Geelong",
       "Melbourne",
+      "Geelong",
       "Ballarat",
       "Bendigo"
     ],
@@ -174,10 +174,91 @@
   ],
   "changes_from_v2": "v3 adds end_goal, winning_model, global_stages, never; mission widened to global. Targets, quotas, cities, gates, rules, close_the_ticketing_gap and benchmark_standard are unchanged from v2. The Featured and directory layers stay unapproved until the joint images session.",
   "focus_market": {
-    "set_on": "2026-11-01",
-    "name": "Geelong and Melbourne, one weekend market",
-    "why": "People spend their weekends across both cities, an hour apart; Ballarat to Melbourne is about an hour and a half. Geelong alone is too small to be the launch. Melbourne demand is already showing (AMCF contacts).",
-    "rule": "Outreach, social, the weekly email and conversion asks go to Geelong and Melbourne first. Ballarat and Bendigo stay open and listed, and are worked once the pair is won."
+    "set_on": "2026-11-12",
+    "name": "Melbourne first, then the other big Australian cities, then the regional cities",
+    "why": "Melbourne is the bigger market, and the evidence agrees: every organiser so far and every rights recorded photograph is in Melbourne (read from production, 12 November 2026, 01:07).",
+    "rule": "Outreach, social, the weekly email and conversion asks go to Melbourne first; then the other big Australian cities as each opens; then the regional cities (Geelong, Ballarat, Bendigo). Every city's events stay listed and findable (law 16), and no organiser is turned away for their location."
   },
-  "changes_from_v3": "v4 sets the focus market to Geelong and Melbourne together (stage 1), and the mission to the news of events: first to know, first to publish, where to get the ticket, any kind of event. Everything else unchanged."
+  "changes_from_v3": "v4 sets the focus market to Geelong and Melbourne together (stage 1), and the mission to the news of events: first to know, first to publish, where to get the ticket, any kind of event. Everything else unchanged.",
+  "operating_order": {
+    "set_on": "2026-11-01 05:43",
+    "by": "Lawal",
+    "order": "No outreach until the platform is complete and proved working on live. Outreach starts only when Lawal says."
+  },
+  "changes_from_v4": "Lawal, 1 November 2026, 15:31 to 16:59: (1) the city first discovery architecture and the event acquisition engine (C:\\dev\\DESIGN\\CITY-FIRST-1NOV\\ENGINE-FINAL-DIRECTIVE-1NOV.md) are the first build: every event listed, re-read daily and adaptively, never a past event shown; (2) the 12 month growth and marketing system (C:\\dev\\GROWTH\\GROWTH-SYSTEM-DIRECTIVE-1NOV.md) is built into the platform next; (3) laws 10 and 11 in C:\\dev\\CLAUDE.md: beat Ticketmaster, Eventbrite and Humanitix at every stage; ownership.",
+  "growth_system": {
+    "directive": "C:\\dev\\GROWTH\\GROWTH-SYSTEM-DIRECTIVE-1NOV.md",
+    "objective": "Australia's most trusted local event discovery platform and a repeatable organiser acquisition business, pursuing A$1 million in annual revenue within 12 months (a scenario, managed by monthly leading indicators, never announced as a forecast).",
+    "flywheel": [
+      "comprehensive verified local event coverage",
+      "audience and recurring discovery (search, weekly city guides, email, reminders, social)",
+      "organiser acquisition (claim, distribute, activate ticketing)",
+      "paid ticket sales with measured results",
+      "repeat organisers and more supply"
+    ],
+    "pipeline": [
+      "prospect",
+      "qualified",
+      "contact eligible",
+      "contacted",
+      "interested",
+      "claimed",
+      "ticketing activated",
+      "first paid sale",
+      "repeat organiser"
+    ],
+    "scenario_1m": {
+      "active_paid_organisers": 600,
+      "monthly_tickets_per_organiser": 100,
+      "net_contribution_per_ticket_aud": 1.18,
+      "monthly_promotion_tool_contribution_aud": 12000,
+      "annualised_contribution_aud": 993600,
+      "note": "illustrative, not a forecast; 20 percent qualified to active is a planning assumption"
+    },
+    "gates": "Geelong first; Melbourne the next channel; expansion only on evidence of coverage, audience growth, operational capacity and improving commercial performance.",
+    "order": "Platform side is built now (no sending). Outreach and social PUBLISHING start only on Lawal's word once the platform is 100 percent.",
+    "success": "repeat visitors, active organisers, real ticket sales, retention, sustainable contribution; never the number of posts."
+  },
+  "outreach_order": [
+    "Melbourne",
+    "the other big Australian cities",
+    "the regional cities"
+  ],
+  "master_plan_gates": {
+    "source": "Lawal's Claude Doc 'EventLinqs master plan: full-time in six months', its gates as the PM relayed them on 12 November 2026, 09:19",
+    "tracked_on": "the Command Centre on /admin/today (src/lib/growth/plan-gates-math.ts)",
+    "gates": [
+      {
+        "what": "events selling through EventLinqs",
+        "target": 20,
+        "by": "2026-12-13"
+      },
+      {
+        "what": "events selling through EventLinqs",
+        "target": 50,
+        "by": "2027-01-31"
+      },
+      {
+        "what": "recurring organisers",
+        "target": 30,
+        "by": "2027-01-31"
+      },
+      {
+        "what": "checked upcoming events",
+        "target": 300,
+        "by": "2027-01-31"
+      },
+      {
+        "what": "active, recurring, paid-event organisers in Melbourne",
+        "target": 10,
+        "by": "2027-03-31"
+      },
+      {
+        "what": "outreach messages a day",
+        "target": 20,
+        "by": null
+      }
+    ]
+  },
+  "changes_from_v5": "Lawal, 12 November 2026, 09:16 to 09:19: Melbourne first. The home page opens on Melbourne; outreach, social and the weekly email lead with Melbourne, then the other big cities, then the regional cities; every city stays listed. The master plan's gates become targets the Command Centre tracks."
 }

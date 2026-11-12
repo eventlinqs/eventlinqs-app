@@ -9,7 +9,8 @@ import { EDITION_CITIES } from '@/lib/social/campaign'
 // agreed at 18:01 that email and social read one list, so the two never cover different cities.
 describe('the cities the weekly digest goes to', () => {
   test('are the edition cities that have someone who said yes, in the list order', () => {
-    expect(editionDigestCities(['ballarat', 'melbourne', 'geelong', 'sydney'])).toEqual(['geelong', 'melbourne'])
+    // Melbourne first (Lawal, 12 November 2026, 09:16 to 09:19; growth plan version 6).
+    expect(editionDigestCities(['ballarat', 'melbourne', 'geelong', 'sydney'])).toEqual(['melbourne', 'geelong'])
   })
   test('a city on the list with nobody who said yes is not sent', () => {
     expect(editionDigestCities(['melbourne'])).toEqual(['melbourne'])

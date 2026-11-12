@@ -15,7 +15,9 @@
  */
 
 export const COHORT_SIZE = 100
-export const CITY_SHARES = { geelong: 0.45, melbourne: 0.35, ballarat: 0.1, bendigo: 0.1 } as const
+// MELBOURNE FIRST (Lawal, 12 November 2026, 09:16 to 09:19: "Melbourne wins ... You can then start doing regional cities";
+// growth plan version 6): the larger share is Melbourne's, the pilot hypothesis otherwise as ruling 5 set it.
+export const CITY_SHARES = { melbourne: 0.45, geelong: 0.35, ballarat: 0.1, bendigo: 0.1 } as const
 export type PilotCity = keyof typeof CITY_SHARES
 const CITIES = Object.keys(CITY_SHARES) as PilotCity[]
 
