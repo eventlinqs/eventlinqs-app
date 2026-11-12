@@ -240,6 +240,7 @@
     "/organisers/signup": 156114,
     "/partners": 164379,
     "/partners/[slug]": 156258,
+    "/photos/[contact]/[proof]": 158449,
     "/press": 156114,
     "/pricing": 165700,
     "/queue/[slug]": 168667,
