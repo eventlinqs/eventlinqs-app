@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
+import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
 import { failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
@@ -222,7 +223,8 @@ async function piecesSwept(db: Admin): Promise<QueueItem[]> {
   ])
   if (perr) fail(perr)
   if (aerr) fail(aerr)
-  const gone = new Set((posted ?? []).map((p) => p.piece_id))
+  // A partner kit Lawal sent by email has gone as surely as one marked sent (src/lib/social/kit-sent.ts).
+  const gone = new Set([...(posted ?? []).map((p) => p.piece_id), ...(await readKitIdsSentByEmail(db, ids))])
   const approvals = approved ?? []
   return swept
     .filter((d) => !gone.has(d.piece_id) && !approvals.some((a) => a.piece_id === d.piece_id && a.revision > d.revision))

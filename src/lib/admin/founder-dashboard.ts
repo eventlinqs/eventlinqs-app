@@ -15,6 +15,8 @@ import { paidFigure, paidReadFrom } from '@/lib/growth/paid-controls-math'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { CREDIT_DAYS } from '@/lib/social/results'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readEveryRowIn } from '@/lib/supabase/read-every-row-in'
+import { kitWentAt, readKitTouchesSent } from '@/lib/social/kit-sent'
 import { figuresFor, type OrderRow } from '@/lib/growth/weekly-math'
 import { googleSpendFigure, spendReadFrom } from '@/lib/google/spend-guard-math'
 import { economicsFigures, kitsSentAndUsed, type Cadence, type DashboardFigure, type DashboardSection, type FigureKind } from './founder-dashboard-math'
@@ -163,20 +165,22 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
 
   const kits = await settle(async () => {
     const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
-    const sent = await readEveryRow<{ id: string; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] }>('the partner kits sent', (from, to) =>
-      admin.from('social_pieces').select('id, share_link_id, social_piece_postings!inner(posted_at)').eq('kind', 'partner_kit').gte('social_piece_postings.posted_at', since).order('id', { ascending: true }).range(from, to),
+    // A kit went when Lawal marked it sent or when he sent the message carrying its own link (src/lib/social/kit-sent.ts).
+    const pieces = await readEveryRow<{ id: string; link: string | null; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] | null }>('the partner kits', (from, to) =>
+      admin.from('social_pieces').select('id, link, share_link_id, social_piece_postings(posted_at)').eq('kind', 'partner_kit').order('id', { ascending: true }).range(from, to),
     )
-    const rows = sent.map((k) => {
-      const went = Array.isArray(k.social_piece_postings) ? k.social_piece_postings[0] : k.social_piece_postings
-      return { sentAt: went ? new Date(went.posted_at).toISOString() : null, linkId: k.share_link_id }
-    })
+    const sentByEmail = await readKitTouchesSent(admin, pieces.map((k) => k.link))
+    const rows = pieces
+      .map((k) => {
+        const went = Array.isArray(k.social_piece_postings) ? (k.social_piece_postings[0] ?? null) : k.social_piece_postings
+        const sentAt = kitWentAt(went ? new Date(went.posted_at).toISOString() : null, k.link === null ? null : (sentByEmail.get(k.link) ?? null))
+        return { sentAt, linkId: k.share_link_id }
+      })
+      .filter((k) => k.sentAt !== null && k.sentAt >= since)
     const linkIds = [...new Set(rows.map((k) => k.linkId).filter((v): v is string => v !== null))]
-    const taps =
-      linkIds.length === 0
-        ? []
-        : await readEveryRow<{ id: string; link_id: string; occurred_at: string }>("the taps on the kits' own links", (from, to) =>
-            admin.from('share_link_events').select('id, link_id, occurred_at').eq('kind', 'click').eq('is_test', false).in('link_id', linkIds).gte('occurred_at', since).order('id', { ascending: true }).range(from, to),
-          )
+    const taps = await readEveryRowIn<{ id: string; link_id: string; occurred_at: string }>("the taps on the kits' own links", linkIds, (chunk, from, to) =>
+      admin.from('share_link_events').select('id, link_id, occurred_at').eq('kind', 'click').eq('is_test', false).in('link_id', chunk).gte('occurred_at', since).order('id', { ascending: true }).range(from, to),
+    )
     return kitsSentAndUsed(rows, taps.map((t) => ({ linkId: t.link_id, at: new Date(t.occurred_at).toISOString() })), now)
   })
 

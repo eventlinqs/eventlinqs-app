@@ -11208,6 +11208,26 @@ const DRILLS = [
     expect: 'reads the organisers with no readPlatformOrganiserIds',
   },
   /*
+   * kit-sent-reads-the-touch (13 November 2026; WINDOW 5A, order 4 item 9). The shape every one of the five readers had:
+   * whether a piece went read from the postings alone, so a partner kit Lawal sent by email read as never sent.
+   */
+  {
+    name: 'social: /admin/today judges a kit gone from the postings alone again',
+    guard: `${GUARDS}/kit-sent-reads-the-touch.mjs`,
+    file: 'src/lib/admin/today.ts',
+    find: "import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'",
+    replace: '',
+    expect: 'judges whether a piece went from social_piece_postings alone',
+  },
+  {
+    name: 'social: the social report judges a kit sent from the postings embedded in its pieces alone again',
+    guard: `${GUARDS}/kit-sent-reads-the-touch.mjs`,
+    file: 'src/lib/growth/social-report.ts',
+    find: "import { kitWentAt, readKitTouchesSent } from '@/lib/social/kit-sent'",
+    replace: '',
+    expect: 'judges whether a piece went from social_piece_postings alone',
+  },
+  /*
    * listed-hosts-show-their-source (window 4, 24 October 2026, WI2 Part 2). One
    * drill per assertion: the freshness group and its predicate, the guide's
    * read, the shared row, the walk-in page three ways, the organiser page, the

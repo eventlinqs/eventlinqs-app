@@ -272,6 +272,8 @@
  *                              pulled back payout never reads as money paid (V3 item 8)
  *   growth-reads-skip-the-platform  every read of the organisers leaves the platform's
  *                              own listings organisation out (2 November 2026)
+ *   kit-sent-reads-the-touch   whether a partner kit went is read through one module,
+ *                              a kit Lawal sent by email counting as sent (13 November 2026)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
  *                              module, its own words carry no ticket or book word and
  *                              no dollar sign, the route dispatches it before any ticket
@@ -3414,6 +3416,10 @@ const GUARDS = [
   // too; five readers counted that table as it stands (WINDOW 1, 2 November 2026, 12:17). Who is a real organiser is
   // one rule, src/lib/growth/platform-organiser.ts; this fails the build where src/ selects the organisers without it.
   'scripts/guards/growth-reads-skip-the-platform.mjs',
+  // A partner kit goes by hand (marked sent) or by email (Lawal sends the message carrying its own link, synced from his
+  // Sent Items); five readers judged it from the postings alone (WINDOW 5A, 13 November 2026, order 4 item 9). Whether a
+  // kit went is one rule, src/lib/social/kit-sent.ts; this fails the build where src/ reads the postings without it.
+  'scripts/guards/kit-sent-reads-the-touch.mjs',
   // The cost guard for billed Places calls (the project manager's note of 30 October 2026, 4.52 pm, on Lawal's order:
   // OFF until he says, he wants the cost first): every Places web service address in src asks google_spend_reserve first, through
   // withGoogleSpend, and the migration starts with Google OFF and serialises every reservation. Drilled red two ways.
