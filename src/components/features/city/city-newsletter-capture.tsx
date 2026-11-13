@@ -83,7 +83,7 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className={`h-11 flex-1 rounded-full border px-4 text-sm focus:border-[var(--brand-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]/40 ${c.input}`}
+            className={`h-11 rounded-full border px-4 text-sm sm:flex-1 focus:border-[var(--brand-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]/40 ${c.input}`}
           />
           <button
             type="submit"

@@ -1258,7 +1258,7 @@ export default async function EventDetailPage({ params }: Props) {
           ) : null}
 
           <div className={`relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${typographicHero ? 'pb-14 lg:pb-20' : 'pb-10 pt-6 lg:pb-14'}`}>
-            <HeroWords photo={!typographicHero} className="max-w-3xl animate-fade-rise">
+            <HeroWords photo={!typographicHero} className="max-w-3xl animate-hero-rise">
               {event.category && (
                 <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400 shadow-[var(--shadow-card)]">
                   {event.category.name}

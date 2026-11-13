@@ -176,7 +176,7 @@ export function HeroCarouselClient({
         <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
           <div
             key={`fg-${active.key}`}
-            className="mx-auto max-w-2xl animate-fade-rise text-center sm:mx-0 sm:text-left"
+            className="mx-auto max-w-2xl animate-hero-rise text-center sm:mx-0 sm:text-left"
           >
             <div className="flex justify-center sm:justify-start">
               <p className="font-display text-[11px] font-semibold uppercase tracking-[0.28em] text-gold-400">
@@ -221,7 +221,7 @@ export function HeroCarouselClient({
           </div>
 
           {active.card && (
-            <div key={`card-${active.key}`} className="hidden w-full max-w-sm shrink-0 animate-fade-rise lg:block">
+            <div key={`card-${active.key}`} className="hidden w-full max-w-sm shrink-0 animate-hero-rise lg:block">
               {active.card}
             </div>
           )}

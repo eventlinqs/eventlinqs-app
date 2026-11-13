@@ -132,7 +132,7 @@ export function LineupLoopPanel({ eventId, acts, totals, variant = 'kit' }: Prop
               }}
               placeholder="Search performers, or type a new name"
               disabled={isPending}
-              className="h-11 flex-1 rounded-lg border border-ink-200 px-3.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-60"
+              className="h-11 rounded-lg border border-ink-200 px-3.5 text-sm sm:flex-1 text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-60"
             />
             <button
               type="button"

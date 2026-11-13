@@ -88,7 +88,7 @@ export function EmailSignupPanel() {
                 aria-describedby={error ? 'email-signup-error' : 'email-signup-consent-note'}
                 aria-invalid={status === 'error' ? 'true' : 'false'}
                 disabled={pending}
-                className="h-14 flex-1 rounded-full bg-white px-6 text-base text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
+                className="h-14 rounded-full bg-white px-6 text-base sm:flex-1 text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
               />
               <button
                 type="submit"
