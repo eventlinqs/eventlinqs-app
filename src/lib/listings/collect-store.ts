@@ -170,6 +170,17 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       return out
     },
 
+    async recentRuns(sourceId: string, n: number): Promise<{ ranAt: string; succeeded: boolean }[]> {
+      const { data, error } = await db
+        .from('listing_source_runs')
+        .select('ran_at, succeeded')
+        .eq('source_id', sourceId)
+        .order('ran_at', { ascending: false })
+        .limit(n)
+      if (error) throw new Error(`the source's runs could not be read: ${error.message}`)
+      return (data ?? []).map((r) => ({ ranAt: r.ran_at as string, succeeded: r.succeeded === true }))
+    },
+
     async knownVenueNames(citySlug: string): Promise<readonly string[]> {
       /* The venues the capture rule may publish at (./capture-rule.ts): held in the city, not removed, and not one that
          lists its own nights or has claimed itself, which publishHuntNight never lists for. */

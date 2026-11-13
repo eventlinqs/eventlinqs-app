@@ -3,6 +3,8 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runCollection } from '@/lib/listings/collect-run'
 import { collectionStore } from '@/lib/listings/collect-store'
+import { runScout, SCOUT_HOUR, type ScoutOutcome } from '@/lib/listings/scout-engine'
+import { scoutStore } from '@/lib/listings/scout-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +12,11 @@ export const dynamic = 'force-dynamic'
 // compute (https://vercel.com/docs/functions/configuring-functions/duration). No source is started in the last minute.
 export const maxDuration = 300
 const RUN_BUDGET_MS = (maxDuration - 60) * 1000
+/** The scout starts only with at least this much of the budget left, so the collection run is never cut short for it. */
+const SCOUT_MIN_LEFT_MS = 90_000
+
+const melbourneHour = (at: Date) =>
+  Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' }).format(at))
 
 /**
  * THE COLLECTION RUN (item 19; the engine plan of 28 October 2026, part A; src/lib/listings/collect.ts,
@@ -34,7 +41,20 @@ export async function GET(request: NextRequest) {
         (result.notReached > 0 ? `; ${result.notReached} source(s) not reached inside the budget, still due` : ''),
     )
     for (const s of result.sources) console.log(`[cron/collection-run] ${s.name}: ${s.outcome}`)
-    return NextResponse.json({ ok: true, ...result })
+    /* THE SCOUT RUNS ITSELF (src/lib/listings/scout-engine.ts; Lawal's 10:42 of 13 November 2026): once a night, in the
+       23:25 turn and only with the budget the collection run left; no schedule is added. A failure never fails the run. */
+    let scout: ScoutOutcome[] | string = 'not this turn: the scout runs in the 23:25 turn'
+    if (melbourneHour(new Date(started)) === SCOUT_HOUR && started + RUN_BUDGET_MS - Date.now() >= SCOUT_MIN_LEFT_MS) {
+      try {
+        const db = createAdminClient()
+        scout = await runScout(scoutStore(db), fetch, new Date(), started + RUN_BUDGET_MS)
+        for (const o of scout) console.log(`[cron/collection-run] scout ${o.site}: ${o.outcome}`)
+      } catch (err) {
+        scout = `the scout failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] scout failed:', err)
+      }
+    }
+    return NextResponse.json({ ok: true, ...result, scout })
   } catch (err) {
     console.error('[cron/collection-run] failed:', err)
     return NextResponse.json({ error: 'collection run failed' }, { status: 500 })

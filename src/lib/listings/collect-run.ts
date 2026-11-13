@@ -92,6 +92,8 @@ export type CollectionStore = {
    * because a refusal was retried daily like an outage. The nights it already gave stay listed.
    */
   stopSource?(sourceId: string, because: string, at: Date): Promise<void>
+  /** The source's newest runs, newest first (listing_source_runs), for the dead source rule (deadSource). */
+  recentRuns?(sourceId: string, n: number): Promise<{ ranAt: string; succeeded: boolean }[]>
   /** Appends the run's row to the source's run log. */
   logRun(row: RunRow): Promise<void>
   /**
@@ -249,6 +251,27 @@ export function acceptedByRule(source: Pick<RegisteredSource, 'partner' | 'verif
  * pauseMs: the wait between two pages of one site when a page rule follows a sitemap (one request a second, the
  * CONTROLLER's 15:54); tests pass 0.
  */
+/** Failed runs in a row, at least this many, ... */
+export const DEAD_AFTER_RUNS = 6
+/** ... the oldest of them at least this long ago, make a source dead. */
+export const DEAD_AFTER_MS = 72 * 60 * 60 * 1000
+
+/**
+ * A DEAD SOURCE (Lawal's 10:42 of 13 November 2026: capture 'retires dead ones'): its newest runs, newest first, are all
+ * failures, at least DEAD_AFTER_RUNS of them, the oldest of that streak at least three days ago. A source down for an
+ * afternoon is never retired; one that has answered nothing for three days is, and a person re-opens it. Pure.
+ */
+export function deadSource(runs: readonly { ranAt: string; succeeded: boolean }[], now: Date): boolean {
+  const streak: { ranAt: string }[] = []
+  for (const r of runs) {
+    if (r.succeeded) break
+    streak.push(r)
+  }
+  if (streak.length < DEAD_AFTER_RUNS) return false
+  const oldest = Date.parse(streak[streak.length - 1].ranAt)
+  return Number.isFinite(oldest) && now.getTime() - oldest >= DEAD_AFTER_MS
+}
+
 export async function runCollection(
   store: CollectionStore,
   fetcher: Fetcher,
@@ -544,6 +567,7 @@ export async function runCollection(
         console.error(`[collection] ${source.name}: its stop could not be recorded:`, err)
       }
     }
+    let logged = false
     try {
       await store.logRun({
         sourceId: source.id,
@@ -556,8 +580,25 @@ export async function runCollection(
         queued: succeeded ? queued : 0,
         acceptedByRule: succeeded ? ruled : 0,
       })
+      logged = true
     } catch (err) {
       console.error(`[collection] ${source.name}: its run could not be logged:`, err)
+    }
+    /* RETIRES DEAD ONES: a failed run that makes the source dead (deadSource) puts it back to 'ask' with why, so no run
+       reads it until a person re-opens it; the Command Centre already shows it among the sources failing their runs. */
+    if (!succeeded && logged && refusedWith === null && store.recentRuns && store.stopSource) {
+      try {
+        const runs = await store.recentRuns(source.id, DEAD_AFTER_RUNS + 4)
+        if (deadSource(runs, now)) {
+          await store.stopSource(
+            source.id,
+            `Retired on ${at.slice(0, 10)}: every run for three days or more has failed (the last: ${outcome.slice(0, 200)}). A person re-opens it once it answers again.`,
+            now,
+          )
+        }
+      } catch (err) {
+        console.error(`[collection] ${source.name}: whether it is dead could not be read:`, err)
+      }
     }
   }
   return result
