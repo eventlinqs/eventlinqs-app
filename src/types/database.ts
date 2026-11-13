@@ -1331,6 +1331,36 @@ export type Database = {
           },
         ]
       }
+      discovery_engine_days: {
+        Row: {
+          all_passed: boolean
+          checks: Json
+          consecutive_days: number
+          day: string
+          manual_steps: number
+          numbers: Json
+          written_at: string
+        }
+        Insert: {
+          all_passed: boolean
+          checks: Json
+          consecutive_days: number
+          day: string
+          manual_steps: number
+          numbers: Json
+          written_at?: string
+        }
+        Update: {
+          all_passed?: boolean
+          checks?: Json
+          consecutive_days?: number
+          day?: string
+          manual_steps?: number
+          numbers?: Json
+          written_at?: string
+        }
+        Relationships: []
+      }
       dynamic_pricing_rules: {
         Row: {
           capacity_threshold_percent: number

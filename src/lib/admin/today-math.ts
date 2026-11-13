@@ -201,6 +201,27 @@ export function rulePublishedGlance(rows: readonly RulePublished[], total: numbe
 }
 
 /**
+ * THE EVENT DISCOVERY ENGINE'S DAY LINE, SEEN (Lawal's 18:31 of 13 November 2026; src/lib/listings/discovery-day.ts):
+ * the newest judged day, its count of seven, each part PASS or FAIL, and why each failing part failed and what the manual
+ * steps were. No judged day yet, no item. Pure.
+ */
+export function discoveryDayGlance(
+  row: { day: string; words: string; failing: readonly string[]; manual: readonly string[]; writtenAt: string } | null,
+): QueueItem[] {
+  if (!row) return []
+  const why = [...row.failing, ...row.manual].join('; ')
+  return [
+    {
+      id: `discovery:day-line:${row.day}`,
+      what: `The Event Discovery Engine, ${row.words}`,
+      why: why || 'Every part passed with no manual step.',
+      since: row.writtenAt,
+      href: '/admin/collected',
+    },
+  ]
+}
+
+/**
  * THE TWENTY'S POOL, SEEN (src/lib/outreach/basis-pool.ts): how many published events addresses the night's reading
  * recorded since yesterday, each waiting for Lawal's own check of its page when he sends (migration 20261031053501). None,
  * no item. Pure.

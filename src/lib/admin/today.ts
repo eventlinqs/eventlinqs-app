@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { DISCOVERY_PARTS, dayLineWords, type DayChecks } from '@/lib/listings/discovery-day'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
@@ -7,7 +8,7 @@ import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { readCampaign } from '@/lib/social/store'
 import { KIND_NAMES } from '@/lib/growth/social-report-math'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 
 /**
@@ -158,6 +159,30 @@ async function rulePublished(admin: Admin, now: Date): Promise<QueueItem[]> {
     .limit(RULE_GLANCE)
   if (error) throw new Error(error.message)
   return rulePublishedGlance((data ?? []) as RulePublished[], count ?? 0, CAPTURE_RULE_CHECKS)
+}
+
+/** The Event Discovery Engine's newest judged day (public.discovery_engine_days, written by the engine itself). */
+async function discoveryDayLine(admin: Admin): Promise<QueueItem[]> {
+  const db = admin as unknown as SupabaseClient
+  const { data, error } = await db
+    .from('discovery_engine_days')
+    .select('day, checks, manual_steps, consecutive_days, numbers, written_at')
+    .not('checks', 'eq', '{}')
+    .order('day', { ascending: false })
+    .limit(1)
+  if (error) throw new Error(error.message)
+  const r = (data ?? [])[0] as
+    | { day: string; checks: DayChecks; manual_steps: number; consecutive_days: number; numbers: { evidence?: { manualDetail?: string[] } }; written_at: string }
+    | undefined
+  if (!r) return discoveryDayGlance(null)
+  const failing = DISCOVERY_PARTS.filter((p) => !r.checks[p]?.pass).map((p) => `(${p}) ${r.checks[p]?.why ?? 'not judged'}`)
+  return discoveryDayGlance({
+    day: r.day,
+    words: dayLineWords({ day: r.day, checks: r.checks, manualSteps: r.manual_steps, consecutiveDays: r.consecutive_days }),
+    failing,
+    manual: r.numbers?.evidence?.manualDetail ?? [],
+    writtenAt: r.written_at,
+  })
 }
 
 /** The addresses the twenty's pool recorded since yesterday, each waiting for Lawal's page check (src/lib/outreach/basis-pool.ts). */
@@ -359,5 +384,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'rule_published', section: 'exceptions', name: 'Nights published by the rule since yesterday', read: ruled },
     { key: 'pool_found', section: 'exceptions', name: "Addresses the twenty's pool recorded since yesterday", read: pooled },
   ]
+  /* The engine's own day line, read in a line of its own (Lawal's 18:31 of 13 November 2026). */
+  sources.push({ key: 'discovery_day', section: 'exceptions', name: "The Event Discovery Engine's day line", read: await attempt(() => discoveryDayLine(admin)) })
   return queueOf(sources)
 }
