@@ -160,6 +160,7 @@ export async function CityGuideScreen({
           days={data.days}
           worth={worth}
           claimsOn={claimsOn}
+          heroPhoto={!!photo}
           renderedAt={now.getTime()}
         />
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,

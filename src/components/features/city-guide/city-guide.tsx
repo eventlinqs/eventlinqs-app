@@ -114,6 +114,7 @@ export function CityGuide({
   renderedAt,
   scope = 'city',
   stateHref = null,
+  heroPhoto = false,
 }: {
   city: GuideCity
   quickCities: readonly { slug: string; name: string }[]
@@ -143,6 +144,12 @@ export function CityGuide({
   renderedAt?: number
   /** 'state': the state page (/state/<slug>), every listed city of the state; 'city': one city (the default). */
   scope?: 'city' | 'state'
+  /**
+   * Whether the page above the guide shows a hero photo. That photo is the largest paint, so the first Big nights card then
+   * asks for no priority: its preload took the hero's bandwidth on a phone, where the card sits below the fold (the speed
+   * causes of 13 November 2026, cause 1). With no hero photo the card may itself be the largest paint, and asks.
+   */
+  heroPhoto?: boolean
   /** The state page this city's state chip opens (/state/victoria); null where the state has none. */
   stateHref?: string | null
 }) {
@@ -213,6 +220,10 @@ export function CityGuide({
   // Round 3's sections, read once from the city's rows; 'now' is the city's own today at noon, so server and browser agree.
   const sections = guideSections(here, { ...days, weekendKeys: weekendDays }, Date.parse(`${days.todayKey}T12:00:00Z`))
 
+  /* THE HERO FIRST (the speed causes of 13 November 2026, cause 1): the guide's first card asks for priority only
+     when the page above it shows no hero photo; with one, the hero is the largest paint and the only preload
+     (scripts/guards/one-priority-image.mjs). `at` is the section's place on the page. */
+  const leadPriority = (at: number) => !heroPhoto && at === 0
   // Section 5's suburb choice: the suburbs this city's own rows name.
   const suburbs = [...new Set(here.map((r) => r.suburb).filter((s): s is string => Boolean(s)))].sort((a, b) => a.localeCompare(b))
   const filtered = when !== 'three' || category !== 'all' || suburb !== 'all' || price !== 'all' || words.length > 0
@@ -355,7 +366,7 @@ export function CityGuide({
             <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
               {sections.big.map((e, i) => (
                 <li key={e.row.id}>
-                  <BigCard e={e} priority={at === 0 && i === 0} />
+                  <BigCard e={e} priority={leadPriority(at) && i === 0} />
                 </li>
               ))}
             </ul>
@@ -364,7 +375,7 @@ export function CityGuide({
         {key === 'announced' ? (
           <section aria-label={`Just announced in ${placeName}`} className="mt-12">
             <RailHead title="Just announced" />
-            <CardRail entries={sections.announced} priorityFirst={at === 0} />
+            <CardRail entries={sections.announced} priorityFirst={leadPriority(at)} />
           </section>
         ) : null}
         {/* FROM THE ORGANISERS (Lawal, 11 November 2026, 16:26): every event an organiser submitted or sells on EventLinqs
@@ -372,13 +383,13 @@ export function CityGuide({
         {key === 'organisers' ? (
           <section aria-label={`From the organisers in ${placeName}`} className="mt-12">
             <RailHead title="From the organisers" />
-            <CardRail entries={sections.organisers} priorityFirst={at === 0} />
+            <CardRail entries={sections.organisers} priorityFirst={leadPriority(at)} />
           </section>
         ) : null}
         {key === 'weekend' ? (
           <section aria-label={`This weekend in ${placeName}`} className="mt-12">
             <RailHead title="This weekend" onAll={() => { setWhen('weekend'); toList() }} />
-            <CardRail entries={sections.weekend} priorityFirst={at === 0} />
+            <CardRail entries={sections.weekend} priorityFirst={leadPriority(at)} />
           </section>
         ) : null}
         {key === 'free' ? (
