@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { missingGuardDatabase } from '../../../scripts/ops/pre-push-gate.mjs'
+import { missingGuardDatabase } from '../../../scripts/lib/guard-database-env.mjs'
 
 /*
  * THE GUARDS NEED A DATABASE TO LOOK AT (the guard audit of 14 November 2026, C:\dev\START-16OCT\GUARD-AUDIT-14NOV.md).

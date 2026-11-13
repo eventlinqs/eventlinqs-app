@@ -91,6 +91,7 @@
  * the gate makes (.lighthouseci, .tmp/gate-urls.txt, .tmp/gate-server.log) is
  * removed on the way out, green or red.
  */
+import { missingGuardDatabase } from '../lib/guard-database-env.mjs'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -218,38 +219,7 @@ function exec(command, args, env) {
   return r.status ?? 1
 }
 
-/**
- * The types-drift guard needs SUPABASE_ACCESS_TOKEN to list what production has
- * applied (that is how it tells PENDING from STALE). On this machine the token
- * lives in Windows Credential Manager, where `supabase login` put it, and
- * scripts/ops/with-supabase-token.ps1 hands it to one child without printing
- * it. A shell that already exports the token skips the helper.
- */
-/**
- * THE GUARDS NEED A DATABASE TO LOOK AT (the guard audit of 14 November 2026,
- * C:\dev\START-16OCT\GUARD-AUDIT-14NOV.md, Lawal's 02:37: the guards must help, not block). In the week before it,
- * eighteen guard stops were six database guards each failing 'no Supabase URL or key in the environment ... could not
- * look' on runs that had no database environment: one missing env file read as six faults. Each of those guards is
- * right to fail rather than pass when it cannot look; what was wrong was learning it six times, at the end of a long
- * run. So the guard step asks first, and says it once.
- *
- * @param {Record<string, string | undefined>} env the step's environment, .env.local already merged
- * @returns {string | null} why the guards cannot look, or null when they can
- */
-export function missingGuardDatabase(env) {
-  const url = nonEmpty(env.NEXT_PUBLIC_SUPABASE_URL)
-  const key = nonEmpty(env.SUPABASE_SERVICE_ROLE_KEY) || nonEmpty(env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  if (url && key) return null
-  const lacking = [url ? null : 'NEXT_PUBLIC_SUPABASE_URL', key ? null : 'SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY']
-    .filter(Boolean)
-    .join(' and ')
-  return (
-    `the guards would run with no database (${lacking} not set, and no .env.local in this tree carries them), so every ` +
-    'guard that reads the database would fail with "could not look". Run the gate with --env-file pointing at an ' +
-    '.env.local for the TEST project, or put one in this tree, then run it again. Nothing was judged.'
-  )
-}
-
+// THE GUARDS NEED A DATABASE TO LOOK AT: scripts/lib/guard-database-env.mjs (the guard audit of 14 November 2026).
 function runGuards(env) {
   const missing = missingGuardDatabase(env)
   if (missing) {
@@ -259,6 +229,13 @@ function runGuards(env) {
   return exec(NODE, ['scripts/guards/run-guards.mjs'], env)
 }
 
+/**
+ * The types-drift guard needs SUPABASE_ACCESS_TOKEN to list what production has
+ * applied (that is how it tells PENDING from STALE). On this machine the token
+ * lives in Windows Credential Manager, where `supabase login` put it, and
+ * scripts/ops/with-supabase-token.ps1 hands it to one child without printing
+ * it. A shell that already exports the token skips the helper.
+ */
 function runTypesDrift(env) {
   if (nonEmpty(env.SUPABASE_ACCESS_TOKEN)) return exec(NODE, ['scripts/ci/types-drift-guard.mjs'], env)
   if (process.platform === 'win32') {

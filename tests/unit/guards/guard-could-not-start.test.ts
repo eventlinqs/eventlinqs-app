@@ -31,7 +31,8 @@ describe('a guard that could not start is told apart from a guard that found a f
       ok: false,
       reason: 'could not start (Windows 0xC0000142, the process could not initialise): the machine, not a fault the guard found',
     })
-    expect(describeOutcome(ended(1)).reason).toBe('exit 1')
+    const plain = describeOutcome(ended(1))
+    expect(plain.ok === false && plain.reason).toBe('exit 1')
   })
 
   test('a could-not-start result is not mistaken for a network failure', () => {
