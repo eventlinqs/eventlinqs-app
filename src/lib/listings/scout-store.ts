@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { providerOf } from '@/lib/events/booking-links'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { CAPTURE_RULE_CITIES, type CaptureCity } from './capture-rule'
 import type { ScoutCandidate, ScoutRegistration, ScoutStore } from './scout-engine'
 
@@ -43,8 +44,10 @@ export function scoutStore(db: SupabaseClient): ScoutStore {
         .not('website_url', 'is', null)
         .in('city_slug', [...CAPTURE_RULE_CITIES])
       if (vErr) throw new Error(`venues could not be read: ${vErr.message}`)
-      const { data: organisers, error: oErr } = await db.from('organisers').select('name, website_url').not('website_url', 'is', null)
+      const { data: crm, error: oErr } = await db.from('organisers').select('id, name, website_url').not('website_url', 'is', null)
       if (oErr) throw new Error(`the CRM could not be read: ${oErr.message}`)
+      /* The platform is not an organiser (src/lib/growth/platform-organiser.ts): its own listings organisation is never scouted. */
+      const organisers = withoutPlatformOrganisers(crm ?? [], await readPlatformOrganiserIds(db as unknown as Parameters<typeof readPlatformOrganiserIds>[0]))
       const out: ScoutCandidate[] = []
       const seen = new Set<string>()
       const add = (c: ScoutCandidate) => {
@@ -58,7 +61,7 @@ export function scoutStore(db: SupabaseClient): ScoutStore {
         if (v.listing_source === 'organiser' || v.claimed_at) continue
         add({ name: String(v.name), kind: 'venue', website: String(v.website_url).trim(), citySlug: v.city_slug as CaptureCity, venueId: v.id as string })
       }
-      for (const o of organisers ?? []) add({ name: String(o.name), kind: 'organiser', website: String(o.website_url).trim(), citySlug: null, venueId: null })
+      for (const o of organisers) add({ name: String(o.name), kind: 'organiser', website: String(o.website_url).trim(), citySlug: null, venueId: null })
       return out
     },
 
