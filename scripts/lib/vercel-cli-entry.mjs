@@ -28,7 +28,14 @@ export function vercelEntryIn(root) {
   return existsSync(old) ? old : null
 }
 
-/** The installed CLI, the global npm install first, then the project's own; null when neither is there. */
+/**
+ * The installed CLI, the global npm install first, then the project's own; null when neither is there.
+ *
+ * @param {string} projectRoot
+ * @param {Record<string, string | undefined>} [env] the environment to read APPDATA from (a plain record, so a test
+ *   can pass one without the whole of NodeJS.ProcessEnv)
+ * @returns {{ file: string, prefix: string[] } | null}
+ */
 export function vercelCliEntry(projectRoot, env = process.env) {
   const roots = []
   if (env.APPDATA) roots.push(join(env.APPDATA, 'npm', 'node_modules', 'vercel'))
