@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { QUEUE_CHANNELS, buildDailyQueue, nextStepWords, notReady, openInApp, type QueueTouch } from '@/lib/outreach/daily-queue-math'
+import { QUEUE_CAPS, QUEUE_CHANNELS, buildDailyQueue, nextStepWords, notReady, openInApp, type QueueTouch } from '@/lib/outreach/daily-queue-math'
 
 /*
  * LAWAL's DAILY OUTREACH QUEUE (the PROJECT MANAGER's 00:42 and 05:05, 31 October 2026). Every message he sends by hand
@@ -37,6 +37,15 @@ describe('the daily queue', () => {
     expect(ig?.left).toBe(6)
     expect(ig?.today).toHaveLength(6)
     expect(ig?.waiting).toBe(8)
+  })
+
+  it("email's day is the plan's 20 (plan.json version 6; the PM's 18:24 of 13 November 2026), the others as they were", () => {
+    const mail = Array.from({ length: 22 }, (_, i) => touch(`e${String(i).padStart(2, '0')}`, 'email', `2026-11-13T08:${String(i).padStart(2, '0')}:00Z`))
+    const email = buildDailyQueue(mail, {}).find((c) => c.channel === 'email')
+    expect(email?.cap).toBe(20)
+    expect(email?.today).toHaveLength(20)
+    expect(email?.waiting).toBe(2)
+    expect(QUEUE_CAPS).toEqual({ instagram: 10, facebook: 10, website_form: 15, email: 20 })
   })
 
   it('a channel at its cap shows none today and says how many wait', () => {

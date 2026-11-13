@@ -18,6 +18,7 @@ import { getCityBanner } from '@/lib/images/city-photo'
 import { CityGuide } from './city-guide'
 import { HERO_EYEBROW_PLATE } from '@/components/media/hero-photo-scrim'
 import { statePageHref } from '@/lib/cities/state-pages'
+import { CityNewsletterCapture } from '@/components/features/city/city-newsletter-capture'
 
 /**
  * The city guide as a whole page: the header (its city chip names THIS city), the guide for ONE city, the footer (the
@@ -159,6 +160,7 @@ export async function CityGuideScreen({
           days={data.days}
           worth={worth}
           claimsOn={claimsOn}
+          heroPhoto={!!photo}
           renderedAt={now.getTime()}
         />
         {/* MORE OF THE CITY: the city's own ranked pages, each reached from here (the gate's internal-reachability step,
@@ -194,6 +196,17 @@ export async function CityGuideScreen({
             </>
           ) : null}
         </section>
+        ) : null}
+        {/* THE WEEKLY GUIDE, ASKED FOR ON THE GUIDE ITSELF (the PM's 18:16 of 13 November 2026, item 3): the same block the
+            community pages use, after the guide's sections, on every city guide and never on a state page (the guide is
+            per city). Its heading and line are the consent wording recorded (src/lib/consent/wording.ts); the address's
+            owner confirms before the first edition. Below the fold, so the hero keeps the paint. */}
+        {!onState ? (
+          <section aria-label={`${city.name}'s weekly guide`} className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+            <div className="max-w-xl rounded-xl border border-ink-200 bg-[var(--surface-1)] p-5 sm:p-6">
+              <CityNewsletterCapture cityName={city.name} tone="light" />
+            </div>
+          </section>
         ) : null}
         {after}
       </main>
