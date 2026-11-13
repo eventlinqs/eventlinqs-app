@@ -18,6 +18,7 @@ import { judgeCandidate, sourceHostOf, type CandidateReason, type Confidence } f
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
 import { canaryOpen, inCanaryTenth } from './canary'
+import { CAPTURE_RULE_PER_RUN, captureDecision, underCaptureRule } from './capture-rule'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -114,6 +115,11 @@ export type CollectionStore = {
    * (public.venues.name, address, city_slug). A feed that names such a venue and gives no street takes this one.
    */
   venueAddresses?(citySlug: string): Promise<ReadonlyMap<string, string>>
+  /**
+   * The names of the venues the capture rule may publish at in one city (./capture-rule.ts): held, not removed, not one
+   * that lists its own nights or has claimed itself. A store without it publishes nothing by the capture rule.
+   */
+  knownVenueNames?(citySlug: string): Promise<readonly string[]>
   /**
    * Writes one confirmed listing check per series this read found again (public.listing_checks; its trigger moves the
    * series' last confirmed day and every night's listing_fresh_until). The collection run reads only sources whose
@@ -369,6 +375,18 @@ export async function runCollection(
             }
             const events = withKnownVenueAddress(permitted, addresses)
             const plans = planCandidates(events, known, now, city)
+            /* CAPTURE PUBLISHES BY ITSELF (./capture-rule.ts; Lawal's 10:42 to 11:05 of 13 November 2026): a verified
+               source in a guide's city, under no other rule, publishes its checked nights at the venues held there. A
+               failed venue read publishes nothing by the rule; every night then waits for a person, as before. */
+            let captureVenues: readonly string[] | null = null
+            if (underCaptureRule(source) && store.knownVenueNames) {
+              try {
+                captureVenues = await store.knownVenueNames(source.citySlug)
+              } catch (err) {
+                console.error('[collection] the capture rule could not read its venues:', err instanceof Error ? err.message : err)
+              }
+            }
+            let captureDecided = 0
             found = plans.length
             /* Before stillNew drops the re-finds whose links are already held: a re-find is exactly what confirms. */
             const confirmations = seriesConfirmations(plans, known)
@@ -396,7 +414,20 @@ export async function runCollection(
                  show and a midnight start (a time the page likely did not state) are held with it. */
               /* The rule's venues: the hunt's, or a venue's own programme (OWN_PROGRAMME_SOURCES, Lawal's 10:42 of
                  13 November 2026), judged by exactly the same holds. */
-              const ruleSource = source.hunt ?? source.ownProgramme ?? null
+              let ruleSource: HuntSource | null = source.hunt ?? source.ownProgramme ?? null
+              let captureVenue: string | null = null
+              if (!ruleSource && captureVenues && plan.kind === 'new' && underCaptureRule(source)) {
+                const decision = captureDecision(plan.event, source, captureVenues)
+                if ('holds' in decision) {
+                  reasons.push(...decision.holds)
+                  confidence = 'low'
+                } else if (captureDecided < CAPTURE_RULE_PER_RUN && Date.now() < deadline) {
+                  /* At most CAPTURE_RULE_PER_RUN a source a run: each asks its ticket link first, inside the run's budget;
+                     the rest wait for the next runs, which decide them the same way (publishHuntNight's promote). */
+                  ruleSource = decision.rule
+                  captureVenue = decision.venue
+                }
+              }
               const huntAt =
                 ruleSource &&
                 plan.kind === 'new' &&
@@ -404,13 +435,14 @@ export async function runCollection(
                 /* Car 44c: a start between midnight and 9 am in Melbourne waits for a person (plausibleHuntStart). */
                 plausibleHuntStart(plan.event.startsAt) &&
                 !likelyDuplicate(plan.event, known, ruleSource.citySlug, (iso) => platformDay(new Date(iso)))
-                  ? huntVenue(ruleSource, plan.event.venueName)
+                  ? (captureVenue ?? huntVenue(ruleSource, plan.event.venueName))
                   : null
               /* ONE PUBLICATION GATE (car 46; LAW 19 section 4; the independent review's gate gap): a hunt night is listed by
                  the rule only at high confidence, through its candidate row, the way the database's own check
                  (listing_candidates_decided_by) allows; anything less lands for a person, with its reasons. The direct
                  publish of car 44b, with no candidate row, no audit and no plausibility check, is gone. */
               let byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && confidence === 'high')
+              if (captureVenue && byRule) captureDecided += 1
               /* LAW 19 SECTION 4.2, RULE (5): a night a rule would publish is first asked whether its ticket link reaches the
                  seller. A 404 or 410 holds it for a person (link_unreached); robots barring the link, or no answer, does not. */
               if (byRule && plan.kind === 'new' && plan.event.links[0] && (await linkUnreached(fetcher, plan.event.links[0].url, robotsByOrigin, pauseMs))) {

@@ -40,6 +40,15 @@ export type CandidateReason =
   | 'link_unreached'
   /** Its source's canary is open and this record is outside the canary's tenth (LAW 19 section 7.4; migration 20261106170001). */
   | 'canary_hold'
+  /* CAPTURE PUBLISHES BY ITSELF (./capture-rule.ts; Lawal's 10:42 to 11:05 of 13 November 2026; migration 20261113113001). */
+  /** Its venue words name no venue EventLinqs holds in that city. */
+  | 'venue_not_known'
+  /** Its title is longer than a listing's 80 characters: a person names it. */
+  | 'title_too_long'
+  /** Its title carries a word the platform bans. */
+  | 'banned_words'
+  /** Neither its own words nor its source give a category. */
+  | 'no_category'
 
 export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   source_unverified: 'Source not verified',
@@ -55,6 +64,10 @@ export const REASON_LABELS: Readonly<Record<CandidateReason, string>> = {
   multi_day_span: 'Spans several days with no performance named',
   link_unreached: 'Its ticket link does not reach the seller',
   canary_hold: 'Its source is in a canary; held until the canary passes',
+  venue_not_known: 'Its venue is not one EventLinqs holds in that city',
+  title_too_long: 'Its title is longer than 80 characters',
+  banned_words: 'Its title carries a banned word',
+  no_category: 'No category from its words or its source',
 }
 
 export type Confidence = 'high' | 'low'

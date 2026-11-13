@@ -781,6 +781,8 @@ export type RegisteredSource = {
   ownProgramme?: HuntSource | null
   /** Its open records canary (LAW 19 section 7.4, ./canary.ts), else null: a rule then publishes only its tenth. */
   canary?: SourceCanary
+  /** The source's own category (listing_sources.category_id, by slug), the one a night takes when its words give none. */
+  categorySlug?: string | null
 }
 
 /**
