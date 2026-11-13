@@ -12,6 +12,7 @@ import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
 import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-ups'
 import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
+import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, runBasisPool } from '@/lib/outreach/basis-pool'
 
 /**
  * THE OUTREACH RUN, EVERY 15 MINUTES (window 6, 28 October 2026; the engine plan's FULL AUTOMATION).
@@ -147,7 +148,27 @@ export async function GET(request: NextRequest) {
         sentItems = { error: message }
       }
     }
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems })
+    // THE TWENTY'S POOL GROWS BY ITSELF (src/lib/outreach/basis-pool.ts; Lawal's 10:42 of 13 November 2026): once a night,
+    // in the 23:30 turn in Melbourne, a few CRM organisers' own sites read politely and each published events address
+    // recorded with its page and day; its no-messages check is Lawal's own, before any message leaves held. It stops a
+    // minute inside the function's 300 s from the run's start. Reading and
+    // recording only; nothing sends. A failure is reported and logged and never stops the run above.
+    let pool: unknown = 'not this turn: the pool grows in the 23:30 turn'
+    const melbourne = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(now)
+    const hour = Number(melbourne.find((p) => p.type === 'hour')?.value)
+    const minute = Number(melbourne.find((p) => p.type === 'minute')?.value)
+    if (hour === POOL_HOUR && minute >= POOL_MINUTE_FROM && minute < POOL_MINUTE_FROM + 15) {
+      try {
+        const founder = await founderAccount(db)
+        pool = founder.id === null ? `not read: ${founder.why}` : await runBasisPool(basisPoolStore(db, founder.id), fetch, now, now.getTime() + 240_000)
+        console.log(`[cron/outreach-run] the pool: ${JSON.stringify(pool)}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] the pool not read:', message)
+        pool = { error: message }
+      }
+    }
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

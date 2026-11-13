@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { runCollection, type CandidateRow, type CollectionStore, type Fetcher } from '@/lib/listings/collect-run'
 import type { RegisteredSource } from '@/lib/listings/collect'
-import { huntOrder, ownProgrammeFor, OWN_PROGRAMME_SOURCES, HUNT_SOURCES } from '@/lib/listings/headline-hunt'
+import { huntOrder, huntVenue, ownProgrammeFor, OWN_PROGRAMME_SOURCES, HUNT_SOURCES } from '@/lib/listings/headline-hunt'
 
 /*
  * A VENUE'S OWN PROGRAMME PUBLISHES CHECKED NIGHTS BY RULE (Lawal's 10:42 of 13 November 2026: capture 'publishes checked
@@ -117,5 +117,15 @@ describe('a venue reading its own programme publishes a checked night by rule', 
     const own = comedyRepublic()
     const arena = comedyRepublic({ id: 'rla', ownProgramme: null, hunt: HUNT_SOURCES[0] })
     expect(huntOrder([own, arena]).map((s) => s.id)).toEqual(['rla'])
+  })
+})
+
+describe("a venue's other names publish at the one venue", () => {
+  it("the JazzLab's 'Jazzlab' and 'Bennetts Lane Jazz Club' are The JazzLab, never a second venue", () => {
+    const jazz = ownProgrammeFor('https://thejazzlab.com.au/events/?ical=1')
+    if (!jazz) throw new Error('no own programme rule for the JazzLab')
+    expect(huntVenue(jazz, 'Jazzlab')).toBe('The JazzLab')
+    expect(huntVenue(jazz, 'Bennetts Lane Jazz Club')).toBe('The JazzLab')
+    expect(huntVenue(jazz, 'Some Other Club')).toBeNull()
   })
 })

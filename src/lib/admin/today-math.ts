@@ -193,3 +193,23 @@ export function rulePublishedGlance(rows: readonly RulePublished[], total: numbe
     },
   ]
 }
+
+/**
+ * THE TWENTY'S POOL, SEEN (src/lib/outreach/basis-pool.ts): how many published events addresses the night's reading
+ * recorded since yesterday, each waiting for Lawal's own check of its page when he sends (migration 20261031053501). None,
+ * no item. Pure.
+ */
+export function poolFoundGlance(rows: readonly { address: string; organiser: string | null; recorded_at: string }[], total: number): QueueItem[] {
+  if (total === 0 || rows.length === 0) return []
+  const named = rows.slice(0, 5).map((r) => (r.organiser ? `${r.organiser} (${r.address})` : r.address))
+  const since = rows.reduce((min, r) => (r.recorded_at < min ? r.recorded_at : min), rows[0].recorded_at)
+  return [
+    {
+      id: 'outreach:pool-found',
+      what: `${total} published ${total === 1 ? 'address' : 'addresses'} recorded for the twenty since yesterday`,
+      why: `Each was found on the organiser's own page, at their own domain, in their events role. Nothing is sent to one until you open its page and tick it when you send. ${named.join('; ')}.`,
+      since,
+      href: '/admin/acquisition',
+    },
+  ]
+}

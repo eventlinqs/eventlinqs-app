@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { failuresInARow, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 
 /**
@@ -157,6 +157,24 @@ async function rulePublished(admin: Admin, now: Date): Promise<QueueItem[]> {
   return rulePublishedGlance((data ?? []) as RulePublished[], count ?? 0, CAPTURE_RULE_CHECKS)
 }
 
+/** The addresses the twenty's pool recorded since yesterday, each waiting for Lawal's page check (src/lib/outreach/basis-pool.ts). */
+async function poolFound(admin: Admin, now: Date): Promise<QueueItem[]> {
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const { data, count, error } = await admin
+    .from('organiser_contacts')
+    .select('address, basis_recorded_at', { count: 'exact' })
+    .eq('channel', 'email')
+    .eq('basis', 'conspicuous_publication')
+    .eq('no_marketing_statement_checked', false)
+    .gte('basis_recorded_at', since)
+    .order('basis_recorded_at', { ascending: false })
+    .limit(5)
+  if (error) throw new Error(error.message)
+  /* Addresses alone: each names its own domain, and the organisers are read nowhere here (growth-reads-skip-the-platform). */
+  const rows = (data ?? []).map((r) => ({ address: String(r.address), organiser: null, recorded_at: String(r.basis_recorded_at) }))
+  return poolFoundGlance(rows, count ?? 0)
+}
+
 const RUNS_READ = 500
 
 /** Sources whose daily collection has failed SOURCE_FAILING_AFTER runs in a row. */
@@ -283,7 +301,7 @@ async function submissionsNotLive(admin: Admin, now: Date): Promise<QueueItem[]>
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const runs = admin as unknown as RunsDb
-  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled] = await Promise.all([
+  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled, pooled] = await Promise.all([
     attempt(() => submissionsNotLive(admin, now)),
     attempt(() => playsToApprove(admin), OUTREACH),
     attempt(() => pausedPlays(admin), OUTREACH),
@@ -296,6 +314,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
     attempt(() => rulePublished(admin, now)),
+    attempt(() => poolFound(admin, now), OUTREACH),
   ])
   const sources: Source[] = [
     { key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions },
@@ -311,6 +330,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'removals', section: 'exceptions', name: 'Requests to take a listing down', read: removals },
     { key: 'reports', section: 'exceptions', name: 'After-the-night reports not kept', read: reports },
     { key: 'rule_published', section: 'exceptions', name: 'Nights published by the rule since yesterday', read: ruled },
+    { key: 'pool_found', section: 'exceptions', name: "Addresses the twenty's pool recorded since yesterday", read: pooled },
   ]
   return queueOf(sources)
 }
