@@ -42,8 +42,8 @@ export async function GET(request: NextRequest) {
     )
     for (const s of result.sources) console.log(`[cron/collection-run] ${s.name}: ${s.outcome}`)
     /* THE SCOUT RUNS ITSELF (src/lib/listings/scout-engine.ts; Lawal's 10:42 of 13 November 2026): once a night, in the
-       05:25 turn and only with the budget the collection run left; no schedule is added. A failure never fails the run. */
-    let scout: ScoutOutcome[] | string = 'not this turn: the scout runs in the 05:25 turn'
+       23:25 turn and only with the budget the collection run left; no schedule is added. A failure never fails the run. */
+    let scout: ScoutOutcome[] | string = 'not this turn: the scout runs in the 23:25 turn'
     if (melbourneHour(new Date(started)) === SCOUT_HOUR && started + RUN_BUDGET_MS - Date.now() >= SCOUT_MIN_LEFT_MS) {
       try {
         const db = createAdminClient()

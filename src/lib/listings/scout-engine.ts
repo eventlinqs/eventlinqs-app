@@ -30,8 +30,12 @@ import { CAPTURE_RULE_CITIES, type CaptureCity } from './capture-rule'
 /** Sites tried a night: each costs about eight requests at one a second. */
 export const SCOUT_PER_NIGHT = 12
 
-/** The hour of the collection run that scouts, in Melbourne (the 05:25 turn). */
-export const SCOUT_HOUR = 5
+/**
+ * The hour of the collection run that scouts, in Melbourne: the 23:25 turn, the night's (Lawal's 'nightly'), so a source
+ * it registers is read in the next morning's 05:25 turn; and the first scheduled proof falls the night it ships (his
+ * 12:40 of 13 November 2026: every engine finished tonight).
+ */
+export const SCOUT_HOUR = 23
 
 /** Any one of these in a terms page refuses the site (the Engine Book's capture section, part 8). */
 export const TERMS_REFUSE: readonly { name: string; re: RegExp }[] = [
