@@ -1305,6 +1305,12 @@ html[data-motion="1"] .hero-enter > *:nth-child(2) { animation-delay: 110ms; }
 html[data-motion="1"] .hero-enter > *:nth-child(3) { animation-delay: 180ms; }
 html[data-motion="1"] .hero-enter > *:nth-child(4) { animation-delay: 250ms; }
 html[data-motion="1"] .hero-enter > *:nth-child(n+5) { animation-delay: 300ms; }
+/* The same entrance for one hero block: the event page's title, date, venue and button, and the featured carousel's
+ * text (13 November 2026). They used 'fade-rise', so the event page's first frame showed an empty hero (its
+ * performance trace, looked at); the rule above holds for every first screen, not only the home page's. */
+html[data-motion="1"] .animate-hero-rise {
+  animation: hero-rise 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
 
 /* Card hover lift + inner media scale. Put .card-hover-lift on the card root and
  * .card-hover-media on the inner overflow-hidden media wrapper. Hover-capable
