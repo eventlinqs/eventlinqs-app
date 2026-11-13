@@ -7,6 +7,7 @@ import { runScout, SCOUT_HOUR, type ScoutOutcome } from '@/lib/listings/scout-en
 import { scoutStore } from '@/lib/listings/scout-store'
 import { attachOrganisers, type AttachOutcome } from '@/lib/listings/discovery-organisers'
 import { discoveryDayStore } from '@/lib/listings/discovery-day-store'
+import { walkHolds, type WalkOutcome } from '@/lib/listings/hold-walk-run'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,20 +61,33 @@ export async function GET(request: NextRequest) {
     }
     /* THE EVENT DISCOVERY ENGINE'S OWN STEPS (Lawal's 18:28 and 18:31 of 13 November 2026), after the reads and inside the
        same function's time, each failure said and never failing the run: (d) every upcoming listing's venue gets its CRM
-       organiser (src/lib/listings/discovery-organisers.ts); (f) the first turn of a day judges the day before from the
+       organiser (src/lib/listings/discovery-organisers.ts); (e) the open holds are walked (src/lib/listings/hold-walk-run.ts);
+       (f) the first turn of a day judges the day before from the
        engine's own records, and every turn adds its numbers to its own day's line (src/lib/listings/discovery-day.ts). */
     const end = started + maxDuration * 1000
     let organisers: AttachOutcome | string = 'not this turn: too little of the function left'
     let line: string = 'not this turn: too little of the function left'
+    let holds: WalkOutcome | string = 'not this turn: too little of the function left'
     if (end - Date.now() >= ENGINE_MIN_LEFT_MS) {
       const db = createAdminClient()
       try {
-        organisers = await attachOrganisers(db, new Date(), undefined, end - ENGINE_MIN_LEFT_MS / 2)
+        /* Stops 40 s before the function's end, so the walk and the day line keep their time. */
+        organisers = await attachOrganisers(db, new Date(), undefined, end - 40_000)
         console.log(`[cron/collection-run] organisers: ${organisers.attached} attached, ${organisers.entered} entered, ${organisers.left} left` +
           (organisers.failed.length > 0 ? `; ${organisers.failed.join('; ')}` : ''))
       } catch (err) {
         organisers = `the organisers step failed: ${err instanceof Error ? err.message : String(err)}`
         console.error('[cron/collection-run] organisers failed:', err)
+      }
+      /* (e) the hold walk, run by the engine itself (src/lib/listings/hold-walk-run.ts), before the day line reads the holds. */
+      try {
+        holds = await walkHolds(db, fetch, new Date(), end - 15_000)
+        console.log(`[cron/collection-run] holds: ${holds.due} due, ${holds.walked} walked: ${holds.released} released, ${holds.cancelled} cancelled, ${holds.next} to their next source` +
+          (holds.failed.length > 0 ? `; ${holds.failed.join('; ')}` : ''))
+        for (const w of holds.said) console.log(`[cron/collection-run] hold ${w}`)
+      } catch (err) {
+        holds = `the hold walk failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] hold walk failed:', err)
       }
       try {
         const days = discoveryDayStore(db)
@@ -100,7 +114,7 @@ export async function GET(request: NextRequest) {
         console.error('[cron/collection-run] day line failed:', err)
       }
     }
-    return NextResponse.json({ ok: true, ...result, scout, organisers, line })
+    return NextResponse.json({ ok: true, ...result, scout, organisers, holds, line })
   } catch (err) {
     console.error('[cron/collection-run] failed:', err)
     return NextResponse.json({ error: 'collection run failed' }, { status: 500 })
