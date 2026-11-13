@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { failuresInARow, queueOf, removalItem, reportsOverdue, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type Source, type SourceRead } from './today-math'
+import { failuresInARow, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 
 /**
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
@@ -141,6 +142,21 @@ async function collectedWaiting(admin: Admin): Promise<QueueItem[]> {
   ]
 }
 
+/** The nights a rule published since yesterday, ten of them for a glance (src/lib/listings/capture-rule.ts). */
+async function rulePublished(admin: Admin, now: Date): Promise<QueueItem[]> {
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const { data, count, error } = await admin
+    .from('listing_candidates')
+    .select('title, venue_name, starts_at, reviewed_at', { count: 'exact' })
+    .eq('decided_by', 'partner_rule')
+    .not('published_series_id', 'is', null)
+    .gte('reviewed_at', since)
+    .order('reviewed_at', { ascending: false })
+    .limit(RULE_GLANCE)
+  if (error) throw new Error(error.message)
+  return rulePublishedGlance((data ?? []) as RulePublished[], count ?? 0, CAPTURE_RULE_CHECKS)
+}
+
 const RUNS_READ = 500
 
 /** Sources whose daily collection has failed SOURCE_FAILING_AFTER runs in a row. */
@@ -267,7 +283,7 @@ async function submissionsNotLive(admin: Admin, now: Date): Promise<QueueItem[]>
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const runs = admin as unknown as RunsDb
-  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports] = await Promise.all([
+  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled] = await Promise.all([
     attempt(() => submissionsNotLive(admin, now)),
     attempt(() => playsToApprove(admin), OUTREACH),
     attempt(() => pausedPlays(admin), OUTREACH),
@@ -279,6 +295,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     attempt(() => claimsToDecide(admin)),
     attempt(() => removalsOpen(admin)),
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
+    attempt(() => rulePublished(admin, now)),
   ])
   const sources: Source[] = [
     { key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions },
@@ -293,6 +310,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'claims', section: 'exceptions', name: 'Claims to decide by hand', read: claims },
     { key: 'removals', section: 'exceptions', name: 'Requests to take a listing down', read: removals },
     { key: 'reports', section: 'exceptions', name: 'After-the-night reports not kept', read: reports },
+    { key: 'rule_published', section: 'exceptions', name: 'Nights published by the rule since yesterday', read: ruled },
   ]
   return queueOf(sources)
 }

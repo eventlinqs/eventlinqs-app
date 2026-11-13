@@ -98,6 +98,15 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(r.faults.join('\n')).toContain('line 4: an open step with no READ BACK')
     expect(r.faults.join('\n')).toContain('no --expect')
   })
+  it('a loader given to --import is not the step script; the script it loads is (13 November 2026)', () => {
+    const npm = {
+      'seo2:verify-property': 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/src-alias-loader.mjs scripts/ops/search-console-verify.mjs',
+    }
+    const step = 'LAWAL: npm run seo2:verify-property -- --token <value> READ BACK'
+    expect(scriptsNamed(step, npm)).toEqual(['scripts/ops/search-console-verify.mjs'])
+    // Named on its own in a line, a loader is still judged: only its place after --import makes it a hook.
+    expect(scriptsNamed('LAWAL: node scripts/lib/src-alias-loader.mjs READ BACK', npm)).toEqual(['scripts/lib/src-alias-loader.mjs'])
+  })
   it('a script a founder step names must print where it runs', () => {
     const npm = { 'migrate:production': 'powershell -File scripts/ops/with-supabase-token.ps1 node scripts/ops/apply-production-migrations.mjs' }
     const step = `LAWAL: npm run migrate:production -- --expect ${OURS} READ BACK`

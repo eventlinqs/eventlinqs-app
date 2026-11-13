@@ -3,7 +3,7 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntCategory, huntDecision, huntFor, huntSummary } from './headline-hunt'
+import { huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
 import { sourceHostOf } from './judge'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
@@ -38,6 +38,11 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       /* LAW 19 section 7.4, each source's open canary (migration 20261106170001). Read on its own, so a database without
          the columns yet (before Lawal applies it) gives no canary and the run goes on exactly as before. */
+      /* Each source's own category by slug (./capture-rule.ts: a night whose words give none takes its source's). Read on
+         its own, so a failed read gives no category and those nights wait for a person (no_category). */
+      const categorySlugs = new Map<string, string>()
+      const { data: cats, error: catsError } = await db.from('event_categories').select('id, slug')
+      if (!catsError) for (const c of cats ?? []) categorySlugs.set(c.id as string, c.slug as string)
       const canaries = new Map<string, { openedAt: string; release: string }>()
       const { data: open, error: canaryError } = await db.from('listing_sources').select('id, canary_opened_at, canary_release').not('canary_opened_at', 'is', null)
       if (!canaryError) for (const c of open ?? []) canaries.set(c.id as string, { openedAt: c.canary_opened_at as string, release: (c.canary_release as string | null) ?? '' })
@@ -66,7 +71,9 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           partnerVenue: venue ? { name: venue.name, address: venue.address } : null,
           citySlug: (s.city_slug as string | null) ?? null,
           hunt: huntFor(s.page_url as string),
+          ownProgramme: ownProgrammeFor(s.page_url as string),
           canary: canaries.get(s.id as string) ?? null,
+          categorySlug: s.category_id ? (categorySlugs.get(s.category_id as string) ?? null) : null,
         }
       })
     },
@@ -163,6 +170,21 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       return out
     },
 
+    async knownVenueNames(citySlug: string): Promise<readonly string[]> {
+      /* The venues the capture rule may publish at (./capture-rule.ts): held in the city, not removed, and not one that
+         lists its own nights or has claimed itself, which publishHuntNight never lists for. */
+      const { data, error } = await db
+        .from('venues')
+        .select('name, listing_source, claimed_at')
+        .eq('city_slug', citySlug)
+        .is('removed_at', null)
+      if (error) throw new Error(`venues could not be read: ${error.message}`)
+      return (data ?? [])
+        .filter((v) => v.listing_source !== 'organiser' && !v.claimed_at)
+        .map((v) => String(v.name ?? '').trim())
+        .filter((n) => n.length > 0)
+    },
+
     async heldLinks(eventId: string): Promise<Set<string>> {
       const { data, error } = await db.from('event_booking_links').select('url').eq('event_id', eventId)
       if (error) throw new Error(`booking links could not be read: ${error.message}`)
@@ -207,7 +229,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
          ('midnight_start', a fact not to be trusted), never published and never lost. */
       if (error && /listing_candidates_reasons_known/.test(error.message)) {
         const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached', 'canary_hold']
-        const allowed = [...new Set(row.reasons.map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
+        /* The capture rule's holds (migration 20261113113001) are dropped, never renamed: the night still waits for a
+           person, and the Command Centre names the rest of its reasons. */
+        const CAPTURE = ['venue_not_known', 'title_too_long', 'banned_words', 'no_category']
+        const allowed = [...new Set(row.reasons.filter((r) => !CAPTURE.includes(r)).map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
         ;({ data, error } = await write(allowed))
       }
       if (error) throw new Error(`a candidate could not be written: ${error.message}`)
@@ -221,6 +246,18 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         .from('listing_sources')
         .update({ last_checked_at: when, last_outcome: outcome, updated_at: when, ...(succeeded ? { last_success_at: when } : {}) })
         .eq('id', sourceId)
+      if (error) throw new Error(error.message)
+    },
+
+    async stopSource(sourceId: string, because: string, at: Date): Promise<void> {
+      /* Law 14 (k): back to 'ask', so dueSources never picks it again, with its stop recorded (20261101161501's check:
+         a stop carries its reason). Only a source still read is stopped, so a person's own decision is never overwritten. */
+      const when = at.toISOString()
+      const { error } = await db
+        .from('listing_sources')
+        .update({ collection: 'ask', stopped_at: when, stopped_because: because, updated_at: when })
+        .eq('id', sourceId)
+        .eq('collection', 'read')
       if (error) throw new Error(error.message)
     },
 

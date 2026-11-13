@@ -456,7 +456,109 @@ export const birdsBasement: PageRule = {
   },
 }
 
+/**
+ * MEMO MUSIC HALL (memomusichall.com.au, St Kilda; its entrance at the rear of the RSL, via Albert Street). Read 13 November
+ * 2026 by the polite reader: robots.txt allows its gig pages and its sitemap; its terms are ticket conditions only, with
+ * nothing on reuse; no schema.org Event data. Its own sitemap (wp-sitemap-posts-memo-gig-1.xml) lists each gig page under
+ * /memo-gig/. Each page names the night in one heading, '<h2 class="single-gig-name">TITLE - <span
+ * class="single-gig-date">Sat 1 May 2027, 7:00PM AEST</span></h2>', and below it 'Doors 7.00PM' and 'Showtime 8.00PM';
+ * a sidebar lists other gigs with their dates, which are never this night's. The night starts at its showtime where the
+ * page states one (as The Comic's Lounge's rule), else at the heading's time. Its prices name concession tiers beside
+ * the full one, so no price is taken (checklist E6). Facts only.
+ */
+const MEMO_DATE = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4}),?\s+(\d{1,2})[:.](\d{2})\s*(AM|PM)/i
+
+export const memoMusicHall: PageRule = {
+  host: 'memomusichall.com.au',
+  eventPath: /^\/memo-gig\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const head = /<h2\b[^>]*class="[^"]*\bsingle-gig-name\b[^"]*"[^>]*>([\s\S]*?)<span\b[^>]*class="[^"]*\bsingle-gig-date\b[^"]*"[^>]*>([\s\S]*?)<\/span>/i.exec(html)
+    if (!head) return []
+    const title = textOf(head[1]).replace(/\s*[-\u2013\u2014]\s*$/, '').replace(/\s+[\u2013\u2014]\s+/g, ': ').replace(/[\u2013\u2014]/g, '-').trim()
+    const d = MEMO_DATE.exec(textOf(head[2]))
+    const mo = d ? MONTHS[d[2].toLowerCase()] : undefined
+    if (!title || !d || !mo) return []
+    const headClock = clock(`${d[4]}:${d[5]} ${d[6]}`)
+    const show = /Showtime\s+(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm))/i.exec(textOf(html.slice(head.index, head.index + 6000)))
+    const at = (show ? clock(show[1]) : null) ?? headClock
+    if (!at) return []
+    const startsAt = wallClockToIso(Number(d[3]), mo, Number(d[1]), at[0], at[1], 0, ZONE)
+    if (!startsAt) return []
+    return [{
+      title,
+      startsAt,
+      endsAt: null,
+      venueName: 'MEMO Music Hall',
+      // Its own contact page (/contact/, read 13 November 2026): '88 Acland Street St Kilda, 3182'.
+      venueAddress: '88 Acland Street, St Kilda VIC 3182',
+      pageUrl,
+      imageUrl: null,
+      description: null,
+      links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+      timeStatus: 'exact',
+      timeFromWords: true,
+    }]
+  },
+}
+
+/**
+ * CHERRY BAR (cherrybar.com.au, 68 Little Collins Street). Read 13 November 2026 by the polite reader: robots.txt allows
+ * its pages; no terms page restricts reuse; no schema.org Event data. Its own sitemap (wp-sitemap-posts-cherry_event-1.xml)
+ * lists its current shows under /events/. Each page has one h1 (the show, often ending with its own short date, ', SAT
+ * DEC 12th', which is dropped as the date is kept apart), 'Starts Saturday 12 December 2026 . 8:00pm' and 'Finishes
+ * Saturday 12 December 2026 . 11:00pm', and where tickets are sold a link to its seller.
+ * Its street is in its own page header. Facts only; no price is stated on the page, so none is taken.
+ */
+const CHERRY_WHEN = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})\D{1,6}?(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+
+export const cherryBar: PageRule = {
+  host: 'cherrybar.com.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1
+      ? textOf(h1[1]).replace(/(?:,\s*|\s+)(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\s*$/i, '').trim()
+      : ''
+    const text = textOf(html.replace(/<\/(p|div|li|span|h[1-6])>/gi, '\n'))
+    const starts = /Starts\s+([^\n]{6,60})/i.exec(text)
+    const finishes = /Finishes\s+([^\n]{6,60})/i.exec(text)
+    const at = (line: string | undefined) => {
+      const m = line ? CHERRY_WHEN.exec(line) : null
+      const mo = m ? MONTHS[m[2].toLowerCase()] : undefined
+      const c = m ? clock(m[4]) : null
+      return m && mo && c ? wallClockToIso(Number(m[3]), mo, Number(m[1]), c[0], c[1], 0, ZONE) : null
+    }
+    const startsAt = at(starts?.[1])
+    if (!title || !startsAt) return []
+    const endsAt = at(finishes?.[1])
+    // Its seller: the first link to a ticketing platform booking-links.ts names (the one table of platform names), never
+    // its own pages or another site.
+    let seller: string | null = null
+    for (const m of html.matchAll(/href="(https:\/\/[^"]+)"/gi)) {
+      const url = decode(m[1])
+      if (!['other', 'venue', 'organiser_site'].includes(providerOf(url))) {
+        seller = url
+        break
+      }
+    }
+    return [{
+      title,
+      startsAt,
+      endsAt: endsAt && endsAt > startsAt ? endsAt : null,
+      venueName: 'Cherry Bar',
+      // Its own page header (read 13 November 2026): '68 LITTLE COLLINS STREET, MELBOURNE'.
+      venueAddress: '68 Little Collins Street, Melbourne VIC',
+      pageUrl,
+      imageUrl: null,
+      description: null,
+      links: [{ url: seller ?? pageUrl, availability: 'on_sale', priceFromCents: null }],
+      timeStatus: 'exact',
+      timeFromWords: true,
+    }]
+  },
+}
+
 export const MELBOURNE_PAGE_RULES: readonly PageRule[] = [
   comedyRepublic, comicsLounge, forumMelbourne, rodLaverArena, johnCainArena, margaretCourtArena, aamiPark,
-  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare, birdsBasement,
+  mcg, palaisTheatre, festivalHall, melbourneRecitalCentre, fedSquare, birdsBasement, memoMusicHall, cherryBar,
 ]

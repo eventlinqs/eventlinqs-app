@@ -41,6 +41,7 @@ import {
 } from '@/lib/seo/site-verification'
 import { fingerprint } from '@/lib/env/manifest-checks.mjs'
 import { resolveVercelToken } from '../lib/vercel-login.mjs'
+import { sayWhere } from '../lib/founder-where.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[search-console]'
@@ -56,6 +57,9 @@ const SCOPES = ['production', 'preview', 'development']
 const ENV_LOCAL = join(ROOT, '.env.local')
 
 const say = m => console.log(`${TAG} ${m}`)
+// The founder step law (Lawal, 12 November 2026, 01:16): a script named by a founder step prints its folder, branch and
+// commit before it acts, so a step run from the wrong tree says so on its first lines.
+sayWhere(TAG)
 /**
  * A refusal sets the exit code and unwinds; it never calls process.exit().
  *

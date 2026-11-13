@@ -159,3 +159,37 @@ export function failuresInARow(runs: readonly { succeeded: boolean }[]): number 
   }
   return n
 }
+
+/** One night a rule published, as the Command Centre's glance names it. */
+export type RulePublished = { title: string; venue_name: string | null; starts_at: string; reviewed_at: string | null }
+
+const GLANCE_DAY = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', day: 'numeric', month: 'short' })
+
+/** 'Sat 21 Nov' in Melbourne, from the parts, so no locale punctuation creeps in. */
+function glanceDay(iso: string): string {
+  const part = (t: string) => GLANCE_DAY.formatToParts(new Date(iso)).find((p) => p.type === t)?.value ?? ''
+  return `${part('weekday')} ${part('day')} ${part('month')}`
+}
+
+/** How many of a day's rule published nights the Command Centre shows for a glance (the PM's 11:06 of 13 November 2026). */
+export const RULE_GLANCE = 10
+
+/**
+ * CAPTURE PUBLISHES BY ITSELF, SEEN (src/lib/listings/capture-rule.ts; the project manager's 11:06 item 1 of 13 November
+ * 2026: 'ten auto-published nights a day are sampled into the Command Centre for a glance'). One item: how many nights a
+ * rule published since yesterday, the checks each passed, and ten of them by name, venue and day. None, no item. Pure.
+ */
+export function rulePublishedGlance(rows: readonly RulePublished[], total: number, checks: readonly string[]): QueueItem[] {
+  if (total === 0 || rows.length === 0) return []
+  const named = rows.slice(0, RULE_GLANCE).map((r) => `${r.title}${r.venue_name ? ` at ${r.venue_name}` : ''}, ${glanceDay(r.starts_at)}`)
+  const since = rows.reduce((min, r) => (r.reviewed_at && r.reviewed_at < min ? r.reviewed_at : min), rows[0].reviewed_at ?? rows[0].starts_at)
+  return [
+    {
+      id: 'collected:rule-published',
+      what: `${total} ${total === 1 ? 'night' : 'nights'} published by the rule since yesterday`,
+      why: `Each passed every check (${checks.join('; ')}). ${named.length === total ? 'All' : `${named.length}`} for a glance: ${named.join('. ')}.`,
+      since,
+      href: '/admin/collected',
+    },
+  ]
+}

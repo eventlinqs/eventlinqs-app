@@ -18,6 +18,7 @@ import { judgeCandidate, sourceHostOf, type CandidateReason, type Confidence } f
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
 import { canaryOpen, inCanaryTenth } from './canary'
+import { CAPTURE_RULE_PER_RUN, captureDecision, underCaptureRule } from './capture-rule'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
 export const PAGE_PAUSE_MS = 1000
@@ -84,6 +85,13 @@ export type CollectionStore = {
   land(row: CandidateRow): Promise<boolean>
   /** succeeded: the source's page or feed was read, so its last successful collection moves to at. */
   record(sourceId: string, outcome: string, at: Date, succeeded: boolean): Promise<void>
+  /**
+   * STOPS A SOURCE THAT REFUSED US (law 14 (k): 'a stop at the first 403 or 429'; the PM's 09:05 (2) of 13 November 2026):
+   * puts it back to 'ask', so no run reads it again until a person re-opens it, and records when and why
+   * (listing_sources.stopped_at, stopped_because). Forum Melbourne answered 403 on 18 runs in a row from 5 November
+   * because a refusal was retried daily like an outage. The nights it already gave stay listed.
+   */
+  stopSource?(sourceId: string, because: string, at: Date): Promise<void>
   /** Appends the run's row to the source's run log. */
   logRun(row: RunRow): Promise<void>
   /**
@@ -107,6 +115,11 @@ export type CollectionStore = {
    * (public.venues.name, address, city_slug). A feed that names such a venue and gives no street takes this one.
    */
   venueAddresses?(citySlug: string): Promise<ReadonlyMap<string, string>>
+  /**
+   * The names of the venues the capture rule may publish at in one city (./capture-rule.ts): held, not removed, not one
+   * that lists its own nights or has claimed itself. A store without it publishes nothing by the capture rule.
+   */
+  knownVenueNames?(citySlug: string): Promise<readonly string[]>
   /**
    * Writes one confirmed listing check per series this read found again (public.listing_checks; its trigger moves the
    * series' last confirmed day and every night's listing_fresh_until). The collection run reads only sources whose
@@ -282,6 +295,9 @@ export async function runCollection(
     let queued = 0
     let ruled = 0
     let succeeded = false
+    /* The status a site refused us with (403 or 429), on its robots.txt, its page or any page a rule reads: the source is
+       then stopped, never read again by a run until a person re-opens it (law 14 (k)). */
+    let refusedWith: number | null = null
     const unpublished: string[] = []
     try {
       if (!source.permits.facts) {
@@ -298,12 +314,14 @@ export async function runCollection(
         if (robotsVerdict(robots.status, robots.body, page.pathname + page.search) === 'disallowed') {
           outcome = robots.status === null || robots.status >= 500 ? 'robots.txt unreachable: nothing read' : 'robots.txt disallows this page: nothing read'
           httpStatus = robots.status
+          if (robots.status === 429) refusedWith = 429
           result.skipped += 1
         } else {
           const res = await get(fetcher, source.pageUrl)
           httpStatus = res.status
           if (res.status === null || res.status < 200 || res.status >= 300) {
             outcome = `the page answered ${res.status ?? 'nothing'}: nothing read`
+            if (res.status === 403 || res.status === 429) refusedWith = res.status
             result.skipped += 1
           } else {
             result.read += 1
@@ -336,6 +354,7 @@ export async function runCollection(
                 const one = await get(fetcher, url)
                 if (one.status === 403 || one.status === 429) {
                   stoppedBy = `the site answered ${one.status} on ${url}: reading stopped`
+                  refusedWith = one.status
                   break
                 }
                 if (one.status !== null && one.status >= 200 && one.status < 300) raw.push(...rule.read(one.body, url))
@@ -356,6 +375,18 @@ export async function runCollection(
             }
             const events = withKnownVenueAddress(permitted, addresses)
             const plans = planCandidates(events, known, now, city)
+            /* CAPTURE PUBLISHES BY ITSELF (./capture-rule.ts; Lawal's 10:42 to 11:05 of 13 November 2026): a verified
+               source in a guide's city, under no other rule, publishes its checked nights at the venues held there. A
+               failed venue read publishes nothing by the rule; every night then waits for a person, as before. */
+            let captureVenues: readonly string[] | null = null
+            if (underCaptureRule(source) && store.knownVenueNames) {
+              try {
+                captureVenues = await store.knownVenueNames(source.citySlug)
+              } catch (err) {
+                console.error('[collection] the capture rule could not read its venues:', err instanceof Error ? err.message : err)
+              }
+            }
+            let captureDecided = 0
             found = plans.length
             /* Before stillNew drops the re-finds whose links are already held: a re-find is exactly what confirms. */
             const confirmations = seriesConfirmations(plans, known)
@@ -381,20 +412,37 @@ export async function runCollection(
               /* Car 44b (the CONTROLLER's 01:05 of 5 November 2026): 'For review ends for these sources: a public ticketed
                  event from a headline venue's own page is accepted by rule ... only a likely duplicate is held'. A called off
                  show and a midnight start (a time the page likely did not state) are held with it. */
+              /* The rule's venues: the hunt's, or a venue's own programme (OWN_PROGRAMME_SOURCES, Lawal's 10:42 of
+                 13 November 2026), judged by exactly the same holds. */
+              let ruleSource: HuntSource | null = source.hunt ?? source.ownProgramme ?? null
+              let captureVenue: string | null = null
+              if (!ruleSource && captureVenues && plan.kind === 'new' && underCaptureRule(source)) {
+                const decision = captureDecision(plan.event, source, captureVenues)
+                if ('holds' in decision) {
+                  reasons.push(...decision.holds)
+                  confidence = 'low'
+                } else if (captureDecided < CAPTURE_RULE_PER_RUN && Date.now() < deadline) {
+                  /* At most CAPTURE_RULE_PER_RUN a source a run: each asks its ticket link first, inside the run's budget;
+                     the rest wait for the next runs, which decide them the same way (publishHuntNight's promote). */
+                  ruleSource = decision.rule
+                  captureVenue = decision.venue
+                }
+              }
               const huntAt =
-                source.hunt &&
+                ruleSource &&
                 plan.kind === 'new' &&
                 !reasons.some((r) => (HUNT_HOLDS as readonly string[]).includes(r)) &&
                 /* Car 44c: a start between midnight and 9 am in Melbourne waits for a person (plausibleHuntStart). */
                 plausibleHuntStart(plan.event.startsAt) &&
-                !likelyDuplicate(plan.event, known, source.hunt.citySlug, (iso) => platformDay(new Date(iso)))
-                  ? huntVenue(source.hunt, plan.event.venueName)
+                !likelyDuplicate(plan.event, known, ruleSource.citySlug, (iso) => platformDay(new Date(iso)))
+                  ? (captureVenue ?? huntVenue(ruleSource, plan.event.venueName))
                   : null
               /* ONE PUBLICATION GATE (car 46; LAW 19 section 4; the independent review's gate gap): a hunt night is listed by
                  the rule only at high confidence, through its candidate row, the way the database's own check
                  (listing_candidates_decided_by) allows; anything less lands for a person, with its reasons. The direct
                  publish of car 44b, with no candidate row, no audit and no plausibility check, is gone. */
               let byRule = acceptedByRule(source, plan, confidence) || (huntAt !== null && confidence === 'high')
+              if (captureVenue && byRule) captureDecided += 1
               /* LAW 19 SECTION 4.2, RULE (5): a night a rule would publish is first asked whether its ticket link reaches the
                  seller. A 404 or 410 holds it for a person (link_unreached); robots barring the link, or no answer, does not. */
               if (byRule && plan.kind === 'new' && plan.event.links[0] && (await linkUnreached(fetcher, plan.event.links[0].url, robotsByOrigin, pauseMs))) {
@@ -439,7 +487,7 @@ export async function runCollection(
                 /* One night that cannot be published never stops the rest of the feed; it stays accepted and the next
                    run asks again. */
                 try {
-                  if (huntAt && source.hunt && store.publishHuntNight) promoted = (await store.publishHuntNight(row, source.hunt, huntAt)) === 'promoted'
+                  if (huntAt && ruleSource && store.publishHuntNight) promoted = (await store.publishHuntNight(row, ruleSource, huntAt)) === 'promoted'
                   else await store.publishPartnerNight(row)
                 } catch (err) {
                   unpublished.push(err instanceof Error ? err.message : String(err))
@@ -479,10 +527,22 @@ export async function runCollection(
     result.acceptedByRule += ruled
     result.sources.push({ sourceId: source.id, name: source.name, outcome, landed, queued, acceptedByRule: ruled })
     const at = now.toISOString()
+    if (refusedWith !== null) outcome += `; stopped: it answered ${refusedWith}, so no run reads it until a person re-opens it`
     try {
       await store.record(source.id, outcome.slice(0, 500), now, succeeded)
     } catch (err) {
       console.error(`[collection] ${source.name}: its check could not be recorded:`, err)
+    }
+    if (refusedWith !== null && store.stopSource) {
+      try {
+        await store.stopSource(
+          source.id,
+          `It answered ${refusedWith} to our named agent on ${at.slice(0, 10)}. Law 14 (k) stops at the first 403 or 429 and never reads around it; a person re-opens it once the site answers us, or takes its nights from the venue's own feed or submission.`,
+          now,
+        )
+      } catch (err) {
+        console.error(`[collection] ${source.name}: its stop could not be recorded:`, err)
+      }
     }
     try {
       await store.logRun({

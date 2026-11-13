@@ -1,4 +1,4 @@
-import { wallClockToIso, type FoundEvent } from './collect'
+import { eventsFromHtml, wallClockToIso, type FoundEvent } from './collect'
 import type { PageRule } from './page-rules'
 import { RESTRICTED_TIER } from './open-tier'
 
@@ -150,4 +150,129 @@ export const mtDuneedEstate: PageRule = {
   },
 }
 
-export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate]
+/**
+ * SAILORS REST (sailorsrestgeelong.com.au, a Geelong waterfront venue running its own nights). Read 13 November 2026 by
+ * the polite reader: robots.txt allows its pages; no schema.org Event data; its own /event-sitemap.xml lists each event page
+ * under /event/. Each page has one h1 (the title), a line 'Event Date: December 4, 2026', then the night's programme as
+ * lines with a ' | ' before their times ('Live Acoustic by Riley Catherall | 5-8 PM', 'DJ | 8 PM-Late'), then the venue's
+ * own opening hours ('Friday 3:00pm to Late'), which are never the night's time. Its terms publish no restriction and its
+ * robots.txt allows it: the shape of AAMI Park's source, which Lawal turned to 'read' on 5 November, reading its own
+ * programme for facts only; the PM's 09:05 of 13 November turns such a source to 'read' once it has a reader.
+ *
+ * The start is the earliest time in the programme lines; a page with none is that day with no time ('date_only', held for
+ * a person by the publication gate, law 19 (d)), never a filled in time. 'FREE' on one item is never the night's price
+ * (checklist E6: never infer free).
+ */
+const SAILORS_REST_TIME = /\|\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:[-\u2013\u2014]|to)\s*(?:\d{1,2}(?:[:.]\d{2})?\s*(am|pm)|late)|\|\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/gi
+
+export const sailorsRest: PageRule = {
+  host: 'sailorsrestgeelong.com.au',
+  eventPath: /^\/event\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    const title = h1 ? titleOf(h1[1]) : ''
+    const text = decode(html.replace(/\r/g, '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<\/(p|div|h[1-6]|li|span|td|dt|dd)>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
+    const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    const at = lines.findIndex((l) => /^Event Date:/i.test(l))
+    const date = at < 0 ? null : /^Event Date:\s*([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/i.exec(lines[at])
+    const mo = date ? MONTHS[date[1].slice(0, 3).toLowerCase()] : undefined
+    if (!title || !date || !mo) return []
+    const [y, d] = [Number(date[3]), Number(date[2])]
+    let earliest: [number, number] | null = null
+    for (const line of lines.slice(at + 1, at + 25)) {
+      if (!line.includes('|')) continue
+      for (const m of line.matchAll(SAILORS_REST_TIME)) {
+        // A range takes its meridiem from its end ('5-8 PM' is 5 pm); a lone time carries its own.
+        const h = m[1] ?? m[5]
+        const mi = m[2] ?? m[6]
+        const ap = m[3] ?? m[4] ?? m[7]
+        const c = h && ap ? clock(`${h}${mi ? `:${mi}` : ''} ${ap}`) : null
+        if (c && (!earliest || c[0] * 60 + c[1] < earliest[0] * 60 + earliest[1])) earliest = c
+      }
+    }
+    const startsAt = earliest ? wallClockToIso(y, mo, d, earliest[0], earliest[1], 0, ZONE) : wallClockToIso(y, mo, d, 0, 0, 0, ZONE)
+    if (!startsAt) return []
+    return [{
+      title,
+      startsAt,
+      endsAt: null,
+      venueName: 'Sailors Rest',
+      venueAddress: null,
+      pageUrl,
+      imageUrl: null,
+      description: null,
+      links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+      timeStatus: earliest ? 'exact' : 'date_only',
+      timeFromWords: true,
+    }]
+  },
+}
+
+/**
+ * LOVE CENTRAL GEELONG (centralgeelong.com.au, central Geelong's own events guide: Pako Festa, the Geelong Revival, the
+ * Pier music summer concerts and more). Read 13 November 2026 by the polite reader: robots.txt allows its pages (its
+ * content signals: search yes, AI training no, use reference; listing facts with a link back is search use, and nothing
+ * here trains anything); no terms page restricts reuse. Its own sitemap (events-sitemap.xml) lists each event page under
+ * /events/, and each carries schema.org Event data, so the rule is the collector's own JSON-LD reader (as Comedy
+ * Republic's). Facts only, as every source.
+ */
+export const centralGeelong: PageRule = {
+  host: 'centralgeelong.com.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read: (html, pageUrl) => eventsFromHtml(html, pageUrl),
+}
+
+/**
+ * GEELONG GALLERY (geelonggallery.org.au, 55 Little Malop Street). Read 13 November 2026 by the polite reader: robots.txt
+ * allows every page; no terms page restricts reuse; no schema.org Event data. Its own sitemap (cpt_event-sitemap.xml)
+ * lists each event page under /events/. Each page names the event in its h1 and lists each session as a date line
+ * ('Saturday 5 December 2026') followed by its times ('11.00am to 3.30pm'); the gallery's own opening hours ('from 10am
+ * to 5pm') follow no date line and are never a session. Every session is one night (Lawal's ruling of 7 November 2026).
+ * Its prices name tiers (members and others), so none is taken (checklist E6). Facts only.
+ */
+// Its own /visit/ page (read 13 November 2026): '55 Little Malop Street, Geelong, VIC 3220'.
+const GALLERY_STREET = '55 Little Malop Street, Geelong VIC 3220'
+
+export const geelongGallery: PageRule = {
+  host: 'geelonggallery.org.au',
+  eventPath: /^\/events\/[^/]+\/?$/,
+  read(html, pageUrl) {
+    const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+    // A dash joining two words reads as a colon ('Workshop: Inspired by ...'); titleOf makes every other dash a hyphen.
+    const title = h1 ? titleOf(h1[1].replace(/([A-Za-z])\s*[\u2013\u2014]\s*([A-Za-z])/g, '$1: $2')) : ''
+    if (!title) return []
+    const lines = decode(html.replace(/\r/g, '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<\/(p|div|li|span|h[1-6]|td|dt|dd)>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
+      .split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    const out: FoundEvent[] = []
+    for (let i = 0; i < lines.length - 1; i += 1) {
+      const d = /^(?:[A-Za-z]{6,9}\s+)?(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(lines[i])
+      const mo = d ? MONTHS[d[2].slice(0, 3).toLowerCase()] : undefined
+      const t = /^(\d{1,2}(?:[.:]\d{2})?\s*(?:am|pm))\s+to\s+(\d{1,2}(?:[.:]\d{2})?\s*(?:am|pm))$/i.exec(lines[i + 1])
+      if (!d || !mo || !t) continue
+      const start = clock(t[1].replace(/\s+/g, ''))
+      const end = clock(t[2].replace(/\s+/g, ''))
+      if (!start) continue
+      const startsAt = wallClockToIso(Number(d[3]), mo, Number(d[1]), start[0], start[1], 0, ZONE)
+      const endsAt = end ? wallClockToIso(Number(d[3]), mo, Number(d[1]), end[0], end[1], 0, ZONE) : null
+      if (!startsAt || out.some((e) => e.startsAt === startsAt)) continue
+      out.push({
+        title,
+        startsAt,
+        endsAt: endsAt && endsAt > startsAt ? endsAt : null,
+        venueName: 'Geelong Gallery',
+        venueAddress: GALLERY_STREET,
+        pageUrl,
+        imageUrl: null,
+        description: null,
+        links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
+        timeStatus: 'exact',
+        timeFromWords: true,
+      })
+    }
+    return out
+  },
+}
+
+export const GEELONG_PAGE_RULES: readonly PageRule[] = [gmhbaStadium, mtDuneedEstate, sailorsRest, centralGeelong, geelongGallery]
