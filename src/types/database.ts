@@ -6832,6 +6832,13 @@ export type Database = {
             referencedRelation: "organisers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "organiser_page_events_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
         ]
       }
       organiser_permissions: {
