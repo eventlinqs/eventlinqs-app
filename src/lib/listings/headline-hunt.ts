@@ -37,6 +37,12 @@ export type HuntSource = {
   /** The venue names this page speaks for, as EventLinqs holds them (public.venues.name). */
   readonly venues: readonly string[]
   readonly usualCategory: GuideCategory
+  /**
+   * Other names the page's own nights give one of those venues (folded, as fold() gives them), each published at the one
+   * venue it names, so one place is never made into two (the JazzLab's feed, read on production 13 November 2026, names
+   * 27 Leslie Street both 'Jazzlab' and 'Bennetts Lane Jazz Club').
+   */
+  readonly aliases?: Readonly<Record<string, string>>
 }
 
 export const HUNT_SOURCES: readonly HuntSource[] = [
@@ -78,7 +84,13 @@ export const OWN_PROGRAMME_SOURCES: readonly HuntSource[] = [
   { host: 'birdsbasement.com', citySlug: 'melbourne', venues: ["Bird's Basement"], usualCategory: 'music' },
   { host: 'memomusichall.com.au', citySlug: 'melbourne', venues: ['MEMO Music Hall'], usualCategory: 'music' },
   { host: 'cherrybar.com.au', citySlug: 'melbourne', venues: ['Cherry Bar'], usualCategory: 'music' },
-  { host: 'thejazzlab.com.au', citySlug: 'melbourne', venues: ['The JazzLab'], usualCategory: 'music' },
+  {
+    host: 'thejazzlab.com.au',
+    citySlug: 'melbourne',
+    venues: ['The JazzLab'],
+    usualCategory: 'music',
+    aliases: { jazzlab: 'The JazzLab', 'bennetts lane jazz club': 'The JazzLab' },
+  },
   { host: 'mjc.org.au', citySlug: 'melbourne', venues: ['The JazzLab'], usualCategory: 'music' },
   { host: 'sailorsrestgeelong.com.au', citySlug: 'geelong', venues: ['Sailors Rest'], usualCategory: 'music' },
   { host: 'geelonggallery.org.au', citySlug: 'geelong', venues: ['Geelong Gallery'], usualCategory: 'arts-community' },
@@ -234,5 +246,7 @@ export function huntDecision(
 /** The held venue name a night's own venue words name, when it is one this page speaks for; else null. */
 export function huntVenue(hunt: HuntSource, venueName: string): string | null {
   const v = fold(venueName)
+  const alias = hunt.aliases?.[v]
+  if (alias && hunt.venues.includes(alias)) return alias
   return hunt.venues.find((name) => v === fold(name) || v.startsWith(`${fold(name)} `) || (v.length > 6 && fold(name).startsWith(`${v} `))) ?? null
 }
