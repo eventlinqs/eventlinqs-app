@@ -291,6 +291,13 @@ if (hits.length > 0 || pathHits.length > 0) {
   console.error('storage keys, filenames and config, not only customer-facing copy.')
   console.error('Use "community". If this is a RETIRED name that must be spelled to')
   console.error('keep an old link working, add an exemption with the reason.')
+  // THE THIRD ROUTE, NAMED (the guard audit of 14 November 2026, C:\dev\START-16OCT\GUARD-AUDIT-14NOV.md): three
+  // stops in one week were a comment naming a real organisation ('The African Music and Cultural Festival', 'the
+  // Ukrainian Multicultural Society'), and each author reworded the comment because this message offered only the
+  // retired-name exemption. The founder's ruling of 3 September 2026 already provides the route for a real name.
+  console.error('If it is the NAME of a real organisation, festival or public body, it is a proper noun')
+  console.error("(the founder's ruling of 3 September 2026): add the exact name, with the URL that confirms")
+  console.error('it, to PROPER_NOUNS in scripts/guards/lib/proper-nouns.mjs. Never reword a real name.')
   process.exit(1)
 }
 

@@ -22,6 +22,22 @@ export function registeredEntryPoints(source) {
 }
 
 /**
+ * WHO ALREADY JUDGES A SCRIPT THAT IS RED IN THE WHOLE TREE (the guard audit of 14 November 2026,
+ * C:\dev\START-16OCT\GUARD-AUDIT-14NOV.md). excluded-reads-survive-the-upload runs every prebuild entry point in a
+ * stripped upload, and when one is red there it runs it again in the full tree. Red in both, the upload is not the
+ * cause. If that script is a registered guard, run-guards ran it in the same gate and already stopped the run on it,
+ * so a second stop for the same fault is an echo: seven of the week's 79 guard stops were exactly that. A prebuild
+ * script that is NOT a registered guard is judged by nothing else before the build, so it still fails there.
+ *
+ * @param {string} entry the subject's path, 'scripts/...mjs'
+ * @param {string} runGuardsSource the text of scripts/guards/run-guards.mjs
+ * @returns {boolean} true when run-guards itself runs this script
+ */
+export function judgedByRunGuards(entry, runGuardsSource) {
+  return registeredEntryPoints(runGuardsSource).includes(entry.replace(/\\/g, '/'))
+}
+
+/**
  * Every guard the drill harness actually aims at, parsed from the `guard:`
  * field of each drill.
  *

@@ -135,6 +135,8 @@ export function describeOutcome(result) {
   if (result.signal) return { ok: false, reason: `killed by signal ${result.signal}` }
   if (result.status === null) return { ok: false, reason: 'ended with no exit status' }
   if (result.status === 0) return { ok: true }
+  const couldNotStart = WINDOWS_COULD_NOT_START.get(result.status)
+  if (couldNotStart) return { ok: false, reason: `could not start (${couldNotStart}): the machine, not a fault the guard found` }
   const thrown = thrownFrom(typeof result.stderr === 'string' ? result.stderr : (result.stderr?.toString() ?? ''))
   if (thrown) return { ok: false, reason: `threw, exit ${result.status}`, thrown }
   return { ok: false, reason: `exit ${result.status}` }
@@ -188,6 +190,25 @@ export function renderFailures({ failures, total, runtime }) {
  * Returns the first transport line, to quote in the log, or null.
  */
 const TRANSPORT = /fetch failed|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ECONNRESET|EAI_AGAIN/
+
+/**
+ * A GUARD THAT NEVER STARTED (the guard audit of 14 November 2026, C:\dev\START-16OCT\GUARD-AUDIT-14NOV.md). On
+ * 12 November at 20:50 six guards in one gate exited 3221225794, Windows' STATUS_DLL_INIT_FAILED (0xC0000142): node
+ * could not start on a machine short of memory, no guard looked at anything, and the run reported six faults the code
+ * did not have. The runner retries such a guard ONCE, alone, after a pause; this decides which results qualify: one of
+ * Windows' could-not-start statuses, or a spawn error for want of memory or handles. A guard that started and failed is
+ * never one of these. Returns the words to quote, or null.
+ */
+const WINDOWS_COULD_NOT_START = new Map([
+  [3221225794, 'Windows 0xC0000142, the process could not initialise'],
+  [3221225495, 'Windows 0xC0000017, no memory to start the process'],
+])
+const SPAWN_COULD_NOT_START = new Set(['EAGAIN', 'ENOMEM', 'EMFILE', 'ENFILE'])
+
+export function launchFailure(result) {
+  if (result.error) return SPAWN_COULD_NOT_START.has(result.error.code) ? `spawn ${result.error.code}` : null
+  return WINDOWS_COULD_NOT_START.get(result.status) ?? null
+}
 
 export function transportOnlyFailure(result) {
   if (result.error || result.status === 0 || result.status === null) return null

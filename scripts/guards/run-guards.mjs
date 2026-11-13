@@ -1123,7 +1123,7 @@ import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
 import { announceWithheld, withholdServiceKeyOnReadOnlyPreview } from '../lib/preview-read-only-build.mjs'
-import { describeOutcome, renderFailures, transportOnlyFailure } from './lib/guard-run-report.mjs'
+import { describeOutcome, launchFailure, renderFailures, transportOnlyFailure } from './lib/guard-run-report.mjs'
 
 // The read-only preview builds with no service key (scripts/lib/preview-read-only-build.mjs); every spawned guard's env
 // derives from this process's, so withholding it here withholds it from all of them.
@@ -3541,6 +3541,17 @@ for (const guard of GUARDS) {
     if (result.stdout) process.stdout.write(result.stdout)
     if (result.stderr) process.stderr.write(result.stderr)
     if (describeOutcome(result).ok) retriedPasses.push({ guard, transport })
+  }
+  // ONE RETRY FOR A GUARD THAT NEVER STARTED (the guard audit of 14 November 2026): a process the machine could not
+  // start judged nothing, so it is started again, alone, after 5 s. Still not started, it fails, named as the machine.
+  const launch = launchFailure(result)
+  if (launch) {
+    console.log(`[guards] ${guard} could not start ('${launch}'); starting it again ONCE in 5 s`)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5_000)
+    result = run()
+    if (result.stdout) process.stdout.write(result.stdout)
+    if (result.stderr) process.stderr.write(result.stderr)
+    if (describeOutcome(result).ok) console.log(`[guards] ${guard} started on its second try and PASSED (first try: '${launch}')`)
   }
   const outcome = describeOutcome(result)
   if (!outcome.ok) failures.push({ guard, reason: outcome.reason, thrown: outcome.thrown })

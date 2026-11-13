@@ -77,10 +77,11 @@
  * Run: node scripts/guards/excluded-reads-survive-the-upload.mjs
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+import { judgedByRunGuards } from './lib/guard-drill-coverage.mjs'
 import { entriesThatReadThroughTheIgnore, excludedTopLevels } from './lib/build-time-scripts.mjs'
 import { readVercelIgnore } from './lib/vercelignore.mjs'
 import { buildHostEnv, filesForUpload, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
@@ -89,6 +90,8 @@ import { DECLARED } from './lib/build-host-needs.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[excluded-reads-survive-the-upload]'
+// The registered guards, read from run-guards.mjs itself (judgedByRunGuards): derived, never listed.
+const runGuardsSource = readFileSync(join(ROOT, 'scripts/guards/run-guards.mjs'), 'utf8')
 
 const faults = []
 const fail = (m) => {
@@ -230,7 +233,15 @@ try {
         maxBuffer: 32 * 1024 * 1024,
       })
       const fullStatus = full.status ?? -1
-      if (fullStatus !== 0) {
+      if (fullStatus !== 0 && judgedByRunGuards(entry, runGuardsSource)) {
+        // THE ECHO, SAID AND NOT COUNTED (the guard audit of 14 November 2026): a registered guard red in the full tree
+        // is judged by run-guards in this same gate, under its own name; stopping here too reported one fault twice.
+        console.log(
+          `${TAG} DEFERRED: ${entry} exits ${status} in the stripped upload and ${fullStatus} in the full tree under the ` +
+            `same build-host environment, so the upload is not the cause; it is a registered guard and its own run ` +
+            `in this gate judges it.`,
+        )
+      } else if (fullStatus !== 0) {
         fail(
           `${entry} (${because}) exits ${status} in the stripped upload AND exits ${fullStatus} in the full tree under ` +
             `the same build-host environment (no CI identity, no credential, no CLI login), so the files .vercelignore ` +
