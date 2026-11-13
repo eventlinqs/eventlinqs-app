@@ -14,10 +14,11 @@ import { photoPath, photoProof, proofMatches } from '@/lib/outreach/photo-link'
  */
 const UNSUBSCRIBE = 'https://www.eventlinqs.com.au/unsubscribe/outreach?t=0123456789abcdef'
 const PHOTOS = `https://www.eventlinqs.com.au${photoPath('3f2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', '0123456789abcdef')}`
-const night = { title: 'Kyivska Perepichka', startDate: '2026-12-05T08:00:00Z', timezone: 'Australia/Melbourne', venueName: 'The Wheeler Centre', isFree: false }
+const ORIGIN = 'https://www.eventlinqs.com.au'
+const night = { slug: 'kyivska-perepichka-2026-12-05', title: 'Kyivska Perepichka', startDate: '2026-12-05T08:00:00Z', timezone: 'Australia/Melbourne', venueName: 'The Wheeler Centre', isFree: false }
 
 function judged(letter: typeof TWENTY_ADVICE, personName: string | null, organiserName = 'Ukrainian Sounds') {
-  const rendered = renderTemplate(letter, letterFields({ organiserName, personName, night, photoLink: PHOTOS }), UNSUBSCRIBE)
+  const rendered = renderTemplate(letter, letterFields({ organiserName, personName, night, photoLink: PHOTOS, origin: ORIGIN }), UNSUBSCRIBE)
   const voice = voiceProblems(
     touchVoiceMessage({
       channel: 'email',
@@ -49,7 +50,7 @@ describe('the two letters', () => {
   it('stays under the word limit with a long title, a long place and a long organisation name', () => {
     const long = { ...night, title: 'African Music and Community Festival 2026 Grand Opening Weekend', venueName: 'Federation Square Main Stage and Atrium' }
     for (const letter of [TWENTY_ADVICE, TWENTY_OFFER]) {
-      const r = renderTemplate(letter, letterFields({ organiserName: 'The Victorian Folk Music Club Incorporated', personName: null, night: long, photoLink: PHOTOS }), UNSUBSCRIBE)
+      const r = renderTemplate(letter, letterFields({ organiserName: 'The Victorian Folk Music Club Incorporated', personName: null, night: long, photoLink: PHOTOS, origin: ORIGIN }), UNSUBSCRIBE)
       expect(r.heldBecause, `${letter.key}: ${r.content}`).toEqual([])
     }
   })
@@ -59,9 +60,15 @@ describe('the two letters', () => {
     const team = judged(TWENTY_ADVICE, null).rendered
     expect(team.content.split('\n')[0]).toBe('Hi Ukrainian Sounds team,')
     expect(team.subject).toBe('Kyivska Perepichka, could I ask your advice?')
-    expect(team.content).toContain('Kyivska Perepichka on Saturday 5 December at The Wheeler Centre is already listed on EventLinqs.')
+    expect(team.content).toContain('Kyivska Perepichka on Saturday 5 December at The Wheeler Centre is already listed on EventLinqs, free: https://www.eventlinqs.com.au/events/kyivska-perepichka-2026-12-05')
     // Lawal's 12:01 of 12 November: every draft carries the photo permission request with their own secure link.
     expect(team.content).toContain(`You can add your own photos to it here, and choose where they're used: ${PHOTOS}`)
+  })
+  it("the listed letter links the night's own live page on EventLinqs, and a night with no page leaves it held (Lawal, 13 November, 06:55)", () => {
+    const linked = judged(TWENTY_ADVICE, null).rendered
+    expect(linked.content).toContain('free: https://www.eventlinqs.com.au/events/kyivska-perepichka-2026-12-05')
+    const noPage = renderTemplate(TWENTY_ADVICE, letterFields({ organiserName: 'X', personName: null, night: { ...night, slug: null }, photoLink: PHOTOS, origin: ORIGIN }), UNSUBSCRIBE)
+    expect(noPage.heldBecause.join(' ')).toContain('[event link]')
   })
   it('a missing fact leaves the draft held with the field named, never a stand in', () => {
     const r = renderTemplate(TWENTY_ADVICE, letterFields({ organiserName: 'X', personName: null, night: { ...night, venueName: null }, photoLink: PHOTOS }), UNSUBSCRIBE)

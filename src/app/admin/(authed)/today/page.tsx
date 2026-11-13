@@ -15,6 +15,7 @@ import { readSentRecently, readTwentyView } from '@/lib/outreach/twenty-view'
 import { SentRecentlySection, TwentySection } from './twenty-section'
 import { readThreePosts } from '@/lib/social/three-posts'
 import { PostsSection } from './posts-section'
+import { approvePieceAction, approveWeekAction } from '../social/actions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,6 +36,10 @@ export const metadata = {
  * measures. The rules are in src/lib/admin/founder-dashboard-math.ts (byException, rhythm) and the figures in
  * founder-dashboard.ts. The weekly figures in full stay on /admin/growth.
  */
+/** One press approval (order 4, Release 1 item 3): the Command Centre's own gold press, 44px, as the posts section's. */
+const APPROVE =
+  'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#131A2A]'
+
 export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
   // What a press of Sent in the twenty answered (the same words /admin/acquisition shows).
   const { said } = await searchParams
@@ -179,6 +184,16 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
             {section.title}
             <span className="ml-2 text-sm font-normal text-white/50">{section.items.length}</span>
           </h2>
+          {section.key === 'pieces' && section.items.length > 1 ? (
+            // Every piece waiting, in one press (order 4, Release 1 item 3): the studio's own week approval, each piece through
+            // its checks; a piece that fails one stays here and the message says why.
+            <form action={approveWeekAction} className="mt-3">
+              <input type="hidden" name="from" value="today" />
+              <button type="submit" data-approve-all className={APPROVE}>
+                Approve all {section.items.length}
+              </button>
+            </form>
+          ) : null}
 
           {section.items.length > 0 ? (
             <ul className="mt-4 divide-y divide-white/[0.06]">
@@ -196,6 +211,15 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
                     >
                       Open
                     </Link>
+                  ) : null}
+                  {item.approvePiece ? (
+                    <form action={approvePieceAction} className="mt-2">
+                      <input type="hidden" name="piece" value={item.approvePiece} />
+                      <input type="hidden" name="from" value="today" />
+                      <button type="submit" data-approve={item.approvePiece} className={APPROVE}>
+                        Approve
+                      </button>
+                    </form>
                   ) : null}
                 </li>
               ))}

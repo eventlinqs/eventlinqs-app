@@ -386,14 +386,17 @@ async function collectBusiness(env = process.env) {
   const secret = env.CRON_SECRET
   const site = env.STATE_REPORT_SITE_URL?.trim() || DEFAULT_SITE
   if (!secret) throw new Error('CRON_SECRET is not set on this runner, so the platform counts could not be read')
-  const res = await fetch(`${site}/api/ops/state`, {
+  // On a Melbourne Monday the morning email also carries last week's report (order 4, Release 3): the platform adds it
+  // only when asked (?weekly=1), so the hourly stall check never pays for it.
+  const monday = new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'Australia/Melbourne' }).format(new Date()) === 'Monday'
+  const res = await fetch(`${site}/api/ops/state${monday ? '?weekly=1' : ''}`, {
     headers: { Authorization: `Bearer ${secret}` },
     signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) throw new Error(`${site}/api/ops/state answered ${res.status}`)
   const body = await res.json()
   if (!body?.ok) throw new Error(`${site}/api/ops/state reported ${body?.error ?? 'a fault it did not name'}`)
-  return body.counts
+  return body.weekly ? { ...body.counts, weekly: body.weekly } : body.counts
 }
 
 /**

@@ -1,4 +1,5 @@
 import { wallClockToIso, type FoundEvent } from './collect'
+import { presenterIn } from './presenter'
 import { BALLARAT_PAGE_RULES } from './page-rules-ballarat'
 import { MELBOURNE_PAGE_RULES } from './page-rules-melbourne'
 import { GEELONG_PAGE_RULES } from './page-rules-geelong'
@@ -130,6 +131,8 @@ const geelongArtsCentre: PageRule = {
     const venue = block(lines, 'Venue').filter((l) => !/^venue info$/i.test(l))
     const venueName = venue[0] ?? 'Geelong Arts Centre'
     const street = venue[1] && /\d/.test(venue[1]) ? venue[1] : null
+    // The hirer who puts the night on, a span after the title ('Presented by Ocean Grove Calisthenic College').
+    const presentedBy = presenterIn(html)
     return performances.map(({ startsAt, soldOut }) => ({
       title,
       startsAt,
@@ -140,6 +143,7 @@ const geelongArtsCentre: PageRule = {
       imageUrl: null,
       description: null,
       links: [{ url: pageUrl, availability: soldOut ? ('sold_out' as const) : ('on_sale' as const), priceFromCents }],
+      presentedBy,
     }))
   },
 }

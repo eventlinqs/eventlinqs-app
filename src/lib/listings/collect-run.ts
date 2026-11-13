@@ -59,6 +59,8 @@ export type CandidateRow = {
   reasons: CandidateReason[]
   /** partner_rule: accepted by the run, never waiting; person: waits for a person. */
   decidedBy: 'person' | 'partner_rule'
+  /** Who presents the night, where its own page says so (FoundEvent.presentedBy); null when it names no one. */
+  presentedBy?: string | null
 }
 
 /** One row of a source's run log (listing_source_runs). */
@@ -501,6 +503,7 @@ export async function runCollection(
                 confidence,
                 reasons,
                 decidedBy: byRule ? 'partner_rule' : 'person',
+                presentedBy: plan.event.presentedBy ?? null,
               }
               const isNew = await store.land(row)
               /* Asked on every run, landed or not: the store publishes only a partner rule row with no series yet, so a

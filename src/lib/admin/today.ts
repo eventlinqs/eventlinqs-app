@@ -1,10 +1,14 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { DISCOVERY_PARTS, dayLineWords, type DayChecks } from '@/lib/listings/discovery-day'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readNightsOwed } from '@/lib/growth/organiser-report'
+import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
+import { readCampaign } from '@/lib/social/store'
+import { KIND_NAMES } from '@/lib/growth/social-report-math'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 
 /**
@@ -66,7 +70,7 @@ async function playsToApprove(db: Admin): Promise<QueueItem[]> {
   return (data ?? []).map((p) => ({
     id: `play:${p.id}`,
     what: `The play "${p.name}", starting at ${p.cap_start} emails a day`,
-    why: 'A play sends only once you approve it; after that every email inside it goes on its own.',
+    why: 'A play sends only once you approve it; after that every email inside it goes on its own. So it is not approved here in one press: that waits on the gateway checking every email and your mailbox connection, and the PM rules on it.',
     since: p.created_at,
     href: null,
   }))
@@ -157,6 +161,30 @@ async function rulePublished(admin: Admin, now: Date): Promise<QueueItem[]> {
   return rulePublishedGlance((data ?? []) as RulePublished[], count ?? 0, CAPTURE_RULE_CHECKS)
 }
 
+/** The Event Discovery Engine's newest judged day (public.discovery_engine_days, written by the engine itself). */
+async function discoveryDayLine(admin: Admin): Promise<QueueItem[]> {
+  const db = admin as unknown as SupabaseClient
+  const { data, error } = await db
+    .from('discovery_engine_days')
+    .select('day, checks, manual_steps, consecutive_days, numbers, written_at')
+    .not('checks', 'eq', '{}')
+    .order('day', { ascending: false })
+    .limit(1)
+  if (error) throw new Error(error.message)
+  const r = (data ?? [])[0] as
+    | { day: string; checks: DayChecks; manual_steps: number; consecutive_days: number; numbers: { evidence?: { manualDetail?: string[] } }; written_at: string }
+    | undefined
+  if (!r) return discoveryDayGlance(null)
+  const failing = DISCOVERY_PARTS.filter((p) => !r.checks[p]?.pass).map((p) => `(${p}) ${r.checks[p]?.why ?? 'not judged'}`)
+  return discoveryDayGlance({
+    day: r.day,
+    words: dayLineWords({ day: r.day, checks: r.checks, manualSteps: r.manual_steps, consecutiveDays: r.consecutive_days }),
+    failing,
+    manual: r.numbers?.evidence?.manualDetail ?? [],
+    writtenAt: r.written_at,
+  })
+}
+
 /** The addresses the twenty's pool recorded since yesterday, each waiting for Lawal's page check (src/lib/outreach/basis-pool.ts). */
 async function poolFound(admin: Admin, now: Date): Promise<QueueItem[]> {
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
@@ -204,6 +232,26 @@ async function sourcesFailing(db: RunsDb): Promise<QueueItem[]> {
   })
 }
 
+/**
+ * THE WEEK'S PIECES WAITING FOR LAWAL'S YES (order 4, Release 1 item 3: "one prioritised approval queue, approve in one
+ * press singly or in a batch"): every piece of this week's campaign whose newest version is drafted, neither approved
+ * nor rejected, approved here through the same checked approval as /admin/social (approvePieceAction). Oldest first.
+ */
+async function piecesToApprove(db: Admin, now: Date): Promise<QueueItem[]> {
+  const campaign = await readCampaign(db as unknown as SupabaseClient, now)
+  if (campaign === null) return []
+  return campaign.pieces
+    .filter((p) => p.state === 'drafted')
+    .map((p) => ({
+      id: `piece:${p.id}`,
+      what: `${KIND_NAMES[p.kind] ?? p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}`,
+      why: 'Waiting for your yes. Approve runs its checks first; a piece that fails one is held and says why.',
+      since: p.revision.madeAt,
+      href: `/admin/social#piece-${p.id}`,
+      approvePiece: p.id,
+    }))
+}
+
 /** Pieces the image sweep drew again in type, not yet approved again or posted. */
 async function piecesSwept(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db
@@ -222,7 +270,8 @@ async function piecesSwept(db: Admin): Promise<QueueItem[]> {
   ])
   if (perr) fail(perr)
   if (aerr) fail(aerr)
-  const gone = new Set((posted ?? []).map((p) => p.piece_id))
+  // A partner kit Lawal sent by email has gone as surely as one marked sent (src/lib/social/kit-sent.ts).
+  const gone = new Set([...(posted ?? []).map((p) => p.piece_id), ...(await readKitIdsSentByEmail(db, ids))])
   const approvals = approved ?? []
   return swept
     .filter((d) => !gone.has(d.piece_id) && !approvals.some((a) => a.piece_id === d.piece_id && a.revision > d.revision))
@@ -232,6 +281,7 @@ async function piecesSwept(db: Admin): Promise<QueueItem[]> {
       why: `${d.reason} It goes only once you approve the new version.`,
       since: d.decided_at,
       href: '/admin/social',
+      approvePiece: d.piece_id,
     }))
 }
 
@@ -301,8 +351,9 @@ async function submissionsNotLive(admin: Admin, now: Date): Promise<QueueItem[]>
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const runs = admin as unknown as RunsDb
-  const [submissions, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled, pooled] = await Promise.all([
+  const [submissions, pieces, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled, pooled] = await Promise.all([
     attempt(() => submissionsNotLive(admin, now)),
+    attempt(() => piecesToApprove(admin, now)),
     attempt(() => playsToApprove(admin), OUTREACH),
     attempt(() => pausedPlays(admin), OUTREACH),
     attempt(() => repliesToRead(admin), OUTREACH),
@@ -318,6 +369,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   ])
   const sources: Source[] = [
     { key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions },
+    { key: 'pieces', section: 'pieces', name: "This week's posts waiting for your yes", read: pieces },
     { key: 'plays', section: 'plays', name: 'Outreach plays', read: plays },
     { key: 'paused', section: 'paused_sends', name: 'Paused plays', read: paused },
     { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: replies },
@@ -332,5 +384,7 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     { key: 'rule_published', section: 'exceptions', name: 'Nights published by the rule since yesterday', read: ruled },
     { key: 'pool_found', section: 'exceptions', name: "Addresses the twenty's pool recorded since yesterday", read: pooled },
   ]
+  /* The engine's own day line, read in a line of its own (Lawal's 18:31 of 13 November 2026). */
+  sources.push({ key: 'discovery_day', section: 'exceptions', name: "The Event Discovery Engine's day line", read: await attempt(() => discoveryDayLine(admin)) })
   return queueOf(sources)
 }

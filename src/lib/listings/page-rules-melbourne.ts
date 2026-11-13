@@ -1,6 +1,7 @@
 import { eventsFromHtml, wallClockToIso, type FoundEvent } from './collect'
 import { MAJOR_SELLERS, providerOf } from '@/lib/events/booking-links'
 import type { PageRule } from './page-rules'
+import { presenterIn } from './presenter'
 
 /**
  * MELBOURNE'S PAGE RULES (WINDOW 2, 1 November 2026, the CONTROLLER's 16:41: Melbourne sources on WINDOW 6's framework).
@@ -353,6 +354,8 @@ export const melbourneRecitalCentre: PageRule = {
     const data = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i.exec(html)?.[1] ?? ''
     if (!title || !data) return []
     const address = /"address"\s*:\s*"([^"]+)"/.exec(data)?.[1] ?? null
+    // Its company line above the title ('Presented by Melbourne Recital Centre', or a visiting company).
+    const presentedBy = presenterIn(html)
     const out: FoundEvent[] = []
     for (const m of data.matchAll(/"contentType"\s*:\s*"tessituraPerformance"\s*,\s*"name"\s*:\s*"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}) \(\d+\)"/g)) {
       const startsAt = wallClockToIso(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]), 0, ZONE)
@@ -368,6 +371,7 @@ export const melbourneRecitalCentre: PageRule = {
         description: null,
         links: [{ url: pageUrl, availability: 'on_sale', priceFromCents: null }],
         timeFromWords: true,
+        presentedBy,
       })
     }
     return out

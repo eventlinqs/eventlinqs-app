@@ -10,6 +10,7 @@ import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
+import { readKitTouchesSent } from './kit-sent'
 import { quotableSummary, wordsRefusal } from './words'
 import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
@@ -929,6 +930,8 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     .limit(500)
   if (error) throw new Error(`the week's pieces could not be read: ${error.message}`)
   const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'coming_up', 'organiser_campaign', 'brand_campaign', 'partner_kit']
+  // A partner kit went when Lawal marked it sent or sent the message carrying its own link (src/lib/social/kit-sent.ts).
+  const kitsSentByEmail = await readKitTouchesSent(db, (data ?? []).filter((p) => p.kind === 'partner_kit').map((p) => (p.link as string | null) ?? null))
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
     const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)
@@ -939,7 +942,8 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
       .sort((a, b) => b.at.localeCompare(a.at))
     const approvals = ((p.social_piece_approvals as { revision: number }[] | null) ?? []).map((a) => Number(a.revision))
     const posting = ((p.social_piece_postings as { post_url: string }[] | { post_url: string } | null) ?? null)
-    const postUrl = Array.isArray(posting) ? (posting[0]?.post_url ?? null) : (posting?.post_url ?? null)
+    const marked = Array.isArray(posting) ? (posting[0]?.post_url ?? null) : (posting?.post_url ?? null)
+    const postUrl = marked ?? (p.kind === 'partner_kit' && kitsSentByEmail.has(p.link as string) ? 'sent' : null)
     const rejected = decisions.some((d) => d.decision === 'rejected' && d.revision === newest.version)
     const state: PieceState = postUrl ? 'gone' : approvals.includes(newest.version) ? 'approved' : rejected ? 'rejected' : 'drafted'
     pieces.push({

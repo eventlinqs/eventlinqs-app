@@ -1331,6 +1331,36 @@ export type Database = {
           },
         ]
       }
+      discovery_engine_days: {
+        Row: {
+          all_passed: boolean
+          checks: Json
+          consecutive_days: number
+          day: string
+          manual_steps: number
+          numbers: Json
+          written_at: string
+        }
+        Insert: {
+          all_passed: boolean
+          checks: Json
+          consecutive_days: number
+          day: string
+          manual_steps: number
+          numbers: Json
+          written_at?: string
+        }
+        Update: {
+          all_passed?: boolean
+          checks?: Json
+          consecutive_days?: number
+          day?: string
+          manual_steps?: number
+          numbers?: Json
+          written_at?: string
+        }
+        Relationships: []
+      }
       dynamic_pricing_rules: {
         Row: {
           capacity_threshold_percent: number
@@ -3589,6 +3619,7 @@ export type Database = {
           kind: string
           links: Json
           page_url: string
+          presented_by: string | null
           published_series_id: string | null
           reasons: string[]
           refused_because: string | null
@@ -3614,6 +3645,7 @@ export type Database = {
           kind: string
           links?: Json
           page_url: string
+          presented_by?: string | null
           published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null
@@ -3639,6 +3671,7 @@ export type Database = {
           kind?: string
           links?: Json
           page_url?: string
+          presented_by?: string | null
           published_series_id?: string | null
           reasons?: string[]
           refused_because?: string | null
@@ -6754,6 +6787,60 @@ export type Database = {
           },
         ]
       }
+      organiser_page_events: {
+        Row: {
+          created_at: string
+          ends_on: string | null
+          id: string
+          organiser_id: string
+          page_url: string
+          place: string | null
+          read_by: string
+          read_on: string
+          starts_on: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          organiser_id: string
+          page_url: string
+          place?: string | null
+          read_by: string
+          read_on: string
+          starts_on: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          organiser_id?: string
+          page_url?: string
+          place?: string | null
+          read_by?: string
+          read_on?: string
+          starts_on?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_page_events_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_page_events_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+        ]
+      }
       organiser_permissions: {
         Row: {
           channel: string
@@ -7314,6 +7401,8 @@ export type Database = {
           id: string
           in_reply_to: string | null
           internet_message_id: string | null
+          line_read_on: string | null
+          line_source_url: string | null
           night_report_id: string | null
           play_id: string | null
           provider: string | null
@@ -7341,6 +7430,8 @@ export type Database = {
           id?: string
           in_reply_to?: string | null
           internet_message_id?: string | null
+          line_read_on?: string | null
+          line_source_url?: string | null
           night_report_id?: string | null
           play_id?: string | null
           provider?: string | null
@@ -7368,6 +7459,8 @@ export type Database = {
           id?: string
           in_reply_to?: string | null
           internet_message_id?: string | null
+          line_read_on?: string | null
+          line_source_url?: string | null
           night_report_id?: string | null
           play_id?: string | null
           provider?: string | null

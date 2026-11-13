@@ -2,6 +2,7 @@ import { providerOf, sameEvent, type BookingAvailability, type ListingKey } from
 import { HORIZON_DAYS } from './horizon'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 import { factChange, movedToAnotherDay } from './judge'
+import { sameNightAlike } from './venue-alike'
 import type { HuntSource } from './headline-hunt'
 import type { SourceCanary } from './canary'
 
@@ -137,6 +138,12 @@ export type FoundEvent = {
   timeFromWords?: boolean
   /** The source marks it postponed or rescheduled (schema.org eventStatus): a person decides. */
   calledOff?: boolean
+  /**
+   * Who presents the night, where its own page names them in a line of its own ('Presented by ...', ./presenter.ts):
+   * the organiser behind a night at a hired hall, kept on its candidate so the outreach pool can grow from them (the PM's
+   * 09:05 (3) of 13 November 2026). A fact, like the title.
+   */
+  presentedBy?: string | null
 }
 
 /** The zone a found night is read in when its source states no zone: the four guide cities are all in Victoria. */
@@ -942,9 +949,14 @@ export function planCandidates(
     }
     /* A listed night is this session only when its start is this one, or when this source states no session at its start
        (then the source has moved it: a time change for a person, below). */
-    const listed = known.find(
-      (k) => sameEvent(k, keyOf(e)) && (time(k.startsAt) === at || !found.some((f) => f !== e && time(f.startsAt) === time(k.startsAt) && sameEvent(keyOf(f), k))),
-    )
+    const listed =
+      known.find(
+        (k) => sameEvent(k, keyOf(e)) && (time(k.startsAt) === at || !found.some((f) => f !== e && time(f.startsAt) === time(k.startsAt) && sameEvent(keyOf(f), k))),
+      ) ??
+      /* ONE PLACE WRITTEN TWO WAYS (./venue-alike.ts, 13 November 2026): the same exact start, titles alike, the venue plainly
+         the same place written another way ('Rod Laver Arena, Melbourne' against 'Rod Laver Arena') is this listed night
+         read again: its links merge into the listing, never a change held for a person. Only within the source's own city. */
+      known.find((k) => (!citySlug || !k.citySlug || k.citySlug.toLowerCase() === citySlug.toLowerCase()) && sameNightAlike(k, keyOf(e)))
     const event = { ...e, links: [...e.links] }
     /* A LISTED NIGHT AT ANOTHER TIME IS A CHANGE, NEVER A CONFIRMATION (car 46; LAW 19 section 4: a time that differs from
        the last verified value is held). sameEvent's two hour window finds the night; a start a minute or more away from

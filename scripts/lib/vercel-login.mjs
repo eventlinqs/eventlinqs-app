@@ -31,6 +31,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { vercelCliEntry } from './vercel-cli-entry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -73,15 +74,9 @@ function readStoredLogin(path) {
 }
 
 /** The Vercel CLI as a Node program (its .cmd shim needs a shell; its entrypoint does not). */
-function vercelCliEntry() {
-  const roots = []
-  if (process.env.APPDATA) roots.push(join(process.env.APPDATA, 'npm', 'node_modules', 'vercel'))
-  roots.push(join(ROOT, 'node_modules', 'vercel'))
-  for (const root of roots) {
-    const entry = join(root, 'dist', 'index.js')
-    if (existsSync(entry)) return { file: process.execPath, prefix: [entry] }
-  }
-  return null
+function vercelCli() {
+  // Read from the CLI package's own bin (./vercel-cli-entry.mjs): CLI 65 moved the entry to dist/vc.js.
+  return vercelCliEntry(ROOT)
 }
 
 /**
@@ -90,7 +85,7 @@ function vercelCliEntry() {
  * is not printed (it names the account, nothing more, but nothing is needed).
  */
 function refreshVercelCliLogin() {
-  const cli = vercelCliEntry()
+  const cli = vercelCli()
   if (!cli) return false
   const r = spawnSync(cli.file, [...cli.prefix, 'whoami'], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 })
   return !r.error && r.status === 0

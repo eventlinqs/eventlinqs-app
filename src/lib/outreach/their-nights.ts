@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
-import { ownHost } from './own-host'
+import { onOwnHost, ownHost } from './own-host'
 
 /**
  * AN ORGANISER'S OWN PUBLIC NIGHTS, ONE READER (the PM, 12 November 2026, 14:12: "twenty a day ... lawfully"; the
@@ -88,13 +88,15 @@ export async function readTheirNights(
   if (host) {
     await take('organisation_id', (await heldForThem(db, host)).filter((id) => id !== organiser.organisation_id))
     const ids = new Set<string>()
-    for (const pattern of [`%://${host}/%`, `%://www.${host}/%`, `%://${host}`, `%://www.${host}`]) {
-      const links = await db.from('event_booking_links').select('event_id').ilike('url', pattern).limit(500)
+    // Their host, its www, or a subdomain of it (their own box office); each match is confirmed on the URL's own hostname
+    // (onOwnHost), so a link that only mentions their host in its path or query is never theirs.
+    for (const pattern of [`%://${host}/%`, `%://www.${host}/%`, `%://${host}`, `%://www.${host}`, `%.${host}/%`, `%.${host}`]) {
+      const links = await db.from('event_booking_links').select('event_id, url').ilike('url', pattern).limit(500)
       if (links.error) throw new Error(`their booking links could not be read: ${links.error.message}`)
-      for (const l of links.data ?? []) ids.add(l.event_id as string)
-      const direct = await plain.from('events').select('id').ilike('external_ticket_url', pattern).gt('end_date', now.toISOString()).limit(500)
+      for (const l of links.data ?? []) if (onOwnHost(l.url as string, host)) ids.add(l.event_id as string)
+      const direct = await plain.from('events').select('id, external_ticket_url').ilike('external_ticket_url', pattern).gt('end_date', now.toISOString()).limit(500)
       if (direct.error) throw new Error(`their booking pages could not be read: ${direct.error.message}`)
-      for (const e of direct.data ?? []) ids.add(e.id as string)
+      for (const e of direct.data ?? []) if (onOwnHost(e.external_ticket_url as string | null, host)) ids.add(e.id as string)
     }
     const list = [...ids]
     for (let i = 0; i < list.length; i += 200) await take('id', list.slice(i, i + 200))

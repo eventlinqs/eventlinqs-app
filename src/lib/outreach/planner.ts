@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
+import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { ALPHA, CLAIM_WINDOW_DAYS, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge, type Half, type JudgedOutcome } from './learning'
 
 type Admin = SupabaseClient<Database>
@@ -468,7 +469,8 @@ async function unpostedPiecesShowing(db: Admin, urls: readonly string[]): Promis
   if (urls.length === 0) return 0
   const posted = await db.from('social_piece_postings').select('piece_id').limit(5000)
   if (posted.error) throw new Error(`social_piece_postings: ${posted.error.message}`)
-  const gone = new Set((posted.data ?? []).map((g) => g.piece_id))
+  // A partner kit Lawal sent by email has gone as surely as one marked sent (src/lib/social/kit-sent.ts).
+  const gone = new Set([...(posted.data ?? []).map((g) => g.piece_id), ...(await readKitIdsSentByEmail(db))])
   const revs = await db.from('social_piece_revisions').select('piece_id, version, slides').order('version', { ascending: false }).limit(5000)
   if (revs.error) throw new Error(`social_piece_revisions: ${revs.error.message}`)
   const seen = new Set<string>()

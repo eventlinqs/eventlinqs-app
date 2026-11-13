@@ -16,11 +16,12 @@
 
 // 'submissions' leads (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour after it was sent in is
 // the first thing Lawal sees.
-export const SOURCE_KEYS = ['submissions', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
+export const SOURCE_KEYS = ['submissions', 'pieces', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
 export type SectionKey = (typeof SOURCE_KEYS)[number]
 
 export const SECTION_TITLES: Readonly<Record<SectionKey, string>> = {
   submissions: 'Organiser events not live after an hour',
+  pieces: 'Posts to approve',
   plays: 'Plays to approve',
   paused_sends: 'Sends paused',
   unclear_replies: 'Replies to read',
@@ -36,6 +37,11 @@ export interface QueueItem {
   readonly since: string
   /** Where it is acted on; null when no page acts on it yet, said beside it. */
   readonly href: string | null
+  /**
+   * A social piece Lawal approves here in one press (order 4, Release 1 item 3), through the same checked approval as
+   * /admin/social: its id. Absent on everything that is a judgement on its own page, never a yes to a ready draft.
+   */
+  readonly approvePiece?: string
 }
 
 type Named = { name: string } | { name: string }[] | null
@@ -189,6 +195,27 @@ export function rulePublishedGlance(rows: readonly RulePublished[], total: numbe
       what: `${total} ${total === 1 ? 'night' : 'nights'} published by the rule since yesterday`,
       why: `Each passed every check (${checks.join('; ')}). ${named.length === total ? 'All' : `${named.length}`} for a glance: ${named.join('. ')}.`,
       since,
+      href: '/admin/collected',
+    },
+  ]
+}
+
+/**
+ * THE EVENT DISCOVERY ENGINE'S DAY LINE, SEEN (Lawal's 18:31 of 13 November 2026; src/lib/listings/discovery-day.ts):
+ * the newest judged day, its count of seven, each part PASS or FAIL, and why each failing part failed and what the manual
+ * steps were. No judged day yet, no item. Pure.
+ */
+export function discoveryDayGlance(
+  row: { day: string; words: string; failing: readonly string[]; manual: readonly string[]; writtenAt: string } | null,
+): QueueItem[] {
+  if (!row) return []
+  const why = [...row.failing, ...row.manual].join('; ')
+  return [
+    {
+      id: `discovery:day-line:${row.day}`,
+      what: `The Event Discovery Engine, ${row.words}`,
+      why: why || 'Every part passed with no manual step.',
+      since: row.writtenAt,
       href: '/admin/collected',
     },
   ]

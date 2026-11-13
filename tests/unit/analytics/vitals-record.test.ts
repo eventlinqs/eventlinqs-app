@@ -13,7 +13,7 @@ const insert = vi.fn(async (_row: unknown) => ({ error: null as null | { message
 vi.mock('@/lib/rate-limit/middleware', () => ({ applyRateLimit: vi.fn(async () => null) }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: (table: string) => ({ insert: (row: unknown) => insert({ table, row }) }) }) }))
 
-const { pageTypeOf, vitalsBody, vitalsRow } = await import('@/lib/analytics/vitals-record')
+const { pageTypeOf, vitalsBody, vitalsRow, vitalsRows, MAX_MEASURES_PER_VIEW } = await import('@/lib/analytics/vitals-record')
 const { POST } = await import('@/app/api/vitals/route')
 
 const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
@@ -36,12 +36,13 @@ describe('what the browser sends', () => {
     expect(pageTypeOf('/admin/today')).toBe('other')
   })
 
-  test('LCP, INP and CLS as numbers, phone apart from desktop; any other measure is not sent', () => {
+  test('LCP, INP, CLS, TTFB and FCP as numbers, phone apart from desktop; any other measure is not sent', () => {
     expect(vitalsBody({ name: 'LCP', value: 2310.4, rating: 'needs-improvement' }, '/city/geelong', true)).toEqual({ m: 'LCP', v: 2310, p: 'city', d: 'mobile', r: 'needs-improvement' })
     expect(vitalsBody({ name: 'CLS', value: 0.012345, rating: 'good' }, '/', false)).toEqual({ m: 'CLS', v: 0.0123, p: 'home', d: 'desktop', r: 'good' })
     expect(vitalsBody({ name: 'INP', value: 88, rating: 'good' }, '/events', true)?.m).toBe('INP')
-    expect(vitalsBody({ name: 'FCP', value: 900 }, '/', true)).toBeNull()
-    expect(vitalsBody({ name: 'TTFB', value: 120 }, '/', true)).toBeNull()
+    expect(vitalsBody({ name: 'FCP', value: 900.6, rating: 'good' }, '/', true)).toEqual({ m: 'FCP', v: 901, p: 'home', d: 'mobile', r: 'good' })
+    expect(vitalsBody({ name: 'TTFB', value: 120.2 }, '/events/x', true)).toEqual({ m: 'TTFB', v: 120, p: 'event', d: 'mobile', r: null })
+    expect(vitalsBody({ name: 'FID', value: 12 }, '/', true)).toBeNull()
     expect(vitalsBody({ name: 'LCP', value: Number.NaN }, '/', true)).toBeNull()
   })
 
@@ -60,7 +61,7 @@ describe('what the server keeps', () => {
     expect(res.status).toBe(204)
     expect(insert).toHaveBeenCalledWith({
       table: 'page_vitals',
-      row: { page_type: 'city', device: 'mobile', metric: 'LCP', value: 2310, rating: 'needs-improvement' },
+      row: [{ page_type: 'city', device: 'mobile', metric: 'LCP', value: 2310, rating: 'needs-improvement' }],
     })
   })
 
@@ -75,7 +76,7 @@ describe('what the server keeps', () => {
   })
 
   test.each([
-    ['another measure', { m: 'FCP', v: 900, p: 'city', d: 'mobile', r: null }],
+    ['another measure', { m: 'FID', v: 900, p: 'city', d: 'mobile', r: null }],
     ['a page kind it does not know', { m: 'LCP', v: 900, p: 'https://evil.example/', d: 'mobile', r: null }],
     ['a device it does not know', { m: 'LCP', v: 900, p: 'city', d: 'iPhone 15', r: null }],
     ['an impossible value', { m: 'LCP', v: -1, p: 'city', d: 'mobile', r: null }],
@@ -97,9 +98,58 @@ describe('what the server keeps', () => {
   })
 
   test('a body too large to be a measure is refused before it is read', async () => {
-    const res = await POST(beacon('x'.repeat(600)))
+    const res = await POST(beacon('x'.repeat(1100)))
     expect(res.status).toBe(413)
     expect(insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('one beacon per page view (13 November 2026)', () => {
+  beforeEach(() => insert.mockClear())
+  const m = (metric: string, v: number) => ({ m: metric, v, p: 'event', d: 'mobile', r: null })
+
+  test('the five measures of a page view are kept as five rows from one beacon', async () => {
+    const res = await POST(beacon([m('TTFB', 410), m('FCP', 980), m('LCP', 1620), m('CLS', 0.01), m('INP', 120)]))
+    expect(res.status).toBe(204)
+    expect(insert).toHaveBeenCalledTimes(1)
+    const rows = (insert.mock.calls[0][0] as { row: Array<{ metric: string }> }).row
+    expect(rows.map((r) => r.metric)).toEqual(['TTFB', 'FCP', 'LCP', 'CLS', 'INP'])
+  })
+
+  test('a measure the record does not take is left out and the rest kept', () => {
+    expect(vitalsRows([m('LCP', 1620), m('FID', 12)])?.map((r) => r.metric)).toEqual(['LCP'])
+  })
+
+  test.each([
+    ['nothing at all', []],
+    ['more measures than a view has', Array.from({ length: MAX_MEASURES_PER_VIEW + 1 }, (_, i) => m('LCP', i))],
+    ['one measure twice', [m('LCP', 1000), m('LCP', 2000)]],
+    ['nothing it can keep', [m('FID', 12)]],
+  ])('refuses a beacon with %s', async (_label, body) => {
+    const res = await POST(beacon(body))
+    expect(res.status).toBe(400)
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  test('the browser half sends once, on hide, one value per kind', async () => {
+    const sent: string[] = []
+    vi.stubGlobal('window', { location: { pathname: '/events/some-night' }, matchMedia: () => ({ matches: true }) })
+    vi.stubGlobal('navigator', { sendBeacon: (_url: string, blob: Blob) => (blob.text().then((t) => sent.push(t)), true) })
+    const { reportForTest, flushVitals, pendingVitalsForTest } = await import('@/components/analytics/web-vitals-record')
+    reportForTest({ name: 'TTFB', value: 400 })
+    reportForTest({ name: 'LCP', value: 1500 })
+    reportForTest({ name: 'LCP', value: 1700 })
+    reportForTest({ name: 'FID', value: 9 })
+    expect(pendingVitalsForTest().map((b) => [b.m, b.v])).toEqual([['TTFB', 400], ['LCP', 1700]])
+    flushVitals()
+    flushVitals()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(sent).toHaveLength(1)
+    expect(JSON.parse(sent[0])).toEqual([
+      { m: 'TTFB', v: 400, p: 'event', d: 'mobile', r: null },
+      { m: 'LCP', v: 1700, p: 'event', d: 'mobile', r: null },
+    ])
+    vi.unstubAllGlobals()
   })
 })
 

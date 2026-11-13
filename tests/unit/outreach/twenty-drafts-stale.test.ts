@@ -44,6 +44,7 @@ function fakeDb(waiting: Array<{ id: string; contact_id: string; key: string; ve
         order: chain,
         is: chain,
         neq: chain,
+        gte: chain,
         eq: (col: string, val: unknown) => {
           if (col === 'key') key = String(val)
           return q

@@ -23,11 +23,15 @@ import type { TemplateRow } from './rules'
  * format: their secure link to upload their own photos and choose the uses"): the line about their night is followed by
  * the request and their own link (src/app/photos), and a line each was shortened to stay under the word limit.
  *
+ * Version 3 (Lawal, 13 November 2026, 06:55, item 1: the listed event letter carries "their event's own page on EventLinqs
+ * (live, 200 on www), their secure photo link ..., the free listing, and (for paid events) the conversion line"): the line
+ * about their night now links its own page on EventLinqs and says the listing is free; the photo link has its own line.
+ *
  * Stored as outreach_templates rows, versioned (never edited): ./twenty-drafts.ts writes the next version whenever these
  * words change, and drafts again any draft still held on an older one. Pure.
  */
 
-export type TwentyLetterKey = 'twenty_advice' | 'twenty_offer'
+export type TwentyLetterKey = 'twenty_advice' | 'twenty_offer' | 'twenty_own_page'
 
 export interface TwentyLetter extends TemplateRow {
   readonly key: TwentyLetterKey
@@ -44,7 +48,8 @@ export const TWENTY_ADVICE: TwentyLetter = {
   subject: '[event], could I ask your advice?',
   body: [
     'Hi [greeting],',
-    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs. You can add your own photos to it here, and choose where they're used: [photo link]",
+    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
+    "You can add your own photos to it here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. You've been running events far longer than I have, and I'd love to learn from that.",
     'If you could change one thing about selling tickets, what would it be?',
     "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
@@ -61,7 +66,8 @@ export const TWENTY_OFFER: TwentyLetter = {
   subject: '[event], could I ask your advice?',
   body: [
     'Hi [greeting],',
-    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs. You can add your own photos to it here, and choose where they're used: [photo link]",
+    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
+    "You can add your own photos to it here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists.",
     "You could start with a few tickets alongside how you sell now. There's [offer], and you keep the full face value of every ticket sold.",
     'Would you have a look at https://www.eventlinqs.com.au/organisers and tell me what you think?',
@@ -70,13 +76,41 @@ export const TWENTY_OFFER: TwentyLetter = {
   source: "Lawal's first message to Victoria Chorale of 4 October 2026, templated on the PM's 11:58 of 12 November",
 }
 
-export const TWENTY_LETTERS: readonly TwentyLetter[] = [TWENTY_ADVICE, TWENTY_OFFER]
+/**
+ * THE ADVICE LETTER FOR AN EVENT OF THEIRS NOT LISTED ON EVENTLINQS (Lawal, 13 November 2026, 06:50, ruling 1: "THE TRUE
+ * LINE may name the organiser's own upcoming event as read from their own published page ... when they have no night on
+ * EventLinqs. Never invented"). His October letters named the organiser's real event read from their own page with no
+ * listing ("Broadway, Baby! at the Bluestone Theatre, 16 to 18 October"): the same letter as twenty_advice, word for word,
+ * save the one line about them, which says where it was read (their website) and never that it is listed on EventLinqs.
+ * The event comes from organiser_page_events, recorded by the research with its page and date, kept on the draft.
+ */
+export const TWENTY_OWN_PAGE: TwentyLetter = {
+  key: 'twenty_own_page',
+  channel: 'email',
+  purpose: 'cadence',
+  step: 1,
+  subject: '[event], could I ask your advice?',
+  body: [
+    'Hi [greeting],',
+    "I hope you're well. I saw [event] on [event day] at [event place] on your website.",
+    "You can add your own photos to EventLinqs here, and choose where they're used: [photo link]",
+    "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. You've been running events far longer than I have, and I'd love to learn from that.",
+    'If you could change one thing about selling tickets, what would it be?',
+    "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
+    ...CLOSE,
+  ].join('\n'),
+  source: "Lawal's first messages of 10 and 11 October 2026 (VOICE-EVENTLINQS.md), the event read from their own page (his 06:50 of 13 November)",
+}
+
+export const TWENTY_LETTERS: readonly TwentyLetter[] = [TWENTY_ADVICE, TWENTY_OFFER, TWENTY_OWN_PAGE]
 
 /** The offer, from the one offer module (LAW 24; offer-is-one-rule): never typed here. */
 export const OFFER_WORDS = `no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months, counted from the day you register`
 
 /** A public night of theirs, as the template names it. */
 export interface TheirNight {
+  /** Its page on EventLinqs (/events/<slug>), for the listed letter's link; absent for an event read from their own page. */
+  readonly slug?: string | null
   readonly title: string
   readonly startDate: string
   readonly timezone: string | null
@@ -99,6 +133,8 @@ export function letterFields(input: {
   readonly night: TheirNight
   /** Their secure photo link, whole (src/lib/outreach/photo-link.ts); null leaves the draft held. */
   readonly photoLink: string | null
+  /** The site's own origin; with the night's slug it makes the link to its live page. */
+  readonly origin?: string | null
 }): Record<string, string | null> {
   const first = (input.personName ?? '').trim().split(/\s+/)[0] ?? ''
   const organiser = input.organiserName.trim()
@@ -107,6 +143,7 @@ export function letterFields(input: {
     event: input.night.title.trim() || null,
     'event day': dayWords(input.night.startDate, input.night.timezone),
     'event place': input.night.venueName?.trim() || null,
+    'event link': input.night.slug && input.origin ? `${input.origin.replace(/\/+$/, '')}/events/${input.night.slug}` : null,
     offer: OFFER_WORDS,
     'photo link': input.photoLink,
   }

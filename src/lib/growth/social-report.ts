@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { kitWentAt, readKitTouchesSent } from '@/lib/social/kit-sent'
 import type { CreditedOrder, LinkEvent } from '@/lib/social/results'
 import { readGrowthRows } from './weekly'
 import { figuresFor, weekOf, type Rows, type Week } from './weekly-math'
@@ -133,6 +134,8 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
   if (perr) throw new Error(`the pieces could not be read: ${perr.message}`)
   const raw = (ps ?? []) as unknown as PieceSelect[]
 
+  // A partner kit went when Lawal marked it sent or sent the message carrying its own link (src/lib/social/kit-sent.ts).
+  const kitsSentByEmail = await readKitTouchesSent(db, raw.filter((p) => p.kind === 'partner_kit').map((p) => p.link))
   const pieces: PieceRow[] = raw.map((p) => {
     const went = one(p.social_piece_postings)
     return {
@@ -145,7 +148,12 @@ export async function readSocialReport(db: Db, input: { readonly campaignId: str
       outcome: p.outcome,
       link: p.link,
       partnerName: p.partner_name,
-      postedAt: went === null ? null : iso(went.posted_at),
+      postedAt:
+        p.kind === 'partner_kit'
+          ? kitWentAt(went === null ? null : iso(went.posted_at), kitsSentByEmail.get(p.link) ?? null)
+          : went === null
+            ? null
+            : iso(went.posted_at),
       postUrl: went?.post_url ?? null,
       countedLinkId: p.share_link_id,
     }

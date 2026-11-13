@@ -5,6 +5,10 @@ import { runCollection } from '@/lib/listings/collect-run'
 import { collectionStore } from '@/lib/listings/collect-store'
 import { runScout, SCOUT_HOUR, type ScoutOutcome } from '@/lib/listings/scout-engine'
 import { scoutStore } from '@/lib/listings/scout-store'
+import { attachOrganisers, type AttachOutcome } from '@/lib/listings/discovery-organisers'
+import { discoveryDayStore } from '@/lib/listings/discovery-day-store'
+import { walkHolds, type WalkOutcome } from '@/lib/listings/hold-walk-run'
+import { closeFalseChanges } from '@/lib/listings/false-changes'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +18,8 @@ export const maxDuration = 300
 const RUN_BUDGET_MS = (maxDuration - 60) * 1000
 /** The scout starts only with at least this much of the budget left, so the collection run is never cut short for it. */
 const SCOUT_MIN_LEFT_MS = 90_000
+/** The engine's own steps after the reads (its organisers, its day line) start only with this much of the function left. */
+const ENGINE_MIN_LEFT_MS = 25_000
 
 const melbourneHour = (at: Date) =>
   Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' }).format(at))
@@ -54,7 +60,72 @@ export async function GET(request: NextRequest) {
         console.error('[cron/collection-run] scout failed:', err)
       }
     }
-    return NextResponse.json({ ok: true, ...result, scout })
+    /* THE EVENT DISCOVERY ENGINE'S OWN STEPS (Lawal's 18:28 and 18:31 of 13 November 2026), after the reads and inside the
+       same function's time, each failure said and never failing the run: (d) every upcoming listing's venue gets its CRM
+       organiser (src/lib/listings/discovery-organisers.ts); (e) the open holds are walked (src/lib/listings/hold-walk-run.ts);
+       (f) the first turn of a day judges the day before from the
+       engine's own records, and every turn adds its numbers to its own day's line (src/lib/listings/discovery-day.ts). */
+    const end = started + maxDuration * 1000
+    let organisers: AttachOutcome | string = 'not this turn: too little of the function left'
+    let line: string = 'not this turn: too little of the function left'
+    let holds: WalkOutcome | string = 'not this turn: too little of the function left'
+    let changes = 'not this turn: too little of the function left'
+    if (end - Date.now() >= ENGINE_MIN_LEFT_MS) {
+      const db = createAdminClient()
+      try {
+        /* Stops 40 s before the function's end, so the walk and the day line keep their time. */
+        organisers = await attachOrganisers(db, new Date(), undefined, end - 40_000)
+        console.log(`[cron/collection-run] organisers: ${organisers.attached} attached, ${organisers.entered} entered, ${organisers.left} left` +
+          (organisers.failed.length > 0 ? `; ${organisers.failed.join('; ')}` : ''))
+      } catch (err) {
+        organisers = `the organisers step failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] organisers failed:', err)
+      }
+      /* (e) the hold walk, run by the engine itself (src/lib/listings/hold-walk-run.ts), before the day line reads the holds. */
+      try {
+        holds = await walkHolds(db, fetch, new Date(), end - 15_000)
+        console.log(`[cron/collection-run] holds: ${holds.due} due, ${holds.walked} walked: ${holds.released} released, ${holds.cancelled} cancelled, ${holds.next} to their next source` +
+          (holds.failed.length > 0 ? `; ${holds.failed.join('; ')}` : ''))
+        for (const w of holds.said) console.log(`[cron/collection-run] hold ${w}`)
+      } catch (err) {
+        holds = `the hold walk failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] hold walk failed:', err)
+      }
+      /* (e) a 'changed venue' that is the same night at the same place written another way is closed (false-changes.ts). */
+      try {
+        const c = await closeFalseChanges(db, new Date())
+        changes = `${c.closed} of ${c.read} waiting change(s) closed as no change`
+        console.log(`[cron/collection-run] changes: ${changes}`)
+      } catch (err) {
+        changes = `closing the false changes failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] false changes failed:', err)
+      }
+      try {
+        const days = discoveryDayStore(db)
+        const judged = await days.judgeYesterday(new Date())
+        const scoutRan = Array.isArray(scout) ? { examined: scout.length, registered: scout.filter((o) => o.registered).length, errors: 0 }
+          : scout.startsWith('the scout failed') ? { examined: 0, registered: 0, errors: 1 } : null
+        await days.recordTurn(
+          {
+            at: new Date(started).toISOString(),
+            read: result.read,
+            landed: result.landed,
+            acceptedByRule: result.acceptedByRule,
+            queued: result.queued,
+            failed: result.sources.filter((s) => s.outcome.startsWith('failed')).length,
+            organisersAttached: typeof organisers === 'string' ? 0 : organisers.attached,
+            scout: scoutRan,
+          },
+          new Date(started),
+        )
+        line = judged ? `judged ${judged.day}: ${judged.allPassed ? 'all PASS' : 'not all PASS'}, day ${judged.consecutiveDays} of 7; this turn recorded` : 'this turn recorded'
+        console.log(`[cron/collection-run] the engine's day line: ${line}`)
+      } catch (err) {
+        line = `the day line failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] day line failed:', err)
+      }
+    }
+    return NextResponse.json({ ok: true, ...result, scout, organisers, holds, changes, line })
   } catch (err) {
     console.error('[cron/collection-run] failed:', err)
     return NextResponse.json({ error: 'collection run failed' }, { status: 500 })

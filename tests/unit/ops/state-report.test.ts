@@ -26,6 +26,7 @@ import {
   BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
   PARITY_CADENCE,
+  weeklySectionFor,
 } from '../../../scripts/lib/state-report.mjs'
 
 const NOW = '2026-09-10T12:00:00.000Z'
@@ -519,5 +520,54 @@ describe('the table-stakes parity line', () => {
     const lines = parityLines({ error: 'the parity result could not be parsed' }).join('\n')
     expect(lines).toContain('Not known: the parity result could not be parsed')
     expect(lines).not.toMatch(/passed/)
+  })
+})
+
+describe('last week, on a Monday (order 4, Release 3)', () => {
+  const weekly = {
+    ok: true,
+    week: { from: '2026-11-08T13:00:00.000Z', to: '2026-11-15T13:00:00.000Z' },
+    six: [
+      { label: 'Paid tickets', shown: '3', basis: 'real' },
+      { label: 'Net contribution', shown: 'A$4.20', basis: 'estimated' },
+    ],
+    moved: [{ stage: 'Contacted', organisers: 2, provedBy: [{ words: 'a message sent', moves: 2 }] }],
+    leftTheLine: 1,
+    conversion: [{ from: 'Contacted', to: 'Engaged', reachedFrom: 4, reachedTo: 1 }],
+    overdue: [{ title: 'Answer Aunty Jacks', dueOn: '2026-11-12' }],
+    failed: [{ title: 'The replies could not be read', reason: 'Graph is not connected' }],
+  }
+
+  it('is absent on any other day: the run did not ask for it', () => {
+    expect(weeklySectionFor(null)).toBeNull()
+    expect(sectionsFor(greenState).map((s) => s.title)).not.toContain('Last week, the weekly report')
+  })
+
+  it('on a Monday sits after the platform, worded as the page words it', () => {
+    const state = { ...greenState, business: { ...greenState.business, weekly } }
+    const titles = sectionsFor(state).map((s) => s.title)
+    expect(titles.indexOf('Last week, the weekly report')).toBe(titles.indexOf('The platform') + 1)
+    const lines = weeklySectionFor(weekly)!.lines
+    expect(lines[0]).toBe('Monday 9 November to Sunday 15 November.')
+    expect(lines).toContain('Paid tickets: 3.')
+    expect(lines).toContain('Net contribution: A$4.20 (estimated).')
+    expect(lines).toContain('Contacted: 2 organisers, proved by a message sent (2).')
+    expect(lines).toContain('Left the line: 1.')
+    expect(lines).toContain('Contacted to Engaged: 1 of 4 (25 percent).')
+    expect(lines).toContain('Tasks past due: 1, the oldest: Answer Aunty Jacks (due 2026-11-12).')
+    expect(lines).toContain('Failed jobs: 1: The replies could not be read (Graph is not connected).')
+    expect(renderStateReport(state).text).toContain('LAST WEEK, THE WEEKLY REPORT')
+  })
+
+  it('a weekly read that failed is said in place of figures', () => {
+    expect(weeklySectionFor({ ok: false, error: 'the organisers moves could not be read: boom' })!.lines).toEqual([
+      'Not known: the organisers moves could not be read: boom.',
+    ])
+  })
+
+  it('escapes what it renders, like every other section', () => {
+    const nasty = { ...weekly, overdue: [{ title: '<img src=x onerror=alert(1)>', dueOn: null }] }
+    const html = renderStateReport({ ...greenState, business: { ...greenState.business, weekly: nasty } }).html
+    expect(html).not.toContain('<img src=x')
   })
 })

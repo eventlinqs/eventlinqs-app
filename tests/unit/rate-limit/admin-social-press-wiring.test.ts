@@ -64,7 +64,9 @@ describe('the wiring', () => {
     expect(staff.indexOf('actionRateLimit')).toBeGreaterThan(staff.indexOf('can(session'))
     const exported = [...ACTIONS.matchAll(/^export async function (\w+)/gm)].map((m) => m[1]!)
     expect(exported.length).toBeGreaterThan(10)
-    for (const name of exported) expect(bodyOf(ACTIONS, `export async function ${name}(`), name).toMatch(/await staff\(\)/)
+    // staff(to): the two approvals pressed on the Command Centre say which page to return to (order 4, Release 1 item 3);
+    // the same role check and limit by the admin id, nothing looser.
+    for (const name of exported) expect(bodyOf(ACTIONS, `export async function ${name}(`), name).toMatch(/await staff\((?:to)?\)/)
   })
 
   test('the Plan press also takes the plan bucket, by the admin id', () => {

@@ -22,6 +22,9 @@ import { readAcquisitionDesk } from '@/lib/growth/acquisition'
 import { AcquisitionDeskSection } from '@/components/admin/acquisition-desk'
 import { readCoverageDesk } from '@/lib/growth/coverage-desk'
 import { CoverageDeskSection } from '@/components/admin/coverage-desk'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { readWeeklyReport } from '@/lib/growth/weekly-report'
+import { WeeklyReportSection } from '@/components/admin/weekly-report-section'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -80,6 +83,12 @@ export default async function AdminGrowthPage() {
 
   const [g, funnel, qa, supply, desk, acq, coverage] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard(), readGrowthDesk(), readAcquisitionDesk(), readCoverageDesk()])
   const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
+  // The weekly report (order 4, Release 3): last week's moves, conversion, tasks past due and failed jobs. A failed read is
+  // said in its own section and never stops the page.
+  const weekly = await readWeeklyReport(createAdminClient(), { from: g.last.from, to: g.last.to }).then(
+    (value) => ({ ok: true as const, value }),
+    (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
+  )
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
   const lastSunday = new Date(new Date(g.last.to).getTime() - 1).toISOString()
@@ -99,6 +108,8 @@ export default async function AdminGrowthPage() {
           figure is counted from the platform&apos;s own records; seed listings are never counted.
         </p>
       </header>
+
+      <WeeklyReportSection report={weekly} />
 
       <section data-section="learning-loop" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
         <h2 className="font-display text-lg font-semibold text-white">What worked last week</h2>

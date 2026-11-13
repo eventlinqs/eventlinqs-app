@@ -14,8 +14,8 @@ describe('queueOf', () => {
       { key: 'a', section: 'exceptions', name: 'A', read: { state: 'read', items: [item('2', '2026-10-28T02:00:00Z'), item('1', '2026-10-27T02:00:00Z')] } },
       { key: 'b', section: 'plays', name: 'B', read: { state: 'read', items: [item('3', '2026-10-28T00:00:00Z')] } },
     ])
-    expect(q.sections.map((s) => s.key)).toEqual(['submissions', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'])
-    expect(q.sections[4].items.map((i) => i.id)).toEqual(['1', '2'])
+    expect(q.sections.map((s) => s.key)).toEqual(['submissions', 'pieces', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'])
+    expect(q.sections.find((s) => s.key === 'exceptions')!.items.map((i) => i.id)).toEqual(['1', '2'])
     expect(q.waiting).toBe(3)
     expect(q.allClear).toBe(false)
   })
@@ -27,13 +27,14 @@ describe('queueOf', () => {
       { key: 'c', section: 'exceptions', name: 'Claims', read: { state: 'failed', reason: 'timeout' } },
     ]
     const q = queueOf(sources)
+    const at = (key: string) => q.sections.find((s) => s.key === key)!
     expect(q.waiting).toBe(0)
     expect(q.allClear).toBe(false)
-    expect(q.sections[1].unread).toEqual(['Plays: not on this database yet (window 6).'])
-    expect(q.sections[4].unread).toEqual(['Claims: could not be read just now (timeout).'])
+    expect(at('plays').unread).toEqual(['Plays: not on this database yet (window 6).'])
+    expect(at('exceptions').unread).toEqual(['Claims: could not be read just now (timeout).'])
     // Only a source that failed to read now is a failure (the Growth OS's failed tasks); one not built yet is not.
-    expect(q.sections[1].failed).toEqual([])
-    expect(q.sections[4].failed).toEqual(['Claims: could not be read just now (timeout).'])
+    expect(at('plays').failed).toEqual([])
+    expect(at('exceptions').failed).toEqual(['Claims: could not be read just now (timeout).'])
   })
 
   it('is clear only when every source was read and none has an item', () => {
