@@ -233,17 +233,29 @@ async function makeASellingOrganiser() {
     /* Stripe's hosted form is not walked headless (its hCaptcha); the seller takes the posture Stripe enabled on a TEST
        organisation earlier, never a value typed here. */
     note(j, "NOT EXERCISED: walking Stripe's hosted onboarding form (its hCaptcha refuses a headless browser, and no proof opens a window); the seller takes a TEST posture Stripe enabled earlier")
-    const { data: donor } = await db
+    /* The donor Stripe itself confirms for the key this server holds: the wizard's publish asks Stripe for the account
+       live, and an account of another Stripe account answers nothing to this key (run 10, 01-published.png). */
+    const { data: donors } = await db
       .from('organisations')
       .select('stripe_account_id, stripe_account_country')
       .eq('stripe_charges_enabled', true)
       .eq('stripe_payouts_enabled', true)
       .eq('payout_status', 'active')
       .not('stripe_account_country', 'is', null)
+      .not('stripe_account_id', 'is', null)
       .neq('id', org.id)
-      .limit(1)
-      .maybeSingle()
-    check('a-stripe-enabled-test-posture-exists', Boolean(donor?.stripe_account_id), donor?.stripe_account_id ?? 'no charge-ready organisation on TEST')
+      .limit(40)
+    const stripeKey = (process.env.STRIPE_SECRET_KEY ?? '').trim()
+    let donor = null
+    for (const d of donors ?? []) {
+      const res = await fetch(`https://api.stripe.com/v1/accounts/${d.stripe_account_id}`, { headers: { Authorization: `Bearer ${stripeKey}` } }).catch(() => null)
+      const acct = res && res.ok ? await res.json().catch(() => null) : null
+      if (acct?.charges_enabled === true && acct?.payouts_enabled === true) {
+        donor = d
+        break
+      }
+    }
+    check('a-stripe-enabled-test-posture-exists', Boolean(donor?.stripe_account_id), donor?.stripe_account_id ?? `none of ${(donors ?? []).length} charge-ready TEST organisations is confirmed by Stripe for this key`)
     if (!donor?.stripe_account_id) return null
     const { error: postureError } = await db
       .from('organisations')
