@@ -56,7 +56,7 @@ export async function attachOrganisers(
   const out: AttachOutcome = { attached: 0, entered: 0, failed: [], left: Math.max(0, missing.length - perTurn) }
   if (missing.length === 0) return out
   const by = await founderAccount(db as unknown as Parameters<typeof founderAccount>[0])
-  if (!by.id) {
+  if (by.id === null) {
     out.failed.push(by.why)
     return out
   }
