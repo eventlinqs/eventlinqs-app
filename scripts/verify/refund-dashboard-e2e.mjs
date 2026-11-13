@@ -64,7 +64,8 @@ const OWNER_EMAIL = `refund-proof-owner-${STAMP}@eventlinqs.test`
 // A Resend sink address, so the refund confirmation email is really sent and
 // really accepted without reaching a person's inbox.
 const BUYER_EMAIL = `delivered+refund-proof-${STAMP}@resend.dev`
-const OUT = 'docs/verification/refund-dashboard-2026-08-18'
+/* A drive that runs this as a leg names its own evidence folder (REFUND_PROOF_OUT), so nothing lands in the repo. */
+const OUT = process.env.REFUND_PROOF_OUT ?? 'docs/verification/refund-dashboard-2026-08-18'
 fs.mkdirSync(OUT, { recursive: true })
 
 const log = (...a) => console.log('[refund-e2e]', ...a)
