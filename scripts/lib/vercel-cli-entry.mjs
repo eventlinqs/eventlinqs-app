@@ -19,8 +19,10 @@ export function vercelEntryIn(root) {
       const entry = join(root, bin)
       if (existsSync(entry)) return entry
     }
-  } catch {
-    // No package.json here: try the old layout below.
+  } catch (error) {
+    // No package.json here is the ordinary case (no install at this root): try the old layout below. Anything else, a
+    // package.json that cannot be read or parsed, is said, so a broken install is never mistaken for a missing one.
+    if (error?.code !== 'ENOENT') console.warn(`[vercel-cli-entry] ${join(root, 'package.json')} could not be read: ${error?.message ?? error}`)
   }
   const old = join(root, 'dist', 'index.js')
   return existsSync(old) ? old : null
