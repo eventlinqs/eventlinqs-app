@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { providerOf } from '@/lib/events/booking-links'
+import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { CAPTURE_RULE_CITIES, type CaptureCity } from './capture-rule'
 import type { ScoutCandidate, ScoutRegistration, ScoutStore } from './scout-engine'
 
@@ -103,6 +104,33 @@ export function scoutStore(db: SupabaseClient): ScoutStore {
         notes,
       })
       if (error) throw new Error(`the source could not be registered: ${error.message}`)
+      /* ITS ORGANISER IS ATTACHED (Lawal's 10:42: capture 'attaches organisers'): a venue registered as a source enters
+         the CRM as an organiser by its own site, made by the founder account as the twenty's rows are; an organiser
+         candidate is already there. Never a contact: an address becomes a basis only from its own page (the basis tool). */
+      if (r.kind === 'venue') {
+        const by = await founderAccount(db as unknown as Parameters<typeof founderAccount>[0])
+        const site = (() => {
+          try {
+            return new URL(r.pageUrl).origin
+          } catch {
+            return null
+          }
+        })()
+        if (by.id && site) {
+          const { data: inCrm } = await db.from('organisers').select('id').ilike('website_url', `%${hostOf(site)}%`).limit(1)
+          if ((inCrm ?? []).length === 0) {
+            const { error: oErr } = await db.from('organisers').insert({
+              name: r.name.slice(0, 200),
+              website_url: site,
+              found_on: r.pageUrl,
+              notes: `Found ${r.day} by the nightly scout: runs its own events, now a capture source (${r.pageUrl}).`,
+              created_by: by.id,
+            })
+            /* The source stands whatever the CRM answers; a refusal is said, never thrown. */
+            if (oErr) console.error(`[scout] ${r.name}: its organiser could not enter the CRM: ${oErr.message}`)
+          }
+        }
+      }
       return true
     },
   }
