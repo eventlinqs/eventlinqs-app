@@ -760,19 +760,31 @@ const DRILLS = [
     expect: 'is named by no build-time script; the registry entry has rotted',
   },
   /*
-   * excluded-reads-survive-the-upload (8 September 2026, derived for F1.9.2). The
-   * regression is a prebuild entry point that reads a docs/ path the upload does
-   * not carry: exactly what killed 7564b40's preview while the local gate stayed
-   * green. Pointing the report at docs/verification/system-pass, which is NOT
-   * re-included, reproduces it without touching the guard's own logic.
+   * excluded-reads-survive-the-upload (8 September 2026, derived for F1.9.2; RE-AIMED 14 November 2026 by the guard
+   * audit). The regression is a prebuild entry point that reads a docs/ path the upload does not carry while the local
+   * gate stays green: exactly what killed 7564b40's preview. The first form of this drill pointed the readiness report
+   * at docs/verification/system-pass, a path that is in NEITHER tree, so the report's own guard was red in the full tree
+   * too, and this guard caught it only through its echo branch ('the files .vercelignore strips are NOT the cause').
+   * The audit ended that echo (a registered guard red in the full tree is judged once, under its own name), so the
+   * drill now plants the guard's real class: the approved record, present in the full tree, dropped from the upload.
+   * community-layer-protected reads it plainly, so it is green in the full tree and red in the upload. The old plant
+   * moved to launch-readiness-honest, the guard that owns a report path naming no file.
    */
   {
     name: 'a prebuild guard reads a docs path the upload does not carry',
     guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    file: '.vercelignore',
+    find: '!docs/scope/community-layer-approved.json',
+    replace: '!docs/scope/community-layer-approved.json.retired',
+    expect: 'so a stripped file is the cause',
+  },
+  {
+    name: 'the readiness report path names a file that is in neither tree',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
     file: 'scripts/verify/launch-readiness.mjs',
     find: "export const REPORT_PATH = 'docs/verification/LAUNCH-READINESS.md'",
     replace: "export const REPORT_PATH = 'docs/verification/system-pass/LAUNCH-READINESS.md'",
-    expect: 'in the stripped upload',
+    expect: 'is DELETED, not stripped',
   },
   /*
    * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost
