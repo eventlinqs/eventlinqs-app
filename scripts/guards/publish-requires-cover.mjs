@@ -64,6 +64,11 @@ const ALLOWANCES = [
     reason:
       'Transitions AWAY from published only (suspending an organiser moves their live events to paused). Reinstating does not auto-republish, so this path can never put an event live.',
   },
+  {
+    file: 'src/lib/listings/hold-walk-run.ts',
+    reason:
+      "The Event Discovery Engine's hold walk (13 November 2026): its one status write moves a published listing to cancelled when the night's own page calls it off, guarded by status = 'published'; it never sets published. Showing a held night again changes only its visibility, never its status, and that night passed the publish gate when it was first published.",
+  },
 ]
 
 /** The database backstop, which no code path can bypass. */

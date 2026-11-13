@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import {
   addTurn,
   dayBefore,
@@ -76,10 +78,11 @@ export function discoveryDayStore(db: SupabaseClient) {
       'the nights held without a reason',
       db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('status', 'waiting').gte('found_at', from).lt('found_at', to).eq('reasons', '{}'),
     )
-    const organisersAdded = await count(
-      'the organisers the engine entered',
-      db.from('organisers').select('id', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to).or('notes.ilike.%nightly scout%,notes.ilike.%Event Discovery Engine%'),
-    )
+    /* The organisers the engine entered that day, the platform's own listings organisation never among them. */
+    const { data: entered, error: oErr } = await db.from('organisers').select('id').gte('created_at', from).lt('created_at', to)
+      .or('notes.ilike.%nightly scout%,notes.ilike.%Event Discovery Engine%')
+    if (oErr) throw new Error(`the organisers the engine entered could not be read: ${oErr.message}`)
+    const organisersAdded = withoutPlatformOrganisers((entered ?? []) as { id: string }[], await readPlatformOrganiserIds(db as never)).length
     const holdsOverdue = await count(
       'the holds overdue or unscheduled',
       db.from('listing_holds').select('id', { count: 'exact', head: true }).is('released_at', null)
@@ -94,7 +97,7 @@ export function discoveryDayStore(db: SupabaseClient) {
     /* The listings now: every upcoming published listing of the listings account, its venue and its title. */
     const listings = await readEveryRow<{ id: string; venue_id: string | null; title: string; start_date: string }>('the upcoming listings', (a, b) =>
       db.from('events').select('id, venue_id, title, start_date').eq('status', 'published').eq('listing_source', 'eventlinqs')
-        .gt('start_date', now.toISOString()).order('id').range(a, b) as never,
+        .or(listingWindowOrPredicate(now)).order('id').range(a, b) as never,
     )
     const venueIds = [...new Set(listings.map((l) => l.venue_id).filter((v): v is string => !!v))]
     const linked = new Set<string>()

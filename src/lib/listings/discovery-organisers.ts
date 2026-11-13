@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 /**
  * EVERY LISTING'S HOST IS A CRM ORGANISER (the Event Discovery Engine, part (d); Lawal's 18:28 of 13 November 2026:
@@ -43,7 +45,7 @@ export async function attachOrganisers(
 ): Promise<AttachOutcome> {
   const listings = await readEveryRow<{ venue_id: string | null; start_date: string }>('the upcoming listings', (a, b) =>
     db.from('events').select('venue_id, start_date').eq('status', 'published').eq('listing_source', 'eventlinqs')
-      .gt('start_date', now.toISOString()).order('start_date').range(a, b) as never,
+      .or(listingWindowOrPredicate(now)).order('start_date').range(a, b) as never,
   )
   const venues = [...new Set(listings.map((l) => l.venue_id).filter((v): v is string => !!v))]
   const linked = new Set<string>()
@@ -61,6 +63,8 @@ export async function attachOrganisers(
     return out
   }
   const taken = missing.slice(0, perTurn)
+  /* The platform's own listings organisation is never a venue's organiser (src/lib/growth/platform-organiser.ts). */
+  const platform = await readPlatformOrganiserIds(db as never)
   for (const [i, venueId] of taken.entries()) {
     if (Date.now() >= deadline) {
       out.left += taken.length - i
@@ -85,10 +89,12 @@ export async function attachOrganisers(
       continue
     }
     organiserId = (byName.data?.id as string | undefined) ?? null
+    if (organiserId && platform.has(organiserId)) organiserId = null
     if (!organiserId && website) {
       const host = new URL(website).hostname.replace(/^www\./, '').toLowerCase()
       const bySite = await db.from('organisers').select('id').eq('website_key', host).maybeSingle()
       if (!bySite.error) organiserId = (bySite.data?.id as string | undefined) ?? null
+      if (organiserId && platform.has(organiserId)) organiserId = null
     }
     if (!organiserId) {
       const { data: made, error: mErr } = await db
