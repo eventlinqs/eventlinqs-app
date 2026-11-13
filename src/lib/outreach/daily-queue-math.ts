@@ -12,12 +12,14 @@ export const QUEUE_CHANNELS = ['instagram', 'facebook', 'website_form', 'email']
  * The most he sends on each channel in one Melbourne day. EventLinqs' own choice, UNSOURCED: Meta publishes no limit for
  * messages to accounts or Pages, and these sit well under anything reported as a spam trigger. The reasons, channel by
  * channel, are in C:\dev\EVIDENCE\OUTREACH-31OCT\OUTREACH-QUEUE-31OCT.md ("How many a day, per channel, and why").
+ * EMAIL IS 20 (the PM's 18:24 of 13 November 2026): Lawal's plan is 20 outreach messages a day (C:\dev\GROWTH\plan.json
+ * version 6, daily_quotas.outreach_messages), and at 10 the queue held back the rest of an evening's emails for the next day.
  */
 export const QUEUE_CAPS: Readonly<Record<ContactChannel, number>> = {
   instagram: 10,
   facebook: 10,
   website_form: 15,
-  email: 10,
+  email: 20,
 }
 
 export const CHANNEL_WORDS: Readonly<Record<ContactChannel, string>> = {
