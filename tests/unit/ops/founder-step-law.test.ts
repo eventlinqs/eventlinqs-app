@@ -91,6 +91,13 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(judgeNotes(`${step}, still unread.`).faults).toHaveLength(1)
     expect(judgeNotes(step).faults).toHaveLength(1)
   })
+  it("judges only EventLinqs' own notes: a Bookedproof window's report in the shared file is its own gate's (the PM's 13:08)", () => {
+    const words = "WINDOW 6, THE PM'S 11:06 (NOTHING OPENS ON LAWAL'S SCREEN): NOT WINDOW 6'S. the process running now is node scripts/verify/d2-stripe-drive.mjs --build"
+    const theirs = judgeNotes(`- 13 Nov 2026 11:05 | ${words}`)
+    expect(theirs.faults).toEqual([])
+    expect(theirs.steps).toEqual([])
+    expect(judgeNotes(`EL | 13 Nov 2026 11:05 | ${words}`).faults).toHaveLength(1)
+  })
   it("every open row of Lawal's list carries READ BACK; the Removed section is history", () => {
     const list = ['| # | Click |', '|---|---|', '| 4 | Pay the invoice | READ BACK 01:55: open, US$110.03 |', '| 6 | Run npm run migrate:production |', '## Removed, with evidence', '| 9 | old |'].join('\n')
     const r = judgeList(list)

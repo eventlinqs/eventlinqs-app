@@ -15,6 +15,11 @@
  *   4. A script that an open founder step names (directly, or through package.json's npm script) prints where it runs:
  *      it imports scripts/lib/founder-where.mjs.
  * Pure: the guard reads the files and hands their text here.
+ *
+ * ONLY EVENTLINQS' OWN NOTES ARE JUDGED (the PM's 13:08 of 13 November 2026): a line in EventLinqs' mark, 'EL | ', as
+ * its notes script writes it. The notes file is shared with Bookedproof's window, whose lines ('- 13 Nov 2026 ...') its
+ * own gate judges; on 13 November its report of 11:05 quoted the PM's heading with LAWAL in capitals beside a node
+ * command, read as a step handed to Lawal, and blocked every EventLinqs gate.
  */
 
 /** The law's moment, in the founder's zone, as written in the notes ('12 Nov 2026 01:16'). Lines before it are history
@@ -29,6 +34,9 @@ export function stampOf(line) {
   if (!m) return null
   return `${m[3]}-${MONTHS[m[2]]}-${m[1].padStart(2, '0')} ${m[4]}:${m[5]}`
 }
+
+/** EventLinqs' own note: its notes script's mark at the start of the line. */
+export const EVENTLINQS_NOTE = /^EL \| /
 
 const RUNS = /npm run [\w:.-]+|\bcd [A-Za-z]:\\|\.ps1\b|\bnode scripts[\\/]|\bnpx [\w@./-]+/
 
@@ -69,6 +77,7 @@ export function judgeNotes(text, effective = EFFECTIVE) {
   const faults = []
   const steps = []
   text.split(/\r?\n/).forEach((line, i) => {
+    if (!EVENTLINQS_NOTE.test(line)) return
     const at = stampOf(line)
     if (!at || at < effective) return
     if (isFounderStep(line)) {
