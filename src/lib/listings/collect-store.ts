@@ -27,6 +27,21 @@ export const PASSED_BEFORE_REVIEW = 'the night passed before review'
 /** The source types a partner's own feed comes in by (D5's paths 1 and 3). */
 const PARTNER_TYPES = new Set(['organiser_submission', 'venue_partnership'])
 
+/**
+ * WHAT A NIGHT LANDS WITH WHEN THE DATABASE DOES NOT YET ALLOW ONE OF ITS HOLDS (listing_candidates_reasons_known):
+ * the law 19 holds whose migration came later read as 'midnight_start' (a fact not to be trusted); the capture rule's
+ * four holds (migration 20261113113001, not yet applied) are dropped, never renamed. A night that keeps a reason stays
+ * 'low'; one left with none lands at 'high', the judge's own verdict, still decided by a person and waiting, because
+ * listing_candidates_confidence refuses a 'low' row with no reason (the 17:25 run of 13 November 2026 failed two sources
+ * whole on exactly that). Pure.
+ */
+export function landableAfterRefusal(reasons: readonly string[], confidence: string): { reasons: string[]; confidence: string } {
+  const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached', 'canary_hold']
+  const CAPTURE = ['venue_not_known', 'title_too_long', 'banned_words', 'no_category']
+  const allowed = [...new Set(reasons.filter((r) => !CAPTURE.includes(r)).map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
+  return { reasons: allowed, confidence: allowed.length === 0 ? 'high' : confidence }
+}
+
 export function collectionStore(db: SupabaseClient): CollectionStore {
   return {
     async sources(): Promise<RegisteredSource[]> {
@@ -207,7 +222,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
     },
 
     async land(row): Promise<boolean> {
-      const write = (reasons: readonly string[]) => db
+      const write = (reasons: readonly string[], confidence: string) => db
         .from('listing_candidates')
         .upsert(
           {
@@ -225,7 +240,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
             description: row.description,
             links: row.links,
             change: row.change,
-            confidence: row.confidence,
+            confidence,
             reasons,
             decided_by: row.decidedBy,
             ...(row.decidedBy === 'partner_rule' ? { status: 'accepted', reviewed_at: row.foundAt } : {}),
@@ -233,18 +248,14 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           { onConflict: 'source_id,page_url,starts_at', ignoreDuplicates: true },
         )
         .select('id')
-      let { data, error } = await write(row.reasons)
+      let { data, error } = await write(row.reasons, row.confidence)
       /* UNTIL THE FOUNDER APPLIES A NEW HOLD REASON'S MIGRATION (20261105160001 applied 5 November; 20261106090001,
          link_unreached, prepared 6 November): a database that does not yet allow one refuses the row
          (listing_candidates_reasons_known). The night still lands for a person, held, with the nearest reason it allows
          ('midnight_start', a fact not to be trusted), never published and never lost. */
       if (error && /listing_candidates_reasons_known/.test(error.message)) {
-        const NEW = ['offset_mismatch', 'no_time', 'implausible_time', 'multi_day_span', 'link_unreached', 'canary_hold']
-        /* The capture rule's holds (migration 20261113113001) are dropped, never renamed: the night still waits for a
-           person, and the Command Centre names the rest of its reasons. */
-        const CAPTURE = ['venue_not_known', 'title_too_long', 'banned_words', 'no_category']
-        const allowed = [...new Set(row.reasons.filter((r) => !CAPTURE.includes(r)).map((r) => (NEW.includes(r) ? 'midnight_start' : r)))]
-        ;({ data, error } = await write(allowed))
+        const fallback = landableAfterRefusal(row.reasons, row.confidence)
+        ;({ data, error } = await write(fallback.reasons, fallback.confidence))
       }
       if (error) throw new Error(`a candidate could not be written: ${error.message}`)
       return (data ?? []).length > 0
