@@ -8,6 +8,7 @@ import { scoutStore } from '@/lib/listings/scout-store'
 import { attachOrganisers, type AttachOutcome } from '@/lib/listings/discovery-organisers'
 import { discoveryDayStore } from '@/lib/listings/discovery-day-store'
 import { walkHolds, type WalkOutcome } from '@/lib/listings/hold-walk-run'
+import { closeFalseChanges } from '@/lib/listings/false-changes'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
     let organisers: AttachOutcome | string = 'not this turn: too little of the function left'
     let line: string = 'not this turn: too little of the function left'
     let holds: WalkOutcome | string = 'not this turn: too little of the function left'
+    let changes = 'not this turn: too little of the function left'
     if (end - Date.now() >= ENGINE_MIN_LEFT_MS) {
       const db = createAdminClient()
       try {
@@ -88,6 +90,15 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         holds = `the hold walk failed: ${err instanceof Error ? err.message : String(err)}`
         console.error('[cron/collection-run] hold walk failed:', err)
+      }
+      /* (e) a 'changed venue' that is the same night at the same place written another way is closed (false-changes.ts). */
+      try {
+        const c = await closeFalseChanges(db, new Date())
+        changes = `${c.closed} of ${c.read} waiting change(s) closed as no change`
+        console.log(`[cron/collection-run] changes: ${changes}`)
+      } catch (err) {
+        changes = `closing the false changes failed: ${err instanceof Error ? err.message : String(err)}`
+        console.error('[cron/collection-run] false changes failed:', err)
       }
       try {
         const days = discoveryDayStore(db)
@@ -114,7 +125,7 @@ export async function GET(request: NextRequest) {
         console.error('[cron/collection-run] day line failed:', err)
       }
     }
-    return NextResponse.json({ ok: true, ...result, scout, organisers, holds, line })
+    return NextResponse.json({ ok: true, ...result, scout, organisers, holds, changes, line })
   } catch (err) {
     console.error('[cron/collection-run] failed:', err)
     return NextResponse.json({ error: 'collection run failed' }, { status: 500 })

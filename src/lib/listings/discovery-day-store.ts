@@ -114,7 +114,10 @@ export function discoveryDayStore(db: SupabaseClient) {
     /* MANUAL STEPS: a write by a window or a person to the sources, the candidates or the listings that day. */
     const personDecisions = await count(
       "a person's decisions",
-      db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('decided_by', 'person').neq('status', 'waiting').gte('reviewed_at', from).lt('reviewed_at', to),
+      /* A person's decision names its reviewer; the engine's own closings (a night passed before review, a change that was
+         no change) carry none (229 such in the week to 13 November 2026, every one the engine's). */
+      db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('decided_by', 'person').neq('status', 'waiting')
+        .not('reviewed_by', 'is', null).gte('reviewed_at', from).lt('reviewed_at', to),
     )
     const { data: released, error: rErr } = await db.from('listing_holds').select('released_by').gte('released_at', from).lt('released_at', to)
     if (rErr) throw new Error(`the released holds could not be read: ${rErr.message}`)
