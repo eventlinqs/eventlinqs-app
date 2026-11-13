@@ -27,6 +27,7 @@
  *   node scripts/ops/verify-production-schema.mjs --env-file path.env     # skip the CLI, read a file
  */
 import { spawnSync } from 'node:child_process'
+import { vercelCliEntry } from '../lib/vercel-cli-entry.mjs'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -62,14 +63,8 @@ function parseEnvFile(path) {
  * so it is run with this process's Node and the arguments stay arguments.
  */
 function vercelInvocation() {
-  const roots = []
-  if (process.env.APPDATA) roots.push(join(process.env.APPDATA, 'npm', 'node_modules', 'vercel'))
-  roots.push(join(process.cwd(), 'node_modules', 'vercel'))
-  for (const root of roots) {
-    const entry = join(root, 'dist', 'index.js')
-    if (existsSync(entry)) return { file: process.execPath, prefix: [entry] }
-  }
-  return { file: 'vercel', prefix: [] }
+  // The entry is read from the CLI package's own bin (scripts/lib/vercel-cli-entry.mjs): CLI 65 moved it to dist/vc.js.
+  return vercelCliEntry(process.cwd()) ?? { file: 'vercel', prefix: [] }
 }
 
 function pullPublicEnv(target) {
@@ -82,7 +77,9 @@ function pullPublicEnv(target) {
     })
     if (result.status !== 0 || !existsSync(file)) {
       const why = (result.stderr || result.stdout || '').trim().split('\n').slice(-3).join(' ')
-      throw new Error(`vercel env pull for ${target} failed: ${why || `exit ${result.status}`}`)
+      // A spawn that never started has no output and a null status: say why it did not start.
+      const spawnError = result.error ? `the CLI did not start (${result.error.message})` : ''
+      throw new Error(`vercel env pull for ${target} failed: ${why || spawnError || `exit ${result.status}`}`)
     }
     return parseEnvFile(file)
   } finally {
