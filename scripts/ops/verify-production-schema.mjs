@@ -28,6 +28,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { vercelCliEntry } from '../lib/vercel-cli-entry.mjs'
+import { probeKey } from '../lib/supabase-key-shape.mjs'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -98,9 +99,14 @@ try {
 }
 
 const url = (env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-const key = env.SUPABASE_SERVICE_ROLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// A KEY THAT IS A KEY, THE PUBLIC ONE FIRST (14 November 2026): env pull writes a stand-in for the sensitive service-role
+// key, and sending it made every probe of Lawal's step answer 401 (scripts/lib/supabase-key-shape.mjs says why).
+const key = probeKey(env)
 if (!url || !key) {
-  console.error(`${TAG} FAIL: the ${environment} store has no NEXT_PUBLIC_SUPABASE_URL or anon key to probe with.`)
+  console.error(
+    `${TAG} FAIL: the ${environment} store has no NEXT_PUBLIC_SUPABASE_URL or no value shaped like a Supabase key to probe ` +
+      'with (a sensitive variable is never decrypted by vercel env pull, so it cannot be that key).',
+  )
   process.exit(1)
 }
 const ref = projectRefOf(url) ?? 'unknown'
