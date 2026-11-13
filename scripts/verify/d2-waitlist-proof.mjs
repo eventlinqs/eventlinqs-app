@@ -65,12 +65,10 @@ import {
   note,
   attach,
   fillIf,
-  realChromeBrowser,
   signIn,
   signUpAndConfirm,
   createEventThroughWizard,
 } from '../journeys/harness.mjs'
-import { completeExpressOnboarding } from '../journeys/stripe-express-onboarding.mjs'
 import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
 import { joinWaitlistThroughTheUi } from './lib/waitlist-join.mjs'
 import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder } from './lib/test-card.mjs'
@@ -155,14 +153,22 @@ const LISTEN_LOG = join(out, '..', 'stripe-listen.log')
  * would destroy the organiser's session. So the onboarding leg gets its own
  * real-Chrome browser, opened and closed around itself, and every other context
  * in this file stays on the bundled browser it has always used.
+ *
+ * NO WINDOW OPENS ON LAWAL'S SCREEN (the project manager's 11:06 of 13 November 2026, item 2, after the real Chrome this
+ * leg opened twice on his laptop): every browser proof runs headless. So this leg no longer walks Stripe's hosted form,
+ * which its hCaptcha keeps from a headless browser. The organiser this drive makes signs up, makes its organisation and
+ * presses 'Set up payouts with Stripe' headless, and its connected account is proved persisted and its hosted form
+ * reached, as before; then it takes the charge posture Stripe itself enabled on a TEST organisation earlier (the refund
+ * proofs' fixture does the same, scripts/verify/lib/refund-proof-fixture.mjs buildFixture), so the queue, the purchase
+ * and the refund that frees a place run against a seller Stripe lets charge. Walking the hosted form is NOT EXERCISED
+ * here, and the report says so; the database read after it is unchanged.
  */
 async function makeASellingOrganiser() {
   const email = `d2-seller-${RUN}@example.com`
   const orgSlug = `lane-a-queue-proof-${RUN}`
   const orgName = `Lane A Queue Proof ${RUN}`
 
-  const realChrome = realChromeBrowser()
-  const ctx = await realChrome.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-AU' })
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-AU' })
   const page = ctx.pages()[0] ?? (await ctx.newPage())
   await attach(j, page)
   try {
@@ -224,22 +230,46 @@ async function makeASellingOrganiser() {
     check('the-organiser-reaches-stripes-hosted-form', onStripe, page.url().replace(/\?.*$/, ''))
     if (!onStripe) return null
 
-    const onboarding = await completeExpressOnboarding(page, { shot: out, maxSteps: 40, log: m => say(`${TAG}   ${m}`) })
-    check(
-      'stripes-hosted-onboarding-completes',
-      Boolean(onboarding?.completed),
-      onboarding?.completed
-        ? `returned to ${String(onboarding.leftStripeAt ?? '').slice(0, 90)}`
-        : `stopped: ${onboarding?.stoppedBecause}`,
-    )
-
-    await page.goto(`${BASE}/dashboard/payouts`, { waitUntil: 'networkidle', timeout: 60_000 })
-    await page.waitForTimeout(3000)
-    const refresh = await page.$('button[aria-label="Refresh status"]')
-    if (refresh) {
-      await refresh.click()
-      await page.waitForTimeout(6000)
+    /* Stripe's hosted form is not walked headless (its hCaptcha); the seller takes the posture Stripe enabled on a TEST
+       organisation earlier, never a value typed here. */
+    note(j, "NOT EXERCISED: walking Stripe's hosted onboarding form (its hCaptcha refuses a headless browser, and no proof opens a window); the seller takes a TEST posture Stripe enabled earlier")
+    /* The donor Stripe itself confirms for the key this server holds: the wizard's publish asks Stripe for the account
+       live, and an account of another Stripe account answers nothing to this key (run 10, 01-published.png). */
+    const { data: donors } = await db
+      .from('organisations')
+      .select('stripe_account_id, stripe_account_country')
+      .eq('stripe_charges_enabled', true)
+      .eq('stripe_payouts_enabled', true)
+      .eq('payout_status', 'active')
+      .not('stripe_account_country', 'is', null)
+      .not('stripe_account_id', 'is', null)
+      .neq('id', org.id)
+      .limit(40)
+    const stripeKey = (process.env.STRIPE_SECRET_KEY ?? '').trim()
+    let donor = null
+    for (const d of donors ?? []) {
+      const res = await fetch(`https://api.stripe.com/v1/accounts/${d.stripe_account_id}`, { headers: { Authorization: `Bearer ${stripeKey}` } }).catch(() => null)
+      const acct = res && res.ok ? await res.json().catch(() => null) : null
+      if (acct?.charges_enabled === true && acct?.payouts_enabled === true) {
+        donor = d
+        break
+      }
     }
+    check('a-stripe-enabled-test-posture-exists', Boolean(donor?.stripe_account_id), donor?.stripe_account_id ?? `none of ${(donors ?? []).length} charge-ready TEST organisations is confirmed by Stripe for this key`)
+    if (!donor?.stripe_account_id) return null
+    const { error: postureError } = await db
+      .from('organisations')
+      .update({
+        stripe_account_id: donor.stripe_account_id,
+        stripe_account_country: donor.stripe_account_country,
+        stripe_charges_enabled: true,
+        stripe_payouts_enabled: true,
+        stripe_onboarding_complete: true,
+        payout_status: 'active',
+      })
+      .eq('id', org.id)
+    check('the-seller-takes-that-posture', !postureError, postureError?.message ?? `from ${donor.stripe_account_id}`)
+    if (postureError) return null
 
     /*
      * READ BACK OUT OF THE DATABASE, never off the screen and never off the
@@ -265,7 +295,7 @@ async function makeASellingOrganiser() {
     if (!sellable) return null
     return { org: after, email }
   } finally {
-    await realChrome.close().catch(() => {})
+    await ctx.close().catch(() => {})
   }
 }
 

@@ -51,11 +51,13 @@
  */
 import { mkdirSync, writeFileSync, readFileSync, appendFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
 import { MEASURE_VIEWPORT_FIT, MEASURE_ORDER_TOTALS, judgeSurface } from './lib/viewport-fit.mjs'
 import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder, whyNoFrame } from './lib/test-card.mjs'
+import { buildFixture } from './lib/refund-proof-fixture.mjs'
 
 const TAG = '[d2-proof]'
 const BASE = process.env.BASE ?? 'http://localhost:3311'
@@ -372,7 +374,27 @@ async function pendingOrderFor(reservationId) {
   }
 }
 
-const picked = await paidEventWithRoom()
+/*
+ * NONE ON TEST, SO ONE IS PLANTED (WINDOW 5A, 13 November 2026). TEST holds organisers Stripe enabled, but no future
+ * paid event with room (read that morning: every charge-ready organisation had 0). Under its own tag, the refund proofs'
+ * fixture makes one: an organisation taking a charge posture Stripe enabled earlier, a published paid event three weeks
+ * out and a ten place tier (scripts/verify/lib/refund-proof-fixture.mjs buildFixture). Its owner's password is made here
+ * and never printed or kept; nobody signs in as that owner.
+ */
+let picked = await paidEventWithRoom()
+if (!picked) {
+  const planted = await buildFixture(db, {
+    stamp: RUN,
+    ownerEmail: `d2-recovery-owner-${RUN}@example.com`,
+    password: randomUUID(),
+    brand: { org: 'D2 Recovery Presents', orgSlug: 'd2-recovery-presents', event: 'D2 Recovery Night', eventSlug: 'd2-recovery-night', owner: 'D2 Recovery Owner' },
+    log: (m) => say(`${TAG} fixture: ${m}`),
+  }).catch((e) => {
+    say(`${TAG} fixture refused: ${e instanceof Error ? e.message : String(e)}`)
+    return null
+  })
+  if (planted) picked = await paidEventWithRoom()
+}
 if (!picked) {
   say(
     `${TAG} FAIL: no published, public, unseated, future event on TEST with a paid tier that has room ` +

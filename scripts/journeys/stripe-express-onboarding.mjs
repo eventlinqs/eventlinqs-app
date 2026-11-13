@@ -145,6 +145,16 @@ async function readFrame(frame) {
           e.placeholder ||
           '',
         checked: e.type === 'radio' || e.type === 'checkbox' ? e.checked : undefined,
+        // The question a radio answers, where its own label is only "Yes" or "No" (Stripe's ABN step, 13 November 2026).
+        group: (() => {
+          // The nearest ancestor whose own text asks a question, whatever its tag (Stripe's ABN radios sit in no fieldset).
+          let n = e.parentElement
+          for (let i = 0; n && i < 8; i += 1, n = n.parentElement) {
+            const t = (n.textContent || '').replace(/\s+/g, ' ').trim()
+            if (t.includes('?') && t.length < 600) return t.slice(0, 200)
+          }
+          return ''
+        })(),
         options: e.tagName === 'SELECT' ? [...e.options].map(o => ({ v: o.value, t: o.textContent.trim() })).slice(0, 30) : null,
         value: e.value,
       }))
@@ -367,6 +377,17 @@ async function chooseToggle(frame, field) {
   if (!el) return false
 
   if (field.type === 'radio') {
+    // "Does your business have an Australian business number (ABN)?" with radios labelled only Yes and No: answer No.
+    const asksAbn = /business number|\babn\b/i.test(field.group ?? '')
+    if (asksAbn && /^no$/i.test((field.label ?? '').trim())) {
+      // The radio named 'No' itself, never the group's first radio (run 7 checked 'Yes' that way and Stripe took the
+      // company path); a styled radio that refuses a plain check is checked forced, then its label clicked.
+      const no = frame.getByRole('radio', { name: /^no$/i }).first()
+      const done = await no.check({ timeout: 8000 }).then(() => true).catch(() => false)
+        || await no.check({ timeout: 8000, force: true }).then(() => true).catch(() => false)
+        || await frame.getByText(/^No$/).first().click({ timeout: 8000 }).then(() => true).catch(() => false)
+      return done
+    }
     if (/no abn|do not have an abn|don.t have an abn/.test(label)) {
       await el.check({ timeout: 8000 }).catch(() => {})
       return true
@@ -666,7 +687,8 @@ export async function completeExpressOnboarding(page, { values: supplied = STRIP
  * back again.
  */
 async function pressPrimary(page, log) {
-  const named = /^(continue|submit|next|done|save|agree and submit|agree & submit|accept and submit)$/i
+  // 'Continue with no owners' and its kind end a step that lists nobody (Stripe's Business owners, run 7).
+  const named = /^(continue|continue with no (owners|directors|executives)|submit|next|done|save|agree and submit|agree & submit|accept and submit)$/i
   for (const frame of page.frames()) {
     const go = frame
       .locator('button[type=submit], input[type=submit]')

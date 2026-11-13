@@ -37,7 +37,7 @@
  *
  * Usage:
  *   node scripts/verify/d2-stripe-drive.mjs [--build] [--build-only]
- *        [--only recovery|waitlist|mobile-390|tablet-768|desktop-1440]
+ *        [--only recovery|waitlist|refund|mobile-390|tablet-768|desktop-1440]
  *        [--profile default] [--out C:/dev/EVIDENCE/D2/<stamp>]
  *
  * Refuses: a production Supabase project, a live or restricted or expired
@@ -46,6 +46,7 @@
  */
 import { appendFileSync, closeSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import { envFor, killTree, openStepLog, startGateServer } from '../ops/pre-push-gate.mjs'
 import { redactStripeSecrets, testKeyPairFromCli } from './lib/stripe-cli-keys.mjs'
@@ -261,6 +262,7 @@ try {
   const viewports = ['mobile-390', 'tablet-768', 'desktop-1440']
   const wantRecovery = !only || only === 'recovery' || viewports.includes(only)
   const wantWaitlist = !only || only === 'waitlist'
+  const wantRefund = !only || only === 'refund'
 
   if (wantRecovery) {
     for (const viewport of viewports.includes(only) ? [only] : viewports) {
@@ -279,6 +281,20 @@ try {
       cwd: ROOT,
       stdio: 'inherit',
       env: { ...proofEnv, JOURNEY_OUT_ROOT: `${OUT}/journey` },
+    })
+    if ((r.status ?? 1) !== 0) failures += 1
+  }
+  /*
+   * THE REFUND THROUGH THE ORGANISER'S DIALOG, HEADLESS (13 November 2026): the project's own refund proof against this
+   * drive's server, its webhook from this drive's `stripe listen`. Two tickets bought with the test card, one refunded,
+   * then the other, the seat returned each time. Its owner's password is made here for this run and never printed.
+   */
+  if (wantRefund) {
+    say(`${TAG} ---- two tickets bought, refunded one then the other through the organiser's dashboard ----`)
+    const r = spawnSync(process.execPath, ['scripts/verify/refund-dashboard-e2e.mjs', base], {
+      cwd: ROOT,
+      stdio: 'inherit',
+      env: { ...proofEnv, REFUND_PROOF_PASSWORD: randomUUID(), REFUND_PROOF_OUT: `${OUT}/refund` },
     })
     if ((r.status ?? 1) !== 0) failures += 1
   }
