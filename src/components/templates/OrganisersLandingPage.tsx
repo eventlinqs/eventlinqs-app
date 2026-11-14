@@ -571,24 +571,31 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
     <PageShell>
 
       {/* ── 1. Full-bleed photographic hero ──────────────────────────────── */}
-      <section aria-labelledby="organisers-hero-heading" className="relative overflow-hidden">
+      <section aria-labelledby="organisers-hero-heading" className="relative overflow-hidden bg-[var(--surface-dark)] sm:bg-transparent">
         <HeroPresenceMarker />
         {/* Hero scale: marketing tier (homepage scale). A marketing hero may not
             exceed the homepage hero (Design system: Hero scale law) - this was
             an 82vh full-viewport hero that read as a generic template next to
-            the platform's ~48vh chrome. */}
-        <div className="hero-marketing relative w-full">
+            the platform's ~48vh chrome. ON A PHONE (the PM's 07:40 of 15 November
+            2026: the headline and the fee line lost their contrast over the
+            photograph's bright shirt and window) the photograph is a 200px band
+            (.hero-phone-band) and the copy sits under it on solid navy, as
+            Eventbrite's and Humanitix's organiser pages set their phone heroes;
+            from 40rem up the copy lies over the photograph as before. */}
+        <div className="hero-marketing hero-phone-band relative w-full">
           <HeroMedia image={ORGANISER_HERO.src} alt={ORGANISER_HERO.alt} objectPosition={ORGANISER_HERO.objectPosition} priority />
-          {/* Same restrained bottom-up navy scrim as the homepage hero. */}
+          {/* Same restrained bottom-up navy scrim as the homepage hero, where the copy lies over the photograph. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 hidden sm:block"
             style={{
               background:
                 'linear-gradient(to top, rgba(10,22,40,0.80) 0%, rgba(10,22,40,0.40) 42%, rgba(10,22,40,0.06) 78%, rgba(10,22,40,0.00) 100%)',
             }}
           />
-          <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 pt-20 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
+        </div>
+        <div className="relative z-10 sm:absolute sm:inset-0">
+          <div className="mx-auto flex h-full max-w-7xl items-end px-6 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-20 lg:px-12 lg:pb-12">
             <div className="hero-enter max-w-2xl">
               <p
                 className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
