@@ -13,6 +13,8 @@ import { FoundingTerms, type FoundingTermsRow } from './founding-terms'
 import {
   FOUNDING_BADGE_NAME,
   FOUNDING_INITIAL_MONTHS,
+  FOUNDING_OFFER_CLOSED_ON_LABEL,
+  FOUNDING_OFFER_OPEN,
   FOUNDING_REFERRAL_MONTHS,
   isWaiverActive,
 } from '@/lib/payments/founding-waiver'
@@ -323,10 +325,11 @@ export default async function AdminNetworkPage({
           Founding terms
         </h2>
         <p className="mb-3 max-w-2xl text-sm text-white/60">
-          Grant, extend or revoke the fee-free window of any organiser. The charge reads this field on every order,
-          so a change here applies to the next order placed, with no deploy. Every change is written to the audit log
-          with who made it and what it moved. The list shows every organisation holding a window first, then the
-          newest accounts; search by name or handle to reach any other.
+          {FOUNDING_OFFER_OPEN
+            ? 'Grant, extend or revoke the fee-free window of any organiser. The charge reads this field on every order, so a change here applies to the next order placed, with no deploy. Every change is written to the audit log with who made it and what it moved.'
+            : `The fee-free windows kept for the organisations registered before ${FOUNDING_OFFER_CLOSED_ON_LABEL}. The charge reads each one on every order until its date; nothing here can grant or extend one.`}{' '}
+          The list shows every organisation holding a window first, then the newest accounts; search by name or
+          handle to reach any other.
         </p>
         <form method="get" action="/admin/network" className="mb-3 flex flex-wrap items-center gap-2">
           <label htmlFor="org-search" className="text-xs text-white/60">
@@ -358,6 +361,8 @@ export default async function AdminNetworkPage({
           initialMonths={FOUNDING_INITIAL_MONTHS}
           referralMonths={FOUNDING_REFERRAL_MONTHS}
           badgeName={FOUNDING_BADGE_NAME}
+          offerOpen={FOUNDING_OFFER_OPEN}
+          closedOnLabel={FOUNDING_OFFER_CLOSED_ON_LABEL}
         />
       </section>
     </div>

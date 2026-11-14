@@ -10,6 +10,8 @@ import { renderFoundingInvitationEmail } from '@/lib/email/templates/founding-in
 import { getSiteUrl } from '@/lib/site-url'
 import { createFoundingInvite, isFoundingCity } from '@/lib/founding/invites'
 import {
+  FOUNDING_OFFER_CLOSED_ON_LABEL,
+  FOUNDING_OFFER_OPEN,
   FOUNDING_REFERRAL_MONTHS,
   extendWaiver,
   initialWaiverUntil,
@@ -160,6 +162,15 @@ export async function setFoundingWaiver(input: {
   const months = Number.isFinite(input.months) ? Math.trunc(input.months as number) : undefined
   if (months !== undefined && (months < 1 || months > 36)) {
     return { error: 'Months must be between 1 and 36.' }
+  }
+
+  // LAW 24 IS RETIRED (Lawal, 15 November 2026: "every organiser must pay from day one"). No window is granted or
+  // extended; an organisation registered before the change keeps its own to its date (the database holds both:
+  // migration 20261115000001). Said here first, so the owner reads the reason rather than a refusal.
+  if (!FOUNDING_OFFER_OPEN && input.action !== 'revoke') {
+    return {
+      error: `The fee-free offer closed on ${FOUNDING_OFFER_CLOSED_ON_LABEL}: no window is granted or extended. An organisation registered before then keeps its window to its date.`,
+    }
   }
 
   let next: string | null

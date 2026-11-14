@@ -18,15 +18,15 @@ export function InvitesClient({
   referralsPending,
   feeFreeUntil,
   waiverActive,
-  offerInitial,
+  feeRule,
   cities,
 }: {
   initialInvites: InviteRow[]
   allowance: number
   acceptedCount: number
   /**
-   * Referrals that have EARNED months: organisers who joined through this
-   * organisation's link and whose first paid ticket has sold (close-out FO1).
+   * Referrals counted: organisers who joined through this organisation's link and whose first paid ticket has sold
+   * (close-out FO1). Since LAW 24 was retired (15 November 2026) a referral earns no fee-free months.
    */
   referralsConfirmed: number
   /** Joined through the link, no paid ticket sold yet, so nothing credited. */
@@ -44,11 +44,10 @@ export function InvitesClient({
   /** Computed server-side with isWaiverActive(), the charge authority helper. */
   waiverActive: boolean
   /**
-   * FOUNDING_TERMS.initial from src/lib/payments/founding-waiver.ts, passed in
-   * so the offer is said in the module's words without that server module
-   * entering the client bundle.
+   * FEE_FROM_DAY_ONE.rule from src/lib/payments/founding-waiver.ts, passed in so the rule is said in the module's
+   * words without that server module entering the client bundle.
    */
-  offerInitial: string
+  feeRule: string
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
   const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
@@ -70,12 +69,12 @@ export function InvitesClient({
   const waiverDate = waiverUntil
     ? waiverUntil.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
     : ''
-  const waiverLabel = waiverActive ? waiverDate : waiverUntil ? 'Ended' : 'Not active'
+  // LAW 24 retired (15 November 2026): only an organisation that registered before the change holds a window, so only
+  // it sees this tile; everyone else pays the fee from the first paid ticket and is told that once, in the tile's place.
+  const waiverLabel = waiverActive ? waiverDate : 'Ended'
   const waiverHint = waiverActive
-    ? 'Your fee is zero until then. There is no second fee, so your buyers pay the ticket price and nothing else'
-    : waiverUntil
-      ? 'Ended ' + waiverDate + '. Standard platform fee applies'
-      : offerInitial
+    ? 'Your organisation registered before 15 November 2026, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then'
+    : 'Ended ' + waiverDate + '. ' + feeRule
 
   const generate = () => {
     setError(null)
@@ -131,15 +130,19 @@ export function InvitesClient({
           value={String(referralsConfirmed)}
           hint={
             referralsPending > 0
-              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet, so they have not earned you months`
-              : `${acceptedCount} joined through your links. Each one earns you months when their first paid ticket sells`
+              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet`
+              : `${acceptedCount} joined through your links. A referral counts when their first paid ticket sells`
           }
         />
-        <Stat
-          label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
-          value={waiverLabel}
-          hint={waiverHint}
-        />
+        {waiverUntil ? (
+          <Stat
+            label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
+            value={waiverLabel}
+            hint={waiverHint}
+          />
+        ) : (
+          <Stat label="Platform fee" value="From your first sale" hint={feeRule} />
+        )}
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">

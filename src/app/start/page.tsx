@@ -3,7 +3,6 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
-import { FOUNDING_INITIAL_MONTHS_WORD } from '@/lib/payments/founding-waiver'
 import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 
 export const metadata: Metadata = {
@@ -21,8 +20,8 @@ export const metadata: Metadata = {
  * its own booking page and publishes it itself. The leaders have only the first path.
  *
  * MOBILE FIRST (law 14 (g)): a choice screen shows both choices on a phone's first screen, so the hero carries no subtitle,
- * the section takes the 'rail' spacing, and each card is one heading, one sentence and one button. The months are read
- * from the offer module (LAW 24), never typed.
+ * the section takes the 'rail' spacing, and each card is one heading, one sentence and one button. LAW 24 was retired on
+ * 15 November 2026 (Lawal: every organiser pays the fee from day one), so the first card promises no free months.
  */
 export default async function StartPage({ searchParams }: { searchParams: Promise<{ city?: string; src?: string }> }) {
   const { city, src } = await searchParams
@@ -41,7 +40,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             <p className="type-eyebrow m-0 font-display text-[var(--brand-accent-strong)]">SELL ON EVENTLINQS</p>
             <h2 className="mt-2 font-headline text-xl font-extrabold text-[var(--text-primary)] md:text-2xl">Your own ticket page, checkout and payouts</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-              Live the moment you publish, with no platform fee for your first {FOUNDING_INITIAL_MONTHS_WORD} months from the day you register.
+              Live the moment you publish, selling from the first minute, with your sales paid to you after your event.
             </p>
             <div className="mt-4 md:mt-auto md:pt-6">
               <Button href={sell} variant="primary" size="lg" className="w-full sm:w-auto">

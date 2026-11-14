@@ -1,4 +1,4 @@
-import { FOUNDING_TERMS, isWaiverActive } from '@/lib/payments/founding-waiver'
+import { FEE_FROM_DAY_ONE, isWaiverActive } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -146,7 +146,8 @@ export default async function InvitesPage({
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
-          {FOUNDING_TERMS.referral}
+          Send organisers you know a personal link to EventLinqs. Everyone who joins through it is recorded as your
+          referral, and you can follow each one here.
         </p>
       </div>
 
@@ -155,7 +156,7 @@ export default async function InvitesPage({
         allowance={INVITES_PER_FOUNDING_ORGANISER}
         feeFreeUntil={org.founding_fee_free_until ?? null}
         waiverActive={isWaiverActive(org.founding_fee_free_until)}
-        offerInitial={FOUNDING_TERMS.initial}
+        feeRule={FEE_FROM_DAY_ONE.rule}
         acceptedCount={acceptedCount}
         referralsConfirmed={referrals.confirmed}
         referralsPending={referrals.pending}
