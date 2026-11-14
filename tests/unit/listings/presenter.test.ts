@@ -76,8 +76,19 @@ describe('the store keeps the presenter, and never loses a night before the colu
   })
   function db(columnExists: boolean) {
     const writes: Record<string, unknown>[] = []
+    /* The store also moves the candidate's last read (last_read_at, 20261115091001); before that migration the column is
+       missing and the night must still land. */
+    const lastRead = () => {
+      const answer = columnExists ? { error: null } : { error: { message: "Could not find the 'last_read_at' column of 'listing_candidates' in the schema cache" } }
+      const chain: { eq: () => typeof chain; then: (resolve: (r: typeof answer) => unknown) => Promise<unknown> } = {
+        eq: () => chain,
+        then: (resolve) => Promise.resolve(resolve(answer)),
+      }
+      return chain
+    }
     const client = {
       from: () => ({
+        update: lastRead,
         upsert: (obj: Record<string, unknown>) => {
           writes.push(obj)
           return {

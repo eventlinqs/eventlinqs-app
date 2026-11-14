@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_HOLDS, HUNT_SOURCES, fold, huntDecision, huntFor, huntSummary, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntBooking, huntDecision, huntFor, huntSummary, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
 import { rowTeaser } from '@/lib/events/whats-on-directory'
 import { sellerName } from '@/lib/events/booking-links'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
@@ -35,6 +35,37 @@ describe('the hunt, car 44b', () => {
     expect(likelyDuplicate({ ...night, startsAt: '2026-12-06T19:30:00+11:00' }, known, 'geelong', day)).toBe(false)
     expect(likelyDuplicate(night, known, 'melbourne', day)).toBe(false)
     expect(likelyDuplicate({ ...night, title: 'Boyz II Men Tribute' }, known, 'geelong', day)).toBe(false)
+  })
+  /* The PM's 07:55 of 15 November 2026 (WINDOW 6's 07:23): the organiser's own AMCF runs from Fri 20 to Sun 22 Nov, and the
+     hunt listed Fed Square's Saturday and Sunday nights of it as two more events, because only the start day was compared. */
+  it('a night inside a known event of several days, same title and city, is a likely duplicate (AMCF, 15 November 2026)', () => {
+    const known = [{ title: 'African Music and Cultural Festival 2026', startsAt: '2026-11-20T11:00:00+11:00', endsAt: '2026-11-22T20:00:00+11:00', citySlug: 'melbourne' }]
+    const saturday = { title: 'African Music and Cultural Festival 2026', startsAt: '2026-11-21T10:00:00+11:00' }
+    expect(likelyDuplicate(saturday, known, 'melbourne', day)).toBe(true)
+    expect(likelyDuplicate({ ...saturday, startsAt: '2026-11-22T10:00:00+11:00' }, known, 'melbourne', day)).toBe(true)
+    expect(likelyDuplicate({ ...saturday, startsAt: '2026-11-23T10:00:00+11:00' }, known, 'melbourne', day)).toBe(false)
+    expect(likelyDuplicate({ ...saturday, startsAt: '2026-11-19T10:00:00+11:00' }, known, 'melbourne', day)).toBe(false)
+    expect(likelyDuplicate(saturday, known, 'geelong', day)).toBe(false)
+  })
+  /* The PM's 07:55 of 15 November 2026 (WINDOW 6's 07:23): every JazzLab night read "Free, Walk in". The hunt read the
+     venue's calendar feed, which carries no price; a series with no link became a walk in night, which the database holds
+     free. Each night's own page sold tickets from $10 to $65. */
+  it('a night read with no link books on its own page with no price claimed, never free (JazzLab, 15 November 2026)', () => {
+    const page = 'https://thejazzlab.com.au/event/darcy-gilkerson-quintet/'
+    expect(huntBooking({ pageUrl: page, links: [] }, '2026-11-15')).toEqual({
+      free: false,
+      links: [{ url: page, kind: 'tickets', price_from_cents: null, price_checked_on: null }],
+    })
+    // Free only where every link read states nothing to pay (car 44c).
+    expect(huntBooking({ pageUrl: page, links: [{ url: 'https://example.com/r', priceFromCents: 0 }] }, '2026-11-15')).toEqual({ free: true, links: [] })
+    // A stated price is carried with the day it was read; an unstated one claims nothing.
+    expect(huntBooking({ pageUrl: page, links: [{ url: page, priceFromCents: 2500 }, { url: 'https://example.com/b', priceFromCents: null }] }, '2026-11-15')).toEqual({
+      free: false,
+      links: [
+        { url: page, kind: 'tickets', price_from_cents: 2500, price_checked_on: '2026-11-15' },
+        { url: 'https://example.com/b', kind: 'tickets', price_from_cents: null, price_checked_on: null },
+      ],
+    })
   })
   it('a called off show, a night with no time and an unverified page still wait for a person', () => {
     expect([...HUNT_HOLDS]).toEqual(expect.arrayContaining(['similar_listing', 'called_off_words', 'midnight_start', 'source_unverified']))

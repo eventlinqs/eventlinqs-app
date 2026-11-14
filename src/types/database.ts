@@ -3617,6 +3617,7 @@ export type Database = {
           id: string
           image_url: string | null
           kind: string
+          last_read_at: string | null
           links: Json
           page_url: string
           presented_by: string | null
@@ -3643,6 +3644,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           kind: string
+          last_read_at?: string | null
           links?: Json
           page_url: string
           presented_by?: string | null
@@ -3669,6 +3671,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           kind?: string
+          last_read_at?: string | null
           links?: Json
           page_url?: string
           presented_by?: string | null
@@ -13331,6 +13334,10 @@ export type Database = {
           p_code_hash: string
           p_organisation: string
         }
+        Returns: string
+      }
+      listing_fresh_from_reads: {
+        Args: { p_series: string; p_start: string; p_timezone: string }
         Returns: string
       }
       listing_fresh_until_for: {

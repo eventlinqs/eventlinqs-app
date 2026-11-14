@@ -6,6 +6,8 @@ import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
 import { attachApprovedPhotos, selfListWaiting } from '@/lib/listings/self-listing-run'
 import { sendSellThroughReports } from '@/lib/listings/sell-through-report'
 import { notifyIndexNow } from '@/lib/seo/indexnow'
+import { reverifyNights } from '@/lib/listings/reverify-run'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +84,26 @@ export async function GET(request: NextRequest) {
         console.error('[cron/listing-occurrences] the reports were not run:', error instanceof Error ? error.message : error)
       }
     }
+    // THE ENGINE KEEPS ITS OWN NIGHTS TRUE, AND THE DAY OF CHECK (Lawal, 15 November 2026, 06:03 and 06:50; the PM's 07:00
+    // item 4). In this hourly turn, with the time it has left and no new schedule (law 14 (d)): only the nights whose own
+    // freshness tier is running out are read on their page (every night starting today between 03:00 and 06:00 Melbourne),
+    // a disagreement held at once and its site's other nights read too (src/lib/listings/reverify-run.ts). A failure is
+    // said and never fails the turn.
+    let reverify = 'not this turn: too little of the function left'
+    if (Date.now() < started + RUN_BUDGET_MS - 30_000) {
+      try {
+        const r = await reverifyNights(createAdminClient(), fetch, new Date(), started + RUN_BUDGET_MS)
+        reverify =
+          `${r.due} due, ${r.pages} page(s) read: ${r.agreed} agreed, ${r.held} held, ${r.unread} unread` +
+          (r.marked ? `; ${r.marked} more read for a site that disagreed` : '') +
+          (r.failed.length ? `; ${r.failed.length} failed` : '')
+        for (const line of [...r.said, ...r.failed]) console.log(`[cron/listing-occurrences] re-read: ${line}`)
+      } catch (error) {
+        reverify = `the re-read failed: ${error instanceof Error ? error.message : String(error)}`
+        console.error('[cron/listing-occurrences] the re-read failed:', error)
+      }
+      console.log(`[cron/listing-occurrences] re-read: ${reverify}`)
+    }
     // INDEXNOW (the PM's order 3 of 11 November 2026, addition 3): last, after every write above, Bing and the engines
     // that share its notices hear which public event pages changed in the last 70 minutes (src/lib/seo/indexnow.ts).
     // One request with its own 15 s timeout, sent while the function still has time; it never throws.
@@ -90,7 +112,7 @@ export async function GET(request: NextRequest) {
       indexNow = await notifyIndexNow(new Date())
       console.log(`[cron/listing-occurrences] IndexNow: ${indexNow}`)
     }
-    return NextResponse.json({ ok: true, ...result, dealt, selfListed, reports: reports.length, indexNow })
+    return NextResponse.json({ ok: true, ...result, dealt, selfListed, reports: reports.length, reverify, indexNow })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)
     return NextResponse.json({ error: 'listing occurrences failed' }, { status: 500 })

@@ -249,6 +249,8 @@
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
+ *   same-day-reads             nothing online unless verified on its source: freshness from
+ *                              agreeing reads only, 24 hours; every check timed at its read
  *   offer-is-one-rule          LAW 24 as ruled: the offer is defined once, rendered in src,
  *                              agreed with in every document, and never restated as a cap,
  *                              a countdown, an invitation or a two-city limit
@@ -3458,6 +3460,9 @@ const GUARDS = [
   // THE CREDIT IS PRINTED ONCE (the PM's 09:19 of 12 November 2026, item 4): 'Photo: Photo: AMCF' was live on the
   // guide, the event page and the gallery; every credit now goes through creditLine, and a hand built prefix fails here.
   'scripts/guards/credit-printed-once.mjs',
+  // NOTHING GOES ONLINE UNLESS VERIFIED ON ITS REAL SOURCE (Lawal, 15 November 2026, 06:03): freshness rests only on
+  // agreeing reads, 24 hours; no listing check is dated by the clock instead of its read.
+  'scripts/guards/same-day-reads.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

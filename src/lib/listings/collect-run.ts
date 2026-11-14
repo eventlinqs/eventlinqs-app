@@ -18,6 +18,7 @@ import { judgeCandidate, sourceHostOf, type CandidateReason, type Confidence } f
 import { eventPagesFromListPage, eventPagesFromSitemap, isSitemap, pageRuleFor } from './page-rules'
 import { HUNT_HOLDS, huntVenue, likelyDuplicate, plausibleHuntStart, type HuntSource } from './headline-hunt'
 import { canaryOpen, inCanaryTenth } from './canary'
+import { nightsThatLeft } from './left-source'
 import { CAPTURE_RULE_PER_RUN, captureDecision, underCaptureRule } from './capture-rule'
 
 /** One page a second on a site a page rule reads (the CONTROLLER's 15:54 of 1 November 2026). */
@@ -38,7 +39,10 @@ export const PAGE_READ_CAP = 200
  * (./collect-store.ts), so this file's own test drives every path.
  */
 
-export type Fetcher = (url: string, init: { headers: Record<string, string>; signal: AbortSignal }) => Promise<{ status: number; text(): Promise<string> }>
+export type Fetcher = (
+  url: string,
+  init: { headers: Record<string, string>; signal: AbortSignal },
+) => Promise<{ status: number; text(): Promise<string>; headers?: { get(name: string): string | null } }>
 
 export type CandidateRow = {
   sourceId: string
@@ -132,6 +136,12 @@ export type CollectionStore = {
   confirmSeries?(rows: SeriesConfirmationRow[]): Promise<void>
   /** The ids of the sources whose found nights start in the next seven days: each is read every hour. */
   thisWeekSources?(now: Date): Promise<ReadonlySet<string>>
+  /** Holds each night that has left this source's list (./left-source.ts, ./left-source-store.ts); returns how many. */
+  holdLeftSource?(rows: { eventId: string; seriesId: string; sourceId: string; listUrl: string }[], at: Date): Promise<number>
+  /** Releases the 'left_source' holds on nights this read carried again; returns how many. */
+  releaseLeftSource?(eventIds: readonly string[], sourceId: string, at: Date): Promise<number>
+  /** Keeps the validators the source's list answered with, for the next conditional read (listing_sources.last_etag, ...). */
+  noteValidators?(sourceId: string, etag: string | null, lastModified: string | null): Promise<void>
 }
 
 export type SeriesConfirmationRow = {
@@ -189,13 +199,36 @@ export type CollectionResult = {
  */
 export const FETCH_TIMEOUT_MS = 30_000
 
-async function get(fetcher: Fetcher, url: string): Promise<{ status: number | null; body: string }> {
+async function get(
+  fetcher: Fetcher,
+  url: string,
+  extra: Record<string, string> = {},
+): Promise<{ status: number | null; body: string; etag: string | null; lastModified: string | null }> {
   try {
-    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/calendar,text/plain' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
-    return { status: res.status, body: res.status >= 200 && res.status < 300 ? await res.text() : '' }
+    const res = await fetcher(url, { headers: { 'User-Agent': COLLECTOR_AGENT, Accept: 'text/html,text/calendar,text/plain', ...extra }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    return {
+      status: res.status,
+      body: res.status >= 200 && res.status < 300 ? await res.text() : '',
+      etag: res.headers?.get('etag') ?? null,
+      lastModified: res.headers?.get('last-modified') ?? null,
+    }
   } catch {
-    return { status: null, body: '' }
+    return { status: null, body: '', etag: null, lastModified: null }
   }
+}
+
+/**
+ * A CONDITIONAL READ OF A SOURCE'S OWN LIST (the PM's 07:00 of 15 November 2026, item 4 (b): "an unchanged source costs one
+ * cheap request"; RFC 9110 section 13.1.2 If-None-Match and 13.1.3 If-Modified-Since, and section 15.4.5: a 304 says the
+ * list is as it was). Only for a source whose own body carries its nights' facts (a feed or a list read for its own Event
+ * data): a sitemap that answers 304 says nothing of the pages it names, so a source a page rule reads is always read whole.
+ * Pure.
+ */
+export function conditionalHeaders(source: Pick<RegisteredSource, 'pageUrl' | 'lastEtag' | 'lastModified'>): Record<string, string> {
+  if (pageRuleFor(source.pageUrl) !== null) return {}
+  if (source.lastEtag) return { 'If-None-Match': source.lastEtag }
+  if (source.lastModified) return { 'If-Modified-Since': source.lastModified }
+  return {}
 }
 
 /**
@@ -342,15 +375,46 @@ export async function runCollection(
           if (robots.status === 429) refusedWith = 429
           result.skipped += 1
         } else {
-          const res = await get(fetcher, source.pageUrl)
+          const res = await get(fetcher, source.pageUrl, conditionalHeaders(source))
           httpStatus = res.status
-          if (res.status === null || res.status < 200 || res.status >= 300) {
+          if (res.status === 304) {
+            /* UNCHANGED SINCE THE LAST READ (RFC 9110 section 15.4.5): the list carries what it carried, so every public night
+               still to come that this source published is carried unchanged, and counts as an agreeing read for its tier
+               (item 4 (c)). A failed confirmation never stops the run; the nights then keep their old freshness. */
+            result.read += 1
+            succeeded = true
+            const own = new Map<string, string>()
+            for (const k of known) {
+              if (k.listedPublic && k.seriesId && (k.sourceIds ?? []).includes(source.id) && Date.parse(k.startsAt) > now.getTime()) own.set(k.seriesId, k.eventId)
+            }
+            let confirmedUnchanged = 0
+            if (own.size > 0 && store.confirmSeries) {
+              try {
+                const sourceDate = platformDay(now)
+                await store.confirmSeries(
+                  [...own.keys()].map((seriesId) => ({ seriesId, sourceUrl: source.pageUrl, sourceDate, sourceId: source.id, outcome: 'confirmed' as const, reuseBasis: 'licensed_source' as const })),
+                )
+                confirmedUnchanged = own.size
+              } catch (err) {
+                console.error('[collection] unchanged series could not be confirmed:', err instanceof Error ? err.message : err)
+              }
+            }
+            outcome = `unchanged since the last read (304): ${confirmedUnchanged} series confirmed`
+          } else if (res.status === null || res.status < 200 || res.status >= 300) {
             outcome = `the page answered ${res.status ?? 'nothing'}: nothing read`
             if (res.status === 403 || res.status === 429) refusedWith = res.status
             result.skipped += 1
           } else {
             result.read += 1
             succeeded = true
+            /* The list's validators, kept for the next run's conditional read (conditionalHeaders). Never stops the read. */
+            if (store.noteValidators && (res.etag || res.lastModified) && pageRuleFor(source.pageUrl) === null) {
+              try {
+                await store.noteValidators(source.id, res.etag, res.lastModified)
+              } catch (err) {
+                console.error('[collection] the list validators could not be kept:', err instanceof Error ? err.message : err)
+              }
+            }
             /* Only what the source permits (D4): a facts only source lands no image, no description and no link. */
             /* A source with a page rule and a sitemap: the rule reads each event page the sitemap lists, robots.txt asked for
                every page, one page a second, never past the run's deadline (./page-rules.ts). Any other answer is read
@@ -360,29 +424,41 @@ export async function runCollection(
             /* A site that answers 403 or 429 is asking us to stop: no further page of it is asked this run, and the run
                says so (WINDOW 5's finding of 16:05, 1 November 2026: a city calendar began refusing after 21 pages). */
             let stoppedBy: string | null = null
+            /* Whether this read saw the WHOLE list (./left-source.ts): a page cap, the deadline, a page robots bars or one
+               that did not answer leaves it partial, and a partial read never holds a night as having left. */
+            let complete = true
             /* A rule's source is its sitemap, or its own list page where the sitemap does not carry the current program
                (WINDOW 2's Forum finding, 1 November 2026); a page the rule itself reads is read below as any page is. */
             const listPage = rule !== null && !isSitemap(res.body) && !rule.eventPath.test(new URL(source.pageUrl).pathname)
             if (rule && (isSitemap(res.body) || listPage)) {
               raw = []
               const pages = listPage ? eventPagesFromListPage(res.body, source.pageUrl, rule) : eventPagesFromSitemap(res.body, rule)
+              if (pages.length > pageCap) complete = false
               for (const url of pages.slice(0, pageCap)) {
-                if (Date.now() >= deadline) break
+                if (Date.now() >= deadline) {
+                  complete = false
+                  break
+                }
                 const at = new URL(url)
                 let siteRobots = robotsByOrigin.get(at.origin)
                 if (!siteRobots) {
                   siteRobots = await get(fetcher, `${at.origin}/robots.txt`)
                   robotsByOrigin.set(at.origin, siteRobots)
                 }
-                if (robotsVerdict(siteRobots.status, siteRobots.body, at.pathname + at.search) === 'disallowed') continue
+                if (robotsVerdict(siteRobots.status, siteRobots.body, at.pathname + at.search) === 'disallowed') {
+                  complete = false
+                  continue
+                }
                 if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs))
                 const one = await get(fetcher, url)
                 if (one.status === 403 || one.status === 429) {
                   stoppedBy = `the site answered ${one.status} on ${url}: reading stopped`
                   refusedWith = one.status
+                  complete = false
                   break
                 }
                 if (one.status !== null && one.status >= 200 && one.status < 300) raw.push(...rule.read(one.body, url))
+                else complete = false
               }
             } else {
               raw = eventsFromBody(res.body, source.pageUrl)
@@ -424,6 +500,35 @@ export async function runCollection(
               } catch (err) {
                 /* A failed confirmation never stops the read; the night simply keeps its old freshness. */
                 console.error('[collection] series confirmations could not be written:', err instanceof Error ? err.message : err)
+              }
+            }
+            /* A NIGHT THAT LEFT THIS SOURCE'S LIST IS HELD AT ONCE, and one its list carries again is shown again (the PM's
+               07:00 of 15 November 2026, item 4 (b); ./left-source.ts). Either failing never stops the read. */
+            const carried = new Set(plans.flatMap((p) => (p.kind === 'new' ? [] : [p.eventId])))
+            let leftSaid = ''
+            if (store.releaseLeftSource && carried.size > 0) {
+              try {
+                const back = await store.releaseLeftSource([...carried], source.id, now)
+                if (back > 0) leftSaid += `; ${back} night(s) back on its list shown again`
+              } catch (err) {
+                console.error('[collection] nights back on the list could not be released:', err instanceof Error ? err.message : err)
+              }
+            }
+            if (complete && !stoppedBy && store.holdLeftSource) {
+              const furthest = permitted.reduce<string | null>((m, e) => (m === null || Date.parse(e.startsAt) > Date.parse(m) ? e.startsAt : m), null)
+              const verdict = nightsThatLeft({ sourceId: source.id, known, carried, furthest, now })
+              if (verdict.kind === 'left') {
+                try {
+                  const held = await store.holdLeftSource(
+                    verdict.nights.flatMap((k) => (k.seriesId ? [{ eventId: k.eventId, seriesId: k.seriesId, sourceId: source.id, listUrl: source.pageUrl }] : [])),
+                    now,
+                  )
+                  if (held > 0) leftSaid += `; ${held} night(s) left its list and are held`
+                } catch (err) {
+                  console.error('[collection] nights that left the list could not be held:', err instanceof Error ? err.message : err)
+                }
+              } else if (verdict.kind === 'partial') {
+                leftSaid += `; the list read looks partial (${verdict.missing} of its ${verdict.of} nights missing): none held`
               }
             }
             for (const p of plans) {
@@ -539,6 +644,7 @@ export async function runCollection(
                 : `read: ${found} event(s) found, ${landed} new: ${ruled} accepted by the partner rule, ${queued} for review`
             if (unpublished.length > 0) outcome += `; ${unpublished.length} accepted night(s) not yet published: ${unpublished[0]}`
             if (stoppedBy) outcome += `; ${stoppedBy}`
+            outcome += leftSaid
           }
         }
       }

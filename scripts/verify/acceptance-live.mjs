@@ -78,6 +78,9 @@ const nights = await sql(`
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) as until
     from public.events e
    where e.status = 'published' and e.visibility = 'public'
+     -- Lawal, 15 November 2026, 06:03: a listed night is shown only while verified on its source within 24 hours
+     -- (public-visibility.ts clause 5, listing_fresh_from_reads); law 16 asks for every night the site may show.
+     and (e.listing_fresh_until is null or e.listing_fresh_until >= now())
      and coalesce(e.end_date, ((date_trunc('day', e.start_date at time zone coalesce(e.timezone, 'Australia/Melbourne')) + interval '1 day')
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) >= now()`)
 const bySlug = new Map(nights.map((n) => [n.slug, n]))

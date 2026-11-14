@@ -291,6 +291,53 @@ const DRILLS = [
     expect: 'FOUNDING_OFFER_OPEN must read false',
   },
   /*
+   * same-day-reads (Lawal, 15 November 2026, 06:03: nothing goes online unless verified on its real source that day), two
+   * drills, the two ways the fault comes back: a publish function dating its check by the clock again, and a listing
+   * check written from the code without its read time (planted old reading publishes refused).
+   */
+  {
+    name: 'a publish function dates its check today again',
+    guard: `${GUARDS}/same-day-reads.mjs`,
+    file: 'supabase/migrations/20261115091001_same_day_verification.sql',
+    find: "array['(now() at time zone v_tz)::date', '(v_c.read_at at time zone v_tz)::date'],",
+    replace: "array['(now() at time zone v_tz)::date', '(now() at time zone v_tz)::date'],",
+    expect: "date their check from the candidate's read",
+  },
+  {
+    name: 'a listing check is written without its read time',
+    guard: `${GUARDS}/same-day-reads.mjs`,
+    file: 'src/lib/listings/reverify-run.ts',
+    find: '              checked_at: readAt.toISOString(),\n',
+    replace: '',
+    expect: 'writes a listing check without its read time',
+  },
+  /* Version 2 (the PM's 07:00 and 07:55 of 15 November 2026): a night that left its list stays public again; the walk
+     releases what only the list or a person may; a night read with no link becomes free walk in again. */
+  {
+    name: 'a night that left its list is no longer held',
+    guard: `${GUARDS}/same-day-reads.mjs`,
+    file: 'src/lib/listings/collect-run.ts',
+    find: 'const verdict = nightsThatLeft({',
+    replace: 'const verdict = ({ kind: "none" } as ReturnType<typeof nightsThatLeft>) || ({',
+    expect: "no longer holds a night that has left its source's list",
+  },
+  {
+    name: 'the hold walk releases a night that left its list',
+    guard: `${GUARDS}/same-day-reads.mjs`,
+    file: 'src/lib/listings/hold-walk-run.ts',
+    find: " && h.reason !== 'left_source')",
+    replace: ')',
+    expect: 'may release a left_source or duplicate hold',
+  },
+  {
+    name: 'a night read with no link is walk in, so free, again',
+    guard: `${GUARDS}/same-day-reads.mjs`,
+    file: 'src/lib/listings/headline-hunt.ts',
+    find: "if (row.links.length === 0) return { free: false, links: [{ url: row.pageUrl, kind: 'tickets', price_from_cents: null, price_checked_on: null }] }",
+    replace: 'if (row.links.length === 0) return { free: false, links: [] }',
+    expect: 'no longer books a night read with no link on its own page',
+  },
+  /*
    * no-filler-in-event-collections (Lawal's 17:44 of 31 October 2026: no open-slot cards in any public collection,
    * ever): the regression is the invitation card fill coming back into a home rail.
    */
