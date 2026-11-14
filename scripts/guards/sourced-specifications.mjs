@@ -33,6 +33,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stateOf } from './lib/stripped-or-deleted.mjs'
+import { CLOCK_TIME_DATED_IN_WORDS } from './lib/clock-times.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -93,6 +94,9 @@ const NOT_A_RATIO = [
   // sits within a couple of dozen characters of it, which is what separates
   // "runs daily at 3:30" from a bare ratio.
   /\b(?:daily|nightly|hourly|weekly|midnight|noon|cron)\b[^\n]{0,24}\b(?:[01]?\d|2[0-3]):[0-5]\d\b/i,
+  // Rule three: a time dated in words ('21:54 of 6 November 2026'), the 7 November stop of the guard audit of
+  // 14 November 2026 (scripts/guards/lib/clock-times.mjs carries the reason and the test).
+  CLOCK_TIME_DATED_IN_WORDS,
 ]
 
 const SCAN_DIRS = ['docs', 'src', 'scripts']

@@ -91,6 +91,7 @@
  * the gate makes (.lighthouseci, .tmp/gate-urls.txt, .tmp/gate-server.log) is
  * removed on the way out, green or red.
  */
+import { missingGuardDatabase } from '../lib/guard-database-env.mjs'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -216,6 +217,16 @@ function exec(command, args, env) {
     return 1
   }
   return r.status ?? 1
+}
+
+// THE GUARDS NEED A DATABASE TO LOOK AT: scripts/lib/guard-database-env.mjs (the guard audit of 14 November 2026).
+function runGuards(env) {
+  const missing = missingGuardDatabase(env)
+  if (missing) {
+    console.error(`[gate] ${missing}`)
+    return 1
+  }
+  return exec(NODE, ['scripts/guards/run-guards.mjs'], env)
 }
 
 /**
@@ -1061,7 +1072,7 @@ export const STEPS = [
     title: 'every registered guard, with the TEST project from .env.local',
     mirrors: [],
     env: 'local',
-    run: (env) => exec(NODE, ['scripts/guards/run-guards.mjs'], env),
+    run: runGuards,
   },
   {
     id: 'types-drift',
