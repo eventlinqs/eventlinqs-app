@@ -1,4 +1,5 @@
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Compass, Megaphone, SlidersHorizontal, Ticket, Users } from 'lucide-react'
+import { OFFER_HEADLINE, OFFER_OUTCOMES, OFFER_SUBLINE, type OfferOutcome } from '@/lib/organisers/offer-outcomes'
 import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
@@ -144,13 +145,58 @@ const BANDS: FeatureBand[] = [
 ]
 
 const HOW_IT_WORKS = [
-  { step: 1, title: 'Create your account', detail: 'About a minute. Your name, your payout account, and you are in.' },
+  // Train 23 (15 November 2026): a payout method is no longer needed to start; it is added whenever the organiser is
+  // ready, and the ticket money is paid after the event. The sign up asks a name, an email and a password, or Google.
+  { step: 1, title: 'Create your account', detail: 'About a minute: your name, your email and a password, or your Google account.' },
   { step: 2, title: 'Build your event', detail: 'Title, description, ticket tiers, and pricing. 5 to 15 minutes.' },
   { step: 3, title: 'Publish', detail: 'Live the moment you publish, with your own event page to share. No approval queue.' },
   { step: 4, title: 'Go live and sell', detail: `Share your page anywhere. Payout: ${PAYOUT_LINE.charAt(0).toLowerCase()}${PAYOUT_LINE.slice(1)}` },
 ]
 
 // ── Sub-components ───────────────────────────────────────────────────────────
+
+const OUTCOME_ICON: Record<OfferOutcome['key'], typeof Compass> = {
+  discovered: Compass,
+  sell: Ticket,
+  promote: Megaphone,
+  audience: Users,
+  control: SlidersHorizontal,
+}
+
+/**
+ * THE OFFER LED BY VALUE, straight under the hero (the PM's version 2 and 3 of the organiser offer; LAW 24 retired on
+ * 15 November 2026). The leaders put their outcome groups in the same place: Eventbrite's "Event hosting made easy" and
+ * "Reach the right people", Humanitix's "Create your event in minutes" and "Grow your events". Plain items, not cards,
+ * so nothing here looks tappable without being a link (Law 5); every line comes from src/lib/organisers/offer-outcomes.ts.
+ */
+function OutcomesBand() {
+  return (
+    <ContentSection width="wide" reveal>
+      <div className="max-w-2xl">
+        <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
+          What you get
+        </p>
+        <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+          Five ways EventLinqs works for your event.
+        </h2>
+      </div>
+      <Reveal stagger as="ul" className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
+        {OFFER_OUTCOMES.map((o) => {
+          const Icon = OUTCOME_ICON[o.key]
+          return (
+            <li key={o.key} data-outcome={o.key}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--brand-accent)]/40 bg-[var(--surface-0)] text-[var(--brand-accent-strong)]">
+                <Icon className="h-5 w-5" aria-hidden />
+              </span>
+              <h3 className="mt-4 font-display text-lg font-bold text-[var(--text-primary)]">{o.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{o.body}</p>
+            </li>
+          )
+        })}
+      </Reveal>
+    </ContentSection>
+  )
+}
 
 function FeatureBandRow({ band }: { band: FeatureBand }) {
   return (
@@ -554,10 +600,10 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
                 id="organisers-hero-heading"
                 className="mt-2 font-headline text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                Build your event, map your room, get your complete promo kit.
+                {OFFER_HEADLINE}
               </h1>
               <p className="mt-2 text-sm font-semibold text-white sm:text-base">
-                In minutes. Free.
+                {OFFER_SUBLINE}
               </p>
               {/* Hidden on the smallest screens: the fixed hero height fits
                   headline + fee line + CTAs at 390; the supporting copy
@@ -583,6 +629,9 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
           </div>
         </div>
       </section>
+
+      {/* ── 1a. The five outcomes, the offer led by value (LAW 24 retired) ─ */}
+      <OutcomesBand />
 
       {/* ── 1b. One real event a stranger can open (close-out OL1) ───────── */}
       {newestEvent && <LiveProofEvent event={newestEvent} />}
@@ -639,7 +688,7 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
             How it works
           </p>
           <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
-            From sign-up to sold out in four steps.
+            From sign-up to selling in four steps.
           </h2>
         </div>
 
