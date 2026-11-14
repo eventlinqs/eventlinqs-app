@@ -691,6 +691,9 @@
  *   credit-printed-once        every photograph credit is printed through creditLine, so a
  *                              recorded 'Photo:' prints once ('Photo: Photo: AMCF' was live
  *                              until 12 November 2026)
+ *   no-free-months-promise     no organiser-facing text promises free months, referral months
+ *                              or the badge as a perk; the words in lib/retired-offer-words.mjs
+ *                              (LAW 24 retired, Lawal 15 November 2026)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
@@ -2082,6 +2085,9 @@ const GUARDS = [
   // the /events popular rail and the venues rail on production. A public collection draws real events only and an empty
   // rail is hidden. Drilled red on car 26's tree.
   'scripts/guards/no-filler-in-event-collections.mjs',
+  // 15 November 2026, Lawal 00:19 and 00:37: LAW 24 is retired, every organiser pays the fee from day one, and the
+  // whole website says so. The retired words live in one file, scripts/guards/lib/retired-offer-words.mjs.
+  'scripts/guards/no-free-months-promise.mjs',
   // 31 October 2026, the CONTROLLER's 18:22 from WINDOW 4's car 26 read back: an ended listing linked
   // /organisers/eventlinqs-listings, a 404. Every public organiser link asks whether the organiser is shown.
   'scripts/guards/organiser-links-have-a-page.mjs',
