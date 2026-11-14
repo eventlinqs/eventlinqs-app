@@ -9,6 +9,8 @@ import {
   type SocialCardFormat,
 } from '@/lib/broadcast/social-card-spec'
 import { copyText } from '@/lib/share/copy-text'
+import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
+import type { ShareChannel } from '@/lib/broadcast/share-codes'
 
 /**
  * THE POST PACK: the image and the words for each channel, one channel at a time.
@@ -32,6 +34,10 @@ type Props = {
   leadFormat: Record<CaptionPlatform, SocialCardFormat>
   /** False when share tooling is off: links are plain, not tracked. */
   tracked: boolean
+  /** Each channel's tracked link, for the open card's share button (S8). Absent: no share button. */
+  shareLinks?: Partial<Record<ShareChannel, string>>
+  /** The words a share intent carries beside the link. */
+  shareText?: string
 }
 
 const CHANNEL_ACCENT: Record<string, string> = {
@@ -67,7 +73,7 @@ function cardHref(eventId: string, format: SocialCardFormat, channel: CaptionPla
   return `/api/organiser/events/${eventId}/card/${format}?channel=${channel}`
 }
 
-export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
+export function PostPack({ eventId, captions, leadFormat, tracked, shareLinks, shareText = '' }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
   const [picked, setPicked] = useState<CaptionPlatform | null>(null)
   // The remembered channel is device state, read through useSyncExternalStore (as the consent banner reads its
@@ -175,10 +181,14 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
               {caption.text}
             </p>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+            {shareLinks?.[caption.platform as ShareChannel] ? (
+              <LaunchShareRow links={shareLinks} shareText={shareText} only={caption.platform as ShareChannel} />
+            ) : null}
             <button
               type="button"
               onClick={() => copy(captionKey, caption.text)}
-              className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)] hover:bg-ink-50"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)] hover:bg-ink-50"
             >
               {copied === captionKey ? (
                 <Check className="h-4 w-4" aria-hidden />
@@ -187,6 +197,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
               )}
               {copied === captionKey ? 'Caption copied' : 'Copy caption'}
             </button>
+            </div>
             {tracked ? null : (
               <p className="mt-3 text-xs leading-relaxed text-ink-600">
                 Share tooling is off right now, so this caption carries your plain event link and its sales will not

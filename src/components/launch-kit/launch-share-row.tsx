@@ -21,9 +21,14 @@ import { copyText } from '@/lib/share/copy-text'
 interface Props {
   links: Partial<Record<ShareChannel, string>>
   shareText: string
+  /**
+   * One channel only, inside the post pack's open card (S8, the PM's pre-read of 15 November 2026): its button names
+   * what it does ("Share on WhatsApp", "Copy Instagram link") and the row's Copy link is left to the hero.
+   */
+  only?: ShareChannel
 }
 
-export function LaunchShareRow({ links, shareText }: Props) {
+export function LaunchShareRow({ links, shareText, only }: Props) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const encodedText = encodeURIComponent(shareText)
 
@@ -116,9 +121,16 @@ export function LaunchShareRow({ links, shareText }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {intents.map(intent => {
+      {intents.filter(intent => !only || intent.key === only).map(intent => {
         const url = links[intent.key]
         if (!url) return null
+        const named = only
+          ? intent.key === 'email'
+            ? 'Send by email'
+            : intent.href
+              ? `Share on ${intent.label}`
+              : `Copy ${intent.label} link`
+          : intent.label
         if (!intent.href) {
           // Copy-based channel (Instagram): the link goes to the clipboard,
           // ready to paste into a story, bio, or DM.
@@ -130,10 +142,10 @@ export function LaunchShareRow({ links, shareText }: Props) {
               className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5 ${intent.bg} ${intent.textClass}`}
             >
               {copiedKey === intent.key ? <Check className="h-4 w-4" aria-hidden /> : intent.icon}
-              <span className="hidden sm:inline">
-                {copiedKey === intent.key ? 'Link copied' : intent.label}
+              <span className={only ? '' : 'hidden sm:inline'}>
+                {copiedKey === intent.key ? 'Link copied' : named}
               </span>
-              <span className="sm:hidden">{copiedKey === intent.key ? 'Copied' : intent.label}</span>
+              {only ? null : <span className="sm:hidden">{copiedKey === intent.key ? 'Copied' : intent.label}</span>}
             </button>
           )
         }
@@ -143,15 +155,15 @@ export function LaunchShareRow({ links, shareText }: Props) {
             href={intent.href(url)}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Share via ${intent.label}`}
+            aria-label={only ? named : `Share via ${intent.label}`}
             className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5 ${intent.bg} ${intent.textClass}`}
           >
             {intent.icon}
-            <span>{intent.label}</span>
+            <span>{named}</span>
           </a>
         )
       })}
-      {links.copy && (
+      {links.copy && !only && (
         <button
           type="button"
           onClick={() => copy('copy', links.copy!)}

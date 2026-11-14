@@ -98,6 +98,7 @@ export function MoneyPanel({ summary, actionInBanner = false }: { summary: Organ
         />
         <KpiCard
           className="col-span-2 sm:col-span-1"
+          tight
           label="Paid out"
           testId="money-paid-out"
           value={money(summary.paidOutCents, summary.currency)}
@@ -109,6 +110,7 @@ export function MoneyPanel({ summary, actionInBanner = false }: { summary: Organ
         />
         <KpiCard
           className="col-span-2 sm:col-span-1"
+          tight
           label="Next payout"
           testId="money-next-payout"
           value={next.value}

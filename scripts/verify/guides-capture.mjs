@@ -185,7 +185,7 @@ async function step(name, fn) {
     await page.waitForTimeout(1800)
     await shot(page, GUIDE_DIR, 'publishing-and-sharing-your-promo-kit-1')
     await shot(page, GUIDE_DIR, 'publishing-and-sharing-your-promo-kit-2', {
-      selector: 'section[aria-labelledby="kit-share-heading"]',
+      selector: 'section[aria-labelledby="kit-pack-heading"]',
     })
   })
 

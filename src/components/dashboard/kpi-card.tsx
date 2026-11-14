@@ -22,6 +22,10 @@ type Props = {
   detail?: string | null
   /** A compact tile for the top row (three across at 390), with its period as a caption. */
   compact?: boolean
+  /** The label at 390, where a compact tile is about 110 px wide (D3, 15 November 2026). */
+  shortLabel?: string
+  /** A full-width card at 390 with the compact tiles' padding and no reserved empty line (D5). */
+  tight?: boolean
   /** Grid placement from the caller (the money panel's full-width cards at 390). */
   className?: string
   caption?: string | null
@@ -82,19 +86,28 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action, compact = false, caption = null, className = '' }: Props) {
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action, compact = false, caption = null, className = '', shortLabel, tight = false }: Props) {
   // a line needs two days with something on them; one sale drawn as a spike at the edge says nothing
   const hasSparkline = Array.isArray(sparkline) && sparkline.filter((v) => v > 0).length >= 2
   const hasData = value !== '0' || hasSparkline
 
   return (
     <div
-      className={`panel-elevated rounded-2xl border border-ink-100 bg-white transition-colors hover:border-ink-200 ${compact ? 'p-3 sm:p-5' : 'p-5'}${className ? ` ${className}` : ''}`}
+      className={`panel-elevated rounded-2xl border border-ink-100 bg-white transition-colors hover:border-ink-200 ${compact || tight ? 'p-3 sm:p-5' : 'p-5'}${className ? ` ${className}` : ''}`}
       data-kpi={testId}
       data-kpi-value={testId ? value : undefined}
       data-kpi-delta={testId && delta ? String(delta.value) : undefined}
     >
-      <p className="type-eyebrow text-ink-400">{label}</p>
+      <p className="type-eyebrow text-ink-400">
+        {shortLabel ? (
+          <>
+            <span className="sm:hidden">{shortLabel}</span>
+            <span className="hidden sm:inline">{label}</span>
+          </>
+        ) : (
+          label
+        )}
+      </p>
       <div className="mt-2 flex items-baseline gap-2">
         <p
           className={`font-headline font-extrabold tabular-nums tracking-tight text-ink-900 ${
@@ -124,7 +137,7 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, det
       {compact ? (
         caption ? <p className="mt-1 text-xs text-ink-500">{caption}</p> : null
       ) : (
-      <div className="mt-3 h-8">
+      <div className={tight ? 'mt-2 sm:mt-3 sm:h-8' : 'mt-3 h-8'}>
         {hasSparkline ? (
           <Sparkline points={sparkline as number[]} />
         ) : detail ? (

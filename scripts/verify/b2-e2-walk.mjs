@@ -71,15 +71,17 @@ try {
   const zeroTiles = await reachPanel.locator('p.font-display.text-3xl').allInnerTexts()
   const hasEmptyState = kitText.includes('nothing has travelled yet')
   await reachPanel.screenshot({ path: join(SHOTS, 'b2-kit-empty-1440.png') })
-  results.kitZero = { hasEmptyState, zeroTiles, teaches: kitText.includes('close estimate') }
+  results.kitZero = { hasEmptyState, zeroTiles, teaches: kitText.includes('estimate') }
   record('B2 kit at true zero shows the empty state, not four zeros', hasEmptyState && zeroTiles.length === 0 ? 'PASS' : 'FAIL', {
     emptyState: hasEmptyState,
     bigNumberTiles: zeroTiles,
   })
-  record('B2 the empty state teaches which measures are hard', kitText.includes('measured') && kitText.includes('close estimate') ? 'PASS' : 'FAIL',
-    { measured: kitText.includes('measured'), estimate: kitText.includes('close estimate') })
+  record('B2 the empty state teaches which measures are hard', kitText.includes('measured') && kitText.includes('estimate') ? 'PASS' : 'FAIL',
+    { measured: kitText.includes('measured'), estimate: kitText.includes('estimate') })
+  // The empty state's own buttons went on 15 November 2026 (the PM's S9: both actions sit higher on the same screen);
+  // the panel's next step is its Full reach panel link.
   const ctas = await reachPanel.locator('a').allInnerTexts()
-  record('B2 the empty state offers a next step', ctas.some(c => /Send it everywhere/.test(c)) ? 'PASS' : 'FAIL', ctas.map(c => c.trim()).filter(Boolean))
+  record('B2 the empty state offers a next step', ctas.some(c => /Full reach panel/.test(c)) ? 'PASS' : 'FAIL', ctas.map(c => c.trim()).filter(Boolean))
 
   // ── B2: the full reach panel at true zero ────────────────────────────────
   await page.goto(`${BASE}/dashboard/events/${ZERO_EVENT}/reach`, { waitUntil: 'domcontentloaded' })

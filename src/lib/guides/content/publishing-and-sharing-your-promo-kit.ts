@@ -2,9 +2,9 @@ import type { Guide } from '../types'
 
 /**
  * Verified against the running app 2026-07-26:
- * - Route /dashboard/events/[id]/launch-kit, sections: Send it everywhere,
- *   Your A4 QR poster, Your invitation card, Your seat map live and selling,
- *   Watch it travel.
+ * - Route /dashboard/events/[id]/launch-kit, sections (15 November 2026): Ready to post, channel by channel (one
+ *   channel at a time, its share button, caption and image), Your A4 QR poster, Your invitation card, Your seat map
+ *   live and selling, Watch it travel.
  * - Tracked links per channel (src/lib/broadcast/share-codes.ts SHARE_CHANNELS).
  * - The kit switches on at publish; before publish the screen explains what lands.
  */
@@ -50,8 +50,8 @@ export const publishingAndSharingYourPromoKit: Guide = {
       kind: 'steps',
       items: [
         {
-          title: 'Send it everywhere',
-          text: 'A row of share buttons, one per channel. Each button carries its own tracked link, so a click from a story and a click from a group chat are counted separately. Channels covered include Instagram, Facebook, LinkedIn, X, WhatsApp, Messenger, email, SMS, a copy link, the native device share sheet and a QR link.',
+          title: 'Ready to post, channel by channel',
+          text: 'Pick a channel and its card opens: a share button, the caption written for that channel and its image in the shape the channel takes. Each carries that channel\'s own tracked link, so a click from a story and a click from a group chat are counted separately. Copy link sits at the top of the kit, beside Open your live page.',
         },
         {
           title: 'Your A4 QR poster',

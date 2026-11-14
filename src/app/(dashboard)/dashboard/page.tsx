@@ -305,7 +305,7 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-8">
-      <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} />
+      <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} createOutlined={payoutStepPending} />
 
       {/* Every number below belongs to ONE business. An owner of several has to be
           able to see which one, and change it, or the figures are unreadable. */}
@@ -323,6 +323,7 @@ export default async function DashboardPage({
         <KpiCard
           compact
           label="Tickets sold"
+          shortLabel="Sold"
           caption="Last 30 days"
           testId="tickets-30"
           value={ticketsSold30.toLocaleString('en-AU')}
@@ -333,6 +334,7 @@ export default async function DashboardPage({
         <KpiCard
           compact
           label="Upcoming events"
+          shortLabel="Upcoming"
           testId="upcoming-events"
           value={upcomingCount.toLocaleString('en-AU')}
           emptyHint="None scheduled yet"
@@ -340,6 +342,7 @@ export default async function DashboardPage({
         <KpiCard
           compact
           label="Total events"
+          shortLabel="Events"
           testId="total-events"
           value={(totalEventsCount ?? 0).toLocaleString('en-AU')}
           emptyHint="Create your first event"
