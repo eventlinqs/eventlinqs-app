@@ -135,7 +135,7 @@ async function wizardOmitting(p, omit, title) {
       await fillIf(p, '#tier-capacity-0', '100')
       await p.waitForTimeout(1000)
     }
-    if (await p.$('button:has-text("Publish and get your launch kit")')) break
+    if (await p.$('button:has-text("Publish event")')) break
     const before = await p.evaluate(() => (document.querySelector('main')?.innerText || '').slice(0, 400))
     if (!(await clickText(p, 'Continue'))) break
     await p.waitForTimeout(3500)
@@ -146,7 +146,7 @@ async function wizardOmitting(p, omit, title) {
       return { stoppedAt: 'wizard', shown: await messagesOnScreen(p) }
     }
   }
-  const pub = await p.$('button:has-text("Publish and get your launch kit")')
+  const pub = await p.$('button:has-text("Publish event")')
   if (!pub) return { stoppedAt: 'no-review', shown: await messagesOnScreen(p) }
   const disabled = await p.evaluate(b => b.disabled, pub)
   if (!disabled) {

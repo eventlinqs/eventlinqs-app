@@ -121,7 +121,7 @@ export function ConnectOnboardingCardPreview({
             Get paid for ticket sales
           </h2>
           <p className="mt-1 text-sm text-ink-600">
-            We use Stripe to verify your identity and route payouts. Verification
+            We use Stripe to verify your identity and send your payouts. Verification
             is handled on Stripe and usually takes a few minutes.
           </p>
         </div>
@@ -177,7 +177,7 @@ export function ConnectOnboardingCardPreview({
           <div className="space-y-4">
             <p className="text-sm text-ink-700">
               You started onboarding but Stripe still needs a few details before we
-              can route payouts to you. Pick up where you left off below.
+              can send your payouts. Pick up where you left off below.
             </p>
 
             {requirements.length > 0 && (

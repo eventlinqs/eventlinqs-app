@@ -289,7 +289,7 @@ try {
   }
 
   // ── 5. publish ────────────────────────────────────────────────────────────
-  const pub = await page.$('button:has-text("Publish and get your launch kit")')
+  const pub = await page.$('button:has-text("Publish event")')
   if (!pub) {
     j.blockers.push('no Publish button on the review step')
   } else {

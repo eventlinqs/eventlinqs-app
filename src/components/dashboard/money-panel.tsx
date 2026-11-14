@@ -38,7 +38,7 @@ function dayOf(iso: string, timezone: string | null): string {
   }).format(new Date(iso))
 }
 
-function nextPayoutCard(summary: OrganiserMoneySummary): { value: string; detail: string } {
+function nextPayoutCard(summary: OrganiserMoneySummary): { value: string; detail: string; action?: { label: string; href: string } } {
   const next = summary.nextPayout
   if (!next) return { value: 'None due', detail: 'Nothing is owed to you right now' }
   const amount = money(next.amountCents, summary.currency)
@@ -51,7 +51,11 @@ function nextPayoutCard(summary: OrganiserMoneySummary): { value: string; detail
       return { value: 'On hold', detail: `${amount} for ${next.eventTitle}, held while it is ${next.eventStatus}` }
     case 'held_setup':
       // Leaders' wording for this moment (EL-SELLING-PATH-14NOV/copy-sources.md): a payout method, added and verified.
-      return { value: 'Payout method needed', detail: `${amount} is paid once your payout method is added and verified` }
+      return {
+        value: 'Payout method needed',
+        detail: `${amount} is paid once your payout method is added and verified`,
+        action: { label: 'Add payout method', href: '/dashboard/payouts' },
+      }
   }
 }
 
@@ -75,7 +79,7 @@ export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
           label="Sales"
           testId="money-sales"
           value={money(summary.salesCents, summary.currency)}
-          detail={summary.salesCount > 0 ? `${summary.salesCount} order${summary.salesCount === 1 ? '' : 's'}, your share` : 'Your share of each sale'}
+          detail={summary.salesCount > 0 ? `${summary.salesCount} order${summary.salesCount === 1 ? '' : 's'}` : 'Your share of each sale'}
         />
         <KpiCard
           label="Refunds"

@@ -568,7 +568,6 @@ export function EventForm({
   existingGuide = null,
   existingStatus = 'draft',
   launchKitEnabled = false,
-  lineupEnabled = false,
   magicStartEnabled = false,
   canSellPaid = true,
   canBePaid = true,
@@ -2330,27 +2329,8 @@ export function EventForm({
           </div>
         )}
 
-        {launchKitEnabled && !editMode && (
-          <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
-            <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
-            your live page link, a print-ready QR poster, share cards and captions for every
-            channel, and the tickets each channel sold you, all on one screen.
-          </div>
-        )}
-
-        {/* The lineup loop prompt. The event row does not exist until this
-            submit, so tagging itself lives on the kit that publishing opens;
-            this sets the expectation and sells the benefit in the organiser's
-            own terms. */}
-        {lineupEnabled && (
-          <div className="rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900">
-            <span className="font-semibold">Playing with other acts?</span>{' '}
-            Tag them on your lineup {editMode ? 'from your event dashboard' : 'on the next screen'}.
-            Each act gets their own tracked share link and their own spot on your event page, so
-            they sell to their following and you see exactly how many tickets each one brought.
-          </div>
-        )}
-
+        {/* ONE NOTE BEFORE THE BUTTON (the PM's 20:55 score, fix 2): the launch kit is the screen publishing
+            opens, and tagging other acts lives on that kit's lineup panel, so neither waits here. */}
         {/*
           AN HONEST DISABLED STATE.
 
@@ -2423,9 +2403,7 @@ export function EventForm({
               ? 'Publishing…'
               : editMode
               ? 'Save Changes'
-              : launchKitEnabled
-              ? 'Publish and get your launch kit'
-              : 'Publish Now'}
+              : 'Publish event'}
           </button>
         </div>
       </div>

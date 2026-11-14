@@ -20,6 +20,8 @@ type Props = {
    * change. Added for MONEY FIX B7.
    */
   detail?: string | null
+  /** The one next step this figure asks for (the Next payout card's 'Add payout method'). */
+  action?: { label: string; href: string } | null
 }
 
 function Sparkline({ points }: { points: number[] }) {
@@ -75,8 +77,9 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail }: Props) {
-  const hasSparkline = Array.isArray(sparkline) && sparkline.length >= 2
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action }: Props) {
+  // a line needs two days with something on them; one sale drawn as a spike at the edge says nothing
+  const hasSparkline = Array.isArray(sparkline) && sparkline.filter((v) => v > 0).length >= 2
   const hasData = value !== '0' || hasSparkline
 
   return (
@@ -122,6 +125,15 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, det
           </p>
         )}
       </div>
+      {action ? (
+        <a
+          href={action.href}
+          className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-gold-500 px-4 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/40"
+          data-kpi-action
+        >
+          {action.label}
+        </a>
+      ) : null}
     </div>
   )
 }
