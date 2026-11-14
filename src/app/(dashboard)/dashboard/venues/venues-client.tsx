@@ -89,7 +89,7 @@ function VenueForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label htmlFor="venues-venue-name" className="block text-sm font-medium text-ink-600 mb-1">
-            Venue Name <span className="text-red-500">*</span>
+            Venue name <span className="text-red-500">*</span>
           </label>
           <input id="venues-venue-name"
             type="text"
@@ -101,7 +101,7 @@ function VenueForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label htmlFor="venues-street-address" className="block text-sm font-medium text-ink-600 mb-1">Street Address</label>
+          <label htmlFor="venues-street-address" className="block text-sm font-medium text-ink-600 mb-1">Street address</label>
           <input id="venues-street-address"
             type="text"
             value={form.address ?? ''}
@@ -142,7 +142,7 @@ function VenueForm({
         </div>
 
         <div>
-          <label htmlFor="venues-postal-code" className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
+          <label htmlFor="venues-postal-code" className="block text-sm font-medium text-ink-600 mb-1">Postal code</label>
           <input id="venues-postal-code"
             type="text"
             value={form.postal_code ?? ''}
@@ -153,7 +153,7 @@ function VenueForm({
 
         <div>
           <label htmlFor="venues-total-capacity-optional" className="block text-sm font-medium text-ink-600 mb-1">
-            Total Capacity
+            Total capacity
             <span className="ml-1 text-xs text-ink-400">Optional</span>
           </label>
           <input id="venues-total-capacity-optional"
@@ -398,7 +398,7 @@ export function VenuesClient({ venues: initialVenues, accessibility }: Props) {
                       href={`/dashboard/venues/${venue.id}/seat-maps`}
                       className="rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-100 transition-colors"
                     >
-                      Seat Maps
+                      Seat maps
                     </Link>
                     <Link
                       href={`/dashboard/venues/${venue.id}/report`}

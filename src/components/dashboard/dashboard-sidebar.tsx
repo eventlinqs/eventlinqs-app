@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRoutePathname } from '@/lib/navigation/route-pathname'
+import { activeNavHref } from '@/lib/navigation/active-nav-item'
 import { useState } from 'react'
 import {
   // BarChart3 import removed alongside the hidden /dashboard/insights
@@ -103,6 +104,8 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
     profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin'
 
   const visibleItems = ITEMS.filter((item) => (!item.organiserOnly || isOrganiser) && (!item.whenOn || paidPromotionsOpen))
+  // One current item: on /dashboard/events/create, "Create event", never "My events" with it (activeNavHref).
+  const currentHref = activeNavHref(visibleItems.filter((item) => !item.external), pathname)
 
   return (
     <aside
@@ -117,7 +120,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
           <ul className="space-y-1">
             {visibleItems.map((item) => {
               const Icon = item.icon
-              const active = item.match ? item.match(pathname) : pathname.startsWith(item.href)
+              const active = item.href === currentHref
               const isGold = item.emphasis === 'gold'
 
               const base = [
