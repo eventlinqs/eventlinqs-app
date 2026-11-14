@@ -1,4 +1,4 @@
-import { FEE_FROM_DAY_ONE, KEPT_WINDOW_WORDS, isWaiverActive } from '@/lib/payments/founding-waiver'
+import { FEE_FROM_DAY_ONE, KEPT_WINDOW_WORDS, isWaiverActive, referralExtensionOpen } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -142,7 +142,7 @@ export default async function InvitesPage({
 
       <div className="mb-6">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-          Referrals
+          Invite organisers
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
@@ -156,6 +156,7 @@ export default async function InvitesPage({
         allowance={INVITES_PER_FOUNDING_ORGANISER}
         feeFreeUntil={org.founding_fee_free_until ?? null}
         waiverActive={isWaiverActive(org.founding_fee_free_until)}
+        referralsEarnTime={isWaiverActive(org.founding_fee_free_until) && referralExtensionOpen()}
         feeRule={FEE_FROM_DAY_ONE.rule}
         keptWindowWords={KEPT_WINDOW_WORDS}
         acceptedCount={acceptedCount}

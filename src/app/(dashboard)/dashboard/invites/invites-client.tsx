@@ -18,6 +18,7 @@ export function InvitesClient({
   referralsPending,
   feeFreeUntil,
   waiverActive,
+  referralsEarnTime,
   feeRule,
   keptWindowWords,
   cities,
@@ -45,6 +46,11 @@ export function InvitesClient({
   /** Computed server-side with isWaiverActive(), the charge authority helper. */
   waiverActive: boolean
   /**
+   * True only for an organisation holding a window while a referral still extends it (until 15 December 2026,
+   * referralExtensionOpen): only then does a referral earn anything, so only then is the card "Referrals counted".
+   */
+  referralsEarnTime: boolean
+  /**
    * FEE_FROM_DAY_ONE.rule from src/lib/payments/founding-waiver.ts, passed in so the rule is said in the module's
    * words without that server module entering the client bundle.
    */
@@ -53,7 +59,8 @@ export function InvitesClient({
   keptWindowWords: string
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
-  const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
+  // Melbourne first (the growth plan's version 6, 12 November 2026), then every other city in the list.
+  const [city, setCity] = useState<string>(cities.find(c => c.slug === 'melbourne')?.slug ?? cities[0]?.slug ?? '')
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -128,15 +135,19 @@ export function InvitesClient({
       */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Stat label="Invites left" value={`${remaining} of ${allowance}`} />
-        <Stat
-          label="Referrals counted"
-          value={String(referralsConfirmed)}
-          hint={
-            referralsPending > 0
-              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet`
-              : `${acceptedCount} joined through your links. A referral counts when their first paid ticket sells`
-          }
-        />
+        {referralsEarnTime ? (
+          <Stat
+            label="Referrals counted"
+            value={String(referralsConfirmed)}
+            hint={
+              referralsPending > 0
+                ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet`
+                : `${acceptedCount} joined through your links. A referral counts when their first paid ticket sells`
+            }
+          />
+        ) : (
+          <Stat label="Organisers joined" value={String(acceptedCount)} hint="Organisers who joined EventLinqs through your links" />
+        )}
         {waiverUntil ? (
           <Stat
             label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
