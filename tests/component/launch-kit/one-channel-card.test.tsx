@@ -56,7 +56,8 @@ describe('the open channel card (S8)', () => {
     const share = screen.getByRole('link', { name: 'Share on Facebook' })
     expect(share.textContent).toContain('Share on Facebook')
     expect(share.getAttribute('href')).toContain(encodeURIComponent('https://evl.ink/f'))
-    expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
+    // Not WhatsApp's share button (the Other shapes download names "WhatsApp status", which is right).
+    expect(screen.queryByRole('link', { name: 'Share on WhatsApp' })).toBeNull()
     expect(screen.queryByText('Copy link')).toBeNull()
   })
 
