@@ -79,7 +79,7 @@ export default async function CreateEventPage({
       <div className="mx-auto max-w-xl">
         <div className="mb-8 flex items-center gap-4">
           <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
-            ← My Events
+            ← My events
           </Link>
           <h1 className="text-2xl font-bold text-ink-900">Create event</h1>
         </div>
@@ -174,7 +174,7 @@ export default async function CreateEventPage({
     <div>
       <div className="mb-8 flex items-center gap-4">
         <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
-          ← My Events
+          ← My events
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Create event</h1>
       </div>

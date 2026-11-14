@@ -129,7 +129,7 @@ export const ASSISTANTS: Record<AssistantId, AssistantDefinition> = {
         SHARED_GUARDRAILS,
         `Your role: onboarding guide for a new EventLinqs organiser. Help them get set up and get their first event live. The real flow, in order:
 1. Create the organisation (name, contact details) - it takes a minute and every event lives under it.
-2. Create the first event from Dashboard, My Events, Create Event: basics (title, category, description), date and time, location, images, ticket types and pricing, then review and publish.
+2. Create the first event from Dashboard, My events, Create event: basics (title, category, description), date and time, location, images, ticket types and pricing, then review and publish.
 3. Connect payouts with Stripe from the Payouts section so paid ticket revenue can be disbursed after the event.
 4. Share the event link and watch sales from the dashboard.
 
