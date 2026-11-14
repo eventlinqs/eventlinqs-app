@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { SHAPE_COOKIE, decodeShape } from '@/lib/forecast/shape-cookie'
 import { one } from '@/lib/forecast/params'
 import { redirect } from 'next/navigation'
@@ -10,7 +11,7 @@ import { isFlagEnabled } from '@/lib/flags'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
-import { ORG_SALE_FIELDS_SELECT, isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
+import { ORG_SALE_FIELDS_SELECT, isOrganiserPayable, isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
 import { readEventCategories, readOrganisationVenues } from '@/lib/organisers/event-form-options'
 
 export default async function CreateEventPage({
@@ -101,12 +102,24 @@ export default async function CreateEventPage({
    * Can this organisation take money today? Read here so the Publish button can
    * look as blocked as it actually is, instead of inviting a press that the
    * server is going to refuse. The server gate (checkPublishGate) is still the
-   * only thing that decides, and it re-reads Stripe before refusing.
+   * only thing that decides.
+   *
+   * READ WITH THE SERVICE ROLE, SCOPED TO THE CALLER'S OWN ORGANISATION. The five
+   * sale columns are readable by the service role only: 20260819000002 revoked
+   * SELECT on every stripe_* column and payout_status from anon and authenticated
+   * (read back on TEST and production on 14 November 2026: authenticated may
+   * select id and name, none of the five). This read used the session client, so
+   * it was refused on every render since that migration, the refusal took the
+   * failed-read branch below, and the form never showed a blocked organisation
+   * or, from 14 November, the payout step (found by the sell first TEST proof).
+   * The pattern is resolveOrganisationScope's own: the service role, gated on
+   * owner_id = the signed-in user.
    */
-  const { data: saleOrg, error: saleOrgError } = await supabase
+  const { data: saleOrg, error: saleOrgError } = await createAdminClient()
     .from('organisations')
     .select(ORG_SALE_FIELDS_SELECT)
     .eq('id', org.id)
+    .eq('owner_id', user.id)
     .maybeSingle()
   /*
    * verifyOrgSaleFields, not a cast. The branded type exists so nobody can hand
@@ -135,6 +148,13 @@ export default async function CreateEventPage({
     : saleVerdict.complete
       ? isOrganiserSellable(saleVerdict.org)
       : false
+  /*
+   * WHETHER THE ORGANISER CAN BE PAID YET (sell first, 14 November 2026). It never
+   * stops a publish or a sale; it only decides whether the form shows the guided
+   * step "connect your bank before your event". An unreadable row shows no step
+   * rather than a false one, for the reason given above.
+   */
+  const canBePaid = saleOrgError ? true : saleVerdict.complete ? isOrganiserPayable(saleVerdict.org) : true
 
   /*
    * THE FORM'S OPTION LISTS, READ IN FULL AND LOUDLY.
@@ -179,6 +199,7 @@ export default async function CreateEventPage({
         lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         magicStartEnabled={await isFlagEnabled('magic_start')}
         canSellPaid={canSellPaid}
+        canBePaid={canBePaid}
         shapePrefill={shapePrefill}
       />
     </div>

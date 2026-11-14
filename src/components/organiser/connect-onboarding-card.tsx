@@ -182,7 +182,9 @@ export function ConnectOnboardingCard({
           </h2>
           <p className="mt-1 text-sm text-ink-600">
             We use Stripe to verify your identity and route payouts. Verification
-            is handled on Stripe and usually takes a few minutes.
+            is handled on Stripe and usually takes a few minutes. Ticket sales do
+            not wait for this step; your details must be verified before you can
+            receive a payout.
           </p>
         </div>
         <StatusPill state={state} />
@@ -405,7 +407,7 @@ function CompleteView({
             Payouts are active for this organisation.
           </p>
           <p className="mt-0.5 text-xs text-ink-600">
-            You can publish paid events. Your first payout starts the Tier 2
+            Ticket sales are paid into this account after each event ends. Your first payout starts the Tier 2
             review automatically.
           </p>
         </div>

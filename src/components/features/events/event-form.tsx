@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
-import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
+import { isPaidPublishBlocked, showsConnectBankStep } from '@/lib/events/paid-publish-blocked'
 import { UNSAVED_TIER_PREFIX, isSavedTierId } from '@/lib/events/save-tiers'
 import { STREAM_COUNTRIES, STREAM_REGIONS, normaliseCountryCodes, describeCountries } from '@/lib/stream/countries'
 import { isAcceptableStreamLink } from '@/lib/stream/embed'
@@ -542,6 +542,13 @@ type Props = {
    * checkPublishGate; this never decides anything on its own.
    */
   canSellPaid?: boolean
+  /**
+   * Whether the organisation can be PAID yet (isOrganiserPayable, on the server).
+   * Since 14 November 2026 a paid event publishes and sells at once and the money
+   * is held until after the event, so this never blocks anything: when it is
+   * false the form shows the one step left, connecting a bank before the event.
+   */
+  canBePaid?: boolean
   /** FT1: the event shape carried in from the public forecast tool. */
   shapePrefill?: EventShapePrefill
 }
@@ -564,6 +571,7 @@ export function EventForm({
   lineupEnabled = false,
   magicStartEnabled = false,
   canSellPaid = true,
+  canBePaid = true,
   shapePrefill,
 }: Props) {
   const router = useRouter()
@@ -608,6 +616,10 @@ export function EventForm({
   const paidPublishBlocked = useMemo(
     () => isPaidPublishBlocked({ canSellPaid, editMode, tierPrices: formData.ticket_tiers }),
     [canSellPaid, editMode, formData.ticket_tiers],
+  )
+  const connectBankStep = useMemo(
+    () => showsConnectBankStep({ canSellPaid, canBePaid, editMode, tierPrices: formData.ticket_tiers }),
+    [canSellPaid, canBePaid, editMode, formData.ticket_tiers],
   )
 
   /*
@@ -2360,10 +2372,27 @@ export function EventForm({
         */}
         {paidPublishBlocked && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <span className="font-semibold">This event has a paid ticket, so it needs Stripe connected before it can go live.</span>{' '}
-            Save it as a draft now, connect Stripe, and publish when you come back.
+            <span className="font-semibold">Ticket sales are paused for this organisation.</span>{' '}
+            Save this event as a draft and contact EventLinqs support for details.
+            <a href="/contact" className="ml-2 font-semibold underline underline-offset-2">
+              Contact support
+            </a>
+          </div>
+        )}
+
+        {/*
+          SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November
+          2026). A paid event publishes and sells now; the money is held by
+          EventLinqs and paid to the organiser's own bank after the event, once it
+          is connected. So this is a step, not a wall: it names what is left and
+          links straight to it, and the Publish button stays live.
+        */}
+        {connectBankStep && (
+          <div className="rounded-lg border border-ink-200 bg-ink-100 px-4 py-3 text-sm text-ink-900">
+            <span className="font-semibold">Add a payout method before your event.</span>{' '}
+            EventLinqs collects ticket payments and pays your sales into your nominated bank account after your event ends. Verify your details to receive your payout.
             <a href="/dashboard/payouts" className="ml-2 font-semibold underline underline-offset-2">
-              Connect Stripe
+              Add payout method
             </a>
           </div>
         )}

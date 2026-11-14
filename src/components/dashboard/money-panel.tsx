@@ -50,7 +50,8 @@ function nextPayoutCard(summary: OrganiserMoneySummary): { value: string; detail
     case 'held_event':
       return { value: 'On hold', detail: `${amount} for ${next.eventTitle}, held while it is ${next.eventStatus}` }
     case 'held_setup':
-      return { value: 'On hold', detail: `${amount} waiting for your payout setup to finish` }
+      // Leaders' wording for this moment (EL-SELLING-PATH-14NOV/copy-sources.md): a payout method, added and verified.
+      return { value: 'Payout method needed', detail: `${amount} is paid once your payout method is added and verified` }
   }
 }
 

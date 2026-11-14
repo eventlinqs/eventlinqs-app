@@ -59,7 +59,7 @@ const base = {
 
 describe('an event that has already ended', () => {
   it('is refused, and the refusal names the date', async () => {
-    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: LAST_MONTH }, null)
+    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: LAST_MONTH })
     expect(r.ok).toBe(false)
     if (r.ok) return
     expect(r.reason).toBe('event_already_ended')
@@ -72,21 +72,20 @@ describe('an event that has already ended', () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
       { ...base, endsAt: NEXT_WEEK },
-      null,
     )
     expect(r.ok, 'a running multi-day event was refused: the rule is "has it ended", not "did it start"').toBe(true)
     expect(YESTERDAY < NEXT_WEEK).toBe(true)
   })
 
   it('an event with no end recorded is not refused on that basis', async () => {
-    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: null }, null)
+    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: null })
     expect(r.ok).toBe(true)
   })
 
   it('an unparseable end date is not refused on that basis either', async () => {
     // Refusing on a value we cannot read would block a publish for a reason we
     // could not explain, which is the opposite of a refusal being true.
-    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: 'not-a-date' }, null)
+    const r = await checkPublishGate(clientReturning(SELLABLE_ORG), { ...base, endsAt: 'not-a-date' })
     expect(r.ok).toBe(true)
   })
 })
@@ -96,7 +95,6 @@ describe('a physical event with nowhere to go', () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
       { ...base, venueName: null, venueAddress: null },
-      null,
     )
     expect(r.ok).toBe(false)
     if (r.ok) return
@@ -109,7 +107,6 @@ describe('a physical event with nowhere to go', () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
       { ...base, venueName: '   ', venueAddress: '\t' },
-      null,
     )
     expect(r.ok).toBe(false)
   })
@@ -118,7 +115,6 @@ describe('a physical event with nowhere to go', () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
       { ...base, venueName: null, venueAddress: '44 Moorabool St, Geelong', walkIn: null },
-      null,
     )
     expect(r.ok).toBe(true)
   })
@@ -127,7 +123,6 @@ describe('a physical event with nowhere to go', () => {
     const r = await checkPublishGate(
       clientReturning(SELLABLE_ORG),
       { ...base, isPhysical: false, venueName: null, venueAddress: null },
-      null,
     )
     expect(r.ok, 'an online event was refused for having no address').toBe(true)
   })

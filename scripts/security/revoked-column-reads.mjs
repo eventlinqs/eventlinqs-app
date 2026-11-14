@@ -151,15 +151,43 @@ const unresolved = []
  * smallest change that makes those queries visible, and it cannot alter what the
  * matcher concludes about anything it could already see.
  */
+/*
+ * AND THE CONSTANTS A FILE IMPORTS (14 November 2026). The inlining above read only
+ * the constants declared in the SAME file, so a select written as
+ *
+ *     import { ORG_SALE_FIELDS_SELECT } from '@/lib/payments/sale-status'
+ *     await supabase.from('organisations').select(ORG_SALE_FIELDS_SELECT)
+ *
+ * was invisible again, the blind spot of 25 August one import away. The create
+ * event page read the five sale columns exactly so with the session client from
+ * 19 August (20260819000002 revoked every one of them from authenticated), was
+ * refused on every render, and took its failed-read branch, so the form never showed
+ * a blocked organisation or the payout step; found by the sell first TEST proof, not
+ * by this guard. So every `export const NAME = '...'` in src is known by name, and a
+ * `${NAME}` inside a select's template string is substituted as well
+ * (src/lib/growth/activation-read.ts writes the sale columns that way). A name
+ * exported twice with different values stands for both, which over-reports, the
+ * correct direction for this check.
+ */
+const EXPORTED = new Map()
+for (const file of walk(SRC)) {
+  for (const m of readFileSync(file, 'utf8').matchAll(/export\s+const\s+([A-Z][A-Z0-9_]*)\s*=\s*(['"`])([^'"`$]*)\2/g)) {
+    const prior = EXPORTED.get(m[1])
+    EXPORTED.set(m[1], prior === undefined || prior === m[3] ? m[3] : `${prior}, ${m[3]}`)
+  }
+}
+
 function inlineSelectConstants(src) {
-  const consts = new Map()
+  const consts = new Map(EXPORTED)
   for (const m of src.matchAll(/const\s+([A-Z][A-Z0-9_]*)\s*=\s*(['"`])([^'"`]*)\2/g)) {
     consts.set(m[1], m[3])
   }
   if (consts.size === 0) return src
-  return src.replace(/\.select\(\s*([A-Z][A-Z0-9_]*)\s*([,)])/g, (whole, name, tail) =>
-    consts.has(name) ? `.select('${consts.get(name)}'${tail}` : whole,
-  )
+  return src
+    .replace(/\.select\(\s*([A-Z][A-Z0-9_]*)\s*([,)])/g, (whole, name, tail) =>
+      consts.has(name) ? `.select('${consts.get(name)}'${tail}` : whole,
+    )
+    .replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (whole, name) => (consts.has(name) ? consts.get(name) : whole))
 }
 
 for (const file of walk(SRC)) {

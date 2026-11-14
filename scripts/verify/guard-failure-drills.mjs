@@ -283,6 +283,19 @@ const DRILLS = [
     expect: 'names InvitationCard, the invitation card fill',
   },
   /*
+   * revoked-column-reads, imported constants (14 November 2026): the create event page read the five sale columns
+   * through ORG_SALE_FIELDS_SELECT with the session client, refused since 20260819000002, and the guard could not see
+   * a select through an imported constant. The regression is that read going back to the session client.
+   */
+  {
+    name: 'the create page reads the sale columns with the session client again',
+    guard: 'scripts/security/revoked-column-reads.mjs',
+    file: 'src/app/(dashboard)/dashboard/events/create/page.tsx',
+    find: 'const { data: saleOrg, error: saleOrgError } = await createAdminClient()',
+    replace: 'const { data: saleOrg, error: saleOrgError } = await supabase',
+    expect: 'organisations -> stripe_account_id',
+  },
+  /*
    * organiser-links-have-a-page (the CONTROLLER's 18:22 of 31 October 2026: an ended listing linked
    * /organisers/eventlinqs-listings, a 404), two drills: the event page hands the ended-event banner the raw
    * organisation's slug again, and the venue page lists the listings organisation among its organisers again.
@@ -2284,8 +2297,10 @@ const DRILLS = [
     name: 'an anon query filters on a column revoked from anon',
     guard: 'scripts/security/revoked-column-reads.mjs',
     file: 'src/app/organisers/[handle]/page.tsx',
-    find: "    .eq('id', row.id)",
-    replace: "    .eq('id', row.id)\n    .eq('status', 'active')",
+    // Re-aimed 14 November 2026: Car 47 (e46851bfb) moved the page's anon read into readPublicOrganisation, and the
+    // old anchor ('.eq('id', row.id)') matched nothing, so the drill had gone stale.
+    find: "        .eq('id', id)",
+    replace: "        .eq('id', id)\n        .eq('status', 'active')",
     expect: 'revoked',
   },
   {
@@ -4248,28 +4263,36 @@ const DRILLS = [
     expect: 'does not set fee_waived from waiver.active',
   },
   {
-    name: 'the charge is created before anybody checks the organiser can be paid',
+    name: 'the charge is created before anybody checks the sale may be taken',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/payments/create-platform-charge.ts',
-    find: '  assertOrganiserCanReceiveFunds(org, input.fees)',
-    replace: '  // assertOrganiserCanReceiveFunds(org, input.fees)',
-    expect: 'does not call assertOrganiserCanReceiveFunds',
+    find: '  assertOrganiserCanTakeSales(org, input.fees)',
+    replace: '  // assertOrganiserCanTakeSales(org, input.fees)',
+    expect: 'does not call assertOrganiserCanTakeSales',
   },
   {
     name: 'the charge stops resolving a destination connected account',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/payments/create-platform-charge.ts',
-    find: '  const connectedAccountId = org.stripe_account_id!',
-    replace: '  const connectedAccountId = null as unknown as string',
+    find: '  const connectedAccountId = org.stripe_account_id ?? null',
+    replace: '  const connectedAccountId = null as string | null',
     expect: 'no longer resolved from the organisation row',
   },
   {
-    name: 'an organiser whose payouts are disabled is no longer refused',
+    name: 'an organisation EventLinqs has put on hold is no longer refused',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/payments/application-fee.ts',
-    find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
-    replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
-    expect: 'no longer tests `!org.stripe_payouts_enabled`',
+    find: "  if (org.payout_status === 'on_hold') {\n    throw new ChargePreconditionError(\n      'org_on_hold',",
+    replace: "  if (false) {\n    throw new ChargePreconditionError(\n      'org_on_hold',",
+    expect: "no longer tests `org.payout_status === 'on_hold'`",
+  },
+  {
+    name: 'the wall comes back: a sale is refused for want of a connected account (sell first, 14 November 2026)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: "  if (org.payout_status === 'on_hold') {",
+    replace: "  if (!org.stripe_account_id) throw new ChargePreconditionError('org_not_connected', 'not connected')\n  if (org.payout_status === 'on_hold') {",
+    expect: 'which is the wall Lawal removed',
   },
   /*
    * MONEY FIX A3 layer three, the three drills for clause four. The first is
@@ -4302,7 +4325,11 @@ const DRILLS = [
     expect: 'judges nothing',
   },
   /*
-   * MONEY FIX A3 LAYER TWO, the four drills for clause five.
+   * Clause five, four drills. Since 14 November 2026 (sell first) the publish
+   * gate asks the one sale rule and no Stripe posture, so its first three drills
+   * are that it starts asking Stripe again, that it grants on a looser rule, and
+   * that the reconciler judges payability by a rule of its own. The fourth, the
+   * stamp, is kept from MONEY FIX A3 layer two, whose history follows.
    *
    * The first is the defect itself. The five sale columns are a CACHE of what
    * Stripe last said and nothing recorded WHEN, so a row that said "enabled"
@@ -4311,28 +4338,28 @@ const DRILLS = [
    * person to find out is the organiser whose transfer fails after the night.
    */
   {
-    name: 'a paid event publishes on a cached Stripe posture of any age again (the A3 layer two defect)',
+    name: 'the publish gate starts asking Stripe again before a paid event goes live',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/events/publish-gate.ts',
-    find: 'if (reconcile === null || connectVerificationIsFresh(verifiedAt)) {',
-    replace: 'if (reconcile === null || verifiedAt !== undefined) {',
-    expect: 'never calls connectVerificationIsFresh',
+    find: '  if (isOrganiserSellable(saleFields.org)) return { ok: true }',
+    replace: '  await reconcileConnectedAccount(client, input.organisationId)\n  if (isOrganiserSellable(saleFields.org)) return { ok: true }',
+    expect: 'asks Stripe again before publishing',
   },
   {
-    name: 'the publish gate stops reading the date its cached posture was verified',
+    name: 'the publish grant moves to a looser rule than the sale, which the checkout would then refuse',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/events/publish-gate.ts',
-    find: ".select(`${ORG_SALE_FIELDS_SELECT}, stripe_status_verified_at`)",
-    replace: '.select(ORG_SALE_FIELDS_SELECT)',
-    expect: 'does not SELECT stripe_status_verified_at',
+    find: '  if (isOrganiserSellable(saleFields.org)) return { ok: true }',
+    replace: "  if (saleFields.org.payout_status !== 'restricted') return { ok: true }",
+    expect: 'no longer grants a paid publish on isOrganiserSellable',
   },
   {
-    name: 'the publish grant goes back to canSell, which the checkout would then refuse',
+    name: 'the reconciler judges payability by a rule of its own instead of the payout rule',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
-    file: 'src/lib/events/publish-gate.ts',
-    find: 'if (fresh.sellable) return { ok: true }',
-    replace: 'if (fresh.canSell) return { ok: true }',
-    expect: "grants a publish on reconcile's canSell",
+    file: 'src/lib/stripe/reconcile-connect.ts',
+    find: '  const payable = verdict.complete ? isOrganiserPayable(verdict.org) : false',
+    replace: '  const payable = verdict.complete ? next.stripe_charges_enabled === true : false',
+    expect: 'does not compute its payable verdict with isOrganiserPayable',
   },
   {
     name: 'reading the account from Stripe stops recording that it was read',
@@ -4352,8 +4379,8 @@ const DRILLS = [
     name: 'a ticket charge stops recording where its money is owed (the Afro-Fusion failure)',
     guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
     file: 'src/lib/payments/create-platform-charge.ts',
-    find: '  await recordOrderDestination({',
-    replace: '  await Promise.resolve({',
+    find: '    await recordOrderDestination({',
+    replace: '    await Promise.resolve({',
     expect: "does not record where this order's money is owed",
   },
   {
@@ -4379,6 +4406,26 @@ const DRILLS = [
     find: '      transferGroup: order_id,',
     replace: '      transferGroup: squad.id,',
     expect: 'pass transferGroup: order_id 2 time(s), not 3',
+  },
+  /*
+   * SELL FIRST, clause seven, two drills: the post-event payout may pay only the
+   * organisation's own connected, active account (Lawal, 10 October 2026).
+   */
+  {
+    name: 'the payout selects an organisation with no connected account',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/event-transfer.ts',
+    find: ".not('organisations.stripe_account_id', 'is', null)",
+    replace: ".not('organisations.id', 'is', null)",
+    expect: 'selects organisations with no connected account',
+  },
+  {
+    name: 'the payout pays an organisation that EventLinqs or Stripe has paused',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/event-transfer.ts',
+    find: ".eq('organisations.payout_status', 'active')",
+    replace: ".neq('organisations.payout_status', 'closed')",
+    expect: 'pays an organisation that is not active',
   },
   /*
    * every-letter-greets (gap 3, 31 October 2026), two drills: a sender to a person drops off the letter list, so its

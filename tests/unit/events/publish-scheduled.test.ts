@@ -134,35 +134,38 @@ describe('a free event whose time has come', () => {
 })
 
 describe('the gate is re-run at publish time, not trusted from scheduling time', () => {
-  it('refuses a paid event whose organisation can no longer take payment', async () => {
+  /*
+   * SELL FIRST (Lawal's yes, 15:22 on 14 November 2026). The cron asks the same
+   * rule as the Publish button: a paid event goes live unless EventLinqs has put
+   * the organisation on hold. Stripe's posture no longer decides it, so an
+   * organiser still finishing Stripe, or one Stripe has restricted, goes live on
+   * time and the payout waits for their account.
+   */
+  it('publishes a paid event whose organiser has not finished Stripe, or whose payouts Stripe restricted', async () => {
+    for (const org of [
+      { stripe_account_id: 'acct_x', stripe_charges_enabled: false, stripe_payouts_enabled: false, stripe_account_country: 'AU', payout_status: 'active' },
+      { stripe_account_id: null, stripe_charges_enabled: false, stripe_payouts_enabled: false, stripe_account_country: null, payout_status: 'active' },
+      { stripe_account_id: 'acct_x', stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_account_country: 'AU', payout_status: 'restricted' },
+    ]) {
+      const { client } = stub({ due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })], org })
+      const summary = await publishScheduledEvents(client, NOW)
+      expect(summary.published, JSON.stringify(org)).toBe(1)
+    }
+  })
+
+  it('refuses a paid event whose organisation EventLinqs put on hold after scheduling', async () => {
     const { client, calls } = stub({
       due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })],
-      // Five columns, because the publish gate now runs the sale gate's own
-      // predicate and verifies field PRESENCE first. Three columns made this an
-      // incomplete row rather than an unsellable organiser.
-      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: false, stripe_payouts_enabled: false, stripe_account_country: 'AU', payout_status: 'active' },
+      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_account_country: 'AU', payout_status: 'on_hold' },
     })
     const summary = await publishScheduledEvents(client, NOW)
     expect(summary.published).toBe(0)
-    expect(summary.blocked).toBe(1)
-    expect(summary.outcomes[0]).toMatchObject({
-      result: 'blocked',
-      reason: 'paid_event_charges_disabled',
-    })
-    // Nothing was written: it stays scheduled rather than being dropped.
-    expect(calls.find((c) => c.update)).toBeUndefined()
-  })
-
-  it('refuses a paid event whose payouts became restricted after scheduling', async () => {
-    const { client } = stub({
-      due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })],
-      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_account_country: 'AU', payout_status: 'restricted' },
-    })
-    const summary = await publishScheduledEvents(client, NOW)
     expect(summary.outcomes[0]).toMatchObject({
       result: 'blocked',
       reason: 'organisation_payouts_restricted',
     })
+    // Nothing was written: it stays scheduled rather than being dropped.
+    expect(calls.find((c) => c.update)).toBeUndefined()
   })
 
   it('refuses an event whose cover was removed after scheduling', async () => {

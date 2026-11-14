@@ -365,7 +365,6 @@ export function occurrenceStore(): OccurrenceStore {
             ? null
             : { tierCount: 0, days: [guideDay], startsAt: fields.start_date, endsAt: fields.end_date, timezone: fields.timezone },
         },
-        null,
       )
       if (!gate.ok) return takeAway(eventId, `the publish gate refused it: ${gate.message}`)
 

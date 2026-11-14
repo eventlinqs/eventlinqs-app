@@ -8,8 +8,9 @@ import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { readCampaign } from '@/lib/social/store'
 import { KIND_NAMES } from '@/lib/growth/social-report-math'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, heldUnpayableItems, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 
 /**
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
@@ -347,6 +348,26 @@ async function submissionsNotLive(admin: Admin, now: Date): Promise<QueueItem[]>
   }))
 }
 
+/**
+ * ORGANISATIONS THAT CANNOT BE PAID YET, HOLDING MORE THAN A$2,000 (the PM's 15:36 of 14 November 2026). "Cannot be paid
+ * yet" is the payout cron's own rule, connected and active (runEventDisbursements; money-summary.ts states it the same
+ * way), and the amount is the ledger the payout pays from, so this line and the organiser's own money panel agree.
+ */
+async function heldUnpayable(admin: Admin): Promise<QueueItem[]> {
+  const orgs = await readEveryRow('today held unpayable organisations', (from, to) =>
+    admin.from('organisations').select('id, name').or('stripe_account_id.is.null,payout_status.neq.active').order('id').range(from, to),
+  )
+  if (orgs.length === 0) return []
+  const ids = orgs.map((o) => o.id as string)
+  const rows = await readEveryRow('today held unpayable ledger', (from, to) =>
+    admin.from('organiser_balance_ledger').select('organisation_id, delta_cents, created_at').in('organisation_id', ids).eq('currency', 'AUD').order('id').range(from, to),
+  )
+  return heldUnpayableItems(
+    orgs.map((o) => ({ id: o.id as string, name: String(o.name) })),
+    rows.map((r) => ({ organisation_id: r.organisation_id as string, delta_cents: Number(r.delta_cents), created_at: r.created_at as string })),
+  )
+}
+
 /** Lawal's queue, read now. */
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
@@ -386,5 +407,6 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   ]
   /* The engine's own day line, read in a line of its own (Lawal's 18:31 of 13 November 2026). */
   sources.push({ key: 'discovery_day', section: 'exceptions', name: "The Event Discovery Engine's day line", read: await attempt(() => discoveryDayLine(admin)) })
+  sources.push({ key: 'held_unpayable', section: 'exceptions', name: 'Ticket sales held for an organisation with no payout account', read: await attempt(() => heldUnpayable(admin)) })
   return queueOf(sources)
 }
