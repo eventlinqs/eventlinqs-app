@@ -605,12 +605,10 @@ export async function OrganisersLandingPage({ broadcastsOn = false }: { broadcas
               <p className="mt-2 text-sm font-semibold text-white sm:text-base">
                 {OFFER_SUBLINE}
               </p>
-              {/* Hidden on the smallest screens: the fixed hero height fits
-                  headline + fee line + CTAs at 390; the supporting copy
-                  re-enters immediately in the bands below. */}
-              <p className="mt-2 hidden max-w-xl text-sm text-white/85 sm:block sm:text-base">
-                {reach.heroLine}
-              </p>
+              {/* The reach line (reach.heroLine, 'Then the tools that fill it ...') followed the old headline; under the
+                  offer's headline it dangled and repeated the five outcomes just below (looked at 1440, 15 November
+                  2026), so the hero carries the headline, its one line and the fee. The reach words still lead the
+                  discovery band. */}
               {/* Cost in one glance, above the fold (exact fee from the pricing
                   source, never invented). */}
               <p className="mt-3 text-sm font-semibold text-white">
