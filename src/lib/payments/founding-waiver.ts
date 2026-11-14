@@ -164,6 +164,12 @@ export const FOUNDING_TERMS = {
   scope: `EventLinqs is national: the offer is open to every organiser in ${FOUNDING_OFFER_SCOPE}.`,
 } as const
 
+/**
+ * The kept window, said one way, for an organisation registered before the change that still holds one (Referral
+ * invites). Its months and its dates are rendered from this module, never typed on a page.
+ */
+export const KEPT_WINDOW_WORDS = `Your organisation registered before ${FOUNDING_OFFER_CLOSED_ON_LABEL}, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then. A referral you complete by ${REFERRAL_EXTENSION_LAST_DAY_LABEL} still extends it by ${FOUNDING_REFERRAL_MONTHS_WORD} months`
+
 export interface FoundingWaiver {
   /** The expiry timestamp, or null when the organisation has no waiver. */
   feeFreeUntil: string | null

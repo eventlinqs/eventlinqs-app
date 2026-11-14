@@ -1,4 +1,4 @@
-import { FEE_FROM_DAY_ONE, isWaiverActive } from '@/lib/payments/founding-waiver'
+import { FEE_FROM_DAY_ONE, KEPT_WINDOW_WORDS, isWaiverActive } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -157,6 +157,7 @@ export default async function InvitesPage({
         feeFreeUntil={org.founding_fee_free_until ?? null}
         waiverActive={isWaiverActive(org.founding_fee_free_until)}
         feeRule={FEE_FROM_DAY_ONE.rule}
+        keptWindowWords={KEPT_WINDOW_WORDS}
         acceptedCount={acceptedCount}
         referralsConfirmed={referrals.confirmed}
         referralsPending={referrals.pending}

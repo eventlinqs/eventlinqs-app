@@ -19,6 +19,7 @@ export function InvitesClient({
   feeFreeUntil,
   waiverActive,
   feeRule,
+  keptWindowWords,
   cities,
 }: {
   initialInvites: InviteRow[]
@@ -48,6 +49,8 @@ export function InvitesClient({
    * words without that server module entering the client bundle.
    */
   feeRule: string
+  /** KEPT_WINDOW_WORDS from the one module: the kept window, its months and dates rendered there. */
+  keptWindowWords: string
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
   const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
@@ -73,7 +76,7 @@ export function InvitesClient({
   // it sees this tile; everyone else pays the fee from the first paid ticket and is told that once, in the tile's place.
   const waiverLabel = waiverActive ? waiverDate : 'Ended'
   const waiverHint = waiverActive
-    ? 'Your organisation registered before 15 November 2026, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then. A referral you complete by 15 December 2026 still extends it by three months'
+    ? keptWindowWords
     : 'Ended ' + waiverDate + '. ' + feeRule
 
   const generate = () => {

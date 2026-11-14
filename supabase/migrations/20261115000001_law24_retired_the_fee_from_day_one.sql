@@ -118,7 +118,7 @@ revoke all on function public.fee_free_window_never_moves_later() from public, a
 
 drop trigger if exists trg_fee_free_window_never_moves_later on public.organisations;
 create trigger trg_fee_free_window_never_moves_later
-  before update of founding_fee_free_until on public.organisations
+  before update of founding_fee_free_until, founding_bonus_months on public.organisations
   for each row execute function public.fee_free_window_never_moves_later();
 
 comment on function public.fee_free_window_never_moves_later() is

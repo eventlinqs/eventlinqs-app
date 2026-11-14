@@ -55,16 +55,12 @@ export const OFFER_RECORD = [
     reason: 'the organiser agreement of 15 November 2026: the dated record of the closed offer for those who registered under it',
   },
   {
-    file: 'src/app/(dashboard)/dashboard/invites/invites-client.tsx',
-    reason: 'the kept window, shown only to an organisation registered before 15 November 2026 that still holds one',
-  },
-  {
     file: 'src/app/admin/(authed)/network/founding-terms.tsx',
     reason: 'the owner\'s screen of the kept windows (admin only)',
   },
   {
-    file: 'src/app/admin/(authed)/network/actions.ts',
-    reason: 'the owner\'s refusal to grant or extend a window (admin only)',
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    reason: 'the owner\'s screen of the kept windows (admin only)',
   },
   {
     file: 'src/lib/flags/broadcast.ts',

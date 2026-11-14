@@ -188,7 +188,8 @@ describe('spending the code', () => {
       p_code: 'ABCDEF',
       p_user_id: 'user-1',
       p_org_id: 'org-1',
-      p_offer_open: true,
+      // LAW 24 retired (15 November 2026): the code switch closes the offer whatever the flag row says.
+      p_offer_open: false,
     })
     // The defect this replaced: a second round trip that could fail on its own.
     expect(rpc.mock.calls.map(c => c[0])).not.toContain('claim_founding_spot')

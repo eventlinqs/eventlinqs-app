@@ -274,7 +274,9 @@ describe('FO1 acceptance 5: the published offer numbers ARE the configuration', 
 describe('FO1 reversal condition: the offer can be closed without a deploy', () => {
   it('founding_open is a governed switch with a dated decision', () => {
     expect(BROADCAST_FLAGS).toContain('founding_open')
-    expect(BROADCAST_FLAG_DEFAULTS.founding_open).toBe(true)
+    // LAW 24 retired (Lawal, 15 November 2026): the switch is off, with its dated decision.
+    expect(BROADCAST_FLAG_DEFAULTS.founding_open).toBe(false)
+    expect(BROADCAST_FLAG_DECISIONS.founding_open).toContain('2026-11-15')
     expect(BROADCAST_FLAG_DECISIONS.founding_open).toMatch(/\d{4}-\d{2}-\d{2}/)
     expect(BROADCAST_FLAG_DECISIONS.founding_open.toLowerCase()).toContain('lawal')
   })
@@ -406,13 +408,16 @@ describe('FO1: the words Founding Organiser reach the public surfaces once', () 
     expect(event).toContain('foundingBadge.isFounding ?')
   })
 
-  it('LAW 24 as ruled, point 5: every organiser receives the badge, with no invitation behind it', async () => {
+  it('LAW 24 retired (15 November 2026): the badge is no longer offered as a perk, only an organisation holding a window shows it', async () => {
     const { getFoundingBadge, FOUNDING_BADGE_LABEL } = await import('@/lib/organisers/founding-badge')
     const { FOUNDING_BADGE_NAME } = await import('@/lib/payments/founding-waiver')
     expect(FOUNDING_BADGE_LABEL).toBe(FOUNDING_BADGE_NAME)
-    // An organisation that registered with no invitation has is_founding false;
-    // the badge does not read it, so it cannot withhold the badge from them.
-    expect(await getFoundingBadge('00000000-0000-4000-8000-000000000001')).toEqual({ isFounding: true })
+    const holding = (until: string | null) => ({
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { founding_fee_free_until: until }, error: null }) }) }) }),
+    })
+    // It still does not read is_founding: the window is the record of who registered before the change.
+    expect(await getFoundingBadge('00000000-0000-4000-8000-000000000001', holding('2027-02-07T00:00:00Z'))).toEqual({ isFounding: true })
+    expect(await getFoundingBadge('00000000-0000-4000-8000-000000000001', holding(null))).toEqual({ isFounding: false })
     expect(await getFoundingBadge(null)).toEqual({ isFounding: false })
     const badge = readFileSync(join(REPO_ROOT, 'src/lib/organisers/founding-badge.ts'), 'utf8')
     expect(badge).not.toMatch(/select\(['"]is_founding['"]\)/)
