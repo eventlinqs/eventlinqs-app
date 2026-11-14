@@ -230,6 +230,9 @@ const TIER_TYPES: { value: TicketTierType; label: string }[] = [
 // The repeats the server can make into real nights (src/lib/events/repeat-nights.ts); a daily choice made none.
 const RECURRENCE_OPTIONS = REPEAT_CHOICES
 
+// The location types as an organiser reads them, in sentence case (CSS capitalize made "In Person").
+const EVENT_TYPE_LABEL: Record<EventType, string> = { in_person: 'In person', virtual: 'Virtual', hybrid: 'Hybrid' }
+
 const STEPS = [
   'Basic details',
   'Date and time',
@@ -1250,13 +1253,13 @@ export function EventForm({
               key={type}
               type="button"
               onClick={() => chooseEventType(type)}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
+              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
                 formData.event_type === type
                   ? 'border-gold-500 bg-gold-100 text-gold-800'
                   : 'border-ink-200 text-ink-600 hover:border-ink-400'
               }`}
             >
-              {type.replace('_', ' ')}
+              {EVENT_TYPE_LABEL[type]}
             </button>
           ))}
         </div>
@@ -2222,6 +2225,19 @@ export function EventForm({
     )
     // Free means EVERY tier is $0 (the fee-system definition), not just the
     // cheapest tier: an event with a free tier plus paid tiers is a paid event.
+    // P2 (15 November 2026): each section's heading carries an Edit link back to its own step.
+    const reviewHeading = (label: string, toStep: number, gap: 'mb-2' | 'mb-3' = 'mb-2') => (
+      <div className={`flex items-center justify-between gap-3 ${gap}`}>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400">{label}</h3>
+        <button
+          type="button"
+          onClick={() => setStep(toStep)}
+          className="-my-3 inline-flex min-h-[44px] items-center px-1 text-xs font-semibold text-gold-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        >
+          Edit<span className="sr-only"> {label.toLowerCase()}</span>
+        </button>
+      </div>
+    )
     const tierPrices = formData.ticket_tiers.map(t => parseFloat(t.price) || 0)
     const isFree = tierPrices.length === 0 || tierPrices.every(p => p === 0)
     const minPaidPrice = isFree ? 0 : Math.min(...tierPrices.filter(p => p > 0))
@@ -2236,22 +2252,22 @@ export function EventForm({
 
         <div className="rounded-lg border border-ink-200 divide-y divide-ink-100">
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-3">Basic details</h3>
+            {reviewHeading('Basic details', 1, 'mb-3')}
             <p className="text-sm font-semibold text-ink-900">{formData.title || <em className="text-ink-400">Untitled</em>}</p>
             {formData.summary && <p className="mt-1 text-sm text-ink-600">{formData.summary}</p>}
             {formData.tags && <p className="mt-1 text-xs text-ink-400">Tags: {formData.tags}</p>}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date and time</h3>
+            {reviewHeading('Date and time', 2)}
             <p className="text-sm text-ink-600">
               {formatReviewRange(formData.start_date, formData.end_date, formData.timezone)}
             </p>
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Location</h3>
-            <p className="text-sm text-ink-600 capitalize">{formData.event_type.replace('_', ' ')}</p>
+            {reviewHeading('Location', 3)}
+            <p className="text-sm text-ink-600">{EVENT_TYPE_LABEL[formData.event_type]}</p>
             {formData.venue_name && <p className="text-sm text-ink-600">{formData.venue_name}</p>}
             {formData.venue_city && (
               <p className="text-xs text-ink-400">
@@ -2261,7 +2277,7 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">{formData.entry_mode === 'walk_in' ? 'Entry' : 'Tickets'}</h3>
+            {reviewHeading(formData.entry_mode === 'walk_in' ? 'Entry' : 'Tickets', 5)}
             {formData.entry_mode === 'walk_in' ? (
               <>
                 <p className="text-sm text-ink-600">Free entry, no ticket needed</p>
@@ -2284,7 +2300,7 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Media</h3>
+            {reviewHeading('Media', 4)}
             {formData.media[0]?.url ? (
               <div className="flex items-center gap-3">
                 <CoverThumb item={formData.media[0]} />
@@ -2299,7 +2315,7 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Settings</h3>
+            {reviewHeading('Settings', 6)}
             <p className="text-sm text-ink-600 capitalize">{formData.visibility}</p>
             {formData.is_age_restricted && (
               <p className="text-xs text-ink-400">Age restricted: {formData.age_restriction_min}+</p>
@@ -2309,7 +2325,7 @@ export function EventForm({
 
         {!formData.media[0]?.url && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Add a cover image in the Event Media step before publishing. You can still save as a draft.
+            Add a cover image in the Event media step before publishing. You can still save as a draft.
           </div>
         )}
 

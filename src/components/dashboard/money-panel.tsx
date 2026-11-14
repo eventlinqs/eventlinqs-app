@@ -59,7 +59,12 @@ function nextPayoutCard(summary: OrganiserMoneySummary): { value: string; detail
   }
 }
 
-export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
+/**
+ * `actionInBanner`: the dashboard's payout banner carries "Add payout method" while a method is needed, so the Next
+ * payout card keeps its words and drops its own button (the PM's score of 15 November 2026, D1: one action, one
+ * button). Anywhere without the banner the card keeps the button.
+ */
+export function MoneyPanel({ summary, actionInBanner = false }: { summary: OrganiserMoneySummary; actionInBanner?: boolean }) {
   const next = nextPayoutCard(summary)
   return (
     <section aria-labelledby="money-panel-heading" className="space-y-4" data-money-panel>
@@ -74,20 +79,25 @@ export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
           Payout details
         </Link>
       </header>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* D2 (15 November 2026): Sales and Refunds side by side as compact tiles at 390; Paid out and Next payout
+          full width there, as they carry sentences. From sm up, two and then four across as before. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard
+          compact
           label="Sales"
           testId="money-sales"
           value={money(summary.salesCents, summary.currency)}
-          detail={summary.salesCount > 0 ? `${summary.salesCount} order${summary.salesCount === 1 ? '' : 's'}` : 'Your share of each sale'}
+          caption={summary.salesCount > 0 ? `${summary.salesCount} order${summary.salesCount === 1 ? '' : 's'}` : 'Your share of each sale'}
         />
         <KpiCard
+          compact
           label="Refunds"
           testId="money-refunds"
           value={money(summary.refundedCents, summary.currency)}
-          detail={summary.refundCount > 0 ? `${summary.refundCount} refund${summary.refundCount === 1 ? '' : 's'}` : 'No refunds'}
+          caption={summary.refundCount > 0 ? `${summary.refundCount} refund${summary.refundCount === 1 ? '' : 's'}` : 'No refunds'}
         />
         <KpiCard
+          className="col-span-2 sm:col-span-1"
           label="Paid out"
           testId="money-paid-out"
           value={money(summary.paidOutCents, summary.currency)}
@@ -98,11 +108,12 @@ export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
           }
         />
         <KpiCard
+          className="col-span-2 sm:col-span-1"
           label="Next payout"
           testId="money-next-payout"
           value={next.value}
           detail={next.detail}
-          action={next.action ?? null}
+          action={actionInBanner ? null : (next.action ?? null)}
         />
       </div>
     </section>

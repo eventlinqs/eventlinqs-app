@@ -22,6 +22,8 @@ type Props = {
   detail?: string | null
   /** A compact tile for the top row (three across at 390), with its period as a caption. */
   compact?: boolean
+  /** Grid placement from the caller (the money panel's full-width cards at 390). */
+  className?: string
   caption?: string | null
   /** The one next step this figure asks for (the Next payout card's 'Add payout method'). */
   action?: { label: string; href: string } | null
@@ -80,14 +82,14 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action, compact = false, caption = null }: Props) {
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action, compact = false, caption = null, className = '' }: Props) {
   // a line needs two days with something on them; one sale drawn as a spike at the edge says nothing
   const hasSparkline = Array.isArray(sparkline) && sparkline.filter((v) => v > 0).length >= 2
   const hasData = value !== '0' || hasSparkline
 
   return (
     <div
-      className={`panel-elevated rounded-2xl border border-ink-100 bg-white transition-colors hover:border-ink-200 ${compact ? 'p-3 sm:p-5' : 'p-5'}`}
+      className={`panel-elevated rounded-2xl border border-ink-100 bg-white transition-colors hover:border-ink-200 ${compact ? 'p-3 sm:p-5' : 'p-5'}${className ? ` ${className}` : ''}`}
       data-kpi={testId}
       data-kpi-value={testId ? value : undefined}
       data-kpi-delta={testId && delta ? String(delta.value) : undefined}

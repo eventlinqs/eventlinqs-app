@@ -77,7 +77,7 @@ export function ReachEmptyState({
           Your first number lands the moment someone opens one of your links
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-ink-600">
-          Nothing on this panel is estimated into existence and nothing is filled in for you.
+          Numbers appear here as people open your links. Nothing is invented or filled in.
           Send a link from the row above, or put your QR poster up where your people already
           are, and these four start filling in against the channel that earned them.
         </p>
@@ -89,13 +89,11 @@ export function ReachEmptyState({
             <p className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
               <span
                 aria-hidden
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                  measure.hard ? 'bg-gold-500' : 'bg-ink-300'
-                }`}
+                className={measure.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-500 bg-transparent'}
               />
               {measure.label}
               <span className="font-body text-[10px] font-semibold uppercase tracking-normal text-ink-500">
-                {measure.hard ? 'Measured' : 'Close estimate'}
+                {measure.hard ? 'Measured' : 'Estimate'}
               </span>
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-ink-600">{measure.meaning}</p>

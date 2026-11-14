@@ -394,16 +394,32 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 </a>
                 <CopyLinkButton url={eventUrl} variant="dark" />
               </div>
-              {/* The live URL wraps (break-all), never truncates: a nowrap
-                  block's min-content is the full string and stretches the
-                  whole dashboard past the viewport on mobile. */}
-              <p className="mt-3 max-w-full break-all text-xs text-white/70 sm:text-sm">
+              {/* The live URL on one line with an ellipsis (the PM's score of 15 November 2026, S7: at 390 it broke
+                  mid-word). A nowrap line's min-content is the whole string, so the line is a block of the card's
+                  width with min-w-0 and overflow hidden: it can never widen the page. Copy link carries the whole. */}
+              <p className="mt-3 block w-full min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-white/70 sm:text-sm">
                 {eventUrl.replace(/^https?:\/\//, '')}
               </p>
             </div>
           </HeroCaption>
         </div>
       </section>
+
+      {/* ── Next steps, right under the hero (the PM's score of 15 November 2026, S2) ── */}
+      <nav aria-label="Next steps" className="mt-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          {nextSteps.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm font-semibold text-ink-900 shadow-sm transition-colors hover:border-[var(--brand-accent-strong)]"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-[var(--brand-accent-strong)]" aria-hidden />
+              <span className="min-w-0 truncate">{label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       {/* ── Send it everywhere: one-tap tracked sharing ───────────────────── */}
       <Reveal as="section" aria-labelledby="kit-share-heading" className="mt-6">
@@ -442,9 +458,10 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 Ready to post, channel by channel
               </h2>
               <p className="mt-1 max-w-2xl text-sm text-ink-600">
-                Every channel gets the image in the shape it actually takes and a caption written
-                in its own register, both carrying the tracked link for that channel. Download,
-                copy, post: the sales come back attributed to the exact place you posted.
+                Pick a channel: its image comes in the shape that channel takes, and its caption is written for it.
+                {shareOn
+                  ? ' The link in each caption is tracked, so every sale shows up under the channel that made it.'
+                  : ' Share tooling is off right now, so each caption carries your plain event link.'}
               </p>
             </div>
             <div className="px-6 py-5">
@@ -489,7 +506,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               Your A4 QR poster
             </h2>
           </div>
-          <div className="flex flex-1 flex-wrap content-center items-center gap-6 px-6 py-5">
+          <div className="flex flex-1 flex-wrap content-start items-start gap-6 px-6 py-5">
             {qrSvg ? (
               <div className="flex flex-col items-center gap-2">
                 <div
@@ -658,12 +675,11 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 >
                   {stat.value}
                 </p>
-                <p className="mt-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
+                <p className="mt-1 flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
+                  <span aria-hidden className={stat.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-500 bg-transparent'} />
                   {stat.label}
                 </p>
-                {!stat.hard && (
-                  <p className="mt-1 text-[11px] leading-snug text-ink-500">Close estimate</p>
-                )}
+                <p className="mt-1 text-[11px] leading-snug text-ink-500">{stat.hard ? 'Measured' : 'Estimate'}</p>
               </div>
             ))}
           </div>
@@ -676,7 +692,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             ) : topChannels.length === 0 ? (
               <p className="text-sm text-ink-600">
                 Tickets and orders come straight from real payments. Clicks and views are
-                close estimates: link previews from Facebook, WhatsApp and the rest are
+                estimates: link previews from Facebook, WhatsApp and the rest are
                 filtered out and repeat taps are counted once an hour, but nothing can make a
                 request count perfectly.
               </p>
@@ -699,27 +715,6 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
         </div>
       </Reveal>
 
-      {/* ── Next steps ────────────────────────────────────────────────────── */}
-      <Reveal as="nav" aria-label="Next steps" className="mt-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {nextSteps.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-ink-200 bg-white px-5 py-4 text-sm font-semibold text-ink-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:shadow-md"
-            >
-              <span className="inline-flex items-center gap-2.5">
-                <Icon className="h-4 w-4 text-[var(--brand-accent-strong)]" aria-hidden />
-                {label}
-              </span>
-              <ArrowUpRight
-                className="h-4 w-4 text-ink-400 transition-colors group-hover:text-[var(--brand-accent-strong)]"
-                aria-hidden
-              />
-            </Link>
-          ))}
-        </div>
-      </Reveal>
     </div>
   )
 }

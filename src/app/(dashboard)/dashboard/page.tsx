@@ -300,6 +300,9 @@ export default async function DashboardPage({
   // Shown until the first paid ticket sells through EventLinqs, not only until a first event exists.
   const showChecklist = isOrganiser && (!activation.activated || !checklistStatus.verifyEmail)
 
+  // The payout banner, the money card and Quick actions read one condition (D1, 15 November 2026).
+  const payoutStepPending = moneySummary?.nextPayout?.state === 'held_setup'
+
   return (
     <div className="space-y-8">
       <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} />
@@ -314,7 +317,7 @@ export default async function DashboardPage({
         />
       ) : null}
 
-      {moneySummary?.nextPayout?.state === 'held_setup' ? <PayoutStepBanner /> : null}
+      {payoutStepPending ? <PayoutStepBanner /> : null}
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <KpiCard
@@ -343,7 +346,7 @@ export default async function DashboardPage({
         />
       </div>
 
-      {moneySummary ? <MoneyPanel summary={moneySummary} /> : null}
+      {moneySummary ? <MoneyPanel summary={moneySummary} actionInBanner={payoutStepPending} /> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -365,7 +368,7 @@ export default async function DashboardPage({
               ]}
             />
           )}
-          <QuickActionsPanel />
+          <QuickActionsPanel hidePayoutMethod={payoutStepPending} />
           {/* PL1, the fourth loop. Built on the server because the link carries
            *  a code derived from the profile id, and the browser has no business
            *  holding the encoder. */}
