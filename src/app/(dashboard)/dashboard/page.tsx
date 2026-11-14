@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
+import { PayoutStepBanner } from '@/components/dashboard/payout-step-banner'
 import { KpiCard } from '@/components/dashboard/kpi-card'
 import {
   UpcomingEventsPanel,
@@ -99,7 +100,7 @@ export default async function DashboardPage({
   ])
   const org = scope.ok ? { id: scope.active.id, stripe_onboarding_complete: scope.active.stripeOnboardingComplete } : null
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0] || ''
   const isOrganiser =
     profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin'
 
@@ -243,17 +244,8 @@ export default async function DashboardPage({
    * feed it the whole 60 days and then the truncated tail and assert the two
    * disagree.
    */
-  const {
-    ticketsSold30,
-    revenueCents30,
-    ticketsDelta,
-    revenueDelta,
-    ticketsSparkline,
-    revenueSparkline,
-    currency,
-  } = computeDashboardKpis(ordersLast60, now)
-
-  const revenueFormatted = formatCurrency(revenueCents30, currency)
+  // Revenue is not drawn here: the money panel's Sales is the one sales figure (the PM's 22:42 fix 8).
+  const { ticketsSold30, ticketsDelta, ticketsSparkline } = computeDashboardKpis(ordersLast60, now)
 
   /*
    * MONEY FIX B7: sales, refunds, payouts and the next payout date, summed from
@@ -308,9 +300,12 @@ export default async function DashboardPage({
   // Shown until the first paid ticket sells through EventLinqs, not only until a first event exists.
   const showChecklist = isOrganiser && (!activation.activated || !checklistStatus.verifyEmail)
 
+  // The payout banner, the money card and Quick actions read one condition (D1, 15 November 2026).
+  const payoutStepPending = moneySummary?.nextPayout?.state === 'held_setup'
+
   return (
     <div className="space-y-8">
-      <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} />
+      <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} createOutlined={payoutStepPending} />
 
       {/* Every number below belongs to ONE business. An owner of several has to be
           able to see which one, and change it, or the figures are unreadable. */}
@@ -322,9 +317,14 @@ export default async function DashboardPage({
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {payoutStepPending ? <PayoutStepBanner /> : null}
+
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <KpiCard
-          label="Tickets sold (30d)"
+          compact
+          label="Tickets sold"
+          shortLabel="Sold"
+          caption="Last 30 days"
           testId="tickets-30"
           value={ticketsSold30.toLocaleString('en-AU')}
           delta={ticketsDelta !== null ? { value: ticketsDelta } : null}
@@ -332,28 +332,24 @@ export default async function DashboardPage({
           emptyHint={isOrganiser ? 'Sales will appear here' : 'No organiser data'}
         />
         <KpiCard
-          label="Revenue (30d)"
-          testId="revenue-30"
-          value={revenueFormatted}
-          delta={revenueDelta !== null ? { value: revenueDelta } : null}
-          sparkline={revenueSparkline}
-          emptyHint={isOrganiser ? 'Revenue will appear here' : 'No organiser data'}
-        />
-        <KpiCard
+          compact
           label="Upcoming events"
+          shortLabel="Upcoming"
           testId="upcoming-events"
           value={upcomingCount.toLocaleString('en-AU')}
           emptyHint="None scheduled yet"
         />
         <KpiCard
+          compact
           label="Total events"
+          shortLabel="Events"
           testId="total-events"
           value={(totalEventsCount ?? 0).toLocaleString('en-AU')}
           emptyHint="Create your first event"
         />
       </div>
 
-      {moneySummary ? <MoneyPanel summary={moneySummary} /> : null}
+      {moneySummary ? <MoneyPanel summary={moneySummary} actionInBanner={payoutStepPending} /> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -375,7 +371,7 @@ export default async function DashboardPage({
               ]}
             />
           )}
-          <QuickActionsPanel />
+          <QuickActionsPanel hidePayoutMethod={payoutStepPending} />
           {/* PL1, the fourth loop. Built on the server because the link carries
            *  a code derived from the profile id, and the browser has no business
            *  holding the encoder. */}

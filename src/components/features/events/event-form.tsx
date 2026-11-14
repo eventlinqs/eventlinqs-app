@@ -4,9 +4,10 @@ import { REPEAT_CHOICES } from '@/lib/events/repeat-nights'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
-import { EventMediaStep, type MediaImage } from './event-media-step'
+import { EventMediaStep, CoverThumb, type MediaImage } from './event-media-step'
+import { formatReviewRange } from '@/lib/dates/review-range'
 import { parseGallery } from '@/lib/media/event-media-model'
-import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
+import { isPaidPublishBlocked, showsConnectBankStep } from '@/lib/events/paid-publish-blocked'
 import { UNSAVED_TIER_PREFIX, isSavedTierId } from '@/lib/events/save-tiers'
 import { STREAM_COUNTRIES, STREAM_REGIONS, normaliseCountryCodes, describeCountries } from '@/lib/stream/countries'
 import { isAcceptableStreamLink } from '@/lib/stream/embed'
@@ -26,7 +27,6 @@ import {
   canonicalTokensForCommunities,
 } from '@/lib/communities/tag-bridge'
 import {
-  formatPlatformDateTime,
   fromZonedInputValue,
   toZonedInputValue,
 } from '@/lib/dates/event-time'
@@ -230,14 +230,17 @@ const TIER_TYPES: { value: TicketTierType; label: string }[] = [
 // The repeats the server can make into real nights (src/lib/events/repeat-nights.ts); a daily choice made none.
 const RECURRENCE_OPTIONS = REPEAT_CHOICES
 
+// The location types as an organiser reads them, in sentence case (CSS capitalize made "In Person").
+const EVENT_TYPE_LABEL: Record<EventType, string> = { in_person: 'In person', virtual: 'Virtual', hybrid: 'Hybrid' }
+
 const STEPS = [
-  'Basic Details',
-  'Date & Time',
+  'Basic details',
+  'Date and time',
   'Location',
-  'Event Media',
+  'Event media',
   'Tickets',
   'Settings',
-  'Review & Publish',
+  'Review and publish',
 ]
 
 function newTier(sort_order: number): TicketTierInput {
@@ -542,6 +545,13 @@ type Props = {
    * checkPublishGate; this never decides anything on its own.
    */
   canSellPaid?: boolean
+  /**
+   * Whether the organisation can be PAID yet (isOrganiserPayable, on the server).
+   * Since 14 November 2026 a paid event publishes and sells at once and the money
+   * is held until after the event, so this never blocks anything: when it is
+   * false the form shows the one step left, connecting a bank before the event.
+   */
+  canBePaid?: boolean
   /** FT1: the event shape carried in from the public forecast tool. */
   shapePrefill?: EventShapePrefill
 }
@@ -561,9 +571,9 @@ export function EventForm({
   existingGuide = null,
   existingStatus = 'draft',
   launchKitEnabled = false,
-  lineupEnabled = false,
   magicStartEnabled = false,
   canSellPaid = true,
+  canBePaid = true,
   shapePrefill,
 }: Props) {
   const router = useRouter()
@@ -608,6 +618,10 @@ export function EventForm({
   const paidPublishBlocked = useMemo(
     () => isPaidPublishBlocked({ canSellPaid, editMode, tierPrices: formData.ticket_tiers }),
     [canSellPaid, editMode, formData.ticket_tiers],
+  )
+  const connectBankStep = useMemo(
+    () => showsConnectBankStep({ canSellPaid, canBePaid, editMode, tierPrices: formData.ticket_tiers }),
+    [canSellPaid, canBePaid, editMode, formData.ticket_tiers],
   )
 
   /*
@@ -1047,7 +1061,7 @@ export function EventForm({
 
       <div>
         <label htmlFor="event-title-1" className="block text-sm font-medium text-ink-600 mb-1">
-          Event Title <span className="text-red-500">*</span>
+          Event title <span className="text-red-500">*</span>
         </label>
         <input id="event-title-1"
           type="text"
@@ -1063,7 +1077,7 @@ export function EventForm({
 
       <div>
         <label htmlFor="short-summary-200-2" className="block text-sm font-medium text-ink-600 mb-1">
-          Short Summary
+          Short summary
           <span className="ml-2 text-xs text-ink-400">({formData.summary.length}/200)</span>
         </label>
         <input id="short-summary-200-2"
@@ -1232,20 +1246,20 @@ export function EventForm({
   const renderStep3 = () => (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-2">Event Type</label>
+        <label className="block text-sm font-medium text-ink-600 mb-2">Event type</label>
         <div className="flex gap-3">
           {(['in_person', 'virtual', 'hybrid'] as EventType[]).map(type => (
             <button
               key={type}
               type="button"
               onClick={() => chooseEventType(type)}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
+              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
                 formData.event_type === type
                   ? 'border-gold-500 bg-gold-100 text-gold-800'
                   : 'border-ink-200 text-ink-600 hover:border-ink-400'
               }`}
             >
-              {type.replace('_', ' ')}
+              {EVENT_TYPE_LABEL[type]}
             </button>
           ))}
         </div>
@@ -1259,7 +1273,7 @@ export function EventForm({
             onPick={applyVenuePick}
           />
           <div>
-            <label htmlFor="venue-name-13" className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
+            <label htmlFor="venue-name-13" className="block text-sm font-medium text-ink-600 mb-1">Venue name</label>
             <input id="venue-name-13"
               type="text"
               value={formData.venue_name}
@@ -1309,7 +1323,7 @@ export function EventForm({
               />
             </div>
             <div>
-              <label htmlFor="postal-code-18" className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
+              <label htmlFor="postal-code-18" className="block text-sm font-medium text-ink-600 mb-1">Postal code</label>
               <input id="postal-code-18"
                 type="text"
                 value={formData.venue_postal_code}
@@ -1611,7 +1625,7 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor={`tier-capacity-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Total Capacity</label>
+              <label htmlFor={`tier-capacity-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Total capacity</label>
               <input id={`tier-capacity-${idx}`}
                 type="number"
                 min="1"
@@ -1627,7 +1641,7 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor={`tier-sale-start-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
+              <label htmlFor={`tier-sale-start-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale starts</label>
               <input id={`tier-sale-start-${idx}`}
                 type="datetime-local"
                 value={tier.sale_start}
@@ -1641,7 +1655,7 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor={`tier-sale-end-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
+              <label htmlFor={`tier-sale-end-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale ends</label>
               <input id={`tier-sale-end-${idx}`}
                 type="datetime-local"
                 value={tier.sale_end}
@@ -1712,14 +1726,14 @@ export function EventForm({
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        Add Ticket Tier
+        Add ticket tier
       </button>
 
       {/* Squad Booking */}
       <div className="rounded-lg border border-ink-200 p-5">
         <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-ink-900">Enable Squad Booking</p>
+            <p className="text-sm font-semibold text-ink-900">Enable squad booking</p>
             <p className="mt-1 text-xs text-ink-400">
               Allow buyers to start a squad with friends and split payment. Each member pays
               their own share. Unfilled squads are automatically refunded after the fill window.
@@ -1777,7 +1791,7 @@ export function EventForm({
       <div className="rounded-lg border border-ink-200 p-5">
         <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-ink-900">Enable Virtual Queue</p>
+            <p className="text-sm font-semibold text-ink-900">Enable virtual queue</p>
             <p className="mt-1 text-xs text-ink-400">
               For high-demand events. Attendees join a FIFO waiting room before reaching
               checkout. Prevents site crashes and bot scalping.
@@ -2019,7 +2033,7 @@ export function EventForm({
         </label>
         {formData.is_age_restricted && (
           <div className="mt-3 ml-7">
-            <label htmlFor="minimum-age-37" className="block text-xs font-medium text-ink-600 mb-1">Minimum Age</label>
+            <label htmlFor="minimum-age-37" className="block text-xs font-medium text-ink-600 mb-1">Minimum age</label>
             <input id="minimum-age-37"
               type="number"
               min="1"
@@ -2034,7 +2048,7 @@ export function EventForm({
 
       <div>
         <label htmlFor="max-event-capacity-optional-leave-blank--38" className="block text-sm font-medium text-ink-600 mb-1">
-          Max Event Capacity
+          Max event capacity
           <span className="ml-2 text-xs text-ink-400">Optional: leave blank if unlimited</span>
         </label>
         <input id="max-event-capacity-optional-leave-blank--38"
@@ -2103,7 +2117,7 @@ export function EventForm({
 
                 {formData.venue_id && (
                   <div>
-                    <label htmlFor="seat-map-40" className="block text-xs font-medium text-ink-600 mb-1">Seat Map</label>
+                    <label htmlFor="seat-map-40" className="block text-xs font-medium text-ink-600 mb-1">Seat map</label>
                     {(() => {
                       const venue = venues.find(v => v.id === formData.venue_id)
                       const maps = venue?.seat_maps ?? []
@@ -2211,6 +2225,19 @@ export function EventForm({
     )
     // Free means EVERY tier is $0 (the fee-system definition), not just the
     // cheapest tier: an event with a free tier plus paid tiers is a paid event.
+    // P2 (15 November 2026): each section's heading carries an Edit link back to its own step.
+    const reviewHeading = (label: string, toStep: number, roomy = false) => (
+      <div className={`flex items-center justify-between gap-3 ${roomy ? 'mb-3' : 'mb-2'}`}>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400">{label}</h3>
+        <button
+          type="button"
+          onClick={() => setStep(toStep)}
+          className="-my-3 inline-flex min-h-[44px] items-center px-1 text-xs font-semibold text-gold-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        >
+          Edit<span className="sr-only"> {label.toLowerCase()}</span>
+        </button>
+      </div>
+    )
     const tierPrices = formData.ticket_tiers.map(t => parseFloat(t.price) || 0)
     const isFree = tierPrices.length === 0 || tierPrices.every(p => p === 0)
     const minPaidPrice = isFree ? 0 : Math.min(...tierPrices.filter(p => p > 0))
@@ -2225,24 +2252,22 @@ export function EventForm({
 
         <div className="rounded-lg border border-ink-200 divide-y divide-ink-100">
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-3">Basic Details</h3>
+            {reviewHeading('Basic details', 1, true)}
             <p className="text-sm font-semibold text-ink-900">{formData.title || <em className="text-ink-400">Untitled</em>}</p>
             {formData.summary && <p className="mt-1 text-sm text-ink-600">{formData.summary}</p>}
             {formData.tags && <p className="mt-1 text-xs text-ink-400">Tags: {formData.tags}</p>}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
+            {reviewHeading('Date and time', 2)}
             <p className="text-sm text-ink-600">
-              {formData.start_date ? formatPlatformDateTime(formData.start_date) : '-'} →{' '}
-              {formData.end_date ? formatPlatformDateTime(formData.end_date) : '-'}
+              {formatReviewRange(formData.start_date, formData.end_date, formData.timezone)}
             </p>
-            <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Location</h3>
-            <p className="text-sm text-ink-600 capitalize">{formData.event_type.replace('_', ' ')}</p>
+            {reviewHeading('Location', 3)}
+            <p className="text-sm text-ink-600">{EVENT_TYPE_LABEL[formData.event_type]}</p>
             {formData.venue_name && <p className="text-sm text-ink-600">{formData.venue_name}</p>}
             {formData.venue_city && (
               <p className="text-xs text-ink-400">
@@ -2252,7 +2277,7 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">{formData.entry_mode === 'walk_in' ? 'Entry' : 'Tickets'}</h3>
+            {reviewHeading(formData.entry_mode === 'walk_in' ? 'Entry' : 'Tickets', 5)}
             {formData.entry_mode === 'walk_in' ? (
               <>
                 <p className="text-sm text-ink-600">Free entry, no ticket needed</p>
@@ -2263,27 +2288,34 @@ export function EventForm({
             ) : (
               <>
                 <p className="text-sm text-ink-600">
-                  {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString('en-AU')} total capacity
+                  {formData.ticket_tiers.length} ticket type{formData.ticket_tiers.length !== 1 ? 's' : ''}, {totalCapacity.toLocaleString('en-AU')} tickets
                 </p>
                 <p className="text-xs text-ink-400">
-                  {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
+                  {isFree
+                    ? 'Free event'
+                    : `from ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: (formData.ticket_tiers[0]?.currency || 'AUD').toUpperCase() }).format(minPaidPrice)}`}
                 </p>
               </>
             )}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Media</h3>
-            <p className="text-sm text-ink-600">
-              {formData.media[0]?.url
-                ? `Cover set${formData.media.length > 1 ? ` + ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}`
-                : 'No cover yet'}
-            </p>
+            {reviewHeading('Media', 4)}
+            {formData.media[0]?.url ? (
+              <div className="flex items-center gap-3">
+                <CoverThumb item={formData.media[0]} />
+                <p className="text-sm text-ink-600">
+                  Cover{formData.media.length > 1 ? `, and ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-600">No cover yet</p>
+            )}
             {formData.video_url.trim() && <p className="text-xs text-ink-400">Video linked</p>}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Settings</h3>
+            {reviewHeading('Settings', 6)}
             <p className="text-sm text-ink-600 capitalize">{formData.visibility}</p>
             {formData.is_age_restricted && (
               <p className="text-xs text-ink-400">Age restricted: {formData.age_restriction_min}+</p>
@@ -2293,7 +2325,7 @@ export function EventForm({
 
         {!formData.media[0]?.url && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Add a cover image in the Event Media step before publishing. You can still save as a draft.
+            Add a cover image in the Event media step before publishing. You can still save as a draft.
           </div>
         )}
 
@@ -2318,27 +2350,8 @@ export function EventForm({
           </div>
         )}
 
-        {launchKitEnabled && !editMode && (
-          <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
-            <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
-            your live page link, a print-ready QR poster, share cards and captions for every
-            channel, and the tickets each channel sold you, all on one screen.
-          </div>
-        )}
-
-        {/* The lineup loop prompt. The event row does not exist until this
-            submit, so tagging itself lives on the kit that publishing opens;
-            this sets the expectation and sells the benefit in the organiser's
-            own terms. */}
-        {lineupEnabled && (
-          <div className="rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900">
-            <span className="font-semibold">Playing with other acts?</span>{' '}
-            Tag them on your lineup {editMode ? 'from your event dashboard' : 'on the next screen'}.
-            Each act gets their own tracked share link and their own spot on your event page, so
-            they sell to their following and you see exactly how many tickets each one brought.
-          </div>
-        )}
-
+        {/* ONE NOTE BEFORE THE BUTTON (the PM's 20:55 score, fix 2): the launch kit is the screen publishing
+            opens, and tagging other acts lives on that kit's lineup panel, so neither waits here. */}
         {/*
           AN HONEST DISABLED STATE.
 
@@ -2360,10 +2373,27 @@ export function EventForm({
         */}
         {paidPublishBlocked && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <span className="font-semibold">This event has a paid ticket, so it needs Stripe connected before it can go live.</span>{' '}
-            Save it as a draft now, connect Stripe, and publish when you come back.
+            <span className="font-semibold">Ticket sales are paused for this organisation.</span>{' '}
+            Save this event as a draft and contact EventLinqs support for details.
+            <a href="/contact" className="ml-2 font-semibold underline underline-offset-2">
+              Contact support
+            </a>
+          </div>
+        )}
+
+        {/*
+          SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November
+          2026). A paid event publishes and sells now; the money is held by
+          EventLinqs and paid to the organiser's own bank after the event, once it
+          is connected. So this is a step, not a wall: it names what is left and
+          links straight to it, and the Publish button stays live.
+        */}
+        {connectBankStep && (
+          <div className="rounded-lg border border-ink-200 bg-ink-100 px-4 py-3 text-sm text-ink-900">
+            <span className="font-semibold">Add a payout method before your event.</span>{' '}
+            EventLinqs collects ticket payments and pays your sales into your nominated bank account after your event ends. Verify your details to receive your payout.
             <a href="/dashboard/payouts" className="ml-2 font-semibold underline underline-offset-2">
-              Connect Stripe
+              Add payout method
             </a>
           </div>
         )}
@@ -2382,7 +2412,7 @@ export function EventForm({
             disabled={isSubmitting}
             className="flex-1 rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm font-medium text-ink-600 hover:bg-ink-100 disabled:opacity-50 transition-colors"
           >
-            {isSubmitting ? 'Saving…' : 'Save as Draft'}
+            {isSubmitting ? 'Saving…' : 'Save as draft'}
           </button>
           <button
             type="button"
@@ -2394,9 +2424,7 @@ export function EventForm({
               ? 'Publishing…'
               : editMode
               ? 'Save Changes'
-              : launchKitEnabled
-              ? 'Publish and get your launch kit'
-              : 'Publish Now'}
+              : 'Publish event'}
           </button>
         </div>
       </div>

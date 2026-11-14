@@ -70,8 +70,8 @@ export async function refreshStripeStatus(organisationId?: string): Promise<Refr
   let message: string
   if (result.canSell) {
     message = result.changed
-      ? 'Your Stripe status was out of date and has been corrected. You can publish paid events.'
-      : 'Everything is up to date. You can publish paid events.'
+      ? 'Your Stripe status was out of date and has been corrected. Ticket sales are paid into this account after each event ends.'
+      : 'Everything is up to date. Ticket sales are paid into this account after each event ends.'
   } else if (result.adminHoldPreserved) {
     message =
       'Payouts are on hold by EventLinqs, not by Stripe. Contact support and we will tell you exactly why.'

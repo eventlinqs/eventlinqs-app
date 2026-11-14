@@ -217,11 +217,9 @@ async function main() {
 
         const ticketsValue = await kpi('tickets-30', 'data-kpi-value')
         const ticketsDelta = await kpi('tickets-30', 'data-kpi-delta')
-        const revenueValue = await kpi('revenue-30', 'data-kpi-value')
-        const revenueDelta = await kpi('revenue-30', 'data-kpi-delta')
-        log(
-          `${vp.label} home shows tickets=${ticketsValue} (${ticketsDelta}%), revenue=${revenueValue} (${revenueDelta}%)`,
-        )
+        // The revenue tile left the home screen on 14 November 2026 (the PM's score, fix 8: the money panel's Sales is
+        // the one sales figure); its maths stays tested in tests/unit/dashboard/kpis.test.ts.
+        log(`${vp.label} home shows tickets=${ticketsValue} (${ticketsDelta}%)`)
 
         check(
           `lb-orgdash.${vp.label}.tickets-30-is-every-order-in-the-window`,
@@ -239,11 +237,6 @@ async function main() {
           `lb-orgdash.${vp.label}.growth-is-zero-because-the-months-are-equal`,
           Number(ticketsDelta) === 0,
           `the delta pill reads ${ticketsDelta}%. 540 orders each month is 0% growth; a read that lost the oldest eighty reports about +17%.`,
-        )
-        check(
-          `lb-orgdash.${vp.label}.revenue-growth-is-zero-too`,
-          Number(revenueDelta) === 0,
-          `revenue delta ${revenueDelta}%`,
         )
 
         await page.screenshot({

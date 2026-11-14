@@ -41,7 +41,8 @@ export function GreetingText({ firstName }: { firstName: string }) {
   const greeting = hydrated ? timeOfDay(new Date().getHours()) : 'Welcome back'
   return (
     <>
-      {greeting}, {firstName}
+      {greeting}
+      {firstName ? `, ${firstName}` : ''}
     </>
   )
 }

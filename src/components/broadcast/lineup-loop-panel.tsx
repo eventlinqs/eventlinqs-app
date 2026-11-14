@@ -105,7 +105,7 @@ export function LineupLoopPanel({ eventId, acts, totals, variant = 'kit' }: Prop
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-600">
           {acts.length === 0
-            ? 'Every act you tag gets their own tracked share link and their own page on your event. They sell to their following, you see exactly how many tickets each one brought, and the room fills faster.'
+            ? 'Every act you tag gets their own tracked link, and you see how many tickets each one sold.'
             : 'Send each act their link. Every sale it brings is credited to them below, so you know who actually fills your room.'}
         </p>
       </div>
@@ -179,11 +179,7 @@ export function LineupLoopPanel({ eventId, acts, totals, variant = 'kit' }: Prop
 
         {message && <p className="mt-3 text-sm text-ink-600">{message}</p>}
 
-        {acts.length === 0 ? (
-          <p className="mt-4 text-xs text-ink-500">
-            Tag as many acts as you like. Each one gets a link the moment you add them.
-          </p>
-        ) : (
+        {acts.length === 0 ? null : (
           <ul className="mt-5 divide-y divide-ink-100">
             {acts.map(act => (
               <li key={act.artistId} className="py-4 first:pt-0 last:pb-0">

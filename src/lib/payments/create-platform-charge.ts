@@ -2,9 +2,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Organisation } from '@/types/database'
 import {
   ChargePreconditionError,
-  assertOrganiserCanReceiveFunds,
+  assertOrganiserCanTakeSales,
   computeOrganiserTransferCents,
   getCurrencyForCountry,
+  saleCountryOf,
 } from './application-fee'
 import { recordOrderDestination } from './order-destination'
 import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
@@ -52,7 +53,8 @@ export interface CreatePlatformChargeResult {
   intent: PaymentIntentResult
   /** The net amount owed to the organiser, to be transferred post-event. */
   organiserTransferCents: number
-  connectedAccountId: string
+  /** The organiser's connected account, or null while they have not connected (the payout waits for one). */
+  connectedAccountId: string | null
   currency: string
 }
 
@@ -68,24 +70,27 @@ export async function createPlatformCharge(
   input: CreatePlatformChargeInput
 ): Promise<CreatePlatformChargeResult> {
   const org = await loadOrgChargeFields(input.organisationId)
-  assertOrganiserCanReceiveFunds(org, input.fees)
+  assertOrganiserCanTakeSales(org, input.fees)
 
-  const expectedCurrency = getCurrencyForCountry(org.stripe_account_country)!
+  // The sale settles in the organiser's connected country, or the platform's until they connect (Lawal's 15:22).
+  const country = saleCountryOf(org)
+  const expectedCurrency = getCurrencyForCountry(country)!
   if (input.fees.currency.toUpperCase() !== expectedCurrency) {
     throw new ChargePreconditionError(
       'fee_breakdown_invalid',
-      `FeeBreakdown currency "${input.fees.currency}" does not match Connect settlement currency "${expectedCurrency}" for country "${org.stripe_account_country}".`
+      `FeeBreakdown currency "${input.fees.currency}" does not match Connect settlement currency "${expectedCurrency}" for country "${country}".`
     )
   }
 
   const organiserTransferCents = await computeOrganiserTransferCents(
     input.fees,
-    (org.stripe_account_country ?? 'GLOBAL').toUpperCase(),
+    country.toUpperCase(),
     expectedCurrency,
     input.organisationId,
     input.eventId ?? null
   )
-  const connectedAccountId = org.stripe_account_id!
+  // Null while the organiser has not connected: the money is held all the same, and the payout waits for their account.
+  const connectedAccountId = org.stripe_account_id ?? null
 
   // The buyer's bank statement carries the EVENT, falling back to the organiser
   // only when the event yields nothing printable. Loaded here rather than passed
@@ -119,13 +124,18 @@ export async function createPlatformCharge(
    * reconciliation matches on. recordOrderDestination insists the update
    * touched exactly one row, because an UPDATE that matches nothing succeeds.
    */
-  await recordOrderDestination({
-    orderId: input.transferGroup,
-    connectedAccountId,
-    totalCents: input.fees.total_cents,
-    organiserAmountDueCents: organiserTransferCents,
-    currency: input.fees.currency,
-  })
+  // Sell first (Lawal's 15:22): an organiser who has not connected yet has no account to name. The database's own rule
+  // (orders_destination_is_whole) takes all four facts or none, so none is written; what is owed stays in the event's
+  // ledger, which is what the payout reads (disburse_transfer), and the order still names its event and organiser.
+  if (connectedAccountId) {
+    await recordOrderDestination({
+      orderId: input.transferGroup,
+      connectedAccountId,
+      totalCents: input.fees.total_cents,
+      organiserAmountDueCents: organiserTransferCents,
+      currency: input.fees.currency,
+    })
+  }
 
   const intent = await input.gateway.createPaymentIntent({
     amount_cents: input.fees.total_cents,

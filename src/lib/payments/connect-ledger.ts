@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getReservePercentage, getPayoutScheduleDays } from './pricing-rules'
+import { saleCountryOf } from './connect-currency'
 import { captureException } from '@/lib/observability/sentry'
 
 type AdminClient = SupabaseClient
@@ -141,7 +142,9 @@ export async function recordOrderConfirmedLedger(
 
   const event = order.event_id ? await loadEvent(adminClient, order.event_id) : null
 
-  const orgCountryCode = (org.stripe_account_country ?? 'GLOBAL').toUpperCase()
+  // The sale's country: the connected account's, or the platform's until the organiser connects (sell first,
+  // 14 November 2026). 'GLOBAL' here drew the global reserve and payout rule for an organiser selling in Australia.
+  const orgCountryCode = saleCountryOf(org).toUpperCase()
   const applicationFeeCents = order.platform_fee_cents + order.processing_fee_cents
   const organiserShareCents = order.total_cents - applicationFeeCents
 

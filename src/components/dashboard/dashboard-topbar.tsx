@@ -58,7 +58,7 @@ export function DashboardTopbar({ user, profile }: Props) {
     router.refresh()
   }
 
-  const displayName = profile?.full_name?.split(' ')[0] ?? user.email?.split('@')[0] ?? 'Account'
+  const displayName = profile?.full_name?.trim().split(/\s+/)[0] || user.email?.split('@')[0] || 'Account'
   const avatar = profile?.avatar_url
   const avatarInitials = initials(profile?.full_name ?? null, user.email ?? '')
 

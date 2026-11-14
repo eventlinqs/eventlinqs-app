@@ -27,11 +27,15 @@
  * there: it reads source text. It pins the structure of the charge path that
  * exists. It cannot prove a charge creator written tomorrow consults anything,
  * and it does not test behaviour: tests/unit/payments/money-chain.test.ts does
- * that. Clause two covers the CHARGE-time refusal for a disabled organiser; the
- * publish-time refusal is A3 layer two and is clause FIVE, which also holds the
- * date the cached posture was verified and the rule that a stale one is
- * re-read rather than believed. Clause SIX is A4: every ticket charge writes
- * down where its money is owed, on the order, before the charge exists. Clause four covers A3 layer three, the
+ * that. Clause two covers the CHARGE-time refusal: since 14 November 2026
+ * (sell first, Lawal's yes of 15:22) only a person's hold or an unsupported
+ * currency, and never a missing connected account, which it now forbids.
+ * Clause FIVE holds the publish gate to the same rule with no Stripe call.
+ * Clause SIX is A4: once the organiser is connected, every ticket charge writes
+ * down on the order where its money is owed, before the charge exists; until
+ * then the organisation's ledger row is that record, and clause four's
+ * reconciliation raises a P0 for any charge without one. Clause SEVEN: the
+ * payout goes only to the organisation's own connected, active account. Clause four covers A3 layer three, the
  * daily settlement reconciliation, and covers its SHAPE only: that it exists,
  * is wired to the rule, refuses an unauthorised caller, repairs nothing, and
  * names the charge. Whether it finds anything is a question for the live
@@ -130,21 +134,21 @@ const CHARGE_CREATOR = 'src/lib/payments/create-platform-charge.ts'
 const creator = read(CHARGE_CREATOR)
 
 if (creator) {
-  const preconditionAt = creator.indexOf('assertOrganiserCanReceiveFunds(')
+  const preconditionAt = creator.indexOf('assertOrganiserCanTakeSales(')
   const gatewayAt = creator.indexOf('.createPaymentIntent(')
 
   if (preconditionAt === -1) {
     failures.push(
-      `${CHARGE_CREATOR}: does not call assertOrganiserCanReceiveFunds, so a charge could be created for an organiser who cannot be paid`,
+      `${CHARGE_CREATOR}: does not call assertOrganiserCanTakeSales, so a charge could be created for an organisation on hold or in a country we cannot settle in`,
     )
   } else if (gatewayAt === -1) {
     failures.push(`${CHARGE_CREATOR}: no createPaymentIntent call found; this guard is reading the wrong file`)
   } else if (preconditionAt > gatewayAt) {
     failures.push(
-      `${CHARGE_CREATOR}: assertOrganiserCanReceiveFunds runs AFTER createPaymentIntent. The buyer would already have been charged before the platform checked anybody could be paid.`,
+      `${CHARGE_CREATOR}: assertOrganiserCanTakeSales runs AFTER createPaymentIntent. The buyer would already have been charged before the platform checked the sale may be taken.`,
     )
   } else {
-    passes.push('the one charge creator runs the can-be-paid precondition BEFORE it calls Stripe')
+    passes.push('the one charge creator runs the take-sales precondition BEFORE it calls Stripe')
   }
 
   if (!/const connectedAccountId = org\.stripe_account_id/.test(creator)) {
@@ -186,23 +190,37 @@ if (intentCreators.length > 0) {
 }
 
 // ── CLAUSE TWO ───────────────────────────────────────────────────────────────
-// An organiser who is not connected, cannot receive payouts, or is not active
-// must be refused, each with its own named reason rather than one generic error.
+// SELL FIRST (Lawal's yes, 15:22 on 14 November 2026: "you let organisers publish
+// and sell straight away"). The charge refuses an organisation a person at
+// EventLinqs has put on hold, and one whose sale has no settlement currency, each
+// with its own named reason. It NEVER refuses for want of a connected account:
+// the money is held until after the event and the payout waits for one (clause
+// SEVEN). The old wall's three tests are named so they cannot come back quietly.
 
 const PRECONDITION = 'src/lib/payments/application-fee.ts'
 const precondition = read(PRECONDITION)
 
+/** The precondition's own body, bounded at the next export so a neighbour's checks are never counted as its own. */
+function preconditionBody() {
+  const start = precondition.indexOf('export function assertOrganiserCanTakeSales(')
+  if (start === -1) return ''
+  const next = precondition.indexOf('\nexport ', start + 1)
+  return precondition.slice(start, next === -1 ? undefined : next)
+}
+
 if (precondition) {
-  const body = precondition.slice(precondition.indexOf('export function assertOrganiserCanReceiveFunds('))
+  const body = preconditionBody()
+  if (!body) {
+    failures.push(`${PRECONDITION}: assertOrganiserCanTakeSales is gone, so nothing refuses a sale for an organisation on hold`)
+  }
   const required = [
-    ['!org.stripe_account_id', 'org_not_connected'],
-    ['!org.stripe_payouts_enabled', 'org_charges_disabled'],
-    ["org.payout_status !== 'active'", 'org_payouts_restricted'],
+    ["org.payout_status === 'on_hold'", 'org_on_hold'],
+    ['getCurrencyForCountry(saleCountryOf(org))', 'org_country_unsupported'],
   ]
   for (const [check, reason] of required) {
     if (!body.includes(check)) {
       failures.push(
-        `${PRECONDITION}: assertOrganiserCanReceiveFunds no longer tests \`${check}\`, so an organiser who cannot be paid could still be sold for`,
+        `${PRECONDITION}: assertOrganiserCanTakeSales no longer tests \`${check}\`, so a sale could be taken that must be refused`,
       )
     } else if (!body.includes(`'${reason}'`)) {
       failures.push(
@@ -212,6 +230,15 @@ if (precondition) {
       passes.push(`a charge is refused with the named reason ${reason}`)
     }
   }
+  const wall = ['!org.stripe_account_id', '!org.stripe_payouts_enabled', "org.payout_status !== 'active'"]
+  const back = wall.filter((check) => body.includes(check))
+  if (back.length > 0) {
+    failures.push(
+      `${PRECONDITION}: assertOrganiserCanTakeSales tests ${back.map((c) => `\`${c}\``).join(', ')} again, which is the wall Lawal removed on 14 November 2026: an organiser who has not connected payouts would be refused a sale the platform holds the money for.`,
+    )
+  } else {
+    passes.push('a sale is never refused for want of a connected account (sell first)')
+  }
 }
 
 // ── CLAUSE THREE ─────────────────────────────────────────────────────────────
@@ -219,11 +246,11 @@ if (precondition) {
 // legitimate zero and must not refuse the sale; an unexplained zero still must.
 
 if (precondition) {
-  const body = precondition.slice(precondition.indexOf('export function assertOrganiserCanReceiveFunds('))
+  const body = preconditionBody()
 
   if (/inclusiveKeep\s*<=\s*0/.test(body)) {
     failures.push(
-      `${PRECONDITION}: assertOrganiserCanReceiveFunds refuses on \`inclusiveKeep <= 0\`, which refuses a DELIBERATELY WAIVED fee. That is the A1.7 defect: every paid ticket for a founding organiser is refused at checkout.`,
+      `${PRECONDITION}: assertOrganiserCanTakeSales refuses on \`inclusiveKeep <= 0\`, which refuses a DELIBERATELY WAIVED fee. That is the A1.7 defect: every paid ticket for a founding organiser is refused at checkout.`,
     )
   } else {
     passes.push('a zero platform fee is not refused on the amount alone')
@@ -401,55 +428,28 @@ if (!freshness) {
 
 if (publishGate) {
   /*
-   * THE SELECT, NOT THE FILE. The drill for this clause replaced the select
-   * with the bare five columns and the clause PASSED, because the gate still
-   * mentions `stripe_status_verified_at` where it reads the value off the row.
-   * A column that is read but never selected arrives `undefined`, every cache
-   * reads as never-verified, and every publish pays for a Stripe round trip:
-   * the guard has to judge the query.
+   * SELL FIRST (Lawal's yes, 15:22 on 14 November 2026). A paid event publishes
+   * on the ONE rule the sale and the charge use, and no Stripe posture decides
+   * it, so the gate can neither refuse a publish the checkout would take money
+   * for nor grant one it would refuse. Read as code (comments blanked), so a
+   * sentence explaining the old reconciler does not count as a call to it. The
+   * A3 layer two freshness rule guarded a publish that depended on Stripe;
+   * nothing here does now, and the stamp the reconciler and the webhook write
+   * is still held below for the payouts page that reads it.
    */
-  if (!/\.select\([^)]*stripe_status_verified_at/.test(publishGate)) {
+  if (!/if \(isOrganiserSellable\(saleFields\.org\)\) return \{ ok: true \}/.test(publishGate)) {
     failures.push(
-      `${PUBLISH_GATE}: does not SELECT stripe_status_verified_at, so the column arrives undefined and it cannot tell a verification made a minute ago from one made six weeks ago`,
+      `${PUBLISH_GATE}: no longer grants a paid publish on isOrganiserSellable, so publish and sale can disagree about the same organiser`,
     )
   } else {
-    passes.push('the publish gate selects the date the Stripe verification was cached')
+    passes.push('a paid event publishes on the same rule the sale and the charge use')
   }
-
-  const sellableAt = publishGate.indexOf('isOrganiserSellable(saleFields.org)')
-  const freshAt = publishGate.indexOf('connectVerificationIsFresh(')
-  const grantAt = publishGate.indexOf('return { ok: true }', sellableAt === -1 ? 0 : sellableAt)
-  if (sellableAt === -1) {
-    failures.push(`${PUBLISH_GATE}: the fast path no longer asks isOrganiserSellable; this clause is reading the wrong file`)
-  } else if (freshAt === -1) {
+  if (/reconcileConnectedAccount|\breconcile\s*\(/.test(publishGate)) {
     failures.push(
-      `${PUBLISH_GATE}: never calls connectVerificationIsFresh, so a paid event publishes on a cached posture of any age`,
-    )
-  } else if (!(freshAt > sellableAt && (grantAt === -1 || freshAt < grantAt))) {
-    failures.push(
-      `${PUBLISH_GATE}: the freshness of the cached verification is not consulted between the cached yes and the grant, so the grant does not depend on it`,
+      `${PUBLISH_GATE}: asks Stripe again before publishing. Since 14 November 2026 no Stripe posture decides a publish: an organiser publishes and sells, and connects payouts before the payout.`,
     )
   } else {
-    passes.push('a paid event is granted on the cached posture only while that verification is still fresh')
-  }
-
-  /*
-   * THE GRANT, NOT THE MENTION. The first version of this clause banned the
-   * string `fresh.canSell` anywhere, and the gate legitimately reads it twice:
-   * once to choose WHICH refusal to name, and once to notice that Stripe is
-   * happy while the sale gate is not. Banning a value outright bans the code
-   * that reasons about it. What must never happen is a PUBLISH GRANTED on it.
-   */
-  if (/if\s*\(\s*fresh\.canSell\s*\)\s*return\s*\{\s*ok:\s*true/.test(publishGate)) {
-    failures.push(
-      `${PUBLISH_GATE}: grants a publish on reconcile's canSell, which is looser than the sale gate (it tests neither payouts_enabled nor the settlement currency). An organiser could publish a paid event the checkout would then refuse to sell.`,
-    )
-  } else if (!/if\s*\(\s*fresh\.sellable\s*\)\s*return\s*\{\s*ok:\s*true/.test(publishGate)) {
-    failures.push(
-      `${PUBLISH_GATE}: does not GRANT the post-reconcile publish on fresh.sellable, so nothing ties the publish verdict to the sale gate's own predicate`,
-    )
-  } else {
-    passes.push('after a Stripe re-read the publish verdict is the sale gate’s own predicate, not a looser one')
+    passes.push('the publish gate makes no Stripe call')
   }
 }
 
@@ -477,12 +477,12 @@ if (reconcilerSrc) {
     passes.push('every successful read of a connected account records that it happened, changed or not')
   }
 
-  if (!/isOrganiserSellable\(/.test(reconcilerSrc)) {
+  if (!/isOrganiserPayable\(/.test(reconcilerSrc)) {
     failures.push(
-      `${CONNECT_RECONCILER}: does not compute its sellable verdict with isOrganiserSellable, so the reconciler and the sale gate can disagree about the same row`,
+      `${CONNECT_RECONCILER}: does not compute its payable verdict with isOrganiserPayable, so the reconciler and the payout can disagree about the same row`,
     )
   } else {
-    passes.push('the reconciler reports sellability through the sale gate’s own predicate')
+    passes.push('the reconciler reports payability through the payout’s own predicate')
   }
 }
 
@@ -507,6 +507,12 @@ if (connectWebhook && !/stripe_status_verified_at/.test(connectWebhook)) {
 // BEFORE, NOT AFTER, and that ordering is the fail-closed part: if the record
 // cannot be written there is no charge, rather than a charge nobody can
 // attribute. An intent created and never confirmed costs nobody anything.
+//
+// SELL FIRST (14 November 2026). An organiser who has not connected yet has no
+// account to name, and the database takes all four facts or none
+// (orders_destination_is_whole), so the record waits for the account. The
+// organisation's ledger row (order_confirmed) is the record meanwhile, and the
+// daily reconciliation (clause four) raises a P0 for any charge without one.
 
 const DESTINATION = 'src/lib/payments/order-destination.ts'
 const destination = read(DESTINATION)
@@ -628,15 +634,34 @@ if (transferGroupSites !== 3) {
   passes.push('all three checkout call sites hand the charge its own order id')
 }
 
+// -- CLAUSE SEVEN ------------------------------------------------------------
+// SELL FIRST'S OTHER HALF (Lawal, 10 October 2026: money only ever goes to the
+// organiser's own connected account). The post-event payout selects only
+// organisations that are active and connected, and pays the account on the
+// organisation's own row, so money held for an organiser who has not connected
+// waits for them and goes nowhere else.
+const PAYOUT = 'src/lib/payments/event-transfer.ts'
+const payout = read(PAYOUT)
+if (payout) {
+  const needs = [
+    [/\.eq\('organisations\.payout_status', 'active'\)/, 'pays an organisation that is not active (on hold or restricted)'],
+    [/\.not\('organisations\.stripe_account_id', 'is', null\)/, 'selects organisations with no connected account, so a transfer could be attempted with no destination'],
+    [/const destinationAccountId = orgEmbed\?\.stripe_account_id/, "no longer pays the account on the organisation's own row"],
+  ]
+  const missing = needs.filter(([re]) => !re.test(payout))
+  for (const [, why] of missing) failures.push(`${PAYOUT}: the post-event payout ${why}`)
+  if (missing.length === 0) passes.push("the payout goes only to the organisation's own connected, active account")
+}
+
 console.log(`[funds-reach-the-organiser] ${passes.length} structural guarantee(s) verified:`)
 for (const p of passes) console.log(`    PASS  ${p}`)
 console.log(
-  '    NOTE  clause two covers the CHARGE-time refusal and clause five the PUBLISH-time one',
+  '    NOTE  clause two covers the CHARGE-time refusal and clause five the PUBLISH-time one:',
 )
 console.log(
-  '          (MONEY FIX A3 layer two), including that the cached Stripe posture carries the',
+  '          the same rule, with no Stripe call (sell first, 14 November 2026); clause seven',
 )
-console.log('          DATE it was verified and that a stale one is re-read rather than believed.')
+console.log("          holds the payout to the organisation's own connected, active account.")
 console.log(
   '    NOTE  clause four covers A3 layer three, the daily settlement reconciliation, and covers',
 )
@@ -660,5 +685,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  '[funds-reach-the-organiser] PASS - every ticket charge names a destination, refuses an organiser who cannot be paid, is never refused by the fee amount alone, and the daily settlement reconciliation is wired, read-only and names every charge.',
+  '[funds-reach-the-organiser] PASS - every ticket charge refuses only a hold or an unsupported currency and never the fee amount alone, names its destination once the organiser is connected, the payout goes only to their own connected account, and the daily settlement reconciliation is wired, read-only and names every charge.',
 )

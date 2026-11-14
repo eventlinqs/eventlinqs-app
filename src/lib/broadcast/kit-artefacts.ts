@@ -220,6 +220,14 @@ export function toCardInput(
   }
 }
 
+/**
+ * A caption's price in the words an Australian reads: "From $25", never "From AUD $25" (the PM's score of 15 November
+ * 2026, S5). Only an Australian dollar price changes; any other currency keeps its code.
+ */
+export function captionPrice(priceLabel: string): string {
+  return priceLabel.replace(/^From AUD \$/, () => 'From $')
+}
+
 /** The caption engine's view of the same context. */
 export function toCaptionInput(context: ArtefactContext): CaptionInput {
   return {
@@ -230,7 +238,7 @@ export function toCaptionInput(context: ArtefactContext): CaptionInput {
     shortDateLabel: context.shortDateLabel,
     venueName: context.venueName,
     city: context.city,
-    priceLabel: context.priceLabel,
+    priceLabel: captionPrice(context.priceLabel),
     organiserName: context.organiserName,
     categorySlug: context.categorySlug,
     links: context.links,

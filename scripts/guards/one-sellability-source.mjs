@@ -202,7 +202,7 @@ const REVIEWED = new Map([
   ],
   [
     'src/lib/events/publish-gate.ts',
-    'RESOLVED 19 August 2026 (founder ruling). It now reads ORG_SALE_FIELDS_SELECT and runs isOrganiserSellable, the predicate the sale gate itself uses, so it names these fields because it DELEGATES to that gate rather than re-deriving it. The former divergence admitted payout_status <> restricted where the sale gate requires = active, and ignored payouts_enabled and the country map, so an organiser on hold could publish a paid event that could never sell. tests/unit/events/publish-gate-matches-sale-gate.test.ts now enumerates all 96 column combinations and fails if the two verdicts ever disagree again.',
+    'SELL FIRST, ruled by Lawal on 14 November 2026: it grants a paid publish on isOrganiserSellable alone, with no call to the payment provider, and names payout_status once only to word the refusal. Before that, RESOLVED 19 August 2026 (founder ruling). It now reads ORG_SALE_FIELDS_SELECT and runs isOrganiserSellable, the predicate the sale gate itself uses, so it names these fields because it DELEGATES to that gate rather than re-deriving it. The former divergence admitted payout_status <> restricted where the sale gate requires = active, and ignored payouts_enabled and the country map, so an organiser on hold could publish a paid event that could never sell. tests/unit/events/publish-gate-matches-sale-gate.test.ts now enumerates all 96 column combinations and fails if the two verdicts ever disagree again.',
   ],
 ])
 

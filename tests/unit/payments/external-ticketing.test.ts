@@ -231,9 +231,11 @@ describe('NON-NEGOTIABLE 5: nothing internal regresses', () => {
     expect(ticketsOnSale({ isPaidEvent: false, org: null })).toBe(true)
   })
 
-  it('a paid internal event with an unready organiser is still blocked', () => {
+  it('a paid internal event from an organiser EventLinqs has put on hold is still blocked', () => {
+    // Since sell first (Lawal, 15:22 on 14 November 2026) an organiser who has not finished Stripe sells; the refusal
+    // that remains is a hold placed by EventLinqs.
     expect(
-      ticketsOnSale({ isPaidEvent: true, org: { ...SELLABLE_ORG, payout_status: 'pending' } }),
+      ticketsOnSale({ isPaidEvent: true, org: { ...SELLABLE_ORG, payout_status: 'on_hold' } }),
     ).toBe(false)
   })
 

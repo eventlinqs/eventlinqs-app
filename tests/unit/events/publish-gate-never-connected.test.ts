@@ -2,28 +2,27 @@ import { describe, expect, it } from 'vitest'
 import { checkPublishGate } from '@/lib/events/publish-gate'
 
 /**
- * AN ORGANISER WHO HAS NEVER CONNECTED STRIPE MUST BE TOLD THAT.
+ * AN ORGANISER WHO HAS NEVER CONNECTED STRIPE PUBLISHES AND SELLS.
  *
- * Found by journey 2 on 28 August 2026, at the worst possible moment: the last
- * press of a seven-step wizard, after the organiser has signed up, built an
- * event, priced it and uploaded artwork.
+ * Lawal's yes, 15:22 on 14 November 2026: "Yes, you let organisers publish and
+ * sell straight away ... Finish my platform and let this be live." Eventbrite,
+ * Humanitix and Ticketmaster's Universe all let a new organiser sell before a
+ * payout account is connected (C:/dev/START-16OCT/EL-SELLING-PATH-14NOV/
+ * leaders-organiser-selling.md). Under A2 (29 September) EventLinqs holds the
+ * money until after the event and pays the organiser's own connected account
+ * then (10 October), so connecting payouts is a step before the payout, never a
+ * wall at the publish.
  *
- * With no stripe_account_id there is nothing for the reconciler to read, so it
- * failed with `stripe_error`, and the "Stripe unreachable" branch answered:
+ * WHAT THIS REPLACES. Found by journey 2 on 28 August 2026: the last press of a
+ * seven-step wizard refused a paid event from an organiser with no Stripe
+ * account, first with a false "we could not check your Stripe status", then with
+ * "Connect Stripe before publishing a paid event". Both are gone with the wall.
+ * The one thing kept from that finding is the rule that a refusal is true about
+ * its own cause: the only refusals left are a hold placed by EventLinqs and a
+ * country we cannot settle in, and each says so and points at a person.
  *
- *   "We could not check your Stripe status just now ... Nothing is wrong with
- *    your account as far as we know. Try again shortly."
- *
- * Every clause of that is false for this organiser. Nothing failed to check,
- * because there was nothing to check. Something IS wrong: they have not
- * connected payouts. And trying again shortly will never work, because waiting
- * does not connect Stripe. It is the founder's one rule broken exactly: a
- * refusal that is not true about its own cause, and that sends the person away
- * to wait instead of to the screen that fixes it.
- *
- * The reconciler is passed as a function that FAILS, deliberately, because that
- * is what the real one does for an account that does not exist. A test that
- * passed a working reconciler would prove nothing about this path.
+ * `payout_status 'unset'` is the platform's own word for "no Stripe account"
+ * (20260809000001_payout_status_unset.sql), so it is the fixture here.
  */
 
 const PAID = {
@@ -39,14 +38,20 @@ const PAID = {
   walkIn: null,
 }
 
+/** A client that answers the organisation read, and fails the test if anything else is asked of it. */
 function clientReturning(row: Record<string, unknown> | null) {
-  return {
-    from: () => ({
-      select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: row, error: null }) }),
-      }),
-    }),
-  } as never
+  const tables: string[] = []
+  const client = {
+    from: (table: string) => {
+      tables.push(table)
+      return {
+        select: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: row, error: null }) }),
+        }),
+      }
+    },
+  }
+  return { client: client as never, tables }
 }
 
 const NEVER_CONNECTED = {
@@ -54,55 +59,61 @@ const NEVER_CONNECTED = {
   stripe_charges_enabled: false,
   stripe_payouts_enabled: false,
   payout_status: 'unset',
-  stripe_account_country: 'AU',
+  stripe_account_country: null,
 }
 
-/** What the real reconciler does when there is no account to read. */
-const failingReconcile = async () => ({ ok: false, reason: 'stripe_error' }) as never
-
-describe('a paid event from an organiser who never connected Stripe', () => {
-  it('names Stripe as the cause and does not blame a failed check', async () => {
-    const result = await checkPublishGate(clientReturning(NEVER_CONNECTED), PAID, failingReconcile)
-
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-
-    expect(result.reason).toBe('paid_event_charges_disabled')
-    expect(result.message).toMatch(/connect stripe/i)
-
-    // The three false clauses, each pinned so they cannot come back.
-    expect(result.message, 'must not claim the check failed').not.toMatch(/could not check/i)
-    expect(result.message, 'must not claim nothing is wrong').not.toMatch(/nothing is wrong/i)
-    expect(result.message, 'must not promise that waiting helps').not.toMatch(/try again shortly/i)
-  })
-
-  it('points at the screen that fixes it', async () => {
-    const result = await checkPublishGate(clientReturning(NEVER_CONNECTED), PAID, failingReconcile)
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.nextAction?.href).toBe('/dashboard/payouts')
-  })
-
-  it('still says free events can go live, so the wizard is not a dead end', async () => {
-    const result = await checkPublishGate(clientReturning(NEVER_CONNECTED), PAID, failingReconcile)
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.message).toMatch(/free events/i)
-  })
-
-  it('a FREE event from the same organiser publishes', async () => {
-    const free = { ...PAID, tiersHavePaid: false }
-    const result = await checkPublishGate(clientReturning(NEVER_CONNECTED), free, failingReconcile)
+describe('a paid event from an organiser who never connected Stripe (sell first)', () => {
+  it('publishes', async () => {
+    const { client } = clientReturning(NEVER_CONNECTED)
+    const result = await checkPublishGate(client, PAID)
     expect(result.ok).toBe(true)
   })
 
-  it('an organisation that HAS an account still goes through the reconciler', async () => {
-    // The fix must not swallow the case it was not written for: an account that
-    // exists but is unreachable is still "we could not check", correctly.
-    const connected = { ...NEVER_CONNECTED, stripe_account_id: 'acct_x' }
-    const result = await checkPublishGate(clientReturning(connected), PAID, failingReconcile)
+  it('publishes whatever stage of Stripe the organiser has reached', async () => {
+    for (const row of [
+      { ...NEVER_CONNECTED, payout_status: 'active' },
+      { ...NEVER_CONNECTED, stripe_account_id: 'acct_x', stripe_account_country: 'AU', payout_status: 'active' },
+      { ...NEVER_CONNECTED, stripe_account_id: 'acct_x', stripe_account_country: 'AU', payout_status: 'restricted' },
+    ]) {
+      const { client } = clientReturning(row)
+      const result = await checkPublishGate(client, PAID)
+      expect(result.ok, JSON.stringify(row)).toBe(true)
+    }
+  })
+
+  it('reads only the organisation row: no Stripe call decides a publish', async () => {
+    const { client, tables } = clientReturning(NEVER_CONNECTED)
+    await checkPublishGate(client, PAID)
+    expect(tables).toEqual(['organisations'])
+  })
+
+  it('a FREE event from the same organiser publishes without reading it at all', async () => {
+    const { client, tables } = clientReturning(NEVER_CONNECTED)
+    const result = await checkPublishGate(client, { ...PAID, tiersHavePaid: false })
+    expect(result.ok).toBe(true)
+    expect(tables).toEqual([])
+  })
+})
+
+describe('the two refusals left, each true about its cause', () => {
+  it('a hold placed by EventLinqs refuses, says so, and points at a person', async () => {
+    const { client } = clientReturning({ ...NEVER_CONNECTED, payout_status: 'on_hold' })
+    const result = await checkPublishGate(client, PAID)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.message).toMatch(/could not check your Stripe status/i)
+    expect(result.reason).toBe('organisation_payouts_restricted')
+    expect(result.message).toMatch(/paused/i)
+    expect(result.message).toMatch(/EventLinqs support/)
+    expect(result.message, 'must not send the organiser to Stripe about our own hold').not.toMatch(/connect stripe/i)
+    expect(result.nextAction?.href).toBe('/contact')
+  })
+
+  it('a connected account in a country we cannot settle in refuses, and says that', async () => {
+    const { client } = clientReturning({ ...NEVER_CONNECTED, stripe_account_id: 'acct_x', stripe_account_country: 'ZZ', payout_status: 'active' })
+    const result = await checkPublishGate(client, PAID)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.message).toMatch(/country/i)
+    expect(result.nextAction?.href).toBe('/contact')
   })
 })

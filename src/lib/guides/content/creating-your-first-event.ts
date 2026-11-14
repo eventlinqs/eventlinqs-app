@@ -39,7 +39,7 @@ export const creatingYourFirstEvent: Guide = {
     },
     {
       kind: 'para',
-      text: 'From the dashboard, go to My Events and choose Create Event. The form runs in seven steps and saves as a draft the whole way, so you can stop after step three, go and find a better photo, and come back to it.',
+      text: 'From the dashboard, go to My events and choose Create event. The form runs in seven steps and saves as a draft the whole way, so you can stop after step three, go and find a better photo, and come back to it.',
     },
     { kind: 'heading', text: 'The seven steps' },
     {

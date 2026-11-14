@@ -12,7 +12,7 @@
  *
  * THE DEFECT THESE WERE WRITTEN FOR (close-out MONEY FIX, A1.7). A founding
  * organiser inside their fee-free window resolves to a platform fee of exactly
- * zero. `assertOrganiserCanReceiveFunds` refused any zero fee as "calculator
+ * zero. `assertOrganiserCanReceiveFunds` (now assertOrganiserCanTakeSales) refused any zero fee as "calculator
  * drift", so EVERY PAID TICKET for a fee-waived organiser was refused at
  * checkout and the buyer was told "There was a pricing issue with this
  * checkout." The waiver is the growth plan's first ranked lever, so the
@@ -23,7 +23,7 @@ import type { Organisation } from '@/types/database'
 import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import {
   ChargePreconditionError,
-  assertOrganiserCanReceiveFunds,
+  assertOrganiserCanTakeSales,
   composeApplicationFee,
   computeOrganiserShareCents,
 } from '@/lib/payments/application-fee'
@@ -119,43 +119,47 @@ function captureError(fn: () => void): unknown {
   }
 }
 
-describe('money chain: the organiser is always the destination', () => {
-  test('charge_always_carries_a_destination_connected_account', () => {
-    // The precondition is the single door every ticket charge passes through
-    // (create-platform-charge.ts:70), and it refuses before Stripe is called
-    // when there is no account to pay. So no charge can exist without one.
-    const err = captureError(() =>
-      assertOrganiserCanReceiveFunds(makeOrg({ stripe_account_id: null }), makeFees())
-    )
+describe('money chain: sell first, the organiser is paid after they connect (Lawal, 15:22 on 14 November 2026)', () => {
+  test('an organiser with no connected account can take a sale; the money is held for them', () => {
+    // A2 (29 September): EventLinqs holds the money until after the event. The
+    // transfer waits for the organiser's own connected account (10 October), so
+    // a missing account no longer refuses the buyer.
+    expect(captureError(() => assertOrganiserCanTakeSales(makeOrg({ stripe_account_id: null }), makeFees()))).toBeNull()
+    expect(
+      captureError(() =>
+        assertOrganiserCanTakeSales(
+          makeOrg({ stripe_account_id: null, stripe_payouts_enabled: false, stripe_account_country: null }),
+          makeFees(),
+        ),
+      ),
+    ).toBeNull()
+  })
+
+  test('payouts not yet enabled, or a Stripe restriction, do not refuse the sale', () => {
+    expect(captureError(() => assertOrganiserCanTakeSales(makeOrg({ stripe_payouts_enabled: false }), makeFees()))).toBeNull()
+    expect(captureError(() => assertOrganiserCanTakeSales(makeOrg({ payout_status: 'restricted' }), makeFees()))).toBeNull()
+  })
+
+  test('a hold placed by EventLinqs refuses the charge with its own named reason', () => {
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg({ payout_status: 'on_hold' }), makeFees()))
     expect(err).toBeInstanceOf(ChargePreconditionError)
-    expect((err as ChargePreconditionError).reason).toBe('org_not_connected')
+    expect((err as ChargePreconditionError).reason).toBe('org_on_hold')
+    const notConnectedHeld = captureError(() =>
+      assertOrganiserCanTakeSales(makeOrg({ stripe_account_id: null, payout_status: 'on_hold' }), makeFees()),
+    )
+    expect((notConnectedHeld as ChargePreconditionError).reason).toBe('org_on_hold')
   })
 
-  test('missing_connected_account_refuses_the_charge_with_a_named_error', () => {
-    const err = captureError(() =>
-      assertOrganiserCanReceiveFunds(makeOrg({ stripe_account_id: null }), makeFees())
-    )
-    expect((err as ChargePreconditionError).reason).toBe('org_not_connected')
-    expect((err as ChargePreconditionError).message).toContain('no connected Stripe account')
-  })
-
-  test('disabled_connected_account_refuses_the_charge', () => {
-    const disabled = captureError(() =>
-      assertOrganiserCanReceiveFunds(makeOrg({ stripe_payouts_enabled: false }), makeFees())
-    )
-    expect((disabled as ChargePreconditionError).reason).toBe('org_charges_disabled')
-
-    const restricted = captureError(() =>
-      assertOrganiserCanReceiveFunds(makeOrg({ payout_status: 'paused' }), makeFees())
-    )
-    expect((restricted as ChargePreconditionError).reason).toBe('org_payouts_restricted')
+  test('a connected account in a country we cannot settle in refuses the charge', () => {
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg({ stripe_account_country: 'ZZ' }), makeFees()))
+    expect((err as ChargePreconditionError).reason).toBe('org_country_unsupported')
   })
 })
 
 describe('money chain: the routing decision does not depend on the fee', () => {
   test('zero_platform_fee_still_routes_to_the_organiser', () => {
     // The whole of A1.7. A waived fee must NOT refuse the sale.
-    const err = captureError(() => assertOrganiserCanReceiveFunds(makeOrg(), makeWaivedFees()))
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg(), makeWaivedFees()))
     expect(err).toBeNull()
   })
 
@@ -183,20 +187,20 @@ describe('money chain: the routing decision does not depend on the fee', () => {
     // for: pricing_rules returning nothing is still a fault, and selling at a
     // silent zero take-rate is not a thing that may happen by accident.
     const drift = makeWaivedFees({ fee_waived: false })
-    const err = captureError(() => assertOrganiserCanReceiveFunds(makeOrg(), drift))
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg(), drift))
     expect((err as ChargePreconditionError).reason).toBe('fee_breakdown_invalid')
   })
 
   test('a negative platform fee is refused even when the fee is waived', () => {
     const negative = makeWaivedFees({ platform_fee_cents: -1 })
-    const err = captureError(() => assertOrganiserCanReceiveFunds(makeOrg(), negative))
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg(), negative))
     expect((err as ChargePreconditionError).reason).toBe('fee_breakdown_invalid')
   })
 
   test('a fee at or above the total is refused whether waived or not', () => {
     const swallowed = makeFees({ platform_fee_cents: 5_274, total_cents: 5_274 })
     expect(
-      (captureError(() => assertOrganiserCanReceiveFunds(makeOrg(), swallowed)) as ChargePreconditionError)
+      (captureError(() => assertOrganiserCanTakeSales(makeOrg(), swallowed)) as ChargePreconditionError)
         .reason
     ).toBe('fee_breakdown_invalid')
 
@@ -208,7 +212,7 @@ describe('money chain: the routing decision does not depend on the fee', () => {
     expect(
       (
         captureError(() =>
-          assertOrganiserCanReceiveFunds(makeOrg(), swallowedWaived)
+          assertOrganiserCanTakeSales(makeOrg(), swallowedWaived)
         ) as ChargePreconditionError
       ).reason
     ).toBe('fee_breakdown_invalid')
@@ -216,7 +220,7 @@ describe('money chain: the routing decision does not depend on the fee', () => {
 
   test('a zero total is refused: a free event must never reach Stripe', () => {
     const free = makeWaivedFees({ total_cents: 0, subtotal_cents: 0 })
-    const err = captureError(() => assertOrganiserCanReceiveFunds(makeOrg(), free))
+    const err = captureError(() => assertOrganiserCanTakeSales(makeOrg(), free))
     expect((err as ChargePreconditionError).reason).toBe('fee_breakdown_invalid')
   })
 })

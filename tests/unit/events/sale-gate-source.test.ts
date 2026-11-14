@@ -55,16 +55,16 @@ const PUBLIC_ORG_SHAPE = {
 describe('the organiser sale gate', () => {
   it('returns FALSE for the public embed shape, which is the whole trap', () => {
     // Not a bug in isOrganiserSellable: it is right to refuse when it cannot see
-    // the Stripe posture. The bug was handing it an object that never carries it.
+    // the organiser's hold. The bug was handing it an object that never carries it.
+    // Since sell first (14 November 2026) the rule refuses only a hold, so it
+    // fails closed on a row whose payout_status was never read: this embed.
     expect(isOrganiserSellable(PUBLIC_ORG_SHAPE as never)).toBe(false)
   })
 
-  it('returns TRUE only when every requirement the charge path needs is met', () => {
-    // Five fields, not two. The gate was widened on 15 August 2026 to agree with
-    // assertOrganiserCanReceiveFunds, which also requires payouts_enabled, an
-    // active payout_status and a country in the Connect currency map. Before
-    // that, an organiser missing any of the extra three passed here and was
-    // refused at the payment step with the button still enabled.
+  it('sells for any organiser EventLinqs has not put on hold (sell first, Lawal 15:22 on 14 November 2026)', () => {
+    // The charge path (assertOrganiserCanTakeSales) and this gate refuse on the
+    // same two facts: a hold, and a connected account in a country we cannot
+    // settle in. Connecting Stripe is the payout's question, not the sale's.
     const ok = {
       stripe_account_id: 'acct_1',
       stripe_charges_enabled: true,
@@ -73,9 +73,11 @@ describe('the organiser sale gate', () => {
       payout_status: 'active',
     }
     expect(isOrganiserSellable(ok as never)).toBe(true)
-    expect(isOrganiserSellable({ ...ok, stripe_charges_enabled: false } as never)).toBe(false)
-    expect(isOrganiserSellable({ ...ok, stripe_account_id: null } as never)).toBe(false)
-    expect(isOrganiserSellable({ ...ok, stripe_account_country: null } as never)).toBe(false)
+    expect(isOrganiserSellable({ ...ok, stripe_charges_enabled: false } as never)).toBe(true)
+    expect(isOrganiserSellable({ ...ok, stripe_account_id: null } as never)).toBe(true)
+    expect(isOrganiserSellable({ ...ok, stripe_account_country: null } as never)).toBe(true)
+    expect(isOrganiserSellable({ ...ok, payout_status: 'on_hold' } as never)).toBe(false)
+    expect(isOrganiserSellable({ ...ok, stripe_account_country: 'ZZ' } as never)).toBe(false)
   })
 
   it('the event page does NOT derive sellability from event.organisation', () => {

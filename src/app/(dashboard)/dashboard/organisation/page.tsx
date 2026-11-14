@@ -196,7 +196,7 @@ export default async function OrganisationPage({
           href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
-          Create Event
+          Create event
         </Link>
         <Link
           href={withOrganisation('/dashboard/events', org.id, organisationCount)}

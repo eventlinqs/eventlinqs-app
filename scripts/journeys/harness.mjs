@@ -521,12 +521,12 @@ export async function createEventThroughWizard(j, page, opts) {
       await page.waitForTimeout(1200)
     }
 
-    if (await page.$('button:has-text("Publish and get your launch kit")')) break
+    if (await page.$('button:has-text("Publish event")')) break
     if (!(await clickText(page, 'Continue'))) break
     await page.waitForTimeout(4000)
   }
 
-  const pub = await page.$('button:has-text("Publish and get your launch kit")')
+  const pub = await page.$('button:has-text("Publish event")')
   if (!pub) {
     j.blockers.push('never reached the Review step: no Publish button')
     return { reachedReview: false, madeCover }

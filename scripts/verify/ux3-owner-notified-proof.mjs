@@ -402,7 +402,7 @@ try {
         : `never reached Review: ${j.blockers.slice(-1)[0] ?? 'no reason recorded'}`,
     )
     if (review?.reachedReview && review.publishDisabled === false) {
-      // The control is named "Publish and get your launch kit"; the handle the
+      // The control is named "Publish event"; the handle the
       // wizard already found is used rather than a second text match.
       await review.publishButton.click()
       await page.waitForTimeout(10000)

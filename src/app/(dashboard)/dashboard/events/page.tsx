@@ -219,12 +219,12 @@ export default async function MyEventsPage({ searchParams }: Props) {
         </div>
       )}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">My Events</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">My events</h1>
         <Link
           href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
-          + Create Event
+          + Create event
         </Link>
       </div>
 

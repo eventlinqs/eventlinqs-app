@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRoutePathname } from '@/lib/navigation/route-pathname'
+import { activeNavHref } from '@/lib/navigation/active-nav-item'
 import { useState } from 'react'
 import {
   // BarChart3 import removed alongside the hidden /dashboard/insights
@@ -103,6 +104,8 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
     profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin'
 
   const visibleItems = ITEMS.filter((item) => (!item.organiserOnly || isOrganiser) && (!item.whenOn || paidPromotionsOpen))
+  // One current item: on /dashboard/events/create, "Create event", never "My events" with it (activeNavHref).
+  const currentHref = activeNavHref(visibleItems.filter((item) => !item.external), pathname)
 
   return (
     <aside
@@ -117,7 +120,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
           <ul className="space-y-1">
             {visibleItems.map((item) => {
               const Icon = item.icon
-              const active = item.match ? item.match(pathname) : pathname.startsWith(item.href)
+              const active = item.href === currentHref
               const isGold = item.emphasis === 'gold'
 
               const base = [
@@ -129,7 +132,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
               const stateCls = active
                 ? 'bg-ink-100 text-ink-900 font-semibold before:absolute before:left-0 before:top-1.5 before:h-7 before:w-1 before:rounded-r before:bg-gold-500'
                 : isGold
-                  ? 'bg-gold-100/70 text-ink-900 hover:bg-gold-100'
+                  ? 'font-semibold text-ink-900 hover:bg-gold-100'
                   : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'
 
               return (

@@ -1,6 +1,6 @@
 import type { Organisation } from '@/types/database'
 import type { FeeBreakdown } from './payment-calculator'
-import { getCurrencyForCountry } from './connect-currency'
+import { getCurrencyForCountry, saleCountryOf } from './connect-currency'
 import {
   getApplicationFeeCompositionMode,
   getReservePercentage,
@@ -28,9 +28,11 @@ import {
  * fee composition below still reads every pricing value through
  * `pricing-rules`. This is a move.
  */
-export { CONNECT_CURRENCY_MAP, getCurrencyForCountry } from './connect-currency'
+export { CONNECT_CURRENCY_MAP, getCurrencyForCountry, PLATFORM_COUNTRY, saleCountryOf } from './connect-currency'
 
 export type ChargePreconditionFailure =
+  /** A person at EventLinqs has put the organisation on hold (payout_status 'on_hold'): no sale until they lift it. */
+  | 'org_on_hold'
   | 'org_not_connected'
   | 'org_charges_disabled'
   | 'org_payouts_restricted'
@@ -262,12 +264,13 @@ export async function computeOrganiserTransferCents(
 /**
  * Pre-condition for SELLING a ticket under the funds-holding model. The buyer
  * charge is a PLATFORM charge (the platform is merchant of record), so the
- * organiser's `charges_enabled` is irrelevant here; what matters is that the
- * organiser can RECEIVE the later platform->connected transfer/payout. We still
- * refuse to sell for an organiser who is not connected, cannot be paid out, is
- * on hold, or sits in an unsupported country. Throws `ChargePreconditionError`.
+ * organiser's `charges_enabled` is irrelevant here, and so (since 14 November
+ * 2026) is whether they have connected at all: the money is held until after
+ * the event and the transfer waits for their own connected account. We refuse
+ * to sell only for an organiser on hold, in an unsupported country, or for a
+ * zero total. Throws `ChargePreconditionError`.
  */
-export function assertOrganiserCanReceiveFunds(
+export function assertOrganiserCanTakeSales(
   org: Pick<
     Organisation,
     | 'stripe_account_id'
@@ -277,25 +280,19 @@ export function assertOrganiserCanReceiveFunds(
   >,
   fees: FeeBreakdown
 ): void {
-  if (!org.stripe_account_id) {
+  /*
+   * SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November 2026; A2 of 29 September). The charge is on
+   * the platform's own account and the money is held until after the event, so the organiser needs no connected account
+   * to sell: the transfer waits for one (runEventDisbursements). What still refuses: a person's hold, an unsupported
+   * currency and a zero total. Renamed from assertOrganiserCanReceiveFunds, whose name described the old wall.
+   */
+  if (org.payout_status === 'on_hold') {
     throw new ChargePreconditionError(
-      'org_not_connected',
-      'Organisation has no connected Stripe account.'
+      'org_on_hold',
+      'EventLinqs has put this organisation on hold; sales are paused until a person lifts it.'
     )
   }
-  if (!org.stripe_payouts_enabled) {
-    throw new ChargePreconditionError(
-      'org_charges_disabled',
-      'Organisation Stripe account cannot receive funds yet (payouts not enabled).'
-    )
-  }
-  if (org.payout_status !== 'active') {
-    throw new ChargePreconditionError(
-      'org_payouts_restricted',
-      `Organisation payout status is ${org.payout_status}; sales are paused.`
-    )
-  }
-  if (!getCurrencyForCountry(org.stripe_account_country)) {
+  if (!getCurrencyForCountry(saleCountryOf(org))) {
     throw new ChargePreconditionError(
       'org_country_unsupported',
       `Organisation country "${org.stripe_account_country ?? 'null'}" is not in the v1 Connect currency map.`

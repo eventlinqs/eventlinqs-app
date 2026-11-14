@@ -102,7 +102,7 @@ const GATES = [
     reachedVia: ['ticketsOnSaleDetailed', 'ticketsOnSale'],
   },
   {
-    fn: 'assertOrganiserCanReceiveFunds',
+    fn: 'assertOrganiserCanTakeSales',
     declaredIn: 'src/lib/payments/application-fee.ts',
     inline: true,
     /*

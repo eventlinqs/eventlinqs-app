@@ -181,8 +181,10 @@ export function ConnectOnboardingCard({
             Get paid for ticket sales
           </h2>
           <p className="mt-1 text-sm text-ink-600">
-            We use Stripe to verify your identity and route payouts. Verification
-            is handled on Stripe and usually takes a few minutes.
+            We use Stripe to verify your identity and send your payouts. Verification
+            is handled on Stripe and usually takes a few minutes. Ticket sales do
+            not wait for this step; your details must be verified before you can
+            receive a payout.
           </p>
         </div>
         <StatusPill state={state} />
@@ -273,10 +275,9 @@ function NotStartedView({
   return (
     <div className="space-y-4">
       <ul className="grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
-        <BulletItem text="Transparent fees, no hidden charges" />
+        <BulletItem text="Ticket sales are held with each event, so refunds can be paid" />
         <BulletItem text="Payouts begin three days after the event" />
-        <BulletItem text="Bank verification is done by Stripe, not us" />
-        <BulletItem text="Switch payout schedule once you reach Tier 2" />
+        <BulletItem text="Your details are verified securely by Stripe" />
       </ul>
 
       <div>
@@ -287,7 +288,7 @@ function NotStartedView({
           Where is your business based?
         </label>
         <p className="mt-1 text-xs text-ink-500">
-          You cannot change this after onboarding starts.
+          You cannot change this once you start.
         </p>
         <select
           id="connect-country"
@@ -310,7 +311,7 @@ function NotStartedView({
         type="button"
         onClick={onSubmit}
         disabled={submitting}
-        aria-label="Set up payouts with Stripe"
+        aria-label="Add payout method with Stripe"
         className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? (
@@ -320,7 +321,7 @@ function NotStartedView({
           </>
         ) : (
           <>
-            Set up payouts
+            Add payout method
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
           </>
         )}
@@ -342,7 +343,7 @@ function InProgressView({
     <div className="space-y-4">
       <p className="text-sm text-ink-700">
         You started onboarding but Stripe still needs a few details before we
-        can route payouts to you. Pick up where you left off below.
+        can send your payouts. Pick up where you left off below.
       </p>
 
       {requirements.length > 0 && (
@@ -405,7 +406,7 @@ function CompleteView({
             Payouts are active for this organisation.
           </p>
           <p className="mt-0.5 text-xs text-ink-600">
-            You can publish paid events. Your first payout starts the Tier 2
+            Ticket sales are paid into this account after each event ends. Your first payout starts the Tier 2
             review automatically.
           </p>
         </div>

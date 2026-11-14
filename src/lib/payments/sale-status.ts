@@ -11,7 +11,7 @@ import type { Organisation } from '@/types/database'
 // the checkout. `connect-currency.ts` imports nothing and must stay that way.
 // `application-fee.ts` re-exports the same two members, so the gate and the
 // precondition still read one table.
-import { getCurrencyForCountry } from './connect-currency'
+import { getCurrencyForCountry, saleCountryOf } from './connect-currency'
 // One mechanism for every gate boundary. See required-fields.ts for why a cast
 // is not enough and why absent is not false.
 import { verifyRowFields } from './required-fields'
@@ -173,12 +173,13 @@ export function verifyOrgSaleFields(row: unknown): OrgFieldsVerdict {
  * connected but not finished onboarding, so this was reachable rather than
  * theoretical.
  *
- * NEITHER CHECK IS WEAKENED. The precondition still throws on all four; this
- * gate now refuses on the same four, plus `charges_enabled`, which it already
- * required and which is kept. The gate is therefore at least as strict as the
- * precondition on every field, which is the only relationship between them that
- * cannot strand a buyer: an event is offered only if the money can actually
- * move.
+ * SELL FIRST, 14 NOVEMBER 2026 (Lawal's yes of 15:22). Both sides changed
+ * together, which is the point of this note: the precondition
+ * (assertOrganiserCanTakeSales) now refuses only a person's hold, a currency we
+ * do not settle in and a zero total, and this gate refuses on exactly the same
+ * two organiser facts, so the relationship that cannot strand a buyer holds: an
+ * event is offered only if the charge will be taken. Being PAID is
+ * isOrganiserPayable below, which the post-event payout asks.
  *
  * The currency-map membership is decided by the same function the precondition
  * uses, imported rather than duplicated, so the two cannot drift apart.
@@ -191,10 +192,33 @@ export function verifyOrgSaleFields(row: unknown): OrgFieldsVerdict {
  * because it can no longer be handed one.
  */
 export function isOrganiserSellable(org: VerifiedOrgSaleFields): boolean {
+  /*
+   * SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November 2026: "you let organisers publish and sell
+   * straight away"). Under his A2 (29 September) the buyer pays EventLinqs, which holds the money until after the event
+   * and then transfers it to the organiser's own connected account (10 October). So what an organiser needs to SELL is
+   * not a Stripe account: it is only that a person at EventLinqs has not put them on hold (payout_status 'on_hold', a
+   * decision that protects buyers) and that their sale has a currency we settle in. Whether they can be PAID is
+   * isOrganiserPayable below, which the post-event payout and the dashboard's "Connect your bank" step read. The old
+   * five-check wall dated from bfdc66684 (30 April 2026), before A2.
+   */
+  // FAIL CLOSED ON A ROW THAT NEVER READ THE HOLD. payout_status is NOT NULL in the
+  // database (default 'active'), so anything but a string means the column was not
+  // selected: the public embed is exactly that shape, and a rule that refuses only
+  // on 'on_hold' would otherwise read it as sellable.
+  if (typeof org.payout_status !== 'string') return false
+  if (org.payout_status === 'on_hold') return false
+  if (!getCurrencyForCountry(saleCountryOf(org))) return false
+  return true
+}
+
+/**
+ * WHETHER THE ORGANISER CAN BE PAID NOW: a connected account that can take charges and pay out, active, in a currency we
+ * settle in. The post-event payout waits for this (runEventDisbursements selects only connected, active organisers);
+ * the dashboard shows what is left with one tap to finish. It never stops a sale.
+ */
+export function isOrganiserPayable(org: VerifiedOrgSaleFields): boolean {
   if (!org.stripe_account_id) return false
   if (org.stripe_charges_enabled !== true) return false
-  // Funds-holding: the platform is merchant of record, so what decides whether a
-  // sale can complete is the organiser's ability to RECEIVE the later transfer.
   if (org.stripe_payouts_enabled !== true) return false
   if (org.payout_status !== 'active') return false
   if (!getCurrencyForCountry(org.stripe_account_country)) return false
@@ -425,9 +449,12 @@ export function describeSaleRefusal(
         ? {
             reason,
             heading: 'Your tickets are not on sale',
+            // Since 14 November 2026 (sell first) this refusal means only a hold
+            // placed by EventLinqs or a payout account in a country we cannot
+            // settle in. Neither is a form to finish, so the step is to ask us.
             body:
-              'EventLinqs cannot take money for this event until your payment setup is complete, so buyers currently see a holding message instead of a checkout. Finishing it puts your tickets on sale straight away.',
-            action: { label: 'Finish payment setup', href: '/dashboard/payouts' },
+              'Ticket sales for this event are paused, so buyers see a holding message instead of the checkout. Contact EventLinqs support for details.',
+            action: { label: 'Contact support', href: '/contact' },
           }
         : {
             reason,

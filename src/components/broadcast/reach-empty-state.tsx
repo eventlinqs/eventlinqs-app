@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Download, Send } from 'lucide-react'
+import { ChevronDown, Download, Send } from 'lucide-react'
 
 /**
  * THE FOUR ZEROS.
@@ -63,10 +63,14 @@ export function ReachEmptyState({
   shareHref,
   posterHref,
 }: {
-  /** Where "send it everywhere" goes: the share row on this same screen. */
-  shareHref: string
-  posterHref: string
-}) {
+  /**
+   * Where "send it everywhere" goes. The full Reach page passes it and the poster; the launch kit does not, since
+   * both actions sit higher on that same screen (the PM's pre-read of 15 November 2026, S9).
+   */
+  shareHref?: string
+  posterHref?: string
+} = {}) {
+  const actions = Boolean(shareHref && posterHref)
   return (
     <div className="px-6 py-6">
       <div className="max-w-2xl">
@@ -77,48 +81,63 @@ export function ReachEmptyState({
           Your first number lands the moment someone opens one of your links
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-ink-600">
-          Nothing on this panel is estimated into existence and nothing is filled in for you.
-          Send a link from the row above, or put your QR poster up where your people already
-          are, and these four start filling in against the channel that earned them.
+          Numbers appear here as people open your links. Nothing is invented or filled in.
+          {actions
+            ? ' Send a link from the row above, or put your QR poster up where your people already are, and these four start filling in against the channel that earned them.'
+            : null}
         </p>
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-ink-200 bg-ink-100 sm:grid-cols-2">
         {MEASURES.map(measure => (
-          <div key={measure.label} className="bg-canvas px-5 py-4">
+          <div key={measure.label} className="bg-canvas px-4 py-3">
             <p className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
               <span
                 aria-hidden
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                  measure.hard ? 'bg-gold-500' : 'bg-ink-300'
-                }`}
+                className={measure.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-600 bg-transparent'}
               />
               {measure.label}
               <span className="font-body text-[10px] font-semibold uppercase tracking-normal text-ink-500">
-                {measure.hard ? 'Measured' : 'Close estimate'}
+                {measure.hard ? 'Measured' : 'Estimate'}
               </span>
             </p>
-            <p className="mt-1.5 text-xs leading-relaxed text-ink-600">{measure.meaning}</p>
           </div>
         ))}
       </div>
 
+      <details className="group mt-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-semibold text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 [&::-webkit-details-marker]:hidden">
+          <span>What each number means</span>
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <dl className="mt-1 space-y-2">
+          {MEASURES.map(measure => (
+            <div key={measure.label}>
+              <dt className="text-xs font-semibold text-ink-900">{measure.label}</dt>
+              <dd className="text-xs leading-relaxed text-ink-600">{measure.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+
+      {actions ? (
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Link
-          href={shareHref}
+          href={shareHref!}
           className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-gold-500 px-5 py-2 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:bg-gold-600"
         >
           <Send className="h-4 w-4" aria-hidden />
           Send it everywhere
         </Link>
         <a
-          href={posterHref}
+          href={posterHref!}
           className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)]"
         >
           <Download className="h-4 w-4" aria-hidden />
           Download your QR poster
         </a>
       </div>
+      ) : null}
     </div>
   )
 }

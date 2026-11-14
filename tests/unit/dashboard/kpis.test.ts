@@ -102,12 +102,12 @@ describe('a truncated 60-day read inflates the growth figure', () => {
     ).toBeGreaterThan(whole.ticketsDelta!)
   })
 
-  it('and at the limit a fully eaten prior period reads as +100%', () => {
+  it('and at the limit a fully eaten prior period shows no change at all', () => {
     const recentOnly = EVERY.filter((o) => new Date(o.created_at).getTime() >= NOW - 30 * DAY_MS)
     const k = computeDashboardKpis(recentOnly, NOW)
     expect(k.ticketsSoldPrior).toBe(0)
-    expect(k.ticketsDelta, 'growth from nothing is not a ratio, and 100 is what the screen shows')
-      .toBe(100)
+    expect(k.ticketsDelta, 'growth from nothing is not a ratio, so the screen shows no chip')
+      .toBeNull()
   })
 })
 
@@ -115,8 +115,8 @@ describe('pctChange says nothing rather than something wrong', () => {
   it('is null when both periods are empty', () => {
     expect(pctChange(0, 0)).toBeNull()
   })
-  it('is 100 when there is a current period and no prior one', () => {
-    expect(pctChange(5, 0)).toBe(100)
+  it('is null when there is a current period and no prior one (no chip on a first sale)', () => {
+    expect(pctChange(5, 0)).toBeNull()
   })
   it('is negative when the business shrank', () => {
     expect(pctChange(50, 100)).toBe(-50)

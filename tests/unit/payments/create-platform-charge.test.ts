@@ -195,11 +195,18 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
     expect(result.organiserTransferCents).toBe(10_300)
   })
 
-  test('rejects when org has no Stripe account', async () => {
-    mockOrgRow({ stripe_account_id: null })
+  /*
+   * SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes, 15:22 on 14 November
+   * 2026). An organiser with no connected account is charged on the platform's
+   * own account, in Australian dollars, and the money is held: the order carries
+   * no destination until they connect (the database takes all four facts or
+   * none), and the event's ledger row is the record that it is owed to them.
+   */
+  test('an organiser with no Stripe account is charged, in AUD, and nothing is written on the order yet', async () => {
+    mockOrgRow({ stripe_account_id: null, stripe_payouts_enabled: false, stripe_account_country: null })
     const { gateway, calls } = makeGateway()
 
-    const err = await captureRejection(() =>
+    const result = await
       createPlatformCharge({
         gateway,
         organisationId: 'org_1',
@@ -209,17 +216,19 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
         idempotencyKey: 'order_1',
         transferGroup: 'order_1',
       })
-    )
-    expect(err).toBeInstanceOf(ChargePreconditionError)
-    expect((err as ChargePreconditionError).reason).toBe('org_not_connected')
-    expect(calls).toHaveLength(0)
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({ amount_cents: 10_800, currency: 'AUD', transfer_group: 'order_1' })
+    expect(calls[0].connected_account_id).toBeUndefined()
+    expect(result).toMatchObject({ organiserTransferCents: 10_000, connectedAccountId: null, currency: 'AUD' })
+    expect(orderUpdates, 'no destination is recorded before there is an account to name').toHaveLength(0)
+    expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1', null)
   })
 
-  test('rejects when org payouts are not enabled (cannot receive funds)', async () => {
+  test('payouts not yet enabled on a connected account do not refuse the charge', async () => {
     mockOrgRow({ stripe_payouts_enabled: false })
     const { gateway, calls } = makeGateway()
-
-    const err = await captureRejection(() =>
+    const result = await
       createPlatformCharge({
         gateway,
         organisationId: 'org_1',
@@ -229,9 +238,8 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
         idempotencyKey: 'order_1',
         transferGroup: 'order_1',
       })
-    )
-    expect((err as ChargePreconditionError).reason).toBe('org_charges_disabled')
-    expect(calls).toHaveLength(0)
+    expect(calls).toHaveLength(1)
+    expect(result.connectedAccountId).toBe('acct_test')
   })
 
   test('rejects when fees currency mismatches the org country currency', async () => {
@@ -289,7 +297,7 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
     expect((err as Error).message).toMatch(/connection refused/)
   })
 
-  test('rejects on_hold organisation', async () => {
+  test('rejects an organisation EventLinqs has put on hold, by name, before Stripe is asked', async () => {
     mockOrgRow({ payout_status: 'on_hold' })
     const { gateway, calls } = makeGateway()
 
@@ -304,8 +312,9 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
         transferGroup: 'order_1',
       })
     )
-    expect((err as ChargePreconditionError).reason).toBe('org_payouts_restricted')
+    expect((err as ChargePreconditionError).reason).toBe('org_on_hold')
     expect(calls).toHaveLength(0)
+    expect(orderUpdates).toHaveLength(0)
   })
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -397,8 +406,8 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
     expect(order).toEqual(['record', 'intent'])
   })
 
-  test('missing_connected_account_refuses_the_charge_with_a_named_error, and no record is written', async () => {
-    mockOrgRow({ stripe_account_id: null })
+  test('a held organisation refuses the charge with a named error, and no record is written', async () => {
+    mockOrgRow({ stripe_account_id: null, payout_status: 'on_hold' })
     const { gateway, calls } = makeGateway()
     const err = await captureRejection(() =>
       createPlatformCharge({
@@ -411,7 +420,7 @@ describe('createPlatformCharge (separate charges and transfers)', () => {
         transferGroup: 'order_1',
       }),
     )
-    expect((err as ChargePreconditionError).reason).toBe('org_not_connected')
+    expect((err as ChargePreconditionError).reason).toBe('org_on_hold')
     expect(orderUpdates).toHaveLength(0)
     expect(calls).toHaveLength(0)
   })

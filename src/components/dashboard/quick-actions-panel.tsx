@@ -26,21 +26,26 @@ const ACTIONS: Action[] = [
     icon: Palette,
   },
   {
-    label: 'Set up payouts',
-    description: 'Connect your bank so ticket money reaches you.',
+    label: 'Add payout method',
+    description: 'Ticket sales are paid after each event ends.',
     href: '/dashboard/payouts',
     icon: Wallet,
   },
 ]
 
-export function QuickActionsPanel() {
+/**
+ * `hidePayoutMethod`: while the dashboard's payout banner shows, it carries "Add payout method", so this row hides
+ * (the PM's score of 15 November 2026, D1: one action, one button).
+ */
+export function QuickActionsPanel({ hidePayoutMethod = false }: { hidePayoutMethod?: boolean } = {}) {
+  const actions = hidePayoutMethod ? ACTIONS.filter((a) => a.href !== '/dashboard/payouts') : ACTIONS
   return (
     <section className="panel-elevated rounded-2xl border border-ink-100 bg-white">
       <header className="border-b border-ink-100 px-5 py-4">
         <h2 className="text-base font-semibold text-ink-900">Quick actions</h2>
       </header>
       <ul className="divide-y divide-ink-100">
-        {ACTIONS.map((action) => {
+        {actions.map((action) => {
           const Icon = action.icon
           const inner = (
             <div className="flex items-center gap-3 px-5 py-3">

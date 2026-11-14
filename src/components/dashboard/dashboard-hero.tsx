@@ -9,9 +9,14 @@ import { GreetingText } from './greeting-text'
 type Props = {
   firstName: string
   canCreateEvent?: boolean
+  /**
+   * While the payout banner shows, "Add payout method" is the one gold action on the first screen, so Create event is
+   * the outlined button (D4, the PM's pre-read of 15 November 2026). When the banner goes, it is gold again.
+   */
+  createOutlined?: boolean
 }
 
-export function DashboardHero({ firstName, canCreateEvent = true }: Props) {
+export function DashboardHero({ firstName, canCreateEvent = true, createOutlined = false }: Props) {
   return (
     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
       <div>
@@ -26,7 +31,11 @@ export function DashboardHero({ firstName, canCreateEvent = true }: Props) {
       {canCreateEvent && (
         <Link
           href="/dashboard/events/create"
-          className="inline-flex h-11 items-center gap-2 rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+          className={`inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-ink-900 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${
+            createOutlined
+              ? 'border border-ink-200 bg-white hover:border-[var(--brand-accent-strong)]'
+              : 'bg-gold-400 shadow-[var(--shadow-card)] hover:bg-gold-500 hover:shadow-[var(--shadow-card-hover)]'
+          }`}
         >
           <PlusCircle className="h-4 w-4" aria-hidden="true" />
           Create event

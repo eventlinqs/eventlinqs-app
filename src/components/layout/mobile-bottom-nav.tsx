@@ -5,6 +5,7 @@ import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { useEffect, useState } from 'react'
 import { Home, LayoutGrid, Search, Heart, User } from 'lucide-react'
 import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
+import { activeNavHref } from '@/lib/navigation/active-nav-item'
 
 /**
  * MobileBottomNav - global persistent bottom navigation for <= 768px
@@ -103,6 +104,7 @@ export function MobileBottomNav() {
   }, [lastY])
 
   if (bottomNavHiddenOn(pathname)) return null
+  const currentHref = activeNavHref(ITEMS, pathname)
 
   return (
     <nav
@@ -137,8 +139,9 @@ export function MobileBottomNav() {
       }}
     >
       <ul role="list" className="flex h-16 items-stretch">
-        {ITEMS.map(({ href, label, Icon, matchExact }) => {
-          const active = matchExact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
+        {ITEMS.map(({ href, label, Icon }) => {
+          // One current item: on /account/saved, "Saved", never "Account" with it (activeNavHref).
+          const active = href === currentHref
           return (
             <li key={href} className="flex-1">
               <Link

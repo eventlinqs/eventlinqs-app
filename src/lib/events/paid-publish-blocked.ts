@@ -12,8 +12,9 @@ import { eventIsPaid } from '@/lib/payments/sale-status'
  * so before it is pressed.
  *
  * THIS IS PRESENTATION, NOT A GUARD. checkPublishGate on the server is still the
- * only thing that decides, and it re-reads the connected account from Stripe
- * before it refuses, precisely so a stale column cannot produce a false refusal.
+ * only thing that decides, on the same rule (isOrganiserSellable). Since
+ * 14 November 2026 (sell first) that rule refuses only a person's hold or a
+ * country we cannot settle in, so this blocks the button only for those two.
  * This function can only make an existing server decision visible earlier. It
  * must never be able to invent a refusal of its own, which is why:
  *
@@ -43,6 +44,33 @@ export function isPaidPublishBlocked(input: {
   tierPrices: Array<{ price: string | number }>
 }): boolean {
   if (input.canSellPaid) return false
+  if (input.editMode) return false
+  return eventIsPaid(input.tierPrices.map((t) => ({ price: Number(t.price) || 0 })))
+}
+
+/**
+ * SHOULD THE FORM SHOW THE "CONNECT YOUR BANK" STEP?
+ *
+ * SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November 2026:
+ * "Yes, you let organisers publish and sell straight away"). A paid event
+ * publishes and sells at once; EventLinqs holds the money and pays it to the
+ * organiser's own connected account after the event. So an organiser who has not
+ * connected yet is shown the one step left, as a step with its link, and the
+ * Publish button stays live. Shown only for a NEW paid event the organisation
+ * can sell (a blocked one already carries its own notice) and only when it cannot
+ * be paid yet. `canBePaid` defaults to true at the call site, so an unresolved
+ * read shows nothing rather than a false step.
+ */
+export function showsConnectBankStep(input: {
+  /** Whether the organisation can sell a paid ticket (isOrganiserSellable). */
+  canSellPaid: boolean
+  /** Whether the organisation can be paid out yet (isOrganiserPayable). */
+  canBePaid: boolean
+  editMode: boolean
+  tierPrices: Array<{ price: string | number }>
+}): boolean {
+  if (input.canBePaid) return false
+  if (!input.canSellPaid) return false
   if (input.editMode) return false
   return eventIsPaid(input.tierPrices.map((t) => ({ price: Number(t.price) || 0 })))
 }

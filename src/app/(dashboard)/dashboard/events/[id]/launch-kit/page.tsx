@@ -31,7 +31,6 @@ import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
-import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
 import { PostPack } from '@/components/launch-kit/post-pack'
 import { buildCaptions, type CaptionPlatform } from '@/lib/broadcast/captions'
 import { loadArtefactContext, toCaptionInput } from '@/lib/broadcast/kit-artefacts'
@@ -362,7 +361,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                   aria-hidden
                   className="inline-block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]"
                 />
-                {justPublished ? 'Published · your launch kit is ready' : 'Your launch kit'}
+                {justPublished ? 'Published · launch kit ready' : 'Your launch kit'}
               </p>
               <h1
                 id="launch-kit-heading"
@@ -394,10 +393,10 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 </a>
                 <CopyLinkButton url={eventUrl} variant="dark" />
               </div>
-              {/* The live URL wraps (break-all), never truncates: a nowrap
-                  block's min-content is the full string and stretches the
-                  whole dashboard past the viewport on mobile. */}
-              <p className="mt-3 max-w-full break-all text-xs text-white/70 sm:text-sm">
+              {/* The live URL on one line with an ellipsis (the PM's score of 15 November 2026, S7: at 390 it broke
+                  mid-word). A nowrap line's min-content is the whole string, so the line is a block of the card's
+                  width with min-w-0 and overflow hidden: it can never widen the page. Copy link carries the whole. */}
+              <p className="mt-3 block w-full min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-white/70 sm:text-sm">
                 {eventUrl.replace(/^https?:\/\//, '')}
               </p>
             </div>
@@ -405,30 +404,21 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
         </div>
       </section>
 
-      {/* ── Send it everywhere: one-tap tracked sharing ───────────────────── */}
-      <Reveal as="section" aria-labelledby="kit-share-heading" className="mt-6">
-        <div className="rounded-2xl border border-gold-500/30 bg-white shadow-[var(--shadow-card)]">
-          <div className="border-b border-ink-100 px-6 py-5">
-            <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
-              In the kit · tracked sharing
-            </p>
-            <h2 id="kit-share-heading" className="mt-1 font-display text-xl font-bold text-ink-900">
-              Send it everywhere
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-ink-600">
-              {shareOn
-                ? 'Each button carries its own tracked link, so every click and every sale shows up in your reach below, attributed to the exact channel. Shared links unfurl as your designed invitation card.'
-                : 'Share tooling is switched off on this platform right now, so these buttons carry your plain live link. Your event page and ticket sales are unaffected.'}
-            </p>
-          </div>
-          <div className="px-6 py-5">
-            <LaunchShareRow
-              links={kitLinks}
-              shareText={`${organiserEvent.title}, ${dateLabel}`}
-            />
-          </div>
+      {/* ── Next steps, right under the hero (the PM's score of 15 November 2026, S2) ── */}
+      <nav aria-label="Next steps" className="mt-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          {nextSteps.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm font-semibold text-ink-900 shadow-sm transition-colors hover:border-[var(--brand-accent-strong)]"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-[var(--brand-accent-strong)]" aria-hidden />
+              <span className="min-w-0 truncate">{label}</span>
+            </Link>
+          ))}
         </div>
-      </Reveal>
+      </nav>
 
       {/* ── The post pack: the image and the words, per channel ──────────── */}
       {captions.length > 0 && (
@@ -442,9 +432,10 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 Ready to post, channel by channel
               </h2>
               <p className="mt-1 max-w-2xl text-sm text-ink-600">
-                Every channel gets the image in the shape it actually takes and a caption written
-                in its own register, both carrying the tracked link for that channel. Download,
-                copy, post: the sales come back attributed to the exact place you posted.
+                Pick a channel: share it in one tap, copy its caption or download its image.
+                {shareOn
+                  ? ' Each carries that channel\'s tracked link, so every sale shows up under the channel that made it.'
+                  : ' Share tooling is off right now, so each carries your plain event link.'}
               </p>
             </div>
             <div className="px-6 py-5">
@@ -453,6 +444,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 captions={captions}
                 leadFormat={LEAD_FORMAT}
                 tracked={shareOn}
+                shareLinks={kitLinks}
+                shareText={`${organiserEvent.title}, ${dateLabel}`}
               />
             </div>
           </div>
@@ -475,7 +468,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
       {/* grid-cols-1 base is load-bearing: without it the mobile track is
           content-sized (auto) and a card's intrinsic width pushes the whole
           dashboard wider than the viewport. */}
-      <Reveal stagger as="div" className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Reveal stagger as="div" className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         {/* QR poster */}
         <section
           aria-labelledby="kit-poster-heading"
@@ -489,7 +482,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               Your A4 QR poster
             </h2>
           </div>
-          <div className="flex flex-1 flex-wrap content-center items-center gap-6 px-6 py-5">
+          <div className="flex flex-1 flex-wrap content-start items-start gap-6 px-6 py-5">
             {qrSvg ? (
               <div className="flex flex-col items-center gap-2">
                 <div
@@ -507,7 +500,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               </p>
               <a
                 href={`/api/organiser/events/${id}/poster`}
-                className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-gold-500 px-5 py-2 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:bg-gold-600"
+                className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)]"
               >
                 <Download className="h-4 w-4" aria-hidden />
                 Download A4 poster (PDF)
@@ -642,10 +635,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             </Link>
           </div>
           {nothingHasTravelled ? (
-            <ReachEmptyState
-              shareHref={`/dashboard/events/${id}/launch-kit#kit-share-heading`}
-              posterHref={`/api/organiser/events/${id}/poster`}
-            />
+            <ReachEmptyState />
           ) : (
             <>
           <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-4">
@@ -658,12 +648,11 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 >
                   {stat.value}
                 </p>
-                <p className="mt-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
+                <p className="mt-1 flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
+                  <span aria-hidden className={stat.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-600 bg-transparent'} />
                   {stat.label}
                 </p>
-                {!stat.hard && (
-                  <p className="mt-1 text-[11px] leading-snug text-ink-500">Close estimate</p>
-                )}
+                <p className="mt-1 text-[11px] leading-snug text-ink-500">{stat.hard ? 'Measured' : 'Estimate'}</p>
               </div>
             ))}
           </div>
@@ -676,7 +665,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             ) : topChannels.length === 0 ? (
               <p className="text-sm text-ink-600">
                 Tickets and orders come straight from real payments. Clicks and views are
-                close estimates: link previews from Facebook, WhatsApp and the rest are
+                estimates: link previews from Facebook, WhatsApp and the rest are
                 filtered out and repeat taps are counted once an hour, but nothing can make a
                 request count perfectly.
               </p>
@@ -699,27 +688,6 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
         </div>
       </Reveal>
 
-      {/* ── Next steps ────────────────────────────────────────────────────── */}
-      <Reveal as="nav" aria-label="Next steps" className="mt-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {nextSteps.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-ink-200 bg-white px-5 py-4 text-sm font-semibold text-ink-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:shadow-md"
-            >
-              <span className="inline-flex items-center gap-2.5">
-                <Icon className="h-4 w-4 text-[var(--brand-accent-strong)]" aria-hidden />
-                {label}
-              </span>
-              <ArrowUpRight
-                className="h-4 w-4 text-ink-400 transition-colors group-hover:text-[var(--brand-accent-strong)]"
-                aria-hidden
-              />
-            </Link>
-          ))}
-        </div>
-      </Reveal>
     </div>
   )
 }

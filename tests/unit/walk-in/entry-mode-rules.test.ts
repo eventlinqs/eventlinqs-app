@@ -264,12 +264,12 @@ describe('checkPublishGate judges a walk-in event on its hours and never asks St
   const firstDate = spanDates(span.startsAt, span.endsAt, span.timezone)[0]
 
   it('publishes a walk-in event with its hours, without a single read', async () => {
-    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 0, days: [day(firstDate)], ...span } }, null)
+    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 0, days: [day(firstDate)], ...span } })
     expect(r).toEqual({ ok: true })
   })
 
   it('refuses one with no hours, naming what to add', async () => {
-    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 0, days: [], ...span } }, null)
+    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 0, days: [], ...span } })
     expect(r.ok).toBe(false)
     if (r.ok) return
     expect(r.reason).toBe('walk_in_hours_missing')
@@ -277,14 +277,14 @@ describe('checkPublishGate judges a walk-in event on its hours and never asks St
   })
 
   it('refuses one carrying a ticket type', async () => {
-    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 1, days: [day(firstDate)], ...span } }, null)
+    const r = await checkPublishGate(untouchable, { ...BASE, walkIn: { tierCount: 1, days: [day(firstDate)], ...span } })
     expect(r.ok).toBe(false)
     if (r.ok) return
     expect(r.reason).toBe('walk_in_has_ticket_types')
   })
 
   it('still refuses a walk-in event with no cover, before anything else', async () => {
-    const r = await checkPublishGate(untouchable, { ...BASE, coverImageUrl: null, walkIn: { tierCount: 0, days: [day(firstDate)], ...span } }, null)
+    const r = await checkPublishGate(untouchable, { ...BASE, coverImageUrl: null, walkIn: { tierCount: 0, days: [day(firstDate)], ...span } })
     expect(r.ok).toBe(false)
     if (r.ok) return
     expect(r.reason).toBe('cover_image_required')

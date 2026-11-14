@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { generateEventCoverPreview, uploadEventImage } from '@/lib/upload'
 import { prepareImageForUpload } from '@/lib/media/client-compress'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
@@ -103,9 +103,17 @@ export function EventMediaStep({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const objectUrls = useRef<Set<string>>(new Set())
 
+  // THE PARENT HEARS OF EACH CHANGE ONCE (14 November 2026). The form passes a new
+  // handler on every render (onImagesChange={imgs => set('media', imgs)}) and set()
+  // writes a new form object every time, so an effect that listed the handler in its
+  // dependencies ran again on every render it caused: React's "Maximum update depth
+  // exceeded", the whole create form re-rendering without end while this step was
+  // open (seen in the sell first TEST proof). useEffectEvent reads the latest handler
+  // without the effect depending on it (https://react.dev/reference/react/useEffectEvent).
+  const announceImages = useEffectEvent((next: MediaImage[]) => onImagesChange(next))
   useEffect(() => {
-    onImagesChange(items)
-  }, [items, onImagesChange])
+    announceImages(items)
+  }, [items])
 
   // Revoke every object URL on unmount.
   useEffect(() => {
@@ -543,6 +551,18 @@ function capitalise(s: string) {
 // optimised by next/image, and the remote preview is transient). The public event
 // page renders the same media through the media component library (HeroMedia,
 // GalleryImage). The src is either an object URL or our own storage host.
+/** The review step's small cover: the whole picture (law 15, never cropped), the organiser's own upload. */
+export function CoverThumb({ item }: { item: MediaImage }) {
+  const src = item.url || item.localPreview
+  if (!src) return null
+  return (
+    <span className="relative block h-14 w-20 shrink-0 overflow-hidden rounded-md border border-ink-200 bg-ink-100">
+      {/* eslint-disable-next-line @next/next/no-img-element -- the organiser's own upload, shown to them before publishing, not a public render surface */}
+      <img src={src} alt={item.alt || 'Your cover'} className="absolute inset-0 h-full w-full object-contain" />
+    </span>
+  )
+}
+
 function CoverImg({ item }: { item: MediaImage }) {
   const src = item.localPreview && (item.uploading || !item.url) ? item.localPreview : item.url
   if (!src) return null

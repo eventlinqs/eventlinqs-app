@@ -16,8 +16,10 @@
  *
  * So an organiser past a thousand orders in 60 days was not shown a low number.
  * They were shown GROWTH THAT WAS TOO HIGH, because last month had been trimmed
- * while this month survived intact. `pctChange` returns 100 when the previous
- * period is zero, so a fully truncated prior period renders as "+100%".
+ * while this month survived intact. `pctChange` returned 100 when the previous
+ * period was zero, so a fully truncated prior period rendered as "+100%"; since
+ * 14 November 2026 it returns null there (the PM's score: "+100.0%" on a first
+ * sale means nothing), so no chip shows at all.
  *
  * The read is fixed where it is made. This module exists so the CONSEQUENCE can
  * be asserted rather than described: `tests/unit/dashboard/kpis.test.ts` feeds
@@ -52,7 +54,7 @@ export const DAY_MS = 24 * 60 * 60 * 1000
  * zero to something is 100.
  */
 export function pctChange(current: number, previous: number): number | null {
-  if (previous === 0) return current > 0 ? 100 : null
+  if (previous === 0) return null
   return ((current - previous) / previous) * 100
 }
 

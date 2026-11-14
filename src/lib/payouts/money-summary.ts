@@ -45,6 +45,8 @@ export const DISBURSEMENT_BUFFER_FALLBACK_DAYS = 3
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const SALE_REASONS = ['order_confirmed'] as const
+/** The reserve's own rows: reserve_hold takes a share off the balance, reserve_release gives it back (20260428000001). */
+export const RESERVE_REASONS = ['reserve_hold', 'reserve_release'] as const
 export const REFUND_REASONS = [
   'refund_from_balance',
   'refund_from_reserve',
@@ -93,6 +95,12 @@ export interface OrganiserMoneySummary {
   paidOutCents: number
   /** Everything the platform still holds for the organiser, all events. */
   heldCents: number
+  /**
+   * The share kept back for refunds until after the event, net of releases: the reserve_hold rows taken off the
+   * balance, less the reserve_release rows that gave them back (20260428000001; a refund from the reserve releases
+   * and debits, 20260531000001). Shown so the sales, the amount held and the amount to be paid add up.
+   */
+  reserveCents: number
   nextPayout: NextPayout | null
 }
 
@@ -125,10 +133,12 @@ export function summariseMoney(input: {
   const saleOrders = new Set<string>()
   const perEvent = new Map<string, number>()
   let heldCents = 0
+  let reserveCents = 0
 
   for (const row of rows) {
     const delta = Number(row.delta_cents)
     heldCents += delta
+    if ((RESERVE_REASONS as readonly string[]).includes(row.reason)) reserveCents -= delta
     if (row.event_id) perEvent.set(row.event_id, (perEvent.get(row.event_id) ?? 0) + delta)
     if ((SALE_REASONS as readonly string[]).includes(row.reason)) {
       salesCents += delta
@@ -192,6 +202,7 @@ export function summariseMoney(input: {
     refundCount: refunds.size,
     paidOutCents: paidOut,
     heldCents,
+    reserveCents: Math.max(0, reserveCents),
     nextPayout,
   }
 }

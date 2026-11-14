@@ -63,7 +63,7 @@ await page.screenshot({ path: `${OUT}/regression-magic-draft.png`, fullPage: fal
 console.log('draft built')
 
 // Walk the wizard: upload a cover at the media step, then publish from the
-// review step ("Publish and get your launch kit").
+// review step ("Publish event").
 let published = false
 for (let step = 0; step < 14 && !published; step++) {
   await page.waitForTimeout(1500)

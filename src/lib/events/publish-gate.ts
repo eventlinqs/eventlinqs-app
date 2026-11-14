@@ -1,11 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { OutstandingRequirement, ReconcileOutcome } from '@/lib/stripe/reconcile-connect'
+import type { OutstandingRequirement } from '@/lib/stripe/reconcile-connect'
 import {
   ORG_SALE_FIELDS_SELECT,
   verifyOrgSaleFields,
   isOrganiserSellable,
 } from '@/lib/payments/sale-status'
-import { connectVerificationIsFresh } from './connect-verification-freshness'
 import { walkInHoursProblems, type GuideDay } from '@/lib/walk-in/guide'
 import { isLibraryPhoto } from '@/lib/media/library-photo'
 
@@ -131,36 +130,21 @@ export function describeOutstanding(
 }
 
 /**
- * Injected so the gate can be tested without Stripe or a database. Defaults to the
- * real reconciler.
- */
-type ReconcileFn = (organisationId: string) => Promise<ReconcileOutcome>
-
-async function defaultReconcile(organisationId: string): Promise<ReconcileOutcome> {
-  // Imported lazily and behind the refusal branch so the happy path never pays for
-  // loading the Stripe SDK, and so a test that never refuses needs no mock.
-  const [{ reconcileConnectedAccount }, { createAdminClient }] = await Promise.all([
-    import('@/lib/stripe/reconcile-connect'),
-    import('@/lib/supabase/admin'),
-  ])
-  return reconcileConnectedAccount(createAdminClient(), organisationId)
-}
-
-/**
- * Server-side publish-gate for events. Free events bypass; paid events
- * (any tier with price > 0) require the organising org to have an
- * onboarded Stripe Connect account with `charges_enabled` true and a
- * non-restricted payout status.
+ * Server-side publish-gate for events. Free events bypass; a paid event (any tier
+ * with price > 0) publishes on the SAME rule the sale and the charge use,
+ * isOrganiserSellable: it is refused only for an organisation a person at
+ * EventLinqs has put on hold, or one whose payout account sits in a country we
+ * cannot settle in.
  *
- * RECONCILE BEFORE REFUSING. If the stored columns say the organisation cannot
- * sell, the gate does NOT refuse on that reading. It re-reads the connected
- * account from Stripe, writes the truth, and decides on the fresh state. That is
- * what makes a stale column incapable of producing a false refusal, which is the
- * failure that locked the founder out of his own platform.
- *
- * The Stripe call happens ONLY on the path that was about to refuse. An
- * organisation that can already sell is answered from the row with no network
- * call, so the working path is not slowed down.
+ * SELL FIRST, CONNECT BEFORE THE PAYOUT (Lawal's yes of 15:22, 14 November 2026:
+ * "Yes, you let organisers publish and sell straight away"). Until that day a paid
+ * event waited for a connected, verified Stripe account, read and re-read from
+ * Stripe here (bfdc66684, 30 April 2026, before A2). Under A2 (29 September) the
+ * buyer pays EventLinqs, which holds the money until after the event and then
+ * transfers it to the organiser's own connected account (10 October), so no
+ * Stripe posture decides a publish any more and none is read on this path.
+ * Connecting payouts is a guided step on the dashboard; the payout keeps its own
+ * rule (isOrganiserPayable, runEventDisbursements).
  */
 export async function checkPublishGate(
   client: SupabaseClient,
@@ -184,8 +168,6 @@ export async function checkPublishGate(
     /** WI1. The walk-in facts, or null for a ticketed event. See WalkInPublishFacts. */
     walkIn: WalkInPublishFacts | null
   },
-  /** `null` opts out of the Stripe re-read; see the branch below for when that is right. */
-  reconcile: ReconcileFn | null = defaultReconcile,
 ): Promise<PublishGateResult> {
   // COVER REQUIRED TO PUBLISH, for free and paid events alike.
   //
@@ -281,13 +263,9 @@ export async function checkPublishGate(
 
   const { data: org, error } = await client
     .from('organisations')
-    // The canonical five, from ONE source (ORG_SALE_FIELDS_SELECT). This used to
-    // select three, which is how the fast path below came to disagree with the sale
-    // gate: it could not test what it had not read.
-    // The canonical five plus the DATE they were last written from a live read
-    // of the account (MONEY FIX A3 layer two). The five stay in one list so a
-    // narrowed select is still a loud programming error rather than a verdict.
-    .select(`${ORG_SALE_FIELDS_SELECT}, stripe_status_verified_at`)
+    // The five sale columns, from ONE source (ORG_SALE_FIELDS_SELECT), so a
+    // narrowed select is a loud programming error rather than a verdict.
+    .select(ORG_SALE_FIELDS_SELECT)
     .eq('id', input.organisationId)
     .maybeSingle()
 
@@ -300,221 +278,32 @@ export async function checkPublishGate(
   }
 
   /*
-   * FAST PATH, now the SAME predicate the sale gate uses. Founder ruling
-   * 2026-08-19: align this with the sale gate.
-   *
-   * THE DIVERGENCE THIS ENDS, and it ran in the unsafe direction. This condition
-   * used to be `stripe_charges_enabled && payout_status !== 'restricted'`, which is
-   * two loose checks where the sale gate makes five strict ones. isOrganiserSellable
-   * additionally requires stripe_account_id, stripe_payouts_enabled === true,
-   * payout_status === 'active' exactly (not merely "not restricted"), and a country
-   * whose currency is supported. So an organiser on hold, or with payouts not yet
-   * enabled, or in an unsupported country, could PUBLISH a paid event that the sale
-   * gate would then refuse to sell. The organiser announces and promotes a night
-   * that cannot take a cent, and the buyer meets a designed "still finishing their
-   * payment setup" message that reads as a platform fault.
-   *
-   * It is not a silent tightening either, which was the stated reason the old
-   * condition stayed loose. Failing this check does not refuse: it falls through to
-   * the SLOW PATH below, which asks Stripe what is actually true and only refuses if
-   * Stripe agrees. So an organisation whose columns have drifted still publishes.
-   *
-   * ONE PREDICATE, not a second copy. verifyOrgSaleFields asserts every one of the
-   * five columns is PRESENT before the predicate runs, so a narrowed select becomes
-   * a loud programming error rather than a verdict about the organiser.
+   * ONE RULE FOR PUBLISH, SALE AND CHARGE. isOrganiserSellable is what the event
+   * page, the checkout and the charge precondition (assertOrganiserCanTakeSales)
+   * ask, so an event can never be published that the checkout then refuses to
+   * sell, and never refused here for a reason the checkout would not refuse.
    */
   const saleFields = verifyOrgSaleFields(org)
-  if (saleFields.complete && isOrganiserSellable(saleFields.org)) {
-    /*
-     * MONEY FIX A3 LAYER TWO. A CACHED YES IS ONLY GOOD WHILE IT IS FRESH.
-     *
-     * The five columns just read are a CACHE of what Stripe last said, kept
-     * current by the account.updated webhook. Until this rule nothing asked WHEN
-     * it said it, so a row that said "enabled" six weeks ago and has heard
-     * nothing since was accepted exactly like one confirmed a minute ago. A
-     * webhook that stops arriving changes nothing on screen and raises nothing
-     * anywhere: the event publishes, tickets sell, the charge precondition reads
-     * the same stale row and lets them, and the first person to find out is the
-     * organiser whose transfer fails after the night.
-     *
-     * A STALE CACHE DOES NOT REFUSE. It falls through to the slow path below,
-     * which asks Stripe and decides on the answer. So this can only ever cost a
-     * network round trip; it cannot turn a working organiser away on its own.
-     *
-     * `reconcile === null` KEEPS ITS EXEMPTION, and that is not a hole. The
-     * scheduled-publish cron passes null deliberately (see publish-scheduled.ts
-     * for the measurement behind it): it reads the row seconds before deciding
-     * and must not put a live Stripe call inside a fail-closed job. Applying a
-     * freshness rule with no way to satisfy it would refuse every scheduled
-     * publish on a platform whose webhooks are perfectly healthy, which is a new
-     * defect rather than a fix.
-     */
-    const verifiedAt = (org as { stripe_status_verified_at?: string | null }).stripe_status_verified_at
-    if (reconcile === null || connectVerificationIsFresh(verifiedAt)) {
-      return { ok: true }
-    }
-  }
-
-  // NO RECONCILER. A caller may pass `null` to decide on the row it has just
-  // read, without consulting Stripe.
-  //
-  // WHY THIS EXISTS (merge finding, 13 August 2026). The reconcile below was
-  // built for the ORGANISER-FACING publish action, where a person clicks
-  // Publish and must never be refused because of a column that drifted while
-  // they were looking at the page. The scheduled-publish CRON is a different
-  // caller with a different problem: it reads the organisation row seconds
-  // before it decides, so it is not working from stale data, and a Stripe call
-  // per blocked event puts a network failure mode inside a fail-closed job.
-  //
-  // It was measured, not assumed: running the reconciler from the cron against
-  // an organisation with charges enabled and payouts restricted returned
-  // `paid_event_charges_disabled`, which is the WRONG reason to show an
-  // organiser. Opting out explicitly is therefore not a weakening, it is the
-  // correct answer for this caller, and it is expressed as its own branch so
-  // nobody has to fake a Stripe outage to get it.
-  if (reconcile === null) {
+  if (!saleFields.complete) {
     return {
       ok: false,
-      reason: org.stripe_charges_enabled ? 'organisation_payouts_restricted' : 'paid_event_charges_disabled',
-      message: org.stripe_charges_enabled
-        ? 'Payouts are restricted on this organisation, so this paid event stays scheduled rather than going live. Open payouts to see what Stripe needs.'
-        : 'This organisation cannot take payment yet, so this paid event stays scheduled rather than going live. Connect Stripe and finish identity verification.',
-      outstanding: [],
-      disabledReason: null,
-      nextAction: { label: 'Open payouts', href: '/dashboard/payouts' },
+      reason: 'organisation_not_found',
+      message: 'We could not read the sale settings for this organisation just now, so the event was not published. Try again in a moment.',
     }
   }
+  if (isOrganiserSellable(saleFields.org)) return { ok: true }
 
-  /*
-   * NEVER RECONCILE AN ACCOUNT THAT DOES NOT EXIST.
-   *
-   * An organiser who has simply not connected Stripe yet has no
-   * stripe_account_id, so there is nothing for the reconciler to read. It fails
-   * with `stripe_error`, and the branch below then tells them:
-   *
-   *   "We could not check your Stripe status just now ... Nothing is wrong with
-   *    your account as far as we know. Try again shortly."
-   *
-   * Every clause of that is false for them. Nothing failed to check, because
-   * there is nothing to check; something IS wrong, in the sense that they have
-   * not connected payouts; and trying again shortly will never work, because
-   * waiting does not connect Stripe. It is the exact failure the founder named:
-   * a refusal that blames the wrong cause, on the last step before publishing,
-   * to someone who has just built an entire event.
-   *
-   * The correct message already existed two branches down. This routes the case
-   * to it instead of through a reconcile that can only fail. Found by journey 2
-   * on 28 August 2026.
-   */
-  if (!org.stripe_account_id) {
-    return {
-      ok: false,
-      reason: 'paid_event_charges_disabled',
-      message:
-        'Connect Stripe before publishing a paid event: that is how you get paid, and we cannot take money for a ticket without it. Free events can be published right now.',
-      outstanding: [],
-      disabledReason: null,
-      nextAction: { label: 'Connect Stripe', href: '/dashboard/payouts' },
-    }
-  }
-
-  // SLOW PATH. We are about to refuse. Before doing that, find out what Stripe
-  // actually says, because the stored columns are exactly what cannot be trusted.
-  const fresh = await reconcile(input.organisationId)
-
-  if (!fresh.ok) {
-    // Stripe unreachable. Refuse on the stored state, but say plainly that the
-    // status could not be refreshed rather than asserting a Stripe problem.
-    return {
-      ok: false,
-      reason: org.stripe_charges_enabled ? 'organisation_payouts_restricted' : 'paid_event_charges_disabled',
-      message:
-        fresh.reason === 'stripe_error'
-          ? 'We could not check your Stripe status just now, so publishing a paid event is on hold for the moment. Nothing is wrong with your account as far as we know. Try again shortly.'
-          : 'Organisation not found.',
-      outstanding: [],
-      disabledReason: null,
-      nextAction: { label: 'Open payouts', href: '/dashboard/payouts' },
-    }
-  }
-
-  /*
-   * Stripe says it can sell. The refusal that was about to happen was false, and
-   * reconcile has already written the correct row.
-   *
-   * `fresh.sellable`, NEVER `fresh.canSell`, and the difference is a real
-   * defect rather than a nicety. canSell asks two things: charges_enabled, and a
-   * payout status that is not withheld. The SALE GATE asks five, adding
-   * stripe_account_id, payouts_enabled and a settlement currency in the Connect
-   * map. So an organiser with a null country, or with payouts not yet enabled,
-   * satisfied canSell and was refused at the payment step: the event goes live,
-   * the organiser promotes it, and the buyer meets a holding message that reads
-   * as a platform fault. The reconciler now computes the sale gate's own
-   * predicate on the state it just wrote, so publish and sale cannot diverge.
-   */
-  if (fresh.sellable) return { ok: true }
-
-  // A genuine block, now described from Stripe's own payload.
-  if (!fresh.payoutStatus || fresh.payoutStatus === 'unset') {
-    return {
-      ok: false,
-      reason: 'paid_event_charges_disabled',
-      message:
-        'Connect Stripe and finish identity verification before publishing paid events. Free events can be published anytime.',
-      outstanding: [],
-      disabledReason: null,
-      nextAction: { label: 'Connect Stripe', href: '/dashboard/payouts' },
-    }
-  }
-
-  if (fresh.adminHoldPreserved) {
-    return {
-      ok: false,
-      reason: 'organisation_payouts_restricted',
-      message:
-        'Payouts are on hold on this organisation by EventLinqs, not by Stripe. Contact support and we will tell you exactly why and what happens next.',
-      outstanding: fresh.outstanding,
-      disabledReason: fresh.disabledReason,
-      nextAction: { label: 'Contact support', href: '/contact' },
-    }
-  }
-
-  /*
-   * STRIPE IS HAPPY AND THE SALE GATE IS NOT, WHICH IS A REFUSAL NOTHING USED
-   * TO BE ABLE TO DESCRIBE.
-   *
-   * `canSell` and `sellable` disagree in exactly three ways: payouts are not
-   * enabled, the payout status is not active, or the account's country is one
-   * EventLinqs cannot settle in. Stripe reports NOTHING OUTSTANDING for any of
-   * them, because none of them is Stripe's complaint, so describeOutstanding
-   * below would say "Stripe has not enabled payouts on this account yet and has
-   * not said what is outstanding" and send the organiser to Stripe about a
-   * condition Stripe has no opinion on.
-   *
-   * The reconciler now returns the sale gate's own reasons, so the refusal says
-   * which one it is. This branch exists because MONEY FIX A3 layer two made the
-   * grant stricter; a stricter gate that cannot explain itself just moves the
-   * confusion.
-   */
-  if (fresh.canSell && fresh.sellableBlockers.length > 0) {
-    return {
-      ok: false,
-      reason: 'organisation_payouts_restricted',
-      message: `Stripe is happy with this account, but EventLinqs cannot pay it out yet: ${fresh.sellableBlockers.join('; ')}. Open payouts to finish it.`,
-      outstanding: fresh.outstanding,
-      disabledReason: fresh.disabledReason,
-      nextAction: { label: 'Open payouts', href: '/dashboard/payouts' },
-    }
-  }
-
+  // Refused: a person's hold, or a payout account in a country we cannot settle
+  // in. Neither is the organiser's to fix on a screen, so the step is to ask us.
   return {
     ok: false,
-    reason: fresh.canSell === false && !fresh.outstanding.length && fresh.payoutStatus === 'restricted'
-      ? 'organisation_payouts_restricted'
-      : 'paid_event_charges_disabled',
-    message: describeOutstanding(fresh.outstanding, fresh.disabledReason),
-    outstanding: fresh.outstanding,
-    disabledReason: fresh.disabledReason,
-    nextAction: { label: 'Finish Stripe setup', href: '/dashboard/payouts' },
+    reason: 'organisation_payouts_restricted',
+    message:
+      saleFields.org.payout_status === 'on_hold'
+        ? 'Ticket sales are paused for this organisation. Contact EventLinqs support for details.'
+        : 'Ticket sales are not available for payout accounts in this country. Contact EventLinqs support for details.',
+    outstanding: [],
+    disabledReason: null,
+    nextAction: { label: 'Contact support', href: '/contact' },
   }
 }

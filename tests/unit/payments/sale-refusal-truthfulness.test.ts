@@ -105,7 +105,8 @@ describe('defect 2: every refusal says something true and actionable', () => {
   it('gives an organiser the real cause and exactly one action', () => {
     const copy = describeSaleRefusal('organiser_payment_setup_incomplete', 'organiser')
     expect(copy.action).not.toBeNull()
-    expect(copy.action?.href).toBe('/dashboard/payouts')
+    // Since sell first this refusal is a hold or a country we cannot settle in: the payouts page cannot fix either.
+    expect(copy.action?.href).toBe('/contact')
     expect(copy.action?.label.length).toBeGreaterThan(0)
   })
 

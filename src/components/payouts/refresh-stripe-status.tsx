@@ -63,9 +63,9 @@ export function RefreshStripeStatus({ organisationId, initialOutstanding = [] }:
     <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="font-display text-base font-bold text-ink-900">Stripe status</h3>
+          <h3 className="font-display text-base font-bold text-ink-900">Payout status</h3>
           <p className="mt-1 text-sm text-ink-600">
-            If your Stripe account is ready but EventLinqs has not caught up, refresh it here.
+            Finished your details with Stripe? Check your payout status here.
           </p>
         </div>
         {/* method="post" per CLAUDE.md Law 8's sibling rule on pre-hydration submits

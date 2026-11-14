@@ -21,10 +21,8 @@ const FUTURE_END = new Date(Date.now() + 7 * 864e5).toISOString()
  * as selling a ticket. Enumerating the matrix means a future edit to either side that
  * breaks the agreement fails here, without anybody having to think of the case.
  *
- * `reconcile: null` is passed throughout so each decision is made on the row alone.
- * With the real reconciler a refusal first re-reads Stripe, which is correct for the
- * organiser-facing action but would make this test about Stripe rather than about the
- * two predicates agreeing.
+ * Since 14 November 2026 (sell first, Lawal's yes of 15:22) the gate makes no Stripe
+ * call at all, so each decision is made on the row alone with no opt out to pass.
  */
 
 const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
@@ -82,7 +80,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       if (!verdict.complete) continue
 
       const canSell = isOrganiserSellable(verdict.org)
-      const publish = await checkPublishGate(clientReturning(row), PAID, null)
+      const publish = await checkPublishGate(clientReturning(row), PAID)
 
       if (canSell !== publish.ok) {
         disagreements.push(
@@ -92,6 +90,20 @@ describe('the publish gate agrees with the sale gate on every column combination
     }
 
     expect(disagreements, `publish and sale disagreed on:\n${disagreements.join('\n')}`).toEqual([])
+  })
+
+  it('a paid event from an organiser who has never connected Stripe publishes (sell first)', async () => {
+    const neverConnected = {
+      stripe_account_id: null,
+      stripe_charges_enabled: false,
+      stripe_payouts_enabled: false,
+      stripe_account_country: null,
+      payout_status: 'active',
+    }
+    const result = await checkPublishGate(clientReturning(neverConnected), PAID)
+    expect(result.ok).toBe(true)
+    const held = await checkPublishGate(clientReturning({ ...neverConnected, payout_status: 'on_hold' }), PAID)
+    expect(held.ok).toBe(false)
   })
 
   it('a FREE event still publishes regardless of the Stripe posture', async () => {
@@ -106,7 +118,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       payout_status: 'restricted',
     }
     const free = { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
-    const result = await checkPublishGate(clientReturning(worst), free, null)
+    const result = await checkPublishGate(clientReturning(worst), free)
     expect(result.ok).toBe(true)
   })
 
@@ -120,7 +132,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       payout_status: 'active',
     }
     const noCover = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: null, endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
-    const result = await checkPublishGate(clientReturning(sellable), noCover, null)
+    const result = await checkPublishGate(clientReturning(sellable), noCover)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('cover_image_required')
   })

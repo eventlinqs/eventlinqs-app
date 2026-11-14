@@ -164,11 +164,11 @@ async function finishAndPublish(p, label) {
   if (t0) await t0.selectOption('free').catch(() => {})
   await fillIf(p, '#tier-capacity-0', '120')
   for (let i = 0; i < 4; i += 1) {
-    if (await p.$('button:has-text("Publish and get your launch kit")')) break
+    if (await p.$('button:has-text("Publish event")')) break
     if (!(await clickText(p, 'Continue'))) break
     await p.waitForTimeout(3500)
   }
-  const pub = await p.$('button:has-text("Publish and get your launch kit")')
+  const pub = await p.$('button:has-text("Publish event")')
   if (!pub) {
     j.blockers.push(`${label}: never reached Review: ${(await messagesOnScreen(p)).join(' // ') || 'no message'}`)
     return null
