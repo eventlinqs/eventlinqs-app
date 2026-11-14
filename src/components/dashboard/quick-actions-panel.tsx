@@ -27,7 +27,7 @@ const ACTIONS: Action[] = [
   },
   {
     label: 'Add payout method',
-    description: 'Ticket sales are paid into your bank account after each event ends.',
+    description: 'Ticket sales are paid after each event ends.',
     href: '/dashboard/payouts',
     icon: Wallet,
   },

@@ -99,7 +99,7 @@ export default async function DashboardPage({
   ])
   const org = scope.ok ? { id: scope.active.id, stripe_onboarding_complete: scope.active.stripeOnboardingComplete } : null
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0] || 'there'
   const isOrganiser =
     profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin'
 
