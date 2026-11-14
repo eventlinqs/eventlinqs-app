@@ -12,7 +12,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Gift,
   Handshake,
   Hourglass,
   KeyRound,
@@ -22,6 +21,7 @@ import {
   PlusCircle,
   Settings,
   Ticket,
+  UserPlus,
   Users,
   Wallet,
   HelpCircle,
@@ -52,7 +52,9 @@ const ITEMS: Item[] = [
   },
   { href: '/dashboard/tickets', label: 'My tickets', icon: Ticket },
   { href: '/dashboard/my-waitlists', label: 'Waitlists', icon: Hourglass },
-  { href: '/dashboard/invites', label: 'Referral invites', icon: Gift, organiserOnly: true },
+  // LAW 24 retired (15 November 2026): no reward is offered for an invite, so no gift. The same person icon as the
+  // dashboard's invite card, one door with one look.
+  { href: '/dashboard/invites', label: 'Invite organisers', icon: UserPlus, organiserOnly: true },
   { href: '/dashboard/my-squads', label: 'Squads', icon: Users },
   // /dashboard/insights nav entry hidden 23 May 2026 per
   // AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4. Restore when insights
