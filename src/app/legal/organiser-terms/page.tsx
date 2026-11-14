@@ -7,6 +7,7 @@ import {
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_OFFER_CLOSED_ON_LABEL,
   FOUNDING_REFERRAL_MONTHS,
+  REFERRAL_EXTENSION_LAST_DAY_LABEL,
 } from '@/lib/payments/founding-waiver'
 
 // THE VERSION OF 15 NOVEMBER 2026 (LAW 24 retired: Lawal, "every organiser must pay from day one"). The 26 September
@@ -201,8 +202,13 @@ export default async function OrganiserAgreementPage() {
           there is one fee and it is waived in full, so a $20 ticket is $20 all in.
         </li>
         <li>
+          If you registered before {FOUNDING_OFFER_CLOSED_ON_LABEL}, a referral you complete by{' '}
+          {REFERRAL_EXTENSION_LAST_DAY_LABEL} still extends your fee-free period by {FOUNDING_REFERRAL_MONTHS} months, as
+          the previous version of this agreement said. No referral extends it after that date.
+        </li>
+        <li>
           No fee-free period is given to an organiser who registers on or after{' '}
-          {FOUNDING_OFFER_CLOSED_ON_LABEL}, and no fee-free period is extended after that date.
+          {FOUNDING_OFFER_CLOSED_ON_LABEL}, and no referral earns one.
         </li>
       </ul>
       <p>

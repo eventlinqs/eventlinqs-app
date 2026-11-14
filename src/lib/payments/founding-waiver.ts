@@ -98,6 +98,23 @@ export const FOUNDING_OFFER_CLOSED_ON = '2026-11-15'
 /** "15 November 2026", the closing day as an organiser reads it. */
 export const FOUNDING_OFFER_CLOSED_ON_LABEL = '15 November 2026'
 
+/**
+ * THE REFERRAL EXTENSION'S DATED END (the PM's ruling of 15 November 2026, 00:42, item 4: the agreement's 30 days
+ * notice for a material change). A referral by an organisation registered before the cutover, completed by 15 December
+ * 2026, still earns its three months under the 26 September terms; nothing is credited after that day and a new
+ * organiser is never offered it. The database holds the same instant (public.referral_extension_open, migration
+ * 20261115000001): the end of 15 December in Melbourne.
+ */
+export const REFERRAL_EXTENSION_ENDS_AT = '2026-12-16T00:00:00+11:00'
+
+/** "15 December 2026", the last day a referral still earns its months. */
+export const REFERRAL_EXTENSION_LAST_DAY_LABEL = '15 December 2026'
+
+/** Is a referral completed at `at` still inside the extension's notice period? */
+export function referralExtensionOpen(at: Date = new Date()): boolean {
+  return at.getTime() < new Date(REFERRAL_EXTENSION_ENDS_AT).getTime()
+}
+
 /** The rule that replaced the offer, said one way. */
 export const FEE_FROM_DAY_ONE = {
   rule: 'Every organiser pays the platform fee on each paid ticket from their first sale. Free events stay free.',

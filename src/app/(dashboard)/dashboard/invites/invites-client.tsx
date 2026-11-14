@@ -73,7 +73,7 @@ export function InvitesClient({
   // it sees this tile; everyone else pays the fee from the first paid ticket and is told that once, in the tile's place.
   const waiverLabel = waiverActive ? waiverDate : 'Ended'
   const waiverHint = waiverActive
-    ? 'Your organisation registered before 15 November 2026, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then'
+    ? 'Your organisation registered before 15 November 2026, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then. A referral you complete by 15 December 2026 still extends it by three months'
     : 'Ended ' + waiverDate + '. ' + feeRule
 
   const generate = () => {

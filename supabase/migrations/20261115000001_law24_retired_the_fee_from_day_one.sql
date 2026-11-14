@@ -17,12 +17,19 @@
 --   4. order_fee_respects_law24 refused a platform fee on any order before greatest(window, registration + 6 months),
 --      which for an organisation with no window is still six months: every new organiser would have been fee-free.
 --
+-- THE PM'S RULING OF 00:42, item 4 (the agreement's 30 days notice for a material change): a referral by an
+-- organisation registered before the cutover, completed by 15 December 2026, still earns its three months under the
+-- 26 September terms; a new organiser is never offered them; nothing is credited after 15 December. Production read
+-- 0 referrals pending at 00:32 (C:/dev/EVIDENCE/EL-15NOV/law24-retired/referrals-gndnldyfudbytbboxesk.json).
+--
 -- WHAT THIS MIGRATION DOES, and nothing else:
---   a. drops the three triggers of 1 and 2 (their functions stay, uncalled, so the history reads whole);
+--   a. drops the registration trigger of 1 (its function stays, uncalled, so the history reads whole); the referral
+--      triggers of 2 stay, and credit_founding_referral is changed IN PLACE (law 14 (z)) to credit only a referrer that
+--      holds a window, and only while public.referral_extension_open(now()) (through 15 December 2026);
 --   b. replaces the constraint of 3 with the cutover: an organisation registered before this migration holds a window
 --      of at least six months from its registration (never shortened), and one registered after holds none;
---   c. a window never moves later (trg_fee_free_window_never_moves_later), so no referral, admin action or script can
---      grant or extend one;
+--   c. a window is never granted and never moves later (trg_fee_free_window_never_moves_later), but for exactly that
+--      referral extension, inside its dated end;
 --   d. changes order_fee_respects_law24 IN PLACE (law 14 (z)) from the function in force, reading the stored window
 --      alone: for the organisations of item 2 that is the same instant (the constraint holds it at six months or more
 --      from registration), and for everyone else there is none, so the fee is charged from the first paid ticket.
@@ -30,8 +37,38 @@
 -- to charge a new organiser.
 
 drop trigger if exists trg_registration_fee_free_window on public.organisations;
-drop trigger if exists trg_founding_referral_credit on public.orders;
-drop trigger if exists trg_founding_referral_credit_insert on public.orders;
+
+-- The dated end of the referral extension, in one place, testable at any instant (14 December true, 16 December false).
+create or replace function public.referral_extension_open(p_at timestamptz)
+returns boolean
+language sql
+immutable
+set search_path = public, pg_temp
+as $open$
+  select p_at < '2026-12-16 00:00:00+11'::timestamptz
+$open$;
+
+comment on function public.referral_extension_open(timestamptz) is
+  'LAW 24 retired (15 November 2026), the PM''s ruling of 00:42 item 4: a referral by an organisation registered before the cutover earns its three months while this is true, through 15 December 2026 (Melbourne). Migration 20261115000001.';
+
+-- credit_founding_referral, changed IN PLACE from the function in force (law 14 (z)): before anything is marked, a
+-- referral earns nothing once the extension has ended or when the referrer holds no window (registered after the
+-- cutover). The text replaced is one line in both production's and TEST's definitions.
+do $credit$
+declare
+  v_def text;
+  v_old constant text := '  IF v_referrer IS NULL THEN';
+  v_new constant text := '  IF v_referrer IS NULL OR NOT public.referral_extension_open(now()) OR NOT EXISTS (SELECT 1 FROM public.organisations r WHERE r.id = v_referrer AND r.founding_fee_free_until IS NOT NULL) THEN';
+  v_count int;
+begin
+  v_def := pg_get_functiondef('public.credit_founding_referral(uuid,uuid)'::regprocedure);
+  v_count := (length(v_def) - length(replace(v_def, v_old, ''))) / length(v_old);
+  if v_count <> 1 then
+    raise exception 'credit_founding_referral: % copies of the referrer test in force, expected exactly 1', v_count;
+  end if;
+  execute replace(v_def, v_old, v_new);
+end
+$credit$;
 
 -- b. The cutover is this migration's own instant, written into the constraint as a literal, so the rule never moves.
 do $cutover$
@@ -63,6 +100,13 @@ as $never$
 begin
   if new.founding_fee_free_until is not null
      and (old.founding_fee_free_until is null or new.founding_fee_free_until > old.founding_fee_free_until) then
+    -- The one extension still kept: a referral credit (credit_founding_referral adds its months to
+    -- founding_bonus_months in the same update) to a window already held, inside its dated end.
+    if old.founding_fee_free_until is not null
+       and coalesce(new.founding_bonus_months, 0) > coalesce(old.founding_bonus_months, 0)
+       and public.referral_extension_open(now()) then
+      return new;
+    end if;
     raise exception 'LAW 24 is retired (15 November 2026): no organisation is given a fee-free window or a later one (organisation %)',
       new.id using errcode = 'check_violation';
   end if;
@@ -112,9 +156,14 @@ do $post$
 declare
   v_def text;
 begin
-  if exists (select 1 from pg_trigger where tgname in
-      ('trg_registration_fee_free_window', 'trg_founding_referral_credit', 'trg_founding_referral_credit_insert')) then
-    raise exception 'a LAW 24 grant trigger is still in place';
+  if exists (select 1 from pg_trigger where tgname = 'trg_registration_fee_free_window') then
+    raise exception 'the registration window trigger is still in place';
+  end if;
+  if not public.referral_extension_open('2026-12-14 12:00:00+11') or public.referral_extension_open('2026-12-16 12:00:00+11') then
+    raise exception 'referral_extension_open does not end on 15 December 2026';
+  end if;
+  if position('referral_extension_open' in pg_get_functiondef('public.credit_founding_referral(uuid,uuid)'::regprocedure)) = 0 then
+    raise exception 'credit_founding_referral does not carry the dated end';
   end if;
   if not exists (select 1 from pg_trigger where tgname = 'trg_fee_free_window_never_moves_later') then
     raise exception 'trg_fee_free_window_never_moves_later is missing';
