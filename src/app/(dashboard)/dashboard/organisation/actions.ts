@@ -14,6 +14,7 @@ import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/cookie'
 import { getAppUrl } from '@/lib/site-url'
 import { abnValidationMessage, normaliseAbn } from '@/lib/tax/abn'
 import { assertCallerMayActForOrganisation } from '@/lib/organisations/act-for'
+import { nextFreeSlug } from '@/lib/organisations/next-free-slug'
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   slug: z
@@ -60,8 +61,25 @@ export async function createOrganisation(formData: FormData) {
     supabase.from('organisations').select('id').eq('slug', slug).single(),
   )
 
+  /*
+   * A TAKEN ADDRESS IS A STEP, NOT A WALL (Lawal, 15:27 on 14 November 2026: no
+   * rule on the organiser's path blocks them). This used to refuse with "This
+   * slug is already taken. Please choose another" at the first screen of
+   * onboarding. Now the first free numbered neighbour is used, which the
+   * organiser can change later; the unique constraint still decides a race.
+   */
+  let freeSlug = slug
   if (existing) {
-    return { error: 'This slug is already taken. Please choose another.' }
+    const { data: near, error: nearError } = await supabase
+      .from('organisations')
+      .select('slug')
+      .like('slug', `${slug}-%`)
+      .limit(1000)
+    const found = nearError ? null : nextFreeSlug(slug, new Set([slug, ...(near ?? []).map((r) => r.slug as string)]))
+    if (!found) {
+      return { error: 'This web address is not available. Try a different name.' }
+    }
+    freeSlug = found
   }
 
   // Insert organisation
@@ -69,7 +87,7 @@ export async function createOrganisation(formData: FormData) {
     .from('organisations')
     .insert({
       name,
-      slug,
+      slug: freeSlug,
       description: description || null,
       website: website || null,
       email: email || user.email,
