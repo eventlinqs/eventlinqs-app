@@ -2226,8 +2226,8 @@ export function EventForm({
     // Free means EVERY tier is $0 (the fee-system definition), not just the
     // cheapest tier: an event with a free tier plus paid tiers is a paid event.
     // P2 (15 November 2026): each section's heading carries an Edit link back to its own step.
-    const reviewHeading = (label: string, toStep: number, gap: 'mb-2' | 'mb-3' = 'mb-2') => (
-      <div className={`flex items-center justify-between gap-3 ${gap}`}>
+    const reviewHeading = (label: string, toStep: number, roomy = false) => (
+      <div className={`flex items-center justify-between gap-3 ${roomy ? 'mb-3' : 'mb-2'}`}>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400">{label}</h3>
         <button
           type="button"
@@ -2252,7 +2252,7 @@ export function EventForm({
 
         <div className="rounded-lg border border-ink-200 divide-y divide-ink-100">
           <div className="px-5 py-4">
-            {reviewHeading('Basic details', 1, 'mb-3')}
+            {reviewHeading('Basic details', 1, true)}
             <p className="text-sm font-semibold text-ink-900">{formData.title || <em className="text-ink-400">Untitled</em>}</p>
             {formData.summary && <p className="mt-1 text-sm text-ink-600">{formData.summary}</p>}
             {formData.tags && <p className="mt-1 text-xs text-ink-400">Tags: {formData.tags}</p>}
