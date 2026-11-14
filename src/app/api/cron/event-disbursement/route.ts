@@ -26,12 +26,18 @@ export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
   if (denied) return denied
 
+  // One organisation only, on request (the same shape as /api/cron/connect-reconcile): the scheduled run passes none.
+  const only = request.nextUrl.searchParams.get('org')
+  if (only && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(only)) {
+    return NextResponse.json({ ok: false, error: 'bad_org' }, { status: 400 })
+  }
+
   const adminClient = createAdminClient()
   const stripe = getStripeClient()
   const transferGateway = getDefaultTransferGateway()
 
   try {
-    const summary = await runEventDisbursements(adminClient, transferGateway, stripe)
+    const summary = await runEventDisbursements(adminClient, transferGateway, stripe, only ? { organisationId: only } : undefined)
     console.log(
       `[cron/event-disbursement] considered=${summary.considered} transferred=${summary.transferred} skipped=${summary.skipped} failed=${summary.failed}`
     )

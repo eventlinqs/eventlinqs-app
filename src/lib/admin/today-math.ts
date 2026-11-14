@@ -240,3 +240,40 @@ export function poolFoundGlance(rows: readonly { address: string; organiser: str
     },
   ]
 }
+
+/**
+ * HELD TICKET SALES A PERSON LOOKS AT (the PM's 15:36 of 14 November 2026, on Lawal's 15:22 and 15:27). Since sell first
+ * an organiser sells before they can be paid, and nothing stops them: "NO CAP that stops an unverified organiser
+ * selling; instead an unverified organiser whose held takings pass A$2,000 shows in /admin/today's Exceptions for a
+ * human look." This is that line. It stops nothing; it only asks a person to look.
+ */
+export const HELD_UNPAYABLE_LOOK_CENTS = 200_000
+
+/** What an organisation holds: the sum of its ledger rows, the arithmetic the payout itself uses (money-summary.ts). */
+export function heldUnpayableItems(
+  orgs: readonly { id: string; name: string }[],
+  rows: readonly { organisation_id: string; delta_cents: number; created_at: string }[],
+): QueueItem[] {
+  const held = new Map<string, { cents: number; first: string }>()
+  for (const r of rows) {
+    const now = held.get(r.organisation_id)
+    const cents = (now?.cents ?? 0) + Number(r.delta_cents)
+    const first = now && Date.parse(now.first) <= Date.parse(r.created_at) ? now.first : r.created_at
+    held.set(r.organisation_id, { cents, first })
+  }
+  const money = (cents: number) =>
+    `A$${(cents / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return orgs.flatMap((o) => {
+    const h = held.get(o.id)
+    if (!h || h.cents <= HELD_UNPAYABLE_LOOK_CENTS) return []
+    return [
+      {
+        id: `held-unpayable:${o.id}`,
+        what: `${o.name} holds ${money(h.cents)} in ticket sales with no payout account yet`,
+        why: `Held sales pass ${money(HELD_UNPAYABLE_LOOK_CENTS)} and the organisation cannot be paid until it adds and verifies a payout method. Nothing is stopped; this is for a look.`,
+        since: h.first,
+        href: '/admin/organisers',
+      },
+    ]
+  })
+}
