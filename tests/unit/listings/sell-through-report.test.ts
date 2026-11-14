@@ -12,7 +12,6 @@ import { readVoicePolicy, voiceProblems } from '../../../src/lib/outreach/voice-
 import { BROADCAST_FLAG_DEFAULTS } from '../../../src/lib/flags/broadcast'
 import { MESSAGE_TYPES } from '../../../src/lib/notifications/recipient-matrix'
 import { SEND_PATHS } from '../../../src/lib/consent/send-paths'
-import { FOUNDING_INITIAL_MONTHS_WORD } from '../../../src/lib/payments/founding-waiver'
 import { OFFERS_CONSENT_WORDS, judgeSubmission } from '../../../src/lib/listings/submission'
 
 /**
@@ -90,9 +89,10 @@ describe("Lawal's service form, passing every one of the gateway's checks", () =
     expect(msg?.body).not.toMatch(/sell on EventLinqs|platform fee|\/start/)
     expect(voiceProblems(msg!, readVoicePolicy())).toEqual([])
   })
-  test("with the organiser's recorded yes: the one offer line, its months read from the offer module, and the door", () => {
+  test("with the organiser's recorded yes: the one offer line, on the payout and never on free months, and the door", () => {
     const msg = sellThroughMessage({ ...KYIVSKA, mayOffer: true }, FROM, SIGNATURE)
-    expect(msg?.body).toContain(`no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months from the day you register:`)
+    expect(msg?.body).toContain('the ticket money paid into your own bank account after the event:')
+    expect(msg?.body).not.toMatch(/months|no platform fee/i)
     expect(msg?.body).toContain('https://www.eventlinqs.com.au/start?src=report')
     expect(voiceProblems(msg!, readVoicePolicy())).toEqual([])
   })
@@ -100,8 +100,8 @@ describe("Lawal's service form, passing every one of the gateway's checks", () =
     const msg = sellThroughMessage({ ...KYIVSKA, title: 'Kyivska Perepichka - Melbourne' }, FROM, SIGNATURE)
     expect(voiceProblems(msg!, readVoicePolicy()).join(' ')).toMatch(/dash|hyphen/i)
   })
-  test('the offer months are never typed in the words module (LAW 24)', () => {
-    expect(read('src/lib/listings/sell-through-report-words.ts')).not.toMatch(/\b(six|6) months\b/i)
+  test('the words module offers no free months (LAW 24 retired, 15 November 2026)', () => {
+    expect(read('src/lib/listings/sell-through-report-words.ts')).not.toMatch(/months|FOUNDING_INITIAL/i)
   })
 })
 

@@ -31,6 +31,7 @@
  */
 import {
   FOUNDING_BADGE_NAME,
+  FOUNDING_OFFER_OPEN,
   FOUNDING_INITIAL_MONTHS,
   FOUNDING_INITIAL_MONTHS_WORD,
   FOUNDING_OFFER_SCOPE,
@@ -68,8 +69,10 @@ export interface FoundingOffer {
   note: string
 }
 
+// LAW 24 IS RETIRED (Lawal, 15 November 2026): the band that offered six free months is closed with the offer
+// (FOUNDING_OFFER_OPEN), kept here unchanged so it can be read; the organiser pays the fee from the first paid ticket.
 export const FOUNDING_OFFER: FoundingOffer = {
-  enabled: true,
+  enabled: FOUNDING_OFFER_OPEN,
   eyebrow: `${SIX} months free · every organiser`,
   title: `Your first ${FOUNDING_INITIAL_MONTHS_WORD} months are on us.`,
   body: `${FOUNDING_TERMS.scope} ${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.after}`,

@@ -1045,6 +1045,13 @@ body:has([aria-modal='true']:not([aria-hidden='true'])) #el-consent-shell[id] { 
   .hero-marketing { max-height: 600px; }
 }
 .hero-marketing { height: var(--hero-scale); }
+/* A PHOTO BAND ON A PHONE (the PM's 07:40 of 15 November 2026, the organisers hero at 390): below 40rem the photograph is
+   a band of 200px and the hero's copy sits under it on solid navy, as Eventbrite's and Humanitix's organiser pages set
+   their phone heroes, so no line of type lies over a bright part of a photograph. The scale still comes from the one
+   custom property; from 40rem up nothing changes. */
+@media (width < 40rem) {
+  .hero-phone-band { --hero-scale: 200px; min-height: 0; }
+}
 /* No `height` and no `max-height`: the floor is the scale, the ceiling is the
    content. Giving this rule a height again reintroduces the clipping, which is
    why scripts/guards/hero-scale-one-source.mjs refuses it. */

@@ -53,7 +53,7 @@ describe('broadcast flag resolver', () => {
       // because the offer is live on /organisers and in every outreach message,
       // so the safe posture when the table cannot be read is the one the public
       // page is already promising. Closing it is a deliberate act.
-      founding_open: true,
+      founding_open: false,
       // The audience asset's reversal condition (close-out GA1). ON, because
       // the consent question is already on the checkout of a live platform and
       // the asset it builds is the point of the item. Nothing about this

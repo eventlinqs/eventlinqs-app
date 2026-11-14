@@ -5,15 +5,16 @@ import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
 import {
   FOUNDING_INITIAL_MONTHS,
-  FOUNDING_INITIAL_MONTHS_WORD,
+  FOUNDING_OFFER_CLOSED_ON_LABEL,
   FOUNDING_REFERRAL_MONTHS,
+  REFERRAL_EXTENSION_LAST_DAY_LABEL,
 } from '@/lib/payments/founding-waiver'
 
-// The fee-free section's numbers are RENDERED from the one module that holds
-// the offer (LAW 24 as ruled, 26 September 2026). The rendered wording is
-// byte-for-byte the wording of the 26 September 2026 version; a change to the
-// words themselves is a new dated version of this agreement, never an edit.
-const SIX_MONTHS_TITLE = `${FOUNDING_INITIAL_MONTHS_WORD.charAt(0).toUpperCase()}${FOUNDING_INITIAL_MONTHS_WORD.slice(1)} Months Fee-Free`
+// THE VERSION OF 15 NOVEMBER 2026 (LAW 24 retired: Lawal, "every organiser must pay from day one"). The 26 September
+// 2026 version, which offered every organiser six fee-free months, is in git history; a change to these words is a new
+// dated version of this agreement, never an edit. The numbers of the closed offer are still RENDERED from the one
+// module that held it, so this page and the window the database keeps for the earlier organisers cannot disagree.
+const EARLIER_PERIODS_TITLE = `Fee-Free Periods Before ${FOUNDING_OFFER_CLOSED_ON_LABEL}`
 
 export const metadata: Metadata = {
   title: 'Organiser Agreement | EventLinqs',
@@ -33,7 +34,7 @@ const SECTIONS = [
   { id: 'eligibility',    title: 'Eligibility and Verification' },
   { id: 'listings',       title: 'Your Listings' },
   { id: 'fees',           title: 'Fees' },
-  { id: 'founding',       title: SIX_MONTHS_TITLE },
+  { id: 'founding',       title: EARLIER_PERIODS_TITLE },
   { id: 'rate-changes',   title: 'Rate Changes' },
   { id: 'payouts',        title: 'Payouts and the Reserve' },
   { id: 'refund-duties',  title: 'Refunds' },
@@ -62,7 +63,7 @@ export default async function OrganiserAgreementPage() {
   return (
     <LegalPageShell
       title="Organiser Agreement"
-      lastUpdated="26 September 2026"
+      lastUpdated="15 November 2026"
       sections={SECTIONS}
     >
       <h2 id="about">About This Agreement</h2>
@@ -183,34 +184,36 @@ export default async function OrganiserAgreementPage() {
         the buyer total.
       </p>
 
-      <h2 id="founding">{SIX_MONTHS_TITLE} for Every Organiser</h2>
+      <h2 id="founding">{EARLIER_PERIODS_TITLE}</h2>
       <p>
-        Every organiser on EventLinqs has a fee-free period. There is no cap on the
-        number of organisers and nothing to apply for:
+        <strong>From {FOUNDING_OFFER_CLOSED_ON_LABEL}, the fees above apply to every organiser from
+        their first paid ticket.</strong> Free events stay free.
+      </p>
+      <p>
+        Until that date, every organiser who registered on EventLinqs received a
+        fee-free period of {FOUNDING_INITIAL_MONTHS} months, counted from the date they registered, which
+        extended by a further {FOUNDING_REFERRAL_MONTHS} months for each organiser they referred who
+        published and sold a paid event. That offer closed on {FOUNDING_OFFER_CLOSED_ON_LABEL}:
       </p>
       <ul>
         <li>
-          You pay <strong>zero platform fees for {FOUNDING_INITIAL_MONTHS} months</strong>, counted from the
-          date you register on EventLinqs.
+          If you registered before {FOUNDING_OFFER_CLOSED_ON_LABEL}, you keep the fee-free period you
+          were given, to its end date. During it there is no EventLinqs fee at all:
+          there is one fee and it is waived in full, so a $20 ticket is $20 all in.
         </li>
         <li>
-          The fee-free period extends by a further <strong>{FOUNDING_REFERRAL_MONTHS} months</strong> for
-          each organiser you successfully refer who publishes and sells a paid
-          event.
+          If you registered before {FOUNDING_OFFER_CLOSED_ON_LABEL}, a referral you complete by{' '}
+          {REFERRAL_EXTENSION_LAST_DAY_LABEL} still extends your fee-free period by {FOUNDING_REFERRAL_MONTHS} months, as
+          the previous version of this agreement said. No referral extends it after that date.
         </li>
         <li>
-          In return we ask for your honest feedback on the platform as we build it.
+          No fee-free period is given to an organiser who registers on or after{' '}
+          {FOUNDING_OFFER_CLOSED_ON_LABEL}, and no referral earns one.
         </li>
       </ul>
       <p>
-        <strong>The fee-free period means no EventLinqs fee at all.</strong> There
-        is one fee and it is waived in full during the period, so a $20 ticket is
-        $20 all in. Card processing is included in our fee, so nothing is charged
-        separately in its place.
-      </p>
-      <p>
-        We may end the fee-free period early where an organiser breaches this
-        agreement. At the end of your fee-free period, the standard published rates
+        We may end a fee-free period early where an organiser breaches this
+        agreement. At the end of a fee-free period, the standard published rates
         apply, and we will tell you before that happens.
       </p>
 

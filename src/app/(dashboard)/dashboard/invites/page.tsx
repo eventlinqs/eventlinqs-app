@@ -1,4 +1,4 @@
-import { FOUNDING_TERMS, isWaiverActive } from '@/lib/payments/founding-waiver'
+import { FEE_FROM_DAY_ONE, KEPT_WINDOW_WORDS, isWaiverActive, referralExtensionOpen } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -20,18 +20,18 @@ import { InvitesClient } from './invites-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Referral invites | EventLinqs',
+  title: 'Invite organisers | EventLinqs',
   robots: { index: false, follow: false },
 }
 
 /**
- * A Founding Organiser's invite surface: generate personal links for fellow
- * organisers anywhere in Australia, and watch conversions turn into fee-free
- * months. There are no "open cities": the platform is open nationwide from day
- * one (founder ruling 2026-08-23), so the picker offers every city.
- * Every organiser gets the whole surface: LAW 24 as ruled (26 September 2026)
- * makes every organiser a Founding Organiser, so there is no second, lesser
- * version of this page for an organiser who registered without an invitation.
+ * An organiser's invite surface: personal links for fellow organisers anywhere
+ * in Australia, each joining recorded as theirs. There are no "open cities": the
+ * platform is open nationwide from day one (founder ruling 2026-08-23), so the
+ * picker offers every city. LAW 24 retired (15 November 2026): an invite earns no
+ * fee-free months for anyone who joins from that day; an organisation registered
+ * before it keeps its window, and a referral it completes by 15 December 2026
+ * still extends it (KEPT_WINDOW_WORDS, the database's referral_extension_open).
  */
 export default async function InvitesPage({
   searchParams,
@@ -74,7 +74,7 @@ export default async function InvitesPage({
   if (!org) {
     return (
       <div className="mx-auto max-w-2xl py-10 text-center">
-        <h1 className="font-display text-2xl font-bold text-ink-900">Referral invites</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-900">Invite organisers</h1>
         <p className="mt-3 text-sm text-ink-600">Create your organisation first to take part.</p>
         <Link href="/dashboard/organisation/create" className="mt-5 inline-block rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900">
           Set up your organisation
@@ -142,11 +142,12 @@ export default async function InvitesPage({
 
       <div className="mb-6">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-          Referrals
+          Invite organisers
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
-          {FOUNDING_TERMS.referral}
+          Send organisers you know a personal link to EventLinqs. Everyone who joins through it is recorded as your
+          referral, and you can follow each one here.
         </p>
       </div>
 
@@ -155,7 +156,9 @@ export default async function InvitesPage({
         allowance={INVITES_PER_FOUNDING_ORGANISER}
         feeFreeUntil={org.founding_fee_free_until ?? null}
         waiverActive={isWaiverActive(org.founding_fee_free_until)}
-        offerInitial={FOUNDING_TERMS.initial}
+        referralsEarnTime={isWaiverActive(org.founding_fee_free_until) && referralExtensionOpen()}
+        feeRule={FEE_FROM_DAY_ONE.rule}
+        keptWindowWords={KEPT_WINDOW_WORDS}
         acceptedCount={acceptedCount}
         referralsConfirmed={referrals.confirmed}
         referralsPending={referrals.pending}

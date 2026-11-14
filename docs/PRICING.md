@@ -184,6 +184,16 @@ The margin is positive at every price and never inverts, because the fee grows f
 
 ## 4. The founding offer: a DATE WINDOW
 
+**CLOSED ON 15 NOVEMBER 2026: LAW 24 IS RETIRED.** Lawal, 15 November 2026, 00:19: "Nobody gets 6 months without
+any platform fee ... They pay the fee from day one ... No 3-month organiser extra." From that day every organiser pays
+the platform fee on every paid ticket from their first sale; free events stay free; the booking fee settings are
+unchanged. The organisations registered before the change keep the window they were given, to its date (the PM's
+ruling: the offer was published in the organiser agreement and they relied on it); no window is granted or moved later.
+The switch is `FOUNDING_OFFER_OPEN` (false) in `src/lib/payments/founding-waiver.ts`; the database holds the same rule
+(migration `20261115000001`: no registration window, no referral credit, a cutover constraint, a window never moves
+later, and the order trigger reads the stored window alone). The terms below are the closed offer's, kept as the
+record of what those organisations hold.
+
 Founder decision, locked 27 July 2026: the waiver is a **date window**, not a
 months counter. A counter has no expiry and no audit trail; a timestamp answers
 "is this organisation inside the window right now" with one comparison that the

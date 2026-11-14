@@ -810,7 +810,13 @@ function MonthList({ entries, cityName }: { entries: readonly Entry[]; cityName:
   return (
     <div className="mt-4 space-y-6">
       {byMonth(entries).map((m) => (
-        <section key={m.key} aria-label={m.label} className="[content-visibility:auto] [contain-intrinsic-size:auto_480px]">
+        // NO RESERVED HEIGHT ON A LIST OF VARIABLE LENGTH (the PM's 04:28 of 15 November 2026). Each month took
+        // content-visibility auto with a fixed 480 px reservation on 2 November, when the list was unpaged (about 8,000
+        // elements; TBT 273 to 61 ms). Paged at 20 since (PAGE), it saved little, and a month longer than 480 px spilled
+        // its rows past its own box while skipped: #284's Lighthouse mobile gate read the newsletter field under a row
+        // ("partially obscured, smallest space 338px by 4.2px", accessibility 0.97 on / and /city/melbourne). Each month
+        // now holds its rows, so nothing below it can be covered at any length.
+        <section key={m.key} aria-label={m.label}>
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-[var(--text-muted)]">{m.label}</h3>
           {m.entries.length > 0 ? (
             <ul className="relative mt-2 overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white">

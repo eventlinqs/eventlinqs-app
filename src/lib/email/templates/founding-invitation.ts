@@ -7,10 +7,16 @@
  * LAW 24 as ruled (26 September 2026): the offer is rendered from the one module that holds it, and nothing here says
  * the recipient needs this email to receive it. "Founding Organisers also get their first event set up with the
  * founder" was removed: it cannot hold for every organiser.
+ *
+ * LAW 24 IS RETIRED (Lawal, 15 November 2026): the letter promises no fee-free months. It says what the organiser
+ * gets, in the same words as the invite landing (src/app/join/[code]/page.tsx).
  */
 import { escapeHtml } from '@/lib/email/escape'
 import { greetingHtml, greetingLine, signOffHtml, SIGN_OFF, SIGNATURE } from '@/lib/email/letter'
-import { FOUNDING_OFFER_SCOPE, FOUNDING_TERMS } from '@/lib/payments/founding-waiver'
+import { FOUNDING_OFFER_SCOPE } from '@/lib/payments/founding-waiver'
+
+const WHAT_YOU_GET = 'Create your organiser account, publish your event and sell straight away: your sales are paid to you after your event, and free events cost nothing to run.'
+const THE_KIT = 'Every event gets the full launch kit: a live page, a QR poster, share cards and live reach.'
 
 export function renderFoundingInvitationEmail(input: {
   fullName: string
@@ -27,9 +33,9 @@ export function renderFoundingInvitationEmail(input: {
       '',
       `EventLinqs is open in ${cityName}, and everywhere else in ${FOUNDING_OFFER_SCOPE}.`,
       '',
-      `${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.badge}`,
+      WHAT_YOU_GET,
       '',
-      `${FOUNDING_TERMS.referral} ${FOUNDING_TERMS.after}`,
+      THE_KIT,
       '',
       `Create your organiser account: ${inviteUrl}`,
       '',
@@ -38,6 +44,6 @@ export function renderFoundingInvitationEmail(input: {
       '',
       `You are receiving this because you joined the ${cityName} waitlist as an organiser. Leave the waitlist any time: ${unsubscribeUrl}`,
     ].join('\n'),
-    html: `${greetingHtml(fullName)}<p><strong>EventLinqs is open in ${city}</strong>, and everywhere else in ${FOUNDING_OFFER_SCOPE}.</p><p>${FOUNDING_TERMS.initial} ${FOUNDING_TERMS.badge}</p><p>${FOUNDING_TERMS.referral} ${FOUNDING_TERMS.after}</p><p><a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Create your organiser account</a></p>${signOffHtml()}<p style="font-size:12px;color:#888;">You are receiving this because you joined the ${city} waitlist as an organiser. <a href="${escapeHtml(unsubscribeUrl)}">Leave the waitlist</a> any time.</p>`,
+    html: `${greetingHtml(fullName)}<p><strong>EventLinqs is open in ${city}</strong>, and everywhere else in ${FOUNDING_OFFER_SCOPE}.</p><p>${WHAT_YOU_GET}</p><p>${THE_KIT}</p><p><a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#D4A017;color:#0A1628;padding:11px 22px;border-radius:999px;font-weight:bold;text-decoration:none;">Create your organiser account</a></p>${signOffHtml()}<p style="font-size:12px;color:#888;">You are receiving this because you joined the ${city} waitlist as an organiser. <a href="${escapeHtml(unsubscribeUrl)}">Leave the waitlist</a> any time.</p>`,
   }
 }

@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderTemplate, ruleFailures } from '@/lib/outreach/rules'
 import { readVoicePolicy, voiceProblems } from '@/lib/outreach/voice-gate'
 import { touchVoiceMessage } from '@/lib/outreach/touch-voice'
-import { FOUNDING_INITIAL_MONTHS_WORD } from '@/lib/payments/founding-waiver'
-import { dayWords, letterFields, letterFor, OFFER_WORDS, TWENTY_ADVICE, TWENTY_OFFER } from '@/lib/outreach/twenty-letters'
+import { dayWords, letterFields, letterFor, TWENTY_ADVICE, TWENTY_OFFER } from '@/lib/outreach/twenty-letters'
 import { writtenBefore } from '@/lib/outreach/written-before'
 import { photoPath, photoProof, proofMatches } from '@/lib/outreach/photo-link'
 
@@ -74,10 +73,10 @@ describe('the two letters', () => {
     const r = renderTemplate(TWENTY_ADVICE, letterFields({ organiserName: 'X', personName: null, night: { ...night, venueName: null }, photoLink: PHOTOS }), UNSUBSCRIBE)
     expect(r.heldBecause.join(' ')).toContain('[event place]')
   })
-  it("the offer's months come from the one offer module", () => {
-    expect(OFFER_WORDS).toContain(`${FOUNDING_INITIAL_MONTHS_WORD} months`)
-    expect(TWENTY_OFFER.body).toContain('[offer]')
-    expect(TWENTY_OFFER.body).not.toMatch(/\b(six|6) months\b/)
+  it('the offer letter promises no free months (LAW 24 retired, 15 November 2026)', () => {
+    expect(TWENTY_OFFER.body).not.toContain('[offer]')
+    expect(TWENTY_OFFER.body).not.toMatch(/months|no platform fee/i)
+    expect(TWENTY_OFFER.body).toContain('paid into your own bank account after the event')
   })
   it('a conversion ask carries the offer only for a night sold by ticket', () => {
     expect(letterFor('conversion', night).key).toBe('twenty_offer')

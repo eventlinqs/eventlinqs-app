@@ -30,15 +30,14 @@ const noSubscription = () => () => {}
 
 export function WaitlistClient({
   cities,
-  offer,
+  organiserLine,
 }: {
   cities: WaitlistCityWithImage[]
   /**
-   * FOUNDING_TERMS from src/lib/payments/founding-waiver.ts, the one module
-   * that holds the organiser offer, passed in by the server page so the offer
-   * is said in its words without that module entering the client bundle.
+   * What an organiser can do today, from the server page. LAW 24 was retired on 15 November 2026 (Lawal: every
+   * organiser pays the fee from day one), so this line promises no fee-free months.
    */
-  offer: { initial: string; referral: string }
+  organiserLine: string
 }) {
   // A city guide's 'Get <City> alerts by email' opens this page with ?city=<slug> (the CONTROLLER's 22:06 of 4 November
   // 2026): that city chosen until the person picks another. The query is read as an external store, so the server's
@@ -175,7 +174,7 @@ export function WaitlistClient({
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-600">
                 {joined.foundingCandidate && joined.role === 'organiser'
-                  ? `You are registered as an organiser. ${offer.initial} ${offer.referral} You can build and sell today.`
+                  ? `You are registered as an organiser. ${organiserLine}`
                   : joined.role === 'organiser'
                     ? `We will email you when there is something on near you in ${joined.cityName}. EventLinqs is open there today: you can build your event, get your launch kit and start selling right now.`
                     : `We will email you when there is something on near you in ${joined.cityName}. No noise, and one click unsubscribes you.`}
@@ -204,7 +203,7 @@ export function WaitlistClient({
               </h2>
               <p className="mt-2 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-xs leading-relaxed text-ink-900">
                 <span className="font-semibold">EventLinqs is open in {selected.name} today.</span>{' '}
-                {offer.initial} {offer.referral}
+                {organiserLine}
               </p>
 
               <div className="mt-5 space-y-4">

@@ -16,7 +16,6 @@ vi.mock('@/components/layout/PageShell', () => ({
 }))
 
 const { default: StartPage } = await import('@/app/start/page')
-const { FOUNDING_INITIAL_MONTHS_WORD } = await import('@/lib/payments/founding-waiver')
 const { FOR_ORGANISERS } = await import('@/components/layout/site-footer')
 
 async function door(params: Record<string, string> = {}) {
@@ -38,10 +37,11 @@ describe('/start: one question, both paths', () => {
     expect(within(paths[1] as HTMLElement).getByRole('heading', { level: 2 })).toHaveTextContent('List your event free')
   })
 
-  it('renders the organiser offer from its one module, never typed', async () => {
+  it('says what selling here gives, and no free months (LAW 24 retired, 15 November 2026)', async () => {
     await door()
     const sell = document.querySelector('[data-door-path="sell"]') as HTMLElement
-    expect(sell.textContent).toContain(`no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months from the day you register`)
+    expect(sell.textContent).toContain('selling from the first minute, with your sales paid to you after your event')
+    expect(sell.textContent).not.toMatch(/months|no platform fee/i)
     // Comments stripped first, as offer-is-one-rule does: the page's comment quotes Lawal's ruling word for word.
     const code = read('src/app/start/page.tsx').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     expect(code).not.toMatch(/\b(six|6) months/i)

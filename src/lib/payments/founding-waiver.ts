@@ -76,6 +76,53 @@ export const FOUNDING_REFERRAL_MONTHS = 3
  * scripts/guards/offer-is-one-rule.mjs. A change is made HERE and nowhere else.
  */
 
+/*
+ * LAW 24 IS RETIRED (Lawal, 15 November 2026, 00:19: "Nobody gets 6 months without any platform fee ... They pay the
+ * fee from day one ... No 3-month organiser extra"). From that day every organiser pays the platform fee on every paid
+ * ticket from their first sale; free events stay free; the booking fee settings are unchanged.
+ *
+ * THE OFFER ABOVE IS CLOSED, NOT DELETED (law 13 of C:/dev/CLAUDE.md: an old feature is hidden behind a switch so it
+ * can be read and could return). FOUNDING_OFFER_OPEN is the switch every surface reads before it says a word of the
+ * offer; scripts/guards/offer-is-one-rule.mjs fails the build if a surface states free months while it is false.
+ *
+ * WHO KEEPS A WINDOW (the PM's ruling in the same order, item 2): the organisations registered before the cutover keep
+ * the window they were given, to its date, because the offer was published in our organiser terms and they relied on
+ * it. Their window is the stored organisations.founding_fee_free_until, read by isWaiverActive below; nobody else is
+ * ever given one and none moves later (migration 20261115000001, which also stops the database granting them).
+ */
+export const FOUNDING_OFFER_OPEN = false
+
+/** The day LAW 24 was retired, for the organiser terms and every surface that dates the change. */
+export const FOUNDING_OFFER_CLOSED_ON = '2026-11-15'
+
+/** "15 November 2026", the closing day as an organiser reads it. */
+export const FOUNDING_OFFER_CLOSED_ON_LABEL = '15 November 2026'
+
+/**
+ * THE REFERRAL EXTENSION'S DATED END (the PM's ruling of 15 November 2026, 00:42, item 4: the agreement's 30 days
+ * notice for a material change). A referral by an organisation registered before the cutover, completed by 15 December
+ * 2026, still earns its three months under the 26 September terms; nothing is credited after that day and a new
+ * organiser is never offered it. The database holds the same instant (public.referral_extension_open, migration
+ * 20261115000001): the end of 15 December in Melbourne.
+ */
+export const REFERRAL_EXTENSION_ENDS_AT = '2026-12-16T00:00:00+11:00'
+
+/** "15 December 2026", the last day a referral still earns its months. */
+export const REFERRAL_EXTENSION_LAST_DAY_LABEL = '15 December 2026'
+
+/** Is a referral completed at `at` still inside the extension's notice period? */
+export function referralExtensionOpen(at: Date = new Date()): boolean {
+  return at.getTime() < new Date(REFERRAL_EXTENSION_ENDS_AT).getTime()
+}
+
+/** The rule that replaced the offer, said one way. */
+export const FEE_FROM_DAY_ONE = {
+  rule: 'Every organiser pays the platform fee on each paid ticket from their first sale. Free events stay free.',
+  /** For an organisation that registered before the change and still holds its window. */
+  honoured: (untilLabel: string) =>
+    `Your organisation registered before ${FOUNDING_OFFER_CLOSED_ON_LABEL}, so it keeps the fee-free window it was given: no platform fee on paid tickets until ${untilLabel}.`,
+} as const
+
 /** Point 5: the name and the badge, held by every organiser. */
 export const FOUNDING_BADGE_NAME = 'Founding Organiser'
 
@@ -116,6 +163,12 @@ export const FOUNDING_TERMS = {
   /** Point 6. */
   scope: `EventLinqs is national: the offer is open to every organiser in ${FOUNDING_OFFER_SCOPE}.`,
 } as const
+
+/**
+ * The kept window, said one way, for an organisation registered before the change that still holds one (Referral
+ * invites). Its months and its dates are rendered from this module, never typed on a page.
+ */
+export const KEPT_WINDOW_WORDS = `Your organisation registered before ${FOUNDING_OFFER_CLOSED_ON_LABEL}, so it keeps the fee-free window it was given. Your buyers pay the ticket price and nothing else until then. A referral you complete by ${REFERRAL_EXTENSION_LAST_DAY_LABEL} still extends it by ${FOUNDING_REFERRAL_MONTHS_WORD} months`
 
 export interface FoundingWaiver {
   /** The expiry timestamp, or null when the organisation has no waiver. */

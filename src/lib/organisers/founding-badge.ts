@@ -1,4 +1,9 @@
-import { FOUNDING_BADGE_NAME } from '@/lib/payments/founding-waiver'
+import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  FOUNDING_BADGE_NAME,
+  getFoundingWaiver,
+  type OrganisationReadClient,
+} from '@/lib/payments/founding-waiver'
 
 /**
  * Is this organisation a Founding Organiser, for the PUBLIC surfaces?
@@ -27,8 +32,23 @@ export interface FoundingBadge {
 /** The badge wording, from the one module that holds the offer. */
 export const FOUNDING_BADGE_LABEL = FOUNDING_BADGE_NAME
 
+/*
+ * LAW 24 IS RETIRED (Lawal, 15 November 2026): the badge is no longer offered as a perk. It stays with the
+ * organisations that registered before the change, which are exactly those holding a fee-free window: migration
+ * 20261115000001 lets no organisation registered after it hold one and moves none later. So the badge is "this
+ * organisation holds a window", active or ended. The window is not a public column, so it is read with the service
+ * role, as the fee display reads it (src/lib/pricing/event-fee-config.ts); any failure reads as no badge.
+ */
 export async function getFoundingBadge(
   organisationId: string | null | undefined,
+  client?: OrganisationReadClient,
 ): Promise<FoundingBadge> {
-  return { isFounding: Boolean(organisationId) }
+  if (!organisationId) return { isFounding: false }
+  try {
+    const reader = client ?? (createAdminClient() as unknown as OrganisationReadClient)
+    const waiver = await getFoundingWaiver(reader, organisationId)
+    return { isFounding: waiver.feeFreeUntil !== null }
+  } catch {
+    return { isFounding: false }
+  }
 }

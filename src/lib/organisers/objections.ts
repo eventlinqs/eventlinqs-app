@@ -41,11 +41,11 @@ export interface OrganiserObjection {
 export const ORGANISER_OBJECTIONS: OrganiserObjection[] = [
   {
     q: 'Will I actually get paid?',
-    a: 'Payments run on Stripe. The money moves through a Stripe account in your own name, connected to your own bank account, and EventLinqs never holds it anywhere you cannot see it. Your payout lands within five business days of your event ending, and the dashboard shows you the amount and the date before the event has even happened. If you want to walk through it before you commit, the founder will do that on a call.',
+    a: 'Buyers pay through Stripe. EventLinqs collects the ticket money for you, holds it so refunds can always be paid, and pays it into the bank account you nominate after your event ends, on the schedule in the organiser agreement. The dashboard shows you the amount and the date before the event has even happened. If you want to walk through it before you commit, the founder will do that on a call.',
   },
   {
     q: 'Nobody knows you yet. Why would I list here?',
-    a: 'That is exactly why the first organisers get the terms they get. And you are not asked to move your audience: you keep selling through your own channels, your own list and your own socials, and the ticket link simply costs you less.',
+    a: 'You are not asked to move your audience: you keep selling through your own channels, your own list and your own socials, and every event you publish gets its own page, checkout and launch kit from the minute it goes live.',
   },
   {
     q: 'I have no time to set up another platform.',

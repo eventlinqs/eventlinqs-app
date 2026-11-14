@@ -271,6 +271,26 @@ const DRILLS = [
    * form holds its own answer again, and a page stops drawing its family's answer holder.
    */
   /*
+   * no-free-months-promise (Lawal, 15 November 2026, 00:37: the old offer can never come back by accident), two drills,
+   * the two ways it would: a typed promise on the organisers page, and the switch opened again.
+   */
+  {
+    name: 'the organisers page promises the first six months free again',
+    guard: `${GUARDS}/no-free-months-promise.mjs`,
+    file: 'src/lib/organisers/objections.ts',
+    find: "q: 'Will I actually get paid?',",
+    replace: "q: 'Will I actually get paid? Your first six months are on us.',",
+    expect: 'says "the first months"',
+  },
+  {
+    name: 'the closed offer is switched open again',
+    guard: `${GUARDS}/no-free-months-promise.mjs`,
+    file: 'src/lib/payments/founding-waiver.ts',
+    find: 'export const FOUNDING_OFFER_OPEN = false',
+    replace: 'export const FOUNDING_OFFER_OPEN = true',
+    expect: 'FOUNDING_OFFER_OPEN must read false',
+  },
+  /*
    * no-filler-in-event-collections (Lawal's 17:44 of 31 October 2026: no open-slot cards in any public collection,
    * ever): the regression is the invitation card fill coming back into a home rail.
    */

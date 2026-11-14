@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
-import { FOUNDING_REFERRAL_MONTHS } from '@/lib/payments/founding-waiver'
+import { FOUNDING_OFFER_OPEN, FOUNDING_REFERRAL_MONTHS } from '@/lib/payments/founding-waiver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
@@ -338,7 +338,9 @@ export async function acceptFoundingInvite(input: {
   // is the platform's one flag resolver, with its cache and its documented
   // fallback; reading feature_flags a second way inside the SQL would be a
   // second answer to one question.
-  const offerOpen = await isFeatureEnabled('founding_open', { client: admin })
+  // LAW 24 IS RETIRED (Lawal, 15 November 2026): the code switch closes the offer whatever the flag row says, so an
+  // invite accepted today grants no spot and no window (the database refuses one too: 20261115000001).
+  const offerOpen = FOUNDING_OFFER_OPEN && (await isFeatureEnabled('founding_open', { client: admin }))
 
   const { data, error } = await admin.rpc('accept_founding_invite', {
     p_code: input.code,

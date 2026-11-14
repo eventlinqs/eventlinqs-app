@@ -13682,6 +13682,7 @@ export type Database = {
           ticket_tier_id: string
         }[]
       }
+      referral_extension_open: { Args: { p_at: string }; Returns: boolean }
       refresh_audience_member: { Args: { p_email: string }; Returns: undefined }
       refund_policy_is_looser_or_equal: {
         Args: {

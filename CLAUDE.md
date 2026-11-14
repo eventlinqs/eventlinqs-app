@@ -711,7 +711,15 @@ gates, Migrations.
 
 [[LAW 24 RULED 26SEP START]]
 
-## LAW 24 as ruled, 26 September 2026 (founder ruling)
+## LAW 24 as ruled, 26 September 2026 (founder ruling): RETIRED 15 November 2026
+**RETIRED (Lawal, 15 November 2026, 00:19): "Nobody gets 6 months without any platform fee ... They pay the fee from
+day one ... No 3-month organiser extra ... every organiser must pay from day one."** From that day every organiser pays
+the platform fee on every paid ticket from their first sale; free events stay free. Organisations registered before
+the change keep the window they were given, to its date; no window is granted or extended, and the badge is no longer
+offered as a perk. The switch is `FOUNDING_OFFER_OPEN` (false) in `src/lib/payments/founding-waiver.ts`, the database
+holds it (migration `20261115000001`), and the dated organiser agreement of 15 November 2026 says it. The ruling below
+is kept as the record of what those organisations were given.
+
 1. Every organiser gets six months with no platform fee, counted from the date they register on EventLinqs. No cap, no limit on places, no invitation needed.
 2. It applies to every organiser, including those who registered before 20 September 2026, each from their own registration date.
 3. Referral months stay exactly as built: three fee free months for each organiser they refer who sells a ticket, on top of the six months.

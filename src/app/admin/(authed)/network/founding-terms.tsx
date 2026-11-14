@@ -48,6 +48,8 @@ export function FoundingTerms({
   initialMonths,
   referralMonths,
   badgeName,
+  offerOpen,
+  closedOnLabel,
 }: {
   rows: FoundingTermsRow[]
   holders: number
@@ -60,6 +62,10 @@ export function FoundingTerms({
    * hand grant is on record for the organisation.
    */
   badgeName: string
+  /** FOUNDING_OFFER_OPEN: false since LAW 24 was retired on 15 November 2026. */
+  offerOpen: boolean
+  /** FOUNDING_OFFER_CLOSED_ON_LABEL, "15 November 2026". */
+  closedOnLabel: string
 }) {
   // The row's DESCRIPTIVE LINE is tracked here as well as the date, because a
   // control that half-updates is a control the owner cannot trust. Found by
@@ -108,10 +114,18 @@ export function FoundingTerms({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-white/60">
-          {holders} fee-free windows are on record. Every organiser holds {initialMonths} months from registration;
-          grant opens {initialMonths} months from today, extend adds {referralMonths} months to wherever the window stands.
-        </p>
+        {offerOpen ? (
+          <p className="text-sm text-white/60">
+            {holders} fee-free windows are on record. Every organiser holds {initialMonths} months from registration;
+            grant opens {initialMonths} months from today, extend adds {referralMonths} months to wherever the window stands.
+          </p>
+        ) : (
+          <p className="text-sm text-white/60">
+            {holders} fee-free windows are on record, all from organisations registered before {closedOnLabel}; each is
+            kept to its date. The offer closed that day: every newer organiser pays the fee from their first paid
+            ticket, and no window is granted or extended.
+          </p>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -139,6 +153,7 @@ export function FoundingTerms({
                       </p>
                     ) : null}
                   </div>
+                  {offerOpen ? (
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -165,6 +180,7 @@ export function FoundingTerms({
                       Revoke
                     </button>
                   </div>
+                  ) : null}
                 </li>
               )
             })}

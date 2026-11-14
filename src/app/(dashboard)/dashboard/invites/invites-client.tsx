@@ -18,15 +18,17 @@ export function InvitesClient({
   referralsPending,
   feeFreeUntil,
   waiverActive,
-  offerInitial,
+  referralsEarnTime,
+  feeRule,
+  keptWindowWords,
   cities,
 }: {
   initialInvites: InviteRow[]
   allowance: number
   acceptedCount: number
   /**
-   * Referrals that have EARNED months: organisers who joined through this
-   * organisation's link and whose first paid ticket has sold (close-out FO1).
+   * Referrals counted: organisers who joined through this organisation's link and whose first paid ticket has sold
+   * (close-out FO1). Since LAW 24 was retired (15 November 2026) a referral earns no fee-free months.
    */
   referralsConfirmed: number
   /** Joined through the link, no paid ticket sold yet, so nothing credited. */
@@ -44,14 +46,21 @@ export function InvitesClient({
   /** Computed server-side with isWaiverActive(), the charge authority helper. */
   waiverActive: boolean
   /**
-   * FOUNDING_TERMS.initial from src/lib/payments/founding-waiver.ts, passed in
-   * so the offer is said in the module's words without that server module
-   * entering the client bundle.
+   * True only for an organisation holding a window while a referral still extends it (until 15 December 2026,
+   * referralExtensionOpen): only then does a referral earn anything, so only then is the card "Referrals counted".
    */
-  offerInitial: string
+  referralsEarnTime: boolean
+  /**
+   * FEE_FROM_DAY_ONE.rule from src/lib/payments/founding-waiver.ts, passed in so the rule is said in the module's
+   * words without that server module entering the client bundle.
+   */
+  feeRule: string
+  /** KEPT_WINDOW_WORDS from the one module: the kept window, its months and dates rendered there. */
+  keptWindowWords: string
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
-  const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
+  // Melbourne first (the growth plan's version 6, 12 November 2026), then every other city in the list.
+  const [city, setCity] = useState<string>(cities.find(c => c.slug === 'melbourne')?.slug ?? cities[0]?.slug ?? '')
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -70,12 +79,12 @@ export function InvitesClient({
   const waiverDate = waiverUntil
     ? waiverUntil.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
     : ''
-  const waiverLabel = waiverActive ? waiverDate : waiverUntil ? 'Ended' : 'Not active'
+  // LAW 24 retired (15 November 2026): only an organisation that registered before the change holds a window, so only
+  // it sees this tile; everyone else pays the fee from the first paid ticket and is told that once, in the tile's place.
+  const waiverLabel = waiverActive ? waiverDate : 'Ended'
   const waiverHint = waiverActive
-    ? 'Your fee is zero until then. There is no second fee, so your buyers pay the ticket price and nothing else'
-    : waiverUntil
-      ? 'Ended ' + waiverDate + '. Standard platform fee applies'
-      : offerInitial
+    ? keptWindowWords
+    : 'Ended ' + waiverDate + '. ' + feeRule
 
   const generate = () => {
     setError(null)
@@ -126,20 +135,28 @@ export function InvitesClient({
       */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Stat label="Invites left" value={`${remaining} of ${allowance}`} />
-        <Stat
-          label="Referrals counted"
-          value={String(referralsConfirmed)}
-          hint={
-            referralsPending > 0
-              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet, so they have not earned you months`
-              : `${acceptedCount} joined through your links. Each one earns you months when their first paid ticket sells`
-          }
-        />
-        <Stat
-          label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
-          value={waiverLabel}
-          hint={waiverHint}
-        />
+        {referralsEarnTime ? (
+          <Stat
+            label="Referrals counted"
+            value={String(referralsConfirmed)}
+            hint={
+              referralsPending > 0
+                ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet`
+                : `${acceptedCount} joined through your links. A referral counts when their first paid ticket sells`
+            }
+          />
+        ) : (
+          <Stat label="Organisers joined" value={String(acceptedCount)} hint="Organisers who joined EventLinqs through your links" />
+        )}
+        {waiverUntil ? (
+          <Stat
+            label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
+            value={waiverLabel}
+            hint={waiverHint}
+          />
+        ) : (
+          <Stat label="Platform fee" value="From your first sale" hint={feeRule} />
+        )}
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">

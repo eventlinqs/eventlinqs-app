@@ -10,6 +10,7 @@ import { CityGuide, bookingLine, countLine, eventCount } from '@/components/feat
 import { CityHeroSlider, SLIDER_MINIMUM } from '@/components/features/city-guide/city-hero-slider'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { DirectoryRow } from '@/lib/events/whats-on-directory'
+import { PAGE } from '@/lib/events/guide-sections'
 
 /*
  * THE GEELONG REFERENCE PAGE (Lawal, 2 November 2026, 01:12; C:\dev\DESIGN\CITY-FIRST-1NOV\GEELONG-REFERENCE-DIRECTIVE-2NOV.md):
@@ -175,14 +176,23 @@ describe('the Geelong reference page, section by section', () => {
   })
 })
 
-describe('a long city is cheap to lay out (2 November 2026, Lighthouse on the preview: TBT 250 to 306 ms over 7,965 elements)', () => {
-  it('every month group of the list skips layout until it nears the screen, keeping its place (content-visibility auto)', () => {
+describe('a long city is cheap to lay out, and nothing below its list can be covered (2 November 2026; the PM\'s 04:28 of 15 November 2026)', () => {
+  // On 2 November each month group took content-visibility auto with a fixed 480 px reservation (Lighthouse on the
+  // preview: TBT 250 to 306 ms over 7,965 elements, unpaged). The list is paged at PAGE since, and on 15 November a month
+  // longer than its reservation spilled its rows over the newsletter field below (#284's Lighthouse mobile gate,
+  // accessibility 0.97, "partially obscured, smallest space 338px by 4.2px"). A group now holds its rows: no reserved
+  // height, so nothing under the list can be covered however long a month runs; the paging keeps it cheap.
+  it('no month group reserves a height its rows can outgrow', () => {
     guide()
     const all = screen.getByRole('region', { name: 'All events in Geelong' })
     const days = [...all.querySelectorAll('section[aria-label]')]
     expect(days.length).toBeGreaterThan(0)
-    for (const d of days) expect(d.className).toContain('[content-visibility:auto]')
-    for (const d of days) expect(d.className).toContain('[contain-intrinsic-size:auto_480px]')
+    for (const d of days) expect(d.className).not.toMatch(/content-visibility|contain-intrinsic-size/)
+  })
+  it('the list shows a page of entries at a time', () => {
+    guide()
+    const all = screen.getByRole('region', { name: 'All events in Geelong' })
+    expect(all.querySelectorAll('section[aria-label] li').length).toBeLessThanOrEqual(PAGE)
   })
 })
 

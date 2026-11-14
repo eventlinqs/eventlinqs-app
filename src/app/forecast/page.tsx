@@ -8,6 +8,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { forecast } from '@/lib/forecast/arithmetic'
 import { METHOD_SENTENCE, methodOf, methodSentence } from '@/lib/forecast/method'
 import { readForecastOptions } from '@/lib/forecast/read'
+import { FOUNDING_OFFER_OPEN } from '@/lib/payments/founding-waiver'
 import {
   EMAIL_CONSENT_TEXT,
   FOUNDING_FIGURE_LABEL,
@@ -342,10 +343,12 @@ export default async function ForecastPage({ searchParams }: Props) {
                     <dt className="text-ink-600">EventLinqs fee</dt>
                     <dd className="text-ink-900">{scenario.fee}</dd>
                   </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-ink-600">{FOUNDING_FIGURE_LABEL}</dt>
-                    <dd className="text-ink-900">{scenario.foundingFee}</dd>
-                  </div>
+                  {FOUNDING_OFFER_OPEN ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-ink-600">{FOUNDING_FIGURE_LABEL}</dt>
+                      <dd className="text-ink-900">{scenario.foundingFee}</dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between gap-3">
                     <dt className="text-ink-600">You keep, after your costs</dt>
                     <dd className="font-semibold text-ink-900">{scenario.keeps}</dd>
@@ -360,7 +363,7 @@ export default async function ForecastPage({ searchParams }: Props) {
           <p className="mt-8 text-sm leading-relaxed text-ink-600">
             {feeSentence(options.rates.platformFeePercent, options.rates.platformFeeFixedCents, options.currency)}
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-ink-600">{FOUNDING_SENTENCE}</p>
+          {FOUNDING_OFFER_OPEN ? <p className="mt-3 text-sm leading-relaxed text-ink-600">{FOUNDING_SENTENCE}</p> : null}
 
           <p data-forecast="method-result" className="mt-6 text-sm leading-relaxed text-ink-700">
             {sentence}

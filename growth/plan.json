@@ -1,8 +1,8 @@
 {
   "name": "EventLinqs growth plan",
-  "version": 6,
-  "set_on": "2026-11-12",
-  "set_by": "Lawal Adams, founder, 09:16 to 09:19 Melbourne time on 12 November 2026, relayed by the PM: 'Melbourne is bigger than Geelong ... Geelong is not the criteria. It's not empirical. Melbourne wins, and you win other big cities. You can then start doing regional cities.'",
+  "version": 7,
+  "set_on": "2026-11-15",
+  "set_by": "Lawal Adams, founder, 00:19 Melbourne time on 15 November 2026 (PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md): 'Nobody gets 6 months without any platform fee ... They pay the fee from day one ... No 3-month organiser extra ... every organiser must pay from day one.'",
   "readable_version": "https://claude.ai/artifact/NiVfqJUKJZhu57Asoh1HLJ (EventLinqs: A against the Fever path); V3 checklist https://claude.ai/artifact/9ry6uA1DMt5RBGvHn8njnp",
   "mission": "The news of events: we know first, we publish first, and we tell people where to get the ticket. Every great event people want to go to, any kind (concerts, festivals, club nights, community and cultural nights, anything), in one place, bought through us. Australia first, then the world.",
   "model": {
@@ -14,7 +14,7 @@
     "O": "frequent paid organisers (sell paid tickets every month)",
     "T": "paid tickets each sells a month",
     "N_aud_estimate": 1.18,
-    "N_note": "A$35 ticket, 3.5% + A$0.99 booking fee assumed GST inclusive, less Stripe 1.65% + A$0.30; to be re-measured from real orders (GST, Connect, refunds, chargebacks, fee-free months)",
+    "N_note": "A$35 ticket, 3.5% + A$0.99 booking fee assumed GST inclusive, less Stripe 1.65% + A$0.30; to be re-measured from real orders (GST, Connect, refunds, chargebacks, and the fee-free windows kept by the organisations registered before 15 November 2026)",
     "P": "promoted listings and organiser tools"
   },
   "targets": {
@@ -107,7 +107,7 @@
       "community and cultural organisers with paid events, starting with past EventLinqs organisers (Afro-Fusion)"
     ],
     "the_offer": [
-      "six months with no platform fee from registration",
+      "the platform fee from the first paid ticket, free events free (LAW 24 retired on 15 November 2026)",
       "a lower booking fee than Humanitix (3.5% + A$0.99 against 4% + A$0.99 + GST)",
       "the organiser keeps the full face value",
       "money held until after the event for refunds, paid to the organiser's own account by the platform",
@@ -260,5 +260,6 @@
       }
     ]
   },
-  "changes_from_v5": "Lawal, 12 November 2026, 09:16 to 09:19: Melbourne first. The home page opens on Melbourne; outreach, social and the weekly email lead with Melbourne, then the other big cities, then the regional cities; every city stays listed. The master plan's gates become targets the Command Centre tracks."
+  "changes_from_v5": "Lawal, 12 November 2026, 09:16 to 09:19: Melbourne first. The home page opens on Melbourne; outreach, social and the weekly email lead with Melbourne, then the other big cities, then the regional cities; every city stays listed. The master plan's gates become targets the Command Centre tracks.",
+  "changes_from_v6": "Lawal, 15 November 2026, 00:19 and 00:37: LAW 24 is retired. Every organiser pays the platform fee from the first paid ticket; no fee-free months and no referral months are offered from that day; the organisations registered before it keep the window they were given, to its date. The offer leads on value (the organiser offer's version 3). Only the_offer's first line and the margin note change; every target, gate and city is unchanged."
 }
