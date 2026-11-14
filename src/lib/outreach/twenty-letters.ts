@@ -1,4 +1,3 @@
-import { FOUNDING_INITIAL_MONTHS_WORD } from '@/lib/payments/founding-waiver'
 import type { TemplateRow } from './rules'
 
 /**
@@ -69,7 +68,7 @@ export const TWENTY_OFFER: TwentyLetter = {
     "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
     "You can add your own photos to it here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists.",
-    "You could start with a few tickets alongside how you sell now. There's [offer], and you keep the full face value of every ticket sold.",
+    "You could start with a few tickets alongside how you sell now. You keep the full face value of every ticket sold, and the ticket money is paid into your own bank account after the event.",
     'Would you have a look at https://www.eventlinqs.com.au/organisers and tell me what you think?',
     ...CLOSE,
   ].join('\n'),
@@ -104,8 +103,6 @@ export const TWENTY_OWN_PAGE: TwentyLetter = {
 
 export const TWENTY_LETTERS: readonly TwentyLetter[] = [TWENTY_ADVICE, TWENTY_OFFER, TWENTY_OWN_PAGE]
 
-/** The offer, from the one offer module (LAW 24; offer-is-one-rule): never typed here. */
-export const OFFER_WORDS = `no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months, counted from the day you register`
 
 /** A public night of theirs, as the template names it. */
 export interface TheirNight {
@@ -144,7 +141,6 @@ export function letterFields(input: {
     'event day': dayWords(input.night.startDate, input.night.timezone),
     'event place': input.night.venueName?.trim() || null,
     'event link': input.night.slug && input.origin ? `${input.origin.replace(/\/+$/, '')}/events/${input.night.slug}` : null,
-    offer: OFFER_WORDS,
     'photo link': input.photoLink,
   }
 }
