@@ -2297,8 +2297,10 @@ const DRILLS = [
     name: 'an anon query filters on a column revoked from anon',
     guard: 'scripts/security/revoked-column-reads.mjs',
     file: 'src/app/organisers/[handle]/page.tsx',
-    find: "    .eq('id', row.id)",
-    replace: "    .eq('id', row.id)\n    .eq('status', 'active')",
+    // Re-aimed 14 November 2026: Car 47 (e46851bfb) moved the page's anon read into readPublicOrganisation, and the
+    // old anchor ('.eq('id', row.id)') matched nothing, so the drill had gone stale.
+    find: "        .eq('id', id)",
+    replace: "        .eq('id', id)\n        .eq('status', 'active')",
     expect: 'revoked',
   },
   {

@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, fireEvent, waitFor } from '@testing-library/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 vi.mock('@/lib/upload', () => ({
   generateEventCoverPreview: vi.fn(),
@@ -41,9 +41,12 @@ let announcements = 0
 let latestMedia: MediaImage[] = []
 
 function TheForm({ start = [COVER] }: { start?: MediaImage[] }) {
-  parentRenders += 1
   const [form, setForm] = useState<{ media: MediaImage[]; video: string }>({ media: start, video: '' })
-  latestMedia = form.media
+  // counted after each commit, in an effect, never during render (react-hooks/globals)
+  useEffect(() => {
+    parentRenders += 1
+    latestMedia = form.media
+  })
   // exactly the form's shape: a new arrow every render, a new object every write
   return (
     <EventMediaStep
