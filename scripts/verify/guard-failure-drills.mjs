@@ -693,7 +693,9 @@ const DRILLS = [
     name: 'a PASS row cites evidence that is not in the repository',
     guard: `${GUARDS}/launch-readiness-honest.mjs`,
     file: 'scripts/verify/launch-readiness.mjs',
-    find: 'route-sweep-2026-09-09.json',
+    // Row 14's route sweep, re-driven on 7 November 2026 (car 52 renamed its evidence from the 9 September file, and
+    // this anchor went stale unseen until the guard audit's checks ran this guard's drills on 14 November).
+    find: 'route-sweep-2026-11-07.json',
     replace: 'route-sweep-that-somebody-deleted.json',
     expect: 'which is not in the repository',
   },
