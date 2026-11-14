@@ -1,5 +1,4 @@
 import type { VoiceMessage } from '@/lib/outreach/voice-gate'
-import { FOUNDING_INITIAL_MONTHS_WORD } from '@/lib/payments/founding-waiver'
 import { firstName } from './organiser-live-notice-words'
 
 /**
@@ -24,8 +23,8 @@ import { firstName } from './organiser-live-notice-words'
  * A zero is left out rather than said; a report with nothing counted is not sent.
  *
  * THE OFFER LINE goes only to an organiser who ticked OFFERS_CONSENT_WORDS on the listing form (an offer makes a message
- * commercial under the Spam Act 2003; ACMA prefers express consent and puts the proof on the sender). Its months are
- * read from the one offer module (LAW 24), never typed.
+ * commercial under the Spam Act 2003; ACMA prefers express consent and puts the proof on the sender). Since LAW 24 was
+ * retired (15 November 2026) it leads on the payout and offers no free period.
  */
 
 /** The first hour, in the event's own timezone, at which the day-after report may go: a morning, not a midnight. */
@@ -115,7 +114,7 @@ export function sellThroughMessage(facts: ReportFacts, from: string, signature: 
     ...(facts.mayOffer
       ? [
           '',
-          `Your next event can sell on EventLinqs too, with its own ticket page, checkout and payouts, and no platform fee for your first ${FOUNDING_INITIAL_MONTHS_WORD} months from the day you register:`,
+          'Your next event can sell on EventLinqs too, with its own ticket page and checkout, and the ticket money paid into your own bank account after the event:',
           door,
         ]
       : []),
