@@ -72,6 +72,11 @@ describe('the reach empty state (S9)', () => {
     const { container } = render(<ReachEmptyState />)
     expect(container.textContent).toContain('Link clicks')
     expect(container.querySelector('details summary')?.textContent).toBe('What each number means')
+    // S13 (02:38): it says it opens, as the product's other folds do: a chevron that turns, a 44 px row, no marker.
+    const summary = container.querySelector('details summary')
+    expect(summary?.querySelector('svg')?.getAttribute('class')).toContain('group-open:rotate-180')
+    expect(summary?.className).toContain('min-h-11')
+    expect(summary?.className).toContain('list-none')
     expect(container.querySelector('a')).toBeNull()
   })
 

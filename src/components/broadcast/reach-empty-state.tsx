@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Download, Send } from 'lucide-react'
+import { ChevronDown, Download, Send } from 'lucide-react'
 
 /**
  * THE FOUR ZEROS.
@@ -106,8 +106,9 @@ export function ReachEmptyState({
       </div>
 
       <details className="group mt-3">
-        <summary className="inline-flex min-h-[44px] cursor-pointer items-center text-sm font-semibold text-ink-900 underline-offset-2 hover:underline">
-          What each number means
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-semibold text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 [&::-webkit-details-marker]:hidden">
+          <span>What each number means</span>
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
         <dl className="mt-1 space-y-2">
           {MEASURES.map(measure => (
