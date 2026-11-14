@@ -676,7 +676,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                   {stat.value}
                 </p>
                 <p className="mt-1 flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
-                  <span aria-hidden className={stat.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-500 bg-transparent'} />
+                  <span aria-hidden className={stat.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-600 bg-transparent'} />
                   {stat.label}
                 </p>
                 <p className="mt-1 text-[11px] leading-snug text-ink-500">{stat.hard ? 'Measured' : 'Estimate'}</p>

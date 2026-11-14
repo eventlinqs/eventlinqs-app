@@ -40,7 +40,7 @@ const CHANNEL_ACCENT: Record<string, string> = {
   whatsapp: 'bg-[#075E54]',
   x: 'bg-black',
   linkedin: 'bg-[#00568C]',
-  email: 'bg-ink-700',
+  email: 'bg-ink-600',
 }
 
 const STORE_KEY = 'el-post-pack-channel'
@@ -121,7 +121,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
                   : 'border-ink-200 bg-white text-ink-900 hover:border-[var(--brand-accent-strong)]'
               }`}
             >
-              <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${CHANNEL_ACCENT[c.platform] ?? 'bg-ink-700'}`} />
+              <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${CHANNEL_ACCENT[c.platform] ?? 'bg-ink-600'}`} />
               {c.label}
             </button>
           )
@@ -135,7 +135,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink-100 px-5 py-3">
           <span
             aria-hidden
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${CHANNEL_ACCENT[caption.platform] ?? 'bg-ink-700'}`}
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ${CHANNEL_ACCENT[caption.platform] ?? 'bg-ink-600'}`}
           />
           <h3 className="font-display text-base font-bold text-ink-900">{caption.label}</h3>
           <span className="text-xs text-ink-500">
@@ -178,7 +178,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
             <button
               type="button"
               onClick={() => copy(captionKey, caption.text)}
-              className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-300 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)] hover:bg-ink-50"
+              className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)] hover:bg-ink-50"
             >
               {copied === captionKey ? (
                 <Check className="h-4 w-4" aria-hidden />

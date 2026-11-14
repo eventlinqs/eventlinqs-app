@@ -89,7 +89,7 @@ export function ReachEmptyState({
             <p className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
               <span
                 aria-hidden
-                className={measure.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-500 bg-transparent'}
+                className={measure.hard ? 'inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500' : 'inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink-600 bg-transparent'}
               />
               {measure.label}
               <span className="font-body text-[10px] font-semibold uppercase tracking-normal text-ink-500">
