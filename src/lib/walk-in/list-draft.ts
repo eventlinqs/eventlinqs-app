@@ -492,7 +492,6 @@ async function askGate(client: SupabaseClient, plan: DraftPlan, organisationId: 
       venueAddress: plan.block.event.venue_address,
       walkIn: { tierCount: 0, days: plan.guide.days, startsAt: plan.startsAt, endsAt: plan.endsAt, timezone: plan.block.event.timezone },
     },
-    null,
   )
   return gate.ok ? { ok: true } : { ok: false, reason: gate.message }
 }

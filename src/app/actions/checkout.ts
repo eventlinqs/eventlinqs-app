@@ -709,6 +709,8 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
 function chargePreconditionMessage(reason: ChargePreconditionError['reason']): string {
   switch (reason) {
+    case 'org_on_hold':
+      return 'Ticket sales for this event are paused. No payment was taken.'
     case 'org_not_connected':
       return 'This organiser has not finished payment setup. Please try again later.'
     case 'org_charges_disabled':

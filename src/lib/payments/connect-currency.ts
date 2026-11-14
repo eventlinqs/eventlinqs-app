@@ -88,3 +88,16 @@ export function getCurrencyForCountry(country: string | null | undefined): strin
   if (!country) return null
   return CONNECT_CURRENCY_MAP[country.toUpperCase()] ?? null
 }
+
+/**
+ * THE COUNTRY A SALE SETTLES IN BEFORE THE ORGANISER CONNECTS (Lawal's yes of 15:22, 14 November 2026: organisers
+ * publish and sell straight away). The buyer is charged on the platform's own Stripe account, which is Australian,
+ * so an organiser with no connected account yet sells in the platform's currency; once they connect, their account's
+ * country decides, exactly as before.
+ */
+export const PLATFORM_COUNTRY = 'AU'
+
+/** The country a sale for this organiser settles in: their connected account's, or the platform's until they connect. */
+export function saleCountryOf(org: { readonly stripe_account_country: string | null }): string {
+  return org.stripe_account_country ?? PLATFORM_COUNTRY
+}

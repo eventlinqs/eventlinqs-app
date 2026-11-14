@@ -2,11 +2,11 @@ import 'server-only'
 import type Stripe from 'stripe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { retrieveAccount, isFullyOnboarded } from './connect'
-// The SALE GATE's own predicate, imported rather than re-derived, so the
-// reconciler and the checkout can never disagree about the same row.
+// The PAYOUT rule, imported rather than re-derived, so the reconciler and the
+// post-event payout can never disagree about the same row.
 import {
   describeSaleBlockers,
-  isOrganiserSellable,
+  isOrganiserPayable,
   verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 
@@ -119,29 +119,22 @@ export type ReconcileOutcome =
       /** Whether the organisation may sell right now, per Stripe. LOOSER than the sale gate. */
       canSell: boolean
       /**
-       * The SALE GATE's own verdict on the row this call wrote: the five-column
-       * `isOrganiserSellable`, not the two-condition `canSell` above.
-       *
-       * They are both here because they answer different questions and a caller
-       * that picked the wrong one produced a real defect: the publish gate
-       * granted on `canSell`, which asks nothing about payouts_enabled or the
-       * settlement currency, so an organiser could publish a paid event the
-       * checkout would then refuse to sell.
+       * Whether the organiser can be PAID on the row this call wrote: the
+       * five-column isOrganiserPayable (connected, charges and payouts enabled,
+       * active, a currency we settle in). Since 14 November 2026 (sell first,
+       * Lawal's yes of 15:22) this no longer decides whether they can sell; it
+       * decides whether the post-event payout can reach them, and what the
+       * payouts page still asks of them.
        */
-      sellable: boolean
+      payable: boolean
       /**
-       * WHY the sale gate said no, in words an organiser can act on, empty when
-       * it said yes.
-       *
-       * It exists because `canSell` and `sellable` can DISAGREE, and the cases
-       * where they do are exactly the ones nothing else describes: payouts not
+       * WHY they cannot be paid yet, in words an organiser can act on, empty
+       * when they can. Stripe reports nothing outstanding for payouts not
        * enabled, a payout status that is not active, or a country EventLinqs
-       * cannot settle in. Stripe reports nothing outstanding for any of them, so
-       * without this the refusal would read "Stripe has not enabled payouts on
-       * this account yet and has not said what is outstanding", which names the
-       * wrong party and gives the organiser nowhere to go.
+       * cannot settle in, so without this the payouts page would name the wrong
+       * party and give the organiser nowhere to go.
        */
-      sellableBlockers: string[]
+      payableBlockers: string[]
       payoutStatus: PayoutStatus
       /** Empty when Stripe is asking for nothing. */
       outstanding: OutstandingRequirement[]
@@ -279,12 +272,12 @@ export async function reconcileConnectedAccount(
       ok: true,
       changed: repair.changed,
       canSell: false,
-      // No account at all, so the sale gate's first condition already fails.
+      // No account at all, so the payout rule's first condition already fails.
       // Stated rather than inherited from canSell: the two answer different
       // questions everywhere else in this file and must not start agreeing by
       // accident here.
-      sellable: false,
-      sellableBlockers: ['no Stripe account is connected'],
+      payable: false,
+      payableBlockers: ['no Stripe account is connected'],
       payoutStatus: 'unset',
       outstanding: [],
       disabledReason: null,
@@ -383,21 +376,20 @@ export async function reconcileConnectedAccount(
   }
 
   /*
-   * MONEY FIX A3 LAYER TWO. THE SAME PREDICATE THE SALE GATE USES, COMPUTED ON
-   * THE STATE THIS FUNCTION JUST WROTE.
+   * THE SAME PREDICATE THE PAYOUT USES, COMPUTED ON THE STATE THIS FUNCTION
+   * JUST WROTE.
    *
-   * `canSell` below is LOOSER than the sale gate: it asks about
-   * charges_enabled and the payout status and asks nothing about
-   * payouts_enabled or the settlement currency. That is fine for what it was
-   * written for and wrong as a publish verdict, because an organiser it
-   * approves can still be refused at checkout, which means promoting a night
-   * that cannot take a cent. Both are returned, named for what they are, so no
-   * caller has to guess which question it is asking.
+   * `canSell` below is Stripe's own two-condition view (charges enabled, a
+   * payout status not withheld). `payable` is the payout rule's five, which is
+   * what decides whether the post-event transfer can reach this organiser.
+   * Neither decides whether they can SELL since 14 November 2026 (sell first);
+   * both are returned, named for what they are, so no caller has to guess which
+   * question it is asking.
    *
    * Verified rather than cast: verifyOrgSaleFields is the only way to obtain
-   * the shape isOrganiserSellable accepts, and the object below is built with
+   * the shape isOrganiserPayable accepts, and the object below is built with
    * all five keys, so an incomplete verdict here would be a programming error
-   * and is reported as not sellable rather than assumed away.
+   * and is reported as not payable rather than assumed away.
    */
   const verdict = verifyOrgSaleFields({
     stripe_account_id: next.stripe_account_id,
@@ -407,16 +399,16 @@ export async function reconcileConnectedAccount(
     payout_status: payoutStatus,
   })
 
-  const sellable = verdict.complete ? isOrganiserSellable(verdict.org) : false
+  const payable = verdict.complete ? isOrganiserPayable(verdict.org) : false
 
   return {
     ok: true,
     changed,
     // Selling needs charges enabled AND a payout status that is not withheld.
     canSell: next.stripe_charges_enabled && payoutStatus !== 'restricted' && payoutStatus !== 'on_hold',
-    /** The SALE GATE's verdict on the row this call just wrote. */
-    sellable,
-    sellableBlockers: sellable ? [] : describeSaleBlockers(next, payoutStatus),
+    /** The PAYOUT rule's verdict on the row this call just wrote. */
+    payable,
+    payableBlockers: payable ? [] : describeSaleBlockers(next, payoutStatus),
     payoutStatus,
     outstanding,
     disabledReason,

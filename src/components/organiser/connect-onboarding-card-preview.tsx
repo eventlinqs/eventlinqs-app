@@ -226,7 +226,7 @@ export function ConnectOnboardingCardPreview({
                   Payouts are active for this organisation.
                 </p>
                 <p className="mt-0.5 text-xs text-ink-600">
-                  You can publish paid events. Your first payout starts the Tier 2
+                  Ticket sales are paid into this account after each event ends. Your first payout starts the Tier 2
                   review automatically.
                 </p>
               </div>

@@ -20,7 +20,7 @@
  *   3. disconnect writes every derived column together, so a half-cleared row is
  *      unreachable
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type Stripe from 'stripe'
 import {
   outstandingFrom,
@@ -196,164 +196,72 @@ function orgClient(row: Record<string, unknown> | null) {
   } as never
 }
 
-describe('the publish gate reconciles BEFORE refusing', () => {
+/*
+ * SELL FIRST (Lawal's yes, 15:22 on 14 November 2026: "you let organisers
+ * publish and sell straight away"). The publish gate used to reconcile with
+ * Stripe before refusing, so a stale column could not lock an organiser out.
+ * It no longer refuses on Stripe's posture at all, so it no longer asks: a paid
+ * event publishes on the one sale rule, and only a hold placed by EventLinqs or
+ * a country we cannot settle in stops it. The reconciler still runs where it
+ * belongs, on the payouts page, the Stripe return and the daily cron.
+ */
+describe('the publish gate decides on the row alone, and Stripe posture never refuses', () => {
   const paid = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null }
 
-  it('does NOT refuse on a stale restricted column when Stripe says it can sell', async () => {
-    // THE EXACT LOCKOUT. Stored columns say no; Stripe says yes.
-    const reconcile = vi.fn(async () => ({
-      ok: true as const,
-      changed: true,
-      canSell: true,
-      // MONEY FIX A3 layer two: the gate now grants on the SALE GATE's own
-      // predicate rather than on canSell, so this stub states it. Stripe saying
-      // the account is fine means fine on all five columns, which is the whole
-      // point of the case: the stored row was the only thing that said no.
-      sellable: true,
-      sellableBlockers: [],
-      payoutStatus: 'active' as const,
-      outstanding: [],
-      disabledReason: null,
-      adminHoldPreserved: false,
-    }))
-
+  it('publishes on a restricted, charges-disabled row: the lockout cannot happen', async () => {
     const res = await checkPublishGate(
       orgClient({ stripe_charges_enabled: false, payout_status: 'restricted', stripe_account_id: 'acct_founder' }),
       paid,
-      reconcile,
     )
-
-    expect(reconcile, 'the gate must ask Stripe before refusing').toHaveBeenCalledWith('org_1')
-    expect(res.ok, 'a false refusal is exactly the lockout').toBe(true)
+    expect(res.ok, 'a refusal here is exactly the lockout').toBe(true)
   })
 
-  it('makes NO Stripe call when the stored state permits selling AND was verified recently', async () => {
-    // The working path must not be slowed down by this fix.
-    //
-    // MONEY FIX A3 LAYER TWO CHANGED THE PREMISE OF THIS TEST AND THE NEW ONE
-    // IS WRITTEN OUT RATHER THAN QUIETLY SATISFIED. "The stored state permits
-    // selling" is no longer enough on its own, because those five columns are a
-    // CACHE of what Stripe last said and nothing used to record when it said
-    // it. What earns the fast path now is a cache that is BOTH sellable and
-    // dated recently, which is every account whose account.updated webhooks are
-    // arriving. The undated case is the next test.
-    const reconcile = vi.fn()
+  it('publishes on a row nobody can date: the age of the cache no longer matters', async () => {
     const res = await checkPublishGate(
-      orgClient({
-        stripe_charges_enabled: true,
-        payout_status: 'active',
-        stripe_account_id: 'acct_x',
-        stripe_status_verified_at: new Date(Date.now() - 60_000).toISOString(),
-      }),
+      orgClient({ stripe_status_verified_at: null }),
       paid,
-      reconcile as never,
     )
     expect(res.ok).toBe(true)
-    expect(reconcile).not.toHaveBeenCalled()
   })
 
-  it('DOES ask Stripe when the stored state permits selling but nobody can date it', async () => {
-    // The defect A3 layer two closes: a row that said "enabled" six weeks ago
-    // and has heard nothing since was indistinguishable from one confirmed a
-    // minute ago, and the gate believed both. It does not refuse on a stale
-    // cache; it goes and asks, then decides on the answer.
-    const reconcile = vi.fn(async () => ({
-      ok: true as const,
-      changed: false,
-      canSell: true,
-      sellable: true,
-      sellableBlockers: [],
-      payoutStatus: 'active' as const,
-      outstanding: [],
-      disabledReason: null,
-      adminHoldPreserved: false,
-    }))
+  it('publishes while Stripe still wants requirements: the payout waits, the sale does not', async () => {
     const res = await checkPublishGate(
-      orgClient({
-        stripe_charges_enabled: true,
-        payout_status: 'active',
-        stripe_account_id: 'acct_x',
-        stripe_status_verified_at: null,
-      }),
+      orgClient({ stripe_charges_enabled: false, stripe_payouts_enabled: false, payout_status: 'restricted', stripe_account_id: 'acct_blocked' }),
       paid,
-      reconcile,
     )
-    expect(res.ok, 'a stale cache costs a round trip, never a refusal on its own').toBe(true)
-    expect(reconcile).toHaveBeenCalledWith('org_1')
+    expect(res.ok).toBe(true)
   })
 
-  it('still refuses when Stripe genuinely blocks, and says what Stripe wants', async () => {
-    const reconcile = vi.fn(async () => ({
-      ok: true as const,
-      changed: false,
-      canSell: false,
-      sellable: false,
-      sellableBlockers: ['Stripe has not enabled payouts on the account'],
-      payoutStatus: 'restricted' as const,
-      outstanding: outstandingFrom(blockedAccount),
-      disabledReason: 'requirements.past_due',
-      adminHoldPreserved: false,
-    }))
+  it('publishes for an organisation with no Stripe account at all', async () => {
     const res = await checkPublishGate(
-      orgClient({ stripe_charges_enabled: false, payout_status: 'restricted', stripe_account_id: 'acct_blocked' }),
+      orgClient({ stripe_account_id: null, stripe_charges_enabled: false, stripe_payouts_enabled: false, stripe_account_country: null, payout_status: 'unset' }),
       paid,
-      reconcile,
     )
+    expect(res.ok).toBe(true)
+  })
+
+  it('refuses an EventLinqs hold, and says it is ours, not Stripe', async () => {
+    const res = await checkPublishGate(orgClient({ payout_status: 'on_hold' }), paid)
     expect(res.ok).toBe(false)
     if (res.ok) return
-    expect(res.message).toContain("couldn't be verified")
-    expect(res.outstanding?.length).toBeGreaterThan(0)
-    expect(res.nextAction?.href).toBe('/dashboard/payouts')
+    expect(res.message).toMatch(/paused for this organisation/i)
+    expect(res.message).not.toMatch(/stripe/i)
+    expect(res.nextAction?.href).toBe('/contact')
   })
 
-  it('does not assert a Stripe problem when Stripe was simply unreachable', async () => {
-    const reconcile = vi.fn(async () => ({
-      ok: false as const,
-      reason: 'stripe_error' as const,
-      message: 'unreachable',
-    }))
-    const res = await checkPublishGate(
-      orgClient({ stripe_charges_enabled: false, payout_status: 'restricted', stripe_account_id: 'acct_x' }),
-      paid,
-      reconcile,
-    )
+  it('refuses a connected account in a country we cannot settle in', async () => {
+    const res = await checkPublishGate(orgClient({ stripe_account_country: 'ZZ' }), paid)
     expect(res.ok).toBe(false)
     if (res.ok) return
-    expect(res.message).toMatch(/could not check your Stripe status/i)
-    expect(res.message).toMatch(/nothing is wrong with your account/i)
+    expect(res.reason).toBe('organisation_payouts_restricted')
   })
 
-  it('distinguishes an EventLinqs hold from a Stripe restriction', async () => {
-    const reconcile = vi.fn(async () => ({
-      ok: true as const,
-      changed: false,
-      canSell: false,
-      sellable: false,
-      sellableBlockers: ['EventLinqs has placed payouts on hold'],
-      payoutStatus: 'on_hold' as const,
-      outstanding: [],
-      disabledReason: null,
-      adminHoldPreserved: true,
-    }))
-    const res = await checkPublishGate(
-      orgClient({ stripe_charges_enabled: true, payout_status: 'restricted', stripe_account_id: 'acct_x' }),
-      paid,
-      reconcile,
-    )
-    expect(res.ok).toBe(false)
-    if (res.ok) return
-    expect(res.message).toMatch(/by EventLinqs, not by Stripe/i)
-  })
-
-  it('a free event never reaches the payout check at all', async () => {
-    const reconcile = vi.fn()
+  it('a free event never reads the organisation at all', async () => {
     const res = await checkPublishGate(
       orgClient(null),
       { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong', walkIn: null },
-      reconcile as never,
     )
     expect(res.ok).toBe(true)
-    expect(reconcile).not.toHaveBeenCalled()
   })
 })
 
