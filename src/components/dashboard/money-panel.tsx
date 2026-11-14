@@ -102,6 +102,7 @@ export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
           testId="money-next-payout"
           value={next.value}
           detail={next.detail}
+          action={next.action ?? null}
         />
       </div>
     </section>
