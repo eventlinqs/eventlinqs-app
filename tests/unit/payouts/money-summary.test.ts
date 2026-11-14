@@ -77,6 +77,43 @@ describe('the four facts come from the ledger rows and nothing else', () => {
   })
 })
 
+describe('the reserve is named, so the cards add up to the sales (14 November 2026)', () => {
+  test('a sale with its reserve held: held for the payout plus held for refunds is the sale', () => {
+    // The sell first TEST proof's own ledger: A$25 sold, A$5 kept back, nothing paid yet.
+    const s = summariseMoney({
+      rows: [row('order_confirmed', 2500), row('reserve_hold', -500)],
+      events: [event()],
+      bufferDays: 3,
+      canBePaid: false,
+      now: NOW,
+    })
+    expect(s.heldCents).toBe(2000)
+    expect(s.reserveCents).toBe(500)
+    expect(s.heldCents + s.reserveCents).toBe(s.salesCents)
+  })
+
+  test('a release gives the reserve back, and a refund from the reserve leaves it smaller', () => {
+    const s = summariseMoney({
+      rows: [
+        row('order_confirmed', 7500),
+        row('reserve_hold', -750),
+        row('reserve_release', 250),
+        row('refund_from_reserve', -250, 'ev_a', 'ord_1', 'rf_1'),
+      ],
+      events: [event()],
+      bufferDays: 3,
+      canBePaid: true,
+      now: NOW,
+    })
+    expect(s.reserveCents).toBe(500)
+  })
+
+  test('no reserve rows, no reserve', () => {
+    const s = summariseMoney({ rows: [row('order_confirmed', 2500)], events: [event()], bufferDays: 3, canBePaid: true, now: NOW })
+    expect(s.reserveCents).toBe(0)
+  })
+})
+
 describe('the next payout date is the cron rule, as a date', () => {
   test('end date plus the buffer, for the earliest event still owed money', () => {
     const s = summariseMoney({

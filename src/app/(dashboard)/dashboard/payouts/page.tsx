@@ -167,10 +167,14 @@ export default async function PayoutsPage({
         {/* The way out of a stranded state. Placed ABOVE the onboarding card on
             purpose: an organiser whose Stripe is already finished but whose row is
             stale must meet the control that fixes it before the card that tells
-            them to go and finish onboarding they have already done. */}
-        <div className="mb-6">
-          <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
-        </div>
+            them to go and finish onboarding they have already done. Only once an
+            account exists (14 November 2026): an organiser who has not started has
+            nothing to check, and the card above the first step read as a fault. */}
+        {org.stripe_account_id ? (
+          <div className="mb-6">
+            <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
+          </div>
+        ) : null}
 
         <ConnectOnboardingCard
           organisationId={org.id}

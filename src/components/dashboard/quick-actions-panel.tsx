@@ -26,8 +26,8 @@ const ACTIONS: Action[] = [
     icon: Palette,
   },
   {
-    label: 'Set up payouts',
-    description: 'Connect your bank so ticket money reaches you.',
+    label: 'Add payout method',
+    description: 'Ticket sales are paid into your bank account after each event ends.',
     href: '/dashboard/payouts',
     icon: Wallet,
   },

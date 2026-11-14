@@ -87,7 +87,11 @@ export function MoneyPanel({ summary }: { summary: OrganiserMoneySummary }) {
           label="Paid out"
           testId="money-paid-out"
           value={money(summary.paidOutCents, summary.currency)}
-          detail={summary.heldCents > 0 ? `${money(summary.heldCents, summary.currency)} still held for you` : 'Paid after each event ends'}
+          detail={
+            summary.heldCents > 0
+              ? `${money(summary.heldCents, summary.currency)} held for your payout${summary.reserveCents > 0 ? `, ${money(summary.reserveCents, summary.currency)} for refunds` : ''}`
+              : 'Paid after each event ends'
+          }
         />
         <KpiCard
           label="Next payout"
