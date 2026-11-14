@@ -129,7 +129,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false, paidPromot
               const stateCls = active
                 ? 'bg-ink-100 text-ink-900 font-semibold before:absolute before:left-0 before:top-1.5 before:h-7 before:w-1 before:rounded-r before:bg-gold-500'
                 : isGold
-                  ? 'bg-gold-100/70 text-ink-900 hover:bg-gold-100'
+                  ? 'font-semibold text-ink-900 hover:bg-gold-100'
                   : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'
 
               return (

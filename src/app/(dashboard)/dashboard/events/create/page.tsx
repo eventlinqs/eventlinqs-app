@@ -81,7 +81,7 @@ export default async function CreateEventPage({
           <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
             ← My Events
           </Link>
-          <h1 className="text-2xl font-bold text-ink-900">Create Event</h1>
+          <h1 className="text-2xl font-bold text-ink-900">Create event</h1>
         </div>
         <div className="mb-6 rounded-xl border border-gold-400/40 bg-gold-100/50 px-5 py-4">
           <p className="text-sm font-semibold text-ink-900">First, set up your organisation</p>
@@ -176,7 +176,7 @@ export default async function CreateEventPage({
         <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
           ← My Events
         </Link>
-        <h1 className="text-2xl font-bold text-ink-900">Create Event</h1>
+        <h1 className="text-2xl font-bold text-ink-900">Create event</h1>
       </div>
 
       {/* Which business this event will be published and paid under. An owner of

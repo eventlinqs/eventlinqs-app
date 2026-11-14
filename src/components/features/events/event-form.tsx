@@ -4,7 +4,8 @@ import { REPEAT_CHOICES } from '@/lib/events/repeat-nights'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
-import { EventMediaStep, type MediaImage } from './event-media-step'
+import { EventMediaStep, CoverThumb, type MediaImage } from './event-media-step'
+import { formatReviewRange } from '@/lib/dates/review-range'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isPaidPublishBlocked, showsConnectBankStep } from '@/lib/events/paid-publish-blocked'
 import { UNSAVED_TIER_PREFIX, isSavedTierId } from '@/lib/events/save-tiers'
@@ -26,7 +27,6 @@ import {
   canonicalTokensForCommunities,
 } from '@/lib/communities/tag-bridge'
 import {
-  formatPlatformDateTime,
   fromZonedInputValue,
   toZonedInputValue,
 } from '@/lib/dates/event-time'
@@ -231,13 +231,13 @@ const TIER_TYPES: { value: TicketTierType; label: string }[] = [
 const RECURRENCE_OPTIONS = REPEAT_CHOICES
 
 const STEPS = [
-  'Basic Details',
-  'Date & Time',
+  'Basic details',
+  'Date and time',
   'Location',
-  'Event Media',
+  'Event media',
   'Tickets',
   'Settings',
-  'Review & Publish',
+  'Review and publish',
 ]
 
 function newTier(sort_order: number): TicketTierInput {
@@ -2243,12 +2243,10 @@ export function EventForm({
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date and time</h3>
             <p className="text-sm text-ink-600">
-              {formData.start_date ? formatPlatformDateTime(formData.start_date) : '-'} →{' '}
-              {formData.end_date ? formatPlatformDateTime(formData.end_date) : '-'}
+              {formatReviewRange(formData.start_date, formData.end_date, formData.timezone)}
             </p>
-            <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>
 
           <div className="px-5 py-4">
@@ -2274,10 +2272,12 @@ export function EventForm({
             ) : (
               <>
                 <p className="text-sm text-ink-600">
-                  {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString('en-AU')} total capacity
+                  {formData.ticket_tiers.length} ticket type{formData.ticket_tiers.length !== 1 ? 's' : ''}, {totalCapacity.toLocaleString('en-AU')} tickets
                 </p>
                 <p className="text-xs text-ink-400">
-                  {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
+                  {isFree
+                    ? 'Free event'
+                    : `from ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: (formData.ticket_tiers[0]?.currency || 'AUD').toUpperCase() }).format(minPaidPrice)}`}
                 </p>
               </>
             )}
@@ -2285,11 +2285,16 @@ export function EventForm({
 
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Media</h3>
-            <p className="text-sm text-ink-600">
-              {formData.media[0]?.url
-                ? `Cover set${formData.media.length > 1 ? ` + ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}`
-                : 'No cover yet'}
-            </p>
+            {formData.media[0]?.url ? (
+              <div className="flex items-center gap-3">
+                <CoverThumb item={formData.media[0]} />
+                <p className="text-sm text-ink-600">
+                  Cover{formData.media.length > 1 ? `, and ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-600">No cover yet</p>
+            )}
             {formData.video_url.trim() && <p className="text-xs text-ink-400">Video linked</p>}
           </div>
 
@@ -2391,7 +2396,7 @@ export function EventForm({
             disabled={isSubmitting}
             className="flex-1 rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm font-medium text-ink-600 hover:bg-ink-100 disabled:opacity-50 transition-colors"
           >
-            {isSubmitting ? 'Saving…' : 'Save as Draft'}
+            {isSubmitting ? 'Saving…' : 'Save as draft'}
           </button>
           <button
             type="button"

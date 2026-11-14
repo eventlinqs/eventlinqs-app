@@ -20,6 +20,9 @@ type Props = {
    * change. Added for MONEY FIX B7.
    */
   detail?: string | null
+  /** A compact tile for the top row (three across at 390), with its period as a caption. */
+  compact?: boolean
+  caption?: string | null
   /** The one next step this figure asks for (the Next payout card's 'Add payout method'). */
   action?: { label: string; href: string } | null
 }
@@ -77,21 +80,25 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   )
 }
 
-export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action }: Props) {
+export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, detail, action, compact = false, caption = null }: Props) {
   // a line needs two days with something on them; one sale drawn as a spike at the edge says nothing
   const hasSparkline = Array.isArray(sparkline) && sparkline.filter((v) => v > 0).length >= 2
   const hasData = value !== '0' || hasSparkline
 
   return (
     <div
-      className="panel-elevated rounded-2xl border border-ink-100 bg-white p-5 transition-colors hover:border-ink-200"
+      className={`panel-elevated rounded-2xl border border-ink-100 bg-white transition-colors hover:border-ink-200 ${compact ? 'p-3 sm:p-5' : 'p-5'}`}
       data-kpi={testId}
       data-kpi-value={testId ? value : undefined}
       data-kpi-delta={testId && delta ? String(delta.value) : undefined}
     >
       <p className="type-eyebrow text-ink-400">{label}</p>
       <div className="mt-2 flex items-baseline gap-2">
-        <p className="font-headline text-2xl font-extrabold tabular-nums tracking-tight text-ink-900 sm:text-3xl">
+        <p
+          className={`font-headline font-extrabold tabular-nums tracking-tight text-ink-900 ${
+            /\d/.test(value) ? (compact ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-3xl') : 'text-lg sm:text-xl'
+          }`}
+        >
           {value}
         </p>
         {delta && hasData && <DeltaPill delta={delta} />}
@@ -112,6 +119,9 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, det
         The height is still reserved when the hint is withheld, so nothing
         shifts between a card that has data and one that does not.
       */}
+      {compact ? (
+        caption ? <p className="mt-1 text-xs text-ink-500">{caption}</p> : null
+      ) : (
       <div className="mt-3 h-8">
         {hasSparkline ? (
           <Sparkline points={sparkline as number[]} />
@@ -125,6 +135,7 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint, testId, det
           </p>
         )}
       </div>
+      )}
       {action ? (
         <a
           href={action.href}

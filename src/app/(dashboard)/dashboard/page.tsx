@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
+import { PayoutStepBanner } from '@/components/dashboard/payout-step-banner'
 import { KpiCard } from '@/components/dashboard/kpi-card'
 import {
   UpcomingEventsPanel,
@@ -243,17 +244,8 @@ export default async function DashboardPage({
    * feed it the whole 60 days and then the truncated tail and assert the two
    * disagree.
    */
-  const {
-    ticketsSold30,
-    revenueCents30,
-    ticketsDelta,
-    revenueDelta,
-    ticketsSparkline,
-    revenueSparkline,
-    currency,
-  } = computeDashboardKpis(ordersLast60, now)
-
-  const revenueFormatted = formatCurrency(revenueCents30, currency)
+  // Revenue is not drawn here: the money panel's Sales is the one sales figure (the PM's 22:42 fix 8).
+  const { ticketsSold30, ticketsDelta, ticketsSparkline } = computeDashboardKpis(ordersLast60, now)
 
   /*
    * MONEY FIX B7: sales, refunds, payouts and the next payout date, summed from
@@ -322,9 +314,13 @@ export default async function DashboardPage({
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {moneySummary?.nextPayout?.state === 'held_setup' ? <PayoutStepBanner /> : null}
+
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <KpiCard
-          label="Tickets sold (30d)"
+          compact
+          label="Tickets sold"
+          caption="Last 30 days"
           testId="tickets-30"
           value={ticketsSold30.toLocaleString('en-AU')}
           delta={ticketsDelta !== null ? { value: ticketsDelta } : null}
@@ -332,20 +328,14 @@ export default async function DashboardPage({
           emptyHint={isOrganiser ? 'Sales will appear here' : 'No organiser data'}
         />
         <KpiCard
-          label="Revenue (30d)"
-          testId="revenue-30"
-          value={revenueFormatted}
-          delta={revenueDelta !== null ? { value: revenueDelta } : null}
-          sparkline={revenueSparkline}
-          emptyHint={isOrganiser ? 'Revenue will appear here' : 'No organiser data'}
-        />
-        <KpiCard
+          compact
           label="Upcoming events"
           testId="upcoming-events"
           value={upcomingCount.toLocaleString('en-AU')}
           emptyHint="None scheduled yet"
         />
         <KpiCard
+          compact
           label="Total events"
           testId="total-events"
           value={(totalEventsCount ?? 0).toLocaleString('en-AU')}

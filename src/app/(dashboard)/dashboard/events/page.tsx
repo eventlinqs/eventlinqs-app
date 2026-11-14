@@ -224,7 +224,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
           href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
-          + Create Event
+          + Create event
         </Link>
       </div>
 

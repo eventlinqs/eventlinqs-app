@@ -145,7 +145,7 @@ export function ConnectOnboardingCardPreview({
                 Where is your business based?
               </label>
               <p className="mt-1 text-xs text-ink-500">
-                You cannot change this after onboarding starts.
+                You cannot change this once you start.
               </p>
               <select
                 id="connect-country"
