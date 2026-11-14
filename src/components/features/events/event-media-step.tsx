@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { generateEventCoverPreview, uploadEventImage } from '@/lib/upload'
 import { prepareImageForUpload } from '@/lib/media/client-compress'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
@@ -103,9 +103,17 @@ export function EventMediaStep({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const objectUrls = useRef<Set<string>>(new Set())
 
+  // THE PARENT HEARS OF EACH CHANGE ONCE (14 November 2026). The form passes a new
+  // handler on every render (onImagesChange={imgs => set('media', imgs)}) and set()
+  // writes a new form object every time, so an effect that listed the handler in its
+  // dependencies ran again on every render it caused: React's "Maximum update depth
+  // exceeded", the whole create form re-rendering without end while this step was
+  // open (seen in the sell first TEST proof). useEffectEvent reads the latest handler
+  // without the effect depending on it (https://react.dev/reference/react/useEffectEvent).
+  const announceImages = useEffectEvent((next: MediaImage[]) => onImagesChange(next))
   useEffect(() => {
-    onImagesChange(items)
-  }, [items, onImagesChange])
+    announceImages(items)
+  }, [items])
 
   // Revoke every object URL on unmount.
   useEffect(() => {
