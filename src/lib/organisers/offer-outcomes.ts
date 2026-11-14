@@ -23,7 +23,8 @@ export interface OfferOutcome {
   runsIn: string
 }
 
-export const OFFER_HEADLINE = 'Your event deserves more than a ticketing link.'
+/** Lawal took this headline at 06:50 on 15 November 2026 (relayed by the PM at 07:00), over the version 2 draft. */
+export const OFFER_HEADLINE = 'Reach people beyond your own followers.'
 
 export const OFFER_SUBLINE = 'Discovery, selling, promotion and your audience, in one place.'
 
