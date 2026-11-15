@@ -190,7 +190,7 @@ export const GEOMETRY: Record<TreatmentFormat, Geometry> = {
   },
   story: {
     w: 1080, h: 1920, pad: 64, safeTop: 250, safeBottom: 250, mastY: 262, photoH: 1260, solidFrom: 1010,
-    titleMax: { photo: 150, type: 300 }, titleMin: 72, titleLines: { photo: 3, type: 4 }, typeTop: 420, showLine: true, stickerZone: 190,
+    titleMax: { photo: 150, type: 300 }, titleMin: 72, titleLines: { photo: 3, type: 4 }, typeTop: 420, showLine: true, stickerZone: 90,
   },
 }
 
@@ -306,6 +306,19 @@ function bottomRow(g: Geometry, t: Treatment, w: NightWords | BrandWords, m: Mea
   if (t === 'photo') {
     const size = 28
     const credit = creditLine(w.credit)
+    /* One call (the PM's 15:45 of 15 November 2026, fix 5): with no label beside the pill, the pill takes the row and
+       the credit stands on its own line just above it, still on the photograph. */
+    if (w.label === '') {
+      const action = fit(w.action, m.manrope800, { max: size, min: 22, width: widthIn(g) - 52, maxLines: 1, lineHeight: 1.2, spacing: 0 })
+      const pillW = Math.ceil(m.manrope800(action.lines[0], action.size)) + 52
+      const pillH = Math.round(action.size * 1.2) + 28
+      const top = bottom - pillH
+      blocks.push({ role: 'pill', x: g.pad, y: top, w: pillW, h: pillH, color: GOLD })
+      runs.push({ role: 'action', lines: action.lines, face: 'manrope800', size: action.size, lineHeight: 1.2, letterSpacing: 0, color: NAVY, ground: GOLD, x: g.pad + 26, y: top + 14, w: pillW - 52 })
+      if (!credit) return { runs, blocks, top }
+      runs.push({ role: 'credit', lines: [credit], face: 'manrope600', size: 20, lineHeight: 1.2, letterSpacing: 0, color: '#B9B6AE', ground: NAVY, x: g.pad, y: top - 36, w: widthIn(g) })
+      return { runs, blocks, top: top - 36 }
+    }
     const creditW = credit ? Math.ceil(m.manrope600(credit, 20)) + 4 : 0
     const labelW = Math.ceil(m.manrope800(w.label, 26)) + 4
     const room = widthIn(g) - Math.max(creditW, labelW) - 40 - 52
@@ -528,6 +541,18 @@ export type CoverWords = { chip: string; headline: string; line: string; content
  * A set's contents cover (the week ahead, the weekend guide, the Reel's first frame), in editorial type: the chip, the
  * headline, the split line and one row a night, the day in gold and the title fitted to its row.
  */
+/** A list line cut to the safe width at its size, never past it (the PM's 15:45 of 15 November 2026, fix 2). */
+function cutToWidth(text: string, measure: Measure, size: number, width: number): string {
+  if (measure(text, size) <= width) return text
+  const words = text.split(' ')
+  while (words.length > 1) {
+    words.pop()
+    const cut = `${words.join(' ').replace(/[,:;]$/, '')}\u2026`
+    if (measure(cut, size) <= width) return cut
+  }
+  return text
+}
+
 export function layoutCover(format: TreatmentFormat, w: CoverWords, m: Measurers): Layout {
   const g = GEOMETRY[format]
   // Flat navy: the gold day labels fell under 3:1 on a gold-tinted glow (the QA's own finding, 28 October).
@@ -535,35 +560,66 @@ export function layoutCover(format: TreatmentFormat, w: CoverWords, m: Measurers
   const blocks: Block[] = []
   const bottom = g.h - g.safeBottom - (g.safeBottom > 0 ? 0 : 60) - g.stickerZone
   const dayW = 96
-  const rowSize = format === 'square' ? 26 : 30
-  let y = bottom
-  const rows: Run[][] = []
-  for (const [i, c] of [...w.contents].entries()) {
-    const [day, ...rest] = c.split(' ')
-    const title = rowRun(`content-${i}`, rest.join(' '), 'manrope700', m, { x: g.pad + dayW, y: 0, w: widthIn(g) - dayW, max: rowSize, min: 22, color: INK, ground: NAVY })
-    rows.push([{ role: `content-day-${i}`, lines: [day], face: 'manrope800', size: title.size, lineHeight: 1.25, letterSpacing: 0, color: GOLD, ground: NAVY, x: g.pad, y: 0, w: dayW - 12 }, title])
-  }
-  const placed: Run[][] = []
-  for (const row of [...rows].reverse()) {
-    const h = runHeight(row[1]) + 10
-    y -= h
-    placed.unshift(row.map((r) => ({ ...r, y })))
-  }
-  runs.push(...placed.flat())
-  const line = rowRun('line', w.line, 'manrope600', m, { x: g.pad, y: 0, w: widthIn(g), max: format === 'square' ? 28 : 32, min: 22, color: INK, ground: NAVY })
-  y -= 26 + runHeight(line)
-  runs.push({ ...line, y })
-  const head = fit(w.headline, m.condensed, { max: format === 'square' ? 104 : format === 'story' ? 140 : 128, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: y - 24 - (g.typeTop + 70) })
-  const headH = head.lines.length * head.size * head.lineHeight
-  y -= 24 + headH
-  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y, w: widthIn(g) })
+  /*
+   * THE LIST IS THE PICTURE (the PM's 15:45 of 15 November 2026, fix 1): with no photograph the top of the cover was
+   * empty navy. The chip and headline now start in the top third; each night's line carries its venue and time under its
+   * title, at the largest size at which the whole list still ends above the bottom; a line is cut, never overflows.
+   */
+  let y = Math.max(g.mastY + 110, Math.round(g.h * 0.13))
   const chipText = w.chip.toUpperCase()
   const chip = fit(chipText, m.manrope800, { max: 24, min: 20, width: widthIn(g) - 48, maxLines: 1, lineHeight: 1.2, spacing: 0 })
   const chipW = Math.ceil(m.manrope800(chip.lines[0], chip.size)) + 44
   const chipH = Math.round(chip.size * 1.2) + 20
-  y -= 28 + chipH
   blocks.push({ role: 'pill', x: g.pad, y, w: chipW, h: chipH, color: GOLD })
   runs.push({ role: 'chip', lines: chip.lines, face: 'manrope800', size: chip.size, lineHeight: 1.2, letterSpacing: 0, color: NAVY, ground: GOLD, x: g.pad + 22, y: y + 10, w: chipW - 44 })
+  y += chipH + 28
+  const items = [...w.contents].map((c) => {
+    const [first, sub] = c.split('\n')
+    const [day, ...rest] = first.split(' ')
+    return { day, title: rest.join(' '), sub: sub && sub.trim() ? sub.trim() : null }
+  })
+  const rowsAt = (size: number): { rows: Run[][]; height: number } => {
+    const subSize = Math.round(size * 0.72)
+    // The day column holds the widest day at this size (MON at 42 px is wider than the 30 px row's 84 px box).
+    const dayCol = Math.max(dayW, Math.ceil(Math.max(0, ...items.map((it) => m.manrope800(it.day, size)))) + 24)
+    const rowWidth = widthIn(g) - dayCol
+    const rows: Run[][] = []
+    let height = 0
+    items.forEach((it, i) => {
+      const row: Run[] = [
+        { role: `content-day-${i}`, lines: [it.day], face: 'manrope800', size, lineHeight: 1.25, letterSpacing: 0, color: GOLD, ground: NAVY, x: g.pad, y: height, w: dayCol - 12 },
+        { role: `content-${i}`, lines: [cutToWidth(it.title, m.manrope700, size, rowWidth)], face: 'manrope700', size, lineHeight: 1.25, letterSpacing: 0, color: INK, ground: NAVY, x: g.pad + dayCol, y: height, w: rowWidth },
+      ]
+      height += size * 1.25
+      if (it.sub) {
+        row.push({ role: `content-sub-${i}`, lines: [cutToWidth(it.sub, m.manrope600, subSize, rowWidth)], face: 'manrope600', size: subSize, lineHeight: 1.25, letterSpacing: 0, color: '#B9B6AE', ground: NAVY, x: g.pad + dayCol, y: height + 2, w: rowWidth })
+        height += subSize * 1.25 + 2
+      }
+      height += 18
+      rows.push(row)
+    })
+    return { rows, height: height - 18 }
+  }
+  const base = format === 'square' ? 26 : 30
+  const smallest = rowsAt(base).height
+  const head = fit(w.headline, m.condensed, { max: format === 'square' ? 104 : format === 'story' ? 140 : 128, min: g.titleMin, width: widthIn(g), maxLines: 3, lineHeight: 0.9, spacing: -0.005, height: Math.max(g.titleMin * 1.2, bottom - y - smallest - 140) })
+  const headH = head.lines.length * head.size * head.lineHeight
+  runs.push({ role: 'title', lines: head.lines, face: 'condensed', size: head.size, lineHeight: head.lineHeight, letterSpacing: -0.005, color: INK, ground: NAVY, x: g.pad, y, w: widthIn(g) })
+  y += headH + 24
+  const line = rowRun('line', w.line, 'manrope600', m, { x: g.pad, y, w: widthIn(g), max: format === 'square' ? 28 : 32, min: 22, color: INK, ground: NAVY })
+  runs.push(line)
+  y += runHeight(line) + 40
+  // The largest row size, by steps of two, at which the list still ends above the bottom.
+  let list = rowsAt(base)
+  for (let size = format === 'square' ? 34 : 42; size > base; size -= 2) {
+    const tried = rowsAt(size)
+    if (y + tried.height <= bottom) {
+      list = tried
+      break
+    }
+  }
+  const top = Math.max(y, bottom - list.height)
+  runs.push(...list.rows.flat().map((r) => ({ ...r, y: r.y + top })))
   return { treatment: 'type', format, w: g.w, h: g.h, safeTop: g.safeTop, safeBottom: g.safeBottom, photo: null, scrim: null, ground: null, art: [], blocks, runs }
 }
 

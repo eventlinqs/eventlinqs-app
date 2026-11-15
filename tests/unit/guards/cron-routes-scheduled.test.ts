@@ -90,3 +90,13 @@ describe('against the repository as it actually stands', () => {
     expect(cronRouteNames().length).toBeGreaterThanOrEqual(19)
   })
 })
+
+describe("the warm cron runs on no timer (Lawal's 20:52 of 15 November 2026, item 5: the Vercel bill)", () => {
+  it('no schedule requests the edge cached pages every minute; the route stays as the CRON_SECRET handshake', () => {
+    const scheduled = scheduledPaths(readFileSync(join(ROOT, 'vercel.json'), 'utf8'))
+    expect(scheduled.map((s: { path: string }) => s.path)).not.toContain('/api/cron/warm')
+    expect(cronRouteNames()).toContain('warm')
+    expect(INVOKED_WITHOUT_A_SCHEDULE.warm).toMatch(/handshake/)
+    expect(readFileSync(join(ROOT, 'src/lib/env/manifest.mjs'), 'utf8')).toMatch(/handshakePath: '\/api\/cron\/warm'/)
+  })
+})

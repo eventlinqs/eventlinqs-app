@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ piec
     const images = await slideImagesNow(db, piece.slides, new Date())
     const frames: Uint8Array[] = []
     for (const [i, slide] of piece.slides.entries()) {
-      frames.push(await renderCampaignSlide('story', slide, i + 1, piece.slides.length, null, images.get(i) ?? null))
+      frames.push(await renderCampaignSlide('story', slide, i + 1, piece.slides.length, null, images.get(i) ?? null, piece.slides[i + 1] ?? null))
     }
     const bytes = await encodeReel(frames)
     const name = `eventlinqs-discovery-reel-${piece.city}.mp4`

@@ -100,6 +100,26 @@ export function threeNumbers(input: { organisersSelling: number; paidTicketsThis
 /** The card's one word: RUNS (on and nothing waits), WAITS (a person's yes or press is needed), OFF (its switch is off). */
 export type CardState = 'runs' | 'waits' | 'off'
 
+/** A card as needsYou reads it: what waits on it, and whether that is an approval. */
+export type WaitingCard = { readonly waitsFor: string | null; readonly readFailed: string | null; readonly waiting: number; readonly approvalNoun?: string }
+
+/**
+ * WHAT WAITS FOR A PERSON, ONE SOURCE FOR BOTH PAGES (the PM's 02:45 of 16 November 2026, fix 1: Today said 'Waiting for
+ * approval 0' while Automation, on the same database, said 5 posts and 3 letters wait): the tasks that wait (each card
+ * with something waiting or a read that failed, as Automation's 'Needs you today' lists them) and the approvals inside
+ * them, summed from the cards' own counts. /admin/automation and /admin/today both read this;
+ * tests/unit/admin/needs-you.test.ts holds the two to one fixture.
+ */
+export function needsYou(cards: readonly WaitingCard[]): { tasks: number; approvals: number; parts: { noun: string; n: number }[]; unread: number } {
+  const approvals = cards.filter((c) => c.approvalNoun && c.waiting > 0 && !c.readFailed)
+  return {
+    tasks: cards.filter((c) => c.waitsFor || c.readFailed).length,
+    approvals: approvals.reduce((n, c) => n + c.waiting, 0),
+    parts: approvals.map((c) => ({ noun: c.approvalNoun as string, n: c.waiting })),
+    unread: cards.filter((c) => c.readFailed).length,
+  }
+}
+
 export function cardState(input: { switchedOn: boolean | null; waitingOnPerson: number }): CardState {
   if (input.switchedOn === false) return 'off'
   return input.waitingOnPerson > 0 ? 'waits' : 'runs'

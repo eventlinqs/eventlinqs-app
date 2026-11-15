@@ -53,6 +53,19 @@ const ballaratOne = [night({ at: '2026-10-31T09:00:00Z', citySlug: 'ballarat', c
 const outside = [night({ at: '2026-11-03T09:00:00Z' })] // next week
 
 const plan = () => planCampaign({ nights: [...geelongWeek, ...ballaratOne, ...outside], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
+/* A busy week (the PM's 16:40 fix 3: two list posts in one city and one week share at most one night): five headline
+   nights Monday to Thursday carry the week post, so the later list posts have nights of their own. */
+function busyWeek(at: (o: Partial<CampaignNight> & { at: string; state?: CtaInput }) => CampaignNight) {
+  const h = (when: string, venue: string, categorySlug: string) => at({ at: when, venueName: venue, host: venue, categorySlug, state: { tiers: [{ price: 9900 }] } })
+  return [
+    h('2026-10-26T09:00:00Z', 'Costa Hall', 'theatre'),
+    h('2026-10-27T09:00:00Z', 'Rod Laver Arena', 'sport'),
+    h('2026-10-27T10:00:00Z', 'Hamer Hall', 'dance'),
+    h('2026-10-28T09:00:00Z', 'Palais Theatre', 'family'),
+    h('2026-10-29T09:00:00Z', 'Regent Theatre', 'arts'),
+  ]
+}
+const busyPlan = () => planCampaign({ nights: [...geelongWeek, ...busyWeek(night), ...ballaratOne, ...outside], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
 const of = (pieces: PiecePlan[], kind: PiecePlan['kind'], city?: string) => pieces.filter((p) => p.kind === kind && (city === undefined || p.city === city))
 
 describe('the week', () => {
@@ -78,14 +91,16 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     expect(ahead.link).toBe(`${ORIGIN}/city/geelong`)
     expect(ahead.eventIds).toHaveLength(5)
-    expect(ahead.slides[0]).toMatchObject({ t: 'cover', composition: 'contents_cover', headline: 'Five things on in Geelong this week.' })
-    expect(ahead.slides.at(-1)).toMatchObject({ t: 'end', composition: 'close', url: 'eventlinqs.com.au/city/geelong' })
+    // The 9.5 locked look (the PM's 17:10 of 15 November 2026): the week's cover first, Lawal's ask last.
+    expect(ahead.slides[0]).toMatchObject({ t: 'week_cover', composition: 'contents_cover', lines: ['5 things on', 'in Geelong', 'this week'] })
+    expect(ahead.slides.at(-1)).toMatchObject({ t: 'ask', composition: 'close', count: 5 })
+    expect(ahead.versions.instagram.hook).toBe('Five things on in Geelong this week.')
     expect(of(pieces, 'week_ahead', 'ballarat')).toHaveLength(0)
     expect(ahead.eventIds).not.toContain(outside[0].eventId)
   })
 
   it('Thursday: the weekend carousel, Friday to Sunday, to the page that lists every night it shows (J15)', () => {
-    const [w] = of(pieces, 'weekend_carousel', 'geelong')
+    const [w] = of(busyPlan().pieces, 'weekend_carousel', 'geelong')
     /* It shows a paid night, which the free week page does not list, so it goes to the city page. */
     expect(w.link).toBe(`${ORIGIN}/city/geelong`)
     expect(w.eventIds).toEqual([geelongWeek[2], geelongWeek[3], geelongWeek[4]].map((n) => n.eventId))
@@ -101,7 +116,8 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
   it('Friday: the venue spotlight for attendees and the organiser campaign for organisers, separate (J11)', () => {
     const [s] = of(pieces, 'venue_spotlight')
     expect(s).toMatchObject({ audience: 'attendees', objective: 'audience_growth', link: `${ORIGIN}/city/geelong` })
-    expect(s.slides.map((x) => x.t)).toEqual(['night', 'programme'])
+    // Family E in the locked look (the PM's 17:10 of 15 November 2026): one slide, the venue's week.
+    expect(s.slides.map((x) => x.t)).toEqual(['venue'])
     const [o] = of(pieces, 'organiser_campaign')
     /* The canonical page, never /for-organisers, which 308s to it (src/app/for-organisers/page.tsx; Law 5). */
     expect(o).toMatchObject({ audience: 'organisers', objective: 'organiser_growth', link: `${ORIGIN}/organisers`, eventIds: [] })
@@ -172,9 +188,11 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
 
   it('a photograph only with an approved rights row; otherwise the slide is typographic (J1 to J4)', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
-    const photos = ahead.slides.filter((s) => s.t === 'night').map((s) => (s as { photo: string | null }).photo)
-    expect(photos).toEqual([APPROVED, null, null, null, null])
-    for (const p of pieces) for (const s of p.slides) if ('photo' in s && s.photo) expect(s.photo).toBe(APPROVED)
+    // The night with its approved photograph leads: the cover shows it whole, and it has its own slide; no other night's.
+    expect(ahead.slides[0]).toMatchObject({ t: 'week_cover', photoEventId: geelongWeek[0].eventId, photo: APPROVED })
+    expect(ahead.slides.filter((s) => s.t === 'feature').map((s) => (s as { eventId: string; photo: string }).eventId)).toEqual([geelongWeek[0].eventId])
+    // Any other photograph on any piece is the approved one or a stand-in of the night's kind, served from our own origin.
+    for (const p of pieces) for (const s of p.slides) if ('photo' in s && s.photo) expect(s.photo === APPROVED || s.photo.startsWith(`${ORIGIN}/social/stand-ins/`), s.photo).toBe(true)
     expect(ahead.caption).toContain('Photo: Jo Bloggs for The Barwon Club')
     expect(JSON.stringify(pieces)).not.toContain('/stock/')
   })
@@ -188,8 +206,9 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
 
   it('every night slide carries its chip from the one call to action, and an unknown price none', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
-    const chips = ahead.slides.filter((s) => s.t === 'night').map((s) => (s as { chip: string | null }).chip)
-    expect(chips).toEqual(['Free · just turn up', 'Tickets · on EventLinqs', 'Tickets · at Humanitix', 'Free · just turn up', null])
+    // In the locked look a night is a gold timed card on its day's slide: FREE only where its call to action is free.
+    const rows = ahead.slides.flatMap((s) => (s.t === 'days' ? s.rows : []))
+    expect(new Map(rows.map((r) => [r.eventId, r.free]))).toEqual(new Map(geelongWeek.map((n, i) => [n.eventId, i === 0 || i === 3])))
   })
 
   it('Instagram and Facebook versions differ where the platforms do (J13)', () => {
@@ -211,7 +230,8 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
 
 describe('the destination lists every night advertised (J15)', () => {
   it('an all free weekend goes to the free week page', () => {
-    const free = [night({ at: '2026-10-30T09:00:00Z' }), night({ at: '2026-10-31T09:00:00Z' })]
+    // A Tuesday night too, so the week's list is not the weekend's own (a later piece repeating a list drops itself).
+    const free = [night({ at: '2026-10-27T09:00:00Z' }), night({ at: '2026-10-30T09:00:00Z' }), night({ at: '2026-10-31T09:00:00Z' })]
     const [w] = of(planCampaign({ nights: free, cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces, 'weekend_carousel', 'geelong')
     expect(w.link).toBe(`${ORIGIN}/free/geelong/this-week`)
   })
@@ -239,7 +259,7 @@ describe('the editorial selection (K6)', () => {
   it('is photo led only where an approved image exists, else type led (path B, K1)', () => {
     const { pieces } = plan()
     expect(of(pieces, 'week_ahead', 'geelong')[0].mode).toBe('photo_led')
-    expect(of(pieces, 'weekend_carousel', 'geelong')[0].mode).toBe('type_led')
+    expect(of(busyPlan().pieces, 'weekend_carousel', 'geelong')[0].mode).toBe('type_led')
   })
 })
 
@@ -267,7 +287,7 @@ describe('the creative checks before approval (K10, K12)', () => {
   })
   it('refuses too many tags, an exclamation, a missing call to action, words past the limit, and a place the night does not hold', () => {
     const bad = {
-      slides: ahead.slides.map((s) => (s.t === 'night' ? { ...s, meta: 'Somewhere Else, Geelong' } : s)),
+      slides: ahead.slides.map((s) => (s.t === 'days' ? { ...s, rows: s.rows.map((r) => ({ ...r, place: 'Somewhere Else' })) } : s)),
       versions: {
         instagram: { ...ahead.versions.instagram, caption: `${ahead.versions.instagram.caption} #a #b #c #d`, cta: '' },
         facebook: { ...ahead.versions.facebook, caption: `${'x'.repeat(2300)}!` },

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { AdminSession } from '@/lib/admin/types'
 import { ROLE_LABELS } from '@/lib/admin/rbac'
-import { filterNav } from './admin-nav'
+import { filterNav, filterNavGroups } from './admin-nav'
 import { AdminMobileNav } from './admin-mobile-nav'
 
 /**
@@ -15,7 +15,7 @@ import { AdminMobileNav } from './admin-mobile-nav'
 export function AdminTopbar({ session }: { session: AdminSession }) {
   return (
     <header className="flex items-center gap-4 border-b border-white/[0.08] bg-[#0A0F1A] px-6 py-4 lg:px-10">
-      <AdminMobileNav items={filterNav(session.capabilities)} />
+      <AdminMobileNav items={filterNav(session.capabilities)} groups={filterNavGroups(session.capabilities)} />
       <form method="GET" action="/admin/search" className="hidden flex-1 sm:block">
         <label className="block">
           <span className="sr-only">Search organisers, events, users</span>
@@ -38,12 +38,13 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
         </Link>
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-          <div className="text-right">
-            <p className="text-sm font-medium leading-tight text-white">
+        {/* One line at every width (the PM's 02:45 fix 6: 'Automation drive' wrapped at 320): the name truncates instead. */}
+        <div className="flex min-w-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+          <div className="min-w-0 text-right">
+            <p className="max-w-[7.5rem] truncate whitespace-nowrap text-sm font-medium leading-tight text-white sm:max-w-[14rem]">
               {session.admin.display_name}
             </p>
-            <p className="text-[11px] uppercase tracking-wider leading-tight text-white/50">
+            <p className="whitespace-nowrap text-[11px] uppercase tracking-wider leading-tight text-white/50">
               {ROLE_LABELS[session.admin.role]}
             </p>
           </div>

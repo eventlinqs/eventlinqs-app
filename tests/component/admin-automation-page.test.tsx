@@ -17,6 +17,12 @@ type Card = import('@/lib/admin/automation').AutomationCard
 let cards: Card[] = []
 let numbers: unknown = { organisersSelling: 0, paidTicketsThisMonth: 0, paidTicketsLastMonth: 0, growthPercent: null }
 vi.mock('@/lib/admin/automation', () => ({ readAutomation: async () => ({ numbers, cards }) }))
+// Since the PM's 05:37 fix 2 'Needs you today' reads Today's queue (the same total Today shows).
+type Queue = import('@/lib/admin/today-math').Queue
+let queue: Queue = { sections: [], waiting: 0, allClear: true }
+vi.mock('@/lib/admin/today', () => ({ readTodayQueue: async () => queue }))
+const item = (id: string) => ({ id, what: 'x', why: 'y', since: '2026-11-16T00:00:00Z', href: null })
+const section = (key: string, title: string, n: number) => ({ key: key as never, title, items: Array.from({ length: n }, (_, i) => item(`${key}${i}`)), unread: [], failed: [] })
 
 import AdminAutomationPage from '@/app/admin/(authed)/automation/page'
 
@@ -30,6 +36,7 @@ const base: Card = {
   results: [{ label: 'Posted this week', value: 0 }],
   switch: { kind: 'flag', flag: 'social_auto_publish', on: false },
   waitsFor: null,
+  waiting: 0,
   state: 'off',
   link: null,
   readFailed: null,
@@ -37,6 +44,7 @@ const base: Card = {
 
 beforeEach(() => {
   cards = []
+  queue = { sections: [], waiting: 0, allClear: true }
   numbers = { organisersSelling: 0, paidTicketsThisMonth: 0, paidTicketsLastMonth: 0, growthPercent: null }
 })
 
@@ -52,17 +60,24 @@ describe('/admin/automation', () => {
   it('"Needs you today" is empty when nothing waits', async () => {
     cards = [{ ...base, state: 'runs', switch: { kind: 'flag', flag: 'social_auto_publish', on: true } }]
     render(await AdminAutomationPage({ searchParams: Promise.resolve({}) }))
-    expect(screen.getByText('Nothing. Every task ran by itself.')).toBeTruthy()
+    // Redesigned on Lawal's 20:52 (5d1984e4e): an 'All clear' chip beside the words, as the page now reads.
+    expect(screen.getByText('All clear')).toBeTruthy()
+    expect(screen.getByText(/Every task ran by itself\./)).toBeTruthy()
   })
 
-  it('lists what waits, and a read that failed by its own words', async () => {
+  it("lists Today's groups with the same total, and a read that failed by its own words", async () => {
+    queue = { sections: [section('pieces', 'Posts to approve', 5), section('letters', 'Letters to approve', 3), section('photos', 'Organiser photos to look at', 0)], waiting: 8, allClear: false }
     cards = [
-      { ...base, waitsFor: '70 piece(s) wait for approval', state: 'waits' },
+      { ...base, waitsFor: '5 pieces wait for approval', waiting: 5, state: 'waits' },
       { ...base, key: 'claims', title: 'Claims', readFailed: 'listing_claims: permission denied', state: 'waits' },
     ]
     render(await AdminAutomationPage({ searchParams: Promise.resolve({}) }))
     const needs = document.querySelector('[data-section="needs-you"]')
-    expect(needs?.querySelector('[data-needs="social"]')?.textContent).toContain('70 piece(s) wait for approval')
+    expect(needs?.textContent).toContain('Needs you today, 8 things in 2 groups')
+    expect(screen.getByRole('link', { name: 'Review what needs you (8)' })).toBeTruthy()
+    expect(needs?.querySelector('[data-needs="pieces"]')?.textContent).toContain('5 things')
+    expect(needs?.querySelector('[data-needs="letters"]')?.textContent).toContain('3 things')
+    expect(needs?.querySelector('[data-needs="photos"]')).toBeNull()
     expect(needs?.querySelector('[data-needs="claims"]')?.textContent).toContain('listing_claims: permission denied')
     expect(document.querySelector('[data-card="claims"]')?.textContent).toContain('Its figures could not be read')
   })

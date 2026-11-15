@@ -8,8 +8,10 @@
  *             counted press, /out); for a listing EventLinqs does not ticket, this is the nearest a post gets to a sale;
  *   tickets:  'conversion', an EventLinqs order for this event reached through the link, its tickets and money, while
  *             the order stands (confirmed or partly refunded).
- * Each counted from the moment the post went to 30 days after. Likes, impressions and follows are never read: none of
- * them sells a ticket, and a number nobody can act on is noise.
+ * Each counted from the moment the post went to 30 days after. Reach, saves, shares and link clicks are read once a day
+ * through the official APIs and stored as signals of what to make next (the PM's ruling of 16 November 2026, 02:25, on
+ * Lawal's 01:17); they are never shown as a goal, a post is never ranked by likes alone, and 'What worked this week'
+ * leads with EventLinqs clicks and paid tickets.
  *
  * Pure: src/lib/social/store.ts reads the rows.
  */

@@ -16,12 +16,14 @@
 
 // 'submissions' leads (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour after it was sent in is
 // the first thing Lawal sees.
-export const SOURCE_KEYS = ['submissions', 'pieces', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
+export const SOURCE_KEYS = ['submissions', 'pieces', 'letters', 'photos', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
 export type SectionKey = (typeof SOURCE_KEYS)[number]
 
 export const SECTION_TITLES: Readonly<Record<SectionKey, string>> = {
   submissions: 'Organiser events not live after an hour',
   pieces: 'Posts to approve',
+  letters: 'Letters to approve',
+  photos: 'Organiser photos to look at',
   plays: 'Plays to approve',
   paused_sends: 'Sends paused',
   unclear_replies: 'Replies to read',
@@ -107,6 +109,17 @@ export interface Queue {
   readonly waiting: number
   /** True only when every source was read and none has an item. */
   readonly allClear: boolean
+}
+
+/**
+ * ONE UNIT ON TODAY AND AUTOMATION (the PM's 05:37 fix 2: Today said 69 things wait while Automation's 'Needs you today
+ * (5)' counted kinds): the total of things and the groups that hold them, both read from this queue alone.
+ */
+export function needsLine(q: Pick<Queue, 'sections' | 'waiting'>): { total: number; groups: readonly Section[]; heading: string } {
+  const groups = q.sections.filter((s) => s.items.length > 0)
+  const things = (n: number) => `${n.toLocaleString('en-AU')} ${n === 1 ? 'thing' : 'things'}`
+  const heading = q.waiting === 0 ? 'Needs you today' : `Needs you today, ${things(q.waiting)} in ${groups.length} ${groups.length === 1 ? 'group' : 'groups'}`
+  return { total: q.waiting, groups, heading }
 }
 
 /** The queue from its sources: oldest first in each section, every unread source said. */

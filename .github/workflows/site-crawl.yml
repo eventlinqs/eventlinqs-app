@@ -1,0 +1,55 @@
+name: site crawl
+
+# THE WHOLE PUBLIC SITE, CRAWLED WITH A REAL BROWSER AFTER EVERY PRODUCTION DEPLOYMENT AND EVERY DAY (Lawal, 15 November
+# 2026, 22:01, item 2: "Never on my platform should anything be broken ever"; law 21, the engines never sleep).
+# scripts/verify/site-crawl.mjs opens each public page at 1440 and 390, collects every internal link, and fails on any
+# page answering 400 or more, any console error, any page error, any failed request, or any dead link. A failed run emails
+# the owner (GitHub's own failed-run notice) and keeps its table as an artifact. GET requests only, a named crawler user
+# agent, and the tracked short links (/out /e /s /go) are never followed, so no visit or click is counted.
+# Cost: standard GitHub-hosted runners in a public repository are free ("The following usage remains free ... Standard
+# GitHub-hosted runners in public repositories", docs.github.com/en/billing/concepts/product-billing/github-actions, read
+# 15 November 2026); eventlinqs-app is public.
+
+on:
+  deployment_status:
+  schedule:
+    # 07:30 Melbourne in daylight saving time (AEDT, UTC+11), before the day's visitors.
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: site-crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    if: >-
+      ${{ github.event_name != 'deployment_status'
+       || (github.event.deployment_status.state == 'success'
+           && github.event.deployment.environment == 'Production') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CRAWL_BASE: https://www.eventlinqs.com.au
+      CRAWL_OUT: crawl-evidence
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Crawl every public page at 1440 and 390
+        run: node scripts/verify/site-crawl.mjs 60
+      - name: Keep the table
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-crawl-${{ github.run_id }}
+          path: crawl-evidence
+          if-no-files-found: warn

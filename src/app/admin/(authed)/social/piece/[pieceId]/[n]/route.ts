@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ piec
 
   try {
     const image = (await slideImagesNow(db, piece.slides, new Date())).get(index - 1) ?? null
-    const bytes = await renderCampaignSlide(format, piece.slides[index - 1], index, piece.slides.length, null, image)
+    const bytes = await renderCampaignSlide(format, piece.slides[index - 1], index, piece.slides.length, null, image, piece.slides[index] ?? null)
     const download = new URL(request.url).searchParams.get('download') === '1'
     const shape = format === 'feed' ? 'portrait' : format
     const name = `eventlinqs-${piece.kind.replace(/_/g, '-')}-${piece.city}-${String(index).padStart(2, '0')}-${shape}.jpg`

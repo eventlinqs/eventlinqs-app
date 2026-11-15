@@ -50,8 +50,10 @@ describe("the organiser's live notice", () => {
   test("self-listing tells the organiser once it is live, and Lawal's alert says what happened", () => {
     const run = readFileSync(join(process.cwd(), 'src/lib/listings/self-listing-run.ts'), 'utf8').replace(/\r\n/g, '\n')
     const published = run.indexOf("update({ status: 'published'")
-    const told = run.indexOf('const organiserTold = await sendOrganiserLiveNotice(')
+    const told = run.indexOf('await sendOrganiserLiveNotice({ to: sub.email')
     expect(told).toBeGreaterThan(published)
+    // The PM's 22:41 (b): a live notice held for one submission (H2o) is not sent, and the run's log says why.
+    expect(run).toMatch(/const organiserTold = noticeHeld\s*\?\s*'not sent: its live notice is held for this submission/)
     expect(run).toContain('Organiser told: ${organiserTold}')
   })
 })

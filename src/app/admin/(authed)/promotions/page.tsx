@@ -36,7 +36,9 @@ export default async function AdminPromotionsPage({ searchParams }: { searchPara
   await recordAuditEvent({ action: 'admin.promotions.view', session })
   const { said } = await searchParams
   const admin = createAdminClient()
-  await reconcileAwaiting(admin, getStripeClient(), null, new Date()).catch(() => 0)
+  // The reconcile is a convenience on view: a payments key missing from an environment (the admin sweep of 15 November
+  // 2026 on TEST: 'STRIPE_SECRET_KEY is not set', a 500) never takes the page down; the hourly reconcile still runs.
+  await (async () => reconcileAwaiting(admin, getStripeClient(), null, new Date()))().catch(() => 0)
   const [offers, orders, open] = await Promise.all([offersOf(admin).catch(() => null), ordersQueue(admin).catch(() => null), isFeatureEnabled('paid_promotions')])
   if (offers === null || orders === null) {
     return (

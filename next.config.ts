@@ -287,6 +287,11 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // Publish now on /admin/submissions (15 November 2026) runs the same self-listing path, through the same social store.
+    '/admin/submissions': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     // An approved partner kit's slide at its public address (window 6's message 7), the same renderer as the admin's.
     '/kit/[pieceId]/[n]': [
       './src/assets/fonts/*.ttf',
@@ -318,6 +323,12 @@ const nextConfig: NextConfig = {
     // The founder dashboard under /admin/today runs the same platform health checks, card render included
     // (src/lib/admin/founder-dashboard.ts, the master mandate of 29 October 2026, section 14).
     '/admin/today': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    // /admin/automation reads Today's queue for its 'Needs you today' (the PM's 05:37 of 16 November 2026, fix 2: one
+    // unit on both pages), and that queue reaches the rasteriser as Today's does; card-raster-traced named it.
+    '/admin/automation': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],

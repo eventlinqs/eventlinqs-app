@@ -8,6 +8,7 @@ import { useRoutePathname } from '@/lib/navigation/route-pathname'
 import { reportClientError } from '@/lib/observability/client-error-report'
 import { MapPinIcon } from './location-picker-icons'
 import type { DetectedLocation } from '@/lib/geo/detect'
+import { quietFetch } from '@/lib/net/quiet-fetch'
 import type { PickerCity } from '@/lib/locations/picker-cities'
 import type { PickerCatalogue } from '@/lib/locations/picker-cities-client'
 
@@ -250,7 +251,8 @@ export function LocationPickerPanel({
 
   const applyCity = useCallback(async (city: PickerCity) => {
     try {
-      await fetch('/api/location/set', {
+      // Tried once more on a dropped network, then quiet (Sentry JAVASCRIPT-NEXTJS-C, 15 November 2026).
+      await quietFetch('/api/location/set', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

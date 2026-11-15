@@ -324,3 +324,48 @@ export async function renderCardPng(
   resvg.free()
   return png
 }
+
+/**
+ * WHAT THE TEXT GUARD READS (src/lib/broadcast/day-card-guard.ts, the 9.5 locked look of 15 November 2026), through
+ * this one rasteriser so og-single-rasteriser holds: satori's SVG with its words left as text (each word's box), and
+ * RGBA pixels of an element or of an SVG, drawn by resvg exactly as a card is.
+ */
+export async function cardSvgWithText(
+  element: React.ReactNode,
+  opts: { width: number; height: number; fonts: RasterFont[] },
+): Promise<string> {
+  return satori(element as Parameters<typeof satori>[0], {
+    width: opts.width,
+    height: opts.height,
+    debug: false,
+    embedFont: false,
+    fonts: opts.fonts as unknown as SatoriOptions['fonts'],
+    loadAdditionalAsset,
+  })
+}
+
+export type CardPixels = { pixels: Uint8Array; width: number; height: number }
+
+export async function svgPixels(svg: string, width: number): Promise<CardPixels> {
+  await ensureWasm()
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: width } })
+  const rendered = resvg.render()
+  const out = { pixels: new Uint8Array(rendered.pixels), width: rendered.width, height: rendered.height }
+  rendered.free()
+  resvg.free()
+  return out
+}
+
+export async function cardPixels(
+  element: React.ReactNode,
+  opts: { width: number; height: number; fonts: RasterFont[] },
+): Promise<CardPixels> {
+  const svg = await satori(element as Parameters<typeof satori>[0], {
+    width: opts.width,
+    height: opts.height,
+    debug: false,
+    fonts: opts.fonts as unknown as SatoriOptions['fonts'],
+    loadAdditionalAsset,
+  })
+  return svgPixels(svg, opts.width)
+}

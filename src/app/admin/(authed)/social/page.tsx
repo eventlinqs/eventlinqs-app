@@ -400,8 +400,10 @@ function CampaignSection({ campaign, requests }: { campaign: { weekStart: string
         <div data-section="image-requests" className="mt-6">
           <h3 className="mb-3 font-display text-base font-semibold text-white">Nights to ask organisers an image for</h3>
           <ul className="space-y-4">
-            {requests.map((q) => (
-              <li key={`${q.hostName}${q.eventTitle}`} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
+            {/* One ask per show (the admin sweep of 15 November 2026: a weekly night, 'Laugh Lab' at La La Land CBD, was listed
+                once per session under one React key, so its organiser would have been asked twice). */}
+            {[...new Map(requests.map((q) => [`${q.hostName} | ${q.eventTitle}`, q])).values()].map((q) => (
+              <li key={`${q.hostName} | ${q.eventTitle}`} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
                 <p className="text-sm text-white">
                   {q.eventTitle} <span className="text-white/50">· {q.hostName}</span>
                 </p>

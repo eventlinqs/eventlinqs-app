@@ -1,3 +1,4 @@
+import { countOf } from '@/lib/text/plural'
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
@@ -120,7 +121,7 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
               </ul>
             )}
             {releasedHolds.length > 0 ? (
-              <p className="mt-3 text-xs text-white/40">{releasedHolds.length} released hold(s) not shown.</p>
+              <p className="mt-3 text-xs text-white/40">{countOf(releasedHolds.length, 'released hold')} not shown.</p>
             ) : null}
           </section>
         </div>

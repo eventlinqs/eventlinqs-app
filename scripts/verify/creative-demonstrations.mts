@@ -332,8 +332,12 @@ const demos: Demo[] = []
 const report: unknown[] = []
 for (const d of demos) {
   const files: Record<string, unknown>[] = []
+  // These demonstrations are the older look's night and brand slides; a slide of the locked look (15 November 2026) is
+  // laid out by its own renderer, never by layoutOfSlide, so one here is a fault said by name.
+  const slide = d.slide
+  if (slides.isLocked(slide)) throw new Error(`${d.name}: a locked look slide is laid out by the locked renderer, not here`)
   for (const f of ['feed', 'square', 'story'] as const) {
-    const l = slides.layoutOfSlide(f, d.slide, d.image, m)!
+    const l = slides.layoutOfSlide(f, slide, d.image, m)!
     const faults = layout.layoutFaults(l, m)
     const k = d.image ? slides.enlargement(l, d.image) : null
     if (k !== null && k > slides.MAX_ENLARGEMENT) faults.push(`the photograph is enlarged ${k.toFixed(2)} times; ask its owner for the original file`)

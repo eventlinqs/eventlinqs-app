@@ -60,7 +60,15 @@ const TAG = '[cron-routes-scheduled]'
  *
  * @type {Record<string, string>}
  */
-export const INVOKED_WITHOUT_A_SCHEDULE = {}
+export const INVOKED_WITHOUT_A_SCHEDULE = {
+  // Unscheduled 15 November 2026 (Lawal's 20:52 item 5, the Vercel bill; C:/dev/EVIDENCE/EL-15NOV/vercel-bill/
+  // VERCEL-BILL-15NOV.md): since 3 November the five pages it requested every minute are edge cached, so each request
+  // past a page's revalidate time made Vercel render and write it again, about 3,000 renders a day no visitor needed
+  // (ISR Writes from US$0.00 to about US$0.49 a day, Fast Origin Transfer doubled). A visitor is served the cached page
+  // while it regenerates. The route stays (law 13) as the CRON_SECRET handshake path (src/lib/env/manifest.mjs,
+  // handshakePath), which calls it a few times a day.
+  warm: 'the CRON_SECRET handshake (src/lib/env/manifest.mjs handshakePath); its every minute schedule was removed on 15 November 2026 because it regenerated edge cached pages no visitor needed (VERCEL-BILL-15NOV)',
+}
 
 /** Every cron route directory that carries a route handler. */
 export function cronRouteNames(dir = CRON_DIR) {

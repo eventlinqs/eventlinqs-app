@@ -4,6 +4,10 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readTodayQueue } from '@/lib/admin/today'
+import { readAutomation } from '@/lib/admin/automation'
+import { needsYou } from '@/lib/admin/automation-math'
+import { countOf } from '@/lib/text/plural'
+import { dayDate } from '@/lib/dates/admin-dates'
 import { readFounderDashboard } from '@/lib/admin/founder-dashboard'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { byException, rhythm, type DashboardFigure } from '@/lib/admin/founder-dashboard-math'
@@ -11,11 +15,14 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 import { readPlanGates } from '@/lib/growth/plan-gates'
+import { gateNames } from '@/lib/growth/plan-gates-math'
 import { readSentRecently, readTwentyView } from '@/lib/outreach/twenty-view'
 import { SentRecentlySection, TwentySection } from './twenty-section'
 import { readThreePosts } from '@/lib/social/three-posts'
 import { PostsSection } from './posts-section'
 import { approvePieceAction, approveWeekAction } from '../social/actions'
+import { PageHeader, PRIMARY, StatCard } from '@/components/admin/ui/admin-kit'
+import { AdminToast } from '@/components/admin/ui/admin-toast'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,16 +47,16 @@ export const metadata = {
 const APPROVE =
   'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#131A2A]'
 
-export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
+export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string; tone?: string }> }) {
   // What a press of Sent in the twenty answered (the same words /admin/acquisition shows).
-  const { said } = await searchParams
+  const { said, tone } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.dashboard.view')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.today.view', session })
 
   const now = new Date()
   // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
-  const [queue, dashboard, growth, centre] = await Promise.all([
+  const [queue, dashboard, growth, centre, automation] = await Promise.all([
     readTodayQueue(now),
     readFounderDashboard(now),
     readGrowthWeek(now).then(
@@ -58,6 +65,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
     ),
     // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
     readCommandCentre(createAdminClient(), now),
+    // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
+    readAutomation(now).then(
+      (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
+      (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+    ),
   ])
   // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
   const gates = await readPlanGates(now).then(
@@ -85,19 +97,47 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   const cadence = rhythm(dashboard)
   const count = new Intl.NumberFormat('en-AU')
 
+  // The one primary action (Lawal's 20:52, item 2): the oldest thing that waits for him, else the automation screen.
+  const firstHref = queue.sections.flatMap((s) => s.items).find((i) => i.href)?.href ?? null
   return (
     <div>
-      <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Today</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">What needs you</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
-          {queue.allClear
+      {/* A press that names its tone shows as a toast; the older inline line below stays for the twenty's Sent press. */}
+      <AdminToast said={tone ? (said ?? null) : null} tone={tone === 'refused' ? 'refused' : 'ok'} />
+      <PageHeader
+        eyebrow="Today"
+        title="What needs you"
+        description={
+          queue.allClear
             ? `Nothing needs you. Every source was read at ${formatPlatformDateTime(now.toISOString())}.`
             : queue.waiting > 0
               ? `${queue.waiting} ${queue.waiting === 1 ? 'thing waits' : 'things wait'} for you, oldest first. Read at ${formatPlatformDateTime(now.toISOString())}.`
-              : `Nothing waits in what was read at ${formatPlatformDateTime(now.toISOString())}, but not every source could be read; each is named below.`}
-        </p>
-      </header>
+              : `Nothing waits in what was read at ${formatPlatformDateTime(now.toISOString())}, but not every source could be read; each is named below.`
+        }
+        action={
+          queue.waiting > 0 && firstHref ? (
+            <Link href={firstHref} className={PRIMARY}>Start with the oldest</Link>
+          ) : (
+            <Link href="/admin/automation" className={PRIMARY}>Open automation</Link>
+          )
+        }
+      />
+
+      {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
+      <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* What the number is made of, said on the card (the PM's 02:45 fix 1): each list below with its count. */}
+        <StatCard
+          label="Waiting for you"
+          value={count.format(queue.waiting)}
+          sub={queue.allClear ? 'All clear' : queue.sections.filter((x) => x.items.length > 0).map((x) => `${count.format(x.items.length)} ${x.title.toLowerCase()}`).join(', ')}
+        />
+        <StatCard label="Overdue tasks" value={centre.state === 'read' ? count.format(centre.overdue) : 'Not read'} sub="Command Centre" />
+        <StatCard
+          label="Waiting for approval"
+          value={automation.ok ? count.format(automation.needs.approvals) : 'Not read'}
+          sub={automation.ok ? (automation.needs.parts.map((x) => countOf(x.n, x.noun)).join(', ') || 'Nothing waits') : 'Automation could not be read just now'}
+        />
+        <StatCard label="Failed jobs" value={centre.state === 'read' ? count.format(centre.failed) : 'Not read'} sub={centre.state === 'read' && centre.failed > 0 ? 'Each named below until fixed' : 'None open'} />
+      </section>
 
       {/* THE COMMAND CENTRE (the Growth OS directive, section 5): the kept tasks, overdue first, each with its status, owner,
           due date and link; failed jobs stay here until fixed. Approving in one press arrives with Release 2, where an
@@ -110,14 +150,18 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-white/60">The plan&apos;s gates</h3>
           {gates.ok ? (
             <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {gates.g.map((s) => (
+              {gates.g.map((s, _i, all) => (
                 <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
+                  {/* Two gates of one measure are named by their order and day (the PM's 05:37 fix 5). */}
+                  {gateNames(all.map((x) => x.gate)).get(s.gate.key) ? (
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-accent)]">{gateNames(all.map((x) => x.gate)).get(s.gate.key)}</p>
+                  ) : null}
                   <p className="text-sm font-semibold text-white">{s.gate.label}</p>
                   <p className="mt-1 font-display text-xl font-bold text-white">
-                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${s.gate.due}` : ' a day'}</span>
+                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${dayDate(s.gate.due)}` : ' a day'}</span>
                   </p>
                   <p className={`mt-1 text-xs ${s.met ? 'text-emerald-300' : s.late ? 'text-amber-200' : 'text-white/60'}`}>
-                    {s.met ? 'Met' : s.late ? `Past its day by ${-(s.daysLeft ?? 0)} days` : s.perWeek !== null ? `${s.perWeek} more a week, ${s.daysLeft} days left` : `${s.gate.target - s.value} more today`}
+                    {s.met ? 'Met' : s.late ? `Past its day by ${countOf(-(s.daysLeft ?? 0), 'day')}` : s.perWeek !== null ? `${s.perWeek} more a week, ${countOf(s.daysLeft ?? 0, 'day')} left` : `${s.gate.target - s.value} more today`}
                   </p>
                 </li>
               ))}
@@ -132,9 +176,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <p className="mt-2 text-sm text-amber-200">The task list could not be read just now ({centre.reason}). Nothing in it is lost.</p>
         ) : (
           <>
-            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            {/* No approval count here: the task list copies the posts and plays waiting for approval and lags them, so
+                'Waiting for approval' above is the one figure (16 November 2026, ADMIN 2: the strip's own approval 0
+                stood beside 'Waiting for approval 8'). */}
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
               <div><dt className="text-white/50">Overdue</dt><dd className="font-display text-xl font-bold text-white">{centre.overdue}</dd></div>
-              <div><dt className="text-white/50">Waiting for approval</dt><dd className="font-display text-xl font-bold text-white">{centre.waitingApproval}</dd></div>
               <div><dt className="text-white/50">Failed</dt><dd className="font-display text-xl font-bold text-white">{centre.failed}</dd></div>
               <div><dt className="text-white/50">Done in the last day</dt><dd className="font-display text-xl font-bold text-white">{centre.doneLastDay}</dd></div>
             </dl>

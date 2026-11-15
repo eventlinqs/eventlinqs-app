@@ -21,6 +21,7 @@ import { acceptCandidateAction, addPartnerFeedAction, refuseCandidateAction } fr
 import { LISTINGS_ORG_SLUG } from '@/lib/listings/collect-store'
 import { REFUSAL_REASONS } from './reasons'
 import { venueMatchFor } from '@/lib/listings/accept-choice'
+import { dayTime } from '@/lib/dates/admin-dates'
 import {
   ADMIN_CELL,
   ADMIN_CELL_ACTIONS,
@@ -45,14 +46,9 @@ export const metadata = {
 type SearchParams = Promise<{ status?: string; why?: string }>
 type Link = { url: string; availability: string; priceFromCents: number | null }
 
-const WHEN = new Intl.DateTimeFormat('en-AU', {
-  timeZone: 'Australia/Melbourne',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  hour: 'numeric',
-  minute: '2-digit',
-})
+// Every admin date reads as the list and the event page read it, 'Wed 9 Dec, 7:30 pm' (src/lib/dates/admin-dates.ts; the PM's
+// 02:45 fix 4, its class: this page wrote 'Sat, 28 Nov, 2:48 am' with its own formatter until ADMIN 2).
+const WHEN = { format: (d: Date) => dayTime(d.toISOString()) }
 
 function hostOf(url: string): string {
   try {

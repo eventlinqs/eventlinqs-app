@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, pickLine, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
+import { creditsOf, dayInWeek, join, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -61,7 +61,16 @@ export function planDailyPosters(input: { nights: readonly CampaignNight[]; citi
  * 1 to 5). Each is one night: a feed poster (with its square) for attendees, sent to the night's own page through its
  * own /e/ link, which the store mints and writes onto the slide before it is kept. Nothing posts by itself.
  */
-export function dailyPosterPieces(input: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
+/**
+ * THE DAILY POSTERS WAIT OUTSIDE THE WEEK'S PLAN (the PM's 20:40 of 15 November 2026, fix 6): they are still drawn in
+ * the old planner look (a seller's pill, a raw street address, a calendar block), so the weekly plan leaves them out, and
+ * with it the publishing queue, until they are in the 9.5 locked look. Turned back on here, never deleted (law 13).
+ */
+export const DAILY_POSTERS_IN_PLAN = false
+
+export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
+  // A post's title, never a source's raw one (the PM's 15:45 of 15 November 2026, fix 2; campaign.ts postTitle).
+  const input = { ...given, nights: given.nights.map((n) => ({ ...n, title: postTitle(n.title, n.venueName) })) }
   const site = siteOf(input.origin)
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const pieces: PiecePlan[] = []

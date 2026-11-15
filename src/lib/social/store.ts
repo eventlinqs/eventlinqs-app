@@ -12,12 +12,13 @@ import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
 import { quotableSummary, wordsRefusal } from './words'
-import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
+import { dailyPosterPieces, posterDrift, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
-import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { standInOf } from './stand-ins'
+import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -464,27 +465,52 @@ export async function usableImages(db: Db, eventIds: readonly string[], now: Dat
 export async function brandImage(db: Db, now: Date): Promise<UsableImage | null> {
   const { data, error } = await db.rpc('social_brand_images', { p_at: now.toISOString() })
   if (error) throw new Error(`the brand photographs could not be read: ${error.message}`)
-  const first = ((data ?? []) as Record<string, unknown>[])[0]
+  // A stand-in of a kind of night (stand-ins.ts) is never the brand piece's photograph: it shows one kind, the piece every kind.
+  const first = ((data ?? []) as Record<string, unknown>[]).find((r) => !standInOf(r.asset_url as string))
   return first ? usableOf(first) : null
+}
+
+/** Every photograph licensed for EventLinqs' own promotion and tied to no night, usable now (the stand-ins among them). */
+export async function brandImages(db: Db, now: Date): Promise<UsableImage[]> {
+  const { data, error } = await db.rpc('social_brand_images', { p_at: now.toISOString() })
+  if (error) throw new Error(`the brand photographs could not be read: ${error.message}`)
+  return ((data ?? []) as Record<string, unknown>[]).map(usableOf)
+}
+
+/** The night whose OWN photograph a slide draws: a night, a story, a poster, a feature, or a cover showing one whole. */
+function ownPhotoNightOf(sl: Slide): string | null {
+  if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster' || sl.t === 'feature') && sl.photo) return sl.eventId
+  if (sl.t === 'week_cover' && sl.photo && sl.photoEventId) return sl.photoEventId
+  return null
 }
 
 /**
  * Each slide's photograph as it may be drawn NOW: the register's own row (with its focal point and size) where the
- * image is still usable for that slide's night, or for a brand slide for no night; null where it has gone, so the slide
- * is drawn in type rather than with an image whose permission was withdrawn after it was planned.
+ * image is still usable for that slide's night, or for a brand slide, a day slide's or a cover's stand-in (stand-ins.ts)
+ * for no night; null where it has gone, so the slide is drawn in type rather than with an image whose permission was
+ * withdrawn after it was planned.
  */
 export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date): Promise<Map<number, UsableImage | null>> {
   const out = new Map<number, UsableImage | null>()
-  /* A night's photograph on a night, a story or a daily poster (family F): the register's row for that night now. */
-  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo ? [sl.eventId] : []))
+  /* A night's own photograph on its slide: the register's row for that night now. */
+  const nights = slides.flatMap((sl) => {
+    const id = ownPhotoNightOf(sl)
+    return id ? [id] : []
+  })
   const byNight = await usableImages(db, nights, now)
-  const brand = slides.some((sl) => sl.t === 'brand' && sl.photo) ? await brandImage(db, now) : null
+  const noNight = (sl: Slide) => 'photo' in sl && sl.photo !== null && (sl.t === 'brand' || sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId))
+  const brands = slides.some((sl) => 'photo' in sl && noNight(sl)) ? await brandImages(db, now) : []
   slides.forEach((sl, i) => {
-    if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo) {
-      const u = byNight.get(sl.eventId)
+    const id = ownPhotoNightOf(sl)
+    if (id && 'photo' in sl) {
+      const u = byNight.get(id)
       out.set(i, u && u.url === sl.photo ? u : null)
     } else if (sl.t === 'brand' && sl.photo) {
-      out.set(i, brand && brand.url === sl.photo ? brand : null)
+      // A brand piece takes the newest that is not a stand-in, as brandImage planned it.
+      const newest = brands.find((x) => !standInOf(x.url))
+      out.set(i, newest && newest.url === sl.photo ? newest : null)
+    } else if ((sl.t === 'days' || sl.t === 'venue' || sl.t === 'week_cover') && sl.photo) {
+      out.set(i, brands.find((b) => b.url === sl.photo) ?? null)
     }
   })
   return out
@@ -493,7 +519,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -597,6 +623,34 @@ export async function pieceDependencies(
   for (const id of ids) {
     const e = byId.get(id)
     const found = rev.slides.find((s) => 'eventId' in s && s.eventId === id)
+    /* The 9.5 locked look: a night on a day slide's card, or on its own feature slide, read again from the night. */
+    const row = rev.slides.flatMap((s) => (s.t === 'days' || s.t === 'venue' ? s.rows : [])).find((r) => r.eventId === id)
+    if (found?.t === 'feature' || (!found && row)) {
+      const name = e ? String(e.title) : (row?.title ?? id)
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      const lockedGone = soldOutIssue(name, e)
+      if (lockedGone) issues.push(lockedGone)
+      const planned = found?.t === 'feature' ? found.startDate : String(row?.startDate)
+      if (Date.parse(String(e.start_date)) !== Date.parse(planned)) {
+        issues.push(`${name}: its date or time is now ${whenOf({ startDate: String(e.start_date), timezone: (e.timezone as string | null) ?? null } as CampaignNight)}.`)
+      }
+      const { cta } = await admissionOf(e, now)
+      if (row && row.free !== (cta.state === 'free_open' || cta.state === 'free_registration')) issues.push(`${name}: its card says ${row.free ? 'free' : 'not free'}, and the night no longer does.`)
+      if (cta.state === 'paid_external') {
+        const outside = await answers(fetcher, String(e.external_ticket_url))
+        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+      }
+      if (found?.t === 'feature' && found.photo) {
+        const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+        if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      }
+      continue
+    }
     /* Family F: a daily poster prints the night's facts from its own record, so each is read again from the night. */
     if (found?.t === 'poster') {
       const facts = found.night
@@ -671,6 +725,22 @@ export async function pieceDependencies(
     const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: null, p_at: now.toISOString() })
     if (ok !== true) issues.push("The brand photograph has no approved, current licence for EventLinqs' own promotion.")
   }
+  /* A stand-in on a day slide or a cover (stand-ins.ts): the same licence for no night, still usable now. */
+  for (const sl of rev.slides) {
+    if (!((sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId)) && sl.photo)) continue
+    const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: null, p_at: now.toISOString() })
+    if (ok !== true) issues.push(`A photograph of the kind of night (${sl.photo.split('/').pop()}) has no approved, current licence for EventLinqs' own promotion.`)
+  }
+  /* A cover showing a night's own photograph whole: that night's licence, still usable now. */
+  for (const sl of rev.slides) {
+    if (sl.t !== 'week_cover' || !sl.photo || !sl.photoEventId) continue
+    const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: sl.photoEventId, p_at: now.toISOString() })
+    if (ok !== true) issues.push("The cover's photograph has no approved, unexpired licence for its night.")
+  }
+
+  /* Lawal's social lock of 15 November 2026: a piece in the older look is never approved or published (law 13 keeps it). */
+  const locked = OLDER_LOOK_IN_PLAN ? null : lockRefusal(rev.slides)
+  if (locked) issues.push(locked)
 
   /* The directive's section 7: every slide, at every format it is made for, fits, reads and holds its contrast. */
   issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
@@ -733,6 +803,8 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       citySlug: city.slug,
       cityName: city.name,
       venueName: venueOf(e.venue_name as string | null),
+      // The venue row's own name, one spelling per place (the PM's 16:40, fix 4); none when only an operator is known.
+      placeName: e.venue_id ? (((e.venue_row as { name: string | null } | null)?.name ?? '').trim() || null) : null,
       host: hostOf({ listingSource: (e.listing_source as string | null) ?? null, organisationName: organisation?.name ?? null, organisationSlug: organisation?.slug ?? null, venueName: (e.venue_name as string | null) ?? null }),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
       summary: (e.summary as string | null) ?? null,
@@ -771,7 +843,13 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   )])
   const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
-  return { ...week, pieces: [...week.pieces, ...dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded })] }
+  // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
+  // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
+  // look. A switch, never a deletion (law 13): DAILY_POSTERS_IN_PLAN turns them back on.
+  const pieces = [...week.pieces, ...(DAILY_POSTERS_IN_PLAN ? dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded }) : [])]
+  // Lawal's social lock of 15 November 2026 (campaign.ts lockRefusal): only a piece drawn wholly in the locked look and
+  // carrying a photograph enters the week's plan; the rest wait behind OLDER_LOOK_IN_PLAN (law 13), never deleted.
+  return { ...week, pieces: OLDER_LOOK_IN_PLAN ? pieces : pieces.filter((p) => lockRefusal(p.slides) === null) }
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */

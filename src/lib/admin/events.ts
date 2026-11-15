@@ -74,6 +74,11 @@ export const EVENT_ACTION_LABELS: Record<EventAction, string> = {
  * Takedown is excluded here: it carries a mandatory reason and is surfaced via
  * its own panel on the event detail page, not the compact list rows.
  */
+/** Feature and unfeature only on a live event (the PM's 05:37 fix 4: 'Feature event' was offered on an archived one). */
+export function featureAllowed(status: EventStatus): boolean {
+  return status === 'published'
+}
+
 export function actionsForEventStatus(status: EventStatus): EventAction[] {
   const fixed = (Object.keys(ACTION_SPECS) as (keyof typeof ACTION_SPECS)[]).filter(
     (a) => a !== 'takedown' && ACTION_SPECS[a].from.includes(status),
@@ -105,6 +110,20 @@ export const EVENT_STATUS_FILTERS: readonly (EventStatus | 'all')[] = [
   'archived',
 ]
 
+/**
+ * The counts strip over the events list (the PM's 02:45 fix 2): how many events are live, draft, paused and archived,
+ * each a head-only exact count; a count that cannot be read is null, said as 'Not read', never a zero.
+ */
+export async function countEventsByStatus(): Promise<Record<'published' | 'draft' | 'paused' | 'archived', number | null>> {
+  const admin = createAdminClient()
+  const one = async (status: string) => {
+    const { count, error } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', status)
+    return error ? null : (count ?? 0)
+  }
+  const [published, draft, paused, archived] = await Promise.all([one('published'), one('draft'), one('paused'), one('archived')])
+  return { published, draft, paused, archived }
+}
+
 export interface EventListFilters {
   status?: EventStatus | 'all'
   search?: string
@@ -120,24 +139,38 @@ export interface EventListResult {
 
 const PAGE_SIZE = 25
 
+/**
+ * THE LIST'S DEFAULT ORDER (the PM's 05:37 of 16 November 2026, fix 3: 'All statuses' led with four archived test nights):
+ * live nights not yet past first, soonest first; then live nights already past, latest first; then each other status in
+ * the order a person acts on it, archived last. A live night counts as not yet past until six hours after its start.
+ */
+const STATUS_RANK: Readonly<Record<string, number>> = { scheduled: 2, draft: 3, paused: 4, postponed: 5, cancelled: 6, completed: 7, archived: 8 }
+const LIVE_GRACE_MS = 6 * 60 * 60 * 1000
+export function listOrder<T extends { status: string; start_date: string }>(rows: readonly T[], now: Date = new Date()): T[] {
+  const cutoff = now.getTime() - LIVE_GRACE_MS
+  const at = (r: T) => Date.parse(r.start_date) || 0
+  const rank = (r: T) => (r.status === 'published' ? (at(r) >= cutoff ? 0 : 1) : (STATUS_RANK[r.status] ?? 9))
+  return [...rows].sort((a, b) => rank(a) - rank(b) || (rank(a) === 1 ? at(b) - at(a) : at(a) - at(b)))
+}
+/** Every row 'All statuses' sorts, read in one query; the platform holds about 700 events. */
+const ALL_STATUSES_CAP = 5000
+
 export async function listEvents(filters: EventListFilters): Promise<EventListResult> {
   const admin = createAdminClient()
   const page = Math.max(filters.page ?? 1, 1)
   const fromIdx = (page - 1) * PAGE_SIZE
+  const all = !filters.status || filters.status === 'all'
 
-  let q = admin
-    .from('events')
-    .select('id, title, slug, status, start_date, created_at, organisations(name)')
-    .order('created_at', { ascending: false })
-    .range(fromIdx, fromIdx + PAGE_SIZE)
+  let q = admin.from('events').select('id, title, slug, status, start_date, created_at, organisations(name)')
+  q = all ? q.order('start_date', { ascending: true }).limit(ALL_STATUSES_CAP) : q.order('created_at', { ascending: false }).range(fromIdx, fromIdx + PAGE_SIZE)
 
-  if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
+  if (!all) q = q.eq('status', filters.status as EventStatus)
   if (filters.search) q = q.or(ilikeAnyOf(['title', 'slug'], filters.search))
 
   const { data, error } = await q
   if (error) throw error
 
-  const raw = (data ?? []) as Array<{
+  const read = (data ?? []) as Array<{
     id: string
     title: string
     slug: string
@@ -146,6 +179,8 @@ export async function listEvents(filters: EventListFilters): Promise<EventListRe
     created_at: string
     organisations: { name: string } | { name: string }[] | null
   }>
+  // 'All statuses' is sorted whole and cut here; one status keeps the database's page.
+  const raw = all ? listOrder(read).slice(fromIdx, fromIdx + PAGE_SIZE + 1) : read
   const hasMore = raw.length > PAGE_SIZE
   const trimmed = hasMore ? raw.slice(0, PAGE_SIZE) : raw
 

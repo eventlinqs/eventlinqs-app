@@ -220,7 +220,18 @@ describe('the cover, the programme and the close are measured too', () => {
     it(`a contents cover with a long night title fits (${f})`, () => {
       const l = layoutCover(f, cover, m)
       expectClean(l)
-      expect(l.runs.filter((r) => r.role.startsWith('content-') && !r.role.startsWith('content-day')).map((r) => r.lines.join(' '))).toEqual(cover.contents.map((c) => c.split(' ').slice(1).join(' ')))
+      // Each title is drawn whole, or cut at a word with an ellipsis, never past the safe area (the PM's 15:45 fix 2).
+      const drawn = l.runs.filter((r) => r.role.startsWith('content-') && !r.role.startsWith('content-day') && !r.role.startsWith('content-sub')).map((r) => r.lines.join(' '))
+      const titles = cover.contents.map((c) => c.split(' ').slice(1).join(' '))
+      expect(drawn).toHaveLength(titles.length)
+      drawn.forEach((d, i) => expect(d === titles[i] || (d.endsWith('\u2026') && titles[i].startsWith(d.slice(0, -1).replace(/[,:;]$/, '')))).toBe(true))
+    })
+    it(`a cover starts in its top third and names each night's venue and time (${f}; the PM's 15:45 fix 1)`, () => {
+      const l = layoutCover(f, { ...cover, contents: ['SAT Run the Tan: Run Club\nThe Tan Track \u00b7 8am', 'SUN Sunday Makers\nAbbotsford Convent \u00b7 10am'] }, m)
+      expectClean(l)
+      const chip = l.blocks.find((b) => b.role === 'pill')
+      expect(chip && chip.y < l.h / 3).toBe(true)
+      expect(l.runs.filter((r) => r.role.startsWith('content-sub')).map((r) => r.lines.join(' '))).toEqual(['The Tan Track \u00b7 8am', 'Abbotsford Convent \u00b7 10am'])
     })
     it(`a programme of four nights fits (${f})`, () => {
       expectClean(

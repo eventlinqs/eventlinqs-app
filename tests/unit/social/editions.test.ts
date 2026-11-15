@@ -64,6 +64,26 @@ const melbourne = [
 ]
 
 const pieces = planCampaign({ nights: [...geelong, ...ballarat, ...melbourne], cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces
+/* A busy week (the PM's 16:40 fix 3: two list posts in one city and one week share at most one night): five headline
+   nights Monday to Thursday carry the week post, so the later list posts have nights of their own. */
+function busyWeek(at: (o: Partial<CampaignNight> & { at: string; state?: CtaInput }) => CampaignNight) {
+  const h = (when: string, venue: string, categorySlug: string) => at({ at: when, venueName: venue, host: venue, categorySlug, state: { tiers: [{ price: 9900 }] } })
+  return [
+    h('2026-10-26T09:00:00Z', 'Costa Hall', 'theatre'),
+    h('2026-10-27T09:00:00Z', 'Rod Laver Arena', 'sport'),
+    h('2026-10-27T10:00:00Z', 'Hamer Hall', 'dance'),
+    h('2026-10-28T09:00:00Z', 'Palais Theatre', 'family'),
+    h('2026-10-29T09:00:00Z', 'Regent Theatre', 'arts'),
+  ]
+}
+/* The busy Geelong week for the later list posts: Friday comedy, Saturday nightlife, a Sunday market, and four weekday
+   music nights at their own venues (music the week's strongest category, none of them in the week post). */
+const busyFri = ['2026-10-30T08:00:00Z', '2026-10-30T09:00:00Z', '2026-10-30T10:00:00Z'].map((at) => night({ at, categorySlug: 'comedy' }))
+const busySat = ['2026-10-31T08:00:00Z', '2026-10-31T09:00:00Z', '2026-10-31T10:00:00Z'].map((at) => night({ at, categorySlug: 'nightlife' }))
+const busySun = [night({ at: '2026-11-01T05:00:00Z', categorySlug: 'markets' })]
+const busyMusic = ['2026-10-27T11:00:00Z', '2026-10-28T11:00:00Z', '2026-10-28T12:00:00Z', '2026-10-29T11:00:00Z'].map((at) => night({ at }))
+const busyPieces = planCampaign({ nights: [...busyWeek(night), ...busyFri, ...busySat, ...busySun, ...busyMusic], cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces
+const ofBusy = (kind: string) => busyPieces.filter((x) => (x.kind as string) === kind && x.city === 'geelong')
 const of = (kind: string, city?: string) => pieces.filter((p) => (p.kind as string) === kind && (city === undefined || p.city === city))
 
 describe('the edition cities', () => {
@@ -77,11 +97,28 @@ describe('the edition cities', () => {
 })
 
 describe("Friday's Tonight and Tomorrow", () => {
-  const [p] = of('tonight_tomorrow', 'geelong')
+  const [p] = ofBusy('tonight_tomorrow')
+
+  it('drops itself when its list would be the weekend\'s own: no two posts share a list (fix 3)', () => {
+    expect(of('tonight_tomorrow', 'geelong')).toHaveLength(0)
+    const lists = pieces.filter((x) => x.city === 'geelong' && x.slides.some((s) => s.t === 'week_cover')).map((x) => `${x.format}|${[...x.eventIds].sort().join(',')}`)
+    expect(new Set(lists).size).toBe(lists.length)
+  })
+
+  it('the weekend holds Friday, Saturday and Sunday', () => {
+    expect(new Set(ofBusy('weekend_carousel')[0].eventIds)).toContain(busySun[0].eventId)
+  })
+
+  it('two list posts in the city share at most one night (the PM\'s 16:40 fix 3)', () => {
+    const lists = busyPieces.filter((x) => x.city === 'geelong' && x.format === 'feed' && x.slides.some((s) => s.t === 'week_cover'))
+    for (const a of lists) for (const b of lists) if (a !== b) expect(a.eventIds.filter((id) => b.eventIds.includes(id)).length).toBeLessThanOrEqual(1)
+  })
 
   it("holds the city's Friday and Saturday nights only", () => {
-    expect(of('tonight_tomorrow', 'geelong')).toHaveLength(1)
-    expect(new Set(p.eventIds)).toEqual(new Set([geelong[2].eventId, geelong[3].eventId, geelong[4].eventId]))
+    expect(ofBusy('tonight_tomorrow')).toHaveLength(1)
+    const friSat = new Set([...busyFri, ...busySat].map((n) => n.eventId))
+    expect(p.eventIds.length).toBeGreaterThanOrEqual(2)
+    for (const id of p.eventIds) expect(friSat.has(id)).toBe(true)
   })
 
   it('names the days, never a relative word that goes stale if it posts late', () => {
@@ -105,11 +142,11 @@ describe("Friday's Tonight and Tomorrow", () => {
 })
 
 describe('the Category Spotlight', () => {
-  const [p] = of('category_spotlight', 'geelong')
+  const [p] = ofBusy('category_spotlight')
 
-  it("takes the city's strongest category of the week, three nights or more", () => {
-    expect(of('category_spotlight', 'geelong')).toHaveLength(1)
-    expect(new Set(p.eventIds)).toEqual(new Set(geelong.slice(0, 4).map((n) => n.eventId)))
+  it("takes the city's strongest category of the week, three nights or more, none of them already in a list post", () => {
+    expect(ofBusy('category_spotlight')).toHaveLength(1)
+    expect(new Set(p.eventIds)).toEqual(new Set(busyMusic.map((n) => n.eventId)))
   })
 
   it('names the category and links to its filtered view in the city', () => {
