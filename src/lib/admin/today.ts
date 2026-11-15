@@ -11,6 +11,7 @@ import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
 import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, heldUnpayableItems, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { LETTER_WAITS } from './letters-waiting'
 
 /**
  * The sources behind /admin/today (the rules and why are in ./today-math.ts). Each reads its owner's own table and
@@ -65,6 +66,27 @@ type RunsDb = SupabaseClient
 const OUTREACH = "window 6's outreach CRM, car 3"
 
 /** Plays written and waiting for Lawal's one approval. */
+/** First letters waiting for Lawal's yes, by the one definition Automation counts (src/lib/admin/letters-waiting.ts). */
+async function lettersToApprove(db: Admin): Promise<QueueItem[]> {
+  const { data, error } = await db
+    .from('outreach_touches')
+    .select('id, drafted_at')
+    .eq('step', LETTER_WAITS.step)
+    .eq('state', LETTER_WAITS.state)
+    .eq('held_because', LETTER_WAITS.heldBecause)
+    .is('sent_at', null)
+    .order('drafted_at', { ascending: true })
+    .limit(LIST_CAP)
+  if (error) fail(error)
+  return (data ?? []).map((t) => ({
+    id: `letter:${t.id}`,
+    what: 'A first letter waits for your yes',
+    why: 'Held for your approval of its exact words before it can queue.',
+    since: t.drafted_at,
+    href: '/admin/acquisition',
+  }))
+}
+
 async function playsToApprove(db: Admin): Promise<QueueItem[]> {
   const { data, error } = await db.from('outreach_plays').select('id, name, cap_start, created_at').eq('state', 'draft').order('created_at', { ascending: true }).limit(LIST_CAP)
   if (error) fail(error)
@@ -372,7 +394,7 @@ async function heldUnpayable(admin: Admin): Promise<QueueItem[]> {
 export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
   const admin = createAdminClient()
   const runs = admin as unknown as RunsDb
-  const [submissions, pieces, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled, pooled] = await Promise.all([
+  const [submissions, pieces, plays, paused, replies, held, collected, failingSources, swept, claims, removals, reports, ruled, pooled, letters] = await Promise.all([
     attempt(() => submissionsNotLive(admin, now)),
     attempt(() => piecesToApprove(admin, now)),
     attempt(() => playsToApprove(admin), OUTREACH),
@@ -387,10 +409,12 @@ export async function readTodayQueue(now: Date = new Date()): Promise<Queue> {
     attempt(async () => reportsOverdue(await readNightsOwed(now), REPORT_AFTER_HOURS, now)),
     attempt(() => rulePublished(admin, now)),
     attempt(() => poolFound(admin, now), OUTREACH),
+    attempt(() => lettersToApprove(admin), OUTREACH),
   ])
   const sources: Source[] = [
     { key: 'submissions', section: 'submissions', name: 'Organiser events not live after an hour', read: submissions },
     { key: 'pieces', section: 'pieces', name: "This week's posts waiting for your yes", read: pieces },
+    { key: 'letters', section: 'letters', name: 'First letters waiting for your yes', read: letters },
     { key: 'plays', section: 'plays', name: 'Outreach plays', read: plays },
     { key: 'paused', section: 'paused_sends', name: 'Paused plays', read: paused },
     { key: 'replies', section: 'unclear_replies', name: 'Unclear replies', read: replies },

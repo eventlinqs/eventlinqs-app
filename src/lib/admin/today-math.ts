@@ -16,12 +16,13 @@
 
 // 'submissions' leads (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour after it was sent in is
 // the first thing Lawal sees.
-export const SOURCE_KEYS = ['submissions', 'pieces', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
+export const SOURCE_KEYS = ['submissions', 'pieces', 'letters', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'] as const
 export type SectionKey = (typeof SOURCE_KEYS)[number]
 
 export const SECTION_TITLES: Readonly<Record<SectionKey, string>> = {
   submissions: 'Organiser events not live after an hour',
   pieces: 'Posts to approve',
+  letters: 'Letters to approve',
   plays: 'Plays to approve',
   paused_sends: 'Sends paused',
   unclear_replies: 'Replies to read',

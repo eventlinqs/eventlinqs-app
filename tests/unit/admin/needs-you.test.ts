@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { needsYou, type WaitingCard } from '@/lib/admin/automation-math'
 import { agrees, countOf } from '@/lib/text/plural'
@@ -34,8 +34,10 @@ describe('what waits for a person, one source for Today and Automation', () => {
     const today = read('src/app/admin/(authed)/today/page.tsx')
     expect(today).toContain('needs: needsYou(a.cards)')
     expect(today).toContain('value={automation.ok ? count.format(automation.needs.approvals)')
-    // The Command Centre's own task count is named as tasks, so the two never read as one figure disagreeing.
-    expect(today).toContain('Tasks waiting for approval')
+    // ADMIN 2 (05:2x): the Command Centre strip's 'Tasks waiting for approval 0' stood beside 'Waiting for approval 8'.
+    // The task list copies the posts and plays waiting and lags them, so the strip never repeats the count.
+    expect(today).not.toContain('Tasks waiting for approval')
+    expect(today).not.toContain('centre.waitingApproval')
   })
 })
 
@@ -46,5 +48,28 @@ describe('a count said as a person says it (fix 3)', () => {
     expect(countOf(2, 'reply', 'replies')).toBe('2 replies')
     expect(countOf(1200, 'letter')).toBe('1,200 letters')
     expect(`${countOf(1, 'letter')} ${agrees(1, 'waits', 'wait')}`).toBe('1 letter waits')
+  })
+})
+
+describe("a first letter waiting for approval, one definition (ADMIN 2: 'Waiting for you' left the 3 letters out)", () => {
+  it('Automation counts and Today lists by the same four filters, from letters-waiting.ts', () => {
+    const automation = read('src/lib/admin/automation.ts')
+    const today = read('src/lib/admin/today.ts')
+    for (const src of [automation, today]) {
+      expect(src).toContain("import { LETTER_WAITS } from './letters-waiting'")
+      expect(src).toContain(".eq('step', LETTER_WAITS.step)")
+      expect(src).toContain(".eq('state', LETTER_WAITS.state)")
+      expect(src).toContain(".eq('held_because', LETTER_WAITS.heldBecause)")
+    }
+    expect(automation).toContain('waiting,')
+    expect(today).toContain("{ key: 'letters', section: 'letters'")
+  })
+})
+
+describe("every admin date through admin-dates.ts (ADMIN 2: 'Sat, 28 Nov, 2:48 am' on Submitted events)", () => {
+  it('no admin page builds its own weekday formatter', () => {
+    const walk = (d: string): string[] => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(n) ? [p] : [] })
+    const own = walk(join(process.cwd(), 'src/app/admin')).filter((f) => /new Intl\.DateTimeFormat\([^)]*weekday/s.test(readFileSync(f, 'utf8')))
+    expect(own.map((f) => f.slice(process.cwd().length + 1))).toEqual([])
   })
 })

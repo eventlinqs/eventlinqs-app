@@ -14,7 +14,8 @@ describe('queueOf', () => {
       { key: 'a', section: 'exceptions', name: 'A', read: { state: 'read', items: [item('2', '2026-10-28T02:00:00Z'), item('1', '2026-10-27T02:00:00Z')] } },
       { key: 'b', section: 'plays', name: 'B', read: { state: 'read', items: [item('3', '2026-10-28T00:00:00Z')] } },
     ])
-    expect(q.sections.map((s) => s.key)).toEqual(['submissions', 'pieces', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'])
+    // 'letters' since ADMIN 2 (16 November 2026): the first letters waiting for approval are things waiting for you.
+    expect(q.sections.map((s) => s.key)).toEqual(['submissions', 'pieces', 'letters', 'plays', 'paused_sends', 'unclear_replies', 'exceptions'])
     expect(q.sections.find((s) => s.key === 'exceptions')!.items.map((i) => i.id)).toEqual(['1', '2'])
     expect(q.waiting).toBe(3)
     expect(q.allClear).toBe(false)

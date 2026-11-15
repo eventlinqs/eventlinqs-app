@@ -171,9 +171,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <p className="mt-2 text-sm text-amber-200">The task list could not be read just now ({centre.reason}). Nothing in it is lost.</p>
         ) : (
           <>
-            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            {/* No approval count here: the task list copies the posts and plays waiting for approval and lags them, so
+                'Waiting for approval' above is the one figure (16 November 2026, ADMIN 2: the strip's own approval 0
+                stood beside 'Waiting for approval 8'). */}
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
               <div><dt className="text-white/50">Overdue</dt><dd className="font-display text-xl font-bold text-white">{centre.overdue}</dd></div>
-              <div><dt className="text-white/50">Tasks waiting for approval</dt><dd className="font-display text-xl font-bold text-white">{centre.waitingApproval}</dd></div>
               <div><dt className="text-white/50">Failed</dt><dd className="font-display text-xl font-bold text-white">{centre.failed}</dd></div>
               <div><dt className="text-white/50">Done in the last day</dt><dd className="font-display text-xl font-bold text-white">{centre.doneLastDay}</dd></div>
             </dl>

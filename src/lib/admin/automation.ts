@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { cardState, nextRun, threeNumbers, type CardState, type ThreeNumbers } from './automation-math'
 import { SCHEDULES, type Schedule } from './automation-schedules'
 import { agrees, countOf } from '@/lib/text/plural'
+import { LETTER_WAITS } from './letters-waiting'
 
 /**
  * THE AUTOMATION DASHBOARD'S READS (Lawal's 13:41 of 15 November 2026, relayed by the PM at 13:55; the map is
@@ -181,17 +182,20 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         const plays = await counted('outreach_plays', db.from('outreach_plays').select('id', { count: 'exact', head: true }).not('approved_at', 'is', null))
         const unsubscribes = await counted('outreach_unsubscribes', db.from('outreach_unsubscribes').select('id', { count: 'exact', head: true }))
         const queued = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'queued'))
+        // What waits for a person's yes, by the one definition Today's queue lists (src/lib/admin/letters-waiting.ts): a
+        // letter a rule holds is an exception to fix, never an approval.
+        const waiting = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', LETTER_WAITS.step).eq('state', LETTER_WAITS.state).eq('held_because', LETTER_WAITS.heldBecause).is('sent_at', null))
         // A held letter never queues by itself (src/lib/outreach/drafts.ts stores every draft held; only a person's approval
         // queues it inside a play), so it waits on a person in every sender mode, live included.
         const senderWaits = sw.mode !== 'live' ? `The sender is on ${sw.mode}${sw.setByAPerson ? '' : ', never set by a person'}` : null
-        const lettersWait = held > 0 ? `${countOf(held, 'letter')} ${agrees(held, 'waits', 'wait')} for your approval before ${agrees(held, 'it', 'they')} can queue` : null
+        const lettersWait = waiting > 0 ? `${countOf(waiting, 'letter')} ${agrees(waiting, 'waits', 'wait')} for your approval before ${agrees(waiting, 'it', 'they')} can queue` : null
         return {
           lastRun: sw.dnsCheckedAt ? { at: sw.dnsCheckedAt, what: 'checked SPF, DKIM and DMARC (every 6 hours)' } : null,
           queue: [{ label: 'Letters held', value: held }, { label: 'Letters queued', value: queued }, { label: 'Plays approved', value: plays }],
           results: [{ label: 'Sent today', value: sentToday }, { label: 'Sent this week', value: sentWeek }, { label: 'Unsubscribed', value: unsubscribes }],
           switch: sw,
           waitsFor: [senderWaits, lettersWait].filter((w): w is string => w !== null).join('; ') || null,
-          waiting: held,
+          waiting,
         }
       },
     ),
