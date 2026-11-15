@@ -61,7 +61,8 @@ function wordsOf(slide: Extract<Slide, { t: 'night' | 'story' }>, photo: string 
     time: w?.time ?? time ?? '',
     entry: w ? w.entry : null,
     action: w?.action ?? 'View event details',
-    label: 'eventlinqs.com.au',
+    // One call (the PM's 15:45 of 15 November 2026, fix 5): a pill that names our address has no second one beside it.
+    label: /eventlinqs\.com\.au/.test(w?.action ?? '') ? '' : 'eventlinqs.com.au',
     city: w?.city ?? '',
     line: slide.t === 'night' ? slide.why : (slide.line ?? null),
     photo,

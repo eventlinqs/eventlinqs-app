@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, pickLine, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
+import { creditsOf, dayInWeek, join, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -61,7 +61,9 @@ export function planDailyPosters(input: { nights: readonly CampaignNight[]; citi
  * 1 to 5). Each is one night: a feed poster (with its square) for attendees, sent to the night's own page through its
  * own /e/ link, which the store mints and writes onto the slide before it is kept. Nothing posts by itself.
  */
-export function dailyPosterPieces(input: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
+export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
+  // A post's title, never a source's raw one (the PM's 15:45 of 15 November 2026, fix 2; campaign.ts postTitle).
+  const input = { ...given, nights: given.nights.map((n) => ({ ...n, title: postTitle(n.title, n.venueName) })) }
   const site = siteOf(input.origin)
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const pieces: PiecePlan[] = []

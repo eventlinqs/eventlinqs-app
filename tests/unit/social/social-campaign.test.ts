@@ -211,7 +211,8 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
 
 describe('the destination lists every night advertised (J15)', () => {
   it('an all free weekend goes to the free week page', () => {
-    const free = [night({ at: '2026-10-30T09:00:00Z' }), night({ at: '2026-10-31T09:00:00Z' })]
+    // A Tuesday night too, so the week's list is not the weekend's own (a later piece repeating a list drops itself).
+    const free = [night({ at: '2026-10-27T09:00:00Z' }), night({ at: '2026-10-30T09:00:00Z' }), night({ at: '2026-10-31T09:00:00Z' })]
     const [w] = of(planCampaign({ nights: free, cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces, 'weekend_carousel', 'geelong')
     expect(w.link).toBe(`${ORIGIN}/free/geelong/this-week`)
   })

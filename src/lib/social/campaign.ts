@@ -206,6 +206,29 @@ const MAX_PER_CATEGORY = 3
  * never scored down, and nothing is ever bought into a pick. No more than two of one venue or three of one category, so a set
  * is varied. The founder's leave-outs never come back.
  */
+/**
+ * THE BEST NIGHTS ACROSS NAMED DAYS (the PM's 15:45 of 15 November 2026, fix 3): the best of each day first, where the
+ * day has one, then the best of the rest, so a weekend post holds Friday, Saturday and Sunday and never five Fridays.
+ */
+export function selectAcrossDays(
+  candidates: readonly { n: CampaignNight; day: number }[],
+  days: readonly number[],
+  max: number,
+): { nights: CampaignNight[]; picks: NightPick[] } {
+  const firsts = days.flatMap((d) => selectNights(candidates.filter((x) => x.day === d).map((x) => x.n), 1).picks.map((p) => p.eventId))
+  const all = selectNights(candidates.map((x) => x.n), candidates.length)
+  const order = [...firsts, ...all.nights.map((n) => n.eventId).filter((id) => !firsts.includes(id))]
+  const chosen = new Set(order.slice(0, max))
+  const nights = all.nights.filter((n) => chosen.has(n.eventId))
+  for (const id of chosen) {
+    const c = nights.some((n) => n.eventId === id) ? null : candidates.find((x) => x.n.eventId === id)
+    if (c) nights.push(c.n)
+  }
+  nights.sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const reasons = new Map(all.picks.map((p) => [p.eventId, p.reason]))
+  return { nights, picks: nights.map((n) => ({ eventId: n.eventId, reason: reasons.get(n.eventId) ?? `Picked: on ${whenOf(n)}; the best of its day.` })) }
+}
+
 /** One night per title in a set: the key two nights share when they are the same night on two dates. */
 const titleKey = (n: CampaignNight): string => n.title.trim().toLowerCase()
 
@@ -311,6 +334,16 @@ export function whenOf(n: CampaignNight): string {
   return `${date} · ${time}`
 }
 
+/**
+ * A cover's line for a night (the PM's 15:45 of 15 November 2026, fix 1): its day and title, then on a line of its own
+ * its venue and time, as a weekly list names the place, so with no photograph the list itself is the picture.
+ */
+export function coverLine(day: string, n: CampaignNight): string {
+  const time = whenOf(n).split(' \u00b7 ')[1] ?? ''
+  const sub = [n.venueName, time].filter((x): x is string => Boolean(x && x.trim())).join(' \u00b7 ')
+  return sub ? `${day} ${n.title}\n${sub}` : `${day} ${n.title}`
+}
+
 /** "SAT" */
 export function dayOf(n: CampaignNight): string {
   return local(n.startDate, n.timezone, { weekday: 'short' }).toUpperCase()
@@ -340,9 +373,18 @@ function metaOf(n: CampaignNight): string {
   return n.venueName ? `${n.venueName}, ${n.cityName}` : n.cityName
 }
 
+/**
+ * A line the headline hunt composes for a night (src/lib/listings/headline-hunt.ts huntSummary): true, and right on a
+ * guide row, but it says nothing a post's own date, venue and seller do not already say. Held to huntSummary's output
+ * by tests/unit/social/post-words.test.ts.
+ */
+export const HUNT_SUMMARY_LINE = /^[A-Z][^.]*? on a (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) (morning|afternoon|evening)(, free entry|, tickets through [^.]+)?\.$/
+
 function whyOf(n: CampaignNight): string | null {
   const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
-  if (!s) return null
+  /* The PM's 15:45 of 15 November 2026, fix 4: the headline hunt's composed line ('An event on a Monday evening,
+     tickets through ...') repeats what the slide already shows; with no summary of its own a night shows none. */
+  if (!s || HUNT_SUMMARY_LINE.test(s)) return null
   const first = s.match(/^.*?[.?](\s|$)/)?.[0]?.trim() ?? s
   return first.length <= 140 ? first : `${first.slice(0, 137).replace(/\s+\S*$/, '')}.`
 }
@@ -381,9 +423,38 @@ export function nightWords(n: CampaignNight): NightSlideWords {
     date: dateOf(n),
     time: time ? (span ? `From ${time}` : time) : '',
     entry,
-    action: n.cta.action,
+    action: postAction(n),
     city: n.cityName,
   }
+}
+
+/**
+ * ONE CALL ON A POST (the PM's 15:45 of 15 November 2026, fix 5): a post sends people to the night's EventLinqs page,
+ * which carries the seller's own link, so the pill names one address, ours, and never a second one beside it. It
+ * never says EventLinqs sells a ticket another site sells (E4, E7): the page is where the times and the ticket link are.
+ */
+export function postAction(n: Pick<CampaignNight, 'cta'>): string {
+  if (n.cta.state === 'paid_native') return 'Tickets at eventlinqs.com.au'
+  if (n.cta.state === 'paid_external') return 'Times and tickets at eventlinqs.com.au'
+  return 'Times and details at eventlinqs.com.au'
+}
+
+/**
+ * A POST'S TITLE (the PM's 15:45 of 15 November 2026, fix 2): a source's room or venue suffix glued on with a dash
+ * comes off (the venue has its own line), and a title in parts joined by spaced dashes keeps its main name: the first
+ * part, a colon, the second. Never a spaced dash on a post.
+ */
+export function postTitle(title: string, venue: string | null): string {
+  let t = title.replace(/\s+/g, ' ').trim()
+  const suffix = t.match(/^(.*\S)\s*[-\u2013\u2014]\s*([^-\u2013\u2014]{2,40})$/)
+  if (suffix) {
+    const tail = suffix[2].trim().toLowerCase()
+    const v = (venue ?? '').trim().toLowerCase()
+    if (/\b(room|stage|bar|lounge|hall|studio|basement|front bar|band room|courtyard)\b/.test(tail) || (v && (tail === v || v.includes(tail)))) t = suffix[1].trim()
+  }
+  const parts = t.split(/\s+[-\u2013\u2014]\s+/)
+  if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
+  return t
 }
 
 function nightSlide(n: CampaignNight): Slide {
@@ -502,7 +573,8 @@ export function planCampaign(input: {
 }): CampaignPlan {
   const { origin, weekStart } = input
   const site = siteOf(origin)
-  const inWeek = input.nights
+  const nightsIn = input.nights.map((n) => ({ ...n, title: postTitle(n.title, n.venueName) }))
+  const inWeek = nightsIn
     .map((n) => ({ n, day: dayInWeek(n, weekStart) }))
     .filter((x) => x.day >= 0 && !(input.excluded?.has(x.n.eventId) ?? false))
     .sort((a, b) => Date.parse(a.n.startDate) - Date.parse(b.n.startDate))
@@ -538,7 +610,7 @@ export function planCampaign(input: {
         picks: aheadPicks,
         mode: modeOf(ahead),
         slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `This week · ${city.name}`, headline: hook, line: splitLine(ahead), contents: ahead.map((n) => `${dayOf(n)} ${n.title}`) },
+          { t: 'cover', composition: 'contents_cover', chip: `This week · ${city.name}`, headline: hook, line: splitLine(ahead), contents: ahead.map((n) => coverLine(dayOf(n), n)) },
           ...ahead.map(nightSlide),
           { t: 'end', composition: 'close', headline: "Send this to whoever you're going with.", line: `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Save this for later.' },
         ],
@@ -552,7 +624,7 @@ export function planCampaign(input: {
     }
 
     /* Thursday: the weekend guide carousel, paired with the roundup edition, to the city's free week page. */
-    const { nights: weekend, picks: weekendPicks } = selectNights(inWeek.filter((x) => x.n.citySlug === city.slug && x.day >= 4).map((x) => x.n), MAX_NIGHTS)
+    const { nights: weekend, picks: weekendPicks } = selectAcrossDays(inWeek.filter((x) => x.n.citySlug === city.slug && x.day >= 4), [4, 5, 6], MAX_NIGHTS)
     if (weekend.length >= 2) {
       const wDest = destinationOf(weekend, city)
       const hook = `${countWord(weekend.length)} things on in ${city.name} this weekend.`
@@ -571,7 +643,7 @@ export function planCampaign(input: {
         picks: weekendPicks,
         mode: modeOf(weekend),
         slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `This weekend · ${city.name}`, headline: hook, line: splitLine(weekend), contents: weekend.map((n) => `${dayOf(n)} ${n.title}`) },
+          { t: 'cover', composition: 'contents_cover', chip: `This weekend · ${city.name}`, headline: hook, line: splitLine(weekend), contents: weekend.map((n) => coverLine(dayOf(n), n)) },
           ...weekend.map(nightSlide),
           { t: 'end', composition: 'close', headline: 'Plan the weekend.', line: wDest.allFree ? `Every free thing on in ${city.name} this week, by day, with times and maps:` : `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}${wDest.path}`, foot: 'Save this for Saturday.' },
         ],
@@ -588,8 +660,10 @@ export function planCampaign(input: {
 
     /* Friday: Tonight and Tomorrow, the city's Friday and Saturday nights, to the city page. Its words name the days,
        never 'tonight', so a piece that posts late is still true; a night that has ended holds it (pieceDependencies). */
-    const { nights: friSat, picks: friSatPicks } = selectNights(inWeek.filter((x) => x.n.citySlug === city.slug && (x.day === 4 || x.day === 5)).map((x) => x.n), MAX_NIGHTS)
-    if (friSat.length >= 2) {
+    const { nights: friSat, picks: friSatPicks } = selectAcrossDays(inWeek.filter((x) => x.n.citySlug === city.slug && (x.day === 4 || x.day === 5)), [4, 5], MAX_NIGHTS)
+    // Two posts, one list (fix 3): when Friday and Saturday's picks are the weekend's own, this later post drops itself.
+    const sameAsWeekend = friSat.length === weekend.length && friSat.every((n) => weekend.some((w) => w.eventId === n.eventId))
+    if (friSat.length >= 2 && !sameAsWeekend) {
       const days = `Friday and Saturday in ${city.name}`
       const hook = `${countWord(friSat.length)} things on ${days}.`
       const body = [...friSat.map(pickLine), '', creditsOf(friSat)]
@@ -607,7 +681,7 @@ export function planCampaign(input: {
         picks: friSatPicks,
         mode: modeOf(friSat),
         slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `Friday and Saturday · ${city.name}`, headline: hook, line: splitLine(friSat), contents: friSat.map((n) => `${dayOf(n)} ${n.title}`) },
+          { t: 'cover', composition: 'contents_cover', chip: `Friday and Saturday · ${city.name}`, headline: hook, line: splitLine(friSat), contents: friSat.map((n) => coverLine(dayOf(n), n)) },
           ...friSat.map(nightSlide),
           { t: 'end', composition: 'close', headline: 'Who are you taking?', line: `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Send this to them now.' },
         ],
@@ -624,7 +698,7 @@ export function planCampaign(input: {
        city page. Each line prints its date, as a weekday alone would mislead this far out. */
     const monday = new Date(`${weekStart}T00:00:00Z`)
     const { nights: later, picks: laterPicks } = selectNights(
-      input.nights.filter((n) => n.citySlug === city.slug && !(input.excluded?.has(n.eventId) ?? false) && campaignStageOf(n, monday) === 'consideration'),
+      nightsIn.filter((n) => n.citySlug === city.slug && !(input.excluded?.has(n.eventId) ?? false) && campaignStageOf(n, monday) === 'consideration'),
       MAX_NIGHTS,
     )
     if (later.length >= 2) {
@@ -644,7 +718,7 @@ export function planCampaign(input: {
         picks: laterPicks,
         mode: modeOf(later),
         slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `Coming up · ${city.name}`, headline: hook, line: splitLine(later), contents: later.map((n) => `${dateOf(n)} ${n.title}`) },
+          { t: 'cover', composition: 'contents_cover', chip: `Coming up · ${city.name}`, headline: hook, line: splitLine(later), contents: later.map((n) => coverLine(dateOf(n), n)) },
           ...later.map(nightSlide),
           { t: 'end', composition: 'close', headline: 'Put a date in the diary.', line: `Everything coming up in ${city.name}, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Save this for later.' },
         ],
@@ -682,7 +756,7 @@ export function planCampaign(input: {
         picks: spotPicks,
         mode: modeOf(spot),
         slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `${name} · ${city.name}`, headline: hook, line: splitLine(spot), contents: spot.map((n) => `${dayOf(n)} ${n.title}`) },
+          { t: 'cover', composition: 'contents_cover', chip: `${name} · ${city.name}`, headline: hook, line: splitLine(spot), contents: spot.map((n) => coverLine(dayOf(n), n)) },
           ...spot.map(nightSlide),
           { t: 'end', composition: 'close', headline: 'Save the one you want.', line: `All the ${name.toLowerCase()} on in ${city.name}, by day, with times and places:`, url: `${site}${path}`, foot: null },
         ],
@@ -721,7 +795,7 @@ export function planCampaign(input: {
       picks: reelPicks,
       mode: modeOf(reel),
       slides: [
-        { t: 'cover', composition: 'contents_cover', chip: `${city.name} · this week`, headline: hook, line: splitLine(reel), contents: reel.map((n) => `${dayOf(n)} ${n.title}`) },
+        { t: 'cover', composition: 'contents_cover', chip: `${city.name} · this week`, headline: hook, line: splitLine(reel), contents: reel.map((n) => coverLine(dayOf(n), n)) },
         ...reel.map(nightSlide),
         { t: 'end', composition: 'close', headline: 'Which one are you going to?', line: `Tell us below, and send this to whoever's coming. The whole week in ${city.name}:`, url: `${site}${rDest.path}`, foot: null },
       ],
@@ -869,8 +943,20 @@ export function planCampaign(input: {
     imageRequests.push({ eventId: n.eventId, hostName: n.host })
   }
 
+  /* Two posts, one list (the PM's 15:45 of 15 November 2026, fix 3): a later piece with a cover whose list is an earlier
+     cover piece's own, in the same city and format, drops itself, so no two posts in a week show the same nights. */
+  const seenLists = new Set<string>()
+  for (let i = 0; i < pieces.length; i++) {
+    if (!pieces[i].slides.some((s) => s.t === 'cover')) continue
+    const key = `${pieces[i].city}|${pieces[i].format}|${[...pieces[i].eventIds].sort().join(',')}`
+    if (seenLists.has(key)) {
+      pieces.splice(i, 1)
+      i -= 1
+    } else seenLists.add(key)
+  }
+
   /* The names each piece quotes exactly: its nights' own titles and hosts, and its partner's (pieceRefusal). */
-  const byId = new Map(input.nights.map((n) => [n.eventId, n]))
+  const byId = new Map(nightsIn.map((n) => [n.eventId, n]))
   for (const p of pieces) {
     const nights = p.eventIds.map((id) => byId.get(id)).filter((n): n is CampaignNight => n !== undefined)
     p.names = [...new Set([...nights.flatMap((n) => [n.title, n.host ?? '']), p.partnerName ?? ''].filter((s) => s.trim() !== ''))]

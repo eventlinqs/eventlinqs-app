@@ -77,10 +77,24 @@ describe('the edition cities', () => {
 })
 
 describe("Friday's Tonight and Tomorrow", () => {
-  const [p] = of('tonight_tomorrow', 'geelong')
+  // A Sunday night, so the weekend's list (Friday to Sunday) is not Friday and Saturday's own (the PM's 15:45 fix 3).
+  const sunday = night({ at: '2026-11-01T05:00:00Z', title: 'Bp Sunday Session' })
+  const withSunday = planCampaign({ nights: [...geelong, sunday, ...ballarat, ...melbourne], cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces
+  const ofSunday = (kind: string, city: string) => withSunday.filter((x) => (x.kind as string) === kind && x.city === city)
+  const [p] = ofSunday('tonight_tomorrow', 'geelong')
+
+  it('drops itself when its list would be the weekend\'s own: no two posts share a list (fix 3)', () => {
+    expect(of('tonight_tomorrow', 'geelong')).toHaveLength(0)
+    const lists = pieces.filter((x) => x.city === 'geelong' && x.slides.some((s) => s.t === 'cover')).map((x) => `${x.format}|${[...x.eventIds].sort().join(',')}`)
+    expect(new Set(lists).size).toBe(lists.length)
+  })
+
+  it('the weekend holds Friday, Saturday and Sunday', () => {
+    expect(new Set(ofSunday('weekend_carousel', 'geelong')[0].eventIds)).toContain(sunday.eventId)
+  })
 
   it("holds the city's Friday and Saturday nights only", () => {
-    expect(of('tonight_tomorrow', 'geelong')).toHaveLength(1)
+    expect(ofSunday('tonight_tomorrow', 'geelong')).toHaveLength(1)
     expect(new Set(p.eventIds)).toEqual(new Set([geelong[2].eventId, geelong[3].eventId, geelong[4].eventId]))
   })
 

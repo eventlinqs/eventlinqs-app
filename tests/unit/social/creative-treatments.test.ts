@@ -44,9 +44,9 @@ function night(over: Partial<CampaignNight> & { at: string; state?: CtaInput }):
 }
 
 describe("a night's words, from its facts alone", () => {
-  it('a free walk-in says so, and its action is to view the details (E1)', () => {
+  it('a free walk-in says so, and its one call is to our page for the details (E1; the PM\'s 15:45 fix 5)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z' }))
-    expect(w).toMatchObject({ entry: 'Free, no ticket needed', action: 'View event details', eyebrow: 'Live at The Barwon Club', city: 'Geelong' })
+    expect(w).toMatchObject({ entry: 'Free, no ticket needed', action: 'Times and details at eventlinqs.com.au', eyebrow: 'Live at The Barwon Club', city: 'Geelong' })
   })
   it('says "Live at" only for a performance: a trivia night is "At" its venue (found by eye on demonstration D)', () => {
     const at = (categorySlug: string) => nightWords(night({ at: '2026-10-29T07:00:00Z', categorySlug, venueName: 'Bonnibel' })).eyebrow
@@ -54,9 +54,10 @@ describe("a night's words, from its facts alone", () => {
     expect(at('music')).toBe('Live at Bonnibel')
     expect(at('comedy')).toBe('Live at Bonnibel')
   })
-  it('an outside ticketed night names its provider and never claims EventLinqs ticketing (E4, E7)', () => {
+  it('an outside ticketed night sends people to our page for its times and ticket link, and never claims EventLinqs sells it (E4, E7; fix 5)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { externalTicketUrl: 'https://www.geelongartscentre.org.au/x', providerName: 'Geelong Arts Centre' } }))
-    expect(w.action).toBe('View tickets at Geelong Arts Centre')
+    expect(w.action).toBe('Times and tickets at eventlinqs.com.au')
+    expect(w.action).not.toMatch(/get tickets|buy|book now/i)
     expect(w.entry ?? '').not.toMatch(/free|eventlinqs/i)
   })
   it('an outside night with no checked price says no price, never repeats where tickets are (E5)', () => {
@@ -66,12 +67,12 @@ describe("a night's words, from its facts alone", () => {
   it('a price nobody stated is never said, and free is never inferred (E5, E6)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { tiers: [], isFree: false }, categorySlug: 'festival' }))
     expect(w.entry).toBeNull()
-    expect(w.action).toBe('View event details')
+    expect(w.action).toBe('Times and details at eventlinqs.com.au')
     expect(w.eyebrow).toBe('At The Barwon Club')
   })
-  it('a native ticketed night says its price and gets tickets (E3)', () => {
+  it('a native ticketed night says its price and its tickets are ours (E3; fix 5)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { tiers: [{ price: 2500 }] } }))
-    expect(w.action).toBe('Get tickets')
+    expect(w.action).toBe('Tickets at eventlinqs.com.au')
     expect(w.entry).toBe('From $25')
   })
   it('a festival over three days says the span and when it opens, in Melbourne time', () => {
