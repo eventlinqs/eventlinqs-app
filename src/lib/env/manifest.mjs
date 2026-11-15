@@ -635,6 +635,22 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'BLOTATO_API_KEY',
+    describe: "Blotato's API key for EventLinqs' account (route B of social posting; Lawal's yes of 15 November 2026, 13:55, US$29 a month)",
+    requiredOn: [],
+    // PRODUCTION ONLY. A preview or a local run holding it could post to the live Instagram and Facebook Page.
+    forbiddenOn: ['preview', 'development'],
+    optionalOn: ['production'],
+    optionalReason:
+      'absent until Lawal runs C:\\dev\\EVIDENCE\\EL-15NOV\\automation\\connect-social-keys.mjs blotato (EL-LAWAL-LIST-8NOV.md item 19); until it or the five META_ names exist the social run passes no publisher and holds a due piece',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'META_PAGE_ACCESS_TOKEN',
     describe: "The EventLinqs Page's long lived access token, which also publishes to its Instagram (Facebook Login)",
     requiredOn: [],

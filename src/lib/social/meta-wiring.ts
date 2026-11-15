@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import type { Slide } from './campaign'
 import { graphCaller, makeMetaPublisher, metaConfigFrom } from './meta-publisher'
+import { blotatoConfigFrom, makeBlotatoPublisher } from './blotato-publisher'
 import { slideImagesNow, type Publisher } from './store'
 
 type Db = SupabaseClient
@@ -18,13 +19,9 @@ type Db = SupabaseClient
  *   bucket, because Meta fetches every image by its address.
  * The switch social_auto_publish still decides whether anything is sent; it is Lawal's alone.
  */
-export function metaPublisherFromEnv(db: Db, now: Date): Publisher | null {
-  const config = metaConfigFrom(process.env)
-  if (config === null) return null
-  return makeMetaPublisher({
-    config,
-    graph: graphCaller(config.pageToken),
-    slideUrls: async (pieceId: string, slides: readonly Slide[], format: 'feed' | 'story') => {
+/** Each slide drawn exactly as /admin/social/piece/<id>/<n> draws it and stored once as a public JPEG: one step for both routes. */
+function slideUrlsFor(db: Db, now: Date, route: string) {
+  return async (pieceId: string, slides: readonly Slide[], format: 'feed' | 'story'): Promise<readonly string[]> => {
       const images = await slideImagesNow(db, slides, now)
       const stamp = now.getTime()
       const urls: string[] = []
@@ -33,10 +30,30 @@ export function metaPublisherFromEnv(db: Db, now: Date): Publisher | null {
         const path = `social/${pieceId}/${stamp}-${String(i + 1).padStart(2, '0')}-${format}.jpg`
         const bucket = db.storage.from('event-images')
         const up = await bucket.upload(path, bytes, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' })
-        if (up.error) throw new Error(`slide ${i + 1} could not be stored for Meta: ${up.error.message}`)
+        if (up.error) throw new Error(`slide ${i + 1} could not be stored for ${route}: ${up.error.message}`)
         urls.push(bucket.getPublicUrl(path).data.publicUrl)
       }
       return urls
-    },
-  })
+  }
+}
+
+export function metaPublisherFromEnv(db: Db, now: Date): Publisher | null {
+  const config = metaConfigFrom(process.env)
+  if (config === null) return null
+  return makeMetaPublisher({ config, graph: graphCaller(config.pageToken), slideUrls: slideUrlsFor(db, now, 'Meta') })
+}
+
+/** Route B (Lawal's yes of 15 November 2026, 13:55): Blotato, once BLOTATO_API_KEY exists. */
+export function blotatoPublisherFromEnv(db: Db, now: Date): Publisher | null {
+  const config = blotatoConfigFrom(process.env)
+  if (config === null) return null
+  return makeBlotatoPublisher({ config, slideUrls: slideUrlsFor(db, now, 'Blotato') })
+}
+
+/**
+ * THE ONE PUBLISHER THE SOCIAL RUN USES: our own Meta app when its five names exist (route A, no fee), else Blotato
+ * (route B), else none, and a due piece is held as before. One route a post, so a post never goes twice.
+ */
+export function socialPublisherFromEnv(db: Db, now: Date): Publisher | null {
+  return metaPublisherFromEnv(db, now) ?? blotatoPublisherFromEnv(db, now)
 }

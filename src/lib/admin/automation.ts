@@ -143,7 +143,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         if (lastError) throw new Error(`audit_log: ${lastError.message}`)
         const planned = await counted('social_pieces', db.from('social_pieces').select('id', { count: 'exact', head: true }).gte('planned_at', week))
         const approved = await counted('social_piece_approvals', db.from('social_piece_approvals').select('id', { count: 'exact', head: true }).gte('approved_at', week))
-        const posted = await counted('social_piece_postings', db.from('social_piece_postings').select('id', { count: 'exact', head: true }).gte('posted_at', week))
+        const posted = await counted('social_piece_postings', db.from('social_piece_postings').select('id', { count: 'exact', head: true }).gte('posted_at', week).neq('post_url', 'sent'))
         const lastRow = last as { created_at: string; action: string } | null
         const waiting = Math.max(planned - approved, 0)
         return {
@@ -160,7 +160,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       {
         key: 'first-letters',
         title: 'First letters to organisers',
-        does: "Drafts the day's twenty first letters from verified rows; each passes the gateway's rules and its consent basis, and the sender sends from lawal@eventlinqs.com inside business hours.",
+        does: "Drafts the day's twenty first letters from verified rows; each passes the gateway's rules and its consent basis, and the sender sends from the founder's own mailbox inside business hours.",
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
       },

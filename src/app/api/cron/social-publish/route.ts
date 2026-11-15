@@ -3,7 +3,7 @@ import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { planCampaignWeek, publishDuePieces, scheduleApprovedPieces } from '@/lib/social/store'
-import { metaPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +19,7 @@ function melbourneHour(now: Date): number {
  * the cadence; then every moment that has come is published, or, while the switch social_auto_publish is off (until
  * Meta approves the app), only said: nothing is written and nothing goes. The Meta publisher (car 58,
  * src/lib/social/meta-publisher.ts) is passed in once Lawal's script has written the five META_ names; until then, with
- * the switch on, a due piece is held with "no Meta publisher is connected", never sent another way.
+ * the switch on, a due piece is held with "no publisher is connected", never sent another way. Route B (Blotato, Lawal's yes of 15 November 2026) is used when our own app is not connected (meta-wiring.ts socialPublisherFromEnv).
  */
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const db = createAdminClient()
     const now = new Date()
     const scheduled = await scheduleApprovedPieces(db, now)
-    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: metaPublisherFromEnv(db, now) })
+    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
     console.log(
       `[cron/social-publish] ${scheduled.scheduled.length} piece(s) scheduled; ${published.due} due; switch ${published.switchOn ? 'ON' : 'OFF'}: ` +
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),

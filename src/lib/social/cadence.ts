@@ -33,6 +33,24 @@ export interface CadenceRule {
   readonly setAt: Date
 }
 
+/**
+ * THE STARTING CALENDAR (Lawal's 14:07 of 15 November 2026: the week's calendar from the research, as defaults the daily
+ * review tunes; C:\dev\START-16OCT\EL-AUTOMATION-15NOV\leaders-automation.md). Until twelve of our own posts in a format
+ * have each gone 48 hours (the learner below), posts open these bands, hours of the week on Melbourne's clock (0 is
+ * Monday at midnight): feed Monday from 6 pm (the week), Wednesday from noon (a spotlight), Thursday from 9 am (the
+ * weekend picks) and Sunday from 6 pm (next week); stories Friday and Saturday from 6 pm (Tonight). Sprout Social's
+ * Australian data (sproutsocial.com/insights/best-times-to-post-on-social-media-australia/, March 2026): 5 to 10 pm
+ * Monday to Thursday, Monday and Thursday best; Buffer's 9.6 million posts (buffer.com/resources/
+ * when-is-the-best-time-to-post-on-instagram/, September 2026): Thursday 9 am and Wednesday 12 pm on top, Friday and
+ * Saturday weakest. The database keeps a starting rule with no slots (social_cadence_rules_whose), so the calendar is
+ * applied as the rules are read, never stored as if learned.
+ */
+export const STARTING_CALENDAR: Readonly<Record<SocialFormat, readonly number[]>> = { feed: [18, 60, 81, 162], story: [114, 138] }
+
+export function withStartingCalendar(rule: CadenceRule, format: SocialFormat): CadenceRule {
+  return rule.basis === 'starting' && rule.slots.length === 0 ? { ...rule, slots: STARTING_CALENDAR[format] } : rule
+}
+
 /** One of EventLinqs' own posts, as the learner reads it. */
 export interface PostOutcome {
   readonly postedAt: Date

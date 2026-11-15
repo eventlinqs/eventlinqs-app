@@ -1,4 +1,5 @@
 import type { Cta } from '@/lib/events/cta'
+import { tierOf } from '@/lib/events/relevance'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
@@ -186,6 +187,13 @@ export type NightPick = { eventId: string; reason: string }
 
 /** At most two nights of one venue and three of one category in a set of five (K6: no venue or category overload). */
 const MAX_PER_VENUE = 2
+
+/** Law 18 in the picks: the guide's own tier; tier 1 leads, tier 4 never goes in a post (Lawal's 14:07 of 15 November 2026). */
+const TIER_SCORE: Readonly<Record<1 | 2 | 3, number>> = { 1: 40, 2: 20, 3: 0 }
+const TIER_WORDS: Readonly<Record<1 | 2 | 3, string>> = { 1: 'a headline night', 2: 'a ticketed night', 3: 'a free or community night' }
+export function socialTierOf(n: Pick<CampaignNight, 'title' | 'venueName' | 'categorySlug' | 'cta'>) {
+  return tierOf({ title: n.title, venue: n.venueName, categorySlug: n.categorySlug, ticketed: n.cta.state === 'paid_native' || n.cta.state === 'paid_external' })
+}
 const MAX_PER_CATEGORY = 3
 
 /**
@@ -213,9 +221,12 @@ export function selectNights(
   const perCategory = opts.perCategory ?? MAX_PER_CATEGORY
   const hostCount = new Map<string, number>()
   for (const n of candidates) if (n.host) hostCount.set(n.host, (hostCount.get(n.host) ?? 0) + 1)
-  const scored = candidates.map((n, order) => {
+  const scored = candidates.flatMap((n, order) => {
+    const tier = socialTierOf(n)
+    if (tier === 4) return []
     const reasons: string[] = []
-    let score = 100 - order * 2
+    let score = 100 - order * 2 + TIER_SCORE[tier]
+    reasons.push(TIER_WORDS[tier])
     reasons.push(`on ${whenOf(n)}`)
     if (n.venueName && n.summary) {
       score += 10
@@ -233,7 +244,7 @@ export function selectNights(
       score += 4
       reasons.push(`${n.host} has more nights this week, a partner worth asking`)
     }
-    return { n, score, reasons }
+    return [{ n, score, reasons }]
   })
   scored.sort((a, b) => b.score - a.score)
   const venues = new Map<string, number>()

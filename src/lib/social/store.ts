@@ -7,7 +7,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, scheduleMoments, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, scheduleMoments, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
@@ -1473,7 +1473,11 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
     due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string) })
   }
   if (due.length === 0) return { scheduled: [], held: [] }
-  const rules = { feed: await cadenceFor(db, 'instagram', 'feed', now), story: await cadenceFor(db, 'instagram', 'story', now) }
+  // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).
+  const rules = {
+    feed: withStartingCalendar(await cadenceFor(db, 'instagram', 'feed', now), 'feed'),
+    story: withStartingCalendar(await cadenceFor(db, 'instagram', 'story', now), 'story'),
+  }
   const moments = scheduleMoments(due, rules, { feed: await lastGone(db, 'feed'), story: await lastGone(db, 'story') }, now)
   const scheduled: { pieceId: string; goAt: string }[] = []
   const held: string[] = []
@@ -1532,7 +1536,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       continue
     }
     if (opts.publisher === null) {
-      await hold(id, 'Not published: no Meta publisher is connected.')
+      await hold(id, 'Not published: no publisher is connected (neither our own Meta app nor Blotato).')
       continue
     }
     const rev = await newestRevision(db, pieceId)
