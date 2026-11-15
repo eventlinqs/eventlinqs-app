@@ -57,6 +57,9 @@ next-env.d.ts
 # The tile library (29 October 2026): every community, category and sub-community tile on a stored photograph, each
 # with its photographer and licence in public/images/library/attribution.json (scripts/ops/download-library-photos.mjs).
 !public/images/library/*.jpg
+# The stand-in photographs of a kind of night (15 November 2026), each with its photographer and Pexels page in
+# src/lib/social/stand-ins.ts: served from our own origin to the day slides of the week's posts.
+!public/social/stand-ins/*.jpg
 !public/images/hero/*.webp
 !public/images/hero/*.png
 !public/**/*.svg

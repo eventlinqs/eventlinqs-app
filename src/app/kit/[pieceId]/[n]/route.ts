@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const image = (await slideImagesNow(db, kit.slides, new Date())).get(index - 1) ?? null
-    const bytes = await renderCampaignSlide(format, kit.slides[index - 1], index, kit.slides.length, null, image)
+    const bytes = await renderCampaignSlide(format, kit.slides[index - 1], index, kit.slides.length, null, image, kit.slides[index] ?? null)
     const shape = format === 'feed' ? 'portrait' : format
     const name = `eventlinqs-kit-${kit.city}-${String(index).padStart(2, '0')}-${shape}.jpg`
     return new NextResponse(Buffer.from(bytes) as unknown as BodyInit, {

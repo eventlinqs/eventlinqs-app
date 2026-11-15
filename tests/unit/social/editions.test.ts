@@ -101,7 +101,7 @@ describe("Friday's Tonight and Tomorrow", () => {
 
   it('drops itself when its list would be the weekend\'s own: no two posts share a list (fix 3)', () => {
     expect(of('tonight_tomorrow', 'geelong')).toHaveLength(0)
-    const lists = pieces.filter((x) => x.city === 'geelong' && x.slides.some((s) => s.t === 'cover')).map((x) => `${x.format}|${[...x.eventIds].sort().join(',')}`)
+    const lists = pieces.filter((x) => x.city === 'geelong' && x.slides.some((s) => s.t === 'week_cover')).map((x) => `${x.format}|${[...x.eventIds].sort().join(',')}`)
     expect(new Set(lists).size).toBe(lists.length)
   })
 
@@ -110,7 +110,7 @@ describe("Friday's Tonight and Tomorrow", () => {
   })
 
   it('two list posts in the city share at most one night (the PM\'s 16:40 fix 3)', () => {
-    const lists = busyPieces.filter((x) => x.city === 'geelong' && x.format === 'feed' && x.slides.some((s) => s.t === 'cover'))
+    const lists = busyPieces.filter((x) => x.city === 'geelong' && x.format === 'feed' && x.slides.some((s) => s.t === 'week_cover'))
     for (const a of lists) for (const b of lists) if (a !== b) expect(a.eventIds.filter((id) => b.eventIds.includes(id)).length).toBeLessThanOrEqual(1)
   })
 

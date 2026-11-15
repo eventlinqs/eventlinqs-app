@@ -6,6 +6,7 @@ import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
+import { standInChooser, standInCredit, standInOf, standInUrl } from './stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -141,6 +142,25 @@ export type Slide =
   | { t: 'brand'; composition: 'close'; headline: string; line: string; action: string; photo: string | null; credit: string | null }
   /** Family F, the daily poster: one night's verified facts, its photograph only from an approved row, and why (daily-posters.ts). */
   | { t: 'poster'; composition: 'daily_poster'; eventId: string; photo: string | null; credit: string | null; rights: string; night: PosterFacts }
+  /*
+   * THE 9.5 LOCKED LOOK (the PM's 17:10 of 15 November 2026, on WINDOW 6's locked-look-4.ts, scored 9.5 to 9.6 at 09:50):
+   * a list post is its week's cover (the count, the biggest draws, a night's own photograph whole, or a photograph of the
+   * lead night's kind across its top), a slide per day or pair of days holding the nights as gold timed cards, a slide
+   * for each night with its own permitted photograph shown whole, and the ask on gold.
+   */
+  /** The cover: `photoEventId` is the night whose own photograph it shows whole; with none, `photo` is a stand-in band or null. */
+  | { t: 'week_cover'; composition: 'contents_cover'; range: string; lines: [string, string, string]; draws: string | null; line: string; photoEventId: string | null; photo: string | null; credit: string | null; lead?: DayRow[] }
+  /** A day or two days of the piece's nights, under a photograph of the lead night's kind (a stand-in) or none. */
+  | { t: 'days'; composition: 'contents_cover'; day: string; date: string; rows: DayRow[]; photo: string | null; credit: string | null }
+  /** A night with its own permitted photograph, shown whole: "an organiser's own permitted photograph always leads its night". */
+  | { t: 'feature'; composition: Composition; eventId: string; startDate: string; eyebrow: string; title: string; accent: string | null; chip: string | null; photo: string | null; credit: string | null }
+  /** Lawal's ask on gold, with the three to start with. */
+  | { t: 'ask'; composition: 'close'; count: number; three: DayRow[] }
+  /** Family E, a venue's week: its name, its nights as gold timed cards (each with its entry line), a photograph of their kind or none, the ask. */
+  | { t: 'venue'; composition: 'venue_spotlight'; venue: string; eyebrow: string; accent: string; rows: DayRow[]; photo: string | null; credit: string | null }
+
+/** One night on a day slide, as Lawal's gold timed card draws it; its start kept so a check before publishing reads drift. */
+export type DayRow = { eventId: string; startDate: string; when: string; sub: string | null; title: string; place: string; free: boolean }
 
 /** The facts a daily poster prints, kept on its slide; the store sets shortLink to the piece's own /e/ link. */
 export type PosterFacts = Omit<PosterNight, 'photo'>
@@ -275,9 +295,10 @@ export function selectNights(
   candidates: readonly CampaignNight[],
   max: number,
   /** A Category Spotlight is one category by design, so it lifts that cap alone; the venue cap still holds. */
-  opts: { readonly perCategory?: number } = {},
+  opts: { readonly perCategory?: number; readonly perVenue?: number } = {},
 ): { nights: CampaignNight[]; picks: NightPick[] } {
   const perCategory = opts.perCategory ?? MAX_PER_CATEGORY
+  const perVenue = opts.perVenue ?? MAX_PER_VENUE
   const hostCount = new Map<string, number>()
   for (const n of candidates) if (n.host) hostCount.set(n.host, (hostCount.get(n.host) ?? 0) + 1)
   const scored = candidates.flatMap((n, order) => {
@@ -319,7 +340,7 @@ export function selectNights(
     if (titles.has(title)) continue
     const venue = (s.n.venueName ?? '').toLowerCase()
     const category = (s.n.categorySlug ?? '').toLowerCase()
-    if (venue && (venues.get(venue) ?? 0) >= MAX_PER_VENUE) continue
+    if (venue && (venues.get(venue) ?? 0) >= perVenue) continue
     if (category && (categories.get(category) ?? 0) >= perCategory) continue
     if (venue) venues.set(venue, (venues.get(venue) ?? 0) + 1)
     if (category) categories.set(category, (categories.get(category) ?? 0) + 1)
@@ -410,6 +431,9 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
   if (n.categorySlug === 'comedy' || /\b(comedy|comedian|stand-?up)\b/i.test(words)) return 'comedy'
   if (n.categorySlug === 'festival' || /\bfestival\b/i.test(words)) return 'festival'
   if (GIG_WORDS.test(words)) return 'gig'
+  // A music night at an arena, a stadium, a bowl or the Forum is a concert by its own venue (15 November 2026: LANY and
+  // Two Door Cinema Club at John Cain Arena name no band word), so a gig's stand-in shows its kind.
+  if (['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase()) && headlineWeight({ venueName: n.venueName, categorySlug: n.categorySlug }) <= 1) return 'gig'
   return null
 }
 
@@ -523,25 +547,341 @@ export function postTitle(title: string, venue: string | null): string {
   return t
 }
 
-function nightSlide(n: CampaignNight): Slide {
+/**
+ * A TITLE SHORTENED BY RULE (the PM's 17:10 of 15 November 2026: "titles shortened by rule from the event's own words,
+ * never cut mid word"; out-4 cut "Anne Sofie von Otter & Kristian..." and "Geelong Dance Movement: A Passage..."). A
+ * title longer than its room keeps the longest of its own names that fits: the words before one of its own joins (a
+ * colon, a bar, a parenthesis, a comma, "with", "featuring", "presents", a plus, or an ampersand between two names of
+ * two words or more). Never an ellipsis and never a word cut: a title with no join that fits is kept whole and wraps.
+ */
+export function shortTitle(title: string, max: number): string {
+  const t = title.replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  const cuts: number[] = []
+  for (const re of [/:\s/g, /\s\|\s/g, /\s\(/g, /,\s/g, /\s(?:with|featuring|feat\.|ft\.|presents|starring)\s/gi, /\s\+\s/g]) {
+    for (const m of t.matchAll(re)) if (m.index !== undefined) cuts.push(m.index)
+  }
+  for (const m of t.matchAll(/\s&\s/g)) {
+    const i = m.index ?? -1
+    if (i > 0 && t.slice(0, i).trim().split(' ').length >= 2 && t.slice(i + 3).trim().split(' ').length >= 2) cuts.push(i)
+  }
+  const fits = cuts.filter((i) => i >= 4 && i <= max).sort((a, b) => b - a)
+  return fits.length > 0 ? t.slice(0, fits[0]).replace(/[\s,:;|&+(]+$/, '').trim() : t
+}
+
+/**
+ * A CARD'S TITLE (the PM's 17:40 fix 4): the performer before a colon wins over a tour name ('Kate Ceberano: Australian Made
+ * Tour 2026' reads 'Kate Ceberano'); after 'presents', the show's own name ('GSODA Junior Players presents Curtain Up'
+ * reads 'Curtain Up'); a plural's possessive takes its apostrophe ('Mens' reads "Men's"); then shortTitle's room.
+ */
+export function cardTitle(title: string, max: number): string {
+  let t = title.replace(/\s+/g, ' ').trim()
+  t = t.replace(/\b(Men|Women|Children)s\b/g, (_m: string, who: string) => `${who}'s`)
+  const presents = /^\S.{2,}?\s+presents?:?\s+(\S.{2,})$/i.exec(t)
+  if (presents) t = presents[1]
+  const colon = /^(\S.*?):\s+(.+)$/.exec(t)
+  if (colon && /\b(tour|world tour|in concert|live in [A-Z][a-z]+|(19|20)\d\d)\b/i.test(colon[2])) t = colon[1]
+  return shortTitle(t, max)
+}
+
+/** The room a title has on a gold timed card (two lines), on the ask (one line) and on a cover's draws. */
+export const CARD_TITLE_MAX = 48
+export const ASK_TITLE_MAX = 34
+const DRAW_TITLE_MAX = 30
+
+/** "7:30 pm" at the night's own place. */
+export function clockOf(iso: string, tz: string | null): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-AU', { timeZone: tz ?? ZONE, hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date(iso)).map((p) => [p.type, p.value]),
+  ) as Record<string, string>
+  return `${parts.hour}:${parts.minute} ${String(parts.dayPeriod ?? '').toLowerCase()}`.trim()
+}
+
+/** The night's local date, YYYY-MM-DD. */
+function ymdOf(iso: string, tz: string | null): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz ?? ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+}
+
+/** "Fri 20" */
+function shortDay(iso: string, tz: string | null): string {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: tz ?? ZONE, weekday: 'short', day: 'numeric' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value])) as Record<string, string>
+  return `${p.weekday} ${p.day}`
+}
+
+const isFree = (n: Pick<CampaignNight, 'cta'>) => n.cta.state === 'free_open' || n.cta.state === 'free_registration'
+
+/**
+ * Law 18 (a)'s headline weight inside tier 1: "stadium, arena, estate concert, major theatre or concert hall, festival",
+ * read from the venue's own name, so an arena show leads a talk at a concert hall (the week of 16 November 2026).
+ */
+export function headlineWeight(n: Pick<CampaignNight, 'venueName' | 'categorySlug'>): number {
+  const v = n.venueName ?? ''
+  if (/\b(stadium|cricket ground|mcg|aami park|kardinia park)\b/i.test(v)) return 0
+  if (/\b(arena|music bowl|festival hall|forum)\b/i.test(v)) return 1
+  if (/\b(estate|racecourse|showgrounds|flemington)\b/i.test(v)) return 2
+  if (/\b(theatre|hall|centre|athenaeum|playhouse|house)\b/i.test(v)) return 3
+  return n.categorySlug === 'festival' ? 4 : 5
+}
+
+/** Tier, then (in tier 1) headline weight, then date: the order a slide names its nights in (law 18), the biggest draw first. */
+function byDraw(a: CampaignNight, b: CampaignNight): number {
+  const ta = socialTierOf(a)
+  const tb = socialTierOf(b)
+  if (ta !== tb) return ta - tb
+  if (ta === 1 && headlineWeight(a) !== headlineWeight(b)) return headlineWeight(a) - headlineWeight(b)
+  return Date.parse(a.startDate) - Date.parse(b.startDate)
+}
+
+/** A night as Lawal's gold timed card: its time (or its first day, over several days), the day under it on a two day slide. */
+export function dayRowOf(n: CampaignNight, paired: boolean): DayRow {
+  const span = dateOf(n).includes(' to ') && Boolean(n.endDate)
   return {
-    words: nightWords(n),
-    t: 'night',
-    composition: compositionFor(n),
     eventId: n.eventId,
-    chip: n.cta.chip,
-    when: whenOf(n),
-    day: dayOf(n),
-    title: n.title,
-    meta: metaOf(n),
-    why: whyOf(n),
-    photo: n.approvedPhotoUrl,
-    credit: n.approvedPhotoUrl ? n.photoCredit : null,
+    startDate: n.startDate,
+    when: span ? shortDay(n.startDate, n.timezone) : clockOf(n.startDate, n.timezone),
+    sub: span ? `to ${shortDay(String(n.endDate), n.timezone)}` : paired ? shortDay(n.startDate, n.timezone) : null,
+    title: cardTitle(n.title, CARD_TITLE_MAX),
+    place: placeOf(n) ?? n.venueName ?? n.cityName,
+    free: isFree(n),
   }
 }
 
-/** "3 are free, 2 need tickets." from the nights' own states; a night with no price is not counted as either. */
-function splitLine(nights: readonly CampaignNight[]): string {
+/**
+ * A show's days under its time (the PM's 17:40 fix 3: "'AND 1 MORE DAY' names the day ('FRI & SAT')"): every day the show
+ * plays in the piece's days, "Fri 20 & Sat 21", or over three days "Thu 19 to Sat 21"; a second time on its own day only
+ * as "and 7:30 pm".
+ */
+function withSessions(row: DayRow, n: CampaignNight, sessions: readonly CampaignNight[]): DayRow {
+  const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  if (all.length === 1 || row.sub?.startsWith('to ')) return row
+  const byDay = new Map<string, CampaignNight>()
+  for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  const days = [...byDay.values()]
+  if (days.length === 1) {
+    const later = all.find((x) => x.eventId !== n.eventId)
+    return later ? { ...row, sub: row.sub ? `${row.sub}, and ${clockOf(later.startDate, later.timezone)}` : `and ${clockOf(later.startDate, later.timezone)}` } : row
+  }
+  const d = days.map((x) => shortDay(x.startDate, x.timezone))
+  return { ...row, sub: d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}` }
+}
+
+/** At most four nights a day slide, as the 9.5 sample's week (fitted at the square's size by the text guard). */
+export const ROWS_PER_DAY_SLIDE = 4
+
+/** "16 to 22 November", "30 November to 2 December", or one day "20 November", from the nights' own dates. */
+export function rangeOf(nights: readonly CampaignNight[]): string {
+  const days = nights.flatMap((n) => [n.startDate, ...(n.endDate && dateOf(n).includes(' to ') ? [n.endDate] : [])].map((iso) => ({ iso, tz: n.timezone })))
+  days.sort((a, b) => Date.parse(a.iso) - Date.parse(b.iso))
+  const fmt = (d: { iso: string; tz: string | null }) => local(d.iso, d.tz, { day: 'numeric', month: 'long' })
+  const [first, last] = [days[0], days[days.length - 1]]
+  if (!first) return ''
+  const [fd, fm] = fmt(first).split(' ')
+  const [ld, lm] = fmt(last).split(' ')
+  if (fmt(first) === fmt(last)) return fmt(first)
+  return fm === lm ? `${fd} to ${ld} ${lm}` : `${fd} ${fm} to ${ld} ${lm}`
+}
+
+/** "Led by LANY and Two Door Cinema Club": the piece's biggest draws (tier 1, then 2), by name, or null. */
+export function drawsOf(nights: readonly CampaignNight[]): string | null {
+  const names = [...nights]
+    .filter((n) => socialTierOf(n) <= 2)
+    .sort(byDraw)
+    .map((n) => cardTitle(n.title, DRAW_TITLE_MAX))
+    .filter((t, i, a) => t.length <= DRAW_TITLE_MAX && a.indexOf(t) === i)
+  if (names.length === 0) return null
+  const two = names.length >= 2 ? `Led by ${names[0]} and ${names[1]}` : null
+  return two && two.length <= 46 ? two : `Led by ${names[0]}`
+}
+
+/** The day slides' heading: "Wednesday" and "18 Nov", or for two days "Mon & Tue" and "16 & 17 Nov". */
+function headingOf(days: readonly CampaignNight[][]): { day: string; date: string } {
+  const seen = new Set<string>()
+  const firsts = days.map((d) => d[0]).filter((n) => {
+    const key = ymdOf(n.startDate, n.timezone)
+    return !seen.has(key) && Boolean(seen.add(key))
+  })
+  const dm = (n: CampaignNight) => local(n.startDate, n.timezone, { day: 'numeric', month: 'short' }).split(' ')
+  if (firsts.length === 1) return { day: local(firsts[0].startDate, firsts[0].timezone, { weekday: 'long' }), date: dm(firsts[0]).join(' ') }
+  const [first, last] = [firsts[0], firsts[firsts.length - 1]]
+  const [a, b] = [dm(first), dm(last)]
+  const wd = (n: CampaignNight) => local(n.startDate, n.timezone, { weekday: 'short' })
+  const join = firsts.length === 2 ? ' & ' : ' to '
+  return { day: `${wd(first)}${join}${wd(last)}`, date: a[1] === b[1] ? `${a[0]}${join}${b[0]} ${b[1]}` : `${a.join(' ')}${join}${b.join(' ')}` }
+}
+
+/**
+ * A LIST POST IN THE 9.5 LOCKED LOOK (the PM's 17:10 of 15 November 2026): the cover, the day slides, a slide for each
+ * night with its own permitted photograph (at most two), and the ask. A night's own photograph leads it: the cover shows
+ * the biggest such night's whole; with none, the cover and each day slide take a stand-in of their lead night's kind
+ * (stand-ins.ts), credited and named in the caption as not that night. Every word is the night's own.
+ */
+export function lockedListSlides(
+  nights: readonly CampaignNight[],
+  lines: [string, string, string],
+  origin: string,
+  /** One show, one line (the PM's 16:40, fix 2): a show's other sessions in the piece's days, said under its time. */
+  sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
+): Slide[] {
+  const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const pick = standInChooser()
+  /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a stand-in stands over a slide only when every night the slide
+     names is of the photograph's kind; a cover's, only when the night it is led by is. Otherwise the slide is in type. */
+  const standInFor = (ns: readonly CampaignNight[]) => {
+    const kinds = new Set(ns.map((n) => nightKindOf(n)))
+    const [kind] = [...kinds]
+    return kinds.size === 1 && kind ? pick(kind) : null
+  }
+  const own = [...ordered].filter((n) => n.approvedPhotoUrl).sort(byDraw)
+  const lead = own[0] ?? null
+  const coverStandIn = lead ? null : standInFor([...ordered].sort(byDraw).slice(0, 1))
+  const cover: Slide = {
+    t: 'week_cover',
+    composition: 'contents_cover',
+    range: rangeOf(ordered),
+    lines,
+    draws: drawsOf(ordered),
+    // The PM's 17:40 fix 5: the out-4 cover's line, "2 are free, 3 need tickets. Tap through for each night."
+    line: splitLine(ordered),
+    photoEventId: lead ? lead.eventId : null,
+    photo: lead ? lead.approvedPhotoUrl : coverStandIn ? standInUrl(origin, coverStandIn) : null,
+    credit: lead ? (lead.photoCredit ? creditLine(lead.photoCredit) : null) : coverStandIn ? standInCredit(coverStandIn) : null,
+  }
+
+  const daySlides: Slide[] = daySlideGroups(ordered).map((days) => {
+    const s = standInFor(days.flat())
+    return {
+      t: 'days',
+      composition: 'contents_cover',
+      ...headingOf(days),
+      // The PM's 17:40 fix 3: the draw decides which nights make the slide, the clock their order on it.
+      rows: [...days.flat()].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => withSessions(dayRowOf(n, new Set(days.flat().map((x) => ymdOf(x.startDate, x.timezone))).size > 1), n, sessionsOf(n))),
+      photo: s ? standInUrl(origin, s) : null,
+      credit: s ? standInCredit(s) : null,
+    }
+  })
+
+  const features: Slide[] = own.slice(0, 2).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => featureSlideOf(n))
+  const three = [...ordered].sort(byDraw).slice(0, 3).map((n) => {
+    const r = dayRowOf(n, false)
+    const span = dateOf(n).includes(' to ') && Boolean(n.endDate)
+    return { ...r, when: span ? `${local(n.startDate, n.timezone, { weekday: 'short' })} to ${local(String(n.endDate), n.timezone, { weekday: 'short' })}` : shortDay(n.startDate, n.timezone), sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }
+  })
+  // A cover with no photograph lists its three lead nights as cards, so the page is never bare ground.
+  const coverSlide = cover.photo ? cover : { ...cover, lead: [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => dayRowOf(n, true)) }
+  return [coverSlide, ...daySlides, ...features, { t: 'ask', composition: 'close', count: ordered.length, three }]
+}
+
+/**
+ * The day slides' groups: each day's nights, the biggest draw first, in slides of at most four cards, packed in day order
+ * and balanced (twelve nights make three slides of four, five make three and two), never splitting a day unless it holds
+ * more than four; a day over four is split into even parts.
+ */
+export function daySlideGroups(ordered: readonly CampaignNight[]): CampaignNight[][][] {
+  const byDay = new Map<string, CampaignNight[]>()
+  for (const n of ordered) {
+    const key = ymdOf(n.startDate, n.timezone)
+    byDay.set(key, [...(byDay.get(key) ?? []), n])
+  }
+  const parts: CampaignNight[][] = []
+  for (const day of byDay.values()) {
+    const sorted = [...day].sort(byDraw)
+    const k = Math.ceil(sorted.length / ROWS_PER_DAY_SLIDE)
+    const size = Math.ceil(sorted.length / k)
+    for (let i = 0; i < sorted.length; i += size) parts.push(sorted.slice(i, i + size))
+  }
+  const total = parts.reduce((a, x) => a + x.length, 0)
+  const slides = Math.max(1, Math.ceil(total / ROWS_PER_DAY_SLIDE))
+  const target = total / slides
+  const groups: CampaignNight[][][] = []
+  let cur: CampaignNight[][] = []
+  let rows = 0
+  for (const [i, part] of parts.entries()) {
+    const left = parts.slice(i).reduce((a, x) => a + x.length, 0)
+    const full = rows + part.length > ROWS_PER_DAY_SLIDE
+    // Close a slide once it holds its share, unless the rest would then need a slide more than the plan.
+    const enough = rows >= target - 0.01 && Math.ceil(left / ROWS_PER_DAY_SLIDE) <= slides - groups.length - 1
+    if (cur.length > 0 && (full || enough)) {
+      groups.push(cur)
+      cur = []
+      rows = 0
+    }
+    cur.push(part)
+    rows += part.length
+  }
+  if (cur.length > 0) groups.push(cur)
+  return groups
+}
+
+/** The word a venue's week takes when every night is one kind: 'Four comedy nights this week'. */
+const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', gig: 'live music', classical: 'classical', talk: 'talk', festival: 'festival' }
+
+/**
+ * FAMILY E, A VENUE'S WEEK (WINDOW 6's venuePiece, scored 9.5 at 09:50 on 15 November 2026): the venue's own name large,
+ * its nights in clock order as gold timed cards with each night's entry line, a stand-in across the top only when every
+ * night is of its kind, and the ask. The place is the venue row's own name (the PM's 16:40, fix 4), else its host's.
+ */
+export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string): Extract<Slide, { t: 'venue' }> {
+  const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const kinds = new Set(ordered.map((n) => nightKind(n)))
+  const [kind] = [...kinds]
+  const one = kinds.size === 1 && kind ? kind : null
+  const s = one ? standInChooser()(one) : null
+  const count = ordered.length
+  const countWord = (['', 'One', 'Two', 'Three', 'Four', 'Five'][count] ?? String(count))
+  return {
+    t: 'venue',
+    composition: 'venue_spotlight',
+    venue: placeOf(ordered[0]) ?? host,
+    eyebrow: `Venue · ${rangeOf(ordered)}`,
+    accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${count === 1 ? 'night' : 'nights'} this week`,
+    rows: ordered.map((n) => ({ ...dayRowOf(n, true), place: nightWords(n).entry ?? '' })),
+    photo: s ? standInUrl(origin, s) : null,
+    credit: s ? standInCredit(s) : null,
+  }
+}
+
+/** A night's kind for its stand-in: only where its own words say it (nightKind). */
+function nightKindOf(n: CampaignNight): NightKind | null {
+  return nightKind(n)
+}
+
+/** A night with its own permitted photograph, whole: its date and place, its name in up to two lines, its entry. */
+export function featureSlideOf(n: CampaignNight): Extract<Slide, { t: 'feature' }> {
+  const w = nightWords(n)
+  const span = dateOf(n).includes(' to ')
+  const place = placeOf(n) ?? n.venueName
+  return {
+    t: 'feature',
+    composition: compositionFor(n),
+    eventId: n.eventId,
+    startDate: n.startDate,
+    eyebrow: [w.date, span ? null : clockOf(n.startDate, n.timezone), place].filter((x): x is string => Boolean(x)).join(' · '),
+    title: cardTitle(n.title, 40),
+    accent: w.entry,
+    chip: isFree(n) ? 'FREE ENTRY' : null,
+    photo: String(n.approvedPhotoUrl),
+    credit: n.photoCredit ? creditLine(n.photoCredit) : null,
+  }
+}
+
+/**
+ * The caption's line for the stand-ins a piece shows (the PM's 09:10 fix 1 of 15 November 2026): what each shows, that it
+ * is from Pexels, and that it is not the night. Null when the piece shows none.
+ */
+export function picturedLine(slides: readonly Slide[]): string | null {
+  const at: { n: number; subject: string }[] = []
+  slides.forEach((sl, i) => {
+    const s = 'photo' in sl ? standInOf(sl.photo) : null
+    if (s) at.push({ n: i + 1, subject: s.subject })
+  })
+  if (at.length === 0) return null
+  const list = (xs: readonly string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+  if (at.length === 1) return `Pictured on slide ${at[0].n}: ${at[0].subject}, a photograph from Pexels, not this night.`
+  return `Pictured on slides ${list(at.map((a) => String(a.n)))}: ${list(at.map((a) => a.subject))}, photographs from Pexels, not these nights.`
+}
+
+/** "3 are free, 2 need tickets. Tap through for each night." from the nights' own states; a night with no price is neither. */
+export function splitLine(nights: readonly CampaignNight[]): string {
   const free = nights.filter((n) => n.cta.state === 'free_open' || n.cta.state === 'free_registration').length
   const paid = nights.filter((n) => n.cta.state === 'paid_native' || n.cta.state === 'paid_external').length
   const parts: string[] = []
@@ -654,6 +994,11 @@ export function planCampaign(input: {
     }
   }
   const outcomeOf = (page: string) => `Visits to ${page} through this post's own link, then presses out and tickets from there`
+  /* What a stand-in shows, first in the caption after the hook (the PM's 09:10 fix 1 of 15 November 2026). */
+  const pictured = (slides: readonly Slide[]) => {
+    const line = picturedLine(slides)
+    return line ? [line, ''] : []
+  }
 
   /* One show, one line (the PM's 16:40, fix 2): every session of a title in the week, for its cover line. */
   const sessionsOf = (n: CampaignNight, days?: readonly number[]) =>
@@ -667,7 +1012,8 @@ export function planCampaign(input: {
     if (ahead.length >= 2) {
       for (const n of ahead) listed.add(n.eventId)
       const hook = `${countWord(ahead.length)} things on in ${city.name} this week.`
-      const body = [...ahead.map(pickLine), '', creditsOf(ahead)]
+      const aheadSlides = lockedListSlides(ahead, [`${ahead.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+      const body = [...pictured(aheadSlides), ...ahead.map(pickLine), '', creditsOf(ahead)]
       pieces.push({
         kind: 'week_ahead',
         city: city.slug,
@@ -681,11 +1027,7 @@ export function planCampaign(input: {
         eventIds: ahead.map((n) => n.eventId),
         picks: aheadPicks,
         mode: modeOf(ahead),
-        slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `This week · ${city.name}`, headline: hook, line: splitLine(ahead), contents: ahead.map((n) => coverLine(dayOf(n), n, sessionsOf(n))) },
-          ...ahead.map(nightSlide),
-          { t: 'end', composition: 'close', headline: "Send this to whoever you're going with.", line: `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Save this for later.' },
-        ],
+        slides: aheadSlides,
         caption: join([hook, '', ...body, '', `The whole week: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
         versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, 'The whole week is at the link in our bio.', 'The whole week:', '4:5', tagsFor(city, null)),
         partnerName: null,
@@ -701,7 +1043,8 @@ export function planCampaign(input: {
       for (const n of weekend) listed.add(n.eventId)
       const wDest = destinationOf(weekend, city)
       const hook = `${countWord(weekend.length)} things on in ${city.name} this weekend.`
-      const body = [...weekend.map(pickLine), '', creditsOf(weekend)]
+      const weekendSlides = lockedListSlides(weekend, [`${weekend.length} things on`, `in ${city.name}`, 'this weekend'], origin, (n) => sessionsOf(n, [4, 5, 6]))
+      const body = [...pictured(weekendSlides), ...weekend.map(pickLine), '', creditsOf(weekend)]
       pieces.push({
         kind: 'weekend_carousel',
         city: city.slug,
@@ -715,11 +1058,7 @@ export function planCampaign(input: {
         eventIds: weekend.map((n) => n.eventId),
         picks: weekendPicks,
         mode: modeOf(weekend),
-        slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `This weekend · ${city.name}`, headline: hook, line: splitLine(weekend), contents: weekend.map((n) => coverLine(dayOf(n), n, sessionsOf(n, [4, 5, 6]))) },
-          ...weekend.map(nightSlide),
-          { t: 'end', composition: 'close', headline: 'Plan the weekend.', line: wDest.allFree ? `Every free thing on in ${city.name} this week, by day, with times and maps:` : `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}${wDest.path}`, foot: 'Save this for Saturday.' },
-        ],
+        slides: weekendSlides,
         caption: join([hook, '', ...body, '', `${wDest.allFree ? 'Every free thing this week' : 'The whole week'}: ${site}${wDest.path}`, '', tagsFor(city, '#thisweekend')]),
         versions: versionsOf(hook, body, `${origin}${wDest.path}`, wDest.allFree ? 'Every free thing this week is at the link in our bio.' : 'The whole week is at the link in our bio.', wDest.allFree ? 'Every free thing this week:' : 'The whole week:', '4:5', tagsFor(city, '#thisweekend')),
         partnerName: null,
@@ -740,7 +1079,8 @@ export function planCampaign(input: {
       for (const n of friSat) listed.add(n.eventId)
       const days = `Friday and Saturday in ${city.name}`
       const hook = `${countWord(friSat.length)} things on ${days}.`
-      const body = [...friSat.map(pickLine), '', creditsOf(friSat)]
+      const friSatSlides = lockedListSlides(friSat, [`${friSat.length} things on`, `in ${city.name}`, 'Fri and Sat'], origin, (n) => sessionsOf(n, [4, 5]))
+      const body = [...pictured(friSatSlides), ...friSat.map(pickLine), '', creditsOf(friSat)]
       pieces.push({
         kind: 'tonight_tomorrow',
         city: city.slug,
@@ -754,11 +1094,7 @@ export function planCampaign(input: {
         eventIds: friSat.map((n) => n.eventId),
         picks: friSatPicks,
         mode: modeOf(friSat),
-        slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `Friday and Saturday · ${city.name}`, headline: hook, line: splitLine(friSat), contents: friSat.map((n) => coverLine(dayOf(n), n, sessionsOf(n, [4, 5]))) },
-          ...friSat.map(nightSlide),
-          { t: 'end', composition: 'close', headline: 'Who are you taking?', line: `Everything on in ${city.name} this week, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Send this to them now.' },
-        ],
+        slides: friSatSlides,
         caption: join([hook, '', ...body, '', `The whole week: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
         versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, 'The whole week is at the link in our bio.', 'The whole week:', '4:5', tagsFor(city, null)),
         partnerName: null,
@@ -777,7 +1113,8 @@ export function planCampaign(input: {
     )
     if (later.length >= 2) {
       const hook = `${countWord(later.length)} nights worth planning for in ${city.name}.`
-      const body = [...later.map(pickLine), '', creditsOf(later)]
+      const laterSlides = lockedListSlides(later, [`${later.length} nights worth`, 'planning for', `in ${city.name}`], origin)
+      const body = [...pictured(laterSlides), ...later.map(pickLine), '', creditsOf(later)]
       pieces.push({
         kind: 'coming_up',
         city: city.slug,
@@ -791,11 +1128,7 @@ export function planCampaign(input: {
         eventIds: later.map((n) => n.eventId),
         picks: laterPicks,
         mode: modeOf(later),
-        slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `Coming up · ${city.name}`, headline: hook, line: splitLine(later), contents: later.map((n) => coverLine(dateOf(n), n)) },
-          ...later.map(nightSlide),
-          { t: 'end', composition: 'close', headline: 'Put a date in the diary.', line: `Everything coming up in ${city.name}, by day, with times and places:`, url: `${site}/city/${city.slug}`, foot: 'Save this for later.' },
-        ],
+        slides: laterSlides,
         caption: join([hook, '', ...body, '', `Everything coming up: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
         versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, 'Everything coming up is at the link in our bio.', 'Everything coming up:', '4:5', tagsFor(city, null)),
         partnerName: null,
@@ -816,7 +1149,8 @@ export function planCampaign(input: {
       const { nights: spot, picks: spotPicks } = selectNights(all, MAX_NIGHTS, { perCategory: MAX_NIGHTS })
       const path = `/events?city=${city.slug}&category=${slug}`
       const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} nights.`
-      const body = [...spot.map(pickLine), '', creditsOf(spot)]
+      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `nights in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+      const body = [...pictured(spotSlides), ...spot.map(pickLine), '', creditsOf(spot)]
       pieces.push({
         kind: 'category_spotlight',
         city: city.slug,
@@ -830,11 +1164,7 @@ export function planCampaign(input: {
         eventIds: spot.map((n) => n.eventId),
         picks: spotPicks,
         mode: modeOf(spot),
-        slides: [
-          { t: 'cover', composition: 'contents_cover', chip: `${name} · ${city.name}`, headline: hook, line: splitLine(spot), contents: spot.map((n) => coverLine(dayOf(n), n, sessionsOf(n))) },
-          ...spot.map(nightSlide),
-          { t: 'end', composition: 'close', headline: 'Save the one you want.', line: `All the ${name.toLowerCase()} on in ${city.name}, by day, with times and places:`, url: `${site}${path}`, foot: null },
-        ],
+        slides: spotSlides,
         caption: join([hook, '', ...body, '', `All of it: ${site}${path}`, '', tagsFor(city, null)]),
         versions: versionsOf(hook, body, `${origin}${path}`, 'All of it is at the link in our bio.', 'All of it:', '4:5', tagsFor(city, null)),
         partnerName: null,
@@ -855,7 +1185,9 @@ export function planCampaign(input: {
     const city = top.c
     const rDest = destinationOf(reel, city)
     const hook = `${countWord(reel.length)} things on in ${city.name} this week.`
-    const body = [...reel.map(pickLine), '', creditsOf(reel)]
+    // Family F, the week as stories (the PM's 17:10 of 15 November 2026): the same locked slides, drawn at 9:16.
+    const reelSlides = lockedListSlides(reel, [`${reel.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+    const body = [...pictured(reelSlides), ...reel.map(pickLine), '', creditsOf(reel)]
     pieces.push({
       kind: 'discovery_reel',
       city: city.slug,
@@ -869,11 +1201,7 @@ export function planCampaign(input: {
       eventIds: reel.map((n) => n.eventId),
       picks: reelPicks,
       mode: modeOf(reel),
-      slides: [
-        { t: 'cover', composition: 'contents_cover', chip: `${city.name} · this week`, headline: hook, line: splitLine(reel), contents: reel.map((n) => coverLine(dayOf(n), n, sessionsOf(n))) },
-        ...reel.map(nightSlide),
-        { t: 'end', composition: 'close', headline: 'Which one are you going to?', line: `Tell us below, and send this to whoever's coming. The whole week in ${city.name}:`, url: `${site}${rDest.path}`, foot: null },
-      ],
+      slides: reelSlides,
       caption: join([hook, '', ...body, '', `The week: ${site}${rDest.path}`, '', tagsFor(city, null)]),
       versions: versionsOf(hook, body, `${origin}${rDest.path}`, 'The week is at the link in our bio.', 'The week:', '9:16', tagsFor(city, null)),
       partnerName: null,
@@ -885,7 +1213,9 @@ export function planCampaign(input: {
 
   /* Friday: the venue spotlight for attendees, the host with the most nights this week, to its city's page. */
   const hosts = new Map<string, CampaignNight[]>()
-  for (const { n } of inWeek) if (n.host) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
+  // Law 18 (Lawal's 14:07 of 15 November 2026, tier 4 never goes in a post): a host is counted by its nights a post may
+  // carry, so a library's toddler and baby sessions never make it the venue of the week (out-6, 18:28).
+  for (const { n } of inWeek) if (n.host && socialTierOf(n) !== 4) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
   const spot = [...hosts.entries()].sort((a, b) => b[1].length - a[1].length)[0]
   if (spot) {
     const [name, all] = spot
@@ -908,10 +1238,8 @@ export function planCampaign(input: {
       eventIds: nights.slice(0, 4).map((n) => n.eventId),
       picks: nights.slice(0, 4).map((n) => ({ eventId: n.eventId, reason: `Picked: one of ${all.length} nights at ${name} this week, the most of any host.` })),
       mode: modeOf(nights.slice(0, 4)),
-      slides: [
-        { ...(nightSlide(first) as Extract<Slide, { t: 'night' }>), composition: 'venue_spotlight' },
-        { t: 'programme', composition: 'venue_spotlight', heading: `This week at ${name}`, address: first.venueName ? `${first.venueName}, ${city.name}` : city.name, rows: nights.slice(0, 4).map((n) => ({ day: dayOf(n), title: n.title, meta: [whenOf(n).split(' · ')[1], n.priceLine].filter(Boolean).join(' · ') })) },
-      ],
+      // Family E in the 9.5 locked look (the PM's 17:10 of 15 November 2026): one slide, the venue's week.
+      slides: [venueSlideOf(name, nights.slice(0, 4), origin)],
       caption: join([hook, '', ...body, '', `Every night in ${city.name}: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
       versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, `Every night in ${city.name} is at the link in our bio.`, `Every night in ${city.name}:`, '4:5', tagsFor(city, null)),
       partnerName: null,
@@ -1034,7 +1362,9 @@ export function planCampaign(input: {
   const byId = new Map(nightsIn.map((n) => [n.eventId, n]))
   for (const p of pieces) {
     const nights = p.eventIds.map((id) => byId.get(id)).filter((n): n is CampaignNight => n !== undefined)
-    p.names = [...new Set([...nights.flatMap((n) => [n.title, n.host ?? '']), p.partnerName ?? ''].filter((s) => s.trim() !== ''))]
+    // A card quotes a night's name by rule (cardTitle, the PM's 17:40 fix 4): each of those is the organiser's own name too.
+    const cardNames = (n: CampaignNight) => [CARD_TITLE_MAX, ASK_TITLE_MAX, DRAW_TITLE_MAX, 40].map((max) => cardTitle(n.title, max))
+    p.names = [...new Set([...nights.flatMap((n) => [n.title, n.host ?? '', ...cardNames(n)]), p.partnerName ?? ''].filter((s) => s.trim() !== ''))]
   }
 
   return { pieces, imageRequests }
@@ -1071,6 +1401,17 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     const night = nights.get(s.eventId)
     if (!night) continue
     if (night.venueName && !s.meta.startsWith(night.venueName)) issues.push(`${s.title}: its place on the slide is not the night's venue, ${night.venueName}.`)
+  }
+  /* The locked look's cards: the place a card names is the night's venue (its venue row's own name, or the listing's). */
+  const squash = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, '')
+  for (const s of rev.slides) {
+    if (s.t !== 'days') continue
+    for (const r of s.rows) {
+      const night = nights.get(r.eventId)
+      if (!night?.venueName) continue
+      const [a, b] = [squash(night.venueName), squash(r.place)]
+      if (!a.includes(b) && !b.includes(a)) issues.push(`${r.title}: its place on the card is not the night's venue, ${night.venueName}.`)
+    }
   }
   return issues
 }

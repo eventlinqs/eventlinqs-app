@@ -17,6 +17,7 @@ import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/br
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
+import { standInOf } from './stand-ins'
 import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -464,27 +465,52 @@ export async function usableImages(db: Db, eventIds: readonly string[], now: Dat
 export async function brandImage(db: Db, now: Date): Promise<UsableImage | null> {
   const { data, error } = await db.rpc('social_brand_images', { p_at: now.toISOString() })
   if (error) throw new Error(`the brand photographs could not be read: ${error.message}`)
-  const first = ((data ?? []) as Record<string, unknown>[])[0]
+  // A stand-in of a kind of night (stand-ins.ts) is never the brand piece's photograph: it shows one kind, the piece every kind.
+  const first = ((data ?? []) as Record<string, unknown>[]).find((r) => !standInOf(r.asset_url as string))
   return first ? usableOf(first) : null
+}
+
+/** Every photograph licensed for EventLinqs' own promotion and tied to no night, usable now (the stand-ins among them). */
+export async function brandImages(db: Db, now: Date): Promise<UsableImage[]> {
+  const { data, error } = await db.rpc('social_brand_images', { p_at: now.toISOString() })
+  if (error) throw new Error(`the brand photographs could not be read: ${error.message}`)
+  return ((data ?? []) as Record<string, unknown>[]).map(usableOf)
+}
+
+/** The night whose OWN photograph a slide draws: a night, a story, a poster, a feature, or a cover showing one whole. */
+function ownPhotoNightOf(sl: Slide): string | null {
+  if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster' || sl.t === 'feature') && sl.photo) return sl.eventId
+  if (sl.t === 'week_cover' && sl.photo && sl.photoEventId) return sl.photoEventId
+  return null
 }
 
 /**
  * Each slide's photograph as it may be drawn NOW: the register's own row (with its focal point and size) where the
- * image is still usable for that slide's night, or for a brand slide for no night; null where it has gone, so the slide
- * is drawn in type rather than with an image whose permission was withdrawn after it was planned.
+ * image is still usable for that slide's night, or for a brand slide, a day slide's or a cover's stand-in (stand-ins.ts)
+ * for no night; null where it has gone, so the slide is drawn in type rather than with an image whose permission was
+ * withdrawn after it was planned.
  */
 export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date): Promise<Map<number, UsableImage | null>> {
   const out = new Map<number, UsableImage | null>()
-  /* A night's photograph on a night, a story or a daily poster (family F): the register's row for that night now. */
-  const nights = slides.flatMap((sl) => ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo ? [sl.eventId] : []))
+  /* A night's own photograph on its slide: the register's row for that night now. */
+  const nights = slides.flatMap((sl) => {
+    const id = ownPhotoNightOf(sl)
+    return id ? [id] : []
+  })
   const byNight = await usableImages(db, nights, now)
-  const brand = slides.some((sl) => sl.t === 'brand' && sl.photo) ? await brandImage(db, now) : null
+  const noNight = (sl: Slide) => sl.photo !== null && 'photo' in sl && (sl.t === 'brand' || sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId))
+  const brands = slides.some((sl) => 'photo' in sl && noNight(sl)) ? await brandImages(db, now) : []
   slides.forEach((sl, i) => {
-    if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster') && sl.photo) {
-      const u = byNight.get(sl.eventId)
+    const id = ownPhotoNightOf(sl)
+    if (id && 'photo' in sl) {
+      const u = byNight.get(id)
       out.set(i, u && u.url === sl.photo ? u : null)
     } else if (sl.t === 'brand' && sl.photo) {
-      out.set(i, brand && brand.url === sl.photo ? brand : null)
+      // A brand piece takes the newest that is not a stand-in, as brandImage planned it.
+      const newest = brands.find((x) => !standInOf(x.url))
+      out.set(i, newest && newest.url === sl.photo ? newest : null)
+    } else if ((sl.t === 'days' || sl.t === 'venue' || sl.t === 'week_cover') && sl.photo) {
+      out.set(i, brands.find((b) => b.url === sl.photo) ?? null)
     }
   })
   return out
@@ -597,6 +623,34 @@ export async function pieceDependencies(
   for (const id of ids) {
     const e = byId.get(id)
     const found = rev.slides.find((s) => 'eventId' in s && s.eventId === id)
+    /* The 9.5 locked look: a night on a day slide's card, or on its own feature slide, read again from the night. */
+    const row = rev.slides.flatMap((s) => (s.t === 'days' || s.t === 'venue' ? s.rows : [])).find((r) => r.eventId === id)
+    if (found?.t === 'feature' || (!found && row)) {
+      const name = e ? String(e.title) : (row?.title ?? id)
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      const lockedGone = soldOutIssue(name, e)
+      if (lockedGone) issues.push(lockedGone)
+      const planned = found?.t === 'feature' ? found.startDate : String(row?.startDate)
+      if (Date.parse(String(e.start_date)) !== Date.parse(planned)) {
+        issues.push(`${name}: its date or time is now ${whenOf({ startDate: String(e.start_date), timezone: (e.timezone as string | null) ?? null } as CampaignNight)}.`)
+      }
+      const { cta } = await admissionOf(e, now)
+      if (row && row.free !== (cta.state === 'free_open' || cta.state === 'free_registration')) issues.push(`${name}: its card says ${row.free ? 'free' : 'not free'}, and the night no longer does.`)
+      if (cta.state === 'paid_external') {
+        const outside = await answers(fetcher, String(e.external_ticket_url))
+        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+      }
+      if (found?.t === 'feature' && found.photo) {
+        const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+        if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      }
+      continue
+    }
     /* Family F: a daily poster prints the night's facts from its own record, so each is read again from the night. */
     if (found?.t === 'poster') {
       const facts = found.night
@@ -670,6 +724,18 @@ export async function pieceDependencies(
     if (sl.t !== 'brand' || !sl.photo) continue
     const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: null, p_at: now.toISOString() })
     if (ok !== true) issues.push("The brand photograph has no approved, current licence for EventLinqs' own promotion.")
+  }
+  /* A stand-in on a day slide or a cover (stand-ins.ts): the same licence for no night, still usable now. */
+  for (const sl of rev.slides) {
+    if (!((sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId)) && sl.photo)) continue
+    const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: null, p_at: now.toISOString() })
+    if (ok !== true) issues.push(`A photograph of the kind of night (${sl.photo.split('/').pop()}) has no approved, current licence for EventLinqs' own promotion.`)
+  }
+  /* A cover showing a night's own photograph whole: that night's licence, still usable now. */
+  for (const sl of rev.slides) {
+    if (sl.t !== 'week_cover' || !sl.photo || !sl.photoEventId) continue
+    const { data: ok } = await db.rpc('social_asset_usable', { p_url: sl.photo, p_event: sl.photoEventId, p_at: now.toISOString() })
+    if (ok !== true) issues.push("The cover's photograph has no approved, unexpired licence for its night.")
   }
 
   /* The directive's section 7: every slide, at every format it is made for, fits, reads and holds its contrast. */

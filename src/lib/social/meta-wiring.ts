@@ -26,7 +26,7 @@ function slideUrlsFor(db: Db, now: Date, route: string) {
       const stamp = now.getTime()
       const urls: string[] = []
       for (let i = 0; i < slides.length; i += 1) {
-        const bytes = await renderCampaignSlide(format, slides[i], i + 1, slides.length, null, images.get(i) ?? null)
+        const bytes = await renderCampaignSlide(format, slides[i], i + 1, slides.length, null, images.get(i) ?? null, slides[i + 1] ?? null)
         const path = `social/${pieceId}/${stamp}-${String(i + 1).padStart(2, '0')}-${format}.jpg`
         const bucket = db.storage.from('event-images')
         const up = await bucket.upload(path, bytes, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' })

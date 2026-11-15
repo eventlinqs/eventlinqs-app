@@ -85,8 +85,11 @@ describe('the Coming Up edition, the consideration stage', () => {
   it('prints each night\'s date, as a weekday alone would mislead this far out', () => {
     expect(coming[0].caption).toMatch(/Wed 4 Nov/)
     expect(coming[0].caption.match(/Wed 4 Nov/g)).toHaveLength(1) // once: a fact is never said twice
-    const cover = coming[0].slides[0] as { contents: string[] }
-    expect(cover.contents[0]).toContain('4 Nov')
+    // The locked look: the cover's range and each day slide name the date (the PM's 17:10 of 15 November 2026).
+    const cover = coming[0].slides[0] as { t: string; range: string }
+    expect(cover.t).toBe('week_cover')
+    expect(cover.range).toMatch(/^4 /)
+    expect(coming[0].slides.some((s) => s.t === 'days' && /^4 ((&|to) \d+ )?Nov/.test(s.date))).toBe(true)
   })
 
   it('is a whole piece to the city page', () => {

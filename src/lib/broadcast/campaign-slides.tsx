@@ -17,7 +17,10 @@ import {
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
+import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, venueElement, weekCoverElement, wholePhoto, type El, type Foot } from '@/lib/broadcast/day-cards'
+import { lockedSlideFaults, wordTop } from '@/lib/broadcast/day-card-guard'
 import type { Composition, Slide } from '@/lib/social/campaign'
+import { standInOf } from '@/lib/social/stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN'S SLIDES (the release checklist of 28 October 2026, J7, S3; Lawal's final creative approval of
@@ -76,7 +79,7 @@ function wordsOf(slide: Extract<Slide, { t: 'night' | 'story' }>, photo: string 
  * The slide's measured layout at a format. `image` is the register's row NOW: a slide whose image has gone since it
  * was planned is laid out in type. `count` ("2/7") is shown on a carousel's cover, programme and close.
  */
-export function layoutOfSlide(f: Format, slide: Slide, image: SlideImage | null, m: Measurers, count: string | null = null): Layout {
+export function layoutOfSlide(f: Format, slide: UnlockedSlide, image: SlideImage | null, m: Measurers, count: string | null = null): Layout {
   const tf = TREATMENT_FORMAT[f]
   const photo = image && 'photo' in slide && slide.photo === image.url ? image.url : null
   let layout: Layout
@@ -138,7 +141,16 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
   const m = await treatmentMeasurers()
   const faults: string[] = []
   for (const f of formatsOf(pieceFormat)) {
+    for (const [i, slide] of slides.entries()) {
+      if (!isLocked(slide)) continue
+      const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
+      const image = images.get(i) ?? null
+      if (slide.t === 'feature' && slide.photo && !image) faults.push(`${where}: its own photograph is no longer usable for this night, so the slide is drawn without it.`)
+      const el = await lockedElement(f, slide, image, i + 1, slides.length, slides[i + 1] ?? null)
+      for (const fault of await lockedSlideFaults(el, f)) faults.push(`${where}: ${fault}.`)
+    }
     slides.forEach((slide, i) => {
+      if (isLocked(slide)) return
       const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
       let layout: Layout
       try {
@@ -159,12 +171,92 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
   return faults
 }
 
-/** One slide of a piece as its element: its measured layout, drawn. */
-export async function buildCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null): Promise<React.ReactElement> {
+/** One slide of a piece as its element: its measured layout, drawn; a locked slide in the 9.5 look. */
+export async function buildCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<React.ReactElement> {
+  if (isLocked(slide)) return (await lockedElement(f, slide, image, n, total, next)) as unknown as React.ReactElement
   return drawLayout(layoutOfSlide(f, slide, image, await treatmentMeasurers(), label ?? (total > 1 ? `${n}/${total}` : null)))
 }
 
-/** The slide as the JPEG Instagram and Facebook take, at the format's published size. */
-export async function renderCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null): Promise<Uint8Array> {
-  return rasteriseCard(f, await buildCampaignSlide(f, slide, n, total, label, image))
+/** The slide as the JPEG Instagram and Facebook take, at the format's published size. `next` names a story's next slide. */
+export async function renderCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<Uint8Array> {
+  return rasteriseCard(f, await buildCampaignSlide(f, slide, n, total, label, image, next))
+}
+
+/* ------------------------------------------------------------------ the 9.5 locked look (the PM's 17:10 of 15 November 2026) */
+
+type LockedSlide = Extract<Slide, { t: 'week_cover' | 'days' | 'feature' | 'ask' | 'venue' }>
+type UnlockedSlide = Exclude<Slide, LockedSlide>
+
+export function isLocked(slide: Slide): slide is LockedSlide {
+  return slide.t === 'week_cover' || slide.t === 'days' || slide.t === 'feature' || slide.t === 'ask' || slide.t === 'venue'
+}
+
+/** A one pixel stand-in for the photograph while a slide is laid out to find where its words begin. */
+const BLANK = (f: Format, h: number) => ({ uri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', width: sizeOf(f).w, height: h })
+
+/**
+ * The band's height for a slide (the PM's 17:40 fix 2, "close the dead band between the fade and the heading"): the slide
+ * is laid out once, the top of its first words (`marker`, drawn at `minSize` of a 1080 frame or more) read from satori's
+ * own layout, and the band ends just above them; never under its first planned height, never over three quarters.
+ */
+async function fittedBand(f: Format, slide: 'days' | 'cover' | 'venue', build: (h: number) => El, marker: string, minSize: number): Promise<number> {
+  const planned = bandHeight(f, slide)
+  const top = marker ? await wordTop(build(planned), f, marker, minSize * scaleOf(f)) : null
+  if (top === null) return planned
+  return Math.round(Math.min(sizeOf(f).h * 0.75, Math.max(planned, top - 12 * scaleOf(f))))
+}
+
+/** What a story's foot names: the slide a tap opens (a story is tapped, never swiped: the PM's 09:40 fix 2). */
+export function tapWords(next: Slide | null): string | null {
+  if (!next) return null
+  if (next.t === 'days') return `Tap for ${next.day}`
+  if (next.t === 'feature') {
+    const name = next.title
+    return name.length <= 24 ? `Tap for ${name}` : 'Tap for the next night'
+  }
+  if (next.t === 'ask') return 'Tap for where to start'
+  return 'Tap for the next'
+}
+
+/** A locked slide's element, its photograph fetched and sized for the format: a stand-in across the top, a night's own whole. */
+async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | null, n: number, total: number, next: Slide | null): Promise<El> {
+  const foot: Foot = f === 'story' ? (tapWords(next) ? { kind: 'tap', words: String(tapWords(next)) } : null) : total > 1 ? { kind: 'count', n, of: total } : null
+  const url = image && 'photo' in slide && slide.photo === image.url ? image.url : null
+  switch (slide.t) {
+    case 'week_cover': {
+      const standIn = Boolean(standInOf(url))
+      const words = { range: slide.range, lines: slide.lines, draws: slide.draws, line: slide.line ?? '', credit: url ? slide.credit : null, lead: slide.lead }
+      if (url && standIn) {
+        // The band ends where the words begin: above the credit, or the range where there is none. Satori draws a word's
+        // trailing colon as a word of its own ('Photo' then ':'), so the marker is the word without it.
+        const marker = (words.credit ? (words.credit.split(' ')[0] ?? 'Photo') : (slide.range.split(' ')[0] ?? '').toUpperCase()).replace(/[^\p{L}\p{N}]+$/u, '')
+        const bh = await fittedBand(f, 'cover', (h) => weekCoverElement(f, words, BLANK(f, h), 'band', foot, h), marker, 20)
+        const photo = await bandPhoto(url, f, bh)
+        return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'band', foot, bh)
+      }
+      const photo = url ? await wholePhoto(url, f, 'cover') : null
+      return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'whole', foot)
+    }
+    case 'days': {
+      const words = { day: slide.day, date: slide.date, rows: slide.rows, credit: url ? slide.credit : null }
+      if (!url) return daysElement(f, words, null, foot)
+      const bh = await fittedBand(f, 'days', (h) => daysElement(f, words, BLANK(f, h), foot, h), slide.day.split(' ')[0] ?? '', 60)
+      const photo = await bandPhoto(url, f, bh)
+      return daysElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
+    }
+    case 'feature': {
+      const photo = url ? await wholePhoto(url, f, 'feature') : null
+      return featureElement(f, { eyebrow: slide.eyebrow, title: slide.title, accent: slide.accent, chip: slide.chip, credit: photo ? slide.credit : null }, photo, foot)
+    }
+    case 'ask':
+      return askElement(f, { count: slide.count, three: slide.three }, foot)
+    case 'venue': {
+      const words = { venue: slide.venue, eyebrow: slide.eyebrow, accent: slide.accent, rows: slide.rows, credit: url ? slide.credit : null }
+      if (!url) return venueElement(f, words, null, foot)
+      // The band ends at the eyebrow (36 of a 1080 frame), never at the smaller VENUE pill above it.
+      const bh = await fittedBand(f, 'venue', (h) => venueElement(f, words, BLANK(f, h), foot, h), 'VENUE', 33)
+      const photo = await bandPhoto(url, f, bh)
+      return venueElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
+    }
+  }
 }
