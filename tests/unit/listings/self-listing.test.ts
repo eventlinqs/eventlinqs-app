@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { readBookingFacts } from '../../../src/lib/listings/booking-facts'
 import { judgeSelfListing, sessionOf, wordsStateDate, type PageReading, type SelfListingSubmission } from '../../../src/lib/listings/self-listing'
 import { publicHost } from '../../../src/lib/listings/booking-page'
-import { cleanTitle, summaryFrom } from '../../../src/lib/listings/self-listing-run'
+import { approvedOver, cleanTitle, summaryFrom } from '../../../src/lib/listings/self-listing-run'
 import { judgeSubmission, type SubmissionContext, type SubmissionInput } from '../../../src/lib/listings/submission'
 
 /**
@@ -399,5 +399,25 @@ fireworks over the Yarra, a DJ and a three course menu. Tickets on sale now.</p>
   test('what still holds: a page that does not name the night, and a night already started', () => {
     expect(judgeSelfListing({ ...H2O, title: 'Harbour Lights Gala' }, read(H2O_PAGE), [], NOW)).toEqual({ verdict: 'hold', reason: 'Its booking page does not name this event.' })
     expect(judgeSelfListing(H2O, read(H2O_PAGE), [], new Date('2027-01-01T00:00:00Z'))).toEqual({ verdict: 'hold', reason: 'The event has already started.' })
+  })
+})
+
+describe('a person who presses Publish now on /admin/submissions publishes it (15 November 2026, H2o)', () => {
+  const sub = { starts_at: '2026-12-31T09:00:00.000Z', ends_at: '2027-01-01T15:30:00.000Z', venue_name: 'Metropolis Events', venue_address: 'Southbank VIC 3006', entry: 'paid' as const, price_from_cents: 15000 }
+  test('a hold the checks reached is overruled by the review, on the organiser facts', () => {
+    const v = approvedOver({ verdict: 'hold', reason: 'Its booking page does not name this event.' }, sub, 'New Years Eve on the Yarra', 'reviewer-1')
+    expect(v.verdict).toBe('publish')
+    if (v.verdict !== 'publish') return
+    expect(v.matchedBy).toBe('organiser_word')
+    expect(v.facts).toMatchObject({ title: 'New Years Eve on the Yarra', startsAt: sub.starts_at, endsAt: sub.ends_at, venueName: 'Metropolis Events', entry: 'paid', priceFromCents: 15000 })
+  })
+  test('a night already started or already listed still holds, review or not', () => {
+    for (const reason of ['The event has already started.', 'The same event is already listed on that date.']) {
+      expect(approvedOver({ verdict: 'hold', reason }, sub, 'x', 'reviewer-1')).toEqual({ verdict: 'hold', reason })
+    }
+  })
+  test('with no reviewer the checks decide alone', () => {
+    const held = { verdict: 'hold' as const, reason: 'Its booking page could not be read (the page answered 404).' }
+    expect(approvedOver(held, sub, 'x', undefined)).toBe(held)
   })
 })

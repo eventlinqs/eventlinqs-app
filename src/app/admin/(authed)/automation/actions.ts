@@ -26,8 +26,8 @@ export async function setSenderModeAction(formData: FormData): Promise<void> {
   const mode = parsed.data.mode
   const { error } = await createAdminClient().from('outreach_sender').update({ mode, changed_by: session.userId }).eq('id', true)
   await recordAuditEvent({ action: 'admin.automation.sender_mode', targetType: 'outreach_sender', targetId: 'sender', metadata: { mode, refused: error?.message ?? null }, session })
-  if (error) redirect(`/admin/automation?said=${encodeURIComponent(`The sender was not changed: ${error.message}`)}`)
-  redirect(`/admin/automation?said=${encodeURIComponent(mode === 'live' ? 'The sender is live.' : 'The sender is on hold: nothing leaves.')}`)
+  if (error) redirect(`/admin/automation?tone=refused&said=${encodeURIComponent(`The sender was not changed: ${error.message}`)}`)
+  redirect(`/admin/automation?tone=ok&said=${encodeURIComponent(mode === 'live' ? 'The sender is live: approved letters leave by themselves.' : 'The sender is on hold: nothing leaves.')}`)
 }
 
 export async function setSocialAutoPublishAction(formData: FormData): Promise<void> {
@@ -38,6 +38,6 @@ export async function setSocialAutoPublishAction(formData: FormData): Promise<vo
   const enabled = parsed.data.on === 'true'
   const { error } = await createAdminClient().from('feature_flags').update({ enabled, updated_by: session.userId, updated_at: new Date().toISOString() }).eq('flag', 'social_auto_publish')
   await recordAuditEvent({ action: 'admin.automation.social_auto_publish', targetType: 'feature_flags', targetId: 'social_auto_publish', metadata: { enabled, refused: error?.message ?? null }, session })
-  if (error) redirect(`/admin/automation?said=${encodeURIComponent(`Social publishing was not changed: ${error.message}`)}`)
-  redirect(`/admin/automation?said=${encodeURIComponent(enabled ? 'Social posts publish by themselves.' : 'Social publishing is stopped: nothing posts.')}`)
+  if (error) redirect(`/admin/automation?tone=refused&said=${encodeURIComponent(`Social publishing was not changed: ${error.message}`)}`)
+  redirect(`/admin/automation?tone=ok&said=${encodeURIComponent(enabled ? 'Social posts publish by themselves.' : 'Social publishing is stopped: nothing posts.')}`)
 }

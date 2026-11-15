@@ -200,7 +200,25 @@ function logOutcome(subject: string, text: string): void {
   console.log(`[self-listing] ${subject}: ${text.replace(/\n+/g, ' | ')}`)
 }
 
-export async function selfListSubmission(id: string, now: Date = new Date()): Promise<SelfListingOutcome> {
+/**
+ * A PERSON'S APPROVE PUBLISHES (15 November 2026, H2o: Lawal pressed Approve at 20:36 on a held submission and nothing went
+ * live, because Approve only marked it for an import, and the build guard organiser-photo-before-publish then refused
+ * every production deploy). With approvedBy, a hold the checks reached is overruled by the person's own review, and the
+ * night is published on the organiser's facts, with its photo, exactly as a self-listed night is; a night already started
+ * or already listed still holds, and the name and city rules below still apply.
+ */
+export function approvedOver(verdict: SelfListingVerdict, sub: Pick<SubmissionRecord, 'starts_at' | 'ends_at' | 'venue_name' | 'venue_address' | 'entry' | 'price_from_cents'>, title: string, approvedBy: string | undefined): SelfListingVerdict {
+  if (verdict.verdict === 'publish' || !approvedBy) return verdict
+  if (/already started|already listed/i.test(verdict.reason)) return verdict
+  return {
+    verdict: 'publish',
+    facts: { title, startsAt: sub.starts_at, endsAt: sub.ends_at, venueName: sub.venue_name, venueAddress: sub.venue_address, entry: sub.entry, priceFromCents: sub.price_from_cents, host: null },
+    corrections: [],
+    matchedBy: 'organiser_word',
+  }
+}
+
+export async function selfListSubmission(id: string, now: Date = new Date(), opts: { readonly approvedBy?: string } = {}): Promise<SelfListingOutcome> {
   const admin = createAdminClient()
   // Claimed once: the row is taken only while it still waits, unchecked or claimed by a run that ended without deciding
   // more than ten minutes ago (so a run that died never strands it).
@@ -230,6 +248,7 @@ export async function selfListSubmission(id: string, now: Date = new Date()): Pr
     (listed ?? []).map((l) => ({ title: l.title as string, startsAt: l.start_date as string })),
     now,
   )
+  verdict = approvedOver(verdict, sub, title, opts.approvedBy)
   if (verdict.verdict === 'publish' && title.length > 80) verdict = { verdict: 'hold', reason: 'Its name is longer than the 80 characters a listing takes.' }
   if (verdict.verdict === 'publish' && !city) verdict = { verdict: 'hold', reason: 'Its city is not one EventLinqs knows.' }
   const checkResult = { read: reading.ok ? 'read' : reading.reason, verdict: verdict.verdict, matched_by: verdict.verdict === 'publish' ? verdict.matchedBy : null }

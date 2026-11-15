@@ -16,6 +16,8 @@ import { SentRecentlySection, TwentySection } from './twenty-section'
 import { readThreePosts } from '@/lib/social/three-posts'
 import { PostsSection } from './posts-section'
 import { approvePieceAction, approveWeekAction } from '../social/actions'
+import { PageHeader, PRIMARY, StatCard } from '@/components/admin/ui/admin-kit'
+import { AdminToast } from '@/components/admin/ui/admin-toast'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,9 +42,9 @@ export const metadata = {
 const APPROVE =
   'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#131A2A]'
 
-export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
+export default async function AdminTodayPage({ searchParams }: { searchParams: Promise<{ said?: string; tone?: string }> }) {
   // What a press of Sent in the twenty answered (the same words /admin/acquisition shows).
-  const { said } = await searchParams
+  const { said, tone } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.dashboard.view')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.today.view', session })
@@ -85,19 +87,38 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   const cadence = rhythm(dashboard)
   const count = new Intl.NumberFormat('en-AU')
 
+  // The one primary action (Lawal's 20:52, item 2): the oldest thing that waits for him, else the automation screen.
+  const firstHref = queue.sections.flatMap((s) => s.items).find((i) => i.href)?.href ?? null
   return (
     <div>
-      <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Today</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">What needs you</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
-          {queue.allClear
+      {/* A press that names its tone shows as a toast; the older inline line below stays for the twenty's Sent press. */}
+      <AdminToast said={tone ? (said ?? null) : null} tone={tone === 'refused' ? 'refused' : 'ok'} />
+      <PageHeader
+        eyebrow="Today"
+        title="What needs you"
+        description={
+          queue.allClear
             ? `Nothing needs you. Every source was read at ${formatPlatformDateTime(now.toISOString())}.`
             : queue.waiting > 0
               ? `${queue.waiting} ${queue.waiting === 1 ? 'thing waits' : 'things wait'} for you, oldest first. Read at ${formatPlatformDateTime(now.toISOString())}.`
-              : `Nothing waits in what was read at ${formatPlatformDateTime(now.toISOString())}, but not every source could be read; each is named below.`}
-        </p>
-      </header>
+              : `Nothing waits in what was read at ${formatPlatformDateTime(now.toISOString())}, but not every source could be read; each is named below.`
+        }
+        action={
+          queue.waiting > 0 && firstHref ? (
+            <Link href={firstHref} className={PRIMARY}>Start with the oldest</Link>
+          ) : (
+            <Link href="/admin/automation" className={PRIMARY}>Open automation</Link>
+          )
+        }
+      />
+
+      {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
+      <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Waiting for you" value={count.format(queue.waiting)} sub={queue.allClear ? 'All clear' : 'Oldest first, below'} />
+        <StatCard label="Overdue tasks" value={centre.state === 'read' ? count.format(centre.overdue) : 'Not read'} sub="Command Centre" />
+        <StatCard label="Waiting for approval" value={centre.state === 'read' ? count.format(centre.waitingApproval) : 'Not read'} sub="Plays, letters and posts" />
+        <StatCard label="Failed jobs" value={centre.state === 'read' ? count.format(centre.failed) : 'Not read'} sub={centre.state === 'read' && centre.failed > 0 ? 'Each named below until fixed' : 'None open'} />
+      </section>
 
       {/* THE COMMAND CENTRE (the Growth OS directive, section 5): the kept tasks, overdue first, each with its status, owner,
           due date and link; failed jobs stay here until fixed. Approving in one press arrives with Release 2, where an

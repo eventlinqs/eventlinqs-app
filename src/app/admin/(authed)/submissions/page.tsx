@@ -7,6 +7,7 @@ import { waitingSubmissions, type Submission } from '@/lib/listings/submission-s
 import { SUBMISSION_CITY_WORDS, SUBMISSION_ENTRY_WORDS, SUBMISSION_ROLE_WORDS } from '@/lib/listings/submission'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { acceptSubmissionAction, refuseSubmissionAction } from './actions'
+import { AdminToast } from '@/components/admin/ui/admin-toast'
 import { SUBMISSION_REFUSALS } from './reasons'
 
 export const dynamic = 'force-dynamic'
@@ -41,12 +42,12 @@ const CONTROL = 'inline-flex min-h-[44px] items-center'
  * booking page and the permission line in the words they agreed to. Nothing here is live until it is accepted and
  * goes out with the import.
  */
-export default async function AdminSubmissionsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function AdminSubmissionsPage({ searchParams }: { searchParams: Promise<{ status?: string; said?: string; tone?: string }> }) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.events.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.submissions.view', session })
 
-  const { status } = await searchParams
+  const { status, said, tone } = await searchParams
   let waiting: Submission[] = []
   let unreadable = false
   try {
@@ -58,11 +59,12 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
 
   return (
     <div>
+      <AdminToast said={tone ? (said ?? null) : null} tone={tone === 'ok' ? 'ok' : 'refused'} />
       <header className="mb-8">
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Listings</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Submitted events</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Events organisers sent from List your event, each with their permission and any photo they say they own. Nothing here is live until you accept it.
+          Events organisers sent from List your event, each with their permission and any photo they say they own. Most go live by themselves; these wait for you. Publish now puts one live at once with its photo, and its organiser is told.
         </p>
       </header>
 
@@ -138,7 +140,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                       type="submit"
                       className={`${CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300/60`}
                     >
-                      Accept
+                      Publish now
                     </button>
                   </form>
                   <form action={refuseSubmissionAction} className="flex flex-col gap-2">

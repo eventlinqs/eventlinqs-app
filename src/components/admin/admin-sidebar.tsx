@@ -1,39 +1,30 @@
 import Link from 'next/link'
-import { ADMIN_NAV } from './admin-nav'
+import { filterNavGroups } from './admin-nav'
+import { AdminNavGroups } from './admin-nav-groups'
 
 /**
  * Persistent admin sidebar (desktop). Sections shown only if the active role
  * carries the matching capability. Every item resolves to a live route. The
- * mobile drawer renders the same list (admin-nav.ts) so the two never drift.
+ * mobile drawer renders the same groups (admin-nav.ts) so the two never drift.
+ * Grouped by workflow (Lawal, 15 November 2026, 20:52, item 2).
  */
 export function AdminSidebar({ capabilities }: { capabilities: readonly string[] }) {
-  const items = ADMIN_NAV.filter(i => capabilities.includes(i.capability))
+  const groups = filterNavGroups(capabilities)
 
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-white/[0.08] bg-[#0A0F1A] lg:block">
+    <aside className="hidden w-64 shrink-0 border-r border-white/[0.08] bg-[#0A0F1A] lg:block">
       <div className="px-6 py-7">
-        <Link href="/admin" className="block">
+        <Link href="/admin/today" className="block">
           <span className="block font-display text-lg font-extrabold tracking-tight">
-            EVENTLINQS
+            EVENTLINQS<span className="text-[var(--brand-accent)]">.</span>
           </span>
           <span className="block text-[11px] uppercase tracking-[0.2em] text-white/50">
             Admin console
           </span>
         </Link>
       </div>
-      <nav className="px-3" aria-label="Admin sections">
-        <ul className="flex flex-col gap-1">
-          {items.map(i => (
-            <li key={i.href}>
-              <Link
-                href={i.href}
-                className="block rounded-md px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-              >
-                {i.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <nav className="px-3 pb-10" aria-label="Admin sections">
+        <AdminNavGroups groups={groups} />
       </nav>
     </aside>
   )

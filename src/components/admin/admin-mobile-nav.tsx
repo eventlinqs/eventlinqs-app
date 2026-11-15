@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { AdminNavLink } from './admin-nav'
+import type { AdminNavGroupLinks, AdminNavLink } from './admin-nav'
+import { AdminNavGroups } from './admin-nav-groups'
 
 /**
  * Mobile admin navigation. The desktop sidebar is hidden below lg, so without
@@ -14,7 +15,7 @@ import type { AdminNavLink } from './admin-nav'
  * links), Escape and the backdrop close it, body scroll is locked while open,
  * the route changing closes it, and every target is at least 44px.
  */
-export function AdminMobileNav({ items }: { items: AdminNavLink[] }) {
+export function AdminMobileNav({ items, groups }: { items: AdminNavLink[]; groups?: AdminNavGroupLinks[] }) {
   const [open, setOpen] = useState(false)
 
   // Escape closes; lock body scroll while open. Following a nav link closes the
@@ -79,6 +80,8 @@ export function AdminMobileNav({ items }: { items: AdminNavLink[] }) {
               </button>
             </div>
             <nav className="px-3 pb-8" aria-label="Admin sections">
+              {/* The same workflow groups as the desktop sidebar (Lawal, 15 November 2026, 20:52, item 2). */}
+              {groups ? <AdminNavGroups groups={groups} onFollow={() => setOpen(false)} /> : (
               <ul className="flex flex-col gap-1">
                 {items.map(i => (
                   <li key={i.href}>
@@ -92,6 +95,7 @@ export function AdminMobileNav({ items }: { items: AdminNavLink[] }) {
                   </li>
                 ))}
               </ul>
+              )}
             </nav>
           </div>
         </>
