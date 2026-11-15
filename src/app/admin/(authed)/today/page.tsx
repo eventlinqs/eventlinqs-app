@@ -4,6 +4,10 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readTodayQueue } from '@/lib/admin/today'
+import { readAutomation } from '@/lib/admin/automation'
+import { needsYou } from '@/lib/admin/automation-math'
+import { countOf } from '@/lib/text/plural'
+import { dayDate } from '@/lib/dates/admin-dates'
 import { readFounderDashboard } from '@/lib/admin/founder-dashboard'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { byException, rhythm, type DashboardFigure } from '@/lib/admin/founder-dashboard-math'
@@ -51,7 +55,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
 
   const now = new Date()
   // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
-  const [queue, dashboard, growth, centre] = await Promise.all([
+  const [queue, dashboard, growth, centre, automation] = await Promise.all([
     readTodayQueue(now),
     readFounderDashboard(now),
     readGrowthWeek(now).then(
@@ -60,6 +64,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
     ),
     // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
     readCommandCentre(createAdminClient(), now),
+    // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
+    readAutomation(now).then(
+      (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
+      (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+    ),
   ])
   // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
   const gates = await readPlanGates(now).then(
@@ -114,9 +123,18 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
 
       {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
       <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Waiting for you" value={count.format(queue.waiting)} sub={queue.allClear ? 'All clear' : 'Oldest first, below'} />
+        {/* What the number is made of, said on the card (the PM's 02:45 fix 1): each list below with its count. */}
+        <StatCard
+          label="Waiting for you"
+          value={count.format(queue.waiting)}
+          sub={queue.allClear ? 'All clear' : queue.sections.filter((x) => x.items.length > 0).map((x) => `${count.format(x.items.length)} ${x.title.toLowerCase()}`).join(', ')}
+        />
         <StatCard label="Overdue tasks" value={centre.state === 'read' ? count.format(centre.overdue) : 'Not read'} sub="Command Centre" />
-        <StatCard label="Waiting for approval" value={centre.state === 'read' ? count.format(centre.waitingApproval) : 'Not read'} sub="Plays, letters and posts" />
+        <StatCard
+          label="Waiting for approval"
+          value={automation.ok ? count.format(automation.needs.approvals) : 'Not read'}
+          sub={automation.ok ? (automation.needs.parts.map((x) => countOf(x.n, x.noun)).join(', ') || 'Nothing waits') : 'Automation could not be read just now'}
+        />
         <StatCard label="Failed jobs" value={centre.state === 'read' ? count.format(centre.failed) : 'Not read'} sub={centre.state === 'read' && centre.failed > 0 ? 'Each named below until fixed' : 'None open'} />
       </section>
 
@@ -135,10 +153,10 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
                 <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
                   <p className="text-sm font-semibold text-white">{s.gate.label}</p>
                   <p className="mt-1 font-display text-xl font-bold text-white">
-                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${s.gate.due}` : ' a day'}</span>
+                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${dayDate(s.gate.due)}` : ' a day'}</span>
                   </p>
                   <p className={`mt-1 text-xs ${s.met ? 'text-emerald-300' : s.late ? 'text-amber-200' : 'text-white/60'}`}>
-                    {s.met ? 'Met' : s.late ? `Past its day by ${-(s.daysLeft ?? 0)} days` : s.perWeek !== null ? `${s.perWeek} more a week, ${s.daysLeft} days left` : `${s.gate.target - s.value} more today`}
+                    {s.met ? 'Met' : s.late ? `Past its day by ${countOf(-(s.daysLeft ?? 0), 'day')}` : s.perWeek !== null ? `${s.perWeek} more a week, ${countOf(s.daysLeft ?? 0, 'day')} left` : `${s.gate.target - s.value} more today`}
                   </p>
                 </li>
               ))}
@@ -155,7 +173,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <>
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div><dt className="text-white/50">Overdue</dt><dd className="font-display text-xl font-bold text-white">{centre.overdue}</dd></div>
-              <div><dt className="text-white/50">Waiting for approval</dt><dd className="font-display text-xl font-bold text-white">{centre.waitingApproval}</dd></div>
+              <div><dt className="text-white/50">Tasks waiting for approval</dt><dd className="font-display text-xl font-bold text-white">{centre.waitingApproval}</dd></div>
               <div><dt className="text-white/50">Failed</dt><dd className="font-display text-xl font-bold text-white">{centre.failed}</dd></div>
               <div><dt className="text-white/50">Done in the last day</dt><dd className="font-display text-xl font-bold text-white">{centre.doneLastDay}</dd></div>
             </dl>

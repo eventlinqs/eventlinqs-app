@@ -4,7 +4,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { queryAuditLog, recordAuditEvent } from '@/lib/admin/audit'
 import { readAutomation, type AutomationCard } from '@/lib/admin/automation'
-import { TARGETS } from '@/lib/admin/automation-math'
+import { needsYou, TARGETS } from '@/lib/admin/automation-math'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { AuditLine, PageHeader, Panel, PRIMARY, SECONDARY, StatCard, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
 import { PendingButton } from '@/components/admin/ui/pending-button'
@@ -135,7 +135,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
       </section>
 
       <div id="needs-you" data-section="needs-you" className="mb-8 scroll-mt-6">
-        <Panel title="Needs you today" count={needs.length}>
+        <Panel title="Needs you today" count={needsYou(cards).tasks}>
           {needs.length === 0 ? (
             <p className="flex items-center gap-3 text-sm text-white/75"><StatusChip tone="ok">All clear</StatusChip> Every task ran by itself.</p>
           ) : (

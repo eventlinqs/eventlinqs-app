@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cardState, nextRun, threeNumbers, type CardState, type ThreeNumbers } from './automation-math'
 import { SCHEDULES, type Schedule } from './automation-schedules'
+import { agrees, countOf } from '@/lib/text/plural'
 
 /**
  * THE AUTOMATION DASHBOARD'S READS (Lawal's 13:41 of 15 November 2026, relayed by the PM at 13:55; the map is
@@ -29,6 +30,10 @@ export type AutomationCard = {
   results: Figure[]
   switch: Switch
   waitsFor: string | null
+  /** How many things on this card wait for a person, read with its figures (0 when its read failed). */
+  waiting: number
+  /** Where what waits is an approval, the noun one of them is called ('post', 'letter'): Today sums these (needsYou). */
+  approvalNoun?: string
   state: CardState
   link: { href: string; label: string } | null
   readFailed: string | null
@@ -67,7 +72,7 @@ function withSchedules(list: Schedule[], now: Date) {
 }
 
 async function card(
-  base: Omit<AutomationCard, 'schedules' | 'lastRun' | 'queue' | 'results' | 'switch' | 'waitsFor' | 'state' | 'readFailed'> & { schedules: Schedule[] },
+  base: Omit<AutomationCard, 'schedules' | 'lastRun' | 'queue' | 'results' | 'switch' | 'waitsFor' | 'waiting' | 'state' | 'readFailed'> & { schedules: Schedule[] },
   now: Date,
   read: () => Promise<Pick<AutomationCard, 'lastRun' | 'queue' | 'results' | 'switch' | 'waitsFor'> & { waiting: number }>,
 ): Promise<AutomationCard> {
@@ -75,7 +80,7 @@ async function card(
   try {
     const r = await read()
     const switchedOn = r.switch.kind === 'flag' ? r.switch.on : r.switch.kind === 'sender' ? r.switch.mode === 'live' : null
-    return { ...base, schedules, lastRun: r.lastRun, queue: r.queue, results: r.results, switch: r.switch, waitsFor: r.waitsFor, state: cardState({ switchedOn, waitingOnPerson: r.waiting }), readFailed: null }
+    return { ...base, schedules, lastRun: r.lastRun, queue: r.queue, results: r.results, switch: r.switch, waitsFor: r.waitsFor, waiting: r.waiting, state: cardState({ switchedOn, waitingOnPerson: r.waiting }), readFailed: null }
   } catch (err) {
     return {
       ...base,
@@ -85,6 +90,7 @@ async function card(
       results: [],
       switch: { kind: 'none', note: 'not read' },
       waitsFor: null,
+      waiting: 0,
       state: 'waits',
       readFailed: err instanceof Error ? err.message : String(err),
     }
@@ -134,6 +140,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         does: "Plans the week's pieces from the ranked nights, redraws any piece whose photo was withdrawn, and posts each approved piece on Instagram and Facebook at its moment.",
         schedules: [SCHEDULES.socialPublish, SCHEDULES.socialImageSweep],
         link: { href: '/admin/social', label: 'Open social' },
+        approvalNoun: 'post',
       },
       now,
       async () => {
@@ -151,7 +158,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Pieces planned this week', value: planned }, { label: 'Waiting for approval', value: waiting }],
           results: [{ label: 'Approved this week', value: approved }, { label: 'Posted this week', value: posted }],
           switch: { kind: 'flag', flag: 'social_auto_publish', on: Boolean((flag as { enabled: boolean } | null)?.enabled) },
-          waitsFor: waiting > 0 ? `${waiting} piece(s) wait for approval` : null,
+          waitsFor: waiting > 0 ? `${countOf(waiting, 'piece')} ${agrees(waiting, 'waits', 'wait')} for approval` : null,
           waiting,
         }
       },
@@ -163,6 +170,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         does: "Drafts the day's twenty first letters from verified rows and holds each for your approval of its exact words; an approved letter is queued in its play, and the sender sends it from the EventLinqs hello mailbox inside business hours, after the gateway's rules and its consent basis.",
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
+        approvalNoun: 'letter',
       },
       now,
       async () => {
@@ -176,7 +184,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         // A held letter never queues by itself (src/lib/outreach/drafts.ts stores every draft held; only a person's approval
         // queues it inside a play), so it waits on a person in every sender mode, live included.
         const senderWaits = sw.mode !== 'live' ? `The sender is on ${sw.mode}${sw.setByAPerson ? '' : ', never set by a person'}` : null
-        const lettersWait = held > 0 ? `${held} letter(s) wait for your approval before they can queue` : null
+        const lettersWait = held > 0 ? `${countOf(held, 'letter')} ${agrees(held, 'waits', 'wait')} for your approval before ${agrees(held, 'it', 'they')} can queue` : null
         return {
           lastRun: sw.dnsCheckedAt ? { at: sw.dnsCheckedAt, what: 'checked SPF, DKIM and DMARC (every 6 hours)' } : null,
           queue: [{ label: 'Letters held', value: held }, { label: 'Letters queued', value: queued }, { label: 'Plays approved', value: plays }],
@@ -194,6 +202,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         does: 'On day 4 and day 10 after a first letter is sent, drafts the follow up in its thread, held for your approval; any reply, unsubscribe or bounce stops it.',
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
+        approvalNoun: 'follow up',
       },
       now,
       async () => {
@@ -206,7 +215,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           results: [{ label: 'Sent this week', value: sentWeek }],
           switch: sw,
           // Held like a first letter: it waits for a person's approval in every sender mode.
-          waitsFor: held > 0 ? `${held} follow up(s) wait for your approval before they can queue` : null,
+          waitsFor: held > 0 ? `${countOf(held, 'follow up')} ${agrees(held, 'waits', 'wait')} for your approval before ${agrees(held, 'it', 'they')} can queue` : null,
           waiting: held,
         }
       },
@@ -229,7 +238,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Unclear, waiting (30 days)', value: unclear }],
           results: [{ label: 'Replies this week', value: week7 }],
           switch: sw,
-          waitsFor: !sw.setByAPerson ? 'The inbox is read only once a person has set the sender' : unclear > 0 ? `${unclear} reply(ies) wait for a person` : null,
+          waitsFor: !sw.setByAPerson ? 'The inbox is read only once a person has set the sender' : unclear > 0 ? `${countOf(unclear, 'reply', 'replies')} ${agrees(unclear, 'waits', 'wait')} for a person` : null,
           waiting: unclear + (sw.setByAPerson ? 0 : 1),
         }
       },
@@ -251,7 +260,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Organiser photos held', value: given }],
           results: [{ label: 'Permissions given (30 days)', value: yeses }],
           switch: { kind: 'none', note: 'Each image is placed by one look (law 5)' },
-          waitsFor: given > 0 ? `${given} organiser photo(s) to look at` : null,
+          waitsFor: given > 0 ? `${countOf(given, 'organiser photo')} to look at` : null,
           waiting: given,
         }
       },
@@ -273,7 +282,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Waiting or held', value: waitingRows }],
           results: [{ label: 'Accepted (30 days)', value: accepted }],
           switch: { kind: 'none', note: 'Decided in submissions' },
-          waitsFor: waitingRows > 0 ? `${waitingRows} submission(s) wait` : null,
+          waitsFor: waitingRows > 0 ? `${countOf(waitingRows, 'submission')} ${agrees(waitingRows, 'waits', 'wait')}` : null,
           waiting: waitingRows,
         }
       },
@@ -297,7 +306,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Waiting for a check', value: manual }],
           results: [{ label: 'Claimed (30 days)', value: verified }],
           switch: { kind: 'none', note: (flag as { enabled: boolean } | null)?.enabled ? 'Claims are on' : 'Claims are off' },
-          waitsFor: manual > 0 ? `${manual} claim(s) wait for a check` : null,
+          waitsFor: manual > 0 ? `${countOf(manual, 'claim')} ${agrees(manual, 'waits', 'wait')} for a check` : null,
           waiting: manual,
         }
       },

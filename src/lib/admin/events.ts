@@ -105,6 +105,20 @@ export const EVENT_STATUS_FILTERS: readonly (EventStatus | 'all')[] = [
   'archived',
 ]
 
+/**
+ * The counts strip over the events list (the PM's 02:45 fix 2): how many events are live, draft, paused and archived,
+ * each a head-only exact count; a count that cannot be read is null, said as 'Not read', never a zero.
+ */
+export async function countEventsByStatus(): Promise<Record<'published' | 'draft' | 'paused' | 'archived', number | null>> {
+  const admin = createAdminClient()
+  const one = async (status: string) => {
+    const { count, error } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', status)
+    return error ? null : (count ?? 0)
+  }
+  const [published, draft, paused, archived] = await Promise.all([one('published'), one('draft'), one('paused'), one('archived')])
+  return { published, draft, paused, archived }
+}
+
 export interface EventListFilters {
   status?: EventStatus | 'all'
   search?: string

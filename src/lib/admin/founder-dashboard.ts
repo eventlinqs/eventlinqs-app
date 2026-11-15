@@ -1,3 +1,4 @@
+import { countOf } from '@/lib/text/plural'
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
@@ -380,7 +381,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         ),
         ...(reported.ok
           ? levelFigures(reported.value.levels).map((f, i) =>
-              i === 0 && reported.value.unread > 0 ? { ...f, note: `${reported.value.unread} kept report(s) in a shape these levels do not read, left out` } : f,
+              i === 0 && reported.value.unread > 0 ? { ...f, note: `${countOf(reported.value.unread, 'kept report')} in a shape these levels do not read, left out` } : f,
             )
           : levelFigures(venueLevels([])).map((f) => ({ ...f, note: reported.note }))),
       ],

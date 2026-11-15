@@ -4,6 +4,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import {
+  countEventsByStatus,
   listEvents,
   actionsForEventStatus,
   EVENT_ACTION_LABELS,
@@ -27,6 +28,8 @@ import {
   ADMIN_THEAD,
 } from '@/components/admin/table-card'
 import { eventActionForm } from './actions'
+import { PageHeader, PRIMARY, SECONDARY, StatCard, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
+import { dayTime } from '@/lib/dates/admin-dates'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -47,16 +50,18 @@ type SearchParams = Promise<{
 // Pause, cancel and archive take an event off sale; confirm before applying.
 const DESTRUCTIVE: ReadonlySet<EventAction> = new Set(['pause', 'cancel', 'archive'])
 
-const STATUS_BADGE: Record<string, string> = {
-  draft: 'border-white/15 bg-white/[0.04] text-white/50',
-  scheduled: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent)]',
-  published: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  paused: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  postponed: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  cancelled: 'border-red-500/30 bg-red-500/10 text-red-200',
-  completed: 'border-white/15 bg-white/[0.04] text-white/50',
-  archived: 'border-white/15 bg-white/[0.04] text-white/50',
+/** Each status as the kit's coloured chip (the PM's 02:45 fix 2: grey capitalised ARCHIVED chips read as the old look). */
+const STATUS_CHIP: Record<string, { tone: ChipTone; word: string }> = {
+  draft: { tone: 'info', word: 'Draft' },
+  scheduled: { tone: 'info', word: 'Scheduled' },
+  published: { tone: 'ok', word: 'Live' },
+  paused: { tone: 'waits', word: 'Paused' },
+  postponed: { tone: 'waits', word: 'Postponed' },
+  cancelled: { tone: 'fault', word: 'Cancelled' },
+  completed: { tone: 'off', word: 'Ended' },
+  archived: { tone: 'off', word: 'Archived' },
 }
+const QUIET = 'inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/15 px-4 text-sm font-medium text-white/85 transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
 
 /**
  * Event moderation - pause / resume / cancel (scope 3.7).
@@ -83,26 +88,31 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
     metadata: { statusFilter, search: search ?? null, page },
   })
 
-  const result = await listEvents({ status: statusFilter, search, page })
+  const [result, counts] = await Promise.all([listEvents({ status: statusFilter, search, page }), countEventsByStatus()])
+  const shown = (n: number | null) => (n === null ? 'Not read' : new Intl.NumberFormat('en-AU').format(n))
   const returnTo = buildReturnTo(statusFilter, search, page)
 
   return (
     <div>
-      <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Trust and safety</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Events</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Pause a live event to take it off sale, resume a paused event, cancel an event, archive it off every
-          public surface, or restore an archived one. Delete lives on the event page. Every action is recorded
-          in the audit log.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Events"
+        title="Events"
+        description="Pause a live event to take it off sale, resume a paused one, cancel one, archive it off every public surface, or restore an archived one. Delete lives on the event's own page. Every action is recorded in the audit log."
+      />
+
+      {/* The counts first, as Humanitix's console leads with its numbers (the PM's 02:45 fix 2). */}
+      <section data-section="event-counts" aria-label="Events by status" className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Live" value={shown(counts.published)} />
+        <StatCard label="Draft" value={shown(counts.draft)} />
+        <StatCard label="Paused" value={shown(counts.paused)} />
+        <StatCard label="Archived" value={shown(counts.archived)} />
+      </section>
 
       <NoticeBanner notice={sp.notice} action={sp.action} />
 
       <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-4">
         <label className="block md:col-span-2">
-          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Search</span>
+          <span className="mb-1.5 block text-xs font-medium text-white/60">Search</span>
           <input
             type="text"
             name="q"
@@ -112,28 +122,22 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Status</span>
+          <span className="mb-1.5 block text-xs font-medium text-white/60">Status</span>
           <select
             name="status"
             defaultValue={statusFilter}
             className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           >
             {EVENT_STATUS_FILTERS.map((s) => (
-              <option key={s} value={s}>{s === 'all' ? 'All statuses' : s}</option>
+              <option key={s} value={s}>{s === 'all' ? 'All statuses' : (STATUS_CHIP[s]?.word ?? s)}</option>
             ))}
           </select>
         </label>
         <div className="flex items-end gap-2">
-          <button
-            type="submit"
-            className="rounded-md bg-[var(--brand-accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)]"
-          >
+          <button type="submit" className={PRIMARY}>
             Apply
           </button>
-          <Link
-            href="/admin/events"
-            className="rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
-          >
+          <Link href="/admin/events" className={SECONDARY}>
             Reset
           </Link>
         </div>
@@ -183,13 +187,11 @@ function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
       </td>
       <td className={ADMIN_CELL}>
         <span className={ADMIN_CELL_LABEL}>Status</span>
-        <span className={`inline-block rounded border px-2 py-0.5 text-[11px] uppercase tracking-wider ${STATUS_BADGE[row.status] ?? STATUS_BADGE.draft}`}>
-          {row.status}
-        </span>
+        <StatusChip tone={STATUS_CHIP[row.status]?.tone ?? 'info'}>{STATUS_CHIP[row.status]?.word ?? row.status}</StatusChip>
       </td>
       <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
         <span className={ADMIN_CELL_LABEL}>Starts</span>
-        {row.startDate.slice(0, 10)}
+        {dayTime(row.startDate)}
       </td>
       <td className={ADMIN_CELL_ACTIONS}>
         {actions.length === 0 ? (
@@ -213,7 +215,7 @@ function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: Eve
     ? 'rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/20'
     : action === 'pause'
       ? 'rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/20'
-      : 'rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white'}`
+      : QUIET}`
   return (
     <form action={eventActionForm} className="flex items-center gap-2">
       <input type="hidden" name="eventId" value={row.id} />
@@ -296,15 +298,15 @@ function Pager({
   const next = hasMore ? buildReturnTo(statusFilter, search, page + 1) : null
   return (
     <div className="mt-4 flex items-center justify-between">
-      <span className="text-xs uppercase tracking-[0.18em] text-white/40">Page {page}</span>
+      <span className="text-xs text-white/50">Page {page}</span>
       <div className="flex gap-2">
         {prev ? (
-          <Link href={prev} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link href={prev} className={QUIET}>
             Newer
           </Link>
         ) : null}
         {next ? (
-          <Link href={next} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link href={next} className={QUIET}>
             Older
           </Link>
         ) : null}

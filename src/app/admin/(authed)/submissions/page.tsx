@@ -82,7 +82,8 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
         </div>
       )}
 
-      <h2 className="mb-3 font-display text-lg font-semibold">Waiting for review ({waiting.length})</h2>
+      {/* A count only when the list was read (the PM's 02:45 fix 5: '(0)' beside 'could not be read' contradicted itself). */}
+      <h2 className="mb-3 font-display text-lg font-semibold">{unreadable ? 'Waiting for review' : `Waiting for review (${waiting.length})`}</h2>
       {unreadable ? (
         <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-sm text-amber-200">
           The submissions could not be read just now. Refresh in a minute.

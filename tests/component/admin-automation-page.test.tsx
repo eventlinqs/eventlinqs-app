@@ -52,7 +52,9 @@ describe('/admin/automation', () => {
   it('"Needs you today" is empty when nothing waits', async () => {
     cards = [{ ...base, state: 'runs', switch: { kind: 'flag', flag: 'social_auto_publish', on: true } }]
     render(await AdminAutomationPage({ searchParams: Promise.resolve({}) }))
-    expect(screen.getByText('Nothing. Every task ran by itself.')).toBeTruthy()
+    // Redesigned on Lawal's 20:52 (5d1984e4e): an 'All clear' chip beside the words, as the page now reads.
+    expect(screen.getByText('All clear')).toBeTruthy()
+    expect(screen.getByText(/Every task ran by itself\./)).toBeTruthy()
   })
 
   it('lists what waits, and a read that failed by its own words', async () => {
