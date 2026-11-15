@@ -21,6 +21,13 @@ describe('the category of a hunted night', () => {
   })
   // 'Grease vs Rocky Horror Show' is a musical (read from production, 7 November 11:16): two sides in a title are a match only
   // at a sporting venue, an arena, stadium, ground, oval, park or racecourse.
+  // The fight words (the PM's 08:30 of 16 November 2026, item 5): Humanoid Fighting Championship at Margaret Court Arena was
+  // listed as Music, the venue's usual category, and put right on production by the reviewer's path at 02:59 that day.
+  it('a fight at an arena whose usual category is music is sport, by its own words (the regression case)', () => {
+    expect(huntCategory('Humanoid Fighting Championship', 'music', 'Margaret Court Arena')).toBe('sports')
+    expect(huntCategory('UFC Fight Night', 'music', 'Rod Laver Arena')).toBe('sports')
+    expect(huntCategory('Pro Boxing: Title Fight', 'music', 'Festival Hall')).toBe('sports')
+  })
   it("two sides at a theatre are a show, not a match", () => {
     expect(huntCategory('Grease vs Rocky Horror Show', 'music', 'Palais Theatre')).toBe('music')
   })

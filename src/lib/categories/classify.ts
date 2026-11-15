@@ -45,9 +45,17 @@ export const GUIDE_CATEGORY_WORDS: Readonly<Record<GuideCategory, string>> = {
 
 /**
  * The written word lists, in the order they are tried: the most precise first, so a 'kids yoga class' is a class and a
- * 'night market' is a market. Whole words only, case ignored.
+ * 'night market' is a market. Whole words only, case ignored. A rule's `except` phrases are taken out of the text before
+ * its own words are read, so a word inside one of them never counts for that rule.
+ *
+ * THE FIGHT WORDS (the PM's 08:30 of 16 November 2026, item 5; WINDOW 5A's 02:59): Humanoid Fighting Championship at
+ * Margaret Court Arena (AXS) was listed as Music, the venue's usual category, because no sports word read its title; it
+ * was put right on production by the reviewer's path at 02:59 and is the regression case here. Read from production the
+ * same morning: of every title of the last 120 days holding a fight word, the others were the five days of the Boxing Day
+ * Test, so 'boxing' never counts inside 'Boxing Day' (a Boxing Day picnic is not a sport), and the looser words (fight,
+ * fighting, championship) count only in their phrases.
  */
-export const WORD_RULES: readonly { category: GuideCategory; words: readonly string[] }[] = [
+export const WORD_RULES: readonly { category: GuideCategory; words: readonly string[]; except?: readonly string[] }[] = [
   { category: 'markets', words: ['market', 'markets', 'bazaar', 'flea market', 'farmers market', 'makers market', 'night market', 'trash and treasure'] },
   { category: 'comedy', words: ['comedy', 'comedian', 'comedians', 'stand-up', 'standup', 'improv'] },
   { category: 'theatre', words: ['theatre', 'theater', 'musical', 'opera', 'ballet', 'cabaret', 'pantomime', 'panto'] },
@@ -55,7 +63,14 @@ export const WORD_RULES: readonly { category: GuideCategory; words: readonly str
   { category: 'festival', words: ['festival', 'fest', 'carnival', 'fiesta', 'parade'] },
   { category: 'nightlife', words: ['dj', 'djs', 'club night', 'rave', 'karaoke'] },
   { category: 'music', words: ['concert', 'gig', 'live music', 'band', 'bands', 'orchestra', 'symphony', 'choir', 'recital', 'jazz', 'open mic'] },
-  { category: 'sports', words: ['match', 'race', 'marathon', 'parkrun', 'fun run', 'tournament', 'footy', 'cricket', 'soccer', 'basketball', 'netball', 'rugby'] },
+  {
+    category: 'sports',
+    words: [
+      'match', 'race', 'marathon', 'parkrun', 'fun run', 'tournament', 'footy', 'cricket', 'soccer', 'basketball', 'netball', 'rugby',
+      'boxing', 'kickboxing', 'mma', 'ufc', 'muay thai', 'wrestling', 'jiu jitsu', 'jiu-jitsu', 'fight night', 'fight card', 'title fight', 'fighting championship',
+    ],
+    except: ['boxing day'],
+  },
   { category: 'health-wellness', words: ['yoga', 'pilates', 'meditation', 'mindfulness', 'wellness', 'walking group', 'run club'] },
   { category: 'food-drink', words: ['wine', 'beer', 'tasting', 'degustation', 'brunch', 'dinner', 'cider', 'gin', 'whisky', 'food'] },
   { category: 'arts-community', words: ['exhibition', 'gallery', 'art show', 'installation', 'sculpture'] },
@@ -96,7 +111,8 @@ export function wordMatches(text: string): GuideCategory[] {
   const t = text.toLowerCase()
   const out: GuideCategory[] = []
   for (const r of WORD_RULES) {
-    if (r.words.some((w) => new RegExp(`(^|[^a-z0-9])${escape(w)}([^a-z0-9]|$)`).test(t)) && !out.includes(r.category)) out.push(r.category)
+    const read = (r.except ?? []).reduce((x, phrase) => x.replace(new RegExp(`(^|[^a-z0-9])${escape(phrase)}(?=[^a-z0-9]|$)`, 'g'), '$1 '), t)
+    if (r.words.some((w) => new RegExp(`(^|[^a-z0-9])${escape(w)}([^a-z0-9]|$)`).test(read)) && !out.includes(r.category)) out.push(r.category)
   }
   return out
 }
