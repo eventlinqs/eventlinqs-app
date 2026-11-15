@@ -33,6 +33,10 @@ describe('the tier, from the listing\'s own fields (a test per tier)', () => {
     expect(tierOf({ title: 'Pottery Workshop', venue: 'Studio 3', categorySlug: 'arts-community', ticketed: true })).toBe(4)
     expect(tierOf({ title: 'Carers Support Group', venue: 'Hub', categorySlug: 'community', ticketed: false })).toBe(4)
     expect(tierOf({ title: 'Life Drawing', venue: 'Art Space', categorySlug: 'classes-workshops', ticketed: false })).toBe(4)
+    // A session at a headline venue is still a session (the first week's drawings, 15 November 2026).
+    expect(tierOf({ title: 'Song Play Term Four', venue: 'Melbourne Recital Centre', categorySlug: 'music', ticketed: true })).toBe(4)
+    expect(tierOf({ title: 'Pottery Workshop', venue: 'Costa Hall', categorySlug: 'arts-community', ticketed: true })).toBe(4)
+    expect(tierOf({ title: 'Gallery Tots', venue: 'Geelong Gallery', categorySlug: 'family', ticketed: false })).toBe(4)
   })
 })
 

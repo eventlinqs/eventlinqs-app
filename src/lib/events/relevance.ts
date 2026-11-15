@@ -62,7 +62,7 @@ export const HEADLINE_VENUES: readonly RegExp[] = [
 
 /** The words that make a night tier 4, in its title, or its venue being a library. */
 const TIER_FOUR_TITLE =
-  /\b(story ?time|rhyme ?time|toddlers?|bab(y|ies)|playgroups?|meet-?ups?|class(es)?|workshops?|support groups?|homework club|book club|knit(ting)?|craft (session|club|group)|tech help|digital help|conversation (club|group|practice)|walking group|mums?|parents? group)\b/i
+  /\b(story ?time|rhyme ?time|toddlers?|bab(y|ies)|playgroups?|meet-?ups?|class(es)?|workshops?|support groups?|homework club|book club|knit(ting)?|craft (session|club|group)|tech help|digital help|conversation (club|group|practice)|walking group|mums?|parents? group|tots?|term (one|two|three|four|[1-4]))\b/i
 const LIBRARY = /\blibrar(y|ies)\b/i
 
 export type Tier = 1 | 2 | 3 | 4
@@ -81,8 +81,10 @@ export function isHeadlineVenue(venue: string | null): boolean {
 
 export function tierOf(r: RelevanceFields): Tier {
   const festival = r.categorySlug === 'festival'
-  if (r.ticketed && (isHeadlineVenue(r.venue) || festival)) return 1
+  // A session is a session wherever it is held: a toddler class or a workshop at a headline venue is tier 4, never
+  // tier 1 (15 November 2026: an early childhood class at Melbourne Recital Centre led a week's post as tier 1).
   if (LIBRARY.test(r.venue ?? '') || TIER_FOUR_TITLE.test(r.title) || r.categorySlug === 'classes-workshops') return 4
+  if (r.ticketed && (isHeadlineVenue(r.venue) || festival)) return 1
   if (r.ticketed || festival) return 2
   return 3
 }

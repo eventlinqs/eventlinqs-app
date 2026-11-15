@@ -189,7 +189,10 @@ export type NightPick = { eventId: string; reason: string }
 const MAX_PER_VENUE = 2
 
 /** Law 18 in the picks: the guide's own tier; tier 1 leads, tier 4 never goes in a post (Lawal's 14:07 of 15 November 2026). */
-const TIER_SCORE: Readonly<Record<1 | 2 | 3, number>> = { 1: 40, 2: 20, 3: 0 }
+// Law 18 (c), tier then date: a tier is worth more than any place in the date order (readCampaignNights reads at most
+// 400 nights, 2 points a place, so 1000 a tier always leads), so a Friday arena show is never pushed out of the week by
+// Monday's bar shows (15 November 2026, the first week's drawings).
+const TIER_SCORE: Readonly<Record<1 | 2 | 3, number>> = { 1: 2000, 2: 1000, 3: 0 }
 const TIER_WORDS: Readonly<Record<1 | 2 | 3, string>> = { 1: 'a headline night', 2: 'a ticketed night', 3: 'a free or community night' }
 export function socialTierOf(n: Pick<CampaignNight, 'title' | 'venueName' | 'categorySlug' | 'cta'>) {
   return tierOf({ title: n.title, venue: n.venueName, categorySlug: n.categorySlug, ticketed: n.cta.state === 'paid_native' || n.cta.state === 'paid_external' })

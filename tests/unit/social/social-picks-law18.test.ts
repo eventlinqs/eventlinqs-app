@@ -49,6 +49,22 @@ describe('law 18 in the social picks', () => {
     expect(reason).toMatch(/a (headline|ticketed) night/)
   })
 
+  it('tier then date: a Friday arena show leads a week of sooner bar shows (law 18 (c))', () => {
+    const sooner = Array.from({ length: 60 }, (_, i) =>
+      night({ at: `2026-11-16T${String(9 + (i % 10)).padStart(2, '0')}:00:00Z`, title: `Bar show ${i}`, venueName: `Room ${i}`, host: `Room ${i}`, categorySlug: `music-${i}`, state: { tiers: [{ price: 2500 }] } }),
+    )
+    const arena = night({ at: '2026-11-20T08:30:00Z', title: 'Two Door Cinema Club', venueName: 'John Cain Arena', host: 'AXS', state: { tiers: [{ price: 9900 }] } })
+    expect(socialTierOf(arena)).toBe(1)
+    const { nights } = selectNights([...sooner, arena], 5)
+    expect(nights.map((n) => n.title)).toContain('Two Door Cinema Club')
+  })
+
+  it('a class at a headline venue is still a session, never a lead pick', () => {
+    const term = night({ at: '2026-11-17T22:15:00Z', title: 'Song Play Term Four', venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre', state: { tiers: [{ price: 2200 }] } })
+    expect(socialTierOf(term)).toBe(4)
+    expect(selectNights([term, free, headline], 5).nights.map((n) => n.title)).not.toContain('Song Play Term Four')
+  })
+
   it('a tier 4 session is never picked for a post, however soon', () => {
     const { nights } = selectNights([library, free, headline], 5)
     expect(nights.map((n) => n.title)).not.toContain('Story time for toddlers')
