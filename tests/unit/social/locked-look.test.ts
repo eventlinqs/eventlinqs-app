@@ -282,7 +282,7 @@ describe('the venue spotlight never carries tier 4 (law 18)', () => {
 })
 
 describe("the PM's 18:45 fixes", () => {
-  const at = (iso: string, title: string, extra: Partial<CampaignNight> = {}) => night({ at: iso, title, citySlug: 'geelong', cityName: 'Geelong', venueName: `${title} Hall`, host: `${title} Hall`, summary: null, categorySlug: 'theatre', ...extra })
+  const at = (iso: string, title: string, extra: Partial<CampaignNight> & { state?: CtaInput } = {}) => night({ at: iso, title, citySlug: 'geelong', cityName: 'Geelong', venueName: `${title} Hall`, host: `${title} Hall`, summary: null, categorySlug: 'theatre', ...extra })
 
   it('one night, one date label: the cover, its day slide and the ask read a run the same (fix 1)', () => {
     const fri = at('2026-11-20T08:30:00Z', 'Curtain Up')

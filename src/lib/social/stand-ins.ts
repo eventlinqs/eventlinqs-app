@@ -1,4 +1,5 @@
 import type { NightKind } from './campaign'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * THE STAND-IN PHOTOGRAPHS (Lawal, 7 November 2026, restated by the PM at 16:02 on 15 November: "General photos of the
@@ -43,9 +44,9 @@ export function standInUrl(origin: string, s: Pick<StandIn, 'id'>): string {
   return `${origin.replace(/\/$/, '')}/social/stand-ins/${s.id}.jpg`
 }
 
-/** Its credit on the slide's edge. */
+/** Its credit on the slide's edge, printed through the one credit line (src/lib/media/photo-credits.ts). */
 export function standInCredit(s: Pick<StandIn, 'photographer'>): string {
-  return `Photo: ${s.photographer} / Pexels`
+  return creditLine(`${s.photographer} / Pexels`) ?? `${s.photographer} / Pexels`
 }
 
 /** The stand-in a URL names, or null: a slide's photograph is a stand-in only when it is one of these. */

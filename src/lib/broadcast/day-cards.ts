@@ -257,7 +257,7 @@ export function twoLines(name: string): string[] {
   let split = 1
   let gap = Infinity
   for (let i = 1; i < words.length; i++) {
-    // Never a line ending on a joining word or a number (out-7: 'AFRICAN MUSIC AND / CULTURAL FESTIVAL 2026').
+    // Never a line ending on a joining word or a number (out-7: AMCF's name split after its AND).
     if (/^(v|vs|&|and|at|with|\d[\d.,:]*)$/i.test(words[i - 1])) continue
     const d = Math.abs(words.slice(0, i).join(' ').length - words.slice(i).join(' ').length)
     if (d < gap) {
