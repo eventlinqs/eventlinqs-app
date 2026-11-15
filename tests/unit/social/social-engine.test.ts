@@ -252,15 +252,25 @@ describe('how often and when, learned from our own posts against tickets sold', 
     expect(out).toMatchObject({ state: 'no_baseline', posts: 11, floor: 12 })
   })
 
-  test('twelve settled posts learn a rule, and the same posts learn nothing new', () => {
+  test('twelve settled posts in six bands learn nothing: fewer bands than the week needs, so the rule in force stands', () => {
+    /* The PM's 09:10 of 16 November 2026: three or six kept bands would carry three or six posts a week, and the rest of
+       the week's plan would be held as its nights pass. */
     const twelve = [...Array.from({ length: 6 }, (_, i) => post(18 + i * 24, 2, 5, 0)), ...Array.from({ length: 6 }, (_, i) => post(18 + i * 24, 2, 5, 1))]
     const now = new Date(MON.getTime() + 600 * H)
-    const out = learn({ current: STARTING, format: 'feed', posts: twelve, now })
+    expect(learn({ current: STARTING, format: 'feed', posts: twelve, now })).toMatchObject({ state: 'unchanged', rule: STARTING })
+  })
+
+  test('two weeks of posts in every band of the week learn a rule that keeps every band, and the same posts learn nothing new', () => {
+    const daily = (week: number) => Array.from({ length: 7 }, (_, d) => [post(d * 24 + 9, 2, 5, week), post(d * 24 + 21, 1, 5, week)]).flat()
+    const posts = [...daily(0), ...daily(1)]
+    const now = new Date(MON.getTime() + 600 * H)
+    const out = learn({ current: STARTING, format: 'feed', posts, now })
     expect(out.state).toBe('learned')
     if (out.state !== 'learned') return
-    expect(out.learnedFrom).toBe(12)
-    expect(out.gapHours).toBe(28)
-    const again = learn({ current: { ...STARTING, basis: 'learned', gapHours: out.gapHours, slots: out.slots, learnedFrom: 12 }, format: 'feed', posts: twelve, now })
+    expect(out.learnedFrom).toBe(28)
+    expect(out.slots).toHaveLength(14)
+    expect(out.gapHours).toBe(12)
+    const again = learn({ current: { ...STARTING, basis: 'learned', gapHours: out.gapHours, slots: out.slots, learnedFrom: 28 }, format: 'feed', posts, now })
     expect(again.state).toBe('unchanged')
   })
 
