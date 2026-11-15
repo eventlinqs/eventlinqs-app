@@ -26,10 +26,6 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/warm",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/payout-holds-release",
       "schedule": "0 * * * *"
     },
