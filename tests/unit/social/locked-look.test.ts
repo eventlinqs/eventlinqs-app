@@ -546,6 +546,14 @@ describe("out-12: five more kinds, read from the nights out-12 left bare (diag-1
     expect(k('Australia v England Mens T20I', 'sports', 'Melbourne Cricket Ground')).toBe('sport')
     expect(k('Melbourne United vs New Zealand Breakers', 'sports', 'John Cain Arena')).toBe('sport')
     expect(k('Geelong v Collingwood', 'sports', 'GMHBA Stadium', 'A live band plays at half time.')).toBe('sport')
+    // A fight by its own words, though production files 'Humanoid Fighting Championship' as music (out-12's fourth draw).
+    expect(k('Humanoid Fighting Championship', 'music', 'Margaret Court Arena', 'An event on a Saturday evening, tickets through AXS.')).toBe('sport')
+  })
+  it('the week draws a photographer once while another of the kind is free (out-12: one shoot twice on Geelong\'s reel)', () => {
+    const pick = standInChooser('the week')
+    const first = pick('dance')!
+    const second = pick('dance')!
+    expect(second.photographer).not.toBe(first.photographer)
     expect(k('Run the Tan: Run Club', 'sports', 'Tan Track (Pillars of Wisdom)', 'A coach-supported walk, jog or run around the Tan for all levels.')).toBeNull()
   })
   it('dance shows, theatre, Christmas nights and a food market, each from its own words', () => {

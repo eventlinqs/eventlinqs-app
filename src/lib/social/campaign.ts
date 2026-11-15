@@ -467,11 +467,16 @@ const MARKET_WORDS = /\b(produce|food|farmers'?|growers'?)\b[^.]{0,40}\bmarkets?
 // or a class in the sports category is no match, so a crowd in the stands never stands over it.
 const MATCH_WORDS = /\s(v|vs\.?)\s|\b(t20i?|odi|test match|grand final|semi final|derby)\b/i
 const RECITAL_ROOMS = /\b(recital|conservatorium|chamber)\b/i
+// A fight is a match by its own words, whatever category its source filed it in (out-12: 'Humanoid Fighting Championship'
+// is filed as music on production, and drew a concert stage).
+const FIGHT_WORDS = /\b(fighting|fight night|boxing|kickboxing|mma|ufc|wrestling|muay thai)\b/i
 export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'>): NightKind | null {
   const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
   // A night whose own title calls it a concert is music before any talk word in its summary (out-12: 'Pevan & Sarah in
   // Concert 2026', whose singalongs "teach reading, maths and feelings", read as a talk).
   if (/\bconcert\b/i.test(n.sourceTitle ?? n.title) && !CLASSICAL_WORDS.test(words) && !DANCE_WORDS.test(words)) return 'gig'
+  const isMusic = ['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase())
+  if (FIGHT_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
   if (TALK_WORDS.test(words)) return 'talk'
   // A sports night that names its two sides is a match whatever else its words say (a band at half time is no gig).
   if (['sports', 'sport'].includes((n.categorySlug ?? '').toLowerCase()) && MATCH_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
@@ -482,7 +487,7 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
   if (n.categorySlug === 'comedy' || /\b(comedy|comedian|stand-?up)\b/i.test(words)) return 'comedy'
   if (n.categorySlug === 'festival' || /\bfestival\b/i.test(words)) return 'festival'
   if (GIG_WORDS.test(words)) return 'gig'
-  const music = ['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase())
+  const music = isMusic
   // A music night in a recital room is a recital, never under a concert crowd (Anne Sofie von Otter at the Recital Centre).
   if (music && RECITAL_ROOMS.test(`${n.venueName ?? ''} ${n.host ?? ''}`)) return 'classical'
   // A music night at an arena, a stadium, a bowl or the Forum is a concert by its own venue (15 November 2026: LANY and

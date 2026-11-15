@@ -147,12 +147,18 @@ export function standInChooser(seed = ''): (kind: NightKind | null, use?: 'venue
   // differ; the same seed always draws the same photograph, so a re-render never changes a post.
   let turn = 0
   for (const ch of seed) turn = (turn * 31 + ch.charCodeAt(0)) % 9973
+  // A photographer already drawn this week is passed over while another is free (out-12: two of one shoot's dancers stood
+  // on Geelong's reel cover and its next slide, and read as the same stage twice).
+  const shot = new Set<string>()
   return (kind, use) => {
     if (!kind) return null
     const base = STAND_INS.filter((s) => s.kind === kind && (use !== 'venue' || s.venue !== false))
     const pool = base.length ? [...base.slice(turn % base.length), ...base.slice(0, turn % base.length)] : base
-    const pick = pool.find((s) => !used.has(s.id)) ?? null
-    if (pick) used.add(pick.id)
+    const pick = pool.find((s) => !used.has(s.id) && !shot.has(s.photographer)) ?? pool.find((s) => !used.has(s.id)) ?? null
+    if (pick) {
+      used.add(pick.id)
+      shot.add(pick.photographer)
+    }
     return pick
   }
 }
