@@ -120,10 +120,15 @@ describe("their own next event, read from their own page", () => {
     expect(PAGE_EVENT_FRESH_DAYS).toBe(30)
   })
 
-  it('today counts as ahead (a Melbourne date), and the soonest is named', async () => {
-    const db = fakeDb([read({ title: 'Later', starts_on: '2026-12-20' }), read({ title: 'Tonight', starts_on: '2026-11-13' })])
+  it('names the soonest event from the day after tomorrow (a Melbourne date): today and tomorrow are too soon for a letter to reach (15 November 2026)', async () => {
+    const db = fakeDb([
+      read({ title: 'Later', starts_on: '2026-12-20' }),
+      read({ title: 'Tonight', starts_on: '2026-11-13' }),
+      read({ title: 'Tomorrow', starts_on: '2026-11-14' }),
+      read({ title: 'Sunday', starts_on: '2026-11-15' }),
+    ])
     const e = await nextPageEventOf(db as never, 'org-nsc', NOW)
-    expect(e).toMatchObject({ title: 'Tonight', startDate: '2026-11-13', pageUrl: PAGE, readOn: '2026-11-13', timezone: 'Australia/Melbourne' })
+    expect(e).toMatchObject({ title: 'Sunday', startDate: '2026-11-15', pageUrl: PAGE, readOn: '2026-11-13', timezone: 'Australia/Melbourne' })
   })
 })
 

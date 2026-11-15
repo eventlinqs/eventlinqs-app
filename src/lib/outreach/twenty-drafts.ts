@@ -99,6 +99,24 @@ export async function storeLetters(db: Admin, by: string, letters: readonly Stor
 }
 
 /**
+ * THE FIRST DAY A LETTER'S NIGHT MAY FALL ON (15 November 2026: production's 16:00 run drafted seven letters naming a
+ * night that day or the next, stale before Lawal could approve and the sender could send them). A letter drafted today
+ * goes tomorrow at the soonest, inside business hours, so the night it names starts on the day after tomorrow or
+ * later, in Melbourne.
+ */
+export function sendableFrom(now: Date): string {
+  const melbourne = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(d)
+  const today = melbourne(now)
+  return new Date(Date.parse(`${today}T12:00:00Z`) + 2 * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** Whether a night starting at startIso can still be named in a letter drafted now (sendableFrom). */
+export function isSendableNight(startIso: string, now: Date): boolean {
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(new Date(startIso))
+  return day >= sendableFrom(now)
+}
+
+/**
  * Their next public night (./their-nights.ts: at a venue they run, under their own account, or booked on their own
  * website); null where none is listed.
  */
@@ -107,7 +125,8 @@ export async function nextNightOf(
   organiser: { id: string; organisation_id: string | null; website_url: string | null },
   now: Date,
 ): Promise<TheirNight | null> {
-  const [n] = await readTheirNights(db, organiser, now, 1)
+  // The soonest night a letter drafted now can still reach (sendableFrom), never one today or tomorrow.
+  const n = (await readTheirNights(db, organiser, now, 10)).find((x) => isSendableNight(x.startDate, now))
   return n ? { slug: n.slug, title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
 }
 
@@ -129,7 +148,7 @@ export async function nextPageEventOf(db: Admin, organiserId: string, now: Date)
     .from('organiser_page_events')
     .select('title, starts_on, place, page_url, read_on')
     .eq('organiser_id', organiserId)
-    .gte('starts_on', today)
+    .gte('starts_on', sendableFrom(now) > today ? sendableFrom(now) : today)
     .gte('read_on', freshFrom)
     .order('starts_on', { ascending: true })
     .order('read_on', { ascending: false })
@@ -166,7 +185,7 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
     if (v.error) throw new Error(`the template ${letter.key} could not be read: ${v.error.message}`)
     if (v.data) newest.set(letter.key, v.data.version as number)
   }
-  const waitingRows = await db.from('outreach_touches').select('id, contact_id, state, outreach_templates(key, version)').in('state', ['held', 'queued', 'sending'])
+  const waitingRows = await db.from('outreach_touches').select('id, contact_id, state, body, outreach_templates(key, version)').in('state', ['held', 'queued', 'sending'])
   if (waitingRows.error) throw new Error(`the messages waiting could not be read: ${waitingRows.error.message}`)
   const waitingFor = new Set<string>()
   const stale = new Map<string, { id: string; key: string }>()
@@ -175,6 +194,27 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
     const old = t.state === 'held' && tp !== null && newest.has(tp.key) && tp.version < (newest.get(tp.key) as number)
     if (old) stale.set(t.contact_id as string, { id: t.id as string, key: tp.key })
     else waitingFor.add(t.contact_id as string)
+  }
+  // A held letter naming a night it can no longer reach (today, tomorrow or gone) is stale too: set aside and drafted
+  // again with their next night, or set aside alone when none is ahead (15 November 2026).
+  const namedSlug = new Map<string, { id: string; contact: string; key: string }>()
+  for (const t of waitingRows.data ?? []) {
+    const tp = t.outreach_templates as unknown as { key: string; version: number } | null
+    const slug = String((t as { body?: string | null }).body ?? '').match(/\/events\/([a-z0-9-]+)/)?.[1]
+    if (t.state === 'held' && tp !== null && newest.has(tp.key) && slug && !stale.has(t.contact_id as string)) {
+      namedSlug.set(slug, { id: t.id as string, contact: t.contact_id as string, key: tp.key })
+    }
+  }
+  if (namedSlug.size > 0) {
+    const named = await db.from('events').select('slug, start_date').in('slug', [...namedSlug.keys()])
+    if (named.error) throw new Error(`the nights the held letters name could not be read: ${named.error.message}`)
+    const starts = new Map((named.data ?? []).map((e) => [e.slug as string, e.start_date as string]))
+    for (const [slug, t] of namedSlug) {
+      const start = starts.get(slug)
+      if (start && isSendableNight(start, input.now)) continue
+      stale.set(t.contact, { id: t.id, key: t.key })
+      waitingFor.delete(t.contact)
+    }
   }
   let redrafted = 0
   let setAside = 0
