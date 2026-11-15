@@ -160,7 +160,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       {
         key: 'first-letters',
         title: 'First letters to organisers',
-        does: "Drafts the day's twenty first letters from verified rows; each passes the gateway's rules and its consent basis, and the sender sends from the founder's own mailbox inside business hours.",
+        does: "Drafts the day's twenty first letters from verified rows; each passes the gateway's rules and its consent basis, and the sender sends from the EventLinqs hello mailbox inside business hours.",
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
       },
