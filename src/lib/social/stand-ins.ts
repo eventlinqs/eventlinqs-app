@@ -118,6 +118,10 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '6926736', kind: 'dance', subject: 'two dancers on stage', photographer: "Pavel Danilyuk", page: 'https://www.pexels.com/photo/a-man-and-woman-dancing-6926736/' },
   { id: '13632062', kind: 'dance', subject: 'a dancer on stage', photographer: "Miguel Rodriguez Le\u00f3n", page: 'https://www.pexels.com/photo/blurry-photo-of-a-woman-dancing-on-stage-13632062/' },
   { id: '27509166', kind: 'dance', subject: 'ballet dancers on stage', photographer: "Olivia", page: 'https://www.pexels.com/photo/four-ballerinas-in-black-and-white-are-dancing-27509166/' },
+  { id: '32965247', kind: 'sport', subject: 'a sports crowd', photographer: "Luke Miller", page: 'https://www.pexels.com/photo/excited-sports-fans-cheering-at-game-32965247/' },
+  { id: '15949231', kind: 'sport', subject: 'a sports crowd', photographer: "Mikkel Kvist", page: 'https://www.pexels.com/photo/people-cheering-during-the-match-15949231/' },
+  { id: '14158918', kind: 'sport', subject: 'a sports crowd', photographer: "Lydia Murray", page: 'https://www.pexels.com/photo/people-in-a-stadium-14158918/' },
+  { id: '34206834', kind: 'sport', subject: 'a sports crowd', photographer: "Erick Fr\u00edas cruceta", venue: false, page: 'https://www.pexels.com/photo/enthusiastic-crowd-cheering-at-indoor-event-34206834/' },
 ]
 
 /** Where a stand-in is served: our own origin, never the photographer's site. */
