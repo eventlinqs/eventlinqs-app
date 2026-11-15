@@ -97,6 +97,7 @@
     "/account/tickets": 156114,
     "/admin": 157306,
     "/admin/acquisition": 157450,
+    "/admin/automation": 157450,
     "/admin/analytics": 157306,
     "/admin/attribution": 157306,
     "/admin/audience": 157306,

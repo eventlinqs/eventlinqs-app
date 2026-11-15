@@ -12,6 +12,8 @@ export interface AdminNavItem {
 }
 
 export const ADMIN_NAV: AdminNavItem[] = [
+  // Lawal's home screen as employee one (his 13:55 of 15 November 2026): first in the list.
+  { label: 'Automation',       href: '/admin/automation', capability: 'admin.dashboard.view' },
   { label: 'Today',            href: '/admin/today',      capability: 'admin.dashboard.view' },
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
   { label: 'Growth',           href: '/admin/growth',     capability: 'admin.pricing.manage' },
