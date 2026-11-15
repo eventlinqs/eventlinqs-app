@@ -18,7 +18,7 @@ import {
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
-import { lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
+import { footClear, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
 import { standInOf } from '@/lib/social/stand-ins'
 
@@ -254,7 +254,16 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         const photo = await bandPhoto(url, f, bh)
         return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'band', foot, bh)
       }
-      const photo = url ? await wholePhoto(url, f, 'cover') : null
+      let photo = url ? await wholePhoto(url, f, 'cover') : null
+      // The PM's 22:41 fix 5: the foot sits where it sits on every slide. The framed photograph is drawn smaller, whole and
+      // never cropped (law 15), until the foot clears the bottom by twice the guard's least, as the other covers do.
+      if (photo) {
+        const framed = { ...words, credit: words.credit }
+        const floor = sizeOf(f).h - (f === 'story' ? footClear(f) + 16 * scaleOf(f) : 2 * footClear(f))
+        for (let i = 0; i < 8 && photo && (await spareAboveFoot(weekCoverElement(f, framed, photo, 'whole', foot), f, footWordOf(foot), floor)) < 0; i++) {
+          photo = { ...photo, width: Math.round(photo.width * 0.9), height: Math.round(photo.height * 0.9) }
+        }
+      }
       if (!photo && words.lead && words.lead.length > 0) {
         const s = await fittedScale(f, 1, (x) => weekCoverElement(f, words, null, 'whole', foot, undefined, x), footWordOf(foot))
         return weekCoverElement(f, words, null, 'whole', foot, undefined, s)

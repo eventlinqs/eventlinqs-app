@@ -104,6 +104,13 @@ export async function spareAboveFoot(el: El, f: DayFormat, footWord: string | nu
   return limit - Math.max(0, ...above.map((x) => x.bottom))
 }
 
+/**
+ * The clear space under a slide's lowest words (the PM's 22:41 fix 5: out-11's 02-01 put its credit and 'Swipe 1/4' about
+ * 10 px from the bottom where every other cover keeps them about 110 px up). A story keeps its safe area; a portrait or a
+ * square keeps 48 of a 1080 frame, which every slide of out-11 but that one cleared.
+ */
+export const footClear = (f: DayFormat): number => (f === 'story' ? SAFE : 48 * scaleOf(f))
+
 export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]> {
   const { w, h: H } = sizeOf(f)
   const stretched = stretchedCards(el)
@@ -115,6 +122,8 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
     if (!faults.includes(s)) faults.push(s)
   }
   if (stretched > 0) say(`${stretched} card(s) stretched past their content`)
+  const lowest = Math.max(0, ...words.map((x) => x.bottom))
+  if (f !== 'story' && lowest > H - footClear(f) + 1) say(`its foot sits ${Math.round(H - lowest)} px above the bottom, inside the ${Math.round(footClear(f))} px every slide keeps clear`)
   // Every slide keeps 64 of a 1080 frame clear at each side; a word past that has run past its card (the PM's 20:40 fix 2).
   const edge = w - 64 * scaleOf(f) + 4
   for (const wd of words) {

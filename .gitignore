@@ -64,6 +64,7 @@ next-env.d.ts
 # WINDOW 6's locked benchmark posts at 360 px wide, read by tests/unit/social/locked-look-golden.test.ts.
 !tests/fixtures/social-golden/*.png
 !tests/fixtures/social-golden/benchmark/*.jpg
+!tests/fixtures/social-golden/drill/*.jpg
 !public/images/hero/*.webp
 !public/images/hero/*.png
 !public/**/*.svg

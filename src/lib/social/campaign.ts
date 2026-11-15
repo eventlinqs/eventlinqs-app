@@ -6,7 +6,7 @@ import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
-import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl } from './stand-ins'
+import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl, type StandIn } from './stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -184,6 +184,9 @@ export function lockRefusal(slides: readonly Slide[]): string | null {
   if (!inLockedLook(slides)) return 'It is drawn in the older planner look, not the locked look of 15 November, so it is never approved or published.'
   const first = slides[0]
   if (!('photo' in first) || !first.photo) return "It does not lead with a photograph: Lawal's lock of 15 November allows no text-only post, and every post leads with one."
+  // The PM's 22:41 fix 1: every cover, day slide and venue slide carries its photograph band, as the benchmark's do.
+  const bare = slides.find((s) => (s.t === 'week_cover' || s.t === 'days' || s.t === 'venue') && !s.photo)
+  if (bare) return `Its ${bare.t === 'days' ? `${bare.day} slide` : bare.t === 'venue' ? 'venue slide' : 'cover'} carries no photograph, and every slide of the locked look carries one (the PM's 22:41).`
   return null
 }
 
@@ -450,7 +453,9 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
 export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig'
 const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
 const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque)\b/i
-const GIG_WORDS = /\b(bands?|djs?|tours?|live music|gigs?|album launch|ep launch|headline show|singer-songwriters?|rappers?)\b/i
+// A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
+// (the PM's 22:41 fix 3: 'MESS Studio Tours', a daytime studio tour, stood under a concert crowd).
+const GIG_WORDS = /\b(bands?|djs?|live music|gigs?|album launch|ep launch|headline show|singer-songwriters?|rappers?)\b|\b(world|national|australian|farewell|reunion|anniversary|headline|album|arena|stadium|made)\s+tour\b|\btour\s+20\d\d\b|\bon tour\b/i
 export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'>): NightKind | null {
   const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
   if (TALK_WORDS.test(words)) return 'talk'
@@ -787,9 +792,11 @@ export function lockedListSlides(
   origin: string,
   /** One show, one line (the PM's 16:40, fix 2): a show's other sessions in the piece's days, said under its time. */
   sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
+  /** The week's one chooser (the PM's 22:41 fix 2: no photograph twice in the week's feed); alone, the piece's own. */
+  weekPick?: (kind: NightKind | null) => StandIn | null,
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
-  const pick = standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
+  const pick = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
   /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a stand-in stands over a slide only when every night the slide
      names is of the photograph's kind; a cover's, only when the night it is led by is. Otherwise the slide is in type. */
   const standInFor = (ns: readonly CampaignNight[]) => {
@@ -825,10 +832,13 @@ export function lockedListSlides(
   const labels = new Map(ordered.map((n) => [n.eventId, nightLabel(n, sessionsOf(n))]))
   const rowOf = (n: CampaignNight) => dayRowOf(n, labels.get(n.eventId))
   /* A day slide in type of one or two cards joins a neighbour in type when together they hold five or fewer (fix 4). */
-  const ofOneKind = (ns: readonly CampaignNight[]) => {
-    const kinds = new Set(ns.map((n) => nightKindOf(n)))
-    const [kind] = [...kinds]
-    return kinds.size === 1 && kind !== null && STAND_INS.some((x) => x.kind === kind)
+  /* The PM's 22:41 fix 1: every day slide carries a photograph of its LEAD kind, as A-LOCK-2 to A-LOCK-5 do: the slide's
+     first night by draw whose kind has a licensed stand-in; the stand-in stands over that night, which its card names.
+     A slide with no such night stays in type and joins a neighbour in type (fix 4 of 18:45). */
+  const ofOneKind = (ns: readonly CampaignNight[]) => ns.some((n) => hasStandIn(nightKindOf(n)))
+  const leadStandIn = (ns: readonly CampaignNight[]) => {
+    const lead = [...ns].sort(byDraw).find((n) => hasStandIn(nightKindOf(n)))
+    return lead ? pick(nightKindOf(lead)) : null
   }
   const groups = daySlideGroups(ordered)
   for (let i = 0; i < groups.length; i++) {
@@ -841,7 +851,7 @@ export function lockedListSlides(
     i = a - 1
   }
   const daySlides: Slide[] = groups.map((days) => {
-    const s = standInFor(days.flat())
+    const s = leadStandIn(days.flat())
     const slideDays = new Set(days.flat().map((x) => ymdOf(x.startDate, x.timezone)))
     /* The draw decides which nights make the slide; day then clock orders them, a run by its first session on the
        slide's days (the PM's 18:45 fix 2: Leisurefest's Friday 9:00 am above the Friday 7:30 pm). */
@@ -862,7 +872,10 @@ export function lockedListSlides(
   // then the post's best by draw, free or ticketed alike.
   const ledIds = new Set(ledBy.led.map((n) => n.eventId))
   const askOrder = [...ledBy.led, ...ledBy.order.filter((n) => !ledIds.has(n.eventId))]
-  const three = askOrder.slice(0, 3).map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
+  const chosen = askOrder.slice(0, 3)
+  const firstOf = (n: CampaignNight) => Date.parse((labels.get(n.eventId) ?? nightLabel(n)).first)
+  const askThree = [...chosen.filter((n) => ledIds.has(n.eventId)), ...chosen.filter((n) => !ledIds.has(n.eventId)).sort((a, b) => firstOf(a) - firstOf(b))]
+  const three = askThree.map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
   // A cover with no photograph lists its three lead nights as cards, so the page is never bare ground.
   const lead3 = cover.photo ? [] : [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse((labels.get(a.eventId) ?? nightLabel(a)).first) - Date.parse((labels.get(b.eventId) ?? nightLabel(b)).first)).map(rowOf)
   const coverSlide = cover.photo ? cover : { ...cover, lead: lead3 }
@@ -921,12 +934,12 @@ const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', g
  * its nights in clock order as gold timed cards with each night's entry line, a stand-in across the top only when every
  * night is of its kind, and the ask. The place is the venue row's own name (the PM's 16:40, fix 4), else its host's.
  */
-export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string): Extract<Slide, { t: 'venue' }> {
+export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string, weekPick?: (kind: NightKind | null) => StandIn | null): Extract<Slide, { t: 'venue' }> {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const kinds = new Set(ordered.map((n) => nightKind(n)))
   const [kind] = [...kinds]
   const one = kinds.size === 1 && kind ? kind : null
-  const s = one ? standInChooser()(one) : null
+  const s = one ? (weekPick ?? standInChooser())(one) : null
   const count = ordered.length
   const countWord = (['', 'One', 'Two', 'Three', 'Four', 'Five'][count] ?? String(count))
   return {
@@ -1094,6 +1107,8 @@ export function planCampaign(input: {
 }): CampaignPlan {
   const { origin, weekStart } = input
   const site = siteOf(origin)
+  // One chooser for the whole week's feed (the PM's 22:41 fix 2): no stand-in photograph twice in a week.
+  const weekPick = standInChooser('the week')
   const nightsIn = input.nights.map((n) => ({ ...n, sourceTitle: n.sourceTitle ?? n.title, title: postTitle(n.title, n.venueName) }))
   const inWeek = nightsIn
     .map((n) => ({ n, day: dayInWeek(n, weekStart) }))
@@ -1127,7 +1142,7 @@ export function planCampaign(input: {
     if (ahead.length >= 2) {
       for (const n of ahead) listed.add(n.eventId)
       const hook = `${countWord(ahead.length)} things on in ${city.name} this week.`
-      const aheadSlides = lockedListSlides(ahead, [`${ahead.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+      const aheadSlides = lockedListSlides(ahead, [`${ahead.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
       const body = [...pictured(aheadSlides), ...ahead.map(pickLine), '', creditsOf(ahead)]
       pieces.push({
         kind: 'week_ahead',
@@ -1158,7 +1173,7 @@ export function planCampaign(input: {
       for (const n of weekend) listed.add(n.eventId)
       const wDest = destinationOf(weekend, city)
       const hook = `${countWord(weekend.length)} things on in ${city.name} this weekend.`
-      const weekendSlides = lockedListSlides(weekend, [`${weekend.length} things on`, `in ${city.name}`, 'this weekend'], origin, (n) => sessionsOf(n, [4, 5, 6]))
+      const weekendSlides = lockedListSlides(weekend, [`${weekend.length} things on`, `in ${city.name}`, 'this weekend'], origin, (n) => sessionsOf(n, [4, 5, 6]), weekPick)
       const body = [...pictured(weekendSlides), ...weekend.map(pickLine), '', creditsOf(weekend)]
       pieces.push({
         kind: 'weekend_carousel',
@@ -1194,7 +1209,7 @@ export function planCampaign(input: {
       for (const n of friSat) listed.add(n.eventId)
       const days = `Friday and Saturday in ${city.name}`
       const hook = `${countWord(friSat.length)} things on ${days}.`
-      const friSatSlides = lockedListSlides(friSat, [`${friSat.length} things on`, `in ${city.name}`, 'Fri and Sat'], origin, (n) => sessionsOf(n, [4, 5]))
+      const friSatSlides = lockedListSlides(friSat, [`${friSat.length} things on`, `in ${city.name}`, 'Fri and Sat'], origin, (n) => sessionsOf(n, [4, 5]), weekPick)
       const body = [...pictured(friSatSlides), ...friSat.map(pickLine), '', creditsOf(friSat)]
       pieces.push({
         kind: 'tonight_tomorrow',
@@ -1228,7 +1243,7 @@ export function planCampaign(input: {
     )
     if (later.length >= 2) {
       const hook = `${countWord(later.length)} ${nightsWord(later)} worth planning for in ${city.name}.`
-      const laterSlides = lockedListSlides(later, [`${later.length} ${nightsWord(later)} worth`, 'planning for', `in ${city.name}`], origin)
+      const laterSlides = lockedListSlides(later, [`${later.length} ${nightsWord(later)} worth`, 'planning for', `in ${city.name}`], origin, undefined, weekPick)
       const body = [...pictured(laterSlides), ...later.map(pickLine), '', creditsOf(later)]
       pieces.push({
         kind: 'coming_up',
@@ -1266,7 +1281,7 @@ export function planCampaign(input: {
       if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
       const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot)}.`
-      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `${nightsWord(spot)} in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `${nightsWord(spot)} in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
       const body = [...pictured(spotSlides), ...spot.map(pickLine), '', creditsOf(spot)]
       pieces.push({
         kind: 'category_spotlight',
@@ -1303,7 +1318,7 @@ export function planCampaign(input: {
     const rDest = destinationOf(reel, city)
     const hook = `${countWord(reel.length)} things on in ${city.name} this week.`
     // Family F, the week as stories (the PM's 17:10 of 15 November 2026): the same locked slides, drawn at 9:16.
-    const reelSlides = lockedListSlides(reel, [`${reel.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+    const reelSlides = lockedListSlides(reel, [`${reel.length} things on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
     const body = [...pictured(reelSlides), ...reel.map(pickLine), '', creditsOf(reel)]
     pieces.push({
       kind: 'discovery_reel',
@@ -1356,7 +1371,7 @@ export function planCampaign(input: {
       picks: nights.slice(0, 4).map((n) => ({ eventId: n.eventId, reason: `Picked: one of ${all.length} nights at ${name} this week, the most of any host.` })),
       mode: modeOf(nights.slice(0, 4)),
       // Family E in the 9.5 locked look (the PM's 17:10 of 15 November 2026): one slide, the venue's week.
-      slides: [venueSlideOf(name, nights.slice(0, 4), origin)],
+      slides: [venueSlideOf(name, nights.slice(0, 4), origin, weekPick)],
       caption: join([hook, '', ...body, '', `Every night in ${city.name}: ${site}/city/${city.slug}`, '', tagsFor(city, null)]),
       versions: versionsOf(hook, body, `${origin}/city/${city.slug}`, `Every night in ${city.name} is at the link in our bio.`, `Every night in ${city.name}:`, '4:5', tagsFor(city, null)),
       partnerName: null,

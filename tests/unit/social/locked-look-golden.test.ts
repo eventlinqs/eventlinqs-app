@@ -126,6 +126,19 @@ const meanDiff = (a: Buffer, b: Buffer) => {
  * colour: a share of the top third off the card system read 0.078 on a day slide drawn bare and 0.085 on the benchmark's
  * own dark cover, 15 November 2026, so it cannot tell them apart. The golden comparison and its drill below do.)
  */
+/**
+ * THE PHOTOGRAPH REGION (the PM's 22:41 fix 1: "THE GUARD MISSED IT: a gold share ... is not the look. Make locked-look-golden
+ * compare the photograph region of each slide against its golden, and drill it red on out-11's 01-02 against A-LOCK-2"):
+ * the top third of a frame, where the band or the framed photograph sits, read at 54 px wide, its mean difference per
+ * channel. A render whose photograph went missing is far from its golden there, even when the rest of the frame holds.
+ */
+async function regionDiff(a: Uint8Array | Buffer, b: Uint8Array | Buffer, upTo = 1 / 3): Promise<number> {
+  const [x, y] = await Promise.all([reading(a), reading(b)])
+  const rows = Math.floor(Math.min(x.height, y.height) * upTo)
+  const n = rows * 54 * 3
+  return meanDiff(x.data.subarray(0, n), y.data.subarray(0, n))
+}
+
 async function lookOf(bytes: Uint8Array | Buffer): Promise<{ gold: number; navy: number }> {
   const { data } = await sharp(bytes).resize({ width: 180 }).removeAlpha().raw().toBuffer({ resolveWithObject: true })
   let gold = 0
@@ -231,6 +244,27 @@ describe('the golden renders: the product draws the locked look and has not move
     expect(await visualFaults([feature], 'feed', new Map([[0, await imageOf(feature)]]))).toEqual([])
     expect(await visualFaults([venue], 'feed', new Map([[0, await imageOf(venue)]]))).toEqual([])
   }, 180_000)
+})
+
+describe("the photograph region of every slide against its golden (the PM's 22:41 fix 1)", () => {
+  for (const c of CASES.filter((x) => x.name !== 'ask')) {
+    for (const f of FORMATS) {
+      it(`${c.name} at ${f}: its photograph region matches its golden`, async () => {
+        if (UPDATE) return
+        expect(await regionDiff(await render(c, f), readFileSync(join(GOLDEN, `${c.name}-${f}.png`)))).toBeLessThanOrEqual(MAX_MEAN)
+      }, 120_000)
+    }
+  }
+
+  it("drill: out-11's 01-02, a day slide in type alone, is far from A-LOCK-2's photograph region", async () => {
+    const d = await regionDiff(readFileSync(join(GOLDEN, 'drill', 'out11-01-02-days-feed.jpg')), readFileSync(join(BENCH, 'A-LOCK-2-days-feed.jpg')))
+    expect(d).toBeGreaterThan(4 * MAX_MEAN)
+  })
+
+  it('drill: our own day slide drawn without its photograph is far from its golden in that region', async () => {
+    if (UPDATE) return
+    expect(await regionDiff(await render(CASES[1], 'feed', null), readFileSync(join(GOLDEN, 'days-feed.png')))).toBeGreaterThan(2 * MAX_MEAN)
+  }, 120_000)
 })
 
 describe('the drills: the guard sees what leaves the locked look', () => {
