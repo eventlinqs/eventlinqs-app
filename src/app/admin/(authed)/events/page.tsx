@@ -6,13 +6,9 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import {
   countEventsByStatus,
   listEvents,
-  actionsForEventStatus,
-  EVENT_ACTION_LABELS,
   EVENT_STATUS_FILTERS,
   type AdminEventRow,
-  type EventAction,
 } from '@/lib/admin/events'
-import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import {
   ADMIN_CELL,
   ADMIN_CELL_ACTIONS,
@@ -21,13 +17,11 @@ import {
   ADMIN_EMPTY_CELL,
   ADMIN_EMPTY_ROW,
   ADMIN_ROW,
-  ADMIN_ROW_CONTROL,
   ADMIN_TABLE,
   ADMIN_TABLE_WRAP,
   ADMIN_TBODY,
   ADMIN_THEAD,
 } from '@/components/admin/table-card'
-import { eventActionForm } from './actions'
 import { PageHeader, PRIMARY, SECONDARY, StatCard, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
 import { dayTime } from '@/lib/dates/admin-dates'
 
@@ -48,7 +42,6 @@ type SearchParams = Promise<{
 }>
 
 // Pause, cancel and archive take an event off sale; confirm before applying.
-const DESTRUCTIVE: ReadonlySet<EventAction> = new Set(['pause', 'cancel', 'archive'])
 
 /** Each status as the kit's coloured chip (the PM's 02:45 fix 2: grey capitalised ARCHIVED chips read as the old look). */
 const STATUS_CHIP: Record<string, { tone: ChipTone; word: string }> = {
@@ -90,14 +83,13 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
 
   const [result, counts] = await Promise.all([listEvents({ status: statusFilter, search, page }), countEventsByStatus()])
   const shown = (n: number | null) => (n === null ? 'Not read' : new Intl.NumberFormat('en-AU').format(n))
-  const returnTo = buildReturnTo(statusFilter, search, page)
 
   return (
     <div>
       <PageHeader
         eyebrow="Events"
         title="Events"
-        description="Pause a live event to take it off sale, resume a paused one, cancel one, archive it off every public surface, or restore an archived one. Delete lives on the event's own page. Every action is recorded in the audit log."
+        description="Open an event with Manage to pause it, resume it, cancel it, archive it off every public surface, restore it or delete it. Every action is recorded in the audit log."
       />
 
       {/* The counts first, as Humanitix's console leads with its numbers (the PM's 02:45 fix 2). */}
@@ -162,7 +154,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                 <td colSpan={5} className={ADMIN_EMPTY_CELL}>No events match.</td>
               </tr>
             ) : (
-              result.rows.map((row) => <EventRow key={row.id} row={row} returnTo={returnTo} />)
+              result.rows.map((row) => <EventRow key={row.id} row={row} />)
             )}
           </tbody>
         </table>
@@ -173,8 +165,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
   )
 }
 
-function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
-  const actions = actionsForEventStatus(row.status)
+function EventRow({ row }: { row: AdminEventRow }) {
   return (
     <tr className={`${ADMIN_ROW} align-top`}>
       <td className={ADMIN_CELL_NAME}>
@@ -195,62 +186,13 @@ function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
         <span className={ADMIN_CELL_LABEL}>Starts</span>
         {dayTime(row.startDate)}
       </td>
+      {/* One quiet Manage per row, as the leaders' consoles have it (the PM's 02:45 fix 2; seen at 06:29 when live nights
+          led with three reason boxes and a red Cancel each): every action lives on the event's own page, with its reason
+          and its confirmation. */}
       <td className={ADMIN_CELL_ACTIONS}>
-        {actions.length === 0 ? (
-          <span className="text-[11px] text-white/40">No actions</span>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {actions.map((action) => (
-              <ActionForm key={action} row={row} action={action} returnTo={returnTo} />
-            ))}
-          </div>
-        )}
+        <Link href={`/admin/events/${row.id}`} className={QUIET} aria-label={`Manage ${row.title}`}>Manage</Link>
       </td>
     </tr>
-  )
-}
-
-function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: EventAction; returnTo: string }) {
-  const destructive = DESTRUCTIVE.has(action)
-  const label = EVENT_ACTION_LABELS[action]
-  const btnClass = `${ADMIN_ROW_CONTROL} justify-center ${action === 'cancel'
-    ? 'rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/20'
-    : action === 'pause'
-      ? 'rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/20'
-      : QUIET}`
-  return (
-    <form action={eventActionForm} className="flex items-center gap-2">
-      <input type="hidden" name="eventId" value={row.id} />
-      <input type="hidden" name="action" value={action} />
-      <input type="hidden" name="returnTo" value={returnTo} />
-      {destructive ? (
-        <>
-          <label className="sr-only" htmlFor={`reason-${action}-${row.id}`}>Reason for {label}</label>
-          <input
-            id={`reason-${action}-${row.id}`}
-            name="reason"
-            type="text"
-            placeholder="Reason (optional)"
-            maxLength={500}
-            className="min-h-11 w-40 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/40"
-          />
-          <ConfirmSubmitButton
-            confirmMessage={
-              action === 'cancel'
-                ? `Cancel "${row.title}"? This cannot be undone and is recorded in the audit log.`
-                : action === 'archive'
-                  ? `Archive "${row.title}"? It comes off every public surface and sales stop; ticket holders keep their tickets and it can be restored. Recorded in the audit log.`
-                  : `Pause "${row.title}"? It will be taken off sale. Recorded in the audit log.`
-            }
-            className={btnClass}
-          >
-            {label}
-          </ConfirmSubmitButton>
-        </>
-      ) : (
-        <button type="submit" className={btnClass}>{label}</button>
-      )}
-    </form>
   )
 }
 

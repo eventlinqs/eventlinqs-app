@@ -36,6 +36,13 @@ describe("the events list's default order (fix 3)", () => {
     expect(src).toContain('listOrder(read).slice(fromIdx, fromIdx + PAGE_SIZE + 1)')
   })
 
+  it('one quiet Manage per row, every action on the event page (the 02:45 fix 2, seen again at 06:29)', () => {
+    const page = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/events/page.tsx'), 'utf8')
+    expect(page).toContain('className={QUIET} aria-label={`Manage ${row.title}`}>Manage</Link>')
+    expect(page).not.toContain('eventActionForm')
+    expect(page).not.toContain('Reason (optional)')
+  })
+
   it("each row's name sits on the row's top line, its link still 44 px tall", () => {
     const page = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/events/page.tsx'), 'utf8')
     expect(page).toContain('className="inline-flex min-h-11 items-start font-medium text-white hover:underline"')
