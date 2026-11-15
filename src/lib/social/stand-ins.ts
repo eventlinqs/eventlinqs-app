@@ -150,6 +150,8 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '32471031', kind: 'sport', subject: 'stadium floodlights at dusk', photographer: "Magda Ehlers", page: 'https://www.pexels.com/photo/stadium-floodlights-against-twilight-sky-32471031/' },
   { id: '7513413', kind: 'sport', subject: 'an empty indoor court', photographer: "Bence Szemerey", sport: 'basketball', page: 'https://www.pexels.com/photo/interior-design-of-an-indoors-handball-court-7513413/' },
   { id: '9968139', kind: 'sport', subject: 'an empty boxing ring', photographer: "Stanislav Kondratiev", sport: 'combat', page: 'https://www.pexels.com/photo/an-empty-boxing-ring-9968139/' },
+  { id: '36676877', kind: 'sport', subject: 'an empty cricket net', photographer: "aksinfo7 universe", sport: 'cricket', page: 'https://www.pexels.com/photo/outdoor-cricket-net-practice-area-with-bright-stumps-36676877/' },
+  { id: '30387502', kind: 'sport', subject: 'a cricket match in play', photographer: "Lorien le Poer Trench", sport: 'cricket', page: 'https://www.pexels.com/photo/dynamic-cricket-match-with-batsman-and-wicketkeeper-30387502/' },
   { id: '39027935', kind: 'talk', subject: 'two chairs on a lit stage', photographer: "Av E", page: 'https://www.pexels.com/photo/two-empty-chairs-on-stage-under-spotlights-39027935/' },
   { id: '20733069', kind: 'talk', subject: 'an audience at a talk', photographer: "BBSO", page: 'https://www.pexels.com/photo/gathering-in-auditorium-20733069/' },
 ]
