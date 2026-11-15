@@ -99,3 +99,22 @@ export interface GateCounts {
 export function planGates(counts: GateCounts, now: Date): GateStanding[] {
   return PLAN_GATES.map((g) => gateStanding(g, counts[g.measure], now))
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth']
+/**
+ * Two gates of one measure read as a repeat (the PM's 05:37 fix 5: two cards titled 'Events selling through EventLinqs'):
+ * each is named by its order and its day, 'First gate, 13 Dec' and 'Second gate, 31 Jan'; a gate alone in its label has no
+ * such name.
+ */
+export function gateNames(gates: readonly { key: string; label: string; due: string | null }[]): Map<string, string> {
+  const names = new Map<string, string>()
+  for (const g of gates) {
+    const same = gates.filter((x) => x.label === g.label)
+    if (same.length < 2) continue
+    const i = same.indexOf(g)
+    const d = g.due ? /^(\d{4})-(\d{2})-(\d{2})/.exec(g.due) : null
+    names.set(g.key, `${ORDINALS[i] ?? `Gate ${i + 1}:`} gate${d ? `, ${Number(d[3])} ${MONTHS[Number(d[2]) - 1]}` : ''}`)
+  }
+  return names
+}

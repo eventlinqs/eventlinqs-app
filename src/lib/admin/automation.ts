@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { cardState, nextRun, threeNumbers, type CardState, type ThreeNumbers } from './automation-math'
 import { SCHEDULES, type Schedule } from './automation-schedules'
 import { agrees, countOf } from '@/lib/text/plural'
-import { LETTER_WAITS } from './letters-waiting'
+import { LETTER_WAITS, PHOTO_WAITS } from './what-waits'
 
 /**
  * THE AUTOMATION DASHBOARD'S READS (Lawal's 13:41 of 15 November 2026, relayed by the PM at 13:55; the map is
@@ -258,7 +258,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       now,
       async () => {
         const yeses = await counted('organiser_permissions', db.from('organiser_permissions').select('id', { count: 'exact', head: true }).gte('granted_at', month))
-        const given = await counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', 'organiser_authorised'))
+        const given = await counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', PHOTO_WAITS.assetState))
         return {
           lastRun: null,
           queue: [{ label: 'Organiser photos held', value: given }],

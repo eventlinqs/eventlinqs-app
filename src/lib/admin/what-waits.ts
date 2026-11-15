@@ -6,3 +6,10 @@
  * (tests/unit/admin/needs-you.test.ts holds both to them).
  */
 export const LETTER_WAITS = { step: 1, state: 'held', heldBecause: '{}' } as const
+
+/**
+ * AN ORGANISER PHOTO WAITING TO BE LOOKED AT (the PM's 05:37 fix 2: one unit on Today and Automation): a photograph its
+ * organiser gave with permission, held until a person looks at it once (law 5). Automation's Photo permission card
+ * counts these and Today's queue lists them.
+ */
+export const PHOTO_WAITS = { assetState: 'organiser_authorised' } as const

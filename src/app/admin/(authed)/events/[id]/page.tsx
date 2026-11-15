@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
-import { getAdminEventDetail, actionsForEventStatus, EVENT_ACTION_LABELS } from '@/lib/admin/events'
+import { getAdminEventDetail, actionsForEventStatus, featureAllowed, EVENT_ACTION_LABELS } from '@/lib/admin/events'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
@@ -182,6 +182,8 @@ export default async function AdminEventDetailPage({
                 ))}
               </div>
             )}
+            {/* Feature only on a live event (the PM's 05:37 fix 4): an archived event offers Restore and Delete alone. */}
+            {featureAllowed(event.status) ? (
             <form action={eventFeatureForm} className="mt-4 border-t border-white/[0.06] pt-4">
               <input type="hidden" name="eventId" value={event.id} />
               <input type="hidden" name="featured" value={event.isFeatured ? 'false' : 'true'} />
@@ -192,6 +194,7 @@ export default async function AdminEventDetailPage({
                 {event.isFeatured ? 'Unfeature event' : 'Feature event'}
               </ConfirmSubmitButton>
             </form>
+            ) : null}
           </section>
 
           {/* Delete, under the same database rule as the organiser (C13.7) */}

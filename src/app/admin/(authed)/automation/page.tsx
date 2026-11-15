@@ -4,7 +4,10 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { queryAuditLog, recordAuditEvent } from '@/lib/admin/audit'
 import { readAutomation, type AutomationCard } from '@/lib/admin/automation'
-import { needsYou, TARGETS } from '@/lib/admin/automation-math'
+import { TARGETS } from '@/lib/admin/automation-math'
+import { readTodayQueue } from '@/lib/admin/today'
+import { needsLine } from '@/lib/admin/today-math'
+import { countOf } from '@/lib/text/plural'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { AuditLine, PageHeader, Panel, PRIMARY, SECONDARY, StatCard, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
 import { PendingButton } from '@/components/admin/ui/pending-button'
@@ -101,8 +104,11 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
   const session = await requireAdminSession()
   if (!can(session, 'admin.dashboard.view')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.automation.view', session })
-  const [{ numbers, cards }, audit] = await Promise.all([readAutomation(new Date()), lastChanges()])
-  const needs = cards.filter((c) => c.waitsFor || c.readFailed)
+  const now = new Date()
+  // One unit with Today (the PM's 05:37 fix 2): the things that wait are Today's queue, read here from the same source.
+  const [{ numbers, cards }, audit, queue] = await Promise.all([readAutomation(now), lastChanges(), readTodayQueue(now)])
+  const line = needsLine(queue)
+  const unread = cards.filter((c) => c.readFailed)
   const running = cards.filter((c) => c.state === 'runs').length
   const message = said === 'invalid' ? 'That press was not understood; nothing was changed.' : said ?? null
 
@@ -114,8 +120,8 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
         title="EventLinqs, running by itself"
         description={`${running} of ${cards.length} recurring tasks run by themselves. What needs you is first; when the machine is healthy that list is empty.`}
         action={
-          needs.length > 0 ? (
-            <a href="#needs-you" className={PRIMARY}>Review what needs you ({needs.length})</a>
+          line.total > 0 || unread.length > 0 ? (
+            <a href="#needs-you" className={PRIMARY}>Review what needs you ({line.total})</a>
           ) : (
             <Link href="/admin/today" className={PRIMARY}>Open today</Link>
           )
@@ -135,19 +141,31 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
       </section>
 
       <div id="needs-you" data-section="needs-you" className="mb-8 scroll-mt-6">
-        <Panel title="Needs you today" count={needsYou(cards).tasks}>
-          {needs.length === 0 ? (
+        <Panel title={line.heading}>
+          {line.total === 0 && unread.length === 0 ? (
             <p className="flex items-center gap-3 text-sm text-white/75"><StatusChip tone="ok">All clear</StatusChip> Every task ran by itself.</p>
           ) : (
             <ul className="divide-y divide-white/[0.06]">
-              {needs.map((c) => (
+              {line.groups.map((s) => (
+                <li key={s.key} data-needs={s.key} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-white">{s.title}</span>
+                      <StatusChip tone="waits">Waits for you</StatusChip>
+                    </div>
+                    <p className="mt-1 text-sm text-white/70">{countOf(s.items.length, 'thing')}, the oldest first on Today</p>
+                  </div>
+                  <Link href="/admin/today" className={SECONDARY}>Open today</Link>
+                </li>
+              ))}
+              {unread.map((c) => (
                 <li key={c.key} data-needs={c.key} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-white">{c.title}</span>
-                      <StatusChip tone={c.readFailed ? 'fault' : 'waits'}>{c.readFailed ? 'Could not be read' : 'Waits for you'}</StatusChip>
+                      <StatusChip tone="fault">Could not be read</StatusChip>
                     </div>
-                    <p className="mt-1 text-sm text-white/70">{c.readFailed ? `Its figures could not be read: ${c.readFailed}` : c.waitsFor}</p>
+                    <p className="mt-1 text-sm text-white/70">{`Its figures could not be read: ${c.readFailed}`}</p>
                   </div>
                   {c.link ? <Link href={c.link.href} className={SECONDARY}>{c.link.label}</Link> : null}
                 </li>

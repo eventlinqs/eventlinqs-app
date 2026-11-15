@@ -15,6 +15,7 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isOverdue, readCommandCentre } from '@/lib/crm/command-centre'
 import { readPlanGates } from '@/lib/growth/plan-gates'
+import { gateNames } from '@/lib/growth/plan-gates-math'
 import { readSentRecently, readTwentyView } from '@/lib/outreach/twenty-view'
 import { SentRecentlySection, TwentySection } from './twenty-section'
 import { readThreePosts } from '@/lib/social/three-posts'
@@ -149,8 +150,12 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-white/60">The plan&apos;s gates</h3>
           {gates.ok ? (
             <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {gates.g.map((s) => (
+              {gates.g.map((s, _i, all) => (
                 <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
+                  {/* Two gates of one measure are named by their order and day (the PM's 05:37 fix 5). */}
+                  {gateNames(all.map((x) => x.gate)).get(s.gate.key) ? (
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-accent)]">{gateNames(all.map((x) => x.gate)).get(s.gate.key)}</p>
+                  ) : null}
                   <p className="text-sm font-semibold text-white">{s.gate.label}</p>
                   <p className="mt-1 font-display text-xl font-bold text-white">
                     {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${dayDate(s.gate.due)}` : ' a day'}</span>

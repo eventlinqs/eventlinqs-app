@@ -178,7 +178,9 @@ function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
   return (
     <tr className={`${ADMIN_ROW} align-top`}>
       <td className={ADMIN_CELL_NAME}>
-        <Link href={`/admin/events/${row.id}`} className={`${ADMIN_ROW_CONTROL} font-medium text-white hover:underline`}>{row.title}</Link>
+        {/* The name's line sits at the row's top with its organiser, status and date (the PM's 05:37 fix 3): the link keeps
+            its 44 px target, its words at the top of it. */}
+        <Link href={`/admin/events/${row.id}`} className="inline-flex min-h-11 items-start font-medium text-white hover:underline">{row.title}</Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
       </td>
       <td className={`${ADMIN_CELL} text-white/70`}>
