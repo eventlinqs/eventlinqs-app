@@ -635,7 +635,8 @@ describe("the PM's 02:25 fixes (out-12 held 01, 03, 10 and 12: one class, the ph
     const united = mel('2026-11-21T08:30:00Z', 'Melbourne United vs New Zealand Breakers', { categorySlug: 'sports', summary: null, venueName: 'John Cain Arena', host: 'John Cain Arena' })
     for (const sl of lockedListSlides([united], ['1 thing on', 'in Melbourne', 'this weekend'], ORIGIN)) {
       const st = 'photo' in sl ? standInOf(sl.photo) : null
-      if (st) expect(st.sport ?? null).toBeNull()
+      // Its own sport first (out-14 added an empty indoor court, basketball), else no sport named; never another sport.
+      if (st) expect([null, 'basketball']).toContain(st.sport ?? null)
     }
     const victory = mel('2026-11-25T08:45:00Z', 'Melbourne Victory v Thể Công-Viettel', { categorySlug: 'sports', summary: null, venueName: 'GMHBA Stadium', host: 'GMHBA Stadium', citySlug: 'geelong', cityName: 'Geelong' })
     const v = lockedListSlides([victory], ['1 thing on', 'in Geelong', 'coming up'], ORIGIN)
