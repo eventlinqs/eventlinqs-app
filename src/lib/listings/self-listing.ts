@@ -16,10 +16,12 @@ import type { BookingFacts, PageEvent, PageOffer } from './booking-facts'
  *      with its day and time ("Mr Snotbottom - all ages Saturday 11.30am", A$26, on the Canberra Bush Fringe Festival's
  *      Humanitix page). The session's day, time and price, and the festival's venue, correct the submission's.
  *   3. THE PAGE'S WORDS: no structured data names it (GroovyTown's page for A Moment of Sanity), so the page's own words
- *      must name the event and state its date; the organiser's other facts stand.
- * Held, with its reason in plain words: the page cannot be read; it does not name the event; it does not state its
- * date; it states the event cancelled or postponed; a festival's ticket types name the show but not when; it reads as
- * spam; the same event is already listed; it has already started.
+ *      must name the event; its date is the organiser's own (Lawal's 20:52 of 15 November 2026: an organiser's
+ *      submission with authority confirmed is its own source, and is never held because a page does not state the date;
+ *      H2o's New Year's Eve page states none), and the organiser's other facts stand.
+ * Held, with its reason in plain words: the page cannot be read; it does not name the event; it states the event
+ * cancelled or postponed; a festival's ticket types name the show but not when; it reads as spam; the same event is
+ * already listed; it has already started.
  */
 
 export type SelfListingSubmission = {
@@ -58,7 +60,7 @@ export type PublishFacts = {
   readonly host: string | null
 }
 
-export type MatchedBy = 'structured_data' | 'ticket_type' | 'page_words'
+export type MatchedBy = 'structured_data' | 'ticket_type' | 'page_words' | 'organiser_word'
 
 export type SelfListingVerdict =
   | { readonly verdict: 'publish'; readonly facts: PublishFacts; readonly corrections: readonly Correction[]; readonly matchedBy: MatchedBy }
@@ -303,8 +305,12 @@ export function judgeSelfListing(
     const mine = nameWords(sub.title)
     const inWords = [...mine].filter((w) => facts.text.includes(w)).length / Math.max(1, mine.size)
     if (inWords < 0.6) return hold('Its booking page does not name this event.')
-    if (!wordsStateDate(facts.text, localParts(startsAt, tz).date)) return hold("Its booking page does not state the event's date.")
-    matchedBy = 'page_words'
+    // LAWAL'S 20:52 OF 15 NOVEMBER 2026, ITEM 3, on H2o ("next time, I want such events to be live"): the organiser's own
+    // submission, sent with their authority confirmed (submission.ts AUTHORITY_WORDS, required on the form), is its own
+    // source for its date (law 19 accepts the organiser). A page that names the night but states no date in its words
+    // never holds it: it publishes at once on the organiser's date. A page whose structured data states the date still
+    // corrects it, above.
+    matchedBy = wordsStateDate(facts.text, localParts(startsAt, tz).date) ? 'page_words' : 'organiser_word'
   }
 
   if (endsAt && Date.parse(endsAt) <= Date.parse(startsAt)) endsAt = null

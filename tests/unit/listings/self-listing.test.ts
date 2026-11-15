@@ -247,9 +247,6 @@ describe('only a submission that cannot be verified is held, and says why', () =
   test('a page that does not name the event', () => {
     expect(reasonOf({ ...SANITY, title: 'Harbour Lights Gala' }, read(GROOVYTOWN))).toBe('Its booking page does not name this event.')
   })
-  test("a page whose words do not state the event's date", () => {
-    expect(reasonOf({ ...SANITY, startsAt: '2026-11-25T08:00:00.000Z', endsAt: null }, read(GROOVYTOWN))).toBe("Its booking page does not state the event's date.")
-  })
   test('a page that says the event is cancelled', () => {
     expect(reasonOf(KYIV, read(TRYBOOKING.replace('EventScheduled', 'EventCancelled')))).toBe('Its booking page says the event is cancelled or postponed.')
   })
@@ -349,5 +346,58 @@ describe('the form takes every city EventLinqs knows, timed in its own zone', ()
   test('the date words a page uses are read in each common form', () => {
     for (const t of ['tuesday 24 november', 'november 24th, 2026', '24/11/2026', '2026-11-24', 'tue 24th of nov']) expect(wordsStateDate(t, '2026-11-24')).toBe(true)
     expect(wordsStateDate('tuesday 25 november', '2026-11-24')).toBe(false)
+  })
+})
+
+/*
+ * LAWAL'S 20:52 OF 15 NOVEMBER 2026, ITEM 3, ON H2O: "next time, I want such events to be live". A submission from the
+ * organiser, with authority confirmed on the form (submission.ts AUTHORITY_WORDS, required), is its own source for its
+ * date (law 19 accepts the organiser): when the organiser's own page names the event but states no date in its words,
+ * it publishes at once on the organiser's word, never held. Joe Merlo's H2o New Year's Eve night (submission a02aea30,
+ * 11 November) was held at 'Its booking page does not state the event's date.' because nyeh2o.com.au does not.
+ */
+describe("an organiser's own submission is its own source for its date (Lawal's 20:52 of 15 November 2026)", () => {
+  const H2O_PAGE = `<html><head><title>New Years Eve Melbourne - H2o | Sunset on the Yarra</title></head><body>
+<h1>New Years Eve Melbourne H2o</h1><p>Sunset on the Yarra. Celebrate the countdown at Metropolis Events, Southbank, with
+fireworks over the Yarra, a DJ and a three course menu. Tickets on sale now.</p></body></html>`
+  const H2O: SelfListingSubmission = {
+    title: 'New Years Eve Melbourne - H2o | Sunset on the Yarra',
+    startsAt: '2026-12-31T09:00:00.000Z', // Thursday 31 December, 8 pm in Melbourne
+    endsAt: '2027-01-01T15:30:00.000Z', // 2:30 am
+    venueName: 'Metropolis Events',
+    venueAddress: 'Southbank VIC 3006',
+    timezone: 'Australia/Melbourne',
+    entry: 'paid',
+    priceFromCents: 15000,
+    description: 'New Year\u2019s Eve on the Yarra with fireworks views.',
+    bookingUrl: 'https://nyeh2o.com.au/',
+  }
+
+  test('H2o: the page names the night and states no date, so it publishes at once on the organiser\u2019s date', () => {
+    const v = judgeSelfListing(H2O, read(H2O_PAGE), [], NOW)
+    expect(v.verdict).toBe('publish')
+    if (v.verdict !== 'publish') return
+    expect(v.matchedBy).toBe('organiser_word')
+    expect(v.facts.startsAt).toBe(H2O.startsAt)
+    expect(v.facts.endsAt).toBe(H2O.endsAt)
+    expect(v.corrections).toEqual([])
+  })
+
+  test('a page whose words name the night but not its date publishes on the organiser\u2019s date (GroovyTown, another day)', () => {
+    const v = judgeSelfListing({ ...SANITY, startsAt: '2026-11-25T08:00:00.000Z', endsAt: null }, read(GROOVYTOWN), [], NOW)
+    expect(v.verdict).toBe('publish')
+    if (v.verdict !== 'publish') return
+    expect(v.matchedBy).toBe('organiser_word')
+    expect(v.facts.startsAt).toBe('2026-11-25T08:00:00.000Z')
+  })
+
+  test('the page words that do state the date still read as the page\u2019s own match', () => {
+    const v = judgeSelfListing(SANITY, read(GROOVYTOWN), [], NOW)
+    expect(v.verdict === 'publish' && v.matchedBy).toBe('page_words')
+  })
+
+  test('what still holds: a page that does not name the night, and a night already started', () => {
+    expect(judgeSelfListing({ ...H2O, title: 'Harbour Lights Gala' }, read(H2O_PAGE), [], NOW)).toEqual({ verdict: 'hold', reason: 'Its booking page does not name this event.' })
+    expect(judgeSelfListing(H2O, read(H2O_PAGE), [], new Date('2027-01-01T00:00:00Z'))).toEqual({ verdict: 'hold', reason: 'The event has already started.' })
   })
 })
