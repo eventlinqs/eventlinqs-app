@@ -498,7 +498,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
     return id ? [id] : []
   })
   const byNight = await usableImages(db, nights, now)
-  const noNight = (sl: Slide) => sl.photo !== null && 'photo' in sl && (sl.t === 'brand' || sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId))
+  const noNight = (sl: Slide) => 'photo' in sl && sl.photo !== null && (sl.t === 'brand' || sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId))
   const brands = slides.some((sl) => 'photo' in sl && noNight(sl)) ? await brandImages(db, now) : []
   slides.forEach((sl, i) => {
     const id = ownPhotoNightOf(sl)

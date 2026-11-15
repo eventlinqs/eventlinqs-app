@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, picturedLine, planCampaign, rangeOf, shortTitle, splitLine, CARD_TITLE_MAX, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
+import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, picturedLine, planCampaign, rangeOf, shortTitle, splitLine, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { STAND_INS, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
-import { twoLines } from '@/lib/broadcast/day-cards'
+import { daysElement, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
 
 /*
  * THE 9.5 LOCKED LOOK IN THE PRODUCT (the PM's 17:10 of 15 November 2026: "the product renders in the 9.5 locked look
@@ -41,6 +41,8 @@ function night(over: Partial<CampaignNight> & { at: string; state?: CtaInput }):
   }
 }
 const rowsOf = (slides: readonly Slide[]) => slides.flatMap((s) => (s.t === 'days' ? s.rows : []))
+/** Every card a post draws: its day slides', and its cover's when the cover is in type. */
+const cardsOf = (slides: readonly Slide[]) => slides.flatMap((s) => (s.t === 'days' ? s.rows : s.t === 'week_cover' ? (s.lead ?? []) : []))
 const daysOf = (slides: readonly Slide[]) => slides.filter((s): s is Extract<Slide, { t: 'days' }> => s.t === 'days')
 
 describe('a title shortened by rule, never cut mid word (the PM\'s 17:10)', () => {
@@ -105,11 +107,11 @@ describe('a list post in the locked look', () => {
     expect(slides.find((s) => s.t === 'feature')).toMatchObject({ eventId: week[3].eventId, photo: OWN, chip: 'FREE ENTRY', title: 'African Music and Cultural Festival' })
   })
 
-  it('every night is one gold card, at most four a slide; the clock orders the cards (fix 3)', () => {
+  it('every night is one gold card, at most four a slide (five in type); the clock orders the cards (fix 3)', () => {
     const ids = rowsOf(slides).map((r) => r.eventId)
     expect([...ids].sort()).toEqual(week.map((n) => n.eventId).sort())
     for (const d of daysOf(slides)) {
-      expect(d.rows.length).toBeLessThanOrEqual(ROWS_PER_DAY_SLIDE)
+      expect(d.rows.length).toBeLessThanOrEqual(d.photo ? ROWS_PER_DAY_SLIDE : ROWS_IN_TYPE)
       const starts = d.rows.map((r) => Date.parse(r.startDate))
       expect(starts).toEqual([...starts].sort((a, b) => a - b))
     }
@@ -123,8 +125,8 @@ describe('a list post in the locked look', () => {
     expect(thu.rows.map((r) => r.when)).toEqual(['10:30 am', '7:00 pm'])
   })
 
-  it('a festival over three days reads its first day and its last, and FREE', () => {
-    expect(rowsOf(slides).find((r) => r.eventId === week[3].eventId)).toMatchObject({ when: 'Fri 20', sub: 'to Sun 22', free: true })
+  it('a festival over three days reads its first time over its first day and its last, and FREE', () => {
+    expect(rowsOf(slides).find((r) => r.eventId === week[3].eventId)).toMatchObject({ when: '7:00 pm', sub: 'Fri 20 to Sun 22', free: true })
   })
 
   it("a show's other days are named, never counted (fix 3)", () => {
@@ -139,7 +141,8 @@ describe('a list post in the locked look', () => {
     expect(rangeOf(week)).toBe('16 to 22 November')
     expect(drawsOf(week)).toBe('Led by LANY and Two Door Cinema Club')
     expect(splitLine(week)).toBe('1 is free, 4 need tickets. Tap through for each night.')
-    expect(slides[0]).toMatchObject({ range: '16 to 22 November', draws: 'Led by LANY and Two Door Cinema Club', line: '1 is free, 4 need tickets. Tap through for each night.' })
+    // The cover carries AMCF's own photograph, so AMCF is named first (the PM's 18:45 fix 5).
+    expect(slides[0]).toMatchObject({ range: '16 to 22 November', draws: 'Led by African Music and Cultural Festival and LANY', line: '1 is free, 4 need tickets. Tap through for each night.' })
   })
 
   it('the ask names three to start with, by law 18', () => {
@@ -149,7 +152,7 @@ describe('a list post in the locked look', () => {
     expect(ask.three.map((r) => r.title)).toEqual(['LANY', 'Two Door Cinema Club', 'An Evening with a Historian'])
     expect(ask.three.map((r) => r.when)).toEqual(['Wed 18', 'Sat 21', 'Wed 18'])
     const festivalOnly = lockedListSlides([week[3]], ['1 thing on', 'in Melbourne', 'this weekend'], ORIGIN).at(-1) as Extract<Slide, { t: 'ask' }>
-    expect(festivalOnly.three[0].when).toBe('Fri to Sun')
+    expect(festivalOnly.three[0].when).toBe('Fri 20 to Sun 22')
   })
 
   it('a cover with no photograph lists its three lead nights as cards, so it is never bare (fix 2)', () => {
@@ -167,7 +170,8 @@ describe("a stand-in only over nights all of its kind (the PM's 17:40 fix 1, rul
     const garden = night({ at: '2026-11-20T00:00:00Z', title: 'Garden Session', categorySlug: 'community', summary: 'A morning in the garden.', venueName: 'Geelong Botanic Gardens', citySlug: 'geelong', cityName: 'Geelong', state: { entryMode: 'walk_in', isFree: true } })
     const s = lockedListSlides([band, curtain, garden], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN)
     expect(daysOf(s).every((d) => d.photo === null)).toBe(true)
-    expect(rowsOf(s).find((r) => r.eventId === curtain.eventId)?.title).toBe('Curtain Up')
+    expect(s[0]).toMatchObject({ t: 'week_cover', photo: null })
+    expect(cardsOf(s).find((r) => r.eventId === curtain.eventId)?.title).toBe('Curtain Up')
   })
 
   it("Geelong's reel cover led by Geelong Dance Movement carries no gig crowd", () => {
@@ -216,7 +220,8 @@ describe('the slides around the cards', () => {
   })
 
   it("a feature's name breaks between words into two even lines", () => {
-    expect(twoLines('African Music and Cultural Festival')).toEqual(['African Music and', 'Cultural Festival'])
+    expect(twoLines('African Music and Cultural Festival')).toEqual(['African Music', 'and Cultural Festival'])
+    expect(twoLines('African Music and Cultural Festival 2026')).toEqual(['African Music', 'and Cultural Festival 2026'])
     expect(twoLines('LANY')).toEqual(['LANY'])
   })
 
@@ -273,5 +278,80 @@ describe('the venue spotlight never carries tier 4 (law 18)', () => {
     const spot = pieces.find((p) => p.kind === 'venue_spotlight')
     expect(spot?.partnerName ?? spot?.versions.instagram.hook ?? '').not.toMatch(/Library/)
     for (const p of pieces) for (const id of sessions.map((n) => n.eventId)) expect(p.eventIds, p.kind).not.toContain(id)
+  })
+})
+
+describe("the PM's 18:45 fixes", () => {
+  const at = (iso: string, title: string, extra: Partial<CampaignNight> = {}) => night({ at: iso, title, citySlug: 'geelong', cityName: 'Geelong', venueName: `${title} Hall`, host: `${title} Hall`, summary: null, categorySlug: 'theatre', ...extra })
+
+  it('one night, one date label: the cover, its day slide and the ask read a run the same (fix 1)', () => {
+    const fri = at('2026-11-20T08:30:00Z', 'Curtain Up')
+    const sat = at('2026-11-21T08:30:00Z', 'Curtain Up')
+    const fest = at('2026-11-20T22:00:00Z', 'Leisurefest', { endDate: '2026-11-22T07:00:00Z' })
+    const other = at('2026-11-21T09:00:00Z', 'Another Show')
+    const s = lockedListSlides([fri, fest, other], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN, (n) => (n.title === 'Curtain Up' ? [fri, sat] : [n]))
+    const labelsOf = (id: string) => [
+      ...((s[0] as Extract<Slide, { t: 'week_cover' }>).lead ?? []).filter((r) => r.eventId === id).map((r) => r.sub),
+      ...rowsOf(s).filter((r) => r.eventId === id).map((r) => r.sub),
+      ...(s.at(-1) as Extract<Slide, { t: 'ask' }>).three.filter((r) => r.eventId === id).map((r) => r.when),
+    ]
+    expect(new Set(labelsOf(fri.eventId))).toEqual(new Set(['Fri 20 & Sat 21']))
+    expect(new Set(labelsOf(fest.eventId))).toEqual(new Set(['Sat 21 to Sun 22']))
+  })
+
+  it("a weekend eyebrow counts every session of a run (Bendigo's read 21 November while it ran 20 to 22)", () => {
+    const sat = at('2026-11-21T08:00:00Z', 'Witness for the Prosecution')
+    const runs = [at('2026-11-20T08:00:00Z', 'Witness for the Prosecution'), sat, at('2026-11-22T02:30:00Z', 'Witness for the Prosecution')]
+    const s = lockedListSlides([sat], ['1 thing on', 'in Bendigo', 'this weekend'], ORIGIN, () => runs)
+    expect((s[0] as Extract<Slide, { t: 'week_cover' }>).range).toBe('20 to 22 November')
+  })
+
+  it("a run sorts by its first session on the slide's days: Leisurefest's Friday 9:00 am above the Friday 7:30 pm (fix 2)", () => {
+    const show = at('2026-11-20T08:30:00Z', 'Curtain Up')
+    const leisureSat = at('2026-11-20T22:00:00Z', 'Leisurefest')
+    const leisureFri = at('2026-11-19T22:00:00Z', 'Leisurefest')
+    // A third night with its own photograph puts the cover in picture, so the day slide is not a repeat of the cover.
+    const sunday = at('2026-11-22T02:00:00Z', 'Sunday Picnic', { approvedPhotoUrl: OWN, photoCredit: 'Its organiser' })
+    const s = lockedListSlides([show, leisureSat, sunday], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN, (n) => (n.title === 'Leisurefest' ? [leisureFri, leisureSat] : [n]))
+    const day = daysOf(s).find((d) => d.rows.some((r) => r.eventId === leisureSat.eventId))!
+    expect(day.rows.map((r) => r.eventId).slice(0, 2)).toEqual([leisureSat.eventId, show.eventId])
+  })
+
+  it("no repeat slide: a day slide whose every card is on the cover drops, the post is cover then ask (fix 3, Bendigo's weekend)", () => {
+    const three = [at('2026-11-20T08:00:00Z', 'One'), at('2026-11-21T08:00:00Z', 'Two'), at('2026-11-22T02:30:00Z', 'Three')]
+    const s = lockedListSlides(three, ['3 things on', 'in Bendigo', 'this weekend'], ORIGIN)
+    expect(s.map((x) => x.t)).toEqual(['week_cover', 'ask'])
+  })
+
+  it('no stretched card: a day slide in type sets no card to grow (fix 4)', () => {
+    const rows = [{ eventId: 'a', startDate: '2026-11-21T08:00:00Z', when: '7:15 pm', sub: 'Sat 21', title: "Australia v England Men's T20I", place: 'Melbourne Cricket Ground', free: false }]
+    const el = daysElement('feed', { day: 'Saturday', date: '21 Nov', rows, credit: null }, null, null)
+    const grown: string[] = []
+    const walk = (x: unknown) => {
+      if (!x || typeof x !== 'object') return
+      const e = x as { props?: { style?: Record<string, unknown>; children?: unknown } }
+      const st = e.props?.style ?? {}
+      if (typeof st.border === 'string' && st.border.includes('#E8B738') && Number(st.flexGrow ?? 0) > 0) grown.push('card')
+      const k = e.props?.children
+      for (const c of Array.isArray(k) ? k : [k]) walk(c)
+    }
+    walk(el)
+    expect(grown).toEqual([])
+  })
+
+  it("a name never breaks after v, vs, &, and, at, with or a number: 'Australia v England' stays whole (fix 4)", () => {
+    expect(keepTogether("Australia v England Men's T20I")).toBe("Australia\u00A0v\u00A0England Men's T20I")
+    expect(keepTogether('Melbourne United vs New Zealand Breakers')).toBe('Melbourne United\u00A0vs\u00A0New Zealand Breakers')
+    expect(keepTogether('Two Door Cinema Club')).toBe('Two Door Cinema Club')
+    expect(keepTogether('Festival 2026 Opening')).toBe('Festival 2026\u00A0Opening')
+    expect(keepTogether('Geelong Caravanning and Adventure Leisurefest')).toBe('Geelong Caravanning and\u00A0Adventure Leisurefest')
+  })
+
+  it('the photographed night is the first name in Led by (fix 5)', () => {
+    const fight = at('2026-11-21T09:00:00Z', 'Humanoid Fighting Championship', { venueName: 'Margaret Court Arena', categorySlug: 'sport' })
+    const amcf = at('2026-11-20T08:00:00Z', 'African Music and Cultural Festival', { endDate: '2026-11-22T11:00:00Z', categorySlug: 'festival', approvedPhotoUrl: OWN, photoCredit: 'AMCF, past festival', state: { entryMode: 'walk_in', isFree: true } })
+    const cover = lockedListSlides([fight, amcf], ['2 things on', 'in Melbourne', 'this weekend'], ORIGIN)[0] as Extract<Slide, { t: 'week_cover' }>
+    expect(cover.photoEventId).toBe(amcf.eventId)
+    expect(cover.draws).toMatch(/^Led by African Music and Cultural Festival\b/)
   })
 })

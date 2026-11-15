@@ -6,7 +6,7 @@ import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
-import { standInChooser, standInCredit, standInOf, standInUrl } from './stand-ins'
+import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl } from './stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -632,45 +632,51 @@ function byDraw(a: CampaignNight, b: CampaignNight): number {
   return Date.parse(a.startDate) - Date.parse(b.startDate)
 }
 
-/** A night as Lawal's gold timed card: its time (or its first day, over several days), the day under it on a two day slide. */
-export function dayRowOf(n: CampaignNight, paired: boolean): DayRow {
-  const span = dateOf(n).includes(' to ') && Boolean(n.endDate)
+/** A night's date label in one post: its first time, and every day it plays there. */
+export type NightLabel = { time: string; day: string; first: string }
+
+/**
+ * ONE NIGHT, ONE DATE LABEL (the PM's 18:45 fix 1: "a run reads the same on every slide"): the one function a post's cover,
+ * day slides and ask read a night's dates from. A night over several days reads its first and last ("Fri 20 to Sun 22");
+ * a show with sessions on several days names them ("Fri 20 & Sat 21", over three "Thu 19 to Sat 21"); its time is its
+ * first session's.
+ */
+export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] = []): NightLabel {
+  const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const first = all[0]
+  if (dateOf(n).includes(' to ') && n.endDate) {
+    return { time: clockOf(n.startDate, n.timezone), day: `${shortDay(n.startDate, n.timezone)} to ${shortDay(n.endDate, n.timezone)}`, first: n.startDate }
+  }
+  const byDay = new Map<string, CampaignNight>()
+  for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  const d = [...byDay.values()].map((x) => shortDay(x.startDate, x.timezone))
+  return { time: clockOf(first.startDate, first.timezone), day: d.length === 1 ? d[0] : d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}`, first: first.startDate }
+}
+
+/** A night as Lawal's gold timed card: its time over its date label, its title by rule, its place, and FREE. */
+export function dayRowOf(n: CampaignNight, label: NightLabel = nightLabel(n)): DayRow {
   return {
     eventId: n.eventId,
     startDate: n.startDate,
-    when: span ? shortDay(n.startDate, n.timezone) : clockOf(n.startDate, n.timezone),
-    sub: span ? `to ${shortDay(String(n.endDate), n.timezone)}` : paired ? shortDay(n.startDate, n.timezone) : null,
+    when: label.time,
+    sub: label.day,
     title: cardTitle(n.title, CARD_TITLE_MAX),
     place: placeOf(n) ?? n.venueName ?? n.cityName,
     free: isFree(n),
   }
 }
 
-/**
- * A show's days under its time (the PM's 17:40 fix 3: "'AND 1 MORE DAY' names the day ('FRI & SAT')"): every day the show
- * plays in the piece's days, "Fri 20 & Sat 21", or over three days "Thu 19 to Sat 21"; a second time on its own day only
- * as "and 7:30 pm".
- */
-function withSessions(row: DayRow, n: CampaignNight, sessions: readonly CampaignNight[]): DayRow {
-  const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
-  if (all.length === 1 || row.sub?.startsWith('to ')) return row
-  const byDay = new Map<string, CampaignNight>()
-  for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
-  const days = [...byDay.values()]
-  if (days.length === 1) {
-    const later = all.find((x) => x.eventId !== n.eventId)
-    return later ? { ...row, sub: row.sub ? `${row.sub}, and ${clockOf(later.startDate, later.timezone)}` : `and ${clockOf(later.startDate, later.timezone)}` } : row
-  }
-  const d = days.map((x) => shortDay(x.startDate, x.timezone))
-  return { ...row, sub: d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}` }
-}
-
 /** At most four nights a day slide, as the 9.5 sample's week (fitted at the square's size by the text guard). */
 export const ROWS_PER_DAY_SLIDE = 4
+/** In type a day slide may hold five, so two short days are one full slide rather than one half empty (the PM's 18:45 fix 4). */
+export const ROWS_IN_TYPE = 5
 
 /** "16 to 22 November", "30 November to 2 December", or one day "20 November", from the nights' own dates. */
-export function rangeOf(nights: readonly CampaignNight[]): string {
-  const days = nights.flatMap((n) => [n.startDate, ...(n.endDate && dateOf(n).includes(' to ') ? [n.endDate] : [])].map((iso) => ({ iso, tz: n.timezone })))
+export function rangeOf(nights: readonly CampaignNight[], sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => []): string {
+  // A run's every session counts (the PM's 18:45 fix 1: Bendigo's weekend read 21 November while it ran 20 to 22).
+  const days = nights.flatMap((n) =>
+    [n, ...sessionsOf(n)].flatMap((x) => [x.startDate, ...(x.endDate && dateOf(x).includes(' to ') ? [x.endDate] : [])].map((iso) => ({ iso, tz: x.timezone }))),
+  )
   days.sort((a, b) => Date.parse(a.iso) - Date.parse(b.iso))
   const fmt = (d: { iso: string; tz: string | null }) => local(d.iso, d.tz, { day: 'numeric', month: 'long' })
   const [first, last] = [days[0], days[days.length - 1]]
@@ -682,15 +688,19 @@ export function rangeOf(nights: readonly CampaignNight[]): string {
 }
 
 /** "Led by LANY and Two Door Cinema Club": the piece's biggest draws (tier 1, then 2), by name, or null. */
-export function drawsOf(nights: readonly CampaignNight[]): string | null {
-  const names = [...nights]
-    .filter((n) => socialTierOf(n) <= 2)
+export function drawsOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null): string | null {
+  // The PM's 18:45 fix 5: a cover carrying a night's own photograph names that night first, so the reader never takes
+  // the festival's dancers for the fight night.
+  const lead = photographed ? cardTitle(photographed.title, 44) : null
+  const rest = [...nights]
+    .filter((n) => socialTierOf(n) <= 2 && n.eventId !== photographed?.eventId)
     .sort(byDraw)
     .map((n) => cardTitle(n.title, DRAW_TITLE_MAX))
-    .filter((t, i, a) => t.length <= DRAW_TITLE_MAX && a.indexOf(t) === i)
+    .filter((t) => t.length <= DRAW_TITLE_MAX)
+  const names = [...(lead ? [lead] : []), ...rest].filter((t, i, a) => a.indexOf(t) === i)
   if (names.length === 0) return null
   const two = names.length >= 2 ? `Led by ${names[0]} and ${names[1]}` : null
-  return two && two.length <= 46 ? two : `Led by ${names[0]}`
+  return two && two.length <= (photographed ? 90 : 46) ? two : `Led by ${names[0]}`
 }
 
 /** The day slides' heading: "Wednesday" and "18 Nov", or for two days "Mon & Tue" and "16 & 17 Nov". */
@@ -737,9 +747,9 @@ export function lockedListSlides(
   const cover: Slide = {
     t: 'week_cover',
     composition: 'contents_cover',
-    range: rangeOf(ordered),
+    range: rangeOf(ordered, sessionsOf),
     lines,
-    draws: drawsOf(ordered),
+    draws: drawsOf(ordered, lead),
     // The PM's 17:40 fix 5: the out-4 cover's line, "2 are free, 3 need tickets. Tap through for each night."
     line: splitLine(ordered),
     photoEventId: lead ? lead.eventId : null,
@@ -747,28 +757,51 @@ export function lockedListSlides(
     credit: lead ? (lead.photoCredit ? creditLine(lead.photoCredit) : null) : coverStandIn ? standInCredit(coverStandIn) : null,
   }
 
-  const daySlides: Slide[] = daySlideGroups(ordered).map((days) => {
+  /* One label per night in this post (fix 1), read by the cover, the day slides and the ask alike. */
+  const labels = new Map(ordered.map((n) => [n.eventId, nightLabel(n, sessionsOf(n))]))
+  const rowOf = (n: CampaignNight) => dayRowOf(n, labels.get(n.eventId))
+  /* A day slide in type of one or two cards joins a neighbour in type when together they hold five or fewer (fix 4). */
+  const ofOneKind = (ns: readonly CampaignNight[]) => {
+    const kinds = new Set(ns.map((n) => nightKindOf(n)))
+    const [kind] = [...kinds]
+    return kinds.size === 1 && kind !== null && STAND_INS.some((x) => x.kind === kind)
+  }
+  const groups = daySlideGroups(ordered)
+  for (let i = 0; i < groups.length; i++) {
+    const size = (g: CampaignNight[][]) => g.reduce((a, x) => a + x.length, 0)
+    if (ofOneKind(groups[i].flat()) || size(groups[i]) > 2) continue
+    const j = [i - 1, i + 1].find((x) => groups[x] && !ofOneKind(groups[x].flat()) && size(groups[x]) + size(groups[i]) <= ROWS_IN_TYPE)
+    if (j === undefined) continue
+    const [a, b] = j < i ? [j, i] : [i, j]
+    groups.splice(a, 2, [...groups[a], ...groups[b]])
+    i = a - 1
+  }
+  const daySlides: Slide[] = groups.map((days) => {
     const s = standInFor(days.flat())
+    const slideDays = new Set(days.flat().map((x) => ymdOf(x.startDate, x.timezone)))
+    /* The draw decides which nights make the slide; day then clock orders them, a run by its first session on the
+       slide's days (the PM's 18:45 fix 2: Leisurefest's Friday 9:00 am above the Friday 7:30 pm). */
+    const key = (n: CampaignNight) => Math.min(...[n, ...sessionsOf(n)].filter((x) => slideDays.has(ymdOf(x.startDate, x.timezone))).map((x) => Date.parse(x.startDate)), Date.parse(n.startDate))
     return {
       t: 'days',
       composition: 'contents_cover',
       ...headingOf(days),
-      // The PM's 17:40 fix 3: the draw decides which nights make the slide, the clock their order on it.
-      rows: [...days.flat()].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => withSessions(dayRowOf(n, new Set(days.flat().map((x) => ymdOf(x.startDate, x.timezone))).size > 1), n, sessionsOf(n))),
+      rows: [...days.flat()].sort((a, b) => key(a) - key(b)).map(rowOf),
       photo: s ? standInUrl(origin, s) : null,
       credit: s ? standInCredit(s) : null,
     }
   })
 
   const features: Slide[] = own.slice(0, 2).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => featureSlideOf(n))
-  const three = [...ordered].sort(byDraw).slice(0, 3).map((n) => {
-    const r = dayRowOf(n, false)
-    const span = dateOf(n).includes(' to ') && Boolean(n.endDate)
-    return { ...r, when: span ? `${local(n.startDate, n.timezone, { weekday: 'short' })} to ${local(String(n.endDate), n.timezone, { weekday: 'short' })}` : shortDay(n.startDate, n.timezone), sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }
-  })
+  // The ask names each night by the same date label as its card (fix 1).
+  const three = [...ordered].sort(byDraw).slice(0, 3).map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
   // A cover with no photograph lists its three lead nights as cards, so the page is never bare ground.
-  const coverSlide = cover.photo ? cover : { ...cover, lead: [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => dayRowOf(n, true)) }
-  return [coverSlide, ...daySlides, ...features, { t: 'ask', composition: 'close', count: ordered.length, three }]
+  const lead3 = cover.photo ? [] : [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse((labels.get(a.eventId) ?? nightLabel(a)).first) - Date.parse((labels.get(b.eventId) ?? nightLabel(b)).first)).map(rowOf)
+  const coverSlide = cover.photo ? cover : { ...cover, lead: lead3 }
+  // No repeat slide (the PM's 18:45 fix 3): a day slide whose every card is already on the cover adds nothing and drops.
+  const onCover = new Set(lead3.map((r) => r.eventId))
+  const kept = daySlides.filter((d) => !(d.t === 'days' && d.rows.every((r) => onCover.has(r.eventId))))
+  return [coverSlide, ...kept, ...features, { t: 'ask', composition: 'close', count: ordered.length, three }]
 }
 
 /**
@@ -834,7 +867,7 @@ export function venueSlideOf(host: string, nights: readonly CampaignNight[], ori
     venue: placeOf(ordered[0]) ?? host,
     eyebrow: `Venue · ${rangeOf(ordered)}`,
     accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${count === 1 ? 'night' : 'nights'} this week`,
-    rows: ordered.map((n) => ({ ...dayRowOf(n, true), place: nightWords(n).entry ?? '' })),
+    rows: ordered.map((n) => ({ ...dayRowOf(n), place: nightWords(n).entry ?? '' })),
     photo: s ? standInUrl(origin, s) : null,
     credit: s ? standInCredit(s) : null,
   }
@@ -1147,6 +1180,8 @@ export function planCampaign(input: {
       const all = every.filter((n) => !listed.has(n.eventId))
       const name = getCategoryDisplayName(slug)
       const { nights: spot, picks: spotPicks } = selectNights(all, MAX_NIGHTS, { perCategory: MAX_NIGHTS })
+      // Three different nights, after one night per title (out-7, 18:57: three sessions of one show drew "1 family nights").
+      if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
       const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} nights.`
       const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `nights in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
@@ -1361,7 +1396,10 @@ export function planCampaign(input: {
   /* The names each piece quotes exactly: its nights' own titles and hosts, and its partner's (pieceRefusal). */
   const byId = new Map(nightsIn.map((n) => [n.eventId, n]))
   for (const p of pieces) {
-    const nights = p.eventIds.map((id) => byId.get(id)).filter((n): n is CampaignNight => n !== undefined)
+    const nights = p.eventIds.flatMap((id) => {
+      const n = byId.get(id)
+      return n ? [n] : []
+    })
     // A card quotes a night's name by rule (cardTitle, the PM's 17:40 fix 4): each of those is the organiser's own name too.
     const cardNames = (n: CampaignNight) => [CARD_TITLE_MAX, ASK_TITLE_MAX, DRAW_TITLE_MAX, 40].map((max) => cardTitle(n.title, max))
     p.names = [...new Set([...nights.flatMap((n) => [n.title, n.host ?? '', ...cardNames(n)]), p.partnerName ?? ''].filter((s) => s.trim() !== ''))]

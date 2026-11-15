@@ -12,10 +12,12 @@ import { SAFE, sizeOf, type DayFormat, type El } from '@/lib/broadcast/day-cards
  *  - each word's contrast against what lies behind it (WCAG 2.2, 1.4.3: 3 to 1 at 52 px of a 1080 frame or more, else
  *    4.5 to 1), read from the slide drawn with its words taken out; a credit drawn with its own shadow is a mark on a
  *    photograph, kept small at the edge as the PM's 09:10 ruled, and is not read against the bare photograph;
- *  - bare ground under a tenth of the frame (rows of nothing but the ground's colour, in runs of 100 px of a 1080 frame).
+ *  - bare ground under a tenth of the frame (rows of nothing but the ground's colour, in runs of 100 px of a 1080 frame);
+ *  - no line of a name ending on v, vs, &, and, at, with or a number (the PM's 18:45 fix 4: 'Australia v / England');
+ *  - no card stretched past its content (the PM's 18:45 fix 4: two cards 550 px tall around a small block of words).
  * Each fault is said in words a person can act on.
  */
-type Word = { group: number; x: number; top: number; bottom: number; right: number; text: string; base: number; size: number; fill: string; shadowed: boolean }
+type Word = { group: number; x: number; top: number; bottom: number; right: number; text: string; base: number; size: number; fill: string; shadowed: boolean; family: string }
 
 const lum = (r: number, g: number, b: number) => {
   const c = (v: number) => {
@@ -57,8 +59,9 @@ function wordsOf(svg: string): Word[] {
     const ww = Number(m[5])
     const size = Number(/font-size="([\d.]+)"/.exec(m[7])?.[1] ?? 0)
     const fill = /fill="([^"]+)"/.exec(m[7])?.[1] ?? ''
+    const family = /font-family="([^"]+)"/.exec(m[7])?.[1] ?? ''
     const desc = /[gjpqy,;()]/.test(word)
-    words.push({ group: group * 1000 + Math.round(size), x, base, right: x + ww, top: base - size * 0.76, bottom: base + size * (desc ? 0.24 : 0.04), text: word, size, fill, shadowed: Boolean(m[2]) })
+    words.push({ group: group * 1000 + Math.round(size), x, base, right: x + ww, top: base - size * 0.76, bottom: base + size * (desc ? 0.24 : 0.04), text: word, size, fill, shadowed: Boolean(m[2]), family })
   }
   return words
 }
@@ -74,8 +77,19 @@ export async function wordTop(el: El, f: DayFormat, word: string, minSize: numbe
   return hit ? hit.top : null
 }
 
+/** A gold timed card (a gold border) set to grow past its content: the element tree read, never a guess from pixels. */
+function stretchedCards(el: El | string | null | undefined): number {
+  if (!el || typeof el === 'string') return 0
+  const style = (el.props.style ?? {}) as Record<string, unknown>
+  const own = typeof style.border === 'string' && style.border.includes('#E8B738') && Number(style.flexGrow ?? 0) > 0 ? 1 : 0
+  const kids = el.props.children
+  const list = Array.isArray(kids) ? kids : [kids]
+  return own + list.reduce((a: number, k) => a + stretchedCards(k as El | string | null), 0)
+}
+
 export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]> {
   const { w, h: H } = sizeOf(f)
+  const stretched = stretchedCards(el)
   const fs = await fonts()
   const svg = await cardSvgWithText(el as unknown as React.ReactNode, { width: w, height: H, fonts: fs })
   const words = wordsOf(svg)
@@ -83,6 +97,7 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
   const say = (s: string) => {
     if (!faults.includes(s)) faults.push(s)
   }
+  if (stretched > 0) say(`${stretched} card(s) stretched past their content`)
   for (const wd of words) {
     if (wd.x < -1 || wd.right > w + 1 || wd.top < -1 || wd.bottom > H + 1) say(`"${wd.text}" leaves the frame`)
     if (f === 'story' && (wd.top < SAFE - 1 || wd.bottom > H - SAFE + 1)) say(`"${wd.text}" lies in a story's safe area`)
@@ -106,6 +121,14 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
       lines.set(key, [...(lines.get(key) ?? []), wd])
     }
     const ordered = [...lines.entries()].sort((p, q) => p[0] - q[0])
+    for (let li = 0; li < ordered.length - 1; li++) {
+      const row = [...ordered[li][1]].sort((p, q) => p.x - q.x)
+      const end = row[row.length - 1]?.text.split(/\s|\u00A0/).pop() ?? ''
+      // A break only where the next line of the same block follows straight on.
+      // A number counts in a name (the cards' Hanken titles), never in a date label ('FRI 20' / 'TO SUN 22').
+      const name = /hanken/i.test(row[row.length - 1]?.family ?? '')
+      if (ordered[li + 1][0] - ordered[li][0] <= 1.6 * ws[0].size && (/^(v|vs|&|and|at|with)$/i.test(end) || (name && /^\d[\d.,:]*$/.test(end)))) say(`a name breaks after "${end}" ("${row.map((x) => x.text).join(' ').slice(0, 40)}")`)
+    }
     const last = ordered[ordered.length - 1]
     if (ordered.length >= 2 && ws.length >= 3 && ws.some((x) => !/^\d+$/.test(x.text)) && last[1].length === 1 && last[0] - ordered[ordered.length - 2][0] <= 1.6 * ws[0].size) {
       say(`"${last[1][0].text}" stands alone on the last line of "${ws.map((x) => x.text).join(' ').slice(0, 50)}"`)
