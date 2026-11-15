@@ -794,7 +794,11 @@ export function lockedListSlides(
 
   const features: Slide[] = own.slice(0, 2).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((n) => featureSlideOf(n))
   // The ask names each night by the same date label as its card (fix 1).
-  const three = [...ordered].sort(byDraw).slice(0, 3).map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
+  // The PM's 19:45 fix 1: the ask's first line is the night the cover is led by (its photograph's, else its first draw),
+  // then the post's best by draw, free or ticketed alike.
+  const ledFirst = lead ?? [...ordered].sort(byDraw)[0]
+  const askOrder = [ledFirst, ...[...ordered].sort(byDraw).filter((n) => n.eventId !== ledFirst.eventId)]
+  const three = askOrder.slice(0, 3).map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
   // A cover with no photograph lists its three lead nights as cards, so the page is never bare ground.
   const lead3 = cover.photo ? [] : [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse((labels.get(a.eventId) ?? nightLabel(a)).first) - Date.parse((labels.get(b.eventId) ?? nightLabel(b)).first)).map(rowOf)
   const coverSlide = cover.photo ? cover : { ...cover, lead: lead3 }

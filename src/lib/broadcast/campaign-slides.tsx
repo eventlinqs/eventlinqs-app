@@ -17,8 +17,8 @@ import {
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
-import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, venueElement, weekCoverElement, wholePhoto, type El, type Foot } from '@/lib/broadcast/day-cards'
-import { lockedSlideFaults, wordTop } from '@/lib/broadcast/day-card-guard'
+import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
+import { lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import type { Composition, Slide } from '@/lib/social/campaign'
 import { standInOf } from '@/lib/social/stand-ins'
 
@@ -191,6 +191,9 @@ export function isLocked(slide: Slide): slide is LockedSlide {
   return slide.t === 'week_cover' || slide.t === 'days' || slide.t === 'feature' || slide.t === 'ask' || slide.t === 'venue'
 }
 
+/** The first word of a slide's foot, where the spare room above it is read. */
+const footWordOf = (foot: Foot): string | null => (!foot ? null : foot.kind === 'count' ? 'Swipe' : 'Tap')
+
 /** A one pixel stand-in for the photograph while a slide is laid out to find where its words begin. */
 const BLANK = (f: Format, h: number) => ({ uri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', width: sizeOf(f).w, height: h })
 
@@ -204,6 +207,22 @@ async function fittedBand(f: Format, slide: 'days' | 'cover' | 'venue', build: (
   const top = marker ? await wordTop(build(planned), f, marker, minSize * scaleOf(f)) : null
   if (top === null) return planned
   return Math.round(Math.min(sizeOf(f).h * 0.75, Math.max(planned, top - 12 * scaleOf(f))))
+}
+
+/**
+ * The card size for a slide in type (the PM's 19:45 fix 3): one fixed gap, the group under the heading, and the cards as
+ * large as leaves only a small margin above the foot, measured from satori's own layout, never a guess; between its
+ * starting size and 1.6. The margin stays under the text guard's 100 px run of a 1080 frame, so no bare ground is left.
+ */
+async function fittedScale(f: Format, start: number, build: (s: number) => El, footWord: string | null): Promise<number> {
+  // Growing the cards to fill pushed joined names past their columns (out-8's first pass, 19:51): the PM's 19:45 rules one
+  // fixed gap and spare room at the foot, so a slide keeps its count-based size and is only ever shrunk, never grown, to
+  // keep its foot on the frame.
+  const k = scaleOf(f)
+  const floor = sizeOf(f).h - (f === 'story' ? SAFE + 16 * k : 64 * k * 0.8)
+  let s = start
+  for (let i = 0; i < 4 && (await spareAboveFoot(build(s), f, footWord, floor)) < 0; i++) s *= 0.92
+  return s
 }
 
 /** What a story's foot names: the slide a tap opens (a story is tapped, never swiped: the PM's 09:40 fix 2). */
@@ -235,11 +254,18 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'band', foot, bh)
       }
       const photo = url ? await wholePhoto(url, f, 'cover') : null
+      if (!photo && words.lead && words.lead.length > 0) {
+        const s = await fittedScale(f, 1, (x) => weekCoverElement(f, words, null, 'whole', foot, undefined, x), footWordOf(foot))
+        return weekCoverElement(f, words, null, 'whole', foot, undefined, s)
+      }
       return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'whole', foot)
     }
     case 'days': {
       const words = { day: slide.day, date: slide.date, rows: slide.rows, credit: url ? slide.credit : null }
-      if (!url) return daysElement(f, words, null, foot)
+      if (!url) {
+        const s = await fittedScale(f, startScale(f, slide.rows.length), (x) => daysElement(f, words, null, foot, undefined, x), footWordOf(foot))
+        return daysElement(f, words, null, foot, undefined, s)
+      }
       const bh = await fittedBand(f, 'days', (h) => daysElement(f, words, BLANK(f, h), foot, h), slide.day.split(' ')[0] ?? '', 60)
       const photo = await bandPhoto(url, f, bh)
       return daysElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
@@ -252,7 +278,10 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
       return askElement(f, { count: slide.count, three: slide.three }, foot)
     case 'venue': {
       const words = { venue: slide.venue, eyebrow: slide.eyebrow, accent: slide.accent, rows: slide.rows, credit: url ? slide.credit : null }
-      if (!url) return venueElement(f, words, null, foot)
+      if (!url) {
+        const s = await fittedScale(f, startScale(f, slide.rows.length), (x) => venueElement(f, words, null, foot, undefined, x), 'Send')
+        return venueElement(f, words, null, foot, undefined, s)
+      }
       // The band ends at the eyebrow (36 of a 1080 frame), never at the smaller VENUE pill above it.
       const bh = await fittedBand(f, 'venue', (h) => venueElement(f, words, BLANK(f, h), foot, h), 'VENUE', 33)
       const photo = await bandPhoto(url, f, bh)

@@ -91,25 +91,46 @@ const exit = (k: number, f: DayFormat, color: string) =>
  * A name never breaks after v, vs, &, and, at, with or a number (the PM's 18:45 fix 4: 'Australia v / England Men's T20I'):
  * the word and its neighbours are joined by no-break spaces when drawn; the slide's data keeps the name as it is.
  */
-export function keepTogether(name: string): string {
-  // 'Australia v England' is one name, joined on both sides; after and, at, with or &, only the break after is closed, so
-  // a long title can still break before the word (out-7: 'Caravanning and Adventure' joined whole left 'Leisurefest' alone).
-  return name
-    .replace(/ (v|vs) /gi, (_m: string, word: string) => `\u00A0${word}\u00A0`)
-    .replace(/ (&|and|at|with) /gi, (_m: string, word: string) => ` ${word}\u00A0`)
-    .replace(/(\d) (?=\S)/g, (_m: string, digit: string) => `${digit}\u00A0`)
+export function keepTogether(name: string, maxRun = 30): string {
+  // The PM's 19:45 fix 2: a line breaks BEFORE v, vs, &, and, at or with, never after, and never inside a run of
+  // capitalised words or numbers ('Melbourne United / vs New Zealand Breakers'). A run longer than 30 letters may still
+  // break, so no name is wider than its card.
+  const words = name.split(' ')
+  const starts = (x: string) => /^[A-Z0-9\u00C0-\u00DE]/.test(x)
+  const ends = (x: string) => /[,:;.]$/.test(x)
+  let out = words[0] ?? ''
+  let run = words[0] ?? ''
+  for (let i = 1; i < words.length; i++) {
+    const prev = words[i - 1]
+    const cur = words[i]
+    const joiner = /^(v|vs|&|and|at|with)$/i.test(prev)
+    // A word closing with punctuation ends its run after itself ('Live Music: / Garden Session').
+    const inRun = starts(prev) && !ends(prev) && starts(cur) && (run + ' ' + cur).length <= maxRun
+    // A name's last two words always stay together, so no word stands alone on a last line (out-8: 'SHOWTIME').
+    const last = i === words.length - 1
+    out += joiner || inRun || last ? `\u00A0${cur}` : ` ${cur}`
+    run = inRun ? `${run} ${cur}` : cur
+  }
+  return out
+}
+
+/** A date label breaks only before TO or & ('FRI 20 / TO SUN 22'), never inside a day and its date. */
+export function keepDate(label: string): string {
+  return label.replace(/ (?!(TO|to|&) )(?<!(TO|to|&) )/g, () => '\u00A0').replace(/ (TO|to|&) /g, (_m: string, w: string) => ` ${w}\u00A0`)
 }
 
 /** Lawal's gold timed card, at its content's height and its padding, never stretched (the PM's 18:45 fix 4). */
-const timedCard = (k: number, r: DayRow) =>
+/** About how many letters of a card title fit one line at its size (Hanken Grotesk runs about half an em a letter). */
+const titleRoom = (k: number, width: number, free: boolean) => Math.floor((width - k * (60 + 252 + 3 + 26) - (free ? k * 170 : 0)) / (39 * k * 0.5))
+const timedCard = (k: number, r: DayRow, width = 1024 * k) =>
   h('div', { alignItems: 'center', background: NAVY_CARD, border: `${3 * k}px solid ${GOLD}`, borderRadius: 22 * k, padding: `${24 * k}px ${30 * k}px`, width: '100%', flexShrink: 0 },
     h('div', { flexDirection: 'column', width: 252 * k, flexShrink: 0 },
       text(r.when.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: 72 * k, color: GOLD, lineHeight: 0.95, whiteSpace: 'nowrap' }),
-      r.sub ? wrap(keepTogether(r.sub.toUpperCase()), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 27 * k, letterSpacing: 1 * k, color: MIST, marginTop: 6 * k, lineHeight: 1.2 }) : null),
+      r.sub ? wrap(keepDate(r.sub.toUpperCase()), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 27 * k, letterSpacing: 1 * k, color: MIST, marginTop: 6 * k, lineHeight: 1.2 }) : null),
     h('div', { width: 3 * k, alignSelf: 'stretch', background: GOLD, marginRight: 26 * k, flexShrink: 0 }),
     h('div', { flexDirection: 'column', flexGrow: 1, flexShrink: 1 },
-      wrap(keepTogether(r.title), { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 39 * k, color: WHITE, lineHeight: 1.16 }),
-      wrap(r.place, { fontFamily: 'Hanken Grotesk', fontWeight: 500, fontSize: 31 * k, color: MIST, lineHeight: 1.25, marginTop: 6 * k })),
+      wrap(keepTogether(r.title, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 39 * k, color: WHITE, lineHeight: 1.16 }),
+      wrap(keepTogether(r.place, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 500, fontSize: 31 * k, color: MIST, lineHeight: 1.25, marginTop: 6 * k })),
     r.free ? h('div', { marginLeft: 18 * k, flexShrink: 0 }, pill(k, 'FREE', GOLD, NAVY)) : null)
 
 /** "Swipe → n/N" on a carousel; a story is tapped, so it names its next ("Tap for Wednesday"). */
@@ -155,8 +176,18 @@ const padOf = (f: DayFormat, k: number, scale = 1) => {
  */
 const cardScale = (f: DayFormat, rows: number) =>
   f === 'square' ? (rows >= 5 ? 0.85 : rows >= 3 ? 1 : 1.12) : rows >= 4 ? 1 : rows === 3 ? 1.12 : rows === 2 ? 1.3 : 1.5
-const inType = (w: number, H: number, css: string, items: readonly Kid[]) =>
-  h('div', { width: w, height: H, background: NAVY, flexDirection: 'column', justifyContent: 'space-between', padding: css }, ...items)
+/** One fixed gap between cards on every slide (the PM's 19:45 fix 3); the group sits under the heading. */
+const CARD_GAP = 20
+const cardGroup = (k: number, s: number, rows: readonly DayRow[], top: number, width: number) =>
+  h('div', { flexDirection: 'column', width: '100%', gap: CARD_GAP * k, marginTop: top, flexShrink: 0 }, ...rows.map((r) => timedCard(k * s, r, width)))
+/** A slide in type: its parts from the top, the spare room at the foot (kept small by lockedElement's measured card size). */
+const inType = (w: number, H: number, css: string, items: readonly Kid[], foot: Kid) =>
+  h('div', { width: w, height: H, background: NAVY, flexDirection: 'column', padding: css }, ...items, h('div', { flexGrow: 1 }), foot)
+
+/** The card size a slide in type starts from before it is measured. */
+export function startScale(f: DayFormat, rows: number): number {
+  return cardScale(f, rows)
+}
 
 /** A cover in type shows as many of its lead nights as its frame holds: three in the portrait feed, two in a story or square. */
 const leadRoom = (f: DayFormat) => (f === 'feed' ? 3 : 2)
@@ -170,12 +201,12 @@ const dayHeading = (k: number, w: number, pad: number, words: DaysWords, max = 1
 }
 
 /** A day slide: the photograph band (or none), the day, the nights as gold timed cards, the foot. `bandH` is its fitted band. */
-export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | null, foot: Foot, bandH: number = bandHeight(f, 'days')): El {
+export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | null, foot: Foot, bandH: number = bandHeight(f, 'days'), scale?: number): El {
   const { w, h: H, k } = SIZE[f]
   const { pad, css } = padOf(f, k, 0.8)
   const footer = h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 30 * k }, footOf(k, foot))
   if (!photo) {
-    const s = cardScale(f, words.rows.length)
+    const s = scale ?? cardScale(f, words.rows.length)
     // Three cards or fewer: the day and the date each on a line of its own, as large as each fits.
     const stacked = words.rows.length <= 3
       ? [
@@ -183,7 +214,7 @@ export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | 
           text(words.date, { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: fitLine(words.date, 240, (w - 2 * pad) / k) * k, color: GOLD, lineHeight: 0.9, whiteSpace: 'nowrap' }),
         ]
       : [dayHeading(k, w, pad, words, 190)]
-    return inType(w, H, css, [wordmark(k, WHITE), ...stacked, ...words.rows.map((r) => timedCard(k * s, r)), h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot))])
+    return inType(w, H, css, [wordmark(k, WHITE), h('div', { flexDirection: 'column', marginTop: 40 * k, flexShrink: 0 }, ...stacked), cardGroup(k, s, words.rows, 36 * k, w - 2 * pad)], h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot)))
   }
   return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
     band(w, bandH, photo),
@@ -192,7 +223,7 @@ export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | 
       h('div', { flexGrow: 1 }),
       dayHeading(k, w, pad, words),
       words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 22 * k }, creditMark(k, words.credit)) : null,
-      h('div', { flexDirection: 'column', width: '100%', gap: 20 * k, marginTop: (words.credit ? 10 : 34) * k }, ...words.rows.map((r) => timedCard(k, r))),
+      h('div', { flexDirection: 'column', width: '100%', gap: CARD_GAP * k, marginTop: (words.credit ? 10 : 34) * k }, ...words.rows.map((r) => timedCard(k, r, w - 2 * pad))),
       footer))
 }
 
@@ -201,7 +232,7 @@ export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | 
  * a photograph of the lead night's kind across the top ('band', fitted to end where the words begin), or neither, when
  * its three lead nights fill the frame as cards; the foot.
  */
-export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: DrawnPhoto | null, mode: 'whole' | 'band', foot: Foot, bandH: number = bandHeight(f, 'cover')): El {
+export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: DrawnPhoto | null, mode: 'whole' | 'band', foot: Foot, bandH: number = bandHeight(f, 'cover'), scale = 1): El {
   const { w, h: H, k } = SIZE[f]
   const { pad, css } = padOf(f, k)
   // In type the cover's lines give room to its lead nights' cards.
@@ -212,7 +243,7 @@ export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: Dra
     text(words.lines[1], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: WHITE, lineHeight: 1, whiteSpace: 'nowrap' }),
     text(words.lines[2], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: GOLD, lineHeight: 1, whiteSpace: 'nowrap' }),
   ]
-  const draws = words.draws ? wrap(words.draws, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 52 * k, color: WHITE, marginTop: 22 * k, lineHeight: 1.08 }) : null
+  const draws = words.draws ? wrap(keepTogether(words.draws), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 52 * k, color: WHITE, marginTop: 22 * k, lineHeight: 1.08 }) : null
   const line = wrap(words.line, { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 34 * k, color: MIST, marginTop: 14 * k, lineHeight: 1.25 })
   const footer = h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot))
   if (photo && mode === 'band') {
@@ -232,11 +263,10 @@ export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: Dra
   if (!photo) {
     return inType(w, H, css, [
       wordmark(k, WHITE),
-      h('div', { flexDirection: 'column', width: '100%', flexShrink: 0 }, eyebrow(k, words.range, GOLD), ...lines),
+      h('div', { flexDirection: 'column', width: '100%', flexShrink: 0, marginTop: 36 * k }, eyebrow(k, words.range, GOLD), ...lines),
       h('div', { flexDirection: 'column', width: '100%', flexShrink: 0 }, draws, line),
-      ...(words.lead ?? []).slice(0, leadRoom(f)).map((r) => timedCard(k, r)),
-      footer,
-    ])
+      cardGroup(k, scale, (words.lead ?? []).slice(0, leadRoom(f)), 34 * k, w - 2 * pad),
+    ], footer)
   }
   return h('div', { width: w, height: H, background: NAVY, flexDirection: 'column', padding: css },
     wordmark(k, WHITE),
@@ -299,7 +329,7 @@ const askLine = (k: number, color: string) =>
  * pill, the range, the venue's name filling the width, the accent in gold, its nights as gold timed cards, the ask and
  * the way out. In type the name leads from the top and the cards grow to fill.
  */
-export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto | null, foot: Foot, bandH: number = bandHeight(f, 'venue')): El {
+export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto | null, foot: Foot, bandH: number = bandHeight(f, 'venue'), scale?: number): El {
   const { w, h: H, k } = SIZE[f]
   const { pad, css } = padOf(f, k, 0.8)
   const name = text(words.venue.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: fitLine(words.venue, 190, (w - 2 * pad) / k, true) * k, color: WHITE, lineHeight: 0.9, marginTop: 10 * k, whiteSpace: 'nowrap' })
@@ -310,14 +340,12 @@ export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto 
   const tail = footOf(k, foot)
   const top = h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%' }, photo ? markOnPhoto(k) : wordmark(k, WHITE), pill(k, 'VENUE', GOLD, NAVY))
   if (!photo) {
-    const s = cardScale(f, words.rows.length)
+    const s = scale ?? cardScale(f, words.rows.length)
     return inType(w, H, css, [
       top,
-      h('div', { flexDirection: 'column', flexShrink: 0 }, eyebrow(k, words.eyebrow, GOLD), name, accent),
-      ...words.rows.map((r) => timedCard(k * s, r)),
-      close,
-      tail ? h('div', { justifyContent: 'flex-end', width: '100%' }, tail) : null,
-    ])
+      h('div', { flexDirection: 'column', flexShrink: 0, marginTop: 48 * k }, eyebrow(k, words.eyebrow, GOLD), name, accent),
+      cardGroup(k, s, words.rows, 30 * k, w - 2 * pad),
+    ], h('div', { flexDirection: 'column', width: '100%' }, close, tail ? h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 16 * k }, tail) : null))
   }
   return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
     band(w, bandH, photo),
@@ -328,7 +356,7 @@ export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto 
       eyebrow(k, words.eyebrow, GOLD),
       name,
       accent,
-      h('div', { flexDirection: 'column', width: '100%', marginTop: 24 * k, gap: 14 * k }, ...words.rows.map((r) => timedCard(k, r))),
+      h('div', { flexDirection: 'column', width: '100%', marginTop: 24 * k, gap: CARD_GAP * k }, ...words.rows.map((r) => timedCard(k, r, w - 2 * pad))),
       close,
       tail ? h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 16 * k }, tail) : null))
 }
@@ -349,7 +377,7 @@ export function askElement(f: DayFormat, words: AskWords, foot: Foot): El {
             eyebrow(k, words.three.length === 1 ? 'Start with this one' : `Start with these ${words.three.length === 2 ? 'two' : 'three'}`, INK),
             ...words.three.map((r) =>
               h('div', { alignItems: 'flex-start', width: '100%', marginTop: 6 * k },
-                wrap(keepTogether(r.when.toUpperCase()), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: INK, lineHeight: 1.1, width: 330 * k }),
+                wrap(keepDate(r.when.toUpperCase()), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: INK, lineHeight: 1.1, width: 330 * k }),
                 wrap(keepTogether(r.title), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: INK, lineHeight: 1.1, flexShrink: 1 }))))
         : null,
       text(`All ${words.count} are on EventLinqs.`, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 56 * k, color: INK, marginTop: 32 * k }),

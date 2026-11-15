@@ -87,6 +87,23 @@ function stretchedCards(el: El | string | null | undefined): number {
   return own + list.reduce((a: number, k) => a + stretchedCards(k as El | string | null), 0)
 }
 
+/**
+ * The room left above a slide's foot (the PM's 19:45 fix 3: spare room falls at the foot): the top of the foot's first
+ * word (`footWord`), or the frame's own foot, less the bottom of the lowest word above it. Read from satori's own layout.
+ */
+export async function spareAboveFoot(el: El, f: DayFormat, footWord: string | null, floor: number): Promise<number> {
+  const { w, h: H } = sizeOf(f)
+  const words = wordsOf(await cardSvgWithText(el as unknown as React.ReactNode, { width: w, height: H, fonts: await fonts() }))
+  const foot = footWord ? words.filter((x) => x.text === footWord || x.text.startsWith(`${footWord}\u00A0`)).sort((p, q) => q.top - p.top)[0] : undefined
+  // A foot pushed past the frame's own floor means the slide overflows: no room, and how far over.
+  if (foot && foot.bottom > floor + 2) return floor - foot.bottom
+  const lowest = Math.max(0, ...words.map((x) => x.bottom))
+  if (!foot && lowest > floor + 2) return floor - lowest
+  const limit = foot ? foot.top : floor
+  const above = words.filter((x) => x.bottom < limit - 1)
+  return limit - Math.max(0, ...above.map((x) => x.bottom))
+}
+
 export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]> {
   const { w, h: H } = sizeOf(f)
   const stretched = stretchedCards(el)
@@ -128,9 +145,14 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
       // A number counts in a name (the cards' Hanken titles), never in a date label ('FRI 20' / 'TO SUN 22').
       const name = /hanken/i.test(row[row.length - 1]?.family ?? '')
       if (ordered[li + 1][0] - ordered[li][0] <= 1.6 * ws[0].size && (/^(v|vs|&|and|at|with)$/i.test(end) || (name && /^\d[\d.,:]*$/.test(end)))) say(`a name breaks after "${end}" ("${row.map((x) => x.text).join(' ').slice(0, 40)}")`)
+      // The PM's 19:45 fix 2: never inside a run of capitalised words ('Melbourne United vs New / Zealand Breakers').
+      const next = [...ordered[li + 1][1]].sort((p, q) => p.x - q.x)[0]?.text.split(/\s|\u00A0/)[0] ?? ''
+      const named = /hanken/i.test(row[row.length - 1]?.family ?? '')
+      if (named && ordered[li + 1][0] - ordered[li][0] <= 1.6 * ws[0].size && /^[A-Z]/.test(end) && !/[,:;.]$/.test(end) && /^[A-Z0-9]/.test(next) && !/^[A-Z0-9]+$/.test(end)) say(`a name breaks inside "${end} ${next}"`)
     }
     const last = ordered[ordered.length - 1]
-    if (ordered.length >= 2 && ws.length >= 3 && ws.some((x) => !/^\d+$/.test(x.text)) && last[1].length === 1 && last[0] - ordered[ordered.length - 2][0] <= 1.6 * ws[0].size) {
+    const realWords = (xs: readonly Word[]) => xs.reduce((a, x) => a + x.text.split(/\s|\u00A0/).filter(Boolean).length, 0)
+    if (ordered.length >= 2 && realWords(ws) >= 3 && ws.some((x) => !/^\d+$/.test(x.text)) && realWords(last[1]) === 1 && last[0] - ordered[ordered.length - 2][0] <= 1.6 * ws[0].size) {
       say(`"${last[1][0].text}" stands alone on the last line of "${ws.map((x) => x.text).join(' ').slice(0, 50)}"`)
     }
   }
@@ -182,14 +204,26 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
   const minRun = 100 * (w / 1080)
   let run = 0
   let empty = 0
+  const lastRun = { end: 0, length: 0 }
   for (let y = from; y < to; y++) {
     if (bare(y)) run += 1
     else {
-      if (run >= minRun) empty += run
+      if (run >= minRun) {
+        empty += run
+        lastRun.end = y
+        lastRun.length = run
+      }
       run = 0
     }
   }
+  if (run >= minRun) {
+    lastRun.end = to
+    lastRun.length = run
+  }
   if (run >= minRun) empty += run
-  if (empty / H >= 0.1) say(`bare ground fills ${Math.round((empty / H) * 100)} percent of the frame (needs under 10)`)
+  // The PM's 19:45 fix 3 rules that a slide's spare room falls at its foot: the one run that reaches down to the foot
+  // (within its last fifth) is that room, not an empty photo slot, and is not counted; every run above it still is.
+  const footRun = lastRun.end >= H * 0.8 && lastRun.length >= minRun ? lastRun.length : 0
+  if ((empty - footRun) / H >= 0.1) say(`bare ground fills ${Math.round(((empty - footRun) / H) * 100)} percent of the frame (needs under 10)`)
   return faults
 }

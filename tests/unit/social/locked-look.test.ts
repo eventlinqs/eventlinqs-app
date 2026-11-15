@@ -3,7 +3,7 @@ import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
 import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, picturedLine, planCampaign, rangeOf, shortTitle, splitLine, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { STAND_INS, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
-import { daysElement, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
+import { daysElement, keepDate, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
 
 /*
  * THE 9.5 LOCKED LOOK IN THE PRODUCT (the PM's 17:10 of 15 November 2026: "the product renders in the 9.5 locked look
@@ -145,12 +145,12 @@ describe('a list post in the locked look', () => {
     expect(slides[0]).toMatchObject({ range: '16 to 22 November', draws: 'Led by African Music and Cultural Festival and LANY', line: '1 is free, 4 need tickets. Tap through for each night.' })
   })
 
-  it('the ask names three to start with, by law 18', () => {
+  it('the ask names three to start with: the night the cover is led by, then by law 18', () => {
     const ask = slides.at(-1) as Extract<Slide, { t: 'ask' }>
     expect(ask.count).toBe(5)
-    // Two arena shows, then the ticketed talk at a concert hall (tier 1) before the free festival (tier 2).
-    expect(ask.three.map((r) => r.title)).toEqual(['LANY', 'Two Door Cinema Club', 'An Evening with a Historian'])
-    expect(ask.three.map((r) => r.when)).toEqual(['Wed 18', 'Sat 21', 'Wed 18'])
+    // The PM's 19:45 fix 1: the night the cover is led by (AMCF, its own photograph) first, then law 18's two arena shows.
+    expect(ask.three.map((r) => r.title)).toEqual(['African Music and Cultural Festival', 'LANY', 'Two Door Cinema Club'])
+    expect(ask.three.map((r) => r.when)).toEqual(['Fri 20 to Sun 22', 'Wed 18', 'Sat 21'])
     const festivalOnly = lockedListSlides([week[3]], ['1 thing on', 'in Melbourne', 'this weekend'], ORIGIN).at(-1) as Extract<Slide, { t: 'ask' }>
     expect(festivalOnly.three[0].when).toBe('Fri 20 to Sun 22')
   })
@@ -339,12 +339,22 @@ describe("the PM's 18:45 fixes", () => {
     expect(grown).toEqual([])
   })
 
-  it("a name never breaks after v, vs, &, and, at, with or a number: 'Australia v England' stays whole (fix 4)", () => {
-    expect(keepTogether("Australia v England Men's T20I")).toBe("Australia\u00A0v\u00A0England Men's T20I")
-    expect(keepTogether('Melbourne United vs New Zealand Breakers')).toBe('Melbourne United\u00A0vs\u00A0New Zealand Breakers')
-    expect(keepTogether('Two Door Cinema Club')).toBe('Two Door Cinema Club')
-    expect(keepTogether('Festival 2026 Opening')).toBe('Festival 2026\u00A0Opening')
-    expect(keepTogether('Geelong Caravanning and Adventure Leisurefest')).toBe('Geelong Caravanning and\u00A0Adventure Leisurefest')
+  it("a name breaks before v, vs, &, and, at or with, never after, and never inside a run of capitalised words (the PM's 19:45 fix 2)", () => {
+    expect(keepTogether('Melbourne United vs New Zealand Breakers')).toBe('Melbourne\u00A0United vs\u00A0New\u00A0Zealand\u00A0Breakers')
+    expect(keepTogether("Australia v England Men's T20I")).toBe("Australia v\u00A0England\u00A0Men's\u00A0T20I")
+    expect(keepTogether('Torquay Dance Academy: SHOWTIME')).toBe('Torquay\u00A0Dance\u00A0Academy:\u00A0SHOWTIME')
+    expect(keepTogether('Geelong Caravanning and Adventure Leisurefest')).toBe('Geelong\u00A0Caravanning and\u00A0Adventure\u00A0Leisurefest')
+    expect(keepTogether('An Evening with Ben Macintyre')).toBe('An\u00A0Evening with\u00A0Ben\u00A0Macintyre')
+    expect(keepTogether('Live Music: Garden Session with Zac Anthony')).toBe('Live\u00A0Music: Garden\u00A0Session with\u00A0Zac\u00A0Anthony')
+    expect(keepTogether('the night of a lifetime')).toBe('the night of a\u00A0lifetime')
+    // A run past 30 letters may still break, so no name is wider than its card.
+    expect(keepTogether('Grand Southern Regional Championship Finals Weekend').includes(' ')).toBe(true)
+  })
+
+  it('a date label breaks only before TO or &', () => {
+    expect(keepDate('FRI 20 TO SUN 22')).toBe('FRI\u00A020 TO\u00A0SUN\u00A022')
+    expect(keepDate('FRI 20 & SAT 21')).toBe('FRI\u00A020 &\u00A0SAT\u00A021')
+    expect(keepDate('SAT 21')).toBe('SAT\u00A021')
   })
 
   it('the photographed night is the first name in Led by (fix 5)', () => {
@@ -353,5 +363,34 @@ describe("the PM's 18:45 fixes", () => {
     const cover = lockedListSlides([fight, amcf], ['2 things on', 'in Melbourne', 'this weekend'], ORIGIN)[0] as Extract<Slide, { t: 'week_cover' }>
     expect(cover.photoEventId).toBe(amcf.eventId)
     expect(cover.draws).toMatch(/^Led by African Music and Cultural Festival\b/)
+  })
+})
+
+describe("the PM's 19:45 fixes", () => {
+  it("the ask's first line is the night the cover is led by, in every list post (fix 1: Melbourne's weekend skipped AMCF)", () => {
+    const fight = night({ at: '2026-11-21T09:00:00Z', title: 'Humanoid Fighting Championship', venueName: 'Margaret Court Arena', host: 'Margaret Court Arena', categorySlug: 'sport' })
+    const talkA = night({ at: '2026-11-20T08:30:00Z', title: 'Timor-Leste: Ita Nia Lian', summary: 'A stories evening.', venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre' })
+    const talkB = night({ at: '2026-11-22T00:30:00Z', title: 'An Evening with Alastair Campbell', summary: 'An author in conversation.', venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre 2' })
+    const amcf = night({ at: '2026-11-20T00:00:00Z', endDate: '2026-11-22T09:00:00Z', title: 'African Music and Cultural Festival 2026', categorySlug: 'festival', venueName: 'Federation Square', host: 'AMCF', state: { entryMode: 'walk_in', isFree: true }, approvedPhotoUrl: OWN, photoCredit: 'AMCF, past festival' })
+    const s = lockedListSlides([fight, talkA, talkB, amcf], ['4 things on', 'in Melbourne', 'this weekend'], ORIGIN)
+    const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+    const ask = s.at(-1) as Extract<Slide, { t: 'ask' }>
+    expect(cover.draws).toMatch(/^Led by African Music and Cultural Festival 2026/)
+    expect(ask.three[0].eventId).toBe(amcf.eventId)
+    expect(ask.three.map((r) => r.eventId)).toContain(fight.eventId)
+
+    const at = (iso: string, title: string, extra: Partial<CampaignNight> = {}) => night({ at: iso, title, venueName: `${title} Hall`, host: `${title} Hall`, ...extra })
+    const { pieces } = planCampaign({
+      nights: [at('2026-11-16T09:00:00Z', 'Alpha Band'), at('2026-11-17T09:00:00Z', 'Beta Band'), at('2026-11-20T09:00:00Z', 'Gamma Band'), at('2026-11-21T09:00:00Z', 'Delta Band', { approvedPhotoUrl: OWN, photoCredit: 'Its organiser' }), at('2026-11-22T05:00:00Z', 'Epsilon Band')],
+      cities: [{ slug: 'melbourne', name: 'Melbourne' }],
+      weekStart: '2026-11-16',
+      origin: ORIGIN,
+    })
+    for (const p of pieces.filter((x) => x.slides[0]?.t === 'week_cover')) {
+      const c = p.slides[0] as Extract<Slide, { t: 'week_cover' }>
+      const a = p.slides.at(-1) as Extract<Slide, { t: 'ask' }>
+      const first = c.draws?.replace(/^Led by /, '').split(' and ')[0]
+      if (first) expect(a.three[0].title, p.kind).toBe(first)
+    }
   })
 })
