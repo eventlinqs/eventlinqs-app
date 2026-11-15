@@ -674,8 +674,42 @@ export function postAction(n: Pick<CampaignNight, 'cta'>): string {
  * comes off (the venue has its own line), and a title in parts joined by spaced dashes keeps its main name: the first
  * part, a colon, the second. Never a spaced dash on a post.
  */
-export function postTitle(title: string, venue: string | null): string {
+/**
+ * ONE TITLE CLEANER FOR EVERY SLIDE AND STORY (the PM's 10:40 of 16 November 2026, item 2: out-15's JazzLab showed
+ * '"Songbird: The Eva Cassidy Experience"' in its source's own quotation marks, and a post never shows a title wrapped in
+ * quotes). It strips quotes wrapping the whole title, straight or curly, double or single (a pair, with no quote of
+ * that family left inside), a stray double quote left at one end with no partner, brackets wrapping the whole title,
+ * and stray separators at either end (a dash, colon, semicolon, comma, bar, slash, bullet, asterisk, tilde, underscore).
+ * Quotes inside a title stay ('"Songbird" Starring Tarryn Stokes', 'The "Big" Night'), as do an apostrophe and a title's
+ * own closing mark (Oklahoma!, What Now?). postTitle and shortTitle call it, so every row, card, ask, cover, story and
+ * caption title passes through it. Pure.
+ */
+const DOUBLE_QUOTES = '"\u201C\u201D\u201E\u00AB\u00BB'
+const SINGLE_QUOTES = "'\u2018\u2019"
+const STRAY_ENDS = /^[\s\u2013\u2014:;,|\/\\\u2022*~_-]+|[\s\u2013\u2014:;,|\/\\\u2022*~_-]+$/g
+export function cleanTitle(title: string): string {
   let t = title.replace(/\s+/g, ' ').trim()
+  for (let pass = 0; pass < 6; pass += 1) {
+    const before = t
+    t = t.replace(STRAY_ENDS, '')
+    const first = t.charAt(0)
+    const last = t.charAt(t.length - 1)
+    const inner = t.slice(1, -1)
+    const family = DOUBLE_QUOTES.includes(first) && DOUBLE_QUOTES.includes(last) ? DOUBLE_QUOTES : SINGLE_QUOTES.includes(first) && SINGLE_QUOTES.includes(last) ? SINGLE_QUOTES : null
+    if (t.length > 2 && family && ![...inner].some((c) => family === DOUBLE_QUOTES && family.includes(c))) t = inner.trim()
+    else if (t.length > 2 && ((first === '(' && last === ')') || (first === '[' && last === ']')) && !/[()[\]]/.test(inner)) t = inner.trim()
+    else {
+      const doubles = [...t].filter((c) => DOUBLE_QUOTES.includes(c)).length
+      if (doubles === 1 && DOUBLE_QUOTES.includes(first)) t = t.slice(1).trim()
+      else if (doubles === 1 && DOUBLE_QUOTES.includes(last)) t = t.slice(0, -1).trim()
+    }
+    if (t === before) break
+  }
+  return t
+}
+
+export function postTitle(title: string, venue: string | null): string {
+  let t = cleanTitle(title)
   const suffix = t.match(/^(.*\S)\s*[-\u2013\u2014]\s*([^-\u2013\u2014]{2,40})$/)
   if (suffix) {
     const tail = suffix[2].trim().toLowerCase()
@@ -684,7 +718,7 @@ export function postTitle(title: string, venue: string | null): string {
   }
   const parts = t.split(/\s+[-\u2013\u2014]\s+/)
   if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
-  return t
+  return cleanTitle(t)
 }
 
 /**
@@ -695,7 +729,7 @@ export function postTitle(title: string, venue: string | null): string {
  * two words or more). Never an ellipsis and never a word cut: a title with no join that fits is kept whole and wraps.
  */
 export function shortTitle(title: string, max: number): string {
-  const t = title.replace(/\s+/g, ' ').trim()
+  const t = cleanTitle(title)
   if (t.length <= max) return t
   const cuts: number[] = []
   for (const re of [/:\s/g, /\s\|\s/g, /\s\(/g, /,\s/g, /\s(?:with|featuring|feat\.|ft\.|presents|starring)\s/gi, /\s\+\s/g]) {
@@ -706,7 +740,7 @@ export function shortTitle(title: string, max: number): string {
     if (i > 0 && t.slice(0, i).trim().split(' ').length >= 2 && t.slice(i + 3).trim().split(' ').length >= 2) cuts.push(i)
   }
   const fits = cuts.filter((i) => i >= 4 && i <= max).sort((a, b) => b - a)
-  return fits.length > 0 ? t.slice(0, fits[0]).replace(/[\s,:;|&+(]+$/, '').trim() : t
+  return cleanTitle(fits.length > 0 ? t.slice(0, fits[0]).replace(/[\s,:;|&+(]+$/, '').trim() : t)
 }
 
 /**
