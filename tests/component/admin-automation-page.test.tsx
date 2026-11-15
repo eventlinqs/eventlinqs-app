@@ -30,6 +30,7 @@ const base: Card = {
   results: [{ label: 'Posted this week', value: 0 }],
   switch: { kind: 'flag', flag: 'social_auto_publish', on: false },
   waitsFor: null,
+  waiting: 0,
   state: 'off',
   link: null,
   readFailed: null,
