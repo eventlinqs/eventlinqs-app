@@ -18,7 +18,7 @@ import {
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
-import { footClear, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
+import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
 import { standInOf } from '@/lib/social/stand-ins'
 
@@ -255,13 +255,20 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'band', foot, bh)
       }
       let photo = url ? await wholePhoto(url, f, 'cover') : null
-      // The PM's 22:41 fix 5: the foot sits where it sits on every slide. The framed photograph is drawn smaller, whole and
-      // never cropped (law 15), until the foot clears the bottom by twice the guard's least, as the other covers do.
+      // The PM's 22:41 fix 5: the foot sits where it sits on every slide. Its home is where it sits with no photograph pushing
+      // it; a framed photograph that pushes it lower is drawn smaller, whole and never cropped (law 15), by just as much as
+      // it pushes, never under half its size (out-12's first draw shrank AMCF's to 0.43 against a floor the anchored foot
+      // could never reach; the guard holds a cover still over).
       if (photo) {
-        const framed = { ...words, credit: words.credit }
-        const floor = sizeOf(f).h - (f === 'story' ? footClear(f) + 16 * scaleOf(f) : 2 * footClear(f))
-        for (let i = 0; i < 8 && photo && (await spareAboveFoot(weekCoverElement(f, framed, photo, 'whole', foot), f, footWordOf(foot), floor)) < 0; i++) {
-          photo = { ...photo, width: Math.round(photo.width * 0.9), height: Math.round(photo.height * 0.9) }
+        const fw = footWordOf(foot)
+        const home = await footBottom(weekCoverElement(f, { ...words, lead: undefined }, null, 'whole', foot), f, fw)
+        const full = photo.height
+        for (let i = 0; i < 3 && photo; i++) {
+          const now = await footBottom(weekCoverElement(f, words, photo, 'whole', foot), f, fw)
+          if (now <= home + 2) break
+          const height = Math.max(Math.round(full / 2), photo.height - Math.ceil(now - home) - 4)
+          if (height >= photo.height) break
+          photo = { ...photo, width: Math.round((photo.width * height) / photo.height), height }
         }
       }
       if (!photo && words.lead && words.lead.length > 0) {
@@ -292,8 +299,11 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         const s = await fittedScale(f, startScale(f, slide.rows.length), (x) => venueElement(f, words, null, foot, undefined, x), 'Send')
         return venueElement(f, words, null, foot, undefined, s)
       }
-      // The band ends at the eyebrow (36 of a 1080 frame), never at the smaller VENUE pill above it.
-      const bh = await fittedBand(f, 'venue', (h) => venueElement(f, words, BLANK(f, h), foot, h), 'VENUE', 33)
+      // The band ends where the venue's name begins, as a day slide's ends at its heading (the PM's 00:45: the small gold
+      // eyebrow now sits below the name on the solid panel; ending the band at the eyebrow ran it under the name, which
+      // then read 1.2 to 1, screen 3). The name is the only word at 60 of a 1080 frame or more.
+      const nameWord = (slide.venue.toUpperCase().split(' ')[0] ?? '').replace(/[^\p{L}\p{N}]+$/u, '')
+      const bh = await fittedBand(f, 'venue', (h) => venueElement(f, words, BLANK(f, h), foot, h), nameWord, 60)
       const photo = await bandPhoto(url, f, bh)
       return venueElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
     }

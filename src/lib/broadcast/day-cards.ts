@@ -111,6 +111,11 @@ export function keepTogether(name: string, maxEm = 16): string {
     out += joiner || inRun || last ? `\u00A0${cur}` : ` ${cur}`
     run = inRun ? `${run} ${cur}` : cur
   }
+  // A name left with no break its rules allow and wider than its card keeps its main name before its own colon, as
+  // shortTitle does (out-12: 'Torquay Dance Academy: SHOWTIME' ran past the story card's edge, and a break inside
+  // 'Dance Academy' is one the guard refuses; it reads 'Torquay Dance Academy').
+  const colon = name.indexOf(': ')
+  if (words.length > 1 && !out.includes(' ') && emWidth(name) > maxEm && colon > 0) return keepTogether(name.slice(0, colon), maxEm)
   return out
 }
 
@@ -363,8 +368,11 @@ export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto 
       top,
       h('div', { flexGrow: 1 }),
       words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginBottom: 12 * k }, creditMark(k, words.credit)) : null,
-      eyebrow(k, words.eyebrow, GOLD),
+      // The PM's 00:45 (16 November 2026): the small gold eyebrow sits on the solid panel below the fade, never over the
+      // photograph (screen 2: it needs 4.5 to 1 and read clean over only 11 of 82 stand-ins); the name stays over the fade,
+      // which it read clean over on every one, and the band ends where the eyebrow begins (fittedBand, 'VENUE').
       name,
+      h('div', { marginTop: 14 * k }, eyebrow(k, words.eyebrow, GOLD)),
       accent,
       h('div', { flexDirection: 'column', width: '100%', marginTop: 24 * k, gap: CARD_GAP * k }, ...words.rows.map((r) => timedCard(k, r, w - 2 * pad))),
       close,

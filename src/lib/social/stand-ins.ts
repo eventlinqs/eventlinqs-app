@@ -15,6 +15,12 @@ import { creditLine } from '@/lib/media/photo-credits'
  * as its tents carry Sao Paulo's signs. On the PM's 22:41 fixes WINDOW 5A looked at 44 more the same night, each a kind
  * of night with no sign, building or place a viewer could name (C:/dev/EVIDENCE/EL-15NOV/automation/standins-2/picks.json):
  * gigs, comedy, jazz, classical, talks and festivals, so a talk, a recital and a festival now carry one of their kind.
+ * Then 31 more for the kinds out-12's bare slides held (C:/dev/EVIDENCE/EL-15NOV/automation/standins-3/picks.json): dance
+ * on a stage, theatre, a candlelit Christmas crowd or a lit tree (never snow, never a named street), a produce stall and
+ * a sports crowd in the stands (never a flag, a club's shirt, a sponsor's board or a ground a viewer could name).
+ * Each then drawn through the product's own slide guard as a day band at three and four rows (screen 2, 16 November
+ * 2026, C:/dev/EVIDENCE/EL-15NOV/automation/standins-3/screen-bands.json): the 19 whose gold date read under its
+ * contrast there (the dance school's white stage floor among them, as out-12 showed) left the set.
  *
  * Served from our own origin (public/social/stand-ins), so a post never hot links a third party; a slide draws one only
  * while production's photo register holds it as a brand photograph usable for social (social_brand_images), so a
@@ -27,37 +33,37 @@ export type StandIn = {
   /** What the photograph shows, as the caption says it. */
   subject: string
   photographer: string
+  /**
+   * False where the product's own guard read the venue's name under its contrast over this photograph's fade (screen 3,
+   * 16 November 2026, after the PM's 00:45 put the eyebrow on the solid panel: 63 of 72 read clean;
+   * C:/dev/EVIDENCE/EL-15NOV/automation/standins-3/screen-3.json). A venue slide never draws these.
+   */
+  venue?: false
   /** The Pexels page it was taken from. */
   page: string
 }
 
 export const STAND_INS: readonly StandIn[] = [
-  { id: '1763067', kind: 'gig', subject: 'a gig crowd', photographer: 'Sebastian Ervi', page: 'https://www.pexels.com/photo/silhouette-of-people-in-front-of-stage-1763067/' },
+  { id: '1763067', kind: 'gig', subject: 'a gig crowd', photographer: 'Sebastian Ervi', venue: false, page: 'https://www.pexels.com/photo/silhouette-of-people-in-front-of-stage-1763067/' },
   { id: '1047442', kind: 'gig', subject: 'a gig crowd', photographer: 'anna-m. w.', page: 'https://www.pexels.com/photo/people-enjoying-the-concert-1047442/' },
-  { id: '21790480', kind: 'gig', subject: 'a concert crowd', photographer: 'Benjamin Farren', page: 'https://www.pexels.com/photo/silhouette-of-raised-arms-in-crowd-at-concert-21790480/' },
+  { id: '21790480', kind: 'gig', subject: 'a concert crowd', photographer: 'Benjamin Farren', venue: false, page: 'https://www.pexels.com/photo/silhouette-of-raised-arms-in-crowd-at-concert-21790480/' },
   { id: '1105666', kind: 'gig', subject: 'a gig crowd', photographer: 'Vishnu R Nair', page: 'https://www.pexels.com/photo/people-at-concert-1105666/' },
   { id: '23522931', kind: 'comedy', subject: 'a comedy stage', photographer: 'Gezer Amorim', page: 'https://www.pexels.com/photo/black-and-white-photograph-of-a-microphone-on-a-stage-and-spotlight-reflections-23522931/' },
-  { id: '8186273', kind: 'comedy', subject: 'a comedy stage', photographer: 'Brett Sayles', page: 'https://www.pexels.com/photo/microphone-on-stand-placed-on-stage-with-green-lights-8186273/' },
+  { id: '8186273', kind: 'comedy', subject: 'a comedy stage', photographer: 'Brett Sayles', venue: false, page: 'https://www.pexels.com/photo/microphone-on-stand-placed-on-stage-with-green-lights-8186273/' },
   { id: '9419374', kind: 'jazz', subject: 'a jazz club', photographer: 'cottonbro studio', page: 'https://www.pexels.com/photo/photo-of-a-woman-singing-near-musicians-9419374/' },
   // Widened on 15 November 2026 for out-12 (the PM's 22:41 fixes 1 and 2: every day slide carries a photograph of its lead
   // kind, and no photograph twice in the week's feed): 45 Pexels photographs, each looked at on its contact sheet before it
   // was chosen (C:/dev/EVIDENCE/EL-15NOV/automation/standins-2), Pexels License, credited on the slide.
-  { id: '1047443', kind: 'gig', subject: 'a concert crowd', photographer: "anna-m. w.", page: 'https://www.pexels.com/photo/group-of-people-on-event-1047443/' },
-  { id: '11995853', kind: 'gig', subject: 'a gig crowd', photographer: "Maur\u00edcio Mascaro", page: 'https://www.pexels.com/photo/crowd-on-a-concert-at-night-11995853/' },
-  { id: '12265693', kind: 'gig', subject: 'a concert crowd', photographer: "Mark Wu", page: 'https://www.pexels.com/photo/silhouetted-audience-and-artist-on-the-stage-at-the-concert-12265693/' },
+  { id: '12265693', kind: 'gig', subject: 'a concert crowd', photographer: "Mark Wu", venue: false, page: 'https://www.pexels.com/photo/silhouetted-audience-and-artist-on-the-stage-at-the-concert-12265693/' },
   { id: '13230484', kind: 'gig', subject: 'a concert stage', photographer: "Lisa Fotios", page: 'https://www.pexels.com/photo/crowd-of-people-at-a-concert-13230484/' },
   { id: '15865135', kind: 'gig', subject: 'a concert crowd', photographer: "Danik Prihodko", page: 'https://www.pexels.com/photo/concert-at-night-15865135/' },
   { id: '16118368', kind: 'gig', subject: 'a band on stage', photographer: "Valentin Angel Fernandez", page: 'https://www.pexels.com/photo/band-singing-on-stage-at-rock-concert-16118368/' },
-  { id: '196652', kind: 'gig', subject: 'a gig crowd', photographer: "picjumbo.com", page: 'https://www.pexels.com/photo/crowd-in-front-of-people-playing-musical-instrument-during-nighttime-196652/' },
   { id: '19943363', kind: 'gig', subject: 'a gig crowd', photographer: "Barbara Bat\u00e1ri", page: 'https://www.pexels.com/photo/crowd-at-concert-19943363/' },
   { id: '2078071', kind: 'gig', subject: 'a concert crowd', photographer: "Aleksandar Pasaric", page: 'https://www.pexels.com/photo/people-raising-their-hands-2078071/' },
   { id: '2747446', kind: 'gig', subject: 'a concert crowd', photographer: "Wolfgang", page: 'https://www.pexels.com/photo/band-playing-on-stage-2747446/' },
   { id: '30215324', kind: 'gig', subject: 'a concert crowd', photographer: "Jeremy Li", page: 'https://www.pexels.com/photo/vibrant-indoor-concert-with-dynamic-lights-30215324/' },
-  { id: '36257830', kind: 'gig', subject: 'a concert crowd', photographer: "alexandreeliasfotografia elias", page: 'https://www.pexels.com/photo/vibrant-concert-scene-with-crowd-and-fire-effects-36257830/' },
-  { id: '36675302', kind: 'gig', subject: 'a concert stage', photographer: "Fausto Ferreira", page: 'https://www.pexels.com/photo/vibrant-concert-crowd-under-dramatic-stage-lights-36675302/' },
+  { id: '36257830', kind: 'gig', subject: 'a concert crowd', photographer: "alexandreeliasfotografia elias", venue: false, page: 'https://www.pexels.com/photo/vibrant-concert-scene-with-crowd-and-fire-effects-36257830/' },
   { id: '38485789', kind: 'gig', subject: 'a concert crowd', photographer: "Larysa Stratiichuk", page: 'https://www.pexels.com/photo/energetic-concert-crowd-with-blue-lighting-38485789/' },
-  { id: '39007455', kind: 'gig', subject: 'a concert crowd', photographer: "Caleb Oquendo", page: 'https://www.pexels.com/photo/vibrant-concert-audience-enjoying-live-music-39007455/' },
-  { id: '5175595', kind: 'gig', subject: 'a gig crowd', photographer: "Maor Attias", page: 'https://www.pexels.com/photo/silhouette-pf-people-5175595/' },
   { id: '5193526', kind: 'gig', subject: 'a concert stage', photographer: "Maor Attias", page: 'https://www.pexels.com/photo/people-watching-live-concert-5193526/' },
   { id: '6270155', kind: 'gig', subject: 'a band on stage', photographer: "Artem Podrez", page: 'https://www.pexels.com/photo/band-performing-at-the-stage-6270155/' },
   { id: '6782332', kind: 'gig', subject: 'a concert crowd', photographer: "Bence Szemerey", page: 'https://www.pexels.com/photo/a-crowd-watching-concert-during-night-time-6782332/' },
@@ -65,7 +71,6 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '2101487', kind: 'comedy', subject: 'a comedy stage', photographer: "Katrien Grevendonck", page: 'https://www.pexels.com/photo/microphone-2101487/' },
   { id: '27390676', kind: 'comedy', subject: 'a comedian on stage', photographer: "Noe Barreto", page: 'https://www.pexels.com/photo/clima-con-el-publico-27390676/' },
   { id: '31129059', kind: 'comedy', subject: 'a comedian on stage', photographer: "Kerim Isazade", page: 'https://www.pexels.com/photo/back-view-of-speaker-on-stage-with-audience-lights-31129059/' },
-  { id: '4269570', kind: 'comedy', subject: 'a comedy stage', photographer: "Michiel Ton", page: 'https://www.pexels.com/photo/selective-focus-photo-of-a-microphone-near-pink-lights-4269570/' },
   { id: '7807298', kind: 'comedy', subject: 'a comedy stage', photographer: "Aaron Johnson", page: 'https://www.pexels.com/photo/microphone-on-a-microphone-stand-7807298/' },
   { id: '9547593', kind: 'comedy', subject: 'a comedy stage', photographer: "Allie Reefer", page: 'https://www.pexels.com/photo/black-microphone-in-close-up-photography-9547593/' },
   { id: '9419224', kind: 'jazz', subject: 'a jazz club', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/music-band-performing-on-stage-9419224/' },
@@ -75,17 +80,44 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '14364672', kind: 'jazz', subject: 'a jazz trumpet', photographer: "Caleb Oquendo", page: 'https://www.pexels.com/photo/photo-of-a-trumpeter-during-a-concert-14364672/' },
   { id: '12279497', kind: 'classical', subject: 'an orchestra\'s cellos', photographer: "Roxanne Minnish", page: 'https://www.pexels.com/photo/people-playing-cellos-12279497/' },
   { id: '35061321', kind: 'classical', subject: 'violinists in concert', photographer: "Bo\u017eo Gunjajevi\u0107", page: 'https://www.pexels.com/photo/violinists-performing-in-a-symphony-orchestra-35061321/' },
-  { id: '6193846', kind: 'classical', subject: 'a choir', photographer: "Thirdman", page: 'https://www.pexels.com/photo/a-choir-singing-while-holding-music-sheets-6193846/' },
   { id: '7095043', kind: 'classical', subject: 'a string ensemble', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/women-playing-violin-near-window-7095043/' },
   { id: '7095053', kind: 'classical', subject: 'violinists in concert', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/a-woman-playing-violin-7095053/' },
-  { id: '29708262', kind: 'talk', subject: 'a speaker on stage', photographer: "Matheus Bertelli", page: 'https://www.pexels.com/photo/male-speaker-delivering-a-presentation-29708262/' },
   { id: '20733081', kind: 'talk', subject: 'an audience at a talk', photographer: "BBSO", page: 'https://www.pexels.com/photo/gathering-during-event-20733081/' },
   { id: '3321791', kind: 'talk', subject: 'an audience at a talk', photographer: "Matheus Bertelli", page: 'https://www.pexels.com/photo/photo-of-man-sitting-in-front-3321791/' },
-  { id: '35335981', kind: 'talk', subject: 'an audience at a talk', photographer: "This And No Internet 25", page: 'https://www.pexels.com/photo/diverse-audience-attending-indoor-conference-35335981/' },
-  { id: '17842579', kind: 'festival', subject: 'a festival crowd', photographer: "Milo Deckert", page: 'https://www.pexels.com/photo/people-having-fun-at-a-concert-17842579/' },
+  { id: '17842579', kind: 'festival', subject: 'a festival crowd', photographer: "Milo Deckert", venue: false, page: 'https://www.pexels.com/photo/people-having-fun-at-a-concert-17842579/' },
   { id: '2342409', kind: 'festival', subject: 'a festival crowd', photographer: "Wendy Wei", page: 'https://www.pexels.com/photo/woman-wearing-black-top-2342409/' },
-  { id: '14670407', kind: 'festival', subject: 'a festival crowd', photographer: "Daniel Duarte", page: 'https://www.pexels.com/photo/crowd-on-festival-14670407/' },
-  { id: '28407738', kind: 'festival', subject: 'a festival crowd', photographer: "Yury Gargay", page: 'https://www.pexels.com/photo/silhouettes-at-outdoor-music-festival-in-nuremberg-28407738/' },
+  { id: '28407738', kind: 'festival', subject: 'a festival crowd', photographer: "Yury Gargay", venue: false, page: 'https://www.pexels.com/photo/silhouettes-at-outdoor-music-festival-in-nuremberg-28407738/' },
+{ id: '12442275', kind: 'dance', subject: 'dancers on stage', photographer: "Ernest Ghazaryan", page: 'https://www.pexels.com/photo/women-dancing-on-the-stage-12442275/' },
+  { id: '12442276', kind: 'dance', subject: 'dancers on stage', photographer: "Ernest Ghazaryan", page: 'https://www.pexels.com/photo/group-of-dancers-holding-hands-12442276/' },
+  { id: '26726497', kind: 'dance', subject: 'dancers on stage', photographer: "Anya Ju\u00e1rez Tenorio", page: 'https://www.pexels.com/photo/group-dancing-on-stage-26726497/' },
+  { id: '13610660', kind: 'dance', subject: 'two dancers on stage', photographer: "Ganesh Adyapady", page: 'https://www.pexels.com/photo/women-performing-a-traditional-dance-13610660/' },
+  { id: '12327992', kind: 'dance', subject: 'dancers on stage', photographer: "\u0410\u043d\u0434\u0440\u0435\u0439", page: 'https://www.pexels.com/photo/photograph-of-boys-dancing-on-a-stage-12327992/' },
+  { id: '20898292', kind: 'theatre', subject: 'actors on stage', photographer: "468684 Ink", page: 'https://www.pexels.com/photo/actors-on-theater-stage-20898292/' },
+  { id: '4063091', kind: 'theatre', subject: 'actors in costume on stage', photographer: "Magno Coronel", page: 'https://www.pexels.com/photo/theater-actors-4063091/' },
+  { id: '6899941', kind: 'theatre', subject: 'actors on stage', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/two-men-and-woman-wearing-different-costumes-6899941/' },
+  { id: '6899790', kind: 'theatre', subject: 'actors on stage', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/portrait-of-a-romantic-man-and-woman-6899790/' },
+  { id: '10601679', kind: 'theatre', subject: 'an actor on stage', photographer: "Matin Ziya", page: 'https://www.pexels.com/photo/woman-in-pain-10601679/' },
+  { id: '5135100', kind: 'theatre', subject: 'a performer on stage', photographer: "Tima Miroshnichenko", page: 'https://www.pexels.com/photo/woman-in-velvet-dress-performing-on-stage-5135100/' },
+  { id: '4061506', kind: 'theatre', subject: 'a theatre audience', photographer: "Erik Mclean", venue: false, page: 'https://www.pexels.com/photo/people-sitting-on-theater-chairs-4061506/' },
+  { id: '11359523', kind: 'christmas', subject: 'carols by candlelight', photographer: "Nahmad Hassan", page: 'https://www.pexels.com/photo/a-group-of-people-holding-a-lighted-candles-11359523/' },
+  { id: '36948772', kind: 'christmas', subject: 'a candlelit crowd', photographer: "Sun .X", page: 'https://www.pexels.com/photo/candlelight-vigil-unity-and-peaceful-gathering-36948772/' },
+  { id: '35494477', kind: 'christmas', subject: 'carols by candlelight', photographer: "Caleb Oquendo", page: 'https://www.pexels.com/photo/candlelight-vigil-with-vibrant-stage-lights-35494477/' },
+  { id: '7183556', kind: 'christmas', subject: 'a candlelit crowd', photographer: "Andrew PaKip", page: 'https://www.pexels.com/photo/crowd-of-people-with-candles-at-night-7183556/' },
+  { id: '36332478', kind: 'christmas', subject: 'a lit Christmas tree', photographer: "Furkan Parakat", page: 'https://www.pexels.com/photo/festive-christmas-tree-illuminated-at-night-36332478/' },
+  { id: '14075176', kind: 'christmas', subject: 'trees in Christmas lights', photographer: "\u5468\u8d5b \u738b", page: 'https://www.pexels.com/photo/bare-trees-with-christmas-lights-14075176/' },
+  { id: '38949837', kind: 'market', subject: 'a fruit stall', photographer: "Martijn Stoof", page: 'https://www.pexels.com/photo/vibrant-fresh-fruit-display-at-outdoor-market-38949837/' },
+  { id: '32465897', kind: 'market', subject: 'a produce stall', photographer: "Karen Longwell", page: 'https://www.pexels.com/photo/vibrant-farmers-market-in-toronto-with-fresh-produce-32465897/' },
+  { id: '40317531', kind: 'sport', subject: 'a sports crowd', photographer: "Yizi Zeng", venue: false, page: 'https://www.pexels.com/photo/excited-crowd-at-outdoor-sporting-event-40317531/' },
+  { id: '40317574', kind: 'sport', subject: 'a sports crowd', photographer: "Yizi Zeng", page: 'https://www.pexels.com/photo/crowd-in-stadium-watching-a-sporting-event-40317574/' },
+  { id: '28457979', kind: 'sport', subject: 'a sports crowd', photographer: "hayati ilker erg\u00fcn", page: 'https://www.pexels.com/photo/vibrant-crowd-cheering-at-outdoor-stadium-event-28457979/' },
+  { id: '12442272', kind: 'dance', subject: 'dancers on stage', photographer: "Ernest Ghazaryan", page: 'https://www.pexels.com/photo/women-in-sportswear-posing-on-black-stage-12442272/' },
+  { id: '13466040', kind: 'dance', subject: 'a dancer on stage', photographer: "Nicolas Sosa", page: 'https://www.pexels.com/photo/elegant-ballerina-doing-a-performance-13466040/' },
+  { id: '17029891', kind: 'dance', subject: 'a dancer on stage', photographer: "Rub\u00e9n Ostria Baltazar", page: 'https://www.pexels.com/photo/elegant-ballet-dancer-in-a-black-outfit-17029891/' },
+  { id: '33865813', kind: 'dance', subject: 'two dancers on stage', photographer: "Matheus Andrade", page: 'https://www.pexels.com/photo/elegant-couple-performing-ballet-dance-33865813/' },
+  { id: '35233104', kind: 'dance', subject: 'a dancer on stage', photographer: "MEHMET KAYNAR", page: 'https://www.pexels.com/photo/dynamic-ballet-dancer-amidst-colorful-smoke-35233104/' },
+  { id: '6926736', kind: 'dance', subject: 'two dancers on stage', photographer: "Pavel Danilyuk", page: 'https://www.pexels.com/photo/a-man-and-woman-dancing-6926736/' },
+  { id: '13632062', kind: 'dance', subject: 'a dancer on stage', photographer: "Miguel Rodriguez Le\u00f3n", page: 'https://www.pexels.com/photo/blurry-photo-of-a-woman-dancing-on-stage-13632062/' },
+  { id: '27509166', kind: 'dance', subject: 'ballet dancers on stage', photographer: "Olivia", page: 'https://www.pexels.com/photo/four-ballerinas-in-black-and-white-are-dancing-27509166/' },
 ]
 
 /** Where a stand-in is served: our own origin, never the photographer's site. */
@@ -108,16 +140,16 @@ export function standInOf(url: string | null | undefined): StandIn | null {
  * A chooser for one piece: each call takes the next stand-in of the kind asked, so no photograph is used twice in a piece
  * while another of its kind is unused (the photo system's P1, one photograph, one place).
  */
-export function standInChooser(seed = ''): (kind: NightKind | null) => StandIn | null {
+export function standInChooser(seed = ''): (kind: NightKind | null, use?: 'venue') => StandIn | null {
   const used = new Set<string>()
   // A piece's own starting place in each kind's photographs (out-10, 15 November 2026: one gig crowd led Melbourne's,
   // Geelong's and Bendigo's weeks alike): the seed (the piece's city and its own heading) turns the pool, so posts
   // differ; the same seed always draws the same photograph, so a re-render never changes a post.
   let turn = 0
   for (const ch of seed) turn = (turn * 31 + ch.charCodeAt(0)) % 9973
-  return (kind) => {
+  return (kind, use) => {
     if (!kind) return null
-    const base = STAND_INS.filter((s) => s.kind === kind)
+    const base = STAND_INS.filter((s) => s.kind === kind && (use !== 'venue' || s.venue !== false))
     const pool = base.length ? [...base.slice(turn % base.length), ...base.slice(0, turn % base.length)] : base
     const pick = pool.find((s) => !used.has(s.id)) ?? null
     if (pick) used.add(pick.id)

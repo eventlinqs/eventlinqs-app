@@ -449,24 +449,48 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
  * "Live at" follow the night itself, never its category alone. A talk, an "Evening with", a stories evening or a
  * reading is a talk; a recital, a quartet or an orchestra is classical; jazz is named; a gig is certain only from a
  * band, a DJ, a tour or live music in its title or summary. Null when its words do not say.
+ * Out-12's first draw (15 November 2026, ended 23:30): a whole day of dance shows, theatre, matches, Christmas nights or a food market had
+ * no kind, so its slide had no photograph; each is now read from its own words (a match from its title's 'v'), and a
+ * music night at a concert hall or an estate is a concert, as one at an arena already was.
  */
-export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig'
+export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport'
 const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
 const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque)\b/i
 // A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
 // (the PM's 22:41 fix 3: 'MESS Studio Tours', a daytime studio tour, stood under a concert crowd).
-const GIG_WORDS = /\b(bands?|djs?|live music|gigs?|album launch|ep launch|headline show|singer-songwriters?|rappers?)\b|\b(world|national|australian|farewell|reunion|anniversary|headline|album|arena|stadium|made)\s+tour\b|\btour\s+20\d\d\b|\bon tour\b/i
+const GIG_WORDS = /\b(bands?|djs?|live music|gigs?|album launch|ep launch|headline show|singer-songwriters?|rappers?|musicians)\b|\b(world|national|australian|farewell|reunion|anniversary|headline|album|arena|stadium|made)\s+tour\b|\btour\s+20\d\d\b|\bon tour\b/i
+const DANCE_WORDS = /\b(ballet|ballerinas?|dancers|dance (academy|school|studio|company|movement|show|showcase|performance|concert|recital|eisteddfod|troupe))\b|\bdance\b[^.]{0,30}\b(show|showcase|performance|recital)\b/i
+const THEATRE_WORDS = /\b(drama|dramatic|players|pantomime|panto|stage play|the musical|a musical|courtroom|shakespeare|playwright|theatre company)\b/i
+const CHRISTMAS_WORDS = /\b(christmas|xmas|carols?|santa)\b/i
+const MARKET_WORDS = /\b(produce|food|farmers'?|growers'?)\b[^.]{0,40}\bmarkets?\b|\bmarkets?\b[^.]{0,40}\b(produce|food|farmers|growers)\b/i
+// A match names its two sides ('Australia v England Mens T20I', 'Melbourne United vs New Zealand Breakers'); a run club
+// or a class in the sports category is no match, so a crowd in the stands never stands over it.
+const MATCH_WORDS = /\s(v|vs\.?)\s|\b(t20i?|odi|test match|grand final|semi final|derby)\b/i
+const RECITAL_ROOMS = /\b(recital|conservatorium|chamber)\b/i
 export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'>): NightKind | null {
   const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
+  // A night whose own title calls it a concert is music before any talk word in its summary (out-12: 'Pevan & Sarah in
+  // Concert 2026', whose singalongs "teach reading, maths and feelings", read as a talk).
+  if (/\bconcert\b/i.test(n.sourceTitle ?? n.title) && !CLASSICAL_WORDS.test(words) && !DANCE_WORDS.test(words)) return 'gig'
   if (TALK_WORDS.test(words)) return 'talk'
+  // A sports night that names its two sides is a match whatever else its words say (a band at half time is no gig).
+  if (['sports', 'sport'].includes((n.categorySlug ?? '').toLowerCase()) && MATCH_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
   if (/\bjazz/i.test(`${words} ${n.venueName ?? ''} ${n.host ?? ''}`)) return 'jazz'
+  if (DANCE_WORDS.test(words)) return 'dance'
+  if (CHRISTMAS_WORDS.test(words)) return 'christmas'
   if (CLASSICAL_WORDS.test(words)) return 'classical'
   if (n.categorySlug === 'comedy' || /\b(comedy|comedian|stand-?up)\b/i.test(words)) return 'comedy'
   if (n.categorySlug === 'festival' || /\bfestival\b/i.test(words)) return 'festival'
   if (GIG_WORDS.test(words)) return 'gig'
+  const music = ['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase())
+  // A music night in a recital room is a recital, never under a concert crowd (Anne Sofie von Otter at the Recital Centre).
+  if (music && RECITAL_ROOMS.test(`${n.venueName ?? ''} ${n.host ?? ''}`)) return 'classical'
   // A music night at an arena, a stadium, a bowl or the Forum is a concert by its own venue (15 November 2026: LANY and
-  // Two Door Cinema Club at John Cain Arena name no band word), so a gig's stand-in shows its kind.
-  if (['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase()) && headlineWeight({ venueName: n.venueName, categorySlug: n.categorySlug }) <= 1) return 'gig'
+  // Two Door Cinema Club at John Cain Arena name no band word), so a gig's stand-in shows its kind; so is one at a concert
+  // hall, a theatre or an estate (out-12: 'The Kim Wilde: Closer Tour' at Costa Hall, Boyz II Men at Mt Duneed Estate).
+  if (music && headlineWeight({ venueName: n.venueName, categorySlug: n.categorySlug }) <= 3) return 'gig'
+  if (n.categorySlug === 'theatre' || THEATRE_WORDS.test(words)) return 'theatre'
+  if (MARKET_WORDS.test(words)) return 'market'
   return null
 }
 
@@ -793,16 +817,22 @@ export function lockedListSlides(
   /** One show, one line (the PM's 16:40, fix 2): a show's other sessions in the piece's days, said under its time. */
   sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
   /** The week's one chooser (the PM's 22:41 fix 2: no photograph twice in the week's feed); alone, the piece's own. */
-  weekPick?: (kind: NightKind | null) => StandIn | null,
+  weekPick?: (kind: NightKind | null, use?: 'venue') => StandIn | null,
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const pick = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
-  /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a stand-in stands over a slide only when every night the slide
-     names is of the photograph's kind; a cover's, only when the night it is led by is. Otherwise the slide is in type. */
-  const standInFor = (ns: readonly CampaignNight[]) => {
-    const kinds = new Set(ns.map((n) => nightKindOf(n)))
-    const [kind] = [...kinds]
-    return kinds.size === 1 && kind ? pick(kind) : null
+  /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a cover's stand-in stands over the night it is led by, which
+     the cover names; since the PM's 22:41 fix 1 a day slide's stands over its first night by draw of the photograph's kind. */
+  /* The first of these nights by draw whose kind still has a stand-in unused this week (out-12: a kind's set can run out
+     in a week; the next night's kind then leads, never a repeat). Only the stand-in returned is taken from the week. */
+  const firstPicked = (ns: readonly CampaignNight[]): { night: CampaignNight; standIn: StandIn } | null => {
+    for (const n of [...ns].sort(byDraw)) {
+      const kind = nightKindOf(n)
+      if (!hasStandIn(kind)) continue
+      const s = pick(kind)
+      if (s) return { night: n, standIn: s }
+    }
+    return null
   }
   const own = [...ordered].filter((n) => n.approvedPhotoUrl).sort(byDraw)
   const lead = own[0] ?? null
@@ -812,8 +842,8 @@ export function lockedListSlides(
      of the PM's 20:40 fix 1), and its stand-in stands over that night alone, which the cover names (the PM's 17:40 rule
      one: one photo, one subject). Out-9: Melbourne's week, Geelong's and Bendigo's covers were in type because their
      single top draw had no such kind. */
-  const coverNight = lead ? null : [...ordered].sort(byDraw).find((n) => socialTierOf(n) <= 2 && hasStandIn(nightKindOf(n))) ?? null
-  const coverStandIn = coverNight ? standInFor([coverNight]) : null
+  const coverPick = lead ? null : firstPicked(ordered.filter((n) => socialTierOf(n) <= 2))
+  const coverStandIn = coverPick ? coverPick.standIn : null
   const ledBy = ledOf(ordered, lead, coverStandIn ? coverStandIn.kind : null)
   const cover: Slide = {
     t: 'week_cover',
@@ -836,10 +866,7 @@ export function lockedListSlides(
      first night by draw whose kind has a licensed stand-in; the stand-in stands over that night, which its card names.
      A slide with no such night stays in type and joins a neighbour in type (fix 4 of 18:45). */
   const ofOneKind = (ns: readonly CampaignNight[]) => ns.some((n) => hasStandIn(nightKindOf(n)))
-  const leadStandIn = (ns: readonly CampaignNight[]) => {
-    const lead = [...ns].sort(byDraw).find((n) => hasStandIn(nightKindOf(n)))
-    return lead ? pick(nightKindOf(lead)) : null
-  }
+  const leadStandIn = (ns: readonly CampaignNight[]) => firstPicked(ns)?.standIn ?? null
   const groups = daySlideGroups(ordered)
   for (let i = 0; i < groups.length; i++) {
     const size = (g: CampaignNight[][]) => g.reduce((a, x) => a + x.length, 0)
@@ -927,19 +954,20 @@ export function daySlideGroups(ordered: readonly CampaignNight[]): CampaignNight
 }
 
 /** The word a venue's week takes when every night is one kind: 'Four comedy nights this week'. */
-const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', gig: 'live music', classical: 'classical', talk: 'talk', festival: 'festival' }
+const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', gig: 'live music', classical: 'classical', talk: 'talk', festival: 'festival', dance: 'dance', theatre: 'theatre', christmas: 'Christmas', market: 'market', sport: 'match' }
 
 /**
  * FAMILY E, A VENUE'S WEEK (WINDOW 6's venuePiece, scored 9.5 at 09:50 on 15 November 2026): the venue's own name large,
  * its nights in clock order as gold timed cards with each night's entry line, a stand-in across the top only when every
  * night is of its kind, and the ask. The place is the venue row's own name (the PM's 16:40, fix 4), else its host's.
  */
-export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string, weekPick?: (kind: NightKind | null) => StandIn | null): Extract<Slide, { t: 'venue' }> {
+export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string, weekPick?: (kind: NightKind | null, use?: 'venue') => StandIn | null): Extract<Slide, { t: 'venue' }> {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const kinds = new Set(ordered.map((n) => nightKind(n)))
   const [kind] = [...kinds]
   const one = kinds.size === 1 && kind ? kind : null
-  const s = one ? (weekPick ?? standInChooser())(one) : null
+  // Never a stand-in whose venue band the guard faulted (stand-ins.ts, venue: false; screen 3 of 16 November 2026).
+  const s = one ? (weekPick ?? standInChooser())(one, 'venue') : null
   const count = ordered.length
   const countWord = (['', 'One', 'Two', 'Three', 'Four', 'Five'][count] ?? String(count))
   return {

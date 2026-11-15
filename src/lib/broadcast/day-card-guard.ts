@@ -111,6 +111,18 @@ export async function spareAboveFoot(el: El, f: DayFormat, footWord: string | nu
  */
 export const footClear = (f: DayFormat): number => (f === 'story' ? SAFE : 48 * scaleOf(f))
 
+/**
+ * Where a slide's foot sits, measured on the drawn slide, never assumed: the bottom of its foot word ('Swipe', or a story's
+ * tap line), or with none, of its lowest word. A cover drawn with no photograph puts its foot at home; a photograph that
+ * pushes the foot below home is too tall for the frame (the PM's 22:41 fix 5).
+ */
+export async function footBottom(el: El, f: DayFormat, footWord: string | null): Promise<number> {
+  const { w, h: H } = sizeOf(f)
+  const words = wordsOf(await cardSvgWithText(el as unknown as React.ReactNode, { width: w, height: H, fonts: await fonts() }))
+  const foot = footWord ? words.filter((x) => x.text === footWord || x.text.startsWith(`${footWord}\u00A0`)).sort((p, q) => q.top - p.top)[0] : undefined
+  return foot ? foot.bottom : Math.max(0, ...words.map((x) => x.bottom))
+}
+
 export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]> {
   const { w, h: H } = sizeOf(f)
   const stretched = stretchedCards(el)

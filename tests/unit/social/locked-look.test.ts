@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
 import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, shortTitle, splitLine, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
-import { STAND_INS, standInOf } from '@/lib/social/stand-ins'
+import { STAND_INS, standInChooser, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
 import { daysElement, keepDate, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
 
@@ -156,10 +156,11 @@ describe('a list post in the locked look', () => {
   })
 
   it('a cover with no photograph lists its three lead nights as cards, so it is never bare (fix 2)', () => {
-    // Since the PM's 22:41 a talk carries a talk stand-in, so the nights here are of no kind a stand-in shows.
+    // Since the PM's 22:41 a talk carries a talk stand-in, and since out-12 a theatre night a theatre stage, so the nights
+    // here are of no kind a stand-in shows: a book market and a run club (no match).
     const kindless = [
-      night({ at: '2026-11-18T08:30:00Z', title: 'Curtain Up', categorySlug: 'theatre', summary: 'Young performers on stage.', venueName: 'Geelong Arts Centre' }),
-      night({ at: '2026-11-19T00:00:00Z', title: 'Garden Session', categorySlug: 'community', summary: 'A morning in the garden.', venueName: 'Ceres', state: { entryMode: 'walk_in', isFree: true } }),
+      night({ at: '2026-11-18T23:00:00Z', title: 'The Melbourne Book Market', categorySlug: 'community', summary: 'Weekend market of new and secondhand titles.', venueName: 'Queen Victoria Market', state: { entryMode: 'walk_in', isFree: true } }),
+      night({ at: '2026-11-19T21:00:00Z', title: 'Run the Tan: Run Club', categorySlug: 'sports', summary: 'A coach-supported walk, jog or run around the Tan.', venueName: 'Tan Track', state: { entryMode: 'walk_in', isFree: true } }),
     ]
     const cover = lockedListSlides(kindless, ['2 things on', 'in Melbourne', 'this week'], ORIGIN)[0] as Extract<Slide, { t: 'week_cover' }>
     expect(cover.photo).toBeNull()
@@ -170,32 +171,34 @@ describe('a list post in the locked look', () => {
 describe("a stand-in only over nights all of its kind (the PM's 17:40 fix 1, rule one)", () => {
   // Lawal's lock of 15 November 2026, 20:52 ("Never a text-only post"; every benchmark post leads with a photograph)
   // outranks the PM's 17:40 cover in type: the cover is now led by the night whose kind has a stand-in, and that stand-in
-  // stands over it alone, which the cover names (rule one kept). A day of mixed kinds stays in type.
-  it("Geelong's Friday: the band night leads the cover under a gig crowd; the mixed day takes its own gig band (the PM's 22:41 fix 1)", () => {
+  // stands over it alone, which the cover names (rule one kept). Since the PM's 22:41 fix 1 a day of mixed kinds carries
+  // the photograph of its first night by draw with a stand-in.
+  it("Geelong's Friday: the first night by draw with a stand-in leads, each photograph of its own night's kind (out-12)", () => {
     const band = night({ at: '2026-11-20T09:00:00Z', title: 'The Band Night', citySlug: 'geelong', cityName: 'Geelong', venueName: 'The Barwon Club' })
     const curtain = night({ at: '2026-11-20T08:00:00Z', title: 'GSODA Junior Players presents Curtain Up', categorySlug: 'theatre', summary: 'Young performers on stage.', venueName: 'Geelong Arts Centre', citySlug: 'geelong', cityName: 'Geelong' })
     const garden = night({ at: '2026-11-20T00:00:00Z', title: 'Garden Session', categorySlug: 'community', summary: 'A morning in the garden.', venueName: 'Geelong Botanic Gardens', citySlug: 'geelong', cityName: 'Geelong', state: { entryMode: 'walk_in', isFree: true } })
     const s = lockedListSlides([band, curtain, garden], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN)
-    expect(s[0]).toMatchObject({ t: 'week_cover', draws: 'Led by The Band Night' })
+    // Curtain Up, at the Arts Centre, is the first by draw, and since out-12 a theatre night carries a theatre stage.
+    expect(s[0]).toMatchObject({ t: 'week_cover', draws: 'Led by Curtain Up' })
     const coverPhoto = (s[0] as Extract<Slide, { t: 'week_cover' }>).photo
-    expect(standInOf(coverPhoto)?.kind).toBe('gig')
+    expect(standInOf(coverPhoto)?.kind).toBe('theatre')
     // The PM's 22:41 fix 1 and fix 2: the day leads with the kind of its first night by draw, never the cover's photograph.
     for (const d of daysOf(s)) {
-      expect(standInOf(d.photo)?.kind).toBe('gig')
+      expect(standInOf(d.photo)?.kind).toBe('theatre')
       expect(d.photo).not.toBe(coverPhoto)
     }
-    expect((s.at(-1) as Extract<Slide, { t: 'ask' }>).three[0].eventId).toBe(band.eventId)
+    expect((s.at(-1) as Extract<Slide, { t: 'ask' }>).three[0].eventId).toBe(curtain.eventId)
     expect(cardsOf(s).find((r) => r.eventId === curtain.eventId)?.title).toBe('Curtain Up')
   })
 
-  it("Geelong's reel: a gig crowd never stands over Geelong Dance Movement; the cover is led by the band night it shows", () => {
+  it("Geelong's reel: a gig crowd never stands over Geelong Dance Movement; it leads under dancers on a stage (out-12)", () => {
     const dance = night({ at: '2026-11-19T08:30:00Z', title: 'Geelong Dance Movement: A Passage Through Time', categorySlug: 'theatre', summary: 'A dance company on stage.', venueName: 'Geelong Arts Centre', citySlug: 'geelong', cityName: 'Geelong' })
     const band = night({ at: '2026-11-20T09:00:00Z', title: 'The Band Night', citySlug: 'geelong', cityName: 'Geelong', venueName: 'The Barwon Club', state: { tiers: [{ price: 1500 }] } })
     const s = lockedListSlides([dance, band], ['2 things on', 'in Geelong', 'this week'], ORIGIN)
     const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
-    expect(cover.draws).toBe('Led by The Band Night')
-    expect(standInOf(cover.photo)?.kind).toBe('gig')
-    expect(cover.draws).not.toMatch(/Dance Movement/)
+    expect(cover.draws).toBe('Led by Geelong Dance Movement')
+    expect(standInOf(cover.photo)?.kind).toBe('dance')
+    expect(cover.draws).not.toMatch(/Band Night/)
   })
 
   it('a day of comedy alone takes a comedy stage, each stand-in once in a piece; a talk alone takes a talk (the PM\'s 22:41)', () => {
@@ -335,7 +338,9 @@ describe("the PM's 18:45 fixes", () => {
   })
 
   it("no repeat slide: a day slide whose every card is on the cover drops, the post is cover then ask (fix 3, Bendigo's weekend)", () => {
-    const three = [at('2026-11-20T08:00:00Z', 'One'), at('2026-11-21T08:00:00Z', 'Two'), at('2026-11-22T02:30:00Z', 'Three')]
+    // Nights of no kind a stand-in shows (since out-12 a theatre night carries a theatre stage), so the cover is in type.
+    const plain = { categorySlug: 'community' }
+    const three = [at('2026-11-20T08:00:00Z', 'One', plain), at('2026-11-21T08:00:00Z', 'Two', plain), at('2026-11-22T02:30:00Z', 'Three', plain)]
     const s = lockedListSlides(three, ['3 things on', 'in Bendigo', 'this weekend'], ORIGIN)
     expect(s.map((x) => x.t)).toEqual(['week_cover', 'ask'])
   })
@@ -359,7 +364,10 @@ describe("the PM's 18:45 fixes", () => {
   it("a name breaks before v, vs, &, and, at or with, never after, and never inside a run of capitalised words (the PM's 19:45 fix 2)", () => {
     expect(keepTogether('Melbourne United vs New Zealand Breakers')).toBe('Melbourne\u00A0United vs\u00A0New\u00A0Zealand\u00A0Breakers')
     expect(keepTogether("Australia v England Men's T20I")).toBe("Australia v\u00A0England\u00A0Men's\u00A0T20I")
-    expect(keepTogether('Torquay Dance Academy: SHOWTIME')).toBe('Torquay\u00A0Dance\u00A0Academy:\u00A0SHOWTIME')
+    // Wider than its card with no break its rules allow, it keeps its main name before its colon (out-12), never 'SHOWTIME'
+    // alone and never a break inside 'Dance Academy'.
+    expect(keepTogether('Torquay Dance Academy: SHOWTIME')).toBe('Torquay\u00A0Dance\u00A0Academy')
+    expect(keepTogether('Torquay Dance Academy: SHOWTIME', 30)).toBe('Torquay\u00A0Dance\u00A0Academy:\u00A0SHOWTIME')
     expect(keepTogether('Geelong Caravanning and Adventure Leisurefest')).toBe('Geelong\u00A0Caravanning and\u00A0Adventure\u00A0Leisurefest')
     expect(keepTogether('An Evening with Ben Macintyre')).toBe('An\u00A0Evening with\u00A0Ben\u00A0Macintyre')
     expect(keepTogether('Live Music: Garden Session with Zac Anthony')).toBe('Live\u00A0Music: Garden\u00A0Session with\u00A0Zac\u00A0Anthony')
@@ -515,9 +523,75 @@ describe("the PM's 22:41 fixes (out-11, 9.3)", () => {
     const ask = s.at(-1) as Extract<Slide, { t: 'ask' }>
     const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
     const led = (cover.draws ?? '').replace(/^Led by /, '')
-    expect(ask.three[0].title).toBe(led.split(' and ')[0])
+    // A title may hold ' and ' itself ('Pevan and Sarah in Concert'), so the line is read from its start, never split.
+    expect(led.startsWith(ask.three[0].title)).toBe(true)
     const rest = ask.three.filter((r) => !led.includes(r.title))
     const starts = rest.map((r) => Date.parse(r.startDate))
     expect(starts).toEqual([...starts].sort((x, y) => x - y))
+  })
+})
+
+describe("out-12: five more kinds, read from the nights out-12 left bare (diag-12b.txt)", () => {
+  const k = (title: string, categorySlug: string, venueName: string, summary: string | null = null) => nightKind({ title, categorySlug, venueName, host: venueName, summary })
+  it('a music night at a concert hall or an estate is a concert; one in a recital room is a recital', () => {
+    expect(k('The Kim Wilde: Closer Tour', 'music', 'Costa Hall', '80s pop star Kim Wilde brings her Closer Tour.')).toBe('gig')
+    expect(k('Boyz II Men', 'music', 'Mt Duneed Estate', 'Boyz II Men play A Day On The Green at Mt Duneed Estate.')).toBe('gig')
+    expect(k('Anne Sofie von Otter & Kristian Bezuidenhout', 'music', 'Melbourne Recital Centre')).toBe('classical')
+    // A concert by its own title is music before a talk word in its summary (out-12's third draw: Bendigo's cover).
+    expect(k('Pevan & Sarah in Concert 2026', 'music', 'Ulumbarra Theatre', "Children's music duo Pevan & Sarah bring their high-energy concert of singalongs that teach reading, maths and feelings.")).toBe('gig')
+    expect(k('A Christmas Concert', 'music', 'St Paul', 'The choir sings carols.')).toBe('christmas')
+    expect(k('Locals Live 2', 'music', 'Hargreaves Mall', 'A free all ages afternoon of Bendigo musicians in Hargreaves Mall for Aus Music Month.')).toBe('gig')
+  })
+  it('a match names its two sides; a run club in the sports category is no match', () => {
+    expect(k('Australia v England Mens T20I', 'sports', 'Melbourne Cricket Ground')).toBe('sport')
+    expect(k('Melbourne United vs New Zealand Breakers', 'sports', 'John Cain Arena')).toBe('sport')
+    expect(k('Geelong v Collingwood', 'sports', 'GMHBA Stadium', 'A live band plays at half time.')).toBe('sport')
+    expect(k('Run the Tan: Run Club', 'sports', 'Tan Track (Pillars of Wisdom)', 'A coach-supported walk, jog or run around the Tan for all levels.')).toBeNull()
+  })
+  it('dance shows, theatre, Christmas nights and a food market, each from its own words', () => {
+    expect(k('Showtime: The Entertainers Performing Arts Studio', 'arts-community', 'Ulumbarra Theatre', 'A dance performance at Ulumbarra Theatre, Bendigo.')).toBe('dance')
+    expect(k('Torquay Dance Academy: SHOWTIME: A World of Imagination', 'arts-community', 'The Play House', 'A performance at The Play House, Geelong Arts Centre.')).toBe('dance')
+    expect(k('Out of this World: Motion Dance: Senior Show', 'arts-community', 'The Play House', 'A performance at The Play House, Geelong Arts Centre.')).toBe('dance')
+    expect(k('Witness for the Prosecution', 'arts-community', '1 Sailors Gully Road, Eaglehawk', "Agatha Christie's courtroom drama staged in the Old Eaglehawk Court House.")).toBe('theatre')
+    expect(k('GSODA Junior Players presents Curtain Up', 'family', 'The Story House', 'A family show at The Story House, Geelong Arts Centre.')).toBe('theatre')
+    expect(k('Christmas Tree Lighting', 'community', 'Federation Square', 'An event on a Friday evening, free entry.')).toBe('christmas')
+    expect(k("Christmas Opening Night: Denis Walter's Carols by the Bay", 'community', 'City of Greater Geelong', 'Carols, big screens, roving entertainment and Santa.')).toBe('christmas')
+    expect(k('Geelong City Market', 'food-drink', 'Little Malop Street Central', 'A produce, food and drink market with local artisans.')).toBe('market')
+    expect(k('The Melbourne Book Market', 'community', 'Queen Victoria Market', 'Weekend market of new and secondhand titles.')).toBeNull()
+    expect(k('MESS Studio Tours', 'community', 'Federation Square', 'An event on a Saturday morning, free entry.')).toBeNull()
+  })
+  it('a venue slide never draws a stand-in whose venue band the guard faulted (screen 3), and every kind keeps one it may', () => {
+    const marked = STAND_INS.filter((x) => x.venue === false)
+    expect(marked.length).toBeGreaterThan(0)
+    for (const kind of new Set(STAND_INS.map((x) => x.kind))) {
+      expect(STAND_INS.some((x) => x.kind === kind && x.venue !== false), kind).toBe(true)
+      const pick = standInChooser(`drill ${kind}`)
+      for (let s = pick(kind, 'venue'); s; s = pick(kind, 'venue')) expect(s.venue, s.id).not.toBe(false)
+    }
+  })
+  // Screen 2 (16 November 2026) took 19 out as day bands, leaving talk and market at two: the floor is two, never a repeat.
+  it('every kind has at least two licensed stand-ins, each with its one line of what it shows', () => {
+    for (const kind of ['gig', 'comedy', 'jazz', 'classical', 'talk', 'festival', 'dance', 'theatre', 'christmas', 'market', 'sport']) {
+      const set = STAND_INS.filter((x) => x.kind === kind)
+      expect(set.length, kind).toBeGreaterThanOrEqual(2)
+      for (const x of set) expect(x.subject.length).toBeGreaterThan(4)
+    }
+  })
+  it("when a kind's photographs are all used this week, the next night by draw's kind leads the slide, never a repeat", () => {
+    const t20 = night({ at: '2026-11-21T08:00:00Z', title: 'Australia v England Mens T20I', categorySlug: 'sports', venueName: 'Melbourne Cricket Ground', host: 'MCG' })
+    const gig = night({ at: '2026-11-21T09:00:00Z', title: 'The Teskey Brothers', venueName: 'Forum Melbourne', host: 'Forum Melbourne' })
+    const used = new Set<string>()
+    const noSport = (kind: string | null) => {
+      if (kind === 'sport' || !kind) return null
+      const s = STAND_INS.find((x) => x.kind === kind && !used.has(x.id)) ?? null
+      if (s) used.add(s.id)
+      return s
+    }
+    const s = lockedListSlides([t20, gig], ['2 things on', 'in Melbourne', 'this weekend'], ORIGIN, undefined, noSport)
+    const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+    expect(standInOf(cover.photo)?.kind).toBe('gig')
+    expect(cover.draws).toBe('Led by The Teskey Brothers')
+    for (const d of daysOf(s)) expect(standInOf(d.photo)?.kind).toBe('gig')
+    expect(lockRefusal(s)).toBeNull()
   })
 })
