@@ -160,7 +160,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       {
         key: 'first-letters',
         title: 'First letters to organisers',
-        does: "Drafts the day's twenty first letters from verified rows; each passes the gateway's rules and its consent basis, and the sender sends from the EventLinqs hello mailbox inside business hours.",
+        does: "Drafts the day's twenty first letters from verified rows and holds each for your approval of its exact words; an approved letter is queued in its play, and the sender sends it from the EventLinqs hello mailbox inside business hours, after the gateway's rules and its consent basis.",
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
       },
@@ -172,14 +172,18 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
         const sentWeek = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).gte('sent_at', week))
         const plays = await counted('outreach_plays', db.from('outreach_plays').select('id', { count: 'exact', head: true }).not('approved_at', 'is', null))
         const unsubscribes = await counted('outreach_unsubscribes', db.from('outreach_unsubscribes').select('id', { count: 'exact', head: true }))
-        const waiting = sw.mode === 'live' ? 0 : held
+        const queued = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'queued'))
+        // A held letter never queues by itself (src/lib/outreach/drafts.ts stores every draft held; only a person's approval
+        // queues it inside a play), so it waits on a person in every sender mode, live included.
+        const senderWaits = sw.mode !== 'live' ? `The sender is on ${sw.mode}${sw.setByAPerson ? '' : ', never set by a person'}` : null
+        const lettersWait = held > 0 ? `${held} letter(s) wait for your approval before they can queue` : null
         return {
           lastRun: sw.dnsCheckedAt ? { at: sw.dnsCheckedAt, what: 'checked SPF, DKIM and DMARC (every 6 hours)' } : null,
-          queue: [{ label: 'Letters held', value: held }, { label: 'Plays approved', value: plays }],
+          queue: [{ label: 'Letters held', value: held }, { label: 'Letters queued', value: queued }, { label: 'Plays approved', value: plays }],
           results: [{ label: 'Sent today', value: sentToday }, { label: 'Sent this week', value: sentWeek }, { label: 'Unsubscribed', value: unsubscribes }],
           switch: sw,
-          waitsFor: sw.mode !== 'live' ? `The sender is on ${sw.mode}${sw.setByAPerson ? '' : ', never set by a person'}: ${held} letter(s) wait for a hand` : null,
-          waiting,
+          waitsFor: [senderWaits, lettersWait].filter((w): w is string => w !== null).join('; ') || null,
+          waiting: held,
         }
       },
     ),
@@ -187,7 +191,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       {
         key: 'follow-ups',
         title: 'Follow ups',
-        does: 'On day 4 and day 10 after a first letter is sent, drafts the follow up in its thread; any reply, unsubscribe or bounce stops it.',
+        does: 'On day 4 and day 10 after a first letter is sent, drafts the follow up in its thread, held for your approval; any reply, unsubscribe or bounce stops it.',
         schedules: [SCHEDULES.outreachRun],
         link: { href: '/admin/today', label: 'Open today' },
       },
@@ -201,8 +205,9 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
           queue: [{ label: 'Follow ups held', value: held }],
           results: [{ label: 'Sent this week', value: sentWeek }],
           switch: sw,
-          waitsFor: held > 0 && sw.mode !== 'live' ? `${held} follow up(s) wait for a hand` : null,
-          waiting: sw.mode === 'live' ? 0 : held,
+          // Held like a first letter: it waits for a person's approval in every sender mode.
+          waitsFor: held > 0 ? `${held} follow up(s) wait for your approval before they can queue` : null,
+          waiting: held,
         }
       },
     ),

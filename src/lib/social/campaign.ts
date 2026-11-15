@@ -226,8 +226,9 @@ export function selectNights(
     if (tier === 4) return []
     const reasons: string[] = []
     let score = 100 - order * 2 + TIER_SCORE[tier]
-    reasons.push(TIER_WORDS[tier])
+    // The day leads the reason, as the founder's selection list has always read it ("Picked: on ..."); the tier follows.
     reasons.push(`on ${whenOf(n)}`)
+    reasons.push(TIER_WORDS[tier])
     if (n.venueName && n.summary) {
       score += 10
       reasons.push('its details are complete')
