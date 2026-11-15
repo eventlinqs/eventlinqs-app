@@ -757,6 +757,25 @@ describe("out-14, the rest of the 03:45 class: the venue slide and the chooser i
     }
   })
 
+  it("a match beside a night of no kind takes a ground with no crowd, never no photograph (out-14's first draw held Melbourne 01)", () => {
+    const synth = night({ at: '2026-11-21T03:00:00Z', title: 'Synth 101 at MESS', summary: null, venueName: 'MESS', host: 'MESS', categorySlug: 'education' })
+    const t20 = night({ at: '2026-11-21T08:00:00Z', title: 'Australia v England Mens T20I', categorySlug: 'sports', summary: null, venueName: 'Melbourne Cricket Ground', host: 'Melbourne Cricket Ground' })
+    expect(nightKind(synth)).toBeNull()
+    for (let i = 0; i < 6; i += 1) {
+      const s = lockedListSlides([synth, t20], ['2 things on', 'in Melbourne', `Saturday ${i}`], ORIGIN)
+      expect(lockRefusal(s)).toBeNull()
+      for (const d of daysOf(s)) {
+        expect(d.photo).toBeTruthy()
+        expect(standInOf(d.photo)?.shot).toBeUndefined()
+      }
+    }
+    // A fight beside a talk takes the ring or the talk's stage, never a crowd.
+    const fight = night({ at: '2026-11-21T09:00:00Z', title: 'Humanoid Fighting Championship', categorySlug: 'sports', summary: null, venueName: 'Margaret Court Arena', host: 'Margaret Court Arena' })
+    const talk = night({ at: '2026-11-21T08:00:00Z', title: 'An Evening with Alastair Campbell', summary: 'The author in conversation.', ...mrc })
+    const s2 = lockedListSlides([fight, talk], ['2 things on', 'in Melbourne', 'Saturday'], ORIGIN)
+    expect(lockRefusal(s2)).toBeNull()
+  })
+
   it('every crowd and pyrotechnic shot is marked by looking (13230484: a concert crowd across the front)', () => {
     expect(STAND_INS.find((x) => x.id === '13230484')?.shot).toBe('crowd')
     expect(STAND_INS.filter((x) => x.shot === 'pyro').map((x) => x.id).sort()).toEqual(['30215324', '36257830'])

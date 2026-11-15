@@ -145,6 +145,13 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '15949231', kind: 'sport', subject: 'a sports crowd', photographer: "Mikkel Kvist", sport: 'football', shot: 'crowd', page: 'https://www.pexels.com/photo/people-cheering-during-the-match-15949231/' },
   { id: '14158918', kind: 'sport', subject: 'a sports crowd', photographer: "Lydia Murray", shot: 'crowd', page: 'https://www.pexels.com/photo/people-in-a-stadium-14158918/' },
   { id: '34206834', kind: 'sport', subject: 'a sports crowd', photographer: "Erick Fr\u00edas cruceta", venue: false, shot: 'crowd', page: 'https://www.pexels.com/photo/enthusiastic-crowd-cheering-at-indoor-event-34206834/' },
+  { id: '4135333', kind: 'sport', subject: 'a stadium floodlight at night', photographer: "Steve Pancrate", page: 'https://www.pexels.com/photo/floodlights-on-black-stand-4135333/' },
+  { id: '5581853', kind: 'sport', subject: 'stadium floodlights', photographer: "Eric Broder Van Dyke", page: 'https://www.pexels.com/photo/spotlights-under-clear-blue-sky-5581853/' },
+  { id: '32471031', kind: 'sport', subject: 'stadium floodlights at dusk', photographer: "Magda Ehlers", page: 'https://www.pexels.com/photo/stadium-floodlights-against-twilight-sky-32471031/' },
+  { id: '7513413', kind: 'sport', subject: 'an empty indoor court', photographer: "Bence Szemerey", sport: 'basketball', page: 'https://www.pexels.com/photo/interior-design-of-an-indoors-handball-court-7513413/' },
+  { id: '9968139', kind: 'sport', subject: 'an empty boxing ring', photographer: "Stanislav Kondratiev", sport: 'combat', page: 'https://www.pexels.com/photo/an-empty-boxing-ring-9968139/' },
+  { id: '39027935', kind: 'talk', subject: 'two chairs on a lit stage', photographer: "Av E", page: 'https://www.pexels.com/photo/two-empty-chairs-on-stage-under-spotlights-39027935/' },
+  { id: '20733069', kind: 'talk', subject: 'an audience at a talk', photographer: "BBSO", page: 'https://www.pexels.com/photo/gathering-in-auditorium-20733069/' },
 ]
 
 /** Where a stand-in is served: our own origin, never the photographer's site. */
