@@ -229,10 +229,12 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
     .eq('id', id)
     .eq('status', 'waiting')
     .or(`checked_at.is.null,checked_at.lt.${stale}`)
-    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at')
+    .select('id, created_at, name, email, role, title, starts_at, ends_at, venue_name, venue_address, city_slug, category_slug, booking_url, entry, price_from_cents, description, photo_path, permission_words, permission_given_at, check_result')
   if (claim.error) return { state: 'skipped', reason: `the submission could not be claimed: ${claim.error.message}` }
-  const sub = (claim.data ?? [])[0] as SubmissionRecord | undefined
+  const sub = (claim.data ?? [])[0] as (SubmissionRecord & { check_result?: Record<string, unknown> | null }) | undefined
   if (!sub) return { state: 'skipped', reason: 'already taken or no longer waiting' }
+  // A live notice held for this one row (the PM's 22:41 (b), H2o: its organiser's note waits in lane 1 for Lawal's approve).
+  const noticeHeld = sub.check_result?.notice_held === true
 
   const { data: city } = await admin.from('cities').select('slug, name, state, timezone').eq('slug', sub.city_slug).maybeSingle()
   const tz = (city?.timezone as string | undefined) ?? 'Australia/Melbourne'
@@ -346,7 +348,9 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
   const when = whenWords(facts.startsAt, tz)
   // The organiser hears it is live, in Lawal's format and through the gateway's checks (Lawal's ruling of 8 November 2026,
   // 16:13 (2): automatic, for every event that goes live); the log says what happened.
-  const organiserTold = await sendOrganiserLiveNotice({ to: sub.email, name: sub.name, title, when, venue: facts.venueName, link })
+  const organiserTold = noticeHeld
+    ? 'not sent: its live notice is held for this submission (its note waits in lane 1 for Lawal)'
+    : await sendOrganiserLiveNotice({ to: sub.email, name: sub.name, title, when, venue: facts.venueName, link })
   const corrected = verdict.corrections.length ? verdict.corrections.map((c) => `${c.field} (${c.submitted ?? 'none'} became ${c.page ?? 'none'})`).join('; ') : 'nothing'
   logOutcome(
     `live: ${title}`,
