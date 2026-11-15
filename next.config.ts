@@ -326,6 +326,12 @@ const nextConfig: NextConfig = {
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
+    // /admin/automation reads Today's queue for its 'Needs you today' (the PM's 05:37 of 16 November 2026, fix 2: one
+    // unit on both pages), and that queue reaches the rasteriser as Today's does; card-raster-traced named it.
+    '/admin/automation': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     // The campaign eligibility read (src/lib/campaigns/eligibility-read.ts) imports the social store and the venue
     // media module, and the import graph from there reaches card-raster.ts; card-raster-traced named it on
     // 31 October 2026 and fails the build without this pin.
