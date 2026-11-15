@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
@@ -8,6 +9,7 @@ import { SUBMISSION_CITY_WORDS, SUBMISSION_ENTRY_WORDS, SUBMISSION_ROLE_WORDS } 
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { acceptSubmissionAction, refuseSubmissionAction } from './actions'
 import { AdminToast } from '@/components/admin/ui/admin-toast'
+import { PageHeader, SECONDARY } from '@/components/admin/ui/admin-kit'
 import { SUBMISSION_REFUSALS } from './reasons'
 
 export const dynamic = 'force-dynamic'
@@ -60,13 +62,12 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
   return (
     <div>
       <AdminToast said={tone ? (said ?? null) : null} tone={tone === 'ok' ? 'ok' : 'refused'} />
-      <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Listings</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Submitted events</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Events organisers sent from List your event, each with their permission and any photo they say they own. Most go live by themselves; these wait for you. Publish now puts one live at once with its photo, and its organiser is told.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Events"
+        title="Submitted events"
+        description="Events organisers sent from List your event, each with their permission and any photo they say they own. Most go live by themselves; these wait for you. Publish now puts one live at once with its photo, and its organiser is told."
+        action={<Link href="/submit-event" className={SECONDARY}>Open the form organisers use</Link>}
+      />
 
       {notice && (
         <div
