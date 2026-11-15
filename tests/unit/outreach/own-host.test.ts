@@ -31,7 +31,8 @@ describe("an organiser's own website host", () => {
   })
   it('the drafter and the photo page read nights through the one reader', () => {
     const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), 'utf8')
-    expect(read('src', 'lib', 'outreach', 'twenty-drafts.ts')).toMatch(/readTheirNights\(db, organiser, now, 1\)/)
+    // Still the one reader; it reads a few nights so the drafter can pass over one too soon to reach (15 November 2026).
+    expect(read('src', 'lib', 'outreach', 'twenty-drafts.ts')).toMatch(/readTheirNights\(db, organiser, now, \d+\)/)
     expect(read('src', 'lib', 'listings', 'photo-permission.ts')).toMatch(/readTheirNights\(db, \{/)
     expect(read('src', 'lib', 'outreach', 'their-nights.ts')).toMatch(/ownHost\(organiser\.website_url\)/)
   })
