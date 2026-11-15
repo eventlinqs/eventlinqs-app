@@ -26,6 +26,9 @@ import { creditLine } from '@/lib/media/photo-credits'
  * while production's photo register holds it as a brand photograph usable for social (social_brand_images), so a
  * withdrawal there takes it off every post that is not yet published.
  */
+/** A match's own sport, read from its words (campaign.ts sportOf). */
+export type Sport = 'football' | 'basketball' | 'cricket' | 'afl' | 'rugby' | 'tennis' | 'combat'
+
 export type StandIn = {
   /** The Pexels photo id. */
   id: string
@@ -39,6 +42,12 @@ export type StandIn = {
    * C:/dev/EVIDENCE/EL-15NOV/automation/standins-3/screen-3.json). A venue slide never draws these.
    */
   venue?: false
+  /**
+   * The sport a sports stand-in shows, where it shows one (the PM's 02:25 fix 2: out-12 put a football pitch over a
+   * basketball game). A sport night draws only a stand-in of its own sport, else one with no sport named: a crowd in a
+   * stadium's seats, which reads as any match.
+   */
+  sport?: Sport
   /** The Pexels page it was taken from. */
   page: string
 }
@@ -109,7 +118,7 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '32465897', kind: 'market', subject: 'a produce stall', photographer: "Karen Longwell", page: 'https://www.pexels.com/photo/vibrant-farmers-market-in-toronto-with-fresh-produce-32465897/' },
   { id: '40317531', kind: 'sport', subject: 'a sports crowd', photographer: "Yizi Zeng", venue: false, page: 'https://www.pexels.com/photo/excited-crowd-at-outdoor-sporting-event-40317531/' },
   { id: '40317574', kind: 'sport', subject: 'a sports crowd', photographer: "Yizi Zeng", page: 'https://www.pexels.com/photo/crowd-in-stadium-watching-a-sporting-event-40317574/' },
-  { id: '28457979', kind: 'sport', subject: 'a sports crowd', photographer: "hayati ilker erg\u00fcn", page: 'https://www.pexels.com/photo/vibrant-crowd-cheering-at-outdoor-stadium-event-28457979/' },
+  { id: '28457979', kind: 'sport', subject: 'a sports crowd', photographer: "hayati ilker erg\u00fcn", sport: 'football', page: 'https://www.pexels.com/photo/vibrant-crowd-cheering-at-outdoor-stadium-event-28457979/' },
   { id: '12442272', kind: 'dance', subject: 'dancers on stage', photographer: "Ernest Ghazaryan", page: 'https://www.pexels.com/photo/women-in-sportswear-posing-on-black-stage-12442272/' },
   { id: '13466040', kind: 'dance', subject: 'a dancer on stage', photographer: "Nicolas Sosa", page: 'https://www.pexels.com/photo/elegant-ballerina-doing-a-performance-13466040/' },
   { id: '17029891', kind: 'dance', subject: 'a dancer on stage', photographer: "Rub\u00e9n Ostria Baltazar", page: 'https://www.pexels.com/photo/elegant-ballet-dancer-in-a-black-outfit-17029891/' },
@@ -119,7 +128,7 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '13632062', kind: 'dance', subject: 'a dancer on stage', photographer: "Miguel Rodriguez Le\u00f3n", page: 'https://www.pexels.com/photo/blurry-photo-of-a-woman-dancing-on-stage-13632062/' },
   { id: '27509166', kind: 'dance', subject: 'ballet dancers on stage', photographer: "Olivia", page: 'https://www.pexels.com/photo/four-ballerinas-in-black-and-white-are-dancing-27509166/' },
   { id: '32965247', kind: 'sport', subject: 'a sports crowd', photographer: "Luke Miller", page: 'https://www.pexels.com/photo/excited-sports-fans-cheering-at-game-32965247/' },
-  { id: '15949231', kind: 'sport', subject: 'a sports crowd', photographer: "Mikkel Kvist", page: 'https://www.pexels.com/photo/people-cheering-during-the-match-15949231/' },
+  { id: '15949231', kind: 'sport', subject: 'a sports crowd', photographer: "Mikkel Kvist", sport: 'football', page: 'https://www.pexels.com/photo/people-cheering-during-the-match-15949231/' },
   { id: '14158918', kind: 'sport', subject: 'a sports crowd', photographer: "Lydia Murray", page: 'https://www.pexels.com/photo/people-in-a-stadium-14158918/' },
   { id: '34206834', kind: 'sport', subject: 'a sports crowd', photographer: "Erick Fr\u00edas cruceta", venue: false, page: 'https://www.pexels.com/photo/enthusiastic-crowd-cheering-at-indoor-event-34206834/' },
 ]
@@ -144,7 +153,7 @@ export function standInOf(url: string | null | undefined): StandIn | null {
  * A chooser for one piece: each call takes the next stand-in of the kind asked, so no photograph is used twice in a piece
  * while another of its kind is unused (the photo system's P1, one photograph, one place).
  */
-export function standInChooser(seed = ''): (kind: NightKind | null, use?: 'venue') => StandIn | null {
+export function standInChooser(seed = ''): (kind: NightKind | null, use?: 'venue', sport?: Sport | null) => StandIn | null {
   const used = new Set<string>()
   // A piece's own starting place in each kind's photographs (out-10, 15 November 2026: one gig crowd led Melbourne's,
   // Geelong's and Bendigo's weeks alike): the seed (the piece's city and its own heading) turns the pool, so posts
@@ -154,10 +163,13 @@ export function standInChooser(seed = ''): (kind: NightKind | null, use?: 'venue
   // A photographer already drawn this week is passed over while another is free (out-12: two of one shoot's dancers stood
   // on Geelong's reel cover and its next slide, and read as the same stage twice).
   const shot = new Set<string>()
-  return (kind, use) => {
+  return (kind, use, sport) => {
     if (!kind) return null
-    const base = STAND_INS.filter((s) => s.kind === kind && (use !== 'venue' || s.venue !== false))
-    const pool = base.length ? [...base.slice(turn % base.length), ...base.slice(0, turn % base.length)] : base
+    // A match draws its own sport first, then a stadium crowd with no sport named, never another sport (fix 2).
+    const ofKind = STAND_INS.filter((s) => s.kind === kind && (use !== 'venue' || s.venue !== false) && (kind !== 'sport' || !s.sport || s.sport === sport))
+    // The piece's own starting place turns each group alone, so a match's own sport always comes before the crowds.
+    const turned = (xs: readonly StandIn[]) => (xs.length ? [...xs.slice(turn % xs.length), ...xs.slice(0, turn % xs.length)] : [...xs])
+    const pool = kind === 'sport' ? [...turned(ofKind.filter((s) => s.sport && s.sport === sport)), ...turned(ofKind.filter((s) => !s.sport))] : turned(ofKind)
     const pick = pool.find((s) => !used.has(s.id) && !shot.has(s.photographer)) ?? pool.find((s) => !used.has(s.id)) ?? null
     if (pick) {
       used.add(pick.id)

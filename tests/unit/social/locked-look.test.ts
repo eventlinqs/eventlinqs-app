@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, shortTitle, splitLine, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
+import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, shortTitle, socialTierOf, splitLine, sportOf, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { STAND_INS, standInChooser, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
 import { daysElement, keepDate, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
@@ -480,9 +480,10 @@ describe("the PM's 22:41 fixes (out-11, 9.3)", () => {
     const s = lockedListSlides([gig, talk, market], ['3 things on', 'in Melbourne', 'this week'], ORIGIN)
     const days = daysOf(s)
     expect(days.length).toBeGreaterThan(0)
-    // The Tuesday holds a gig and a talk: the gig, first by draw, gives the band its kind.
+    // The Tuesday holds a gig and a talk: since the PM's 02:25 fix 1 a standing crowd never stands over as many seated
+    // nights, so the talk gives the band its kind (it was the gig, first by draw, at 22:41).
     const tue = days.find((d) => d.rows.some((r) => r.eventId === gig.eventId))!
-    expect(standInOf(tue.photo)?.kind).toBe('gig')
+    expect(standInOf(tue.photo)?.kind).toBe('talk')
     expect(tue.credit).toMatch(/Pexels/)
     const bare: Slide = { ...tue, photo: null, credit: null }
     expect(lockRefusal([s[0], bare, s.at(-1)!])).toMatch(/slide carries no photograph/)
@@ -601,5 +602,64 @@ describe("out-12: five more kinds, read from the nights out-12 left bare (diag-1
     expect(cover.draws).toBe('Led by The Teskey Brothers')
     for (const d of daysOf(s)) expect(standInOf(d.photo)?.kind).toBe('gig')
     expect(lockRefusal(s)).toBeNull()
+  })
+})
+
+describe("the PM's 02:25 fixes (out-12 held 01, 03, 10 and 12: one class, the photograph reads another kind of night)", () => {
+  const mel = (iso: string, title: string, extra: Partial<CampaignNight> & { state?: CtaInput } = {}) => night({ at: iso, title, ...extra })
+  it('fix 1: a day band is the kind most of its nights share; a rock crowd never stands over a talk and a recital', () => {
+    const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre' }
+    const talk = mel('2026-11-16T08:30:00Z', 'An Evening with Ben Macintyre', { summary: 'The author in conversation.', ...mrc })
+    const recital = mel('2026-11-18T08:30:00Z', 'Anne Sofie von Otter & Kristian Bezuidenhout', { summary: 'An art song recital with piano.', ...mrc })
+    const lany = mel('2026-11-18T09:00:00Z', 'LANY', { summary: null, venueName: 'John Cain Arena', host: 'John Cain Arena' })
+    const s = lockedListSlides([talk, recital, lany], ['3 things on', 'in Melbourne', 'this week'], ORIGIN)
+    const slide = daysOf(s).find((d) => d.rows.some((r) => r.eventId === lany.eventId))!
+    expect(['talk', 'classical']).toContain(standInOf(slide.photo)?.kind)
+    // Two bands and a talk on one Friday: the bands are most, so the gig crowd stands.
+    const g1 = mel('2026-11-20T09:00:00Z', 'The Band Night', { venueName: 'The Barwon Club', host: 'The Barwon Club' })
+    const g2 = mel('2026-11-20T10:00:00Z', 'Another Band Night', { venueName: 'The Corner Hotel', host: 'The Corner Hotel' })
+    const t2 = mel('2026-11-20T08:00:00Z', 'An Evening with a Historian', { summary: 'An author in conversation.', ...mrc })
+    const s2 = lockedListSlides([g1, g2, t2], ['3 things on', 'in Melbourne', 'this weekend'], ORIGIN)
+    expect(standInOf(daysOf(s2)[0].photo)?.kind).toBe('gig')
+  })
+
+  it('fix 2: a match draws its own sport, else a stadium crowd with no sport named, never another sport', () => {
+    expect(sportOf({ title: 'Melbourne United vs New Zealand Breakers', summary: null })).toBe('basketball')
+    expect(sportOf({ title: 'Melbourne Victory v Thể Công-Viettel', summary: null })).toBe('football')
+    expect(sportOf({ title: "Australia v England Men's T20I", summary: null })).toBe('cricket')
+    expect(sportOf({ title: 'Humanoid Fighting Championship', summary: null })).toBe('combat')
+    const united = mel('2026-11-21T08:30:00Z', 'Melbourne United vs New Zealand Breakers', { categorySlug: 'sports', summary: null, venueName: 'John Cain Arena', host: 'John Cain Arena' })
+    for (const sl of lockedListSlides([united], ['1 thing on', 'in Melbourne', 'this weekend'], ORIGIN)) {
+      const st = 'photo' in sl ? standInOf(sl.photo) : null
+      if (st) expect(st.sport ?? null).toBeNull()
+    }
+    const victory = mel('2026-11-25T08:45:00Z', 'Melbourne Victory v Thể Công-Viettel', { categorySlug: 'sports', summary: null, venueName: 'GMHBA Stadium', host: 'GMHBA Stadium', citySlug: 'geelong', cityName: 'Geelong' })
+    const v = lockedListSlides([victory], ['1 thing on', 'in Geelong', 'coming up'], ORIGIN)
+    expect(standInOf((v[0] as Extract<Slide, { t: 'week_cover' }>).photo)?.sport).toBe('football')
+  })
+
+  it("fix 3: a daytime children's show is a family show, never a gig; an evening junior show keeps its kind", () => {
+    const b = { citySlug: 'bendigo', cityName: 'Bendigo' }
+    const pevan = mel('2026-11-16T23:30:00Z', 'Pevan & Sarah in Concert 2026', { summary: "Children's music duo Pevan & Sarah bring their high-energy concert of singalongs that teach reading, maths and feelings.", venueName: 'Ulumbarra Theatre', host: 'Ulumbarra Theatre', ...b })
+    expect(nightKind(pevan)).toBe('family')
+    const roy = mel('2026-11-19T08:30:00Z', 'The Roy Orbison Story', { summary: 'A tribute band on tour.', venueName: 'The Capital', host: 'The Capital', ...b })
+    const cover = lockedListSlides([pevan, roy], ['2 things on', 'in Bendigo', 'this week'], ORIGIN)[0] as Extract<Slide, { t: 'week_cover' }>
+    expect(cover.draws).toBe('Led by The Roy Orbison Story')
+    expect(standInOf(cover.photo)?.kind).toBe('gig')
+    const curtain = mel('2026-11-20T08:30:00Z', 'GSODA Junior Players presents Curtain Up', { categorySlug: 'family', summary: 'A family show at The Story House.', venueName: 'Geelong Arts Centre', host: 'Geelong Arts Centre' })
+    expect(nightKind(curtain)).toBe('theatre')
+  })
+
+  it('fix 4: the ask never takes a tier 4 session while a night of tiers 1 to 3 is on the post', () => {
+    const b = { citySlug: 'ballarat', cityName: 'Ballarat' }
+    const hm = { venueName: "Her Majesty's Theatre Ballarat", host: "Her Majesty's Theatre Ballarat" }
+    const kate = mel('2026-11-19T08:00:00Z', 'Kate Ceberano: Australian Made Tour 2026', { ...hm, ...b })
+    const diesel = mel('2026-11-21T08:30:00Z', 'Diesel by Request', { ...hm, ...b })
+    const carly = mel('2026-11-18T23:30:00Z', 'Show-and-Tell with Carly', { summary: 'A show-and-tell session for children at Eureka Centre Ballarat, Ballarat.', venueName: 'Eureka Centre Ballarat', host: 'Eureka Centre Ballarat', state: { entryMode: 'walk_in', isFree: true }, ...b })
+    const garden = mel('2026-11-22T00:00:00Z', 'Free Sunday Garden Tour', { summary: 'A volunteer-guided walk of about an hour through the botanical gardens.', venueName: 'Ballarat Botanical Gardens', host: 'Ballarat Botanical Gardens', state: { entryMode: 'walk_in', isFree: true }, ...b })
+    expect(socialTierOf(carly)).toBe(4)
+    const ask = lockedListSlides([carly, kate, diesel, garden], ['4 things on', 'in Ballarat', 'this week'], ORIGIN).at(-1) as Extract<Slide, { t: 'ask' }>
+    expect(ask.three.map((r) => r.eventId)).not.toContain(carly.eventId)
+    expect(ask.three.map((r) => r.eventId)).toContain(garden.eventId)
   })
 })

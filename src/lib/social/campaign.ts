@@ -6,7 +6,7 @@ import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
-import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl, type StandIn } from './stand-ins'
+import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -249,8 +249,13 @@ const MAX_PER_VENUE = 2
 // Monday's bar shows (15 November 2026, the first week's drawings).
 const TIER_SCORE: Readonly<Record<1 | 2 | 3, number>> = { 1: 2000, 2: 1000, 3: 0 }
 const TIER_WORDS: Readonly<Record<1 | 2 | 3, string>> = { 1: 'a headline night', 2: 'a ticketed night', 3: 'a free or community night' }
-export function socialTierOf(n: Pick<CampaignNight, 'title' | 'venueName' | 'categorySlug' | 'cta'>) {
-  return tierOf({ title: n.title, venue: n.venueName, categorySlug: n.categorySlug, ticketed: n.cta.state === 'paid_native' || n.cta.state === 'paid_external' })
+// A session for children, toddlers or families named in the listing's own summary is tier 4 (law 18 (b): story time,
+// toddler and baby sessions, classes), though its title names none: out-12's Ballarat asked for 'Show-and-Tell with
+// Carly', "A show-and-tell session for children", read as tier 3 by its title alone (the PM's 02:25 fix 4).
+const SESSION_SUMMARY = /\b(session|class|workshop|story ?time|playgroup)s?\b[^.]{0,30}\b(children|kids|toddlers?|babies|families|parents)\b/i
+export function socialTierOf(n: Pick<CampaignNight, 'title' | 'venueName' | 'categorySlug' | 'cta'> & Partial<Pick<CampaignNight, 'summary'>>) {
+  const t = tierOf({ title: n.title, venue: n.venueName, categorySlug: n.categorySlug, ticketed: n.cta.state === 'paid_native' || n.cta.state === 'paid_external' })
+  return t < 4 && SESSION_SUMMARY.test(n.summary ?? '') ? 4 : t
 }
 const MAX_PER_CATEGORY = 3
 
@@ -453,7 +458,7 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
  * no kind, so its slide had no photograph; each is now read from its own words (a match from its title's 'v'), and a
  * music night at a concert hall or an estate is a concert, as one at an arena already was.
  */
-export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport'
+export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport' | 'family'
 const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
 const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque)\b/i
 // A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
@@ -467,11 +472,40 @@ const MARKET_WORDS = /\b(produce|food|farmers'?|growers'?)\b[^.]{0,40}\bmarkets?
 // or a class in the sports category is no match, so a crowd in the stands never stands over it.
 const MATCH_WORDS = /\s(v|vs\.?)\s|\b(t20i?|odi|test match|grand final|semi final|derby)\b/i
 const RECITAL_ROOMS = /\b(recital|conservatorium|chamber)\b/i
+// The PM's 02:25 fix 3: a daytime family or children's show is a family show, never a gig (out-12 put a pyrotechnic rock
+// crowd over 'Pevan & Sarah in Concert 2026', a 10:30 am children's concert). No stand-in is licensed for it, so a slide
+// it leads takes the next night's kind.
+const FAMILY_WORDS = /\b(family|families|kids|children|children's|childrens|toddlers?|preschool|little ones)\b/i
+const FAMILY_CATEGORIES = ['family', 'kids', 'children']
+/** The night's local start hour, 0 to 23. */
+function localHour(n: Pick<CampaignNight, 'startDate' | 'timezone'>): number {
+  return Number(new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(n.startDate)))
+}
+// The PM's 02:25 fix 2: sport carries its sport, read from the match's own words (its title names its sides).
+const NBL_TEAMS = /\b(melbourne united|south east melbourne phoenix|sydney kings|perth wildcats|brisbane bullets|cairns taipans|adelaide 36ers|illawarra hawks|tasmania jackjumpers|new zealand breakers)\b/i
+const A_LEAGUE_TEAMS = /\b(melbourne victory|melbourne city|western united|sydney fc|western sydney wanderers|adelaide united|brisbane roar|central coast mariners|newcastle jets|perth glory|wellington phoenix|macarthur fc|auckland fc)\b/i
+/** A match's own sport, or null where its words name none (then only a stadium crowd with no sport named stands over it). */
+export function sportOf(n: Pick<CampaignNight, 'title' | 'summary' | 'sourceTitle'>): Sport | null {
+  const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
+  if (FIGHT_WORDS.test(words)) return 'combat'
+  if (/\b(basketball|nbl|wnbl)\b/i.test(words) || NBL_TEAMS.test(words)) return 'basketball'
+  if (/\b(cricket|t20i?|odi|test match|big bash|bbl|wbbl|sheffield shield)\b/i.test(words)) return 'cricket'
+  if (/\b(soccer|a-league|matildas|socceroos)\b/i.test(words) || A_LEAGUE_TEAMS.test(words)) return 'football'
+  if (/\b(afl|aflw)\b/i.test(words)) return 'afl'
+  if (/\b(rugby|nrl|wallabies|super rugby)\b/i.test(words)) return 'rugby'
+  if (/\b(tennis|australian open)\b/i.test(words)) return 'tennis'
+  return null
+}
+/** Seated nights, and the standing crowds that never stand over them where they are as many (the PM's 02:25 fix 1). */
+const SEATED_KINDS: readonly NightKind[] = ['talk', 'classical', 'theatre']
+const STANDING_KINDS: readonly NightKind[] = ['gig', 'festival']
 // A fight is a match by its own words, whatever category its source filed it in (out-12: 'Humanoid Fighting Championship'
 // is filed as music on production, and drew a concert stage).
 const FIGHT_WORDS = /\b(fighting|fight night|boxing|kickboxing|mma|ufc|wrestling|muay thai)\b/i
-export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'>): NightKind | null {
+export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'> & Partial<Pick<CampaignNight, 'startDate' | 'timezone'>>): NightKind | null {
   const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
+  // A daytime show with family words, or listed as a family show, before 3 pm (fix 3).
+  if (n.startDate && localHour({ startDate: n.startDate, timezone: n.timezone ?? null }) < 15 && (FAMILY_WORDS.test(words) || FAMILY_CATEGORIES.includes((n.categorySlug ?? '').toLowerCase()))) return 'family'
   // A night whose own title calls it a concert is music before any talk word in its summary (out-12: 'Pevan & Sarah in
   // Concert 2026', whose singalongs "teach reading, maths and feelings", read as a talk).
   if (/\bconcert\b/i.test(n.sourceTitle ?? n.title) && !CLASSICAL_WORDS.test(words) && !DANCE_WORDS.test(words)) return 'gig'
@@ -822,7 +856,7 @@ export function lockedListSlides(
   /** One show, one line (the PM's 16:40, fix 2): a show's other sessions in the piece's days, said under its time. */
   sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
   /** The week's one chooser (the PM's 22:41 fix 2: no photograph twice in the week's feed); alone, the piece's own. */
-  weekPick?: (kind: NightKind | null, use?: 'venue') => StandIn | null,
+  weekPick?: (kind: NightKind | null, use?: 'venue', sport?: Sport | null) => StandIn | null,
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const pick = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
@@ -834,7 +868,7 @@ export function lockedListSlides(
     for (const n of [...ns].sort(byDraw)) {
       const kind = nightKindOf(n)
       if (!hasStandIn(kind)) continue
-      const s = pick(kind)
+      const s = pick(kind, undefined, kind === 'sport' ? sportOf(n) : null)
       if (s) return { night: n, standIn: s }
     }
     return null
@@ -871,7 +905,26 @@ export function lockedListSlides(
      first night by draw whose kind has a licensed stand-in; the stand-in stands over that night, which its card names.
      A slide with no such night stays in type and joins a neighbour in type (fix 4 of 18:45). */
   const ofOneKind = (ns: readonly CampaignNight[]) => ns.some((n) => hasStandIn(nightKindOf(n)))
-  const leadStandIn = (ns: readonly CampaignNight[]) => firstPicked(ns)?.standIn ?? null
+  /* The PM's 02:25 fix 1: a day slide's band is of the kind most of its nights share, the first night as the slide
+     lists them breaking a tie; a standing crowd (a gig's, a festival's) never stands over seated nights (a talk, a
+     recital, theatre) as many as its own. A kind with no stand-in left this week passes to the next. Out-12's 01 put a
+     rock crowd over Ben Macintyre's talk and Anne Sofie von Otter's recital, with LANY third. */
+  const bandStandIn = (listed: readonly CampaignNight[]) => {
+    const kinds = listed.map((n) => nightKindOf(n))
+    const count = new Map<NightKind, number>()
+    for (const k of kinds) if (k && hasStandIn(k)) count.set(k, (count.get(k) ?? 0) + 1)
+    const seated = kinds.filter((k) => k && SEATED_KINDS.includes(k)).length
+    const standing = kinds.filter((k) => k && STANDING_KINDS.includes(k)).length
+    const order = [...count.keys()]
+      .filter((k) => !(STANDING_KINDS.includes(k) && seated >= standing && seated > 0))
+      .sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || kinds.indexOf(a) - kinds.indexOf(b))
+    for (const k of order) {
+      const first = listed.find((n) => nightKindOf(n) === k)
+      const st = pick(k, undefined, k === 'sport' && first ? sportOf(first) : null)
+      if (st) return st
+    }
+    return null
+  }
   const groups = daySlideGroups(ordered)
   for (let i = 0; i < groups.length; i++) {
     const size = (g: CampaignNight[][]) => g.reduce((a, x) => a + x.length, 0)
@@ -883,16 +936,17 @@ export function lockedListSlides(
     i = a - 1
   }
   const daySlides: Slide[] = groups.map((days) => {
-    const s = leadStandIn(days.flat())
     const slideDays = new Set(days.flat().map((x) => ymdOf(x.startDate, x.timezone)))
     /* The draw decides which nights make the slide; day then clock orders them, a run by its first session on the
        slide's days (the PM's 18:45 fix 2: Leisurefest's Friday 9:00 am above the Friday 7:30 pm). */
     const key = (n: CampaignNight) => Math.min(...[n, ...sessionsOf(n)].filter((x) => slideDays.has(ymdOf(x.startDate, x.timezone))).map((x) => Date.parse(x.startDate)), Date.parse(n.startDate))
+    const listed = [...days.flat()].sort((a, b) => key(a) - key(b))
+    const s = bandStandIn(listed)
     return {
       t: 'days',
       composition: 'contents_cover',
       ...headingOf(days),
-      rows: [...days.flat()].sort((a, b) => key(a) - key(b)).map(rowOf),
+      rows: listed.map(rowOf),
       photo: s ? standInUrl(origin, s) : null,
       credit: s ? standInCredit(s) : null,
     }
@@ -904,7 +958,10 @@ export function lockedListSlides(
   // then the post's best by draw, free or ticketed alike.
   const ledIds = new Set(ledBy.led.map((n) => n.eventId))
   const askOrder = [...ledBy.led, ...ledBy.order.filter((n) => !ledIds.has(n.eventId))]
-  const chosen = askOrder.slice(0, 3)
+  // The PM's 02:25 fix 4 (law 18 (c) applied to the ask): never a tier 4 session among the three while a night of tiers 1
+  // to 3 is on the post (out-12's Ballarat took Show-and-Tell with Carly over the Free Sunday Garden Tour).
+  const askable = askOrder.some((n) => socialTierOf(n) < 4) ? askOrder.filter((n) => socialTierOf(n) < 4) : askOrder
+  const chosen = askable.slice(0, 3)
   const firstOf = (n: CampaignNight) => Date.parse((labels.get(n.eventId) ?? nightLabel(n)).first)
   const askThree = [...chosen.filter((n) => ledIds.has(n.eventId)), ...chosen.filter((n) => !ledIds.has(n.eventId)).sort((a, b) => firstOf(a) - firstOf(b))]
   const three = askThree.map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
@@ -959,7 +1016,7 @@ export function daySlideGroups(ordered: readonly CampaignNight[]): CampaignNight
 }
 
 /** The word a venue's week takes when every night is one kind: 'Four comedy nights this week'. */
-const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', gig: 'live music', classical: 'classical', talk: 'talk', festival: 'festival', dance: 'dance', theatre: 'theatre', christmas: 'Christmas', market: 'market', sport: 'match' }
+const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', gig: 'live music', classical: 'classical', talk: 'talk', festival: 'festival', dance: 'dance', theatre: 'theatre', christmas: 'Christmas', market: 'market', sport: 'match', family: 'family' }
 
 /**
  * FAMILY E, A VENUE'S WEEK (WINDOW 6's venuePiece, scored 9.5 at 09:50 on 15 November 2026): the venue's own name large,
