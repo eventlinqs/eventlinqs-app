@@ -159,6 +159,34 @@ export type Slide =
   /** Family E, a venue's week: its name, its nights as gold timed cards (each with its entry line), a photograph of their kind or none, the ask. */
   | { t: 'venue'; composition: 'venue_spotlight'; venue: string; eyebrow: string; accent: string; rows: DayRow[]; photo: string | null; credit: string | null }
 
+/*
+ * THE SOCIAL LOCK (Lawal, 15 November 2026, 20:52, item 1, relayed by the PM: "These are the photos you're keeping. This
+ * is the concept ... This is the minimum we will ever publish"): the 22 posts of C:/dev/START-16OCT/SOCIAL-READY-15NOV are
+ * the locked benchmark, and the product publishes only in that look. These are its slides; a piece holding any other
+ * slide (the older planner look: the offer card, the brand card, the partner story, the daily poster) is kept out of the
+ * week's plan and refused before approval and before publishing. The older look is kept behind OLDER_LOOK_IN_PLAN, never
+ * deleted (law 13); it goes back on only when Lawal says so.
+ */
+export const LOCKED_SLIDES = ['week_cover', 'days', 'feature', 'ask', 'venue'] as const
+export const OLDER_LOOK_IN_PLAN = false
+
+/** True when every slide of a piece is drawn in the locked look. */
+export function inLockedLook(slides: readonly Pick<Slide, 't'>[]): boolean {
+  return slides.length > 0 && slides.every((s) => (LOCKED_SLIDES as readonly string[]).includes(s.t))
+}
+
+/**
+ * Why the lock keeps a piece from the plan and from publishing, or null when it may go: drawn wholly in the locked look,
+ * and its first slide carrying a photograph (Lawal, 15 November 2026: "Never a text-only post"; every benchmark post leads
+ * with one; out-8's Bendigo weekend post was its cover and its ask, in type alone).
+ */
+export function lockRefusal(slides: readonly Slide[]): string | null {
+  if (!inLockedLook(slides)) return 'It is drawn in the older planner look, not the locked look of 15 November, so it is never approved or published.'
+  const first = slides[0]
+  if (!('photo' in first) || !first.photo) return "It does not lead with a photograph: Lawal's lock of 15 November allows no text-only post, and every post leads with one."
+  return null
+}
+
 /** One night on a day slide, as Lawal's gold timed card draws it; its start kept so a check before publishing reads drift. */
 export type DayRow = { eventId: string; startDate: string; when: string; sub: string | null; title: string; place: string; free: boolean }
 
@@ -588,6 +616,8 @@ export function cardTitle(title: string, max: number): string {
 export const CARD_TITLE_MAX = 48
 export const ASK_TITLE_MAX = 34
 const DRAW_TITLE_MAX = 30
+/** A Led by name keeps up to 44 letters (shortened by rule, never dropped: the PM's 20:40 fix 1). */
+const DRAW_NAME_MAX = 44
 
 /** "7:30 pm" at the night's own place. */
 export function clockOf(iso: string, tz: string | null): string {
@@ -661,9 +691,24 @@ export function dayRowOf(n: CampaignNight, label: NightLabel = nightLabel(n)): D
     when: label.time,
     sub: label.day,
     title: cardTitle(n.title, CARD_TITLE_MAX),
-    place: placeOf(n) ?? n.venueName ?? n.cityName,
+    place: placeLine(n),
     free: isFree(n),
   }
+}
+
+/**
+ * The place a card names: the venue's own name with its spaces made single (the PM's 20:40 fix 2: 'Tan Track  (Pillars of
+ * Wisdom)'), or nothing when only an operator is known (fix 3: 'Bendigo Venues and Events' runs venues, it is not one),
+ * so the line is the time alone.
+ */
+export function placeLine(n: Pick<CampaignNight, 'venueName' | 'placeName' | 'cityName'>): string {
+  const place = (placeOf(n) ?? n.venueName ?? '').replace(/\s+/g, ' ').trim()
+  return place && !isOperatorName(place) ? place : ''
+}
+
+/** A name that says it runs venues or events rather than being a place: 'X Venues and Events', '... Pty Ltd'. */
+export function isOperatorName(name: string): boolean {
+  return /\b(venues?|events?)\s+(and|&)\s+(venues?|events?)\b/i.test(name) || /\b(pty|ltd|inc|incorporated)\b\.?/i.test(name)
 }
 
 /** At most four nights a day slide, as the 9.5 sample's week (fitted at the square's size by the text guard). */
@@ -688,19 +733,30 @@ export function rangeOf(nights: readonly CampaignNight[], sessionsOf: (n: Campai
 }
 
 /** "Led by LANY and Two Door Cinema Club": the piece's biggest draws (tier 1, then 2), by name, or null. */
-export function drawsOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null): string | null {
-  // The PM's 18:45 fix 5: a cover carrying a night's own photograph names that night first, so the reader never takes
-  // the festival's dancers for the fight night.
-  const lead = photographed ? cardTitle(photographed.title, 44) : null
-  const rest = [...nights]
-    .filter((n) => socialTierOf(n) <= 2 && n.eventId !== photographed?.eventId)
-    .sort(byDraw)
-    .map((n) => cardTitle(n.title, DRAW_TITLE_MAX))
-    .filter((t) => t.length <= DRAW_TITLE_MAX)
-  const names = [...(lead ? [lead] : []), ...rest].filter((t, i, a) => a.indexOf(t) === i)
-  if (names.length === 0) return null
-  const two = names.length >= 2 ? `Led by ${names[0]} and ${names[1]}` : null
-  return two && two.length <= (photographed ? 90 : 46) ? two : `Led by ${names[0]}`
+/**
+ * ONE RANKING FEEDS THE LED BY LINE AND THE ASK (the PM's 20:40 fix 1: Geelong's Led by named Geelong Dance Movement
+ * while its ask opened with Leisurefest, because a name over 30 letters was dropped from the line and not from the
+ * ask). The order is the cover's own photographed night, then law 18's draw; the Led by nights are its first one or
+ * two of tier 1 or 2, and over a stand-in only nights of the photograph's kind (the PM's 20:40 fix 5); the ask's first
+ * lines are those nights, in that order.
+ */
+export function ledOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null, kind: NightKind | null = null): { order: CampaignNight[]; led: CampaignNight[]; line: string | null } {
+  const order = [...(photographed ? [photographed] : []), ...[...nights].filter((n) => n.eventId !== photographed?.eventId).sort(byDraw)]
+  const candidates = order.filter((n) => n === photographed || (socialTierOf(n) <= 2 && (kind === null || nightKind(n) === kind)))
+  const seen = new Set<string>()
+  const named = candidates.filter((n) => {
+    const t = cardTitle(n.title, DRAW_NAME_MAX)
+    return !seen.has(t) && Boolean(seen.add(t))
+  })
+  if (named.length === 0) return { order, led: [], line: null }
+  const [a, b] = named.map((n) => cardTitle(n.title, DRAW_NAME_MAX))
+  const two = b ? `Led by ${a} and ${b}` : null
+  const fitsTwo = two !== null && two.length <= (photographed ? 90 : 46)
+  return { order, led: fitsTwo ? named.slice(0, 2) : named.slice(0, 1), line: fitsTwo ? two : `Led by ${a}` }
+}
+
+export function drawsOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null, kind: NightKind | null = null): string | null {
+  return ledOf(nights, photographed, kind).line
 }
 
 /** The day slides' heading: "Wednesday" and "18 Nov", or for two days "Mon & Tue" and "16 & 17 Nov". */
@@ -733,7 +789,7 @@ export function lockedListSlides(
   sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
-  const pick = standInChooser()
+  const pick = standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
   /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a stand-in stands over a slide only when every night the slide
      names is of the photograph's kind; a cover's, only when the night it is led by is. Otherwise the slide is in type. */
   const standInFor = (ns: readonly CampaignNight[]) => {
@@ -743,13 +799,21 @@ export function lockedListSlides(
   }
   const own = [...ordered].filter((n) => n.approvedPhotoUrl).sort(byDraw)
   const lead = own[0] ?? null
-  const coverStandIn = lead ? null : standInFor([...ordered].sort(byDraw).slice(0, 1))
+  /* LAWAL'S SOCIAL LOCK (15 November 2026, 20:52): every post leads with a photograph, as every benchmark post does
+     (A-LOCK-1's cover leads with AMCF's own under "Led by LANY and Two Door Cinema Club"). With no night's own photograph,
+     the cover is led by the first night by draw whose kind has a licensed stand-in (photographed first, the one ranking
+     of the PM's 20:40 fix 1), and its stand-in stands over that night alone, which the cover names (the PM's 17:40 rule
+     one: one photo, one subject). Out-9: Melbourne's week, Geelong's and Bendigo's covers were in type because their
+     single top draw had no such kind. */
+  const coverNight = lead ? null : [...ordered].sort(byDraw).find((n) => socialTierOf(n) <= 2 && hasStandIn(nightKindOf(n))) ?? null
+  const coverStandIn = coverNight ? standInFor([coverNight]) : null
+  const ledBy = ledOf(ordered, lead, coverStandIn ? coverStandIn.kind : null)
   const cover: Slide = {
     t: 'week_cover',
     composition: 'contents_cover',
     range: rangeOf(ordered, sessionsOf),
     lines,
-    draws: drawsOf(ordered, lead),
+    draws: ledBy.line,
     // The PM's 17:40 fix 5: the out-4 cover's line, "2 are free, 3 need tickets. Tap through for each night."
     line: splitLine(ordered),
     photoEventId: lead ? lead.eventId : null,
@@ -796,8 +860,8 @@ export function lockedListSlides(
   // The ask names each night by the same date label as its card (fix 1).
   // The PM's 19:45 fix 1: the ask's first line is the night the cover is led by (its photograph's, else its first draw),
   // then the post's best by draw, free or ticketed alike.
-  const ledFirst = lead ?? [...ordered].sort(byDraw)[0]
-  const askOrder = [ledFirst, ...[...ordered].sort(byDraw).filter((n) => n.eventId !== ledFirst.eventId)]
+  const ledIds = new Set(ledBy.led.map((n) => n.eventId))
+  const askOrder = [...ledBy.led, ...ledBy.order.filter((n) => !ledIds.has(n.eventId))]
   const three = askOrder.slice(0, 3).map((n) => ({ ...rowOf(n), when: (labels.get(n.eventId) ?? nightLabel(n)).day, sub: null, title: cardTitle(n.title, ASK_TITLE_MAX) }))
   // A cover with no photograph lists its three lead nights as cards, so the page is never bare ground.
   const lead3 = cover.photo ? [] : [...ordered].sort(byDraw).slice(0, 3).sort((a, b) => Date.parse((labels.get(a.eventId) ?? nightLabel(a)).first) - Date.parse((labels.get(b.eventId) ?? nightLabel(b)).first)).map(rowOf)
@@ -870,7 +934,7 @@ export function venueSlideOf(host: string, nights: readonly CampaignNight[], ori
     composition: 'venue_spotlight',
     venue: placeOf(ordered[0]) ?? host,
     eyebrow: `Venue · ${rangeOf(ordered)}`,
-    accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${count === 1 ? 'night' : 'nights'} this week`,
+    accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${nightsWord(ordered, count === 1)} this week`,
     rows: ordered.map((n) => ({ ...dayRowOf(n), place: nightWords(n).entry ?? '' })),
     photo: s ? standInUrl(origin, s) : null,
     credit: s ? standInCredit(s) : null,
@@ -880,6 +944,11 @@ export function venueSlideOf(host: string, nights: readonly CampaignNight[], ori
 /** A night's kind for its stand-in: only where its own words say it (nightKind). */
 function nightKindOf(n: CampaignNight): NightKind | null {
   return nightKind(n)
+}
+
+/** Whether a kind has a licensed stand-in photograph (stand-ins.ts). */
+function hasStandIn(kind: NightKind | null): boolean {
+  return kind !== null && STAND_INS.some((x) => x.kind === kind)
 }
 
 /** A night with its own permitted photograph, whole: its date and place, its name in up to two lines, its entry. */
@@ -925,6 +994,15 @@ export function splitLine(nights: readonly CampaignNight[]): string {
   if (free > 0) parts.push(`${free === nights.length ? 'All' : free} ${free === 1 ? 'is' : 'are'} free`)
   if (paid > 0) parts.push(`${paid} ${paid === 1 ? 'needs' : 'need'} tickets`)
   return parts.length === 0 ? 'Tap through for each night.' : `${parts.join(', ')}. Tap through for each night.`
+}
+
+/**
+ * NIGHTS OR THINGS (the PM's 20:40 fix 4: 'Five nights worth planning for' carried an 11:00 am studio tour): a headline
+ * says nights only when every one starts at 5 pm or later where it is held; otherwise things.
+ */
+export function nightsWord(nights: readonly Pick<CampaignNight, 'startDate' | 'timezone'>[], one = false): string {
+  const evening = nights.every((n) => Number(new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(n.startDate))) >= 17)
+  return evening ? (one ? 'night' : 'nights') : one ? 'thing' : 'things'
 }
 
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
@@ -1149,8 +1227,8 @@ export function planCampaign(input: {
       MAX_NIGHTS,
     )
     if (later.length >= 2) {
-      const hook = `${countWord(later.length)} nights worth planning for in ${city.name}.`
-      const laterSlides = lockedListSlides(later, [`${later.length} nights worth`, 'planning for', `in ${city.name}`], origin)
+      const hook = `${countWord(later.length)} ${nightsWord(later)} worth planning for in ${city.name}.`
+      const laterSlides = lockedListSlides(later, [`${later.length} ${nightsWord(later)} worth`, 'planning for', `in ${city.name}`], origin)
       const body = [...pictured(laterSlides), ...later.map(pickLine), '', creditsOf(later)]
       pieces.push({
         kind: 'coming_up',
@@ -1187,8 +1265,8 @@ export function planCampaign(input: {
       // Three different nights, after one night per title (out-7, 18:57: three sessions of one show drew "1 family nights").
       if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
-      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} nights.`
-      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `nights in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
+      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot)}.`
+      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `${nightsWord(spot)} in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n))
       const body = [...pictured(spotSlides), ...spot.map(pickLine), '', creditsOf(spot)]
       pieces.push({
         kind: 'category_spotlight',

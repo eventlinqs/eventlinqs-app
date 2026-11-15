@@ -59,11 +59,17 @@ export function standInOf(url: string | null | undefined): StandIn | null {
  * A chooser for one piece: each call takes the next stand-in of the kind asked, so no photograph is used twice in a piece
  * while another of its kind is unused (the photo system's P1, one photograph, one place).
  */
-export function standInChooser(): (kind: NightKind | null) => StandIn | null {
+export function standInChooser(seed = ''): (kind: NightKind | null) => StandIn | null {
   const used = new Set<string>()
+  // A piece's own starting place in each kind's photographs (out-10, 15 November 2026: one gig crowd led Melbourne's,
+  // Geelong's and Bendigo's weeks alike): the seed (the piece's city and its own heading) turns the pool, so posts
+  // differ; the same seed always draws the same photograph, so a re-render never changes a post.
+  let turn = 0
+  for (const ch of seed) turn = (turn * 31 + ch.charCodeAt(0)) % 9973
   return (kind) => {
     if (!kind) return null
-    const pool = STAND_INS.filter((s) => s.kind === kind)
+    const base = STAND_INS.filter((s) => s.kind === kind)
+    const pool = base.length ? [...base.slice(turn % base.length), ...base.slice(0, turn % base.length)] : base
     const pick = pool.find((s) => !used.has(s.id)) ?? null
     if (pick) used.add(pick.id)
     return pick

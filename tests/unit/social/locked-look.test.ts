@@ -164,21 +164,29 @@ describe('a list post in the locked look', () => {
 })
 
 describe("a stand-in only over nights all of its kind (the PM's 17:40 fix 1, rule one)", () => {
-  it("Geelong's Friday: a band night beside GSODA Junior Players' Curtain Up and a garden session is in type", () => {
+  // Lawal's lock of 15 November 2026, 20:52 ("Never a text-only post"; every benchmark post leads with a photograph)
+  // outranks the PM's 17:40 cover in type: the cover is now led by the night whose kind has a stand-in, and that stand-in
+  // stands over it alone, which the cover names (rule one kept). A day of mixed kinds stays in type.
+  it("Geelong's Friday: the band night leads the cover under a gig crowd; the mixed day itself stays in type", () => {
     const band = night({ at: '2026-11-20T09:00:00Z', title: 'The Band Night', citySlug: 'geelong', cityName: 'Geelong', venueName: 'The Barwon Club' })
     const curtain = night({ at: '2026-11-20T08:00:00Z', title: 'GSODA Junior Players presents Curtain Up', categorySlug: 'theatre', summary: 'Young performers on stage.', venueName: 'Geelong Arts Centre', citySlug: 'geelong', cityName: 'Geelong' })
     const garden = night({ at: '2026-11-20T00:00:00Z', title: 'Garden Session', categorySlug: 'community', summary: 'A morning in the garden.', venueName: 'Geelong Botanic Gardens', citySlug: 'geelong', cityName: 'Geelong', state: { entryMode: 'walk_in', isFree: true } })
     const s = lockedListSlides([band, curtain, garden], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN)
     expect(daysOf(s).every((d) => d.photo === null)).toBe(true)
-    expect(s[0]).toMatchObject({ t: 'week_cover', photo: null })
+    expect(s[0]).toMatchObject({ t: 'week_cover', draws: 'Led by The Band Night' })
+    expect(standInOf((s[0] as Extract<Slide, { t: 'week_cover' }>).photo)?.kind).toBe('gig')
+    expect((s.at(-1) as Extract<Slide, { t: 'ask' }>).three[0].eventId).toBe(band.eventId)
     expect(cardsOf(s).find((r) => r.eventId === curtain.eventId)?.title).toBe('Curtain Up')
   })
 
-  it("Geelong's reel cover led by Geelong Dance Movement carries no gig crowd", () => {
+  it("Geelong's reel: a gig crowd never stands over Geelong Dance Movement; the cover is led by the band night it shows", () => {
     const dance = night({ at: '2026-11-19T08:30:00Z', title: 'Geelong Dance Movement: A Passage Through Time', categorySlug: 'theatre', summary: 'A dance company on stage.', venueName: 'Geelong Arts Centre', citySlug: 'geelong', cityName: 'Geelong' })
     const band = night({ at: '2026-11-20T09:00:00Z', title: 'The Band Night', citySlug: 'geelong', cityName: 'Geelong', venueName: 'The Barwon Club', state: { tiers: [{ price: 1500 }] } })
     const s = lockedListSlides([dance, band], ['2 things on', 'in Geelong', 'this week'], ORIGIN)
-    expect(s[0]).toMatchObject({ t: 'week_cover', draws: expect.stringMatching(/^Led by Geelong Dance Movement/), photo: null })
+    const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+    expect(cover.draws).toBe('Led by The Band Night')
+    expect(standInOf(cover.photo)?.kind).toBe('gig')
+    expect(cover.draws).not.toMatch(/Dance Movement/)
   })
 
   it('a day of comedy alone takes a comedy stage, each stand-in once in a piece; a talk alone stays in type', () => {
@@ -392,5 +400,57 @@ describe("the PM's 19:45 fixes", () => {
       const first = c.draws?.replace(/^Led by /, '').split(' and ')[0]
       if (first) expect(a.three[0].title, p.kind).toBe(first)
     }
+  })
+})
+
+describe("the PM's 20:40 fixes", () => {
+  it("one ranking feeds Led by and the ask: Geelong's Leisurefest (45 letters) is named, not dropped, and opens the ask (fix 1)", async () => {
+    const { ledOf } = await import('@/lib/social/campaign')
+    const fest = night({ at: '2026-11-19T22:00:00Z', endDate: '2026-11-22T07:00:00Z', title: 'Geelong Caravanning and Adventure Leisurefest', venueName: 'Geelong Racecourse', host: 'Geelong Racecourse', categorySlug: 'festival', citySlug: 'geelong', cityName: 'Geelong' })
+    const dance = night({ at: '2026-11-19T08:30:00Z', title: 'Geelong Dance Movement: A Passage Through Time', venueName: 'Geelong Arts Centre', host: 'Geelong Arts Centre', categorySlug: 'theatre', summary: 'A dance company on stage.', citySlug: 'geelong', cityName: 'Geelong' })
+    const s = lockedListSlides([dance, fest], ['2 things on', 'in Geelong', 'this week'], ORIGIN)
+    const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+    const ask = s.at(-1) as Extract<Slide, { t: 'ask' }>
+    const { led } = ledOf([dance, fest])
+    expect(cover.draws).toBe(`Led by ${led.map((n) => cardTitle(n.title, 44)).join(' and ')}`)
+    expect(ask.three.slice(0, led.length).map((r) => r.eventId)).toEqual(led.map((n) => n.eventId))
+    expect(led[0].eventId).toBe(fest.eventId)
+  })
+
+  it("over a stand-in, every Led by night is of the photograph's kind: Dermot Kennedy alone, never Eternity beside him (fix 5)", () => {
+    const dermot = night({ at: '2026-11-21T09:00:00Z', title: 'Dermot Kennedy', summary: null, venueName: 'Rod Laver Arena', host: 'Rod Laver Arena' })
+    const eternity = night({ at: '2026-11-19T07:00:00Z', title: 'Eternity', summary: null, venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre' })
+    const s = lockedListSlides([dermot, eternity], ['2 music', 'nights in Melbourne', 'this week'], ORIGIN)
+    const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+    expect(standInOf(cover.photo)?.kind).toBe('gig')
+    expect(cover.draws).toBe('Led by Dermot Kennedy')
+    expect((s.at(-1) as Extract<Slide, { t: 'ask' }>).three[0].eventId).toBe(dermot.eventId)
+  })
+
+  it("an operator is never the place: Locals Live 2 at 'Bendigo Venues and Events' reads the time alone; a venue's spaces are single (fixes 2 and 3)", async () => {
+    const { placeLine, isOperatorName } = await import('@/lib/social/campaign')
+    expect(isOperatorName('Bendigo Venues and Events')).toBe(true)
+    expect(isOperatorName('Federation Square')).toBe(false)
+    expect(isOperatorName('The Capital')).toBe(false)
+    const locals = night({ at: '2026-11-20T08:00:00Z', title: 'Locals Live 2', venueName: 'Bendigo Venues and Events', placeName: 'Bendigo Venues and Events', citySlug: 'bendigo', cityName: 'Bendigo' })
+    expect(placeLine(locals)).toBe('')
+    const cards = cardsOf(lockedListSlides([locals], ['1 thing on', 'in Bendigo', 'this week'], ORIGIN))
+    expect(cards.length).toBeGreaterThan(0)
+    expect(cards.every((r) => r.place === '')).toBe(true)
+    expect(placeLine({ venueName: 'Tan Track  (Pillars of Wisdom)', placeName: 'Tan Track  (Pillars of Wisdom)', cityName: 'Melbourne' })).toBe('Tan Track (Pillars of Wisdom)')
+  })
+
+  it('nights only when every one starts at 5 pm or later; otherwise things (fix 4)', async () => {
+    const { nightsWord } = await import('@/lib/social/campaign')
+    const eve = night({ at: '2026-11-20T08:00:00Z' }) // 7 pm in Melbourne
+    const morning = night({ at: '2026-11-21T00:00:00Z' }) // 11 am in Melbourne
+    expect(nightsWord([eve])).toBe('nights')
+    expect(nightsWord([eve, morning])).toBe('things')
+    expect(nightsWord([eve], true)).toBe('night')
+  })
+
+  it("a joined run is measured in ems at the card's own width, so no name is wider than its column (fix 2)", () => {
+    expect(keepTogether('Torquay Dance Academy: SHOWTIME', 8).includes(' ')).toBe(true)
+    expect(keepTogether('Melbourne United vs New Zealand Breakers')).toBe('Melbourne\u00A0United vs\u00A0New\u00A0Zealand\u00A0Breakers')
   })
 })

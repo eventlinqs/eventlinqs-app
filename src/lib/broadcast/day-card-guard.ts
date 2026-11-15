@@ -1,7 +1,7 @@
 import type React from 'react'
 import { loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { cardPixels, cardSvgWithText, svgPixels, type RasterFont } from '@/lib/broadcast/card-raster'
-import { SAFE, sizeOf, type DayFormat, type El } from '@/lib/broadcast/day-cards'
+import { SAFE, scaleOf, sizeOf, type DayFormat, type El } from '@/lib/broadcast/day-cards'
 
 /**
  * THE TEXT GUARD OF THE LOCKED LOOK (WINDOW 6's textGuard in locked-look-4.ts, the PM's 08:40 round 2 and 09:10 fixes of
@@ -115,8 +115,11 @@ export async function lockedSlideFaults(el: El, f: DayFormat): Promise<string[]>
     if (!faults.includes(s)) faults.push(s)
   }
   if (stretched > 0) say(`${stretched} card(s) stretched past their content`)
+  // Every slide keeps 64 of a 1080 frame clear at each side; a word past that has run past its card (the PM's 20:40 fix 2).
+  const edge = w - 64 * scaleOf(f) + 4
   for (const wd of words) {
     if (wd.x < -1 || wd.right > w + 1 || wd.top < -1 || wd.bottom > H + 1) say(`"${wd.text}" leaves the frame`)
+    else if (wd.right > edge) say(`"${wd.text}" runs past the card's right edge`)
     if (f === 'story' && (wd.top < SAFE - 1 || wd.bottom > H - SAFE + 1)) say(`"${wd.text}" lies in a story's safe area`)
   }
   for (let i = 0; i < words.length; i++) {

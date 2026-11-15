@@ -19,7 +19,7 @@ import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
-import type { Composition, Slide } from '@/lib/social/campaign'
+import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
 import { standInOf } from '@/lib/social/stand-ins'
 
 /**
@@ -188,7 +188,8 @@ type LockedSlide = Extract<Slide, { t: 'week_cover' | 'days' | 'feature' | 'ask'
 type UnlockedSlide = Exclude<Slide, LockedSlide>
 
 export function isLocked(slide: Slide): slide is LockedSlide {
-  return slide.t === 'week_cover' || slide.t === 'days' || slide.t === 'feature' || slide.t === 'ask' || slide.t === 'venue'
+  // One list of the locked slides (campaign.ts LOCKED_SLIDES, Lawal's social lock of 15 November 2026).
+  return inLockedLook([slide])
 }
 
 /** The first word of a slide's foot, where the spare room above it is read. */

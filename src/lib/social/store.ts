@@ -12,13 +12,13 @@ import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
 import { quotableSummary, wordsRefusal } from './words'
-import { dailyPosterPieces, posterDrift, type NightNow } from './daily-posters'
+import { dailyPosterPieces, posterDrift, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
-import { creativeRefusals, hostOf, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -738,6 +738,10 @@ export async function pieceDependencies(
     if (ok !== true) issues.push("The cover's photograph has no approved, unexpired licence for its night.")
   }
 
+  /* Lawal's social lock of 15 November 2026: a piece in the older look is never approved or published (law 13 keeps it). */
+  const locked = OLDER_LOOK_IN_PLAN ? null : lockRefusal(rev.slides)
+  if (locked) issues.push(locked)
+
   /* The directive's section 7: every slide, at every format it is made for, fits, reads and holds its contrast. */
   issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
 
@@ -839,7 +843,13 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   )])
   const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
-  return { ...week, pieces: [...week.pieces, ...dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded })] }
+  // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
+  // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
+  // look. A switch, never a deletion (law 13): DAILY_POSTERS_IN_PLAN turns them back on.
+  const pieces = [...week.pieces, ...(DAILY_POSTERS_IN_PLAN ? dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded }) : [])]
+  // Lawal's social lock of 15 November 2026 (campaign.ts lockRefusal): only a piece drawn wholly in the locked look and
+  // carrying a photograph enters the week's plan; the rest wait behind OLDER_LOOK_IN_PLAN (law 13), never deleted.
+  return { ...week, pieces: OLDER_LOOK_IN_PLAN ? pieces : pieces.filter((p) => lockRefusal(p.slides) === null) }
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */

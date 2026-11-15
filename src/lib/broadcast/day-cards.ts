@@ -91,7 +91,7 @@ const exit = (k: number, f: DayFormat, color: string) =>
  * A name never breaks after v, vs, &, and, at, with or a number (the PM's 18:45 fix 4: 'Australia v / England Men's T20I'):
  * the word and its neighbours are joined by no-break spaces when drawn; the slide's data keeps the name as it is.
  */
-export function keepTogether(name: string, maxRun = 30): string {
+export function keepTogether(name: string, maxEm = 16): string {
   // The PM's 19:45 fix 2: a line breaks BEFORE v, vs, &, and, at or with, never after, and never inside a run of
   // capitalised words or numbers ('Melbourne United / vs New Zealand Breakers'). A run longer than 30 letters may still
   // break, so no name is wider than its card.
@@ -105,9 +105,9 @@ export function keepTogether(name: string, maxRun = 30): string {
     const cur = words[i]
     const joiner = /^(v|vs|&|and|at|with)$/i.test(prev)
     // A word closing with punctuation ends its run after itself ('Live Music: / Garden Session').
-    const inRun = starts(prev) && !ends(prev) && starts(cur) && (run + ' ' + cur).length <= maxRun
+    const inRun = starts(prev) && !ends(prev) && starts(cur) && emWidth(`${run} ${cur}`) <= maxEm
     // A name's last two words always stay together, so no word stands alone on a last line (out-8: 'SHOWTIME').
-    const last = i === words.length - 1
+    const last = i === words.length - 1 && emWidth(`${prev} ${cur}`) <= maxEm
     out += joiner || inRun || last ? `\u00A0${cur}` : ` ${cur}`
     run = inRun ? `${run} ${cur}` : cur
   }
@@ -120,8 +120,18 @@ export function keepDate(label: string): string {
 }
 
 /** Lawal's gold timed card, at its content's height and its padding, never stretched (the PM's 18:45 fix 4). */
-/** About how many letters of a card title fit one line at its size (Hanken Grotesk runs about half an em a letter). */
-const titleRoom = (k: number, width: number, free: boolean) => Math.floor((width - k * (60 + 252 + 3 + 26) - (free ? k * 170 : 0)) / (39 * k * 0.5))
+/**
+ * How many ems of a card title fit one line at its size and its format's own width (the PM's 20:40 fix 2: 'Torquay Dance
+ * Academy: SHOWTIME' ran past the card on the story). A joined run is never wider than this.
+ */
+const titleRoom = (k: number, width: number, free: boolean) => (width - k * (60 + 252 + 3 + 26) - (free ? k * 170 : 0)) / (39 * k)
+
+/** A string's width in ems, as Hanken Grotesk and Archivo Condensed draw it: capitals and figures wider than lower case. */
+export function emWidth(s: string): number {
+  let em = 0
+  for (const ch of s) em += /[A-Z0-9]/.test(ch) ? 0.68 : /[a-z]/.test(ch) ? 0.53 : /\s/.test(ch) ? 0.27 : 0.36
+  return em
+}
 const timedCard = (k: number, r: DayRow, width = 1024 * k) =>
   h('div', { alignItems: 'center', background: NAVY_CARD, border: `${3 * k}px solid ${GOLD}`, borderRadius: 22 * k, padding: `${24 * k}px ${30 * k}px`, width: '100%', flexShrink: 0 },
     h('div', { flexDirection: 'column', width: 252 * k, flexShrink: 0 },
