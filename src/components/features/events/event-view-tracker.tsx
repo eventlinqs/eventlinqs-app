@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { trackEventView } from '@/lib/analytics/plausible'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { quietFetch } from '@/lib/net/quiet-fetch'
 import {
   FIRST_TOUCH_COOKIE,
   FIRST_TOUCH_MAX_AGE_SECONDS,
@@ -84,7 +85,8 @@ export function EventViewTracker({
       if (navigator.sendBeacon) {
         navigator.sendBeacon('/api/ledger/demand', new Blob([body], { type: 'application/json' }))
       } else {
-        void fetch('/api/ledger/demand', {
+        // Tried once more on a dropped network, then quiet (Sentry JAVASCRIPT-NEXTJS-C, 15 November 2026).
+        void quietFetch('/api/ledger/demand', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body,

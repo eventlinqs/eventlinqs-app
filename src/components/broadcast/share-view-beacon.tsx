@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { SHARE_COOKIE } from '@/lib/broadcast/share-codes'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { quietFetch } from '@/lib/net/quiet-fetch'
 
 /**
  * Share view beacon. Renders nothing. When the browser carries a share
@@ -35,7 +36,7 @@ export function ShareViewBeacon() {
           new Blob([payload], { type: 'application/json' }),
         )
       } else {
-        void fetch('/api/broadcast/track', {
+        void quietFetch('/api/broadcast/track', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: payload,

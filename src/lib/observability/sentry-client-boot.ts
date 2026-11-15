@@ -48,7 +48,7 @@ import { init, captureException, captureRouterTransitionStart } from '@sentry/ne
 export { captureRouterTransitionStart }
 import { scrubValue } from './pii-scrub'
 import { sentryEnvironment } from './sentry-env'
-import { setClientErrorSink } from './client-error-report'
+import { classifyClientError, setClientErrorSink } from './client-error-report'
 
 /**
  * Why the SDK was loaded, decided by instrumentation-client.ts.
@@ -150,8 +150,12 @@ export function bootSentryClient(
   // caller asserting "nothing was lost" sees both sources.
   forwarded += setClientErrorSink(({ error, context }) => {
     const scrubbed = context ? (scrubValue(context) as Record<string, unknown>) : undefined
+    // A request that never reached us (Safari's 'Load failed', Sentry JAVASCRIPT-NEXTJS-C of 15 November 2026) is a
+    // visitor's dropped network, reported as a warning under its own tag, never as a page error.
+    const network = classifyClientError(error) === 'network'
     captureException(error, {
-      tags: { el_capture: 'client_boundary' },
+      level: network ? 'warning' : 'error',
+      tags: network ? { el_capture: 'client_boundary', el_network: 'transient' } : { el_capture: 'client_boundary' },
       ...(scrubbed ? { extra: scrubbed } : {}),
     })
   })

@@ -20,6 +20,8 @@
 // boot and could be captured before init, which drops it silently. Queueing is
 // the only ordering that cannot lose the report.
 
+import { isNetworkFailure } from '@/lib/net/quiet-fetch'
+
 type ClientErrorReport = {
   error: unknown
   context?: Record<string, unknown>
@@ -42,6 +44,15 @@ let sink: ClientErrorSink | null = null
  */
 /** The window event a queued report raises, so the deferred SDK boots at once. */
 export const CLIENT_ERROR_QUEUED = 'el:client-error-queued'
+
+/**
+ * 'network' when the error is a browser's word for a request that never reached us (src/lib/net/quiet-fetch.ts), else
+ * 'fault'. The sink reports a network failure as a warning with its own tag, never as a page error (Sentry
+ * JAVASCRIPT-NEXTJS-C, 15 November 2026: Safari's 'TypeError: Load failed' from a phone's dropped request).
+ */
+export function classifyClientError(error: unknown): 'network' | 'fault' {
+  return isNetworkFailure(error) ? 'network' : 'fault'
+}
 
 export function reportClientError(error: unknown, context?: Record<string, unknown>): void {
   const report: ClientErrorReport = { error, context }
