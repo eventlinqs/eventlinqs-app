@@ -53,6 +53,19 @@ const ballaratOne = [night({ at: '2026-10-31T09:00:00Z', citySlug: 'ballarat', c
 const outside = [night({ at: '2026-11-03T09:00:00Z' })] // next week
 
 const plan = () => planCampaign({ nights: [...geelongWeek, ...ballaratOne, ...outside], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
+/* A busy week (the PM's 16:40 fix 3: two list posts in one city and one week share at most one night): five headline
+   nights Monday to Thursday carry the week post, so the later list posts have nights of their own. */
+function busyWeek(at: (o: Partial<CampaignNight> & { at: string; state?: CtaInput }) => CampaignNight) {
+  const h = (when: string, venue: string, categorySlug: string) => at({ at: when, venueName: venue, host: venue, categorySlug, state: { tiers: [{ price: 9900 }] } })
+  return [
+    h('2026-10-26T09:00:00Z', 'Costa Hall', 'theatre'),
+    h('2026-10-27T09:00:00Z', 'Rod Laver Arena', 'sport'),
+    h('2026-10-27T10:00:00Z', 'Hamer Hall', 'dance'),
+    h('2026-10-28T09:00:00Z', 'Palais Theatre', 'family'),
+    h('2026-10-29T09:00:00Z', 'Regent Theatre', 'arts'),
+  ]
+}
+const busyPlan = () => planCampaign({ nights: [...geelongWeek, ...busyWeek(night), ...ballaratOne, ...outside], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
 const of = (pieces: PiecePlan[], kind: PiecePlan['kind'], city?: string) => pieces.filter((p) => p.kind === kind && (city === undefined || p.city === city))
 
 describe('the week', () => {
@@ -85,7 +98,7 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
   })
 
   it('Thursday: the weekend carousel, Friday to Sunday, to the page that lists every night it shows (J15)', () => {
-    const [w] = of(pieces, 'weekend_carousel', 'geelong')
+    const [w] = of(busyPlan().pieces, 'weekend_carousel', 'geelong')
     /* It shows a paid night, which the free week page does not list, so it goes to the city page. */
     expect(w.link).toBe(`${ORIGIN}/city/geelong`)
     expect(w.eventIds).toEqual([geelongWeek[2], geelongWeek[3], geelongWeek[4]].map((n) => n.eventId))
@@ -240,7 +253,7 @@ describe('the editorial selection (K6)', () => {
   it('is photo led only where an approved image exists, else type led (path B, K1)', () => {
     const { pieces } = plan()
     expect(of(pieces, 'week_ahead', 'geelong')[0].mode).toBe('photo_led')
-    expect(of(pieces, 'weekend_carousel', 'geelong')[0].mode).toBe('type_led')
+    expect(of(busyPlan().pieces, 'weekend_carousel', 'geelong')[0].mode).toBe('type_led')
   })
 })
 

@@ -493,7 +493,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability)'
+  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -733,6 +733,8 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       citySlug: city.slug,
       cityName: city.name,
       venueName: venueOf(e.venue_name as string | null),
+      // The venue row's own name, one spelling per place (the PM's 16:40, fix 4); none when only an operator is known.
+      placeName: e.venue_id ? (((e.venue_row as { name: string | null } | null)?.name ?? '').trim() || null) : null,
       host: hostOf({ listingSource: (e.listing_source as string | null) ?? null, organisationName: organisation?.name ?? null, organisationSlug: organisation?.slug ?? null, venueName: (e.venue_name as string | null) ?? null }),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
       summary: (e.summary as string | null) ?? null,

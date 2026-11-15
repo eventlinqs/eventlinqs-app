@@ -48,11 +48,12 @@ describe("a night's words, from its facts alone", () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z' }))
     expect(w).toMatchObject({ entry: 'Free, no ticket needed', action: 'Times and details at eventlinqs.com.au', eyebrow: 'Live at The Barwon Club', city: 'Geelong' })
   })
-  it('says "Live at" only for a performance: a trivia night is "At" its venue (found by eye on demonstration D)', () => {
-    const at = (categorySlug: string) => nightWords(night({ at: '2026-10-29T07:00:00Z', categorySlug, venueName: 'Bonnibel' })).eyebrow
+  it('says "Live at" only on a music night: a trivia or comedy night is "At" its venue (demonstration D; the PM\'s 16:40 fix 1)', () => {
+    // Each night's own words say what it is (the PM's 16:40 fix 1): the fixture's default summary names bands.
+    const at = (categorySlug: string) => nightWords(night({ at: '2026-10-29T07:00:00Z', categorySlug, venueName: 'Bonnibel', summary: 'Six rounds, teams of up to six, prizes for the top three.' })).eyebrow
     expect(at('nightlife')).toBe('At Bonnibel')
     expect(at('music')).toBe('Live at Bonnibel')
-    expect(at('comedy')).toBe('Live at Bonnibel')
+    expect(at('comedy')).toBe('At Bonnibel')
   })
   it('an outside ticketed night sends people to our page for its times and ticket link, and never claims EventLinqs sells it (E4, E7; fix 5)', () => {
     const w = nightWords(night({ at: '2026-10-31T09:00:00Z', state: { externalTicketUrl: 'https://www.geelongartscentre.org.au/x', providerName: 'Geelong Arts Centre' } }))

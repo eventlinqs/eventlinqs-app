@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { coverLine, nightWords, postAction, postTitle, selectAcrossDays, HUNT_SUMMARY_LINE, type CampaignNight } from '@/lib/social/campaign'
+import { coverLine, nightKind, nightWords, postAction, postTitle, selectAcrossDays, HUNT_SUMMARY_LINE, type CampaignNight } from '@/lib/social/campaign'
 import { huntSummary } from '@/lib/listings/headline-hunt'
 
 /*
@@ -91,5 +91,23 @@ describe('a weekend post holds every day of the weekend (fix 3)', () => {
 describe("a cover's line names the venue and the time (fix 1)", () => {
   it('puts them on a line of their own under the title', () => {
     expect(coverLine('FRI', night({ at: '2026-11-20T08:30:00Z', title: 'Two Door Cinema Club', venueName: 'John Cain Arena' }))).toBe('FRI Two Door Cinema Club\nJohn Cain Arena · 7.30pm')
+  })
+})
+
+describe("a night's kind from its own words, never its category alone (the PM's 16:40 fix 1)", () => {
+  const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre', categorySlug: 'music' }
+  it("never takes a historian's talk, an art song recital or a stories evening for a gig", () => {
+    const talk = night({ at: '2026-11-16T08:30:00Z', title: 'An Evening with Ben Macintyre', ...mrc })
+    const recital = night({ at: '2026-11-18T08:30:00Z', title: 'Anne Sofie von Otter & Kristian Bezuidenhout', summary: 'An art song recital with piano.', ...mrc })
+    const stories = night({ at: '2026-11-20T08:30:00Z', title: 'Timor-Leste: Ita Nia Lian, Ita Nia Istoria', sourceTitle: 'Timor-Leste - Ita Nia Lian, Ita Nia Istoria - Our Voices, Our Stories', ...mrc })
+    expect(nightKind(talk)).toBe('talk')
+    expect(nightKind(recital)).toBe('classical')
+    expect(nightKind(stories)).toBe('talk')
+    expect(nightWords(talk).eyebrow).toBe('At Melbourne Recital Centre')
+    expect(nightWords(stories).eyebrow).toBe('At Melbourne Recital Centre')
+  })
+  it('names a gig only where its words say so', () => {
+    expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: 'Three local bands on the front bar stage.' }))).toBe('gig')
+    expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: null }))).toBeNull()
   })
 })
