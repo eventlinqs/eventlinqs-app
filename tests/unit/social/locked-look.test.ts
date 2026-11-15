@@ -496,7 +496,7 @@ describe("the PM's 22:41 fixes (out-11, 9.3)", () => {
   })
 
   it("fix 3: a studio tour is not a gig, so a concert crowd never stands over 'MESS Studio Tours'; a named tour still is", () => {
-    const base = { summary: null, venueName: 'MESS', host: 'MESS', categorySlug: 'music', sourceTitle: null }
+    const base = { summary: null, venueName: 'MESS', host: 'MESS', categorySlug: 'music' }
     expect(nightKind({ ...base, title: 'MESS Studio Tours' })).not.toBe('gig')
     expect(nightKind({ ...base, title: 'Kate Ceberano: Australian Made Tour 2026', venueName: "Her Majesty's Theatre Ballarat", host: "Her Majesty's Theatre Ballarat" })).toBe('gig')
     const robyn = night({ at: '2026-11-21T09:00:00Z', title: 'Robyn', venueName: 'Margaret Court Arena', host: 'Margaret Court Arena' })
