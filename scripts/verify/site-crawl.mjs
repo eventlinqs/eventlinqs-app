@@ -9,6 +9,7 @@
 //   node scripts/verify/site-crawl.mjs [maxPages]     (CRAWL_BASE, CRAWL_OUT override the address and the folder)
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { chromium } from 'playwright'
+import { declareWork } from '../lib/work-report.mjs'
 const BASE = (process.env.CRAWL_BASE ?? 'https://www.eventlinqs.com.au').replace(/\/$/, '')
 const OUT = process.env.CRAWL_OUT ?? 'crawl-evidence'
 const MAX = Number(process.argv[2] ?? 60)
@@ -103,4 +104,10 @@ const faults = pages.filter((r) => r.status >= 400 || r.consoleErrors.length || 
 const deadLinks = checked.filter((c) => c.status >= 400 || c.status === 0)
 writeFileSync(`${OUT}/crawl.json`, JSON.stringify({ at: new Date().toISOString(), base: BASE, pagesCrawled: n, views: pages.length, linksChecked: checked.length, faults, deadLinks, pages, checked }, null, 1))
 console.log(`DONE ${n} pages at 1440 and 390 (${pages.length} views); ${faults.length} views with a fault; ${checked.length} more links checked, ${deadLinks.length} dead`)
-process.exitCode = faults.length > 0 || deadLinks.length > 0 ? 1 : 0
+// How much it did, said so a crawl that reached nothing can never pass (steps-declare-work, the ruling of 25 August 2026).
+declareWork('site-crawl', {
+  did: { 'page crawled at both widths': n, 'further link': checked.length },
+  found: { 'faulty view': faults.length, 'dead link': deadLinks.length },
+  zeroIsFine: { 'further link': 'every link found was crawled as a page' },
+})
+process.exitCode = faults.length > 0 || deadLinks.length > 0 ? 1 : process.exitCode ?? 0

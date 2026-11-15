@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { CircleAlert, CircleCheck, X } from 'lucide-react'
 
@@ -11,12 +11,17 @@ import { CircleAlert, CircleCheck, X } from 'lucide-react'
  * is closed, and both are read out by screen readers (role status or alert). The words leave the address bar once shown,
  * so a reload does not say them again. Drawn in a portal on document.body (overlays-are-portalled).
  */
+/** False on the server and during hydration, true once mounted in the browser: the portal waits for a body. */
+const noSubscribe = () => () => {}
+function useMounted(): boolean {
+  return useSyncExternalStore(noSubscribe, () => true, () => false)
+}
+
 export function AdminToast({ said, tone }: { said: string | null; tone: 'ok' | 'refused' }) {
   const [open, setOpen] = useState(Boolean(said))
-  const [host, setHost] = useState<HTMLElement | null>(null)
+  const mounted = useMounted()
 
   useEffect(() => {
-    setHost(document.body)
     if (!said) return
     const url = new URL(window.location.href)
     if (url.searchParams.has('said') || url.searchParams.has('tone')) {
@@ -30,7 +35,7 @@ export function AdminToast({ said, tone }: { said: string | null; tone: 'ok' | '
     }
   }, [said, tone])
 
-  if (!said || !open || !host) return null
+  if (!said || !open || !mounted) return null
   const ok = tone === 'ok'
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6">
@@ -48,6 +53,6 @@ export function AdminToast({ said, tone }: { said: string | null; tone: 'ok' | '
         </button>
       </div>
     </div>,
-    host,
+    document.body,
   )
 }
