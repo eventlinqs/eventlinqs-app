@@ -19,7 +19,7 @@ import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
-import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -842,7 +842,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart) })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
@@ -1140,6 +1140,74 @@ export async function approveWeekChecked(db: Db, input: { readonly by: string; r
   if (campaign === null) return null
   const pieces = campaign.pieces.map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
   return approveWeek(pieces, (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
+}
+
+export type Redrawn = { readonly redrawn: readonly string[]; readonly kept: readonly string[] }
+
+/**
+ * THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026, read by WINDOW 5A): a piece planned before
+ * Lawal's social lock of 15 November, or before a fix to the drawing, waits in the older look, and the checked approval
+ * refuses the older look, so the week's switch-on would approve none of it (production's 29 pieces of 16 November were
+ * planned at 06:40 by the code before #288). Every DRAFTED piece of this week whose newest revision the lock refuses is
+ * drawn again by the planner as it would plan it now: a new revision made by the sweep, never an approved, rejected or
+ * gone piece, never a daily poster (DAILY_POSTERS_IN_PLAN keeps them out). A piece the week's plan no longer draws in
+ * the locked look stays as it is, said. No decision row: the database keeps a person's name on a regeneration, and the
+ * revision's own made_by says the sweep drew it.
+ */
+export async function redrawOlderLook(db: Db, now: Date): Promise<Redrawn> {
+  if (OLDER_LOOK_IN_PLAN) return { redrawn: [], kept: [] }
+  const campaign = await readCampaign(db, now)
+  if (campaign === null) return { redrawn: [], kept: [] }
+  if (!campaign.pieces.some(isOlderLookDraft)) return { redrawn: [], kept: [] }
+  const { pieces: fresh } = await planNow(db, campaign.campaignId, campaign.weekStart, now)
+  const { redraw, kept } = olderLookRedraws(campaign.pieces, fresh)
+  const redrawn: string[] = []
+  const notKept = [...kept]
+  for (const r of redraw) {
+    const { error } = await db.from('social_piece_revisions').insert(revisionRow(r.id, r.version, r.plan, r.message, 'sweep', null, now))
+    if (error) {
+      /* Another run wrote this version first: the database kept one, which is the rule. */
+      if (error.code !== '23505') notKept.push(`${r.label}: ${refusalOf(error.message) ?? error.message}`)
+      continue
+    }
+    redrawn.push(r.label)
+  }
+  return { redrawn, kept: notKept }
+}
+
+type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> }
+
+/** A piece the sweep draws again: drafted, never a daily poster, its newest revision refused by the lock. */
+export function isOlderLookDraft(p: RedrawCandidate): boolean {
+  return p.state === 'drafted' && p.kind !== 'daily_poster' && lockRefusal(p.revision.slides) !== null
+}
+
+/**
+ * Which of the week's pieces the sweep draws again, and with what (pure): each older look draft takes the piece the
+ * week's plan draws now of its kind, city and partner, at the next version; one the plan no longer draws, or draws
+ * refused, is kept as it is with the reason. A partner kit keeps the message the founder wrote.
+ */
+export function olderLookRedraws(
+  pieces: readonly RedrawCandidate[],
+  fresh: readonly PiecePlan[],
+): { readonly redraw: readonly { id: string; label: string; version: number; message: string | null; plan: PiecePlan }[]; readonly kept: readonly string[] } {
+  const redraw: { id: string; label: string; version: number; message: string | null; plan: PiecePlan }[] = []
+  const kept: string[] = []
+  for (const p of pieces.filter(isOlderLookDraft)) {
+    const label = `${p.kind} ${p.city}${p.partnerName ? ` ${p.partnerName}` : ''}`
+    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null))
+    if (!f) {
+      kept.push(`${label}: this week's plan no longer draws it in the locked look, so it stays as it is`)
+      continue
+    }
+    const refused = pieceRefusal(f)
+    if (refused) {
+      kept.push(`${label}: ${refused}`)
+      continue
+    }
+    redraw.push({ id: p.id, label, version: p.revision.version + 1, message: f.kind === 'partner_kit' ? (p.revision.message ?? f.message) : f.message, plan: f })
+  }
+  return { redraw, kept }
 }
 
 /** A piece as it went (F8): its address, or "sent" for a partner kit; the database refuses one without its approval. */

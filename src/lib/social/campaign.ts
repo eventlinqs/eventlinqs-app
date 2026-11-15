@@ -442,6 +442,19 @@ export function dayOf(n: CampaignNight): string {
   return local(n.startDate, n.timezone, { weekday: 'short' }).toUpperCase()
 }
 
+/**
+ * THE SPOTLIGHTS DRAWN FROM TOMORROW (the PM's 09:35 of 16 November 2026): the category and venue spotlights take no
+ * night on or before the day they are drawn, since the week's plan places the week ahead and the soonest nights first
+ * (planMoments, earliest deadline first) and a piece is held whole once any of its nights has ended. Out-14's two
+ * Melbourne spotlights each carried a Monday 7:30 pm night, drawn on that Monday, and could not have gone whole. Drawn
+ * before the week begins, the whole week (0).
+ */
+export function spotlightsFromDay(now: Date, weekStart: string): number {
+  const d = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const today = Math.round((Date.parse(`${d}T00:00:00Z`) - Date.parse(`${weekStart}T00:00:00Z`)) / DAY_MS)
+  return Math.max(0, today + 1)
+}
+
 /** The Melbourne day index of a night within the week starting weekStart: 0 Monday to 6 Sunday, or -1 outside it. */
 export function dayInWeek(n: CampaignNight, weekStart: string): number {
   const d = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n.startDate))
@@ -1237,8 +1250,15 @@ export function planCampaign(input: {
    * or none: the brand piece is then drawn in EventLinqs' own art (treatment C), never a stand-in photo.
    */
   brandPhoto?: { url: string; credit: string } | null
+  /**
+   * The first day of the week (0 is Monday) a spotlight's nights may fall on (spotlightsFromDay): a spotlight drawn on a
+   * day of the week already under way carries nights from the next day on, so it can still go whole. 0, the default,
+   * is the whole week.
+   */
+  spotlightsFrom?: number
 }): CampaignPlan {
   const { origin, weekStart } = input
+  const spotlightsFrom = input.spotlightsFrom ?? 0
   const site = siteOf(origin)
   // One chooser for the whole week's feed (the PM's 22:41 fix 2): no stand-in photograph twice in a week.
   const weekPick = standInChooser('the week')
@@ -1403,7 +1423,7 @@ export function planCampaign(input: {
 
     /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */
     const byCategory = new Map<string, CampaignNight[]>()
-    for (const n of week) if (n.categorySlug) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
+    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
     const strongest = [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]
     if (strongest && strongest[1].filter((n) => !listed.has(n.eventId)).length >= SPOTLIGHT_MIN_NIGHTS) {
       const [slug, every] = strongest
@@ -1480,7 +1500,7 @@ export function planCampaign(input: {
   const hosts = new Map<string, CampaignNight[]>()
   // Law 18 (Lawal's 14:07 of 15 November 2026, tier 4 never goes in a post): a host is counted by its nights a post may
   // carry, so a library's toddler and baby sessions never make it the venue of the week (out-6, 18:28).
-  for (const { n } of inWeek) if (n.host && socialTierOf(n) !== 4) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
+  for (const { n, day } of inWeek) if (day >= spotlightsFrom && n.host && socialTierOf(n) !== 4) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
   const spot = [...hosts.entries()].sort((a, b) => b[1].length - a[1].length)[0]
   if (spot) {
     const [name, all] = spot
