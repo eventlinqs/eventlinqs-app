@@ -17,7 +17,7 @@ import {
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
-import { askElement, bandHeight, bandPhoto, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
+import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
 import { standInOf } from '@/lib/social/stand-ins'
@@ -251,7 +251,8 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         // trailing colon as a word of its own ('Photo' then ':'), so the marker is the word without it.
         const marker = (words.credit ? (words.credit.split(' ')[0] ?? 'Photo') : (slide.range.split(' ')[0] ?? '').toUpperCase()).replace(/[^\p{L}\p{N}]+$/u, '')
         const bh = await fittedBand(f, 'cover', (h) => weekCoverElement(f, words, BLANK(f, h), 'band', foot, h), marker, 20)
-        const photo = await bandPhoto(url, f, bh)
+        // The photograph runs from below the wordmark's navy strip to the band's end (D3), so it is cropped to that height.
+        const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'cover')))
         return weekCoverElement(f, { ...words, credit: photo ? words.credit : null }, photo, 'band', foot, bh)
       }
       let photo = url ? await wholePhoto(url, f, 'cover') : null
@@ -284,7 +285,7 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
         return daysElement(f, words, null, foot, undefined, s)
       }
       const bh = await fittedBand(f, 'days', (h) => daysElement(f, words, BLANK(f, h), foot, h), slide.day.split(' ')[0] ?? '', 60)
-      const photo = await bandPhoto(url, f, bh)
+      const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'days')))
       return daysElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
     }
     case 'feature': {
@@ -304,7 +305,7 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
       // then read 1.2 to 1, screen 3). The name is the only word at 60 of a 1080 frame or more.
       const nameWord = (slide.venue.toUpperCase().split(' ')[0] ?? '').replace(/[^\p{L}\p{N}]+$/u, '')
       const bh = await fittedBand(f, 'venue', (h) => venueElement(f, words, BLANK(f, h), foot, h), nameWord, 60)
-      const photo = await bandPhoto(url, f, bh)
+      const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'venue')))
       return venueElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
     }
   }
