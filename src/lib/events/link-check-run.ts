@@ -60,16 +60,23 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
     const ev = Array.isArray(link.events) ? link.events[0] : link.events
     const night = ev?.start_date ? { startsAt: ev.start_date, zone: ev.timezone ?? 'Australia/Melbourne' } : null
     const verdict = await checkLink(link.url, once, robots, night)
-    if (!verdict.changed) {
+    // A dead link whose page answers again (2xx) is not dead, whatever the page states: without this, a page that came back
+    // stating nothing kept 'dead' for ever, and the sentinel's hold on its night (src/lib/health/dead-link-hold.ts) was never
+    // released (16 November 2026). Read from this run's one read of the page; a page never read (robots) proves nothing.
+    const read = pages.has(link.url) ? await pages.get(link.url) : null
+    const back = link.availability === 'dead' && !!read && read.status >= 200 && read.status < 300
+    if (!verdict.changed && !back) {
       summary[verdict.why]++
       continue
     }
-    const price = verdict.priceFromCents
-    // An unstated availability keeps the stored one; only what the page states is written.
-    const availability = verdict.availability ?? link.availability
+    const stated = verdict.changed ? verdict.availability : null
+    const price = verdict.changed ? verdict.priceFromCents : null
+    // An unstated availability keeps the stored one; only what the page states is written, except a dead link that answers
+    // again, which works ('on_sale', the state every link starts in).
+    const availability = stated ?? (back ? 'on_sale' : link.availability)
     if (availability === link.availability && (price === null || price === link.price_from_cents)) continue
     const row: Record<string, unknown> = { updated_at: now.toISOString() }
-    if (verdict.availability) row.availability = verdict.availability
+    if (availability !== link.availability) row.availability = availability
     if (price !== null) Object.assign(row, { price_from_cents: price, price_checked_at: now.toISOString() })
     const { error: writeError } = await admin.from('event_booking_links').update(row).eq('id', link.id)
     if (writeError) {
