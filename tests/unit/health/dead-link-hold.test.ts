@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deadNotYetHeld, everyLinkDead, holdRow, holdsToMake, holdsToRelease, SENTINEL_HOLD_MARK, type NightLinks } from '@/lib/health/dead-link-hold'
+import { deadNotYetHeld, everyLinkDead, holdRow, holdsToMake, holdsToRelease, hostsDeadTwice, SENTINEL_HOLD_MARK, sourcesToStop, type NightLinks } from '@/lib/health/dead-link-hold'
 
 /*
  * THE AUTOMATIC HOLD FOR A DEAD BOOKING LINK (the PM's 12:15 item 3 and 12:35 item 4 of 16 November 2026). The regression
@@ -43,6 +43,20 @@ describe('the automatic hold for a dead booking link', () => {
     const holds = [{ id: 'h1', eventId: 'e1' }]
     expect(holdsToRelease(holds, [night()])).toEqual([])
     expect(holdsToRelease(holds, [night({ visibility: 'private', links: [{ url: 'https://example.com/a', availability: 'on_sale', updatedAt: NOW.toISOString() }] })])).toEqual(holds)
+  })
+
+  it('a host whose links died on two nights within a week switches its source off; one night, or a week apart, does not', () => {
+    const jl = (eventId: string, heldAt: string) => ({ eventId, urls: [`https://thejazzlab.com.au/event/${eventId}/`], heldAt })
+    const twice = hostsDeadTwice([jl('a', '2026-11-15T00:40:00Z'), jl('b', '2026-11-16T00:40:00Z'), jl('a', '2026-11-16T00:40:00Z')], NOW)
+    expect([...twice.entries()]).toEqual([['thejazzlab.com.au', ['a', 'b']]])
+    expect(hostsDeadTwice([jl('a', '2026-11-16T00:40:00Z')], NOW).size).toBe(0)
+    expect(hostsDeadTwice([jl('a', '2026-11-01T00:40:00Z'), jl('b', '2026-11-16T00:40:00Z')], NOW).size).toBe(0)
+    const sources = [
+      { id: 's1', name: 'The JazzLab', page_url: 'https://www.thejazzlab.com.au/whats-on/', collection: 'read' },
+      { id: 's2', name: 'Already asked', page_url: 'https://thejazzlab.com.au/feed', collection: 'ask' },
+      { id: 's3', name: 'Elsewhere', page_url: 'https://fedsquare.com/events', collection: 'read' },
+    ]
+    expect(sourcesToStop(twice, sources).map((s) => s.id)).toEqual(['s1'])
   })
 
   it("its hold row is the resolver's own night hold, marked as the sentinel's, with every dead link as a reading", () => {

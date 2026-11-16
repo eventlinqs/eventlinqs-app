@@ -31,30 +31,43 @@ function deployIdentity() {
  * RECOVERED since the last alert. Fails OPEN: if Redis is unavailable, every
  * failing critical check is treated as new (alert rather than stay silent).
  */
-async function dedupe(results: HealthResult[]): Promise<{ toAlert: HealthResult[]; recovered: string[] }> {
+async function dedupe(results: HealthResult[], now: Date, everyMinutes: number): Promise<{ toAlert: HealthResult[]; recovered: string[] }> {
   const failingCritical = results.filter(r => !r.ok && r.severity === 'critical')
   const redis = getRedisClient()
   if (!redis) {
     return { toAlert: failingCritical, recovered: [] }
   }
-  const toAlert: HealthResult[] = []
-  for (const r of failingCritical) {
-    const key = `${DEDUPE_PREFIX}${r.id}`
-    // NX+EX: set only if not present, with the cooldown TTL. If it set, this is
-    // a new (or cooled-down) fault we should alert on.
-    const set = await redis.set(key, Date.now(), { nx: true, ex: ALERT_COOLDOWN_SECONDS })
-    if (set === 'OK') toAlert.push(r)
-  }
-  // Recovery: any check that is now OK but still has a live alert key.
-  const recovered: string[] = []
-  for (const r of results) {
-    if (r.ok) {
+  try {
+    const toAlert: HealthResult[] = []
+    for (const r of failingCritical) {
       const key = `${DEDUPE_PREFIX}${r.id}`
-      const existed = await redis.getdel(key)
-      if (existed) recovered.push(r.label)
+      // NX+EX: set only if not present, with the cooldown TTL. If it set, this is
+      // a new (or cooled-down) fault we should alert on.
+      const set = await redis.set(key, Date.now(), { nx: true, ex: ALERT_COOLDOWN_SECONDS })
+      if (set === 'OK') toAlert.push(r)
     }
+    // Recovery: any check that is now OK but still has a live alert key.
+    const recovered: string[] = []
+    for (const r of results) {
+      if (r.ok) {
+        const key = `${DEDUPE_PREFIX}${r.id}`
+        const existed = await redis.getdel(key)
+        if (existed) recovered.push(r.label)
+      }
+    }
+    return { toAlert, recovered }
+  } catch (err) {
+    /*
+     * THE STORE REFUSES, THE ALERT STILL GOES (the PM's 12:25 item 6 of 16 November 2026: Upstash's payment failed on
+     * 13 November). A suspended or unreachable store used to throw here, so the CRITICAL email was never sent. Without
+     * it, the same 30 minute cooldown is kept by the clock alone: a check still failing alerts in the first run of each
+     * window (a 5 minute check at :00 and :30; one that runs every 6 hours, every run). Logged, never silent.
+     */
+    console.error('[health] the alert store did not answer; alerting by the clock:', err instanceof Error ? err.message : err)
+    const windowMs = ALERT_COOLDOWN_SECONDS * 1000
+    const firstInWindow = now.getTime() % windowMs < everyMinutes * 60_000
+    return { toAlert: firstInWindow ? failingCritical : [], recovered: [] }
   }
-  return { toAlert, recovered }
 }
 
 function failureBlock(results: HealthResult[]): string {
@@ -114,8 +127,12 @@ export async function sendCriticalAlert(toAlert: HealthResult[], recovered: stri
 }
 
 /** Evaluate results, dedupe, and dispatch any critical alert. */
-export async function routeAlerts(results: HealthResult[]): Promise<{ alerted: boolean; toAlertIds: string[]; recovered: string[] }> {
-  const { toAlert, recovered } = await dedupe(results)
+export async function routeAlerts(
+  results: HealthResult[],
+  /** everyMinutes: how often the caller runs, so the clock keeps the cooldown when the store does not answer. */
+  opts: { now?: Date; everyMinutes?: number } = {},
+): Promise<{ alerted: boolean; toAlertIds: string[]; recovered: string[] }> {
+  const { toAlert, recovered } = await dedupe(results, opts.now ?? new Date(), opts.everyMinutes ?? 5)
   const alerted = await sendCriticalAlert(toAlert, recovered)
   return { alerted, toAlertIds: toAlert.map(t => t.id), recovered }
 }

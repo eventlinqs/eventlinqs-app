@@ -55,6 +55,41 @@ export function holdsToRelease(holds: readonly OpenSentinelHold[], nights: reado
   })
 }
 
+/** A link's host, 'www.' aside; null for an address that does not parse. */
+export function hostOf(url: string): string | null {
+  try {
+    return new URL(url).host.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * THE SOURCE THAT PUBLISHES DEAD LINKS IS SWITCHED OFF (the PM's 12:25 item 3 of 16 November 2026, on Lawal's 12:21: 'never
+ * repeat the same errors ever'; law 19 (d)). The hosts on which the sentinel held two or more different nights for dead
+ * links within seven days, with those nights. Each hold gives the hosts of its dead links (its readings). Pure.
+ */
+export const DEAD_TWICE_DAYS = 7
+
+export function hostsDeadTwice(holds: readonly { eventId: string; urls: readonly string[]; heldAt: string }[], now: Date): Map<string, string[]> {
+  const since = now.getTime() - DEAD_TWICE_DAYS * 24 * 3_600_000
+  const byHost = new Map<string, Set<string>>()
+  for (const h of holds) {
+    if (Date.parse(h.heldAt) < since) continue
+    for (const u of h.urls) {
+      const host = hostOf(u)
+      if (!host) continue
+      byHost.set(host, (byHost.get(host) ?? new Set()).add(h.eventId))
+    }
+  }
+  return new Map([...byHost.entries()].filter(([, ids]) => ids.size >= 2).map(([host, ids]) => [host, [...ids]]))
+}
+
+/** The sources still read automatically whose own page is on such a host: their publication flag switches off. Pure. */
+export function sourcesToStop(dead: ReadonlyMap<string, readonly string[]>, sources: readonly { id: string; name: string; page_url: string; collection: string }[]) {
+  return sources.filter((s) => s.collection === 'read' && dead.has(hostOf(s.page_url) ?? ''))
+}
+
 /** The listing_holds row for a night held for its dead links (supabase/migrations 20261107120001 and 20261107170001). */
 export function holdRow(n: NightLinks, now: Date) {
   const readings = n.links.map((l) => ({ by: SENTINEL_HOLD_MARK, url: l.url, availability: l.availability, marked_dead_at: l.updatedAt, read_at: now.toISOString() }))

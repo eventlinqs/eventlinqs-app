@@ -9,7 +9,7 @@ import { SENTINEL_HOLD_MARK } from '@/lib/health/dead-link-hold'
  */
 type Write = { table: string; op: 'insert' | 'update'; values: Record<string, unknown>; where: [string, unknown][] }
 
-function fakeDb(links: Record<string, unknown>[], holds: Record<string, unknown>[]) {
+function fakeDb(links: Record<string, unknown>[], holds: Record<string, unknown>[], sources: Record<string, unknown>[] = []) {
   const writes: Write[] = []
   const from = (table: string) => {
     const state: { op: 'select' | 'insert' | 'update'; values: Record<string, unknown>; where: [string, unknown][] } = { op: 'select', values: {}, where: [] }
@@ -23,7 +23,8 @@ function fakeDb(links: Record<string, unknown>[], holds: Record<string, unknown>
       update: (values: Record<string, unknown>) => ((state.op = 'update'), (state.values = values), b),
       then: (resolve: (r: { data: unknown; error: null }) => unknown) => {
         if (state.op !== 'select') writes.push({ table, op: state.op, values: state.values, where: state.where })
-        const data = state.op !== 'select' ? null : table === 'event_booking_links' ? links : table === 'listing_holds' ? holds : []
+        if (state.op === 'insert' && table === 'listing_holds') holds.push({ id: `new-${holds.length}`, ...state.values, held_at: NOW.toISOString() })
+        const data = state.op !== 'select' ? null : table === 'event_booking_links' ? links : table === 'listing_holds' ? holds : table === 'listing_sources' ? sources : []
         return Promise.resolve({ data, error: null }).then(resolve)
       },
     }
@@ -65,5 +66,26 @@ describe("the sentinel's run holds and releases", () => {
     const theirs = fakeDb(live, [{ id: 'h2', event_id: 'e1', readings: [{ by: 'WINDOW 5A, polite reader' }] }])
     await holdDeadNights(theirs.db, NOW, true)
     expect(theirs.writes).toEqual([])
+  })
+
+  // THE PM'S 12:25 ITEMS 1 AND 3 (Lawal's 12:21: 'never repeat the same errors ever').
+  it("re-reads every night on a dead night's host at once, and judges what it reads: a link that answers is not held", async () => {
+    const links = [{ url: 'https://thejazzlab.com.au/event/cannonball-featuring-chantal-mitvalsky-4/', availability: 'dead', updated_at: '2026-11-15T18:00:33Z', events: cannonball }]
+    const { db, writes } = fakeDb(links, [])
+    const seen: string[][] = []
+    await holdDeadNights(db, NOW, true, { reread: async (hosts) => { seen.push([...hosts]); links[0].availability = 'on_sale' } })
+    expect(seen).toEqual([['thejazzlab.com.au']])
+    expect(writes).toEqual([])
+  })
+
+  it('a host whose links died on two nights within a week has its read source switched off, said in the email', async () => {
+    const earlier = { id: 'h0', event_id: 'e0', scope: 'night', readings: [{ by: SENTINEL_HOLD_MARK, url: 'https://thejazzlab.com.au/event/an-earlier-night/' }], held_at: '2026-11-14T00:40:00Z' }
+    const sources = [{ id: 's1', name: 'The JazzLab', page_url: 'https://thejazzlab.com.au/whats-on/', collection: 'read' }]
+    const { db, writes } = fakeDb([{ url: 'https://thejazzlab.com.au/event/cannonball-featuring-chantal-mitvalsky-4/', availability: 'dead', updated_at: '2026-11-15T18:00:33Z', events: cannonball }], [earlier], sources)
+    const results = await holdDeadNights(db, NOW, true)
+    expect(writes.map((w) => `${w.table} ${w.op}`)).toEqual(['listing_holds insert', 'events update', 'listing_sources update'])
+    expect(writes[2]).toMatchObject({ values: { collection: 'ask' }, where: [['id', 's1'], ['collection', 'read']] })
+    expect(String(writes[2].values.stopped_because)).toContain('dead on 2 nights within 7 days')
+    expect(results.find((r) => r.id === 'visitor-source-stopped-dead-links')).toMatchObject({ ok: false, detail: expect.stringContaining('The JazzLab') })
   })
 })
