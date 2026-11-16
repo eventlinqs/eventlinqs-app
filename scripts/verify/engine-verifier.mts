@@ -302,6 +302,44 @@ for (const n of left.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.
 }
 await browser.close()
 
+/*
+ * EVERY DEAD LINK FOUND IS A FIXED CASE (the PM's 12:25 item 2 of 16 November 2026, on Lawal's 12:21: 'never repeat the
+ * same errors ever'; law 19 (b)). Every upcoming night ever held because its booking pages were gone (a listing_holds
+ * night hold with reason no_official_page: the visitor sentinel's own, src/lib/health/dead-link-hold.ts, and any a window
+ * made, as for the Cannonball night at The JazzLab on 16 November) is judged on every run: it PASSES while it is not shown,
+ * or shown with at least one booking link that is not dead; it FAILS shown with every link dead. Read only, through the
+ * service key, as the listing checks are. A case joins the critical set, so the baseline bar counts it.
+ */
+{
+  const { data: holds, error: holdsError } = await records.from('listing_holds').select('event_id').eq('scope', 'night').eq('reason', 'no_official_page').limit(2000)
+  if (holdsError) {
+    results.push({ title: 'The dead link cases', city: '', stored: '', source: `could not be read: ${holdsError.message}`, live390: '', live1440: '', price: '', category: '', verdict: 'FAIL', why: 'the regression set could not be read', sourceUrl: '', critical: true })
+  } else {
+    for (const id of [...new Set((holds ?? []).map((h) => h.event_id as string).filter(Boolean))]) {
+      const { data: ev } = await records.from('events').select('title, slug, city_primary, status, visibility, end_date').eq('id', id).maybeSingle()
+      if (!ev || (ev.end_date && Date.parse(ev.end_date as string) < Date.now())) continue
+      const { data: links } = await records.from('event_booking_links').select('url, availability').eq('event_id', id)
+      const shown = ev.status === 'published' && ev.visibility === 'public'
+      const answering = (links ?? []).filter((l) => l.availability !== 'dead')
+      const ok = !shown || answering.length > 0
+      results.push({
+        title: ev.title as string,
+        city: (ev.city_primary as string | null) ?? '',
+        stored: `${ev.status}, ${ev.visibility}; ${(links ?? []).length} links, ${answering.length} answering`,
+        source: 'dead link case',
+        live390: '',
+        live1440: '',
+        price: '',
+        category: '',
+        verdict: ok ? 'PASS' : 'FAIL',
+        why: ok ? (shown ? 'shown with a link that answers' : 'held while its pages are gone') : 'shown with every booking link dead',
+        sourceUrl: ((links ?? [])[0]?.url as string | undefined) ?? '',
+        critical: true,
+      })
+    }
+  }
+}
+
 const count = (v: Result['verdict']) => results.filter((r) => r.verdict === v).length
 /* THE BASELINE BAR, THIS RUN'S HALF (the CONTROLLER's 16:20: every fixed case and a fresh sample of at least 20 all PASS, on
    two consecutive runs): every critical case PASS, and at least SAMPLE fresh nights judged, every one PASS. */
