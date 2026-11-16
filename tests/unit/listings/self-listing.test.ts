@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { readBookingFacts } from '../../../src/lib/listings/booking-facts'
 import { judgeSelfListing, sessionOf, wordsStateDate, type PageReading, type SelfListingSubmission } from '../../../src/lib/listings/self-listing'
 import { publicHost } from '../../../src/lib/listings/booking-page'
-import { approvedOver, cleanTitle, summaryFrom } from '../../../src/lib/listings/self-listing-run'
+import { approvedOver, cleanTitle, seriesEndOf, summaryFrom } from '../../../src/lib/listings/self-listing-run'
 import { judgeSubmission, type SubmissionContext, type SubmissionInput } from '../../../src/lib/listings/submission'
 
 /**
@@ -419,5 +419,26 @@ describe('a person who presses Publish now on /admin/submissions publishes it (1
   test('with no reviewer the checks decide alone', () => {
     const held = { verdict: 'hold' as const, reason: 'Its booking page could not be read (the page answered 404).' }
     expect(approvedOver(held, sub, 'x', undefined)).toBe(held)
+  })
+})
+
+/*
+ * AN ORGANISER'S STATED END PAST MIDNIGHT IS KEPT (16 November 2026, H2o New Year's Eve, published 16:11): Joe stated
+ * 8 pm to 2:30 am; the run kept a series end only on the start's own date, so his 2:30 am was dropped and the page showed
+ * no end. The occurrence builder reads an end at or before the start as the next morning (occurrences.ts), so the series
+ * keeps 02:30; an end more than a day on, or before the start on the same date, is not a night's end and stays unstated.
+ */
+describe("the series' end from the organiser's stated times", () => {
+  const zone = 'Australia/Melbourne'
+  test("H2o's 8 pm to 2:30 am keeps its 2:30 am", () => {
+    expect(seriesEndOf('2026-12-31T09:00:00Z', '2026-12-31T15:30:00Z', zone)).toBe('02:30:00')
+  })
+  test('an end the same evening is kept as before', () => {
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-20T11:00:00Z', zone)).toBe('22:00:00')
+  })
+  test('no end, an end days on, or an end before the start is not a night\'s end', () => {
+    expect(seriesEndOf('2026-11-20T08:00:00Z', null, zone)).toBeNull()
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-22T11:00:00Z', zone)).toBeNull()
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-20T06:00:00Z', zone)).toBeNull()
   })
 })

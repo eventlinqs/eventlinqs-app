@@ -75,6 +75,19 @@ const STALE_CLAIM_MS = 10 * 60_000
 const RUN_ACTOR = { id: null, email: null, role: 'self-listing-run' } as const
 
 /** A title as the listing shows it: no leading '#' or other marks, one space at a time. Pure. */
+/**
+ * The series' end from the organiser's stated times (16 November 2026, H2o New Year's Eve: Joe stated 8 pm to 2:30 am and
+ * the run kept an end only on the start's own date, so his 2:30 am was dropped and the page showed none). An end after the
+ * start and less than a day on is the night's end, as a local time; the occurrence builder reads one at or before the start
+ * as the next morning (./occurrences.ts). Anything else is not a night's end and stays unstated.
+ */
+export function seriesEndOf(startsAt: string, endsAt: string | null, tz: string): string | null {
+  if (!endsAt) return null
+  const ms = Date.parse(endsAt) - Date.parse(startsAt)
+  if (!(ms > 0) || ms >= 24 * 3_600_000) return null
+  return `${localParts(endsAt, tz).time}:00`
+}
+
 export function cleanTitle(t: string): string {
   return t.replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s+/g, ' ').trim()
 }
@@ -290,7 +303,6 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
 
   const venueId = await findOrMakeVenue(admin, org.id as string, facts, { slug: city.slug as string, name: city.name as string, state: city.state as string })
   const start = localParts(facts.startsAt, tz)
-  const end = facts.endsAt ? localParts(facts.endsAt, tz) : null
   const today = localParts(now.toISOString(), tz).date
   const kind = facts.entry === 'free' ? null : facts.entry === 'paid' ? 'tickets' : 'free_register'
   const links = kind ? [{ url: sub.booking_url, kind, price_from_cents: facts.entry === 'paid' ? facts.priceFromCents : null, price_checked_on: today }] : []
@@ -305,7 +317,7 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
       anchor_date: start.date,
       day: new Date(`${start.date}T00:00:00Z`).getUTCDay(),
       starts_at: `${start.time}:00`,
-      ends_at: end && end.date === start.date ? `${end.time}:00` : null,
+      ends_at: seriesEndOf(facts.startsAt, facts.endsAt, tz),
       timezone: tz,
       age_restriction_min: null,
       summary: summaryFrom(sub.description, title, facts.venueName),
