@@ -427,13 +427,35 @@ export function askElement(f: DayFormat, words: AskWords, foot: Foot): El {
     h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot, false)))
 }
 
-/** A photograph cropped to fill a band `bh` high (a licensed photograph of the night's kind, never a night's own). */
-export async function bandPhoto(url: string, f: DayFormat, bh: number): Promise<DrawnPhoto | null> {
+/**
+ * A photograph cropped to fill a band `bh` high (a licensed photograph of the night's kind, never a night's own), its
+ * subject kept in the band by its focal point (the PM's 01:45 of 17 November 2026, scoring D3: on the venue story the
+ * microphone's head sat hard against the strip, a centre crop of a subject high in its frame). A focal point a person set
+ * by looking (0 to 1 across and down: the register's, or the stand-in's own, src/lib/social/stand-ins.ts) centres the
+ * crop on it; with none, the middle. sharp's attention strategy was tried at 01:43 on 17 November and looked at: on the
+ * microphone it framed the bright bokeh and dropped the microphone altogether, so no crop is chosen by a machine.
+ */
+export async function bandPhoto(url: string, f: DayFormat, bh: number, focal: { x: number; y: number } | null = null): Promise<DrawnPhoto | null> {
   const fetched = await fetchImageBytes(url)
   if (!fetched) return null
   const { default: sharp } = await import('sharp')
   const w = SIZE[f].w
-  const out = await sharp(Buffer.from(fetched.bytes)).rotate().resize(w, bh, { fit: 'cover', position: 'centre' }).jpeg({ quality: 88 }).toBuffer()
+  const source = sharp(Buffer.from(fetched.bytes)).rotate()
+  let out: Buffer
+  if (focal) {
+    const meta = await source.metadata()
+    const sw = meta.autoOrient?.width ?? meta.width ?? 0
+    const sh = meta.autoOrient?.height ?? meta.height ?? 0
+    if (!sw || !sh) return null
+    const s = Math.max(w / sw, bh / sh)
+    const rw = Math.max(w, Math.round(sw * s))
+    const rh = Math.max(bh, Math.round(sh * s))
+    const left = Math.min(rw - w, Math.max(0, Math.round(focal.x * rw - w / 2)))
+    const top = Math.min(rh - bh, Math.max(0, Math.round(focal.y * rh - bh / 2)))
+    out = await source.resize(rw, rh, { fit: 'fill' }).extract({ left, top, width: w, height: bh }).jpeg({ quality: 88 }).toBuffer()
+  } else {
+    out = await source.resize(w, bh, { fit: 'cover', position: 'centre' }).jpeg({ quality: 88 }).toBuffer()
+  }
   return { uri: `data:image/jpeg;base64,${out.toString('base64')}`, width: w, height: bh }
 }
 
