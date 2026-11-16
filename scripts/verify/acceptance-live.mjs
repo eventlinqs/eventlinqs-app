@@ -135,6 +135,31 @@ const record = (id, city, ok, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${id}${city ? ` (${city})` : ''}: ${detail}`)
 }
 
+/*
+ * THE SENTINEL'S OWN JUDGEMENTS, READ, NEVER FETCHED AGAIN (the PM's 12:25 item 7 (a) and 12:35 items 1 and 5 of
+ * 16 November 2026, on Lawal's 12:13: the PM reported green while his inbox held CRITICAL alerts). MARKET READY cannot
+ * pass while the sentinel would fail: these read the same rows the sentinel and the daily state judge (the daily link
+ * check's verdict on every booking link; the organiser submissions), so no seller is read twice.
+ *   sentinel-dead-links       no public upcoming night has every booking link dead (src/lib/health/dead-link-hold.ts).
+ *   sentinel-organiser-live   no organiser submission is neither live nor refused an hour after it came in
+ *                             (src/lib/listings/submission-watch-rule.ts, NOT_LIVE_FILTER).
+ */
+{
+  const dead = await sql(`
+    select e.slug from public.events e
+     where e.status = 'published' and e.visibility = 'public' and e.end_date >= now()
+       and exists (select 1 from public.event_booking_links l where l.event_id = e.id)
+       and not exists (select 1 from public.event_booking_links l where l.event_id = e.id and l.availability <> 'dead')
+     order by e.start_date`)
+  record('sentinel-dead-links', null, dead.length === 0, dead.length === 0 ? 'no public upcoming night has every booking link dead' : `${dead.length} public upcoming nights with every booking link dead: ${dead.slice(0, 8).map((r) => r.slug).join(', ')}`)
+  const notLive = await sql(`
+    select s.id, coalesce(s.title, '') as title, s.status, s.created_at from public.listing_submissions s
+     where (s.status in ('waiting', 'held') or (s.status = 'accepted' and s.published_event_id is null))
+       and s.created_at < now() - interval '60 minutes'
+     order by s.created_at`)
+  record('sentinel-organiser-live', null, notLive.length === 0, notLive.length === 0 ? 'every organiser submission is live or refused within an hour' : `${notLive.length} organiser submissions neither live nor refused after an hour: ${notLive.slice(0, 6).map((r) => `${r.title} (${r.status})`).join('; ')}`)
+}
+
 const browser = await chromium.launch()
 const pageData = {}
 for (const city of CITIES) {
