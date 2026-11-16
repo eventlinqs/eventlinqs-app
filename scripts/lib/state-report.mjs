@@ -544,6 +544,15 @@ export function sectionsFor(state) {
           `${biz.ordersPaid24h ?? 0} paid orders in the last 24 hours.`,
           `${biz.newOrganisers24h ?? 0} new organisers in the last 24 hours.`,
           `${biz.submissionsNotLive ?? 0} organiser events sent in and not live after an hour (target 0)${(biz.submissionsNotLive ?? 0) > 0 ? ', each at the top of /admin/today' : ''}.`,
+          // The nights a rule published in the last day, by source, on their own line so a flood is seen (the PM's 13:40
+          // item 1 of 16 November 2026).
+          (() => {
+            const ruled = biz.rulePublishedBySource24h ?? []
+            const total = ruled.reduce((sum, r) => sum + r.n, 0)
+            return total === 0
+              ? 'Nights published by the rule in the last 24 hours: none.'
+              : `Nights published by the rule in the last 24 hours: ${total} (${ruled.map((r) => `${r.name} ${r.n}`).join(', ')}).`
+          })(),
           // A source the visitor sentinel switched off for dead booking links (law 19 (d)), said only on a day it happens.
           ...((biz.sourcesStoppedDeadLinks24h ?? []).length > 0
             ? [`${biz.sourcesStoppedDeadLinks24h.length} ${biz.sourcesStoppedDeadLinks24h.length === 1 ? 'source' : 'sources'} switched off in the last 24 hours for dead booking links on two nights in a week: ${biz.sourcesStoppedDeadLinks24h.join(', ')} (law 19 (d); a person re-opens it on /admin/collected).`]
