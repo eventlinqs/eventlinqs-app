@@ -172,7 +172,15 @@ export function validateEventNode(ev) {
   }
 
   if (!nonEmpty(ev.description)) warnings.push('description is missing (recommended)')
-  if (!ev.endDate) warnings.push('endDate is missing (recommended)')
+  // Search Console, 15 November 2026: 'Missing field "endDate"'. Every night now carries one (its start's date where no
+  // end is stated), so a missing or earlier end is an error (the PM's 13:20 item 2 of 16 November 2026).
+  if (!ev.endDate) errors.push('endDate is missing (Search Console flagged it on 15 November 2026)')
+  else if (ev.startDate) {
+    const end = String(ev.endDate)
+    const start = String(ev.startDate)
+    const before = /^\d{4}-\d{2}-\d{2}$/.test(end) ? end < start.slice(0, 10) : Date.parse(end) < Date.parse(start)
+    if (before) errors.push(`endDate ${end} is before startDate ${start}`)
+  }
   if (!ev.eventStatus) warnings.push('eventStatus is missing (recommended)')
   if (!ev.image) warnings.push('image is missing (recommended)')
   if (!ev.organizer) warnings.push('organizer is missing (recommended)')
