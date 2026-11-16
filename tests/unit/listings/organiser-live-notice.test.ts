@@ -56,4 +56,10 @@ describe("the organiser's live notice", () => {
     expect(run).toMatch(/const organiserTold = noticeHeld\s*\?\s*'not sent: its live notice is held for this submission/)
     expect(run).toContain('Organiser told: ${organiserTold}')
   })
+  test('a held notice survives the run holding the submission again (16 November 2026, H2o at 13:11)', () => {
+    // The run's hold rewrote check_result whole and dropped notice_held, so the next release would have published H2o and
+    // sent Joe his notice. Every check_result the run writes starts from one that keeps a held notice.
+    const run = readFileSync(join(process.cwd(), 'src/lib/listings/self-listing-run.ts'), 'utf8').replace(/\r\n/g, '\n')
+    expect(run).toMatch(/const checkResult = \{ \.\.\.\(noticeHeld \? \{ notice_held: true \} : \{\}\),/)
+  })
 })

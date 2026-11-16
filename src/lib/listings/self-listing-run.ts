@@ -253,7 +253,9 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
   verdict = approvedOver(verdict, sub, title, opts.approvedBy)
   if (verdict.verdict === 'publish' && title.length > 80) verdict = { verdict: 'hold', reason: 'Its name is longer than the 80 characters a listing takes.' }
   if (verdict.verdict === 'publish' && !city) verdict = { verdict: 'hold', reason: 'Its city is not one EventLinqs knows.' }
-  const checkResult = { read: reading.ok ? 'read' : reading.reason, verdict: verdict.verdict, matched_by: verdict.verdict === 'publish' ? verdict.matchedBy : null }
+  // A live notice held for this submission stays held through every write below, a hold included (16 November 2026: the
+  // run's hold rewrote check_result and dropped H2o's notice_held, so its next release would have told Joe).
+  const checkResult = { ...(noticeHeld ? { notice_held: true } : {}), read: reading.ok ? 'read' : reading.reason, verdict: verdict.verdict, matched_by: verdict.verdict === 'publish' ? verdict.matchedBy : null }
 
   if (verdict.verdict === 'hold') {
     await admin.from('listing_submissions').update({ status: 'held', held_because: verdict.reason.slice(0, 300), reviewed_at: now.toISOString(), check_result: checkResult }).eq('id', sub.id)
