@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
 import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, seatedNight, shortTitle, socialTierOf, splitLine, sportOf, venueSlideOf, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
-import { STAND_INS, standInChooser, standInOf } from '@/lib/social/stand-ins'
+import { STAND_INS, standInChooser, standInCredit, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
 import { daysElement, keepDate, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
 
@@ -208,7 +208,7 @@ describe("a stand-in only over nights all of its kind (the PM's 17:40 fix 1, rul
     const used = s.map((sl) => ('photo' in sl ? standInOf(sl.photo) : null)).filter(Boolean)
     expect(used.every((x) => x!.kind === 'comedy')).toBe(true)
     expect(new Set(used.map((x) => x!.id)).size).toBe(used.length)
-    for (const d of daysOf(s)) if (d.photo) expect(d.credit).toBe(`Photo: ${standInOf(d.photo)!.photographer} / Pexels`)
+    for (const d of daysOf(s)) if (d.photo) expect(d.credit).toBe(`Illustrative photo: ${standInOf(d.photo)!.photographer} / Pexels`)
     const talkOnly = lockedListSlides([week0Talk()], ['1 thing on', 'in Melbourne', 'this week'], ORIGIN)
     for (const sl of talkOnly) if (sl.t === 'days' || sl.t === 'week_cover') expect(standInOf(sl.photo)?.kind).toBe('talk')
     expect(STAND_INS.some((x) => x.id === '32072177')).toBe(false) // withdrawn: another city's signs
@@ -272,6 +272,48 @@ describe('the planner draws every list post in the locked look', () => {
       expect(p.slides.at(-1)?.t, p.kind).toBe('ask')
       expect(JSON.stringify(p.slides)).not.toMatch(/\.\.\.|…/)
     }
+  })
+})
+
+/*
+ * A STAND-IN IS MARKED ILLUSTRATIVE ON THE SLIDE ITSELF (Lawal's decisions D1 and D2, 16 November 2026, 23:08, relayed by
+ * the PM at 23:12: "stand-in images must never be presented as photographs of the actual event"; "Allow appropriately
+ * licensed photographs with required attribution and clear identification when they are illustrative rather than
+ * event-specific"). Until then a stand-in's slide read only 'Photo: Sebastian Ervi / Pexels', the same words as a night's
+ * own photograph, and only the caption said 'not this night': a story has no caption, and a slide shared on its own
+ * leaves it behind. The slide's own credit now says it.
+ */
+describe("a stand-in is marked illustrative on the slide itself (Lawal's D1 and D2)", () => {
+  it('every stand-in reads "Illustrative photo: <photographer> / Pexels"', () => {
+    for (const x of STAND_INS) expect(standInCredit(x), x.id).toBe(`Illustrative photo: ${x.photographer} / Pexels`)
+  })
+
+  it('every slide of every piece that draws a stand-in says illustrative; a night\'s own photograph never does', () => {
+    const own = night({ at: '2026-11-20T08:00:00Z', title: 'A Festival of Their Own', categorySlug: 'festivals', approvedPhotoUrl: OWN, photoCredit: 'AMCF, past festival (2024)', venueName: 'Federation Square' })
+    const others = [
+      night({ at: '2026-11-17T09:00:00Z', title: 'Band Night', venueName: 'The Corner Hotel' }),
+      night({ at: '2026-11-18T08:30:00Z', title: 'Main Stage', categorySlug: 'comedy', venueName: 'Comedy Republic' }),
+      night({ at: '2026-11-19T08:30:00Z', title: 'An Evening with a Historian', categorySlug: 'talks', summary: 'An author in conversation.', venueName: 'Melbourne Recital Centre' }),
+    ]
+    const { pieces } = planCampaign({ nights: [own, ...others], cities: [{ slug: 'melbourne', name: 'Melbourne' }], weekStart: '2026-11-16', origin: ORIGIN })
+    let standIns = 0
+    let owned = 0
+    for (const p of pieces) {
+      for (const sl of p.slides as readonly Slide[]) {
+        const photo = 'photo' in sl ? (sl as { photo: string | null }).photo : null
+        const credit = 'credit' in sl ? (sl as { credit: string | null }).credit : null
+        if (!photo) continue
+        if (standInOf(photo)) {
+          standIns += 1
+          expect(credit, `${p.kind} ${sl.t}`).toMatch(/^Illustrative photo: .+ \/ Pexels$/)
+        } else if (photo === OWN) {
+          owned += 1
+          expect(credit, `${p.kind} ${sl.t}`).toBe('Photo: AMCF, past festival (2024)')
+        }
+      }
+    }
+    expect(standIns).toBeGreaterThan(0)
+    expect(owned).toBeGreaterThan(0)
   })
 })
 

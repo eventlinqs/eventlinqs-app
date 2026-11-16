@@ -40,6 +40,14 @@ describe('withCredits and creditLine', () => {
     expect(out[1].credit).toBeUndefined()
   })
 
+  it("marks an illustrative photograph as illustrative, once, and never a night's own (Lawal's D2, 16 November 2026)", () => {
+    expect(creditLine('Sebastian Ervi / Pexels', { illustrative: true })).toBe('Illustrative photo: Sebastian Ervi / Pexels')
+    expect(creditLine('Photo: Sebastian Ervi / Pexels', { illustrative: true })).toBe('Illustrative photo: Sebastian Ervi / Pexels')
+    expect(creditLine('Pexels', { illustrative: true, plural: true })).toBe('Illustrative photos: Pexels')
+    expect(creditLine(null, { illustrative: true })).toBeNull()
+    expect(creditLine('AMCF, past festival')).not.toMatch(/Illustrative/)
+  })
+
   it('prints "Photo: <credit>", and nothing for no credit', () => {
     expect(creditLine('AMCF, past festival')).toBe('Photo: AMCF, past festival')
     expect(creditLine(undefined)).toBeNull()

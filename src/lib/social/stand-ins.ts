@@ -176,9 +176,13 @@ export function standInUrl(origin: string, s: Pick<StandIn, 'id'>): string {
   return `${origin.replace(/\/$/, '')}/social/stand-ins/${s.id}.jpg`
 }
 
-/** Its credit on the slide's edge, printed through the one credit line (src/lib/media/photo-credits.ts). */
+/**
+ * Its credit on the slide's edge, printed through the one credit line (src/lib/media/photo-credits.ts), marked
+ * illustrative on the slide itself (Lawal's D1 and D2, 16 November 2026, 23:08): a story has no caption and a slide
+ * shared alone leaves its caption behind, so the caption's 'not this night' was never enough on its own.
+ */
 export function standInCredit(s: Pick<StandIn, 'photographer'>): string {
-  return creditLine(`${s.photographer} / Pexels`) ?? `${s.photographer} / Pexels`
+  return creditLine(`${s.photographer} / Pexels`, { illustrative: true }) ?? `${s.photographer} / Pexels`
 }
 
 /** The stand-in a URL names, or null: a slide's photograph is a stand-in only when it is one of these. */

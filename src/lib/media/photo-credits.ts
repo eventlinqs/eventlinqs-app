@@ -42,10 +42,16 @@ export function withCredits(gallery: readonly GalleryImage[], credits: ReadonlyM
   return gallery.map((g) => (credits.has(g.url) ? { ...g, credit: credits.get(g.url) } : g))
 }
 
-/** The printed line for one credit, the same words the cards and posters print. */
-export function creditLine(credit: string | null | undefined, options: { readonly plural?: boolean } = {}): string | null {
+/**
+ * The printed line for one credit, the same words the cards and posters print. `illustrative` marks a licensed photograph
+ * of a kind of night, never the night's own (Lawal's D2, 16 November 2026, 23:08: "clear identification when they are
+ * illustrative rather than event-specific"): 'Illustrative photo: Sebastian Ervi / Pexels'.
+ */
+export function creditLine(credit: string | null | undefined, options: { readonly plural?: boolean; readonly illustrative?: boolean } = {}): string | null {
   const words = creditWords(credit)
-  return words ? `${options.plural ? 'Photos' : 'Photo'}: ${words}` : null
+  if (!words) return null
+  const noun = options.plural ? 'photos' : 'photo'
+  return options.illustrative ? `Illustrative ${noun}: ${words}` : `${options.plural ? 'Photos' : 'Photo'}: ${words}`
 }
 
 /**
