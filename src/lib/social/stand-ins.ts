@@ -154,6 +154,21 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '30387502', kind: 'sport', subject: 'a cricket match in play', photographer: "Lorien le Poer Trench", sport: 'cricket', page: 'https://www.pexels.com/photo/dynamic-cricket-match-with-batsman-and-wicketkeeper-30387502/' },
   { id: '39027935', kind: 'talk', subject: 'two chairs on a lit stage', photographer: "Av E", page: 'https://www.pexels.com/photo/two-empty-chairs-on-stage-under-spotlights-39027935/' },
   { id: '20733069', kind: 'talk', subject: 'an audience at a talk', photographer: "BBSO", page: 'https://www.pexels.com/photo/gathering-in-auditorium-20733069/' },
+  // Band, theatre and talk, the PM's 08:30 of 16 November 2026: chosen after looking at each one whole (standins-4).
+{ id: '7715646', kind: 'gig', subject: 'a band on stage under blue lights', photographer: "Alena Darmel", page: 'https://www.pexels.com/photo/a-band-performing-on-stage-7715646/' },
+  { id: '8041062', kind: 'gig', subject: 'a singer and guitarist with his band', photographer: "ANTONI SHKRABA production", page: 'https://www.pexels.com/photo/man-playing-a-guitar-while-singing-8041062/' },
+  { id: '8186275', kind: 'gig', subject: 'a guitarist under stage lights', photographer: "Brett Sayles", page: 'https://www.pexels.com/photo/unrecognizable-guitarist-playing-on-stage-near-microphone-and-dj-8186275/' },
+  { id: '9009614', kind: 'gig', subject: 'a drummer under stage lights', photographer: "Yan Krukau", page: 'https://www.pexels.com/photo/good-looking-man-wearing-black-polo-playing-drums-9009614/' },
+  { id: '7715781', kind: 'gig', subject: 'a singer under a spotlight', photographer: "Alena Darmel", page: 'https://www.pexels.com/photo/woman-in-black-long-sleeve-shirt-standing-on-stage-7715781/' },
+  { id: '6896323', kind: 'theatre', subject: 'two actors on a bare stage', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/man-and-woman-sitting-on-floor-6896323/' },
+  { id: '6899923', kind: 'theatre', subject: 'an actor in period costume on stage', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/man-in-black-suit-standing-6899923/' },
+  { id: '6899931', kind: 'theatre', subject: 'two actors in period costume', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/man-and-woman-hugging-each-other-6899931/' },
+  { id: '26285734', kind: 'theatre', subject: 'a stage set seen from the stalls', photographer: "Eloi Motte", page: 'https://www.pexels.com/photo/stage-in-theatre-with-set-design-26285734/' },
+  { id: '12616961', kind: 'theatre', subject: 'a lit red curtain over empty seats', photographer: "Ann Hannes", page: 'https://www.pexels.com/photo/red-theater-chairs-near-red-curtains-12616961/' },
+  { id: '19966343', kind: 'talk', subject: 'a storyteller on a dark stage', photographer: "Nipin Niravath", page: 'https://www.pexels.com/photo/man-performing-on-a-stage-19966343/' },
+  { id: '8847168', kind: 'talk', subject: 'a speaker at a lectern', photographer: "Mikhail Nilov", page: 'https://www.pexels.com/photo/politician-doing-an-inaugural-speech-8847168/' },
+  { id: '4865518', kind: 'talk', subject: 'an author reading to a small room', photographer: "cottonbro studio", page: 'https://www.pexels.com/photo/woman-in-black-long-sleeve-shirt-sitting-on-chair-4865518/' },
+  { id: '19658083', kind: 'talk', subject: 'an empty hall seen from the stage', photographer: "JIUN-JE LIN", page: 'https://www.pexels.com/photo/illuminated-stage-of-an-empty-theater-19658083/' },
 ]
 
 /** Where a stand-in is served: our own origin, never the photographer's site. */
