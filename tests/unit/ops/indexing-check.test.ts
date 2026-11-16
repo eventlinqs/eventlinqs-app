@@ -3,6 +3,7 @@ import {
   INDEXING_CADENCE,
   INDEXING_STALE_AFTER_HOURS,
   VERIFY_COMMAND,
+  CONNECT_KEY_STEP,
   parseSitemapLocs,
   robotsFromHtml,
   judgeFetched,
@@ -94,10 +95,13 @@ describe('judgeFetched', () => {
 })
 
 describe('credentialState', () => {
-  it('names the command that fixes it when there is no key', () => {
+  // 16 November 2026: the reason sent Lawal to 'npm run seo2:verify-property', which stores the site's verification tag,
+  // never this key; the property was verified already. It now names the step that stores the key.
+  it('names the step that stores the key when there is no key, never the verification tag command', () => {
     const state = credentialState({})
     expect(state.connected).toBe(false)
-    expect(state.reason).toContain(VERIFY_COMMAND)
+    expect(state.reason).toContain(CONNECT_KEY_STEP)
+    expect(state.reason).not.toContain(VERIFY_COMMAND)
   })
 
   it('refuses a key that is not JSON, and says which half is wrong', () => {

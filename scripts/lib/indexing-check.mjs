@@ -58,8 +58,15 @@ export const INDEXING_CADENCE = 'The indexing check runs weekly, on a Monday'
  */
 export const INDEXING_STALE_AFTER_HOURS = 8 * 24
 
-/** The one command that turns the Search Console half on. */
+/** The command that stores the site's verification TAG (a property not yet verified). It never stores the key. */
 export const VERIFY_COMMAND = 'npm run seo2:verify-property'
+
+/**
+ * The step that turns the Search Console half on: a service account's read only key stored as GitHub's
+ * GOOGLE_SEARCH_CONSOLE_KEY (Lawal's list item 30, 16 November 2026). The reason used to name VERIFY_COMMAND, which stores
+ * the verification tag only; the property was verified already, so following it changed nothing.
+ */
+export const CONNECT_KEY_STEP = 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\ops\\search-console-key.ps1 <the service account key .json> (Lawal\'s list item 30)'
 
 /** Google's own verdict values, so a typo here cannot silently mean "not indexed". */
 export const VERDICTS = ['VERDICT_UNSPECIFIED', 'PASS', 'PARTIAL', 'FAIL', 'NEUTRAL']
@@ -131,7 +138,7 @@ export function credentialState(env = {}) {
       connected: false,
       reason:
         'no GOOGLE_SEARCH_CONSOLE_KEY on this machine, so Google has never been asked what it did with these ' +
-        `URLs. ${VERIFY_COMMAND} verifies the property and stores the credential`,
+        `URLs. The property is verified; the read only key is stored by ${CONNECT_KEY_STEP}`,
     }
   }
   let parsed
