@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
   const dry = request.nextUrl.searchParams.get('dry') === '1'
 
-  const results = await runVisitorSentinel({ db: createAdminClient(), base: getSiteUrl() })
+  // A real run holds a night whose every booking link was dead on two runs and releases one whose link answers again
+  // (src/lib/health/dead-link-hold.ts); ?dry=1 judges and writes nothing.
+  const results = await runVisitorSentinel({ db: createAdminClient(), base: getSiteUrl(), write: !dry })
   const failing = results.filter((r) => !r.ok)
 
   let alerted = false
