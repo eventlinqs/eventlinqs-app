@@ -3383,6 +3383,36 @@ export type Database = {
         }
         Relationships: []
       }
+      health_sentinel_runs: {
+        Row: {
+          dry: boolean
+          failing: number
+          id: string
+          ok: boolean
+          ran_at: string
+          results: Json
+          sentinel: string
+        }
+        Insert: {
+          dry?: boolean
+          failing: number
+          id?: string
+          ok: boolean
+          ran_at?: string
+          results: Json
+          sentinel: string
+        }
+        Update: {
+          dry?: boolean
+          failing?: number
+          id?: string
+          ok?: boolean
+          ran_at?: string
+          results?: Json
+          sentinel?: string
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string

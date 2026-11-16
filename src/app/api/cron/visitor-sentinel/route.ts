@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { routeAlerts } from '@/lib/health/runner'
 import { runVisitorSentinel } from '@/lib/health/visitor-sentinel-run'
 import { politeLinkDeps, runLinkCheck } from '@/lib/events/link-check-run'
+import { recordSentinelRun } from '@/lib/health/sentinel-runs'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -43,8 +44,17 @@ export async function GET(request: NextRequest) {
       console.error('[visitor-sentinel] alert routing failed:', err instanceof Error ? err.message : err)
     }
   }
+  // Every run is kept, a dry one marked dry, so /admin/health shows what the last run found and every report can quote it
+  // (src/lib/health/sentinel-runs.ts). A run that cannot be kept still judged and alerted; it says so.
+  let stored = 'not stored'
+  try {
+    stored = await recordSentinelRun(db, results, new Date(), dry)
+  } catch (err) {
+    stored = `not stored: ${err instanceof Error ? err.message : String(err)}`
+  }
+  if (stored !== 'stored') console.error('[visitor-sentinel] run', stored)
   return NextResponse.json(
-    { ok: failing.length === 0, failing: failing.map((r) => ({ id: r.id, detail: r.detail })), judged: results.length, alerted, dry },
+    { ok: failing.length === 0, failing: failing.map((r) => ({ id: r.id, detail: r.detail })), judged: results.length, alerted, dry, stored },
     { status: failing.length === 0 ? 200 : 503 },
   )
 }

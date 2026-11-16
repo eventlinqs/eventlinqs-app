@@ -1,6 +1,8 @@
 import { runAllChecks, overallStatus, type HealthResult } from '@/lib/health/checks'
 import { getSiteUrl } from '@/lib/site-url'
 import { requireAdminSession } from '@/lib/admin/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { latestSentinelRun } from '@/lib/health/sentinel-runs'
 import {
   ADMIN_CELL,
   ADMIN_CELL_LABEL_LIGHT,
@@ -93,6 +95,9 @@ export default async function HealthStatusPage() {
   // page checks the strict session itself, as every page under it does.
   await requireAdminSession()
   const results = await runAllChecks()
+  // The visitor sentinel's last run, as it judged the live site (the PM's 12:35 item 5 of 16 November 2026: every report
+  // quotes it from here). Read through the service role, behind requireAdminSession above.
+  const sentinel = await latestSentinelRun(createAdminClient())
   const status = overallStatus(results)
   const checkedAt = new Date()
 
@@ -163,48 +168,69 @@ export default async function HealthStatusPage() {
         that module's LIGHT skin because this is the one admin table that is
         white-on-ink rather than on #0A0F1A.
       */}
-      <div
-        className={ADMIN_TABLE_WRAP_LIGHT}
-        tabIndex={0}
-        role="region"
-        aria-label="Platform health checks"
-      >
-        <table className={ADMIN_TABLE}>
-          <thead className={ADMIN_THEAD_LIGHT}>
-            <tr>
-              <th className="px-4 py-3">System</th>
-              <th className="px-4 py-3">Severity</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Detail</th>
-            </tr>
-          </thead>
-          <tbody className={ADMIN_TBODY}>
-            {results.map(r => (
-              <tr key={r.id} className={`${ADMIN_ROW_LIGHT} align-top`}>
-                <td className={`${ADMIN_CELL_NAME} font-medium text-ink-900`}>{r.label}</td>
-                <td className={`${ADMIN_CELL} text-ink-400`}>
-                  <span className={ADMIN_CELL_LABEL_LIGHT}>Severity</span>
-                  {r.severity}
-                </td>
-                <td className={ADMIN_CELL}>
-                  <span className={ADMIN_CELL_LABEL_LIGHT}>Status</span>
-                  <StatusWord result={r} />
-                </td>
-                <td className={`${ADMIN_CELL} max-lg:block max-lg:pr-0 text-ink-600`}>
-                  {r.detail}
-                  {!r.ok && r.action ? <div className="mt-1 text-xs text-ink-600"><strong>Fix:</strong> {r.action}</div> : null}
-                  {r.durationMs != null ? <div className="mt-1 text-[11px] text-ink-400">{r.durationMs}ms</div> : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ChecksTable results={results} label="Platform health checks" />
+
+      <section className="mt-10" aria-labelledby="sentinel-heading">
+        <h2 id="sentinel-heading" className="font-display text-lg font-bold tracking-tight">The visitor sentinel&rsquo;s last run</h2>
+        {sentinel.run ? (
+          <>
+            <p className="mt-1 mb-4 text-xs text-white/60">
+              Ran {new Date(sentinel.run.ranAt).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' })}{sentinel.run.dry ? ' (a dry run, nothing written)' : ''}: {sentinel.run.results.length} checks, {sentinel.run.failing === 0 ? 'every one passed' : `${sentinel.run.failing} failing`}. It reads the live home page, every guide and every published upcoming night&rsquo;s booking links every 6 hours.
+            </p>
+            <ChecksTable results={sentinel.run.results} label="Visitor sentinel checks" />
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-white/80">{sentinel.note}</p>
+        )}
+      </section>
 
       <p className="mt-6 text-xs text-white/60">
         The sentinel also runs on a schedule and after every deployment, emailing the founder on any CRITICAL fault and a
         daily heartbeat. Canonical site: {getSiteUrl()}. Runbook: docs/ops/HEALTH-ALERTS.md.
       </p>
+    </div>
+  )
+}
+
+/** One table of checks, the shared light pattern (src/components/admin/table-card.ts); a card a check below lg. */
+function ChecksTable({ results, label }: { results: readonly HealthResult[]; label: string }) {
+  return (
+    <div
+      className={ADMIN_TABLE_WRAP_LIGHT}
+      tabIndex={0}
+      role="region"
+      aria-label={label}
+    >
+      <table className={ADMIN_TABLE}>
+        <thead className={ADMIN_THEAD_LIGHT}>
+          <tr>
+            <th className="px-4 py-3">System</th>
+            <th className="px-4 py-3">Severity</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Detail</th>
+          </tr>
+        </thead>
+        <tbody className={ADMIN_TBODY}>
+          {results.map(r => (
+            <tr key={r.id} className={`${ADMIN_ROW_LIGHT} align-top`}>
+              <td className={`${ADMIN_CELL_NAME} font-medium text-ink-900`}>{r.label}</td>
+              <td className={`${ADMIN_CELL} text-ink-400`}>
+                <span className={ADMIN_CELL_LABEL_LIGHT}>Severity</span>
+                {r.severity}
+              </td>
+              <td className={ADMIN_CELL}>
+                <span className={ADMIN_CELL_LABEL_LIGHT}>Status</span>
+                <StatusWord result={r} />
+              </td>
+              <td className={`${ADMIN_CELL} max-lg:block max-lg:pr-0 text-ink-600`}>
+                {r.detail}
+                {!r.ok && r.action ? <div className="mt-1 text-xs text-ink-600"><strong>Fix:</strong> {r.action}</div> : null}
+                {r.durationMs != null ? <div className="mt-1 text-[11px] text-ink-400">{r.durationMs}ms</div> : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
