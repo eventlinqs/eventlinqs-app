@@ -258,7 +258,7 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       now,
       async () => {
         const yeses = await counted('organiser_permissions', db.from('organiser_permissions').select('id', { count: 'exact', head: true }).gte('granted_at', month))
-        const given = await counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', PHOTO_WAITS.assetState))
+        const given = await counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', PHOTO_WAITS.assetState).eq('approval_status', PHOTO_WAITS.approvalStatus).eq('withdrawal_status', PHOTO_WAITS.withdrawalStatus))
         return {
           lastRun: null,
           queue: [{ label: 'Organiser photos held', value: given }],

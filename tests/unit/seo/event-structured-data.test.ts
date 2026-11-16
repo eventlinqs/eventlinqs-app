@@ -768,10 +768,31 @@ describe("Search Console's Events warnings, answered honestly (the project manag
 
   /* 6 November 2026: every hunted night carried endDate at the midnight the occurrence run filled in, a time no source
      stated (Benson Boone on www: '2026-11-13T00:00:00+11:00'). Google: "Don't indicate the time if you don't know the time". */
-  it('a listing night whose series states no end sends no endDate, and stays valid', () => {
+  /* 16 November 2026 (the PM's 13:20 item 2): Search Console, 15 November, 'Top non-critical issues: Missing field
+     "endDate"'. A night with no stated end now sends its start's DATE alone (YYYY-MM-DD): it ends that day, never an
+     invented hour. Google's Event page allows a date without a time for endDate. */
+  it('a listing night whose series states no end sends its start day as endDate, no time, and stays valid', () => {
     const payload = build({ end_date: '2026-09-12T14:00:00+00:00', listing_series_id: 's1', listing_series: { ends_at: null } }) as Record<string, unknown>
-    expect(payload.endDate).toBeUndefined()
+    expect(payload.endDate).toBe(String(payload.startDate).slice(0, 10))
+    expect(payload.endDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(validate(payload).errors ?? []).toEqual([])
+  })
+
+  it('every night carries endDate, never before its startDate: no end, past midnight, a run of days', () => {
+    const cases: Record<string, unknown>[] = [
+      { end_date: '2026-09-12T14:00:00+00:00', listing_series_id: 's1', listing_series: { ends_at: null } },
+      { start_date: '2026-11-20T11:30:00Z', end_date: '2026-11-20T15:00:00Z' },
+      { start_date: '2026-11-20T09:00:00Z', end_date: '2026-11-22T09:00:00Z' },
+      { start_date: '2026-12-31T09:00:00Z', end_date: '2026-12-31T15:30:00Z' },
+    ]
+    for (const c of cases) {
+      const p = build(c) as Record<string, unknown>
+      expect(typeof p.endDate).toBe('string')
+      const end = String(p.endDate)
+      const start = String(p.startDate)
+      expect(end.length === 10 ? end >= start.slice(0, 10) : Date.parse(end) >= Date.parse(start)).toBe(true)
+      expect(validate(p).errors ?? []).toEqual([])
+    }
   })
 
   it('a listing night whose series states its end sends it', () => {

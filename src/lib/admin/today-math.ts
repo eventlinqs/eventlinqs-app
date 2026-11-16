@@ -169,6 +169,15 @@ export function reportsOverdue(due: readonly { id: string; endDate: string; titl
 /** Window 4's rule for a collection source in trouble (/admin/collected): its newest runs failed this many times in a row. */
 export const SOURCE_FAILING_AFTER = 3
 
+/**
+ * The sources to name as failing: SOURCE_FAILING_AFTER failures in a row and not stopped. A source a person or the law
+ * stopped (listing_sources.stopped_at, its reason in stopped_because, read on /admin/collected) is not failing: Forum
+ * Melbourne, stopped on 12 November 2026 at its first 403 (law 14 (k)), stayed a past due task for ten days.
+ */
+export function failingNotStopped(runsBySource: ReadonlyMap<string, readonly { succeeded: boolean }[]>, stopped: ReadonlySet<string>): string[] {
+  return [...runsBySource.entries()].filter(([id, runs]) => !stopped.has(id) && failuresInARow(runs) >= SOURCE_FAILING_AFTER).map(([id]) => id)
+}
+
 /** The newest unbroken run of failures, the runs given newest first. */
 export function failuresInARow(runs: readonly { succeeded: boolean }[]): number {
   let n = 0
@@ -183,6 +192,13 @@ export function failuresInARow(runs: readonly { succeeded: boolean }[]): number 
 export type RulePublished = { title: string; venue_name: string | null; starts_at: string; reviewed_at: string | null }
 
 const GLANCE_DAY = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', day: 'numeric', month: 'short' })
+
+const MELBOURNE_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** '2026-11-13', the Melbourne date of an instant. */
+function melbourneDay(iso: string): string {
+  return MELBOURNE_DATE.format(new Date(iso))
+}
 
 /** 'Sat 21 Nov' in Melbourne, from the parts, so no locale punctuation creeps in. */
 function glanceDay(iso: string): string {
@@ -204,7 +220,8 @@ export function rulePublishedGlance(rows: readonly RulePublished[], total: numbe
   const since = rows.reduce((min, r) => (r.reviewed_at && r.reviewed_at < min ? r.reviewed_at : min), rows[0].reviewed_at ?? rows[0].starts_at)
   return [
     {
-      id: 'collected:rule-published',
+      // One task a Melbourne day, so yesterday's glance closes (one key held it open and past due from 13 to 16 November).
+      id: `collected:rule-published:${melbourneDay(since)}`,
       what: `${total} ${total === 1 ? 'night' : 'nights'} published by the rule since yesterday`,
       why: `Each passed every check (${checks.join('; ')}). ${named.length === total ? 'All' : `${named.length}`} for a glance: ${named.join('. ')}.`,
       since,

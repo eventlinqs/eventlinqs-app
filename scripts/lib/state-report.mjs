@@ -544,6 +544,10 @@ export function sectionsFor(state) {
           `${biz.ordersPaid24h ?? 0} paid orders in the last 24 hours.`,
           `${biz.newOrganisers24h ?? 0} new organisers in the last 24 hours.`,
           `${biz.submissionsNotLive ?? 0} organiser events sent in and not live after an hour (target 0)${(biz.submissionsNotLive ?? 0) > 0 ? ', each at the top of /admin/today' : ''}.`,
+          // A source the visitor sentinel switched off for dead booking links (law 19 (d)), said only on a day it happens.
+          ...((biz.sourcesStoppedDeadLinks24h ?? []).length > 0
+            ? [`${biz.sourcesStoppedDeadLinks24h.length} ${biz.sourcesStoppedDeadLinks24h.length === 1 ? 'source' : 'sources'} switched off in the last 24 hours for dead booking links on two nights in a week: ${biz.sourcesStoppedDeadLinks24h.join(', ')} (law 19 (d); a person re-opens it on /admin/collected).`]
+            : []),
         ],
   })
 

@@ -395,8 +395,11 @@ export function buildEventSchemaPayload({
     '@type': schemaEventType(event.category?.slug),
     name: event.title,
     startDate: zoned(event.start_date),
-    /* Only an end someone stated (src/lib/events/stated-end.ts): a filled in midnight is never sent to Google. */
-    ...(endStated ? { endDate: zoned(endStated) } : {}),
+    /* Only an end someone stated (src/lib/events/stated-end.ts): a filled in midnight is never sent to Google. A night with
+       no stated end sends its start's DATE alone (the PM's 13:20 item 2 of 16 November 2026, on Search Console's 'Missing
+       field "endDate"' of 15 November): it ends that day, never an invented hour. A night past midnight or a run of days
+       keeps the end its source stated. */
+    endDate: endStated ? zoned(endStated) : zoned(event.start_date).slice(0, 10),
     /*
      * RESCHEDULED, WITH ITS REQUIRED PARTNER PROPERTY.
      *

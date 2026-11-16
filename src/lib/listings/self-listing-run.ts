@@ -22,6 +22,7 @@ import { priceWords, whenWords } from './submission-watch-rule'
 import { sendOrganiserLiveNotice } from './organiser-live-notice'
 import { mayStayPublished, ORGANISER_PHOTO_LAW, organiserCoverObject, photoStillOwed, type PhotoAttach } from './organiser-photo-rule'
 import { creditLine } from '@/lib/media/photo-credits'
+import { READ_TRIES, readAgain } from './read-retry'
 
 /**
  * ORGANISER SELF-LISTING, THE RUN (Lawal's rulings of 8 November 2026, 07:01 (3) and 07:05 (2); the submission alert of
@@ -240,6 +241,17 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
   const tz = (city?.timezone as string | undefined) ?? 'Australia/Melbourne'
   const title = cleanTitle(sub.title)
   const reading = await readBookingPage(sub.booking_url)
+  // A page that did not answer in time, or could not be reached, is read again on the next run, never held for a person
+  // at once (./read-retry.ts; H2o, 16 November 2026, 13:11). It stays waiting, its held notice kept.
+  const again = readAgain(reading, sub.check_result)
+  if (again.again && !reading.ok) {
+    await admin
+      .from('listing_submissions')
+      .update({ check_result: { ...(sub.check_result ?? {}), read_tries: again.tries, last_read: reading.reason } })
+      .eq('id', sub.id)
+      .eq('status', 'waiting')
+    return { state: 'skipped', reason: `its booking page: ${reading.reason}; read again on the next run (${again.tries} of ${READ_TRIES})` }
+  }
   const from = new Date(new Date(sub.starts_at).getTime() - 86_400_000).toISOString()
   const to = new Date(new Date(sub.starts_at).getTime() + 2 * 86_400_000).toISOString()
   const { data: listed } = await admin.from('events').select('title, start_date').eq('status', 'published').gte('start_date', from).lte('start_date', to).limit(2000)
@@ -253,7 +265,9 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
   verdict = approvedOver(verdict, sub, title, opts.approvedBy)
   if (verdict.verdict === 'publish' && title.length > 80) verdict = { verdict: 'hold', reason: 'Its name is longer than the 80 characters a listing takes.' }
   if (verdict.verdict === 'publish' && !city) verdict = { verdict: 'hold', reason: 'Its city is not one EventLinqs knows.' }
-  const checkResult = { read: reading.ok ? 'read' : reading.reason, verdict: verdict.verdict, matched_by: verdict.verdict === 'publish' ? verdict.matchedBy : null }
+  // A live notice held for this submission stays held through every write below, a hold included (16 November 2026: the
+  // run's hold rewrote check_result and dropped H2o's notice_held, so its next release would have told Joe).
+  const checkResult = { ...(noticeHeld ? { notice_held: true } : {}), read: reading.ok ? 'read' : reading.reason, verdict: verdict.verdict, matched_by: verdict.verdict === 'publish' ? verdict.matchedBy : null }
 
   if (verdict.verdict === 'hold') {
     await admin.from('listing_submissions').update({ status: 'held', held_because: verdict.reason.slice(0, 300), reviewed_at: now.toISOString(), check_result: checkResult }).eq('id', sub.id)

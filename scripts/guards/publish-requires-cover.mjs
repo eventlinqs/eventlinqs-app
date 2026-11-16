@@ -69,6 +69,11 @@ const ALLOWANCES = [
     reason:
       "The Event Discovery Engine's hold walk (13 November 2026): its one status write moves a published listing to cancelled when the night's own page calls it off, guarded by status = 'published'; it never sets published. Showing a held night again changes only its visibility, never its status, and that night passed the publish gate when it was first published.",
   },
+  {
+    file: 'src/lib/health/visitor-sentinel-run.ts',
+    reason:
+      "The visitor sentinel's automatic hold for a dead booking link (16 November 2026, src/lib/health/dead-link-hold.ts): it reads published nights and writes only their visibility, private when every booking link is dead and public again when one answers, each guarded by the visibility it expects; it never writes status. A night it shows again passed the publish gate when it was first published.",
+  },
 ]
 
 /** The database backstop, which no code path can bypass. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { failuresInARow, queueOf, reportsOverdue, REPORT_GRACE_HOURS, SOURCE_FAILING_AFTER, type QueueItem, type Source } from '@/lib/admin/today-math'
+import { failingNotStopped, failuresInARow, queueOf, reportsOverdue, REPORT_GRACE_HOURS, SOURCE_FAILING_AFTER, type QueueItem, type Source } from '@/lib/admin/today-math'
 
 /**
  * /admin/today, Lawal's one queue (the engine plan of 28 October 2026, part H; the project manager's 20:17): only what
@@ -72,5 +72,17 @@ describe('failuresInARow', () => {
     expect(failuresInARow([f, ok, f, f, f])).toBe(1)
     expect(failuresInARow([ok, f, f, f])).toBe(0)
     expect(failuresInARow([])).toBe(0)
+  })
+})
+
+describe('failingNotStopped', () => {
+  // 16 November 2026: Forum Melbourne, stopped on 12 November at its first 403 (law 14 (k)) with its reason written, stayed
+  // a past due task 'has failed 16 runs in a row' for ten days. A source a person or the law stopped is not failing: its
+  // stop and reason are on /admin/collected; only a running source that keeps failing is named.
+  it('names a source failing three runs in a row, never one that is stopped', () => {
+    const f = { succeeded: false }
+    const runs = new Map([['forum', [f, f, f, f]], ['gac', [f, f, f]], ['fed', [f, f]]])
+    expect(failingNotStopped(runs, new Set(['forum']))).toEqual(['gac'])
+    expect(failingNotStopped(runs, new Set())).toEqual(['forum', 'gac'])
   })
 })

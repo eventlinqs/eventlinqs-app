@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { Queue } from '@/lib/admin/today-math'
-import { dueAfter, queueOrder, resolvedAtSource, tasksFromQueue } from '@/lib/crm/tasks-math'
+import { dueAfter, queueOrder, resolvedAtSource, retitled, tasksFromQueue } from '@/lib/crm/tasks-math'
 
 const NOW = new Date('2026-11-12T01:00:00Z')
 const queue = (over: Partial<Queue> = {}): Queue => ({
@@ -62,6 +62,18 @@ describe('tasks from the queue', () => {
       { id: 'c', source_key: 'reply:aaaaaaaa-2222-4333-8444-555555555555', status: 'done' as const },
     ]
     expect(resolvedAtSource(open, wanted)).toEqual(['b'])
+  })
+
+  // 16 November 2026: production's task '614 collected events waiting for review' (made 31 October) still read 614 while
+  // its item read 490, because a rerun inserts nothing on a key it holds. A task's words now follow its item.
+  it("an open task's title and next action follow its item; a closed one and an unchanged one are left alone", () => {
+    const wanted = tasksFromQueue(queue(), NOW)
+    const open = [
+      { id: 'a', source_key: 'collected:waiting', status: 'open' as const, title: '614 collected events waiting for review', next_action: 'review them' },
+      { id: 'b', source_key: 'submission:3f2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', status: 'open' as const, title: 'Mr Snotbottom is not live', next_action: 'held: no photo' },
+      { id: 'c', source_key: 'play:9a2b8f4e-6c1a-4d2b-9e3f-1a2b3c4d5e6f', status: 'done' as const, title: 'old', next_action: 'old' },
+    ]
+    expect(retitled(open, wanted)).toEqual([{ id: 'a', title: '3 collected nights wait', next_action: 'review them' }])
   })
 
   it('overdue first, then the oldest due, then waiting for approval before open', () => {

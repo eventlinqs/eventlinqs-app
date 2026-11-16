@@ -12,6 +12,7 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { AuditLine, PageHeader, Panel, PRIMARY, SECONDARY, StatCard, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
 import { PendingButton } from '@/components/admin/ui/pending-button'
 import { AdminToast } from '@/components/admin/ui/admin-toast'
+import { SwipeLibraryPanel } from '@/components/admin/swipe-library-panel'
 import { setSenderModeAction, setSocialAutoPublishAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -216,6 +217,8 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
           </article>
         ))}
       </section>
+
+      <SwipeLibraryPanel />
     </div>
   )
 }

@@ -68,6 +68,30 @@ describe('a page of several dated nights', () => {
     expect(writes).toEqual([{ id: 'sat', row: expect.objectContaining({ availability: 'sold_out', price_from_cents: 3900 }) }])
   })
 
+  // 16 November 2026 (the PM's 12:35 item 4): the sentinel holds a night whose every link is dead and releases it when a
+  // link answers again. A dead link whose page came back stating nothing kept 'dead' for ever ('an unstated availability
+  // keeps the stored one'), so its night would never be released. A page that answers is not dead.
+  test('a dead link whose page answers again works again, stated or not; one still gone, or never read, stays dead', async () => {
+    const at = (id: string, url: string) => ({ id, url, availability: 'dead', price_from_cents: null, events: { start_date: '2026-11-20T09:00:00.000Z', timezone: zone } })
+    const links = [at('back', 'https://a.example/back'), at('gone', 'https://a.example/gone'), at('robot', 'https://b.example/no')]
+    const writes: { id: string; row: Record<string, unknown> }[] = []
+    const admin = {
+      from: () => ({
+        select: () => ({ gte: () => ({ limit: async () => ({ data: links, error: null }) }) }),
+        update: (row: Record<string, unknown>) => ({ eq: async (_c: string, id: string) => { writes.push({ id, row }); return { error: null } } }),
+      }),
+    } as unknown as SupabaseClient
+    const deps: CheckDeps = {
+      async get(u) {
+        if (u === 'https://b.example/robots.txt') return { status: 200, body: 'User-agent: *\nDisallow: /' }
+        if (u.endsWith('/robots.txt')) return { status: 404, body: '' }
+        return u.endsWith('/back') ? { status: 200, body: '<html><body>The JazzLab</body></html>' } : { status: 404, body: '' }
+      },
+    }
+    await runLinkCheck(admin, deps, new Date('2026-11-16T00:00:00Z'))
+    expect(writes).toEqual([{ id: 'back', row: expect.objectContaining({ availability: 'on_sale' }) }])
+  })
+
   test("a page the engine reads by its own page rule is read the same way: Cosi's Fri 13 Nov sold out, Sat 14 Nov on sale", async () => {
     // Geelong Arts Centre's pages carry no Event data; their 'Performances:' block marks each sold out night (page-rules.ts).
     const gac = [

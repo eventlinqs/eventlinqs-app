@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { routeAlerts } from '@/lib/health/runner'
 import { runVisitorSentinel } from '@/lib/health/visitor-sentinel-run'
+import { politeLinkDeps, runLinkCheck } from '@/lib/events/link-check-run'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -22,13 +23,22 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
   const dry = request.nextUrl.searchParams.get('dry') === '1'
 
-  const results = await runVisitorSentinel({ db: createAdminClient(), base: getSiteUrl() })
+  // A real run holds a night whose every booking link was dead on two runs and releases one whose link answers again
+  // (src/lib/health/dead-link-hold.ts); ?dry=1 judges and writes nothing.
+  // A dead night's whole host is re-read at once through the polite link check before any night is judged.
+  const db = createAdminClient()
+  const results = await runVisitorSentinel({
+    db,
+    base: getSiteUrl(),
+    write: !dry,
+    reread: (hosts) => runLinkCheck(db, politeLinkDeps(), new Date(), { onlyHosts: hosts }),
+  })
   const failing = results.filter((r) => !r.ok)
 
   let alerted = false
   if (!dry) {
     try {
-      alerted = (await routeAlerts(results)).alerted
+      alerted = (await routeAlerts(results, { everyMinutes: 360 })).alerted
     } catch (err) {
       console.error('[visitor-sentinel] alert routing failed:', err instanceof Error ? err.message : err)
     }
