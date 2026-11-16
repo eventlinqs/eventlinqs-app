@@ -122,6 +122,12 @@ const ALLOWLIST = [
       'WI3 (the project manager\'s order of 27 October 2026, half past twelve): an event sold on other sites carries one button named for where it leaves, "Get tickets on Humanitix", and "Also on Eventbrite", so the one table of platform names the page reads has to spell them; Lawal at twenty three minutes past twelve that day: "He wants to sell tickets. That\'s all that matters to him." No other file may name them.',
   },
   {
+    file: 'src/lib/social/swipe/library.ts',
+    patterns: ['competitor-name'],
+    reason:
+      'EL-M2, the swipe library (the PM\'s 01:30 of 16 November 2026, on Lawal\'s 01:17): the leaders\' best posts held as research, each a link to their own page, the day it was looked at, what it does and what we take, never a copy of their images. It is shown only on /admin/automation behind the admin sign in; no public page reads it, so no visitor ever sees a leader named.',
+  },
+  {
     file: 'src/lib/communities/intersection-editorial.ts',
     patterns: ['whether-youre-x-or-y'],
     reason:
