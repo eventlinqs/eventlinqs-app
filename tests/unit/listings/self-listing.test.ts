@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { readBookingFacts } from '../../../src/lib/listings/booking-facts'
 import { judgeSelfListing, sessionOf, wordsStateDate, type PageReading, type SelfListingSubmission } from '../../../src/lib/listings/self-listing'
 import { publicHost } from '../../../src/lib/listings/booking-page'
-import { approvedOver, cleanTitle, seriesEndOf, summaryFrom } from '../../../src/lib/listings/self-listing-run'
+import { approvedOver, cleanTitle, organiserPhotoAlt, seriesEndOf, summaryFrom } from '../../../src/lib/listings/self-listing-run'
 import { judgeSubmission, type SubmissionContext, type SubmissionInput } from '../../../src/lib/listings/submission'
 
 /**
@@ -440,5 +442,22 @@ describe("the series' end from the organiser's stated times", () => {
     expect(seriesEndOf('2026-11-20T08:00:00Z', null, zone)).toBeNull()
     expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-22T11:00:00Z', zone)).toBeNull()
     expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-20T06:00:00Z', zone)).toBeNull()
+  })
+})
+
+/*
+ * AN ORGANISER'S PHOTO NEVER GOES UP WITHOUT ALT TEXT (16 November 2026, acceptance-live on www at 16:17: H2o's cover,
+ * Joe Merlo's photograph, attached by the run at 16:11, 'draws its own photograph with no alt text'). The run cannot look
+ * at a photograph, so it writes words that only say whose photograph it is and for which night, never what it shows; a
+ * person's looked at words replace them (H2o's, 16:19), and a cover that already has words keeps them.
+ */
+describe("the organiser's photograph's alt text", () => {
+  test('names the night and the venue, and claims nothing about what the photograph shows', () => {
+    expect(organiserPhotoAlt('New Years Eve Melbourne  H2o | Sunset on the Yarra', 'Metropolis Events')).toBe("The organiser's photograph for New Years Eve Melbourne H2o | Sunset on the Yarra at Metropolis Events")
+  })
+  test('the run writes it with the cover, only where the cover has no words yet', () => {
+    const run = readFileSync(join(process.cwd(), 'src/lib/listings/self-listing-run.ts'), 'utf8')
+    expect(run).toContain('cover_image_alt: organiserPhotoAlt(')
+    expect(run).toMatch(/\.is\('cover_image_alt', null\)/)
   })
 })

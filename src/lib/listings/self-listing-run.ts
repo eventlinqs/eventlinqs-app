@@ -88,6 +88,15 @@ export function seriesEndOf(startsAt: string, endsAt: string | null, tz: string)
   return `${localParts(endsAt, tz).time}:00`
 }
 
+/**
+ * The words an organiser's photograph carries when the run sets it as the cover (16 November 2026: H2o's went up at 16:11
+ * with none, and acceptance-live read it). The run cannot look at a photograph, so these say only whose it is and for
+ * which night, never what it shows; a person's looked at words replace them, and a cover that has words keeps them.
+ */
+export function organiserPhotoAlt(title: string, venue: string): string {
+  return `The organiser's photograph for ${cleanTitle(title)} at ${venue.trim()}`
+}
+
 export function cleanTitle(t: string): string {
   return t.replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s+/g, ' ').trim()
 }
@@ -204,6 +213,9 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   if (!hasRealCover(url)) return not('sent, but its stored address is not a real cover')
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)
   if (cover.error) return not(`sent, but it could not be set as the cover (${cover.error.message})`)
+  // Its words, only where the cover has none yet (organiserPhotoAlt); a failure here leaves the photograph on, said.
+  const words = await admin.from('events').update({ cover_image_alt: organiserPhotoAlt(sub.title, sub.venue_name) }).eq('id', eventId).is('cover_image_alt', null)
+  if (words.error) console.error('[self-listing] the cover\'s alt text could not be written:', words.error.message)
   return { attached: true, words: `yes, the organiser's own, credited "${creditLine(rightsHolder)}"` }
 }
 
