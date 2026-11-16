@@ -10,6 +10,7 @@ export const LETTER_WAITS = { step: 1, state: 'held', heldBecause: '{}' } as con
 /**
  * AN ORGANISER PHOTO WAITING TO BE LOOKED AT (the PM's 05:37 fix 2: one unit on Today and Automation): a photograph its
  * organiser gave with permission, held until a person looks at it once (law 5). Automation's Photo permission card
- * counts these and Today's queue lists them.
+ * counts these and Today's queue lists them. Only one still pending its look and not withdrawn waits: on 16 November 2026
+ * production counted 21 to look at while 14 of them were approved already.
  */
-export const PHOTO_WAITS = { assetState: 'organiser_authorised' } as const
+export const PHOTO_WAITS = { assetState: 'organiser_authorised', approvalStatus: 'pending', withdrawalStatus: 'current' } as const

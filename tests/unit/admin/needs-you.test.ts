@@ -61,6 +61,10 @@ describe("a first letter waiting for approval, one definition (ADMIN 2: 'Waiting
     for (const src of [automation, today]) {
       expect(src).toContain("import { LETTER_WAITS, PHOTO_WAITS } from './what-waits'")
       expect(src).toContain("PHOTO_WAITS.assetState")
+      // 16 November 2026: production counted 21 organiser photos to look at while 14 of them were approved already; only
+      // a photo still pending its look, and not withdrawn, waits.
+      expect(src).toContain(".eq('approval_status', PHOTO_WAITS.approvalStatus)")
+      expect(src).toContain(".eq('withdrawal_status', PHOTO_WAITS.withdrawalStatus)")
       expect(src).toContain(".eq('step', LETTER_WAITS.step)")
       expect(src).toContain(".eq('state', LETTER_WAITS.state)")
       expect(src).toContain(".eq('held_because', LETTER_WAITS.heldBecause)")

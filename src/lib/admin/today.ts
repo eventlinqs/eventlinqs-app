@@ -93,6 +93,8 @@ async function photosToLook(db: Admin): Promise<QueueItem[]> {
     .from('social_assets')
     .select('id, created_at')
     .eq('asset_state', PHOTO_WAITS.assetState)
+    .eq('approval_status', PHOTO_WAITS.approvalStatus)
+    .eq('withdrawal_status', PHOTO_WAITS.withdrawalStatus)
     .order('created_at', { ascending: true })
     .limit(LIST_CAP)
   if (error) fail(error)
