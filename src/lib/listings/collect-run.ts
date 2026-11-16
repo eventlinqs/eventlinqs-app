@@ -118,6 +118,8 @@ export type CollectionStore = {
    * it to those sources' rows (a drive on TEST, which must not touch rows it did not plant); the run never passes it.
    */
   expirePassed(now: Date, onlySources?: readonly string[]): Promise<number>
+  /** Waiting nights whose title is a facility notice, refused 'not an event' (./not-an-event.ts); how many. */
+  refuseNotEvents?(now: Date): Promise<number>
   /**
    * The published street address of every venue EventLinqs records in one city, keyed by its name in lower case
    * (public.venues.name, address, city_slug). A feed that names such a venue and gives no street takes this one.
@@ -190,6 +192,8 @@ export type CollectionResult = {
   notReached: number
   /** Waiting rows whose night passed before anyone reviewed them, taken out of the queue by this run. */
   expired: number
+  /** Facility notices refused this run as not an event (./not-an-event.ts). */
+  notEvents?: number
   sources: SourceOutcome[]
 }
 
@@ -709,6 +713,15 @@ export async function runCollection(
         console.error(`[collection] ${source.name}: whether it is dead could not be read:`, err)
       }
     }
+  }
+  /* A FACILITY NOTICE IS NOT AN EVENT (the PM's 15:38 item 1 of 16 November 2026; ./not-an-event.ts): for every source,
+     a waiting night whose title is a notice (opening hours, a safety induction, a closure, maintenance, booking of
+     equipment) is refused with the reason, after this run's nights land: never published, never a person's task. A
+     failure here never stops the read. */
+  try {
+    if (store.refuseNotEvents) result.notEvents = await store.refuseNotEvents(now)
+  } catch (err) {
+    console.error('[collection] facility notices could not be taken out of the queue:', err)
   }
   return result
 }

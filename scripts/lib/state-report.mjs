@@ -549,9 +549,11 @@ export function sectionsFor(state) {
           (() => {
             const ruled = biz.rulePublishedBySource24h ?? []
             const total = ruled.reduce((sum, r) => sum + r.n, 0)
+            const off = biz.notEvents24h ?? 0
+            const kept = off > 0 ? ` ${off} facility ${off === 1 ? 'notice' : 'notices'} kept off as not an event.` : ''
             return total === 0
-              ? 'Nights published by the rule in the last 24 hours: none.'
-              : `Nights published by the rule in the last 24 hours: ${total} (${ruled.map((r) => `${r.name} ${r.n}`).join(', ')}).`
+              ? `Nights published by the rule in the last 24 hours: none.${kept}`
+              : `Nights published by the rule in the last 24 hours: ${total} (${ruled.map((r) => `${r.name} ${r.n}`).join(', ')}).${kept}`
           })(),
           // A source the visitor sentinel switched off for dead booking links (law 19 (d)), said only on a day it happens.
           ...((biz.sourcesStoppedDeadLinks24h ?? []).length > 0

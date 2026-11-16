@@ -1,3 +1,4 @@
+import { facilityNotice, NOT_AN_EVENT } from './not-an-event'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSource } from './collect'
 import { addCuratedLinks } from './collect-accept'
@@ -490,6 +491,32 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           .range(from, to),
       )
       return new Set(rows.map((r) => r.source_id))
+    },
+
+    async refuseNotEvents(now: Date): Promise<number> {
+      /* ./not-an-event.ts: every waiting night whose title is a facility notice, refused with the reason and its words,
+         only while it still waits, so a person's decision taken meanwhile is never overwritten. */
+      const rows = await readEveryRow<{ id: string; title: string }>('the waiting nights', (from, to) =>
+        db.from('listing_candidates').select('id, title').eq('status', 'waiting').order('id').range(from, to),
+      )
+      const at = now.toISOString()
+      let refused = 0
+      const byWords = new Map<string, string[]>()
+      for (const r of rows) {
+        const words = facilityNotice(r.title ?? '')
+        if (words) byWords.set(words, [...(byWords.get(words) ?? []), r.id])
+      }
+      for (const [words, ids] of byWords) {
+        const { data, error } = await db
+          .from('listing_candidates')
+          .update({ status: 'refused', refused_because: `${NOT_AN_EVENT}: a facility notice (${words})`, reviewed_at: at })
+          .in('id', ids)
+          .eq('status', 'waiting')
+          .select('id')
+        if (error) throw new Error(error.message)
+        refused += (data ?? []).length
+      }
+      return refused
     },
 
     async expirePassed(now: Date, onlySources?: readonly string[]): Promise<number> {
