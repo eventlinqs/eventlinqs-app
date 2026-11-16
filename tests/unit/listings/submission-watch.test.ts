@@ -63,6 +63,19 @@ describe('where it is shown, and where it is never sent', () => {
     expect(one.word).toBe('AN ORGANISER EVENT IS NOT LIVE')
     expect(one.urgent).toBe(true)
   })
+  // The PM's 12:25 item 3 of 16 November 2026: a source switched off for dead booking links (the sentinel's law 19 (d)
+  // stop) is said in Lawal's daily email in one line, and nothing is said when none was.
+  test('the daily state says in one line which sources were switched off for dead booking links', async () => {
+    const route = read('src/app/api/ops/state/route.ts')
+    expect(route).toContain("ilike('stopped_because', `%${SOURCE_STOP_WORDS}%`)")
+    const { sectionsFor } = (await import('../../../scripts/lib/state-report.mjs')) as { sectionsFor: (s: unknown) => { title: string; lines: string[] }[] }
+    const platform = (stopped: string[]) => sectionsFor({ business: { submissionsNotLive: 0, sourcesStoppedDeadLinks24h: stopped } }).find((s) => s.title === 'The platform')?.lines ?? []
+    expect(platform(['The JazzLab']).filter((l) => l.includes('switched off'))).toEqual([
+      '1 source switched off in the last 24 hours for dead booking links on two nights in a week: The JazzLab (law 19 (d); a person re-opens it on /admin/collected).',
+    ])
+    expect(platform([]).some((l) => l.includes('switched off'))).toBe(false)
+  })
+
   test("Lawal is never in the listing path: the form, the run and the hourly backstop send him nothing (15:48 (2))", () => {
     for (const path of ['src/app/submit-event/actions.ts', 'src/lib/listings/self-listing-run.ts', 'src/app/api/cron/listing-occurrences/route.ts']) {
       const src = read(path)

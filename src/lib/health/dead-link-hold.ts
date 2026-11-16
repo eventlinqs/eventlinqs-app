@@ -71,6 +71,14 @@ export function hostOf(url: string): string | null {
  */
 export const DEAD_TWICE_DAYS = 7
 
+/** The words every such stop's reason carries, so the daily state can find the stops of the last day by them. */
+export const SOURCE_STOP_WORDS = 'booking links were dead'
+
+/** The stop's reason, written on the source (listing_sources.stopped_because). */
+export function sourceStopReason(nights: number): string {
+  return `Its ${SOURCE_STOP_WORDS} on ${nights} nights within ${DEAD_TWICE_DAYS} days (the visitor sentinel held each). Law 19 (d): its publication stops until a person reads it and re-opens it.`
+}
+
 export function hostsDeadTwice(holds: readonly { eventId: string; urls: readonly string[]; heldAt: string }[], now: Date): Map<string, string[]> {
   const since = now.getTime() - DEAD_TWICE_DAYS * 24 * 3_600_000
   const byHost = new Map<string, Set<string>>()

@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { HealthResult } from './result'
 import { judgeVisitorPage, linksOnPage, type PageEventFacts } from './visitor-sentinel'
-import { DEAD_TWICE_DAYS, deadNotYetHeld, everyLinkDead, holdRow, holdsToMake, holdsToRelease, hostOf, hostsDeadTwice, SENTINEL_HOLD_MARK, sourcesToStop, type NightLinks } from './dead-link-hold'
+import { DEAD_TWICE_DAYS, deadNotYetHeld, everyLinkDead, holdRow, holdsToMake, holdsToRelease, hostOf, hostsDeadTwice, SENTINEL_HOLD_MARK, sourceStopReason, sourcesToStop, type NightLinks } from './dead-link-hold'
 
 /** Every booking link the database holds, read in one pass; more is reported, never silently cut. */
 const MOST_LINKS = 5000
@@ -114,7 +114,7 @@ export async function holdDeadNights(
         if (se) failures.push(`the sources could not be read: ${se.message}`)
         for (const s of sourcesToStop(dead, (sources ?? []) as { id: string; name: string; page_url: string; collection: string }[])) {
           const nightsOn = dead.get(hostOf(s.page_url) ?? '') ?? []
-          const because = `Its booking links were dead on ${nightsOn.length} nights within ${DEAD_TWICE_DAYS} days (the visitor sentinel held each). Law 19 (d): its publication stops until a person reads it and re-opens it.`
+          const because = sourceStopReason(nightsOn.length)
           const { error: ue } = await db.from('listing_sources').update({ collection: 'ask', stopped_at: now.toISOString(), stopped_because: because, updated_at: now.toISOString() }).eq('id', s.id).eq('collection', 'read')
           if (ue) failures.push(`${s.name} could not be stopped: ${ue.message}`)
           else stoppedSources.push(s.name)

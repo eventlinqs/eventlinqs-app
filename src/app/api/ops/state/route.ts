@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readWeeklyDigest } from '@/lib/growth/weekly-report-digest'
+import { SOURCE_STOP_WORDS } from '@/lib/health/dead-link-hold'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -56,16 +57,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const hourAgo = new Date(Date.now() - SUBMISSION_LIVE_WITHIN_MINUTES * 60_000).toISOString()
-    const [live, tickets, tickets24, orders24, organisations24, notLive] = await Promise.all([
+    const [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead] = await Promise.all([
       admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null).gte('created_at', since),
       admin.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('confirmed_at', since),
       admin.from('organisations').select('id', { count: 'exact', head: true }).gte('created_at', since),
       admin.from('listing_submissions').select('id', { count: 'exact', head: true }).or(NOT_LIVE_FILTER).lt('created_at', hourAgo),
+      // The sources the visitor sentinel switched off for dead booking links in the last day (law 19 (d); the PM's 12:25
+      // item 3 of 16 November 2026: 'Lawal's daily email says so in one line').
+      admin.from('listing_sources').select('name').gte('stopped_at', since).ilike('stopped_because', `%${SOURCE_STOP_WORDS}%`).limit(50),
     ])
 
-    const failed = [live, tickets, tickets24, orders24, organisations24, notLive].find((r) => r.error)
+    const failed = [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead].find((r) => r.error)
     if (failed?.error) {
       // Named, never swallowed. A daily state that quietly reports zero events
       // live would be worse than one that says it could not count them.
@@ -89,6 +93,7 @@ export async function GET(request: NextRequest) {
         ordersPaid24h: orders24.count ?? 0,
         newOrganisers24h: organisations24.count ?? 0,
         submissionsNotLive: notLive.count ?? 0,
+        sourcesStoppedDeadLinks24h: ((stoppedDead.data ?? []) as { name: string }[]).map((s) => s.name),
       },
     })
   } catch (err) {
