@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readTodayQueue } from '@/lib/admin/today'
 import { SOURCE_KEYS } from '@/lib/admin/today-math'
-import { resolvedAtSource, tasksFromQueue, type OpenTask } from './tasks-math'
+import { resolvedAtSource, retitled, tasksFromQueue, type OpenTask } from './tasks-math'
 
 /**
  * THE GROWTH OS'S TASKS, KEPT (the rules are ./tasks-math.ts, pure; the table is migration 20261111230001). Run by the
@@ -20,6 +20,7 @@ export interface TaskSyncReport {
   readonly wanted: number
   readonly made: number
   readonly closed: number
+  readonly retitled: number
   readonly failedSources: number
 }
 
@@ -36,7 +37,7 @@ export async function syncGrowthTasks(db: Db, now: Date = new Date()): Promise<T
 
   const { data: open, error: openError } = await db
     .from('growth_tasks')
-    .select('id, source_key, status')
+    .select('id, source_key, status, title, next_action')
     .in('kind', [...MINE])
     .not('status', 'in', '(done,cancelled)')
   if (openError) throw new Error(`the open tasks could not be read: ${openError.message}`)
@@ -50,5 +51,12 @@ export async function syncGrowthTasks(db: Db, now: Date = new Date()): Promise<T
     if (error) throw new Error(`the resolved tasks could not be closed: ${error.message}`)
   }
 
-  return { wanted: wanted.length, made, closed: close.length, failedSources: wanted.filter((t) => t.status === 'failed').length }
+  // An open task's words follow its item (a count that moved, a reason that changed); never its status or due day.
+  const moved = retitled((open ?? []) as OpenTask[], wanted)
+  for (const m of moved) {
+    const { error } = await db.from('growth_tasks').update({ title: m.title, next_action: m.next_action, updated_at: now.toISOString() }).eq('id', m.id).not('status', 'in', '(done,cancelled)')
+    if (error) throw new Error(`a task's words could not follow its item: ${error.message}`)
+  }
+
+  return { wanted: wanted.length, made, closed: close.length, retitled: moved.length, failedSources: wanted.filter((t) => t.status === 'failed').length }
 }

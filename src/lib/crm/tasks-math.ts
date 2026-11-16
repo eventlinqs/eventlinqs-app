@@ -107,6 +107,24 @@ export interface OpenTask {
   readonly id: string
   readonly source_key: string
   readonly status: TaskStatus
+  readonly title?: string
+  readonly next_action?: string | null
+}
+
+/**
+ * Open tasks whose item now reads otherwise take its words (16 November 2026: production's '614 collected events
+ * waiting for review', made 31 October, still read 614 while its item read 490, since a rerun inserts nothing on a key it
+ * holds). Only the title and the next action move; the status, the due day and every person's action stay.
+ */
+export function retitled(open: readonly OpenTask[], wanted: readonly TaskRow[]): { id: string; title: string; next_action: string | null }[] {
+  const byKey = new Map(wanted.map((t) => [t.source_key, t]))
+  const out: { id: string; title: string; next_action: string | null }[] = []
+  for (const t of open) {
+    const w = byKey.get(t.source_key)
+    if (!w || t.status === 'done' || t.status === 'cancelled') continue
+    if (w.title !== t.title || w.next_action !== (t.next_action ?? null)) out.push({ id: t.id, title: w.title, next_action: w.next_action })
+  }
+  return out
 }
 
 /** Open tasks whose item is no longer in the queue were resolved at their source: these are closed. */

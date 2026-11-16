@@ -8,7 +8,7 @@ import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { readCampaign } from '@/lib/social/store'
 import { KIND_NAMES } from '@/lib/growth/social-report-math'
 import { REPORT_AFTER_HOURS } from '@/lib/growth/organiser-report-math'
-import { discoveryDayGlance, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, heldUnpayableItems, SOURCE_FAILING_AFTER, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
+import { discoveryDayGlance, failingNotStopped, failuresInARow, poolFoundGlance, queueOf, removalItem, reportsOverdue, RULE_GLANCE, rulePublishedGlance, heldUnpayableItems, type Queue, type QueueItem, type RulePublished, type Source, type SourceRead } from './today-math'
 import { CAPTURE_RULE_CHECKS } from '@/lib/listings/capture-rule'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { LETTER_WAITS, PHOTO_WAITS } from './what-waits'
@@ -256,12 +256,16 @@ async function sourcesFailing(db: RunsDb): Promise<QueueItem[]> {
     list.push(r)
     bySource.set(r.source_id, list)
   }
-  const failing = [...bySource.entries()].filter(([, runs]) => failuresInARow(runs) >= SOURCE_FAILING_AFTER)
-  if (failing.length === 0) return []
-  const { data: names, error: nerr } = await db.from('listing_sources').select('id, name').in('id', failing.map(([id]) => id))
+  const candidates = failingNotStopped(bySource, new Set())
+  if (candidates.length === 0) return []
+  const { data: names, error: nerr } = await db.from('listing_sources').select('id, name, stopped_at').in('id', candidates)
   if (nerr) fail(nerr)
-  const nameOf = new Map(((names ?? []) as { id: string; name: string }[]).map((n) => [n.id, n.name]))
-  return failing.map(([id, runs]) => {
+  const rows = (names ?? []) as { id: string; name: string; stopped_at: string | null }[]
+  const nameOf = new Map(rows.map((n) => [n.id, n.name]))
+  // A source a person or the law stopped is not failing (its stop and reason are on /admin/collected).
+  const failing = failingNotStopped(bySource, new Set(rows.filter((r) => r.stopped_at !== null).map((r) => r.id)))
+  return failing.map((id) => {
+    const runs = bySource.get(id) ?? []
     const n = failuresInARow(runs)
     return {
       id: `source:${id}`,

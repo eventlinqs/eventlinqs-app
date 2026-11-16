@@ -167,6 +167,9 @@ describe("the Command Centre's glance", () => {
     expect(item.what).toBe('34 nights published by the rule since yesterday')
     expect(item.why).toContain('Each passed every check (a; b). 10 for a glance: Night 1 at Costa Hall, Sat 21 Nov.')
     expect(item.since).toBe('2026-11-13T00:00:00Z')
+    // Each Melbourne day's glance is its own task, so yesterday's closes (production's '3 nights published by the rule
+    // since yesterday' task stayed open and past due from 13 to 16 November under one key).
+    expect(item.id).toBe('collected:rule-published:2026-11-13')
     expect(rulePublishedGlance([], 0, ['a'])).toEqual([])
   })
 })
