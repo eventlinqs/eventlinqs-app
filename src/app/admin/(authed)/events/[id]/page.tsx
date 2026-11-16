@@ -130,7 +130,13 @@ export default async function AdminEventDetailPage({
           <h2 className="mb-3 font-display text-lg font-semibold">Details</h2>
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-white/50">Organiser</dt><dd className="text-white">{event.organisationName ?? '-'}</dd>
-            <dt className="text-white/50">Slug</dt><dd className="font-mono text-[12px] text-white/70">{event.slug}</dd>
+            {/* The slug as a short grey line that wraps after its hyphens (the PM's 07:30 polish (c)); copied whole, as typed. */}
+            <dt className="text-white/50">Slug</dt>
+            <dd data-slug className="text-[12px] leading-5 text-white/50">
+              {event.slug.split('-').map((part, i, all) => (
+                <span key={i}>{part}{i < all.length - 1 ? '-' : ''}<wbr /></span>
+              ))}
+            </dd>
             <dt className="text-white/50">Starts</dt><dd className="text-white">{dayTime(event.startDate)}</dd>
             <dt className="text-white/50">Ends</dt><dd className="text-white">{dayTime(event.endDate)}</dd>
             <dt className="text-white/50">Venue</dt><dd className="text-white">{event.venueName ?? '-'}{event.city ? `, ${event.city}` : ''}</dd>

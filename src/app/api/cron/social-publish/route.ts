@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { planCampaignWeek, publishDuePieces, scheduleApprovedPieces } from '@/lib/social/store'
+import { planCampaignWeek, publishDuePieces, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -28,6 +28,17 @@ export async function GET(request: NextRequest) {
   try {
     const db = createAdminClient()
     const now = new Date()
+    /* THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026): a draft the lock refuses is drawn
+       again by the planner before anything is scheduled, so a week planned by older code reaches the switch-on in the
+       look it can be approved in. Never an approved piece. A failed redraw never holds the publishing below. */
+    let redrawn: { redrawn: readonly string[]; kept: readonly string[] } = { redrawn: [], kept: [] }
+    try {
+      redrawn = await redrawOlderLook(db, now)
+      if (redrawn.redrawn.length > 0 || redrawn.kept.length > 0) console.log(`[cron/social-publish] drawn again in the locked look: ${redrawn.redrawn.length}; kept as they are: ${redrawn.kept.length}`)
+      for (const k of redrawn.kept) console.log(`[cron/social-publish] kept: ${k}`)
+    } catch (error) {
+      console.error('[cron/social-publish] the week could not be drawn again:', error instanceof Error ? error.message : error)
+    }
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
     console.log(
@@ -49,7 +60,8 @@ export async function GET(request: NextRequest) {
        approval. Planned by no person (planned_by null); nothing is approved or published here; a second plan keeps every
        piece once. After the publishing above, so a slow or failed plan never holds a post back. */
     let planned: { created: number; existing: number; held: number } | null = null
-    if (melbourneHour(now) === 6) {
+    // Also in the run that drew the week again, so a piece the new drawing adds (a venue spotlight) is there that hour.
+    if (melbourneHour(now) === 6 || redrawn.redrawn.length > 0) {
       try {
         const week = await planCampaignWeek(db, { plannedBy: null, now })
         planned = { created: week.created, existing: week.existing, held: week.held.length }
@@ -62,7 +74,7 @@ export async function GET(request: NextRequest) {
         console.error('[cron/social-publish] the week could not be planned:', error instanceof Error ? error.message : error)
       }
     }
-    return NextResponse.json({ ok: true, scheduled, published, planned })
+    return NextResponse.json({ ok: true, redrawn, scheduled, published, planned })
   } catch (err) {
     console.error('[cron/social-publish] failed:', err)
     return NextResponse.json({ error: 'social publish failed' }, { status: 500 })

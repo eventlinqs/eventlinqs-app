@@ -37,15 +37,30 @@ export interface CadenceRule {
  * THE STARTING CALENDAR (Lawal's 14:07 of 15 November 2026: the week's calendar from the research, as defaults the daily
  * review tunes; C:\dev\START-16OCT\EL-AUTOMATION-15NOV\leaders-automation.md). Until twelve of our own posts in a format
  * have each gone 48 hours (the learner below), posts open these bands, hours of the week on Melbourne's clock (0 is
- * Monday at midnight): feed Monday from 6 pm (the week), Wednesday from noon (a spotlight), Thursday from 9 am (the
- * weekend picks) and Sunday from 6 pm (next week); stories Friday and Saturday from 6 pm (Tonight). Sprout Social's
+ * Monday at midnight). The first calendar (15 November) opened feed Monday from 6 pm (the week), Wednesday from noon (a
+ * spotlight), Thursday from 9 am (the weekend picks) and Sunday from 6 pm (next week); stories Friday and Saturday from
+ * 6 pm (Tonight); it is replaced below, because it could not carry the week's plan. Sprout Social's
  * Australian data (sproutsocial.com/insights/best-times-to-post-on-social-media-australia/, March 2026): 5 to 10 pm
  * Monday to Thursday, Monday and Thursday best; Buffer's 9.6 million posts (buffer.com/resources/
  * when-is-the-best-time-to-post-on-instagram/, September 2026): Thursday 9 am and Wednesday 12 pm on top, Friday and
  * Saturday weakest. The database keeps a starting rule with no slots (social_cadence_rules_whose), so the calendar is
  * applied as the rules are read, never stored as if learned.
+ *
+ * THE WEEK'S PLAN MUST FIT THE WEEK (the PM's 09:10 of 16 November 2026, read by WINDOW 5A at 09:14 to 09:25): those four
+ * feed bands, one post each under the database's 12 hour floor (social_cadence_rules_feed_gap), carried four of the
+ * thirteen feed pieces the week's plan draws for four cities (plan.json: one post a day for each open city), and every
+ * piece is held once any of its nights has ended (pieceDependencies), so two of out-14's fourteen would have published
+ * (C:\dev\EVIDENCE\EL-16NOV\out14-train\switch-on-deadlines.txt). The calendar is now feed every day at 9 am and 9 pm,
+ * exactly the 12 hour floor: 9 am is Buffer's top Thursday slot and inside the 8 to 10 am Australian morning window the
+ * PM's relay of 15 November 14:15 quotes from Sprout Social; 9 pm is inside Sprout's best Instagram evening, 5 to 10 pm.
+ * Stories every day from 6 pm, each on the day of its first night (planMoments' notBefore), as Lawal's 14:07 has the
+ * Tonight story go the night itself.
  */
-export const STARTING_CALENDAR: Readonly<Record<SocialFormat, readonly number[]>> = { feed: [18, 60, 81, 162], story: [114, 138] }
+const EVERY_DAY = (hour: number): number[] => Array.from({ length: 7 }, (_, day) => day * 24 + hour)
+export const STARTING_CALENDAR: Readonly<Record<SocialFormat, readonly number[]>> = {
+  feed: [...EVERY_DAY(9), ...EVERY_DAY(21)].sort((a, b) => a - b),
+  story: EVERY_DAY(18),
+}
 
 export function withStartingCalendar(rule: CadenceRule, format: SocialFormat): CadenceRule {
   return rule.basis === 'starting' && rule.slots.length === 0 ? { ...rule, slots: STARTING_CALENDAR[format] } : rule
@@ -86,7 +101,7 @@ export function settled(posts: readonly PostOutcome[], settleHours: number, now:
 }
 
 /** The bands of hours ranked by tickets per post, then by visits per post, each on at least two posts, best first. */
-export function bestBands(zone: string, posts: readonly PostOutcome[]): number[] {
+export function bestBands(zone: string, posts: readonly PostOutcome[], keep: number = BANDS_KEPT): number[] {
   const bands = new Map<number, { posts: number; tickets: number; visits: number }>()
   for (const p of posts) {
     const band = Math.floor(hourOfWeek(zone, p.postedAt) / BAND_HOURS) * BAND_HOURS
@@ -96,7 +111,7 @@ export function bestBands(zone: string, posts: readonly PostOutcome[]): number[]
   return [...bands]
     .filter(([, b]) => b.posts >= ENOUGH_TO_RANK)
     .sort(([ha, a], [hb, b]) => b.tickets / b.posts - a.tickets / a.posts || b.visits / b.posts - a.visits / a.posts || ha - hb)
-    .slice(0, BANDS_KEPT)
+    .slice(0, keep)
     .map(([h]) => h)
 }
 
@@ -135,7 +150,12 @@ export function learn(input: { readonly current: CadenceRule; readonly format: S
   const zone = input.zone ?? SOCIAL_ZONE
   const counted = settled(input.posts, input.current.settleHours, input.now)
   if (counted.length < input.current.floorPosts) return { state: 'no_baseline', posts: counted.length, floor: input.current.floorPosts, rule: input.current }
-  const slots = bestBands(zone, counted)
+  /* The learned hours never carry fewer bands than the week's plan needs (the starting calendar's count): three kept
+     bands would put the week back to three posts, and the rest of the plan would be held as its nights pass (the PM's
+     09:10 of 16 November 2026). Until that many bands are each ranked on two posts, the rule in force stands. */
+  const need = STARTING_CALENDAR[input.format].length
+  const slots = bestBands(zone, counted, need)
+  if (slots.length < need) return { state: 'unchanged', rule: input.current }
   const gapHours = bestGap(zone, counted, GAP_BOUNDS[input.format]) ?? input.current.gapHours
   if (input.current.basis === 'learned' && gapHours === input.current.gapHours && slots.join(',') === input.current.slots.join(',')) {
     return { state: 'unchanged', rule: input.current }
@@ -181,10 +201,71 @@ export function cadenceLine(format: SocialFormat, rule: CadenceRule, when: strin
     : `${FORMAT_NAME[format].many} go at least ${rule.gapHours} hours apart, ${when}. Learned from our own ${rule.learnedFrom} posts, ranked by tickets sold.`
 }
 
+/** An approved piece as the week's plan places it. */
+export interface SchedulePiece {
+  readonly id: string
+  readonly format: SocialFormat
+  readonly approvedAt: Date
+  /** The earliest it may go: a story goes on the day of its first night (dayStart), never days before it. */
+  readonly notBefore?: Date | null
+  /** The latest it may go: the end of its earliest night, since a piece with a night that has ended is held whole. */
+  readonly deadline?: Date | null
+}
+
+export type WeekPlan = {
+  readonly moments: ReadonlyMap<string, Date>
+  /** Pieces whose next free band falls after their deadline: never placed late, said with the band and the deadline. */
+  readonly late: readonly { readonly id: string; readonly firstFree: Date; readonly deadline: Date }[]
+}
+
+/** Midnight on the zone's clock of the day a moment falls on: the first moment a story about that day may go. */
+export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' }).formatToParts(at)
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  return new Date(Math.floor(at.getTime() / 1000) * 1000 - ((n('hour') % 24) * 3600 + n('minute') * 60 + n('second')) * 1000)
+}
+
 /**
- * B5: the moments approved pieces go, from the cadence each format posts by. Pieces of one format go in the order
- * given, the first at the next band open after the gap since the last post, each later one a gap after the one before
- * and in a band. A feed piece and a story run on their own rules. Pure, so the schedule is driven by its own test.
+ * B5, THE WEEK'S PLAN (the PM's 09:10 of 16 November 2026): every approved piece gets the next free band of its format
+ * that keeps the format's gap from every moment already taken (the last post that went, and every schedule still
+ * waiting from an earlier approval, so two approvals an hour apart never put two feed posts inside the floor), never
+ * before its approval or its notBefore. Pieces are placed earliest deadline first, the order given on a tie, so the
+ * nights that end soonest take the soonest bands; a piece whose next free band falls after its deadline is not placed
+ * (it would be held whole at publishing) but returned as late. Pure, so the plan is driven by its own test.
+ */
+export function planMoments(
+  pieces: readonly SchedulePiece[],
+  rules: Readonly<Record<SocialFormat, CadenceRule>>,
+  taken: Readonly<Record<SocialFormat, readonly Date[]>>,
+  now: Date,
+  zone: string = SOCIAL_ZONE,
+): WeekPlan {
+  const moments = new Map<string, Date>()
+  const late: { id: string; firstFree: Date; deadline: Date }[] = []
+  const busy: Record<SocialFormat, number[]> = { feed: taken.feed.map((d) => d.getTime()), story: taken.story.map((d) => d.getTime()) }
+  const order = pieces.map((p, i) => ({ p, i })).sort((a, b) => (a.p.deadline?.getTime() ?? Infinity) - (b.p.deadline?.getTime() ?? Infinity) || a.i - b.i)
+  for (const { p } of order) {
+    const rule = rules[p.format]
+    const gap = rule.gapHours * 3_600_000
+    let at = nextSlot(rule, new Date(Math.max(now.getTime(), p.approvedAt.getTime(), p.notBefore?.getTime() ?? 0)), zone)
+    for (let tries = 0; tries < 2000; tries += 1) {
+      const clash = busy[p.format].find((t) => Math.abs(t - at.getTime()) < gap)
+      if (clash === undefined) break
+      at = nextSlot(rule, new Date(clash + gap), zone)
+    }
+    if (p.deadline && at.getTime() > p.deadline.getTime()) {
+      late.push({ id: p.id, firstFree: at, deadline: p.deadline })
+      continue
+    }
+    moments.set(p.id, at)
+    busy[p.format].push(at.getTime())
+  }
+  return { moments, late }
+}
+
+/**
+ * B5: the moments approved pieces go, with no deadlines and nothing waiting but the last post that went (the shape the
+ * week's plan began with; planMoments is the whole rule). A feed piece and a story run on their own rules.
  */
 export function scheduleMoments(
   pieces: readonly { readonly id: string; readonly format: SocialFormat; readonly approvedAt: Date }[],
@@ -193,14 +274,6 @@ export function scheduleMoments(
   now: Date,
   zone: string = SOCIAL_ZONE,
 ): Map<string, Date> {
-  const out = new Map<string, Date>()
-  const cursor: Record<SocialFormat, Date | null> = { feed: lastPosted.feed, story: lastPosted.story }
-  for (const p of pieces) {
-    const rule = rules[p.format]
-    const after = new Date(Math.max(now.getTime(), p.approvedAt.getTime()))
-    const at = nextSlot(rule, nextAllowed(rule, cursor[p.format], after), zone)
-    out.set(p.id, at)
-    cursor[p.format] = at
-  }
-  return out
+  const taken = { feed: lastPosted.feed ? [lastPosted.feed] : [], story: lastPosted.story ? [lastPosted.story] : [] }
+  return new Map(planMoments(pieces, rules, taken, now, zone).moments)
 }

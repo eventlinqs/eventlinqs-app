@@ -442,6 +442,19 @@ export function dayOf(n: CampaignNight): string {
   return local(n.startDate, n.timezone, { weekday: 'short' }).toUpperCase()
 }
 
+/**
+ * THE SPOTLIGHTS DRAWN FROM TOMORROW (the PM's 09:35 of 16 November 2026): the category and venue spotlights take no
+ * night on or before the day they are drawn, since the week's plan places the week ahead and the soonest nights first
+ * (planMoments, earliest deadline first) and a piece is held whole once any of its nights has ended. Out-14's two
+ * Melbourne spotlights each carried a Monday 7:30 pm night, drawn on that Monday, and could not have gone whole. Drawn
+ * before the week begins, the whole week (0).
+ */
+export function spotlightsFromDay(now: Date, weekStart: string): number {
+  const d = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const today = Math.round((Date.parse(`${d}T00:00:00Z`) - Date.parse(`${weekStart}T00:00:00Z`)) / DAY_MS)
+  return Math.max(0, today + 1)
+}
+
 /** The Melbourne day index of a night within the week starting weekStart: 0 Monday to 6 Sunday, or -1 outside it. */
 export function dayInWeek(n: CampaignNight, weekStart: string): number {
   const d = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n.startDate))
@@ -460,7 +473,7 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
  */
 export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport' | 'family'
 const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
-const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque)\b/i
+const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque|piano)\b/i
 // A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
 // (the PM's 22:41 fix 3: 'MESS Studio Tours', a daytime studio tour, stood under a concert crowd).
 const GIG_WORDS = /\b(bands?|djs?|live music|gigs?|album launch|ep launch|headline show|singer-songwriters?|rappers?|musicians)\b|\b(world|national|australian|farewell|reunion|anniversary|headline|album|arena|stadium|made)\s+tour\b|\btour\s+20\d\d\b|\bon tour\b/i
@@ -471,7 +484,6 @@ const MARKET_WORDS = /\b(produce|food|farmers'?|growers'?)\b[^.]{0,40}\bmarkets?
 // A match names its two sides ('Australia v England Mens T20I', 'Melbourne United vs New Zealand Breakers'); a run club
 // or a class in the sports category is no match, so a crowd in the stands never stands over it.
 const MATCH_WORDS = /\s(v|vs\.?)\s|\b(t20i?|odi|test match|grand final|semi final|derby)\b/i
-const RECITAL_ROOMS = /\b(recital|conservatorium|chamber)\b/i
 // The PM's 02:25 fix 3: a daytime family or children's show is a family show, never a gig (out-12 put a pyrotechnic rock
 // crowd over 'Pevan & Sarah in Concert 2026', a 10:30 am children's concert). No stand-in is licensed for it, so a slide
 // it leads takes the next night's kind.
@@ -497,13 +509,47 @@ export function sportOf(n: Pick<CampaignNight, 'title' | 'summary' | 'sourceTitl
   return null
 }
 /** Seated nights, and the standing crowds that never stand over them where they are as many (the PM's 02:25 fix 1). */
-const SEATED_KINDS: readonly NightKind[] = ['talk', 'classical', 'theatre']
-const STANDING_KINDS: readonly NightKind[] = ['gig', 'festival']
+const SEATED_KINDS: readonly NightKind[] = ['talk', 'classical', 'theatre', 'comedy']
+const STANDING_KINDS: readonly NightKind[] = ['gig', 'festival', 'sport']
+// The PM's 03:45 fixes 1 to 3: a seated night by its kind, its own words (a psychic, 'An evening with') or its room (a
+// recital hall, a theatre, a concert hall: the room makes a seated night, never a recital); a standing night is a gig, a
+// festival or a match in no such room (an arena, a stadium, an estate, a pub or club stands).
+const SEATED_ROOM = /\b(recital|theatre|theater|hall|playhouse|athenaeum|centre|center|auditorium|chapel|church|cathedral|the capital|opera house|story house|play house)\b/i
+const STANDING_ROOM = /\b(arena|stadium|bowl|forum|racecourse|showgrounds|park|oval|ground|estate)\b/i
+const SEATED_WORDS = /\b(psychic|medium|an evening with|in conversation)\b/i
+export function seatedNight(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'> & Partial<Pick<CampaignNight, 'startDate' | 'timezone'>>): boolean {
+  const kind = nightKind(n)
+  if (kind && SEATED_KINDS.includes(kind)) return true
+  if (SEATED_WORDS.test(n.sourceTitle ?? n.title)) return true
+  const room = `${n.venueName ?? ''} ${n.host ?? ''}`
+  return SEATED_ROOM.test(room) && !STANDING_ROOM.test(room)
+}
+export function standingNight(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'> & Partial<Pick<CampaignNight, 'startDate' | 'timezone'>>): boolean {
+  const kind = nightKind(n)
+  return Boolean(kind && STANDING_KINDS.includes(kind)) && !seatedNight(n)
+}
 // A fight is a match by its own words, whatever category its source filed it in (out-12: 'Humanoid Fighting Championship'
 // is filed as music on production, and drew a concert stage).
 const FIGHT_WORDS = /\b(fighting|fight night|boxing|kickboxing|mma|ufc|wrestling|muay thai)\b/i
+/**
+ * The listing's words without its room's own name (the PM's 03:45 fix 1, at its cause): Searows' summary reads 'tickets
+ * through Melbourne Recital Centre', and 'recital' in the room's name made a pop night classical. The venue's and host's
+ * names are taken out whole before any word decides a kind; the room is read only where a rule names it (jazz, a
+ * headline venue, a seated room).
+ */
+function withoutRooms(text: string, n: Pick<CampaignNight, 'venueName' | 'host'>): string {
+  let out = text
+  for (const room of [n.venueName, n.host]) {
+    const r = (room ?? '').trim()
+    if (r.length < 4) continue
+    const esc = r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    out = out.replace(new RegExp(`(?<!\\w)${esc}(?!\\w)`, 'gi'), () => ' ')
+  }
+  return out
+}
+
 export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle'> & Partial<Pick<CampaignNight, 'startDate' | 'timezone'>>): NightKind | null {
-  const words = `${n.sourceTitle ?? n.title} ${n.summary ?? ''}`
+  const words = withoutRooms(`${n.sourceTitle ?? n.title} ${n.summary ?? ''}`, n)
   // A daytime show with family words, or listed as a family show, before 3 pm (fix 3).
   if (n.startDate && localHour({ startDate: n.startDate, timezone: n.timezone ?? null }) < 15 && (FAMILY_WORDS.test(words) || FAMILY_CATEGORIES.includes((n.categorySlug ?? '').toLowerCase()))) return 'family'
   // A night whose own title calls it a concert is music before any talk word in its summary (out-12: 'Pevan & Sarah in
@@ -522,8 +568,6 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
   if (n.categorySlug === 'festival' || /\bfestival\b/i.test(words)) return 'festival'
   if (GIG_WORDS.test(words)) return 'gig'
   const music = isMusic
-  // A music night in a recital room is a recital, never under a concert crowd (Anne Sofie von Otter at the Recital Centre).
-  if (music && RECITAL_ROOMS.test(`${n.venueName ?? ''} ${n.host ?? ''}`)) return 'classical'
   // A music night at an arena, a stadium, a bowl or the Forum is a concert by its own venue (15 November 2026: LANY and
   // Two Door Cinema Club at John Cain Arena name no band word), so a gig's stand-in shows its kind; so is one at a concert
   // hall, a theatre or an estate (out-12: 'The Kim Wilde: Closer Tour' at Costa Hall, Boyz II Men at Mt Duneed Estate).
@@ -630,8 +674,42 @@ export function postAction(n: Pick<CampaignNight, 'cta'>): string {
  * comes off (the venue has its own line), and a title in parts joined by spaced dashes keeps its main name: the first
  * part, a colon, the second. Never a spaced dash on a post.
  */
-export function postTitle(title: string, venue: string | null): string {
+/**
+ * ONE TITLE CLEANER FOR EVERY SLIDE AND STORY (the PM's 10:40 of 16 November 2026, item 2: out-15's JazzLab showed
+ * '"Songbird: The Eva Cassidy Experience"' in its source's own quotation marks, and a post never shows a title wrapped in
+ * quotes). It strips quotes wrapping the whole title, straight or curly, double or single (a pair, with no quote of
+ * that family left inside), a stray double quote left at one end with no partner, brackets wrapping the whole title,
+ * and stray separators at either end (a dash, colon, semicolon, comma, bar, slash, bullet, asterisk, tilde, underscore).
+ * Quotes inside a title stay ('"Songbird" Starring Tarryn Stokes', 'The "Big" Night'), as do an apostrophe and a title's
+ * own closing mark (Oklahoma!, What Now?). postTitle and shortTitle call it, so every row, card, ask, cover, story and
+ * caption title passes through it. Pure.
+ */
+const DOUBLE_QUOTES = '"\u201C\u201D\u201E\u00AB\u00BB'
+const SINGLE_QUOTES = "'\u2018\u2019"
+const STRAY_ENDS = /^[\s\u2013\u2014:;,|\/\\\u2022*~_-]+|[\s\u2013\u2014:;,|\/\\\u2022*~_-]+$/g
+export function cleanTitle(title: string): string {
   let t = title.replace(/\s+/g, ' ').trim()
+  for (let pass = 0; pass < 6; pass += 1) {
+    const before = t
+    t = t.replace(STRAY_ENDS, '')
+    const first = t.charAt(0)
+    const last = t.charAt(t.length - 1)
+    const inner = t.slice(1, -1)
+    const family = DOUBLE_QUOTES.includes(first) && DOUBLE_QUOTES.includes(last) ? DOUBLE_QUOTES : SINGLE_QUOTES.includes(first) && SINGLE_QUOTES.includes(last) ? SINGLE_QUOTES : null
+    if (t.length > 2 && family && ![...inner].some((c) => family === DOUBLE_QUOTES && family.includes(c))) t = inner.trim()
+    else if (t.length > 2 && ((first === '(' && last === ')') || (first === '[' && last === ']')) && !/[()[\]]/.test(inner)) t = inner.trim()
+    else {
+      const doubles = [...t].filter((c) => DOUBLE_QUOTES.includes(c)).length
+      if (doubles === 1 && DOUBLE_QUOTES.includes(first)) t = t.slice(1).trim()
+      else if (doubles === 1 && DOUBLE_QUOTES.includes(last)) t = t.slice(0, -1).trim()
+    }
+    if (t === before) break
+  }
+  return t
+}
+
+export function postTitle(title: string, venue: string | null): string {
+  let t = cleanTitle(title)
   const suffix = t.match(/^(.*\S)\s*[-\u2013\u2014]\s*([^-\u2013\u2014]{2,40})$/)
   if (suffix) {
     const tail = suffix[2].trim().toLowerCase()
@@ -640,7 +718,7 @@ export function postTitle(title: string, venue: string | null): string {
   }
   const parts = t.split(/\s+[-\u2013\u2014]\s+/)
   if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
-  return t
+  return cleanTitle(t)
 }
 
 /**
@@ -651,7 +729,7 @@ export function postTitle(title: string, venue: string | null): string {
  * two words or more). Never an ellipsis and never a word cut: a title with no join that fits is kept whole and wraps.
  */
 export function shortTitle(title: string, max: number): string {
-  const t = title.replace(/\s+/g, ' ').trim()
+  const t = cleanTitle(title)
   if (t.length <= max) return t
   const cuts: number[] = []
   for (const re of [/:\s/g, /\s\|\s/g, /\s\(/g, /,\s/g, /\s(?:with|featuring|feat\.|ft\.|presents|starring)\s/gi, /\s\+\s/g]) {
@@ -662,7 +740,7 @@ export function shortTitle(title: string, max: number): string {
     if (i > 0 && t.slice(0, i).trim().split(' ').length >= 2 && t.slice(i + 3).trim().split(' ').length >= 2) cuts.push(i)
   }
   const fits = cuts.filter((i) => i >= 4 && i <= max).sort((a, b) => b - a)
-  return fits.length > 0 ? t.slice(0, fits[0]).replace(/[\s,:;|&+(]+$/, '').trim() : t
+  return cleanTitle(fits.length > 0 ? t.slice(0, fits[0]).replace(/[\s,:;|&+(]+$/, '').trim() : t)
 }
 
 /**
@@ -808,9 +886,10 @@ export function rangeOf(nights: readonly CampaignNight[], sessionsOf: (n: Campai
  * two of tier 1 or 2, and over a stand-in only nights of the photograph's kind (the PM's 20:40 fix 5); the ask's first
  * lines are those nights, in that order.
  */
-export function ledOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null, kind: NightKind | null = null): { order: CampaignNight[]; led: CampaignNight[]; line: string | null } {
+export function ledOf(nights: readonly CampaignNight[], photographed: CampaignNight | null = null, kind: NightKind | null = null, crowd = false): { order: CampaignNight[]; led: CampaignNight[]; line: string | null } {
   const order = [...(photographed ? [photographed] : []), ...[...nights].filter((n) => n.eventId !== photographed?.eventId).sort(byDraw)]
-  const candidates = order.filter((n) => n === photographed || (socialTierOf(n) <= 2 && (kind === null || nightKind(n) === kind)))
+  // Under a crowd stand-in only nights that stand are named (the PM's 03:45 fix 2): never a seated night under a crowd.
+  const candidates = order.filter((n) => n === photographed || (socialTierOf(n) <= 2 && (kind === null || nightKind(n) === kind) && (!crowd || standingNight(n))))
   const seen = new Set<string>()
   const named = candidates.filter((n) => {
     const t = cardTitle(n.title, DRAW_NAME_MAX)
@@ -856,10 +935,18 @@ export function lockedListSlides(
   /** One show, one line (the PM's 16:40, fix 2): a show's other sessions in the piece's days, said under its time. */
   sessionsOf: (n: CampaignNight) => readonly CampaignNight[] = () => [],
   /** The week's one chooser (the PM's 22:41 fix 2: no photograph twice in the week's feed); alone, the piece's own. */
-  weekPick?: (kind: NightKind | null, use?: 'venue', sport?: Sport | null) => StandIn | null,
+  weekPick?: (kind: NightKind | null, use?: 'venue', sport?: Sport | null, how?: { stageOnly?: boolean; avoid?: ReadonlySet<string> }) => StandIn | null,
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
-  const pick = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
+  const chooser = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
+  /* The post's own shot families (the PM's 03:45 fix 4): a pyrotechnic shot once, and a family already drawn in this
+     post passed over while another is free, so no post shows two near identical crowds. */
+  const postShots = new Set<string>()
+  const pick = (kind: NightKind | null, use?: 'venue', sport?: Sport | null, stageOnly = false) => {
+    const s = chooser(kind, use, sport, { stageOnly, avoid: postShots })
+    if (s?.shot) postShots.add(s.shot)
+    return s
+  }
   /* The PM's 17:40 fix 1 (rule one: one photo, one subject): a cover's stand-in stands over the night it is led by, which
      the cover names; since the PM's 22:41 fix 1 a day slide's stands over its first night by draw of the photograph's kind. */
   /* The first of these nights by draw whose kind still has a stand-in unused this week (out-12: a kind's set can run out
@@ -868,7 +955,8 @@ export function lockedListSlides(
     for (const n of [...ns].sort(byDraw)) {
       const kind = nightKindOf(n)
       if (!hasStandIn(kind)) continue
-      const s = pick(kind, undefined, kind === 'sport' ? sportOf(n) : null)
+      // A cover stands over the night it is led by: a seated night takes a stage or room, never a crowd (03:45 fix 2).
+      const s = pick(kind, undefined, kind === 'sport' ? sportOf(n) : null, !standingNight(n))
       if (s) return { night: n, standIn: s }
     }
     return null
@@ -883,7 +971,7 @@ export function lockedListSlides(
      single top draw had no such kind. */
   const coverPick = lead ? null : firstPicked(ordered.filter((n) => socialTierOf(n) <= 2))
   const coverStandIn = coverPick ? coverPick.standIn : null
-  const ledBy = ledOf(ordered, lead, coverStandIn ? coverStandIn.kind : null)
+  const ledBy = ledOf(ordered, lead, coverStandIn ? coverStandIn.kind : null, Boolean(coverStandIn?.shot))
   const cover: Slide = {
     t: 'week_cover',
     composition: 'contents_cover',
@@ -913,14 +1001,15 @@ export function lockedListSlides(
     const kinds = listed.map((n) => nightKindOf(n))
     const count = new Map<NightKind, number>()
     for (const k of kinds) if (k && hasStandIn(k)) count.set(k, (count.get(k) ?? 0) + 1)
-    const seated = kinds.filter((k) => k && SEATED_KINDS.includes(k)).length
-    const standing = kinds.filter((k) => k && STANDING_KINDS.includes(k)).length
-    const order = [...count.keys()]
-      .filter((k) => !(STANDING_KINDS.includes(k) && seated >= standing && seated > 0))
-      .sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || kinds.indexOf(a) - kinds.indexOf(b))
+    const seated = listed.filter((n) => seatedNight(n)).length
+    const standing = listed.filter((n) => standingNight(n)).length
+    // The PM's 03:45 fixes 2 and 3: a crowd only when every row stands; beside a seated night, a stage or room.
+    const stageOnly = !(listed.length > 0 && standing === listed.length)
+    const ranked = [...count.keys()].sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || kinds.indexOf(a) - kinds.indexOf(b))
+    const order = seated >= standing && seated > 0 ? [...ranked.filter((k) => !STANDING_KINDS.includes(k)), ...ranked.filter((k) => STANDING_KINDS.includes(k))] : ranked
     for (const k of order) {
       const first = listed.find((n) => nightKindOf(n) === k)
-      const st = pick(k, undefined, k === 'sport' && first ? sportOf(first) : null)
+      const st = pick(k, undefined, k === 'sport' && first ? sportOf(first) : null, stageOnly)
       if (st) return st
     }
     return null
@@ -1023,13 +1112,14 @@ const KIND_WORD: Record<NightKind, string> = { comedy: 'comedy', jazz: 'jazz', g
  * its nights in clock order as gold timed cards with each night's entry line, a stand-in across the top only when every
  * night is of its kind, and the ask. The place is the venue row's own name (the PM's 16:40, fix 4), else its host's.
  */
-export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string, weekPick?: (kind: NightKind | null, use?: 'venue') => StandIn | null): Extract<Slide, { t: 'venue' }> {
+export function venueSlideOf(host: string, nights: readonly CampaignNight[], origin: string, weekPick?: (kind: NightKind | null, use?: 'venue', sport?: Sport | null, how?: { stageOnly?: boolean; avoid?: ReadonlySet<string> }) => StandIn | null): Extract<Slide, { t: 'venue' }> {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const kinds = new Set(ordered.map((n) => nightKind(n)))
   const [kind] = [...kinds]
   const one = kinds.size === 1 && kind ? kind : null
   // Never a stand-in whose venue band the guard faulted (stand-ins.ts, venue: false; screen 3 of 16 November 2026).
-  const s = one ? (weekPick ?? standInChooser())(one, 'venue') : null
+  // A venue's week over a seated room takes a stage or room too, never a crowd (the PM's 03:45 fix 2, the same class).
+  const s = one ? (weekPick ?? standInChooser())(one, 'venue', null, { stageOnly: !ordered.every((n) => standingNight(n)) }) : null
   const count = ordered.length
   const countWord = (['', 'One', 'Two', 'Three', 'Four', 'Five'][count] ?? String(count))
   return {
@@ -1194,8 +1284,15 @@ export function planCampaign(input: {
    * or none: the brand piece is then drawn in EventLinqs' own art (treatment C), never a stand-in photo.
    */
   brandPhoto?: { url: string; credit: string } | null
+  /**
+   * The first day of the week (0 is Monday) a spotlight's nights may fall on (spotlightsFromDay): a spotlight drawn on a
+   * day of the week already under way carries nights from the next day on, so it can still go whole. 0, the default,
+   * is the whole week.
+   */
+  spotlightsFrom?: number
 }): CampaignPlan {
   const { origin, weekStart } = input
+  const spotlightsFrom = input.spotlightsFrom ?? 0
   const site = siteOf(origin)
   // One chooser for the whole week's feed (the PM's 22:41 fix 2): no stand-in photograph twice in a week.
   const weekPick = standInChooser('the week')
@@ -1360,7 +1457,7 @@ export function planCampaign(input: {
 
     /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */
     const byCategory = new Map<string, CampaignNight[]>()
-    for (const n of week) if (n.categorySlug) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
+    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
     const strongest = [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]
     if (strongest && strongest[1].filter((n) => !listed.has(n.eventId)).length >= SPOTLIGHT_MIN_NIGHTS) {
       const [slug, every] = strongest
@@ -1437,7 +1534,7 @@ export function planCampaign(input: {
   const hosts = new Map<string, CampaignNight[]>()
   // Law 18 (Lawal's 14:07 of 15 November 2026, tier 4 never goes in a post): a host is counted by its nights a post may
   // carry, so a library's toddler and baby sessions never make it the venue of the week (out-6, 18:28).
-  for (const { n } of inWeek) if (n.host && socialTierOf(n) !== 4) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
+  for (const { n, day } of inWeek) if (day >= spotlightsFrom && n.host && socialTierOf(n) !== 4) hosts.set(n.host, [...(hosts.get(n.host) ?? []), n])
   const spot = [...hosts.entries()].sort((a, b) => b[1].length - a[1].length)[0]
   if (spot) {
     const [name, all] = spot

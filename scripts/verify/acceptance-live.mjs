@@ -71,11 +71,9 @@ async function sql(query) {
 // Every published, public night still listed now, with what the checks need. The listing rule is listing-window.ts's:
 // its end where held, else the end of its start day in its own zone.
 const nights = await sql(`
-  select e.slug, e.title, e.venue_name, lower(coalesce(e.venue_city, '')) as city, e.start_date, e.end_date, e.timezone,
+  select e.id, e.slug, e.title, e.venue_name, lower(coalesce(e.venue_city, '')) as city, e.start_date, e.end_date, e.timezone,
          e.cover_image_url, nullif(btrim(coalesce(e.cover_image_alt, '')), '') as cover_alt,
          (select r.rights_state from public.event_image_rights r where r.event_id = e.id and r.image_role = 'cover' limit 1) as cover_rights,
-         (select c.image_url from public.event_cover_photos_for(array[e.id], 'event_card') c limit 1) as venue_photo,
-         (select c.licence from public.event_cover_photos_for(array[e.id], 'event_card') c limit 1) as venue_licence,
          coalesce(e.end_date, ((date_trunc('day', e.start_date at time zone coalesce(e.timezone, 'Australia/Melbourne')) + interval '1 day')
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) as until
     from public.events e
@@ -83,6 +81,40 @@ const nights = await sql(`
      and coalesce(e.end_date, ((date_trunc('day', e.start_date at time zone coalesce(e.timezone, 'Australia/Melbourne')) + interval '1 day')
            at time zone coalesce(e.timezone, 'Australia/Melbourne'))) >= now()`)
 const bySlug = new Map(nights.map((n) => [n.slug, n]))
+
+/*
+ * EACH NIGHT'S VENUE COVER, READ AS THE PUBLIC PAGES READ IT (14 November 2026). event_cover_photos_for is granted to
+ * anon, authenticated and service_role only (20261031010001), and the Management API's read only query runs as
+ * supabase_read_only_user, which holds pg_read_all_data and no EXECUTE on it
+ * (https://supabase.com/docs/reference/api/v1-read-only-query). So the inline call this query carried from #269 on was
+ * refused ('permission denied for function event_cover_photos_for') and every read back since stopped at its first
+ * read. The covers now come from the same RPC the site calls, with production's public key, read from the Management
+ * API in this process and never printed or written.
+ */
+const publicKey = await (async () => {
+  const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/api-keys`, { headers: { Authorization: `Bearer ${TOKEN}` } })
+  if (!res.ok) throw new Error(`the project's public key could not be read (${res.status})`)
+  const keys = await res.json()
+  const pub = keys.find((k) => k.type === 'publishable') ?? keys.find((k) => k.name === 'anon')
+  if (!pub?.api_key) throw new Error('the project key list holds no public (publishable or anon) key')
+  return pub.api_key
+})()
+const byId = new Map(nights.map((n) => [n.id, n]))
+for (let i = 0; i < nights.length; i += 200) {
+  const res = await fetch(`https://${REF}.supabase.co/rest/v1/rpc/event_cover_photos_for`, {
+    method: 'POST',
+    headers: { apikey: publicKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_events: nights.slice(i, i + 200).map((n) => n.id), p_use: 'event_card' }),
+  })
+  if (!res.ok) throw new Error(`the covers could not be read (${res.status}): ${(await res.text()).slice(0, 200)}`)
+  for (const c of await res.json()) {
+    const n = byId.get(c.event_id)
+    if (n && !n.venue_photo) {
+      n.venue_photo = c.image_url
+      n.venue_licence = c.licence
+    }
+  }
+}
 // A public list drops a night LIST_END_LEAD_MS before its end (car 43, src/lib/events/listing-window.ts), so law 16 can
 // only demand a night that still had more than that to run when its guide was read. Read from its one source.
 // (10 November 2026: 'MISSING 1: disaster preparation at home|geelong west library' read at 11:26:00, four minutes
@@ -180,7 +212,11 @@ for (const city of CITIES) {
   let venueShown = 0
   for (const p of pageData[city].photos) {
     const n = bySlug.get(p.href.replace(/^\/events\//, ''))
-    const src = decodeURIComponent(p.src)
+    // The optimiser's address carries the photograph's own address encoded inside it, so a Commons file name with
+    // brackets or commas ('Melbourne_(AU),_Queen_Victoria_Market') arrives encoded twice; one decode left '%29%2C' and
+    // the venue's own photograph read as foreign (16 November 2026, 07:30, the Melbourne Book Market's card).
+    let src = p.src
+    for (let i = 0; i < 4; i += 1) { const next = decodeURIComponent(src); if (next === src) break; src = next }
     const file = n?.cover_image_url ? decodeURIComponent(n.cover_image_url).split('/').pop() : null
     const own = Boolean(file) && src.includes(file)
     const recorded = n && ['organiser_authorised', 'separately_licensed'].includes(n.cover_rights)

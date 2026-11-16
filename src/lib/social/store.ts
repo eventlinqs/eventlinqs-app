@@ -7,7 +7,8 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, scheduleMoments, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { dayStart, learn, planMoments, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
+import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
@@ -18,7 +19,7 @@ import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
-import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -841,7 +842,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null })
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart) })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
@@ -1139,6 +1140,74 @@ export async function approveWeekChecked(db: Db, input: { readonly by: string; r
   if (campaign === null) return null
   const pieces = campaign.pieces.map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
   return approveWeek(pieces, (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
+}
+
+export type Redrawn = { readonly redrawn: readonly string[]; readonly kept: readonly string[] }
+
+/**
+ * THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026, read by WINDOW 5A): a piece planned before
+ * Lawal's social lock of 15 November, or before a fix to the drawing, waits in the older look, and the checked approval
+ * refuses the older look, so the week's switch-on would approve none of it (production's 29 pieces of 16 November were
+ * planned at 06:40 by the code before #288). Every DRAFTED piece of this week whose newest revision the lock refuses is
+ * drawn again by the planner as it would plan it now: a new revision made by the sweep, never an approved, rejected or
+ * gone piece, never a daily poster (DAILY_POSTERS_IN_PLAN keeps them out). A piece the week's plan no longer draws in
+ * the locked look stays as it is, said. No decision row: the database keeps a person's name on a regeneration, and the
+ * revision's own made_by says the sweep drew it.
+ */
+export async function redrawOlderLook(db: Db, now: Date): Promise<Redrawn> {
+  if (OLDER_LOOK_IN_PLAN) return { redrawn: [], kept: [] }
+  const campaign = await readCampaign(db, now)
+  if (campaign === null) return { redrawn: [], kept: [] }
+  if (!campaign.pieces.some(isOlderLookDraft)) return { redrawn: [], kept: [] }
+  const { pieces: fresh } = await planNow(db, campaign.campaignId, campaign.weekStart, now)
+  const { redraw, kept } = olderLookRedraws(campaign.pieces, fresh)
+  const redrawn: string[] = []
+  const notKept = [...kept]
+  for (const r of redraw) {
+    const { error } = await db.from('social_piece_revisions').insert(revisionRow(r.id, r.version, r.plan, r.message, 'sweep', null, now))
+    if (error) {
+      /* Another run wrote this version first: the database kept one, which is the rule. */
+      if (error.code !== '23505') notKept.push(`${r.label}: ${refusalOf(error.message) ?? error.message}`)
+      continue
+    }
+    redrawn.push(r.label)
+  }
+  return { redrawn, kept: notKept }
+}
+
+type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> }
+
+/** A piece the sweep draws again: drafted, never a daily poster, its newest revision refused by the lock. */
+export function isOlderLookDraft(p: RedrawCandidate): boolean {
+  return p.state === 'drafted' && p.kind !== 'daily_poster' && lockRefusal(p.revision.slides) !== null
+}
+
+/**
+ * Which of the week's pieces the sweep draws again, and with what (pure): each older look draft takes the piece the
+ * week's plan draws now of its kind, city and partner, at the next version; one the plan no longer draws, or draws
+ * refused, is kept as it is with the reason. A partner kit keeps the message the founder wrote.
+ */
+export function olderLookRedraws(
+  pieces: readonly RedrawCandidate[],
+  fresh: readonly PiecePlan[],
+): { readonly redraw: readonly { id: string; label: string; version: number; message: string | null; plan: PiecePlan }[]; readonly kept: readonly string[] } {
+  const redraw: { id: string; label: string; version: number; message: string | null; plan: PiecePlan }[] = []
+  const kept: string[] = []
+  for (const p of pieces.filter(isOlderLookDraft)) {
+    const label = `${p.kind} ${p.city}${p.partnerName ? ` ${p.partnerName}` : ''}`
+    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null))
+    if (!f) {
+      kept.push(`${label}: this week's plan no longer draws it in the locked look, so it stays as it is`)
+      continue
+    }
+    const refused = pieceRefusal(f)
+    if (refused) {
+      kept.push(`${label}: ${refused}`)
+      continue
+    }
+    redraw.push({ id: p.id, label, version: p.revision.version + 1, message: f.kind === 'partner_kit' ? (p.revision.message ?? f.message) : f.message, plan: f })
+  }
+  return { redraw, kept }
 }
 
 /** A piece as it went (F8): its address, or "sent" for a partner kit; the database refuses one without its approval. */
@@ -1528,10 +1597,22 @@ async function lastGone(db: Db, format: SocialFormat): Promise<Date | null> {
 
 export type Scheduled = { readonly scheduled: readonly { readonly pieceId: string; readonly goAt: string }[]; readonly held: readonly string[] }
 
+/** Every moment still waiting on a format: one per schedule (its Instagram row; Facebook's carries the same moment). */
+async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
+  const { data, error } = await db.from('social_piece_schedules').select('go_at, social_pieces!inner(format)').eq('state', 'scheduled').eq('platform', 'instagram').eq('social_pieces.format', format).limit(2000)
+  if (error) throw new Error(`the schedules waiting could not be read: ${error.message}`)
+  return (data ?? []).map((r) => new Date(r.go_at as string))
+}
+
 /**
- * B5: every piece whose NEWEST revision a person approved, not gone and not yet given its moment for that approval,
- * gets one on Instagram and Facebook at the cadence's next slot. Writes schedules only; publishes nothing (F9). A
- * second run finds them scheduled already (the database keeps one per piece, network and approval).
+ * B5, THE WEEK'S PLAN (the PM's 09:10 of 16 November 2026): every piece whose NEWEST revision a person approved, not gone
+ * and not yet given its moment for that approval, gets one on Instagram and Facebook from planMoments (cadence.ts): the
+ * next free band that keeps the gap from the last post and from every schedule still waiting, earliest deadline first.
+ * A piece's deadline is the end of its earliest night, since publishing holds a piece whole once a night has ended; a
+ * story waits for the day of its first night. A piece that cannot go before its deadline is never scheduled late: its
+ * schedule is written and held at once with the reason, so it shows on /admin/social and is not tried again for that
+ * approval. Writes schedules only; publishes nothing (F9). A second run finds them scheduled already (the database keeps
+ * one per piece, network and approval).
  */
 export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Scheduled> {
   const { data: approvals, error } = await db.from('social_piece_approvals').select('id, piece_id, revision, approved_at').order('approved_at', { ascending: true }).limit(2000)
@@ -1540,7 +1621,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
   const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
   const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
   const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
-  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date }[] = []
+  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date; eventIds: string[] }[] = []
   for (const a of approvals ?? []) {
     const pieceId = a.piece_id as string
     if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
@@ -1548,23 +1629,64 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
     if (!rev || rev.version !== (a.revision as number)) continue
     const { data: piece } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
     if (!piece) continue
-    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string) })
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds })
   }
   if (due.length === 0) return { scheduled: [], held: [] }
+
+  /* Each piece's window from its own nights, read now. */
+  const ids = [...new Set(due.flatMap((d) => d.eventIds))]
+  const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select('id, title, start_date, end_date').in('id', ids) : { data: [], error: null }
+  if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
+  const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)) }]))
+  const firstEnding = new Map<string, { title: string; end: Date }>()
+  const pieces: SchedulePiece[] = due.map((d) => {
+    const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined && Number.isFinite(n.end))
+    if (own.length === 0) return { id: d.id, format: d.format, approvedAt: d.approvedAt }
+    const soonest = own.reduce((a, b) => (b.end < a.end ? b : a))
+    firstEnding.set(d.id, { title: soonest.title, end: new Date(soonest.end) })
+    const firstStart = Math.min(...own.map((n) => n.start))
+    return {
+      id: d.id,
+      format: d.format,
+      approvedAt: d.approvedAt,
+      deadline: new Date(soonest.end),
+      notBefore: d.format === 'story' && Number.isFinite(firstStart) ? dayStart(new Date(firstStart)) : null,
+    }
+  })
+
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).
   const rules = {
     feed: withStartingCalendar(await cadenceFor(db, 'instagram', 'feed', now), 'feed'),
     story: withStartingCalendar(await cadenceFor(db, 'instagram', 'story', now), 'story'),
   }
-  const moments = scheduleMoments(due, rules, { feed: await lastGone(db, 'feed'), story: await lastGone(db, 'story') }, now)
+  const taken: Record<SocialFormat, Date[]> = { feed: await waitingMoments(db, 'feed'), story: await waitingMoments(db, 'story') }
+  for (const format of ['feed', 'story'] as const) {
+    const last = await lastGone(db, format)
+    if (last) taken[format].push(last)
+  }
+  const plan = planMoments(pieces, rules, taken, now)
+  const lateOf = new Map(plan.late.map((l) => [l.id, l]))
   const scheduled: { pieceId: string; goAt: string }[] = []
   const held: string[] = []
   for (const d of due) {
-    const goAt = (moments.get(d.id) as Date).toISOString()
+    const late = lateOf.get(d.id)
+    const at = plan.moments.get(d.id) ?? late?.firstFree
+    if (!at) continue
+    const goAt = at.toISOString()
     const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt }))
     const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
-    if (ierr) held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
-    else scheduled.push({ pieceId: d.id, goAt })
+    if (ierr) {
+      held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
+      continue
+    }
+    if (late) {
+      const night = firstEnding.get(d.id)
+      const reason = `Not scheduled: its next free band, ${dayTime(goAt, now)}, is after ${night?.title ?? 'its first night'} ends (${dayTime(late.deadline.toISOString(), now)}), and a piece with a night that has ended is held whole. Regenerate it without that night and approve it again.`
+      await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
+      held.push(`${d.id}: ${reason}`)
+      continue
+    }
+    scheduled.push({ pieceId: d.id, goAt })
   }
   return { scheduled, held }
 }

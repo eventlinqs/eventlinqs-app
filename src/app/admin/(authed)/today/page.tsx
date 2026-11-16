@@ -123,14 +123,20 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       />
 
       {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
-      <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* One card a row at 320, two from 375, four at desktop (the PM's 07:30 polish (b): two narrow columns at 320). */}
+      <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-4">
         {/* What the number is made of, said on the card (the PM's 02:45 fix 1): each list below with its count. */}
         <StatCard
           label="Waiting for you"
           value={count.format(queue.waiting)}
           sub={queue.allClear ? 'All clear' : queue.sections.filter((x) => x.items.length > 0).map((x) => `${count.format(x.items.length)} ${x.title.toLowerCase()}`).join(', ')}
         />
-        <StatCard label="Overdue tasks" value={centre.state === 'read' ? count.format(centre.overdue) : 'Not read'} sub="Command Centre" />
+        {/* What the figure counts, said under it (the PM's 07:30 polish (a)): 'None overdue', or how many are past their day. */}
+        <StatCard
+          label="Overdue tasks"
+          value={centre.state === 'read' ? count.format(centre.overdue) : 'Not read'}
+          sub={centre.state === 'read' ? (centre.overdue === 0 ? 'None overdue' : `${countOf(centre.overdue, 'task')} past ${centre.overdue === 1 ? 'its' : 'their'} day`) : 'The task list could not be read'}
+        />
         <StatCard
           label="Waiting for approval"
           value={automation.ok ? count.format(automation.needs.approvals) : 'Not read'}

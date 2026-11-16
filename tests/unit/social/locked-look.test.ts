@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, shortTitle, socialTierOf, splitLine, sportOf, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
+import { cardTitle, daySlideGroups, drawsOf, lockedListSlides, lockRefusal, nightKind, picturedLine, planCampaign, rangeOf, seatedNight, shortTitle, socialTierOf, splitLine, sportOf, venueSlideOf, CARD_TITLE_MAX, ROWS_IN_TYPE, ROWS_PER_DAY_SLIDE, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { STAND_INS, standInChooser, standInOf } from '@/lib/social/stand-ins'
 import { tapWords } from '@/lib/broadcast/campaign-slides'
 import { daysElement, keepDate, keepTogether, twoLines } from '@/lib/broadcast/day-cards'
@@ -440,7 +440,9 @@ describe("the PM's 20:40 fixes", () => {
     const s = lockedListSlides([dermot, eternity], ['2 music', 'nights in Melbourne', 'this week'], ORIGIN)
     const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
     expect(standInOf(cover.photo)?.kind).toBe('gig')
-    expect(cover.draws).toBe('Led by Dermot Kennedy')
+    // Since the PM's 03:45 fix 1, Eternity, with no classical word of its own, is a seated gig at the Recital Centre (no
+    // longer a recital by its room): under a stage it is named beside Dermot Kennedy, under a crowd never (out-14's block).
+    expect(cover.draws).toBe(standInOf(cover.photo)?.shot ? 'Led by Dermot Kennedy' : 'Led by Dermot Kennedy and Eternity')
     expect((s.at(-1) as Extract<Slide, { t: 'ask' }>).three[0].eventId).toBe(dermot.eventId)
   })
 
@@ -534,10 +536,12 @@ describe("the PM's 22:41 fixes (out-11, 9.3)", () => {
 
 describe("out-12: five more kinds, read from the nights out-12 left bare (diag-12b.txt)", () => {
   const k = (title: string, categorySlug: string, venueName: string, summary: string | null = null) => nightKind({ title, categorySlug, venueName, host: venueName, summary })
-  it('a music night at a concert hall or an estate is a concert; one in a recital room is a recital', () => {
+  it('a music night at a concert hall or an estate is a concert; the room alone never makes a recital (the PM\'s 03:45 fix 1)', () => {
     expect(k('The Kim Wilde: Closer Tour', 'music', 'Costa Hall', '80s pop star Kim Wilde brings her Closer Tour.')).toBe('gig')
     expect(k('Boyz II Men', 'music', 'Mt Duneed Estate', 'Boyz II Men play A Day On The Green at Mt Duneed Estate.')).toBe('gig')
-    expect(k('Anne Sofie von Otter & Kristian Bezuidenhout', 'music', 'Melbourne Recital Centre')).toBe('classical')
+    // Out-12 read this night as a recital by its room; the PM's 03:45 ruled the room alone makes a seated gig, and its own
+    // words ('An art song recital with piano') make the recital (the 03:45 block below).
+    expect(k('Anne Sofie von Otter & Kristian Bezuidenhout', 'music', 'Melbourne Recital Centre')).toBe('gig')
     // A concert by its own title is music before a talk word in its summary (out-12's third draw: Bendigo's cover).
     expect(k('Pevan & Sarah in Concert 2026', 'music', 'Ulumbarra Theatre', "Children's music duo Pevan & Sarah bring their high-energy concert of singalongs that teach reading, maths and feelings.")).toBe('gig')
     expect(k('A Christmas Concert', 'music', 'St Paul', 'The choir sings carols.')).toBe('christmas')
@@ -631,7 +635,8 @@ describe("the PM's 02:25 fixes (out-12 held 01, 03, 10 and 12: one class, the ph
     const united = mel('2026-11-21T08:30:00Z', 'Melbourne United vs New Zealand Breakers', { categorySlug: 'sports', summary: null, venueName: 'John Cain Arena', host: 'John Cain Arena' })
     for (const sl of lockedListSlides([united], ['1 thing on', 'in Melbourne', 'this weekend'], ORIGIN)) {
       const st = 'photo' in sl ? standInOf(sl.photo) : null
-      if (st) expect(st.sport ?? null).toBeNull()
+      // Its own sport first (out-14 added an empty indoor court, basketball), else no sport named; never another sport.
+      if (st) expect([null, 'basketball']).toContain(st.sport ?? null)
     }
     const victory = mel('2026-11-25T08:45:00Z', 'Melbourne Victory v Thể Công-Viettel', { categorySlug: 'sports', summary: null, venueName: 'GMHBA Stadium', host: 'GMHBA Stadium', citySlug: 'geelong', cityName: 'Geelong' })
     const v = lockedListSlides([victory], ['1 thing on', 'in Geelong', 'coming up'], ORIGIN)
@@ -661,5 +666,120 @@ describe("the PM's 02:25 fixes (out-12 held 01, 03, 10 and 12: one class, the ph
     const ask = lockedListSlides([carly, kate, diesel, garden], ['4 things on', 'in Ballarat', 'this week'], ORIGIN).at(-1) as Extract<Slide, { t: 'ask' }>
     expect(ask.three.map((r) => r.eventId)).not.toContain(carly.eventId)
     expect(ask.three.map((r) => r.eventId)).toContain(garden.eventId)
+  })
+})
+
+describe("the PM's 03:45 fixes (out-13 held 02, 04, 09 and 12: a crowd over seated nights, a recital made by its room)", () => {
+  const n2 = (iso: string, title: string, extra: Partial<CampaignNight> & { state?: CtaInput } = {}) => night({ at: iso, title, summary: null, ...extra })
+  const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre' }
+  const shotOf = (photo: string | null | undefined) => standInOf(photo ?? null)?.shot ?? 'stage'
+
+  it('fix 1: the room alone never makes a recital, nor its name inside the summary; its own words do', () => {
+    expect(nightKind({ title: 'SONARIO ft. Sean Riley', categorySlug: 'music', ...mrc, summary: 'Tickets through Melbourne Recital Centre.' })).toBe('gig')
+    expect(nightKind({ title: 'A Night of Song', categorySlug: 'music', venueName: 'Recital Hall', host: 'Recital Hall', summary: 'At the Recital Hall, a string quartet plays.' })).toBe('classical')
+    expect(nightKind({ title: 'Searows', categorySlug: 'music', ...mrc, summary: 'An event on a Tuesday evening, tickets through Melbourne Recital Centre.' })).toBe('gig')
+    expect(nightKind({ title: 'Anne Sofie von Otter & Kristian Bezuidenhout', categorySlug: 'music', ...mrc, summary: 'An art song recital with piano.' })).toBe('classical')
+    expect(seatedNight({ title: 'Searows', categorySlug: 'music', ...mrc, summary: null })).toBe(true)
+  })
+
+  it('04: an arena pop show beside two recital hall nights takes a stage with no crowd, never violins', () => {
+    const robyn = n2('2026-11-24T08:00:00Z', 'Robyn', { venueName: 'Rod Laver Arena', host: 'Rod Laver Arena' })
+    const searows = n2('2026-11-24T08:30:00Z', 'Searows', mrc)
+    const sonario = n2('2026-11-26T08:00:00Z', 'SONARIO ft. Sean Riley', mrc)
+    const s = lockedListSlides([robyn, searows, sonario], ['3 things worth', 'planning for', 'in Melbourne'], ORIGIN)
+    const day = daysOf(s).find((d) => d.rows.some((r) => r.eventId === robyn.eventId))!
+    expect(standInOf(day.photo)?.kind).not.toBe('classical')
+    expect(shotOf(day.photo)).toBe('stage')
+  })
+
+  it('02: a fight night and a talk at the Recital Centre take a stage or room, never a standing crowd', () => {
+    const fight = n2('2026-11-21T08:30:00Z', 'Humanoid Fighting Championship', { categorySlug: 'sports', venueName: 'Margaret Court Arena', host: 'Margaret Court Arena' })
+    const talk = n2('2026-11-22T00:00:00Z', 'An Evening with Alastair Campbell', { summary: 'The author in conversation.', ...mrc })
+    const s = lockedListSlides([fight, talk], ['2 things on', 'in Melbourne', 'this weekend'], ORIGIN)
+    for (const d of daysOf(s)) expect(shotOf(d.photo)).toBe('stage')
+  })
+
+  it('09: a 1:00 pm psychic show at Costa Hall beside a concert takes a stage, never a crowd', () => {
+    const edward = n2('2026-11-28T02:00:00Z', 'Psychic Medium John Edward', { categorySlug: 'arts-community', venueName: 'Costa Hall', host: 'Costa Hall', citySlug: 'geelong', cityName: 'Geelong' })
+    const boyz = n2('2026-11-28T05:00:00Z', 'Boyz II Men', { venueName: 'Mt Duneed Estate', host: 'Mt Duneed Estate', citySlug: 'geelong', cityName: 'Geelong' })
+    expect(seatedNight(edward)).toBe(true)
+    const s = lockedListSlides([edward, boyz], ['2 things worth', 'planning for', 'in Geelong'], ORIGIN)
+    const day = daysOf(s).find((d) => d.rows.some((r) => r.eventId === edward.eventId))!
+    expect(shotOf(day.photo)).toBe('stage')
+  })
+
+  it('12: two shows at a heritage theatre take stages, never pyrotechnics, and no post draws two pyrotechnic shots', () => {
+    const hm = { venueName: "Her Majesty's Theatre Ballarat", host: "Her Majesty's Theatre Ballarat", citySlug: 'ballarat', cityName: 'Ballarat' }
+    const kate = n2('2026-11-19T08:00:00Z', 'Kate Ceberano: Australian Made Tour 2026', hm)
+    const diesel = n2('2026-11-21T08:30:00Z', 'Diesel by Request', hm)
+    const s = lockedListSlides([kate, diesel], ['2 things on', 'in Ballarat', 'this week'], ORIGIN)
+    const shots = s.filter((x) => x.t === 'week_cover' || x.t === 'days').map((x) => shotOf('photo' in x ? x.photo : null))
+    expect(shots.every((x) => x === 'stage')).toBe(true)
+    // Standing gigs at a club take crowds, but never two pyrotechnic shots in one post.
+    const club = (iso: string, t: string) => n2(iso, t, { venueName: 'The Corner Hotel', host: 'The Corner Hotel' })
+    const loud = lockedListSlides([club('2026-11-16T09:00:00Z', 'Band One'), club('2026-11-17T09:00:00Z', 'Band Two'), club('2026-11-18T09:00:00Z', 'Band Three'), club('2026-11-19T09:00:00Z', 'Band Four'), club('2026-11-20T09:00:00Z', 'Band Five'), club('2026-11-21T09:00:00Z', 'Band Six')], ['6 things on', 'in Melbourne', 'this week'], ORIGIN)
+    const pyro = loud.filter((x) => 'photo' in x && shotOf(x.photo) === 'pyro').length
+    expect(pyro).toBeLessThanOrEqual(1)
+  })
+})
+
+describe("out-14, the rest of the 03:45 class: the venue slide and the chooser itself", () => {
+  const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre' }
+  it("a venue's week over a seated room takes a stage or room, never a crowd, whatever the week's draw", () => {
+    for (let i = 0; i < 8; i += 1) {
+      const nights = [night({ at: '2026-11-24T08:30:00Z', title: 'Searows', summary: null, ...mrc }), night({ at: '2026-11-26T08:00:00Z', title: 'SONARIO ft. Sean Riley', summary: null, ...mrc })]
+      const v = venueSlideOf('Melbourne Recital Centre', nights, ORIGIN, standInChooser(`venue ${i}`))
+      expect(standInOf(v.photo)?.kind).toBe('gig')
+      expect(standInOf(v.photo)?.shot).toBeUndefined()
+    }
+  })
+
+  it('the chooser: stage only never hands a crowd; a pyrotechnic shot never twice; a crowd family passed over while a stage is free', () => {
+    for (let i = 0; i < 8; i += 1) {
+      const pick = standInChooser(`chooser ${i}`)
+      for (let j = 0; j < 4; j += 1) expect(pick('gig', undefined, null, { stageOnly: true })?.shot).toBeUndefined()
+    }
+    const pick = standInChooser('pyro once')
+    const shots = Array.from({ length: 12 }, () => pick('gig', undefined, null, { avoid: new Set(['pyro']) })?.shot)
+    expect(shots).not.toContain('pyro')
+    const fresh = standInChooser('avoid crowd')
+    expect(fresh('gig', undefined, null, { avoid: new Set(['crowd', 'pyro']) })?.shot).toBeUndefined()
+  })
+
+  it("a crowd cover names only nights that stand: Eternity, a seated gig at the Recital Centre, is never named under it", () => {
+    const dermot = night({ at: '2026-11-21T09:00:00Z', title: 'Dermot Kennedy', summary: null, venueName: 'Rod Laver Arena', host: 'Rod Laver Arena' })
+    const eternity = night({ at: '2026-11-19T07:00:00Z', title: 'Eternity', summary: null, ...mrc })
+    expect(nightKind(eternity)).toBe('gig')
+    expect(seatedNight(eternity)).toBe(true)
+    for (let i = 0; i < 8; i += 1) {
+      const s = lockedListSlides([dermot, eternity], ['2 music', 'nights in Melbourne', `this week ${i}`], ORIGIN)
+      const cover = s[0] as Extract<Slide, { t: 'week_cover' }>
+      if (standInOf(cover.photo)?.shot) expect(cover.draws).toBe('Led by Dermot Kennedy')
+    }
+  })
+
+  it("a match beside a night of no kind takes a ground with no crowd, never no photograph (out-14's first draw held Melbourne 01)", () => {
+    const synth = night({ at: '2026-11-21T03:00:00Z', title: 'Synth 101 at MESS', summary: null, venueName: 'MESS', host: 'MESS', categorySlug: 'education' })
+    const t20 = night({ at: '2026-11-21T08:00:00Z', title: 'Australia v England Mens T20I', categorySlug: 'sports', summary: null, venueName: 'Melbourne Cricket Ground', host: 'Melbourne Cricket Ground' })
+    expect(nightKind(synth)).toBeNull()
+    for (let i = 0; i < 6; i += 1) {
+      const s = lockedListSlides([synth, t20], ['2 things on', 'in Melbourne', `Saturday ${i}`], ORIGIN)
+      expect(lockRefusal(s)).toBeNull()
+      for (const d of daysOf(s)) {
+        expect(d.photo).toBeTruthy()
+        expect(standInOf(d.photo)?.shot).toBeUndefined()
+      }
+    }
+    // A fight beside a talk takes the ring or the talk's stage, never a crowd.
+    const fight = night({ at: '2026-11-21T09:00:00Z', title: 'Humanoid Fighting Championship', categorySlug: 'sports', summary: null, venueName: 'Margaret Court Arena', host: 'Margaret Court Arena' })
+    const talk = night({ at: '2026-11-21T08:00:00Z', title: 'An Evening with Alastair Campbell', summary: 'The author in conversation.', ...mrc })
+    const s2 = lockedListSlides([fight, talk], ['2 things on', 'in Melbourne', 'Saturday'], ORIGIN)
+    expect(lockRefusal(s2)).toBeNull()
+  })
+
+  it('every crowd and pyrotechnic shot is marked by looking (13230484: a concert crowd across the front)', () => {
+    expect(STAND_INS.find((x) => x.id === '13230484')?.shot).toBe('crowd')
+    expect(STAND_INS.filter((x) => x.shot === 'pyro').map((x) => x.id).sort()).toEqual(['30215324', '36257830'])
+    expect(STAND_INS.filter((x) => x.kind === 'gig' && !x.shot).length).toBeGreaterThanOrEqual(7)
   })
 })

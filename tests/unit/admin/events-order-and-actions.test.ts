@@ -77,3 +77,20 @@ describe("Today's gates named by their order and day (fix 5)", () => {
     expect(names.has('recurring-30')).toBe(false)
   })
 })
+
+describe("the PM's 07:30 polish (ADMIN 3 at 9.5, for the next train)", () => {
+  const today = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/today/page.tsx'), 'utf8')
+  const detail = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/events/[id]/page.tsx'), 'utf8')
+  it("(a) the Overdue card says what it counts, never 'Command Centre' under the figure", () => {
+    expect(today).toContain("'None overdue'")
+    expect(today).not.toContain('sub="Command Centre"')
+  })
+  it('(b) at 320 the four cards stand one a row, two from 375, four at desktop', () => {
+    expect(today).toContain('className="mb-8 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-4"')
+  })
+  it('(c) the slug is a short grey line that wraps after its hyphens, never a monospace block', () => {
+    expect(detail).toContain('<dd data-slug className="text-[12px] leading-5 text-white/50">')
+    expect(detail).toContain('<wbr />')
+    expect(detail).not.toContain('font-mono text-[12px] text-white/70">{event.slug}')
+  })
+})
