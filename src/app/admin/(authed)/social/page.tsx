@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { cadenceFor, lastPosted, readAssets, readCampaign, readImageRequests, readPosts, type AssetRow, type PieceRow, type PostRow } from '@/lib/social/store'
 import { imageRightsLine, readImageRights, type ImageRightsReport } from '@/lib/media/image-rights'
+import { readBlotatoTargets, type BlotatoTargets } from '@/lib/social/blotato-targets'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import {
@@ -575,6 +576,58 @@ function RegisterSection({ assets }: { assets: AssetRow[] }) {
  */
 const RIGHTS_WORDS = { platform_library: 'Library photograph, not of this night', unrecorded: 'Rights not on record' } as const
 
+/**
+ * WHERE THE WEEK POSTS (the PM's 20:50 of 17 November 2026, item 3): the Facebook Page and the Instagram account the
+ * publisher would post to, read from Blotato with this deployment's own key at each visit, before Approve week.
+ */
+function TargetsSection({ targets }: { targets: BlotatoTargets }) {
+  return (
+    <section data-section="posts-to" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+      <h2 className="font-display text-lg font-semibold text-white">Where the week posts</h2>
+      {targets.state === 'no-key' ? (
+        <p data-state="no-key" className="mt-2 text-sm text-white/70">
+          This deployment holds no Blotato key, so nothing can post. A key stored in Vercel takes effect with the next deploy.
+        </p>
+      ) : targets.state === 'failed' ? (
+        <p data-state="failed" className="mt-2 text-sm text-white/70">
+          Blotato could not be read just now: {targets.words}
+        </p>
+      ) : (
+        <>
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+            <dt className="text-white/60">Facebook Page</dt>
+            <dd data-posts-to="facebook" className="font-semibold text-white">
+              {targets.postsTo.facebook ?? 'None the publisher would use'}
+            </dd>
+            <dt className="text-white/60">Instagram</dt>
+            <dd data-posts-to="instagram" className="font-semibold text-white">
+              {targets.postsTo.instagram ?? 'None connected'}
+            </dd>
+          </dl>
+          {targets.refusal === null ? null : (
+            <p data-state="refusal" className="mt-3 text-sm text-white">
+              {targets.refusal}
+            </p>
+          )}
+          <details className="mt-4 text-xs text-white/60">
+            <summary className="cursor-pointer">
+              What Blotato holds: {targets.accounts.length} account{targets.accounts.length === 1 ? '' : 's'}
+              {targets.facebookPages === null ? '' : `, ${targets.facebookPages.length} Facebook Page${targets.facebookPages.length === 1 ? '' : 's'}`}
+            </summary>
+            <ul className="mt-2 space-y-1">
+              {[...targets.accounts, ...(targets.facebookPages ?? [])].map((t, i) => (
+                <li key={`${i}|${t.platform}|${t.id}`} data-blotato={t.platform}>
+                  {t.platform}: {t.fields || t.label}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </>
+      )}
+    </section>
+  )
+}
+
 function ImageRightsSection({ report }: { report: ImageRightsReport }) {
   return (
     <section data-section="image-rights" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
@@ -617,7 +670,13 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
   const db = createAdminClient()
   const now = new Date()
   const posts = await readPosts(db, now)
-  const [campaign, requests, assets, imageRights] = await Promise.all([readCampaign(db, now), readImageRequests(db, now), readAssets(db), readImageRights(db)])
+  const [campaign, requests, assets, imageRights, targets] = await Promise.all([
+    readCampaign(db, now),
+    readImageRequests(db, now),
+    readAssets(db),
+    readImageRights(db),
+    readBlotatoTargets(process.env),
+  ])
   const rules = await Promise.all(
     (['feed', 'story'] as const).map(async (format) => {
       const rule = await cadenceFor(db, 'instagram', format, now)
@@ -649,6 +708,8 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
           {said}
         </p>
       )}
+
+      <TargetsSection targets={targets} />
 
       <CampaignSection campaign={campaign} requests={requests} />
 
