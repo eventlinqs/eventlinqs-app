@@ -475,7 +475,12 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
  * music night at a concert hall or an estate is a concert, as one at an arena already was.
  */
 export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport' | 'family'
-const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
+const TALK_WORDS = /\b(in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
+// 'An Evening with' heads talks and concerts alike (read on production, 18 November 2026, 06:27: the Recital Centre's
+// Alastair Campbell and Ben Macintyre talks; Geelong Arts Centre's Cat Power: The Greatest and Celtic Thunder concerts),
+// so the phrase alone is a talk only where the night's own words name no performance.
+const EVENING_WITH = /\ban evening with\b/i
+const PERFORMANCE_WORDS = /\b(performance|performs?|performing|songs?|sings?|singing|concerts?|band|album)\b/i
 const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque|piano)\b/i
 // A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
 // (the PM's 22:41 fix 3: 'MESS Studio Tours', a daytime studio tour, stood under a concert crowd).
@@ -560,7 +565,7 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
   if (/\bconcert\b/i.test(n.sourceTitle ?? n.title) && !CLASSICAL_WORDS.test(words) && !DANCE_WORDS.test(words)) return 'gig'
   const isMusic = ['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase())
   if (FIGHT_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
-  if (TALK_WORDS.test(words)) return 'talk'
+  if (TALK_WORDS.test(words) || (EVENING_WITH.test(words) && !PERFORMANCE_WORDS.test(words))) return 'talk'
   // A sports night that names its two sides is a match whatever else its words say (a band at half time is no gig).
   if (['sports', 'sport'].includes((n.categorySlug ?? '').toLowerCase()) && MATCH_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
   if (/\bjazz/i.test(`${words} ${n.venueName ?? ''} ${n.host ?? ''}`)) return 'jazz'

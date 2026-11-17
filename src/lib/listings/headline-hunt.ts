@@ -30,11 +30,11 @@ export function huntCategory(title: string, usual: GuideCategory, venue: string)
   if (SPORTING_VENUE.test(venue) && /\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
   const read = classify({ title }).primary as GuideCategory | null
   if (read) return read
-  // Where the classifier reads nothing, the one kind reader the posts use decides a talk or a theatre company's production
-  // before the venue's usual category (the PM's 04:38 of 18 November 2026: 'An Evening with Alastair Campbell', a talk,
-  // was filed as Music, the Recital Centre's usual category, while the posts read it as a talk).
-  const kind = nightKind({ title, sourceTitle: title, summary: null, venueName: venue, host: venue, categorySlug: usual })
-  if (kind === 'talk') return 'education' as GuideCategory
+  // Where the classifier reads nothing, the one kind reader the posts use files a stage production its title names (a
+  // Shakespeare, a players' or theatre company's show) as theatre before the venue's usual category (the PM's 04:38 of
+  // 18 November 2026). A TALK is never decided from a title: 'An Evening with' heads Alastair Campbell's talk and Cat
+  // Power's and Celtic Thunder's concerts alike (read on production at 06:23), so only the source's own words can say it.
+  const kind = nightKind({ title, sourceTitle: title, summary: null, venueName: venue, host: venue, categorySlug: null })
   if (kind === 'theatre') return 'theatre' as GuideCategory
   return usual
 }

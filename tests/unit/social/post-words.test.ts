@@ -118,4 +118,17 @@ describe("a night's kind from its own words, never its category alone (the PM's 
     expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: 'Three local bands on the front bar stage.' }))).toBe('gig')
     expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: null }))).toBeNull()
   })
+  // Read on production, 18 November 2026, 06:27 (q/evening-with.json): 'An Evening with' heads the Recital Centre's talks
+  // (Alastair Campbell, Ben Macintyre) and Geelong Arts Centre's and Ballarat's concerts (Cat Power: The Greatest, Celtic
+  // Thunder) alike. The phrase alone is a talk only where the night's own words name no performance; a night filed under
+  // Education and talks is a talk whatever its title.
+  it("reads 'An Evening with' as a talk only where nothing says the night is a performance", () => {
+    const gac = { venueName: 'Costa Hall', host: 'Geelong Arts Centre', categorySlug: 'arts-community' }
+    const catPower = night({ at: '2026-12-02T08:30:00Z', title: 'An Evening with Cat Power: The Greatest', summary: 'A performance at Costa Hall, Geelong Arts Centre.', ...gac })
+    const celtic = night({ at: '2027-03-29T08:00:00Z', title: 'An Evening with CELTIC THUNDER', summary: 'Celtic Thunder return with a hand-picked set of their best-loved songs, from stirring Irish classics to big sound ballads.', venueName: 'Civic Hall Ballarat', host: 'Civic Hall Ballarat', categorySlug: 'music' })
+    const campbell = night({ at: '2026-11-22T00:30:00Z', title: 'An Evening with Alastair Campbell', summary: 'An event on a Sunday morning, tickets through Melbourne Recital Centre.', ...mrc })
+    expect(nightKind(catPower)).not.toBe('talk')
+    expect(nightKind(celtic)).not.toBe('talk')
+    expect(nightKind(campbell)).toBe('talk')
+  })
 })
