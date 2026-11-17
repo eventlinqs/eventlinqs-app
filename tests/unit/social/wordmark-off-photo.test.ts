@@ -25,7 +25,7 @@ beforeAll(async () => {
   vi.stubGlobal('fetch', (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     if (url === OWN || /\/social\/stand-ins\/\d+\.jpg$/.test(url)) {
-      return new Response(green, { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': String(green.byteLength) } })
+      return new Response(new Uint8Array(green), { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': String(green.byteLength) } })
     }
     return real(input, init)
   }) as typeof fetch)
