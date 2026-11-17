@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { readBookingFacts } from '../../../src/lib/listings/booking-facts'
 import { judgeSelfListing, sessionOf, wordsStateDate, type PageReading, type SelfListingSubmission } from '../../../src/lib/listings/self-listing'
 import { publicHost } from '../../../src/lib/listings/booking-page'
-import { approvedOver, cleanTitle, summaryFrom } from '../../../src/lib/listings/self-listing-run'
+import { approvedOver, cleanTitle, organiserPhotoAlt, seriesEndOf, summaryFrom } from '../../../src/lib/listings/self-listing-run'
 import { judgeSubmission, type SubmissionContext, type SubmissionInput } from '../../../src/lib/listings/submission'
 
 /**
@@ -419,5 +421,43 @@ describe('a person who presses Publish now on /admin/submissions publishes it (1
   test('with no reviewer the checks decide alone', () => {
     const held = { verdict: 'hold' as const, reason: 'Its booking page could not be read (the page answered 404).' }
     expect(approvedOver(held, sub, 'x', undefined)).toBe(held)
+  })
+})
+
+/*
+ * AN ORGANISER'S STATED END PAST MIDNIGHT IS KEPT (16 November 2026, H2o New Year's Eve, published 16:11): Joe stated
+ * 8 pm to 2:30 am; the run kept a series end only on the start's own date, so his 2:30 am was dropped and the page showed
+ * no end. The occurrence builder reads an end at or before the start as the next morning (occurrences.ts), so the series
+ * keeps 02:30; an end more than a day on, or before the start on the same date, is not a night's end and stays unstated.
+ */
+describe("the series' end from the organiser's stated times", () => {
+  const zone = 'Australia/Melbourne'
+  test("H2o's 8 pm to 2:30 am keeps its 2:30 am", () => {
+    expect(seriesEndOf('2026-12-31T09:00:00Z', '2026-12-31T15:30:00Z', zone)).toBe('02:30:00')
+  })
+  test('an end the same evening is kept as before', () => {
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-20T11:00:00Z', zone)).toBe('22:00:00')
+  })
+  test('no end, an end days on, or an end before the start is not a night\'s end', () => {
+    expect(seriesEndOf('2026-11-20T08:00:00Z', null, zone)).toBeNull()
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-22T11:00:00Z', zone)).toBeNull()
+    expect(seriesEndOf('2026-11-20T08:00:00Z', '2026-11-20T06:00:00Z', zone)).toBeNull()
+  })
+})
+
+/*
+ * AN ORGANISER'S PHOTO NEVER GOES UP WITHOUT ALT TEXT (16 November 2026, acceptance-live on www at 16:17: H2o's cover,
+ * Joe Merlo's photograph, attached by the run at 16:11, 'draws its own photograph with no alt text'). The run cannot look
+ * at a photograph, so it writes words that only say whose photograph it is and for which night, never what it shows; a
+ * person's looked at words replace them (H2o's, 16:19), and a cover that already has words keeps them.
+ */
+describe("the organiser's photograph's alt text", () => {
+  test('names the night and the venue, and claims nothing about what the photograph shows', () => {
+    expect(organiserPhotoAlt('New Years Eve Melbourne  H2o | Sunset on the Yarra', 'Metropolis Events')).toBe("The organiser's photograph for New Years Eve Melbourne H2o | Sunset on the Yarra at Metropolis Events")
+  })
+  test('the run writes it with the cover, only where the cover has no words yet', () => {
+    const run = readFileSync(join(process.cwd(), 'src/lib/listings/self-listing-run.ts'), 'utf8')
+    expect(run).toContain('cover_image_alt: organiserPhotoAlt(')
+    expect(run).toMatch(/\.is\('cover_image_alt', null\)/)
   })
 })

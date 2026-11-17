@@ -1164,6 +1164,12 @@ export async function redrawOlderLook(db: Db, now: Date): Promise<Redrawn> {
   const redrawn: string[] = []
   const notKept = [...kept]
   for (const r of redraw) {
+    // Judged as the photo rights sweep will leave it: a drawing the lock would then refuse is never written.
+    const refused = refusedOnceSwept(r.plan.slides, await slideImagesNow(db, r.plan.slides, now))
+    if (refused) {
+      notKept.push(`${r.label}: its photographs are not yet allowed by the register, so drawn again it would still be refused: ${refused}`)
+      continue
+    }
     const { error } = await db.from('social_piece_revisions').insert(revisionRow(r.id, r.version, r.plan, r.message, 'sweep', null, now))
     if (error) {
       /* Another run wrote this version first: the database kept one, which is the rule. */
@@ -1173,6 +1179,18 @@ export async function redrawOlderLook(db: Db, now: Date): Promise<Redrawn> {
     redrawn.push(r.label)
   }
   return { redrawn, kept: notKept }
+}
+
+/**
+ * A DRAWING AS THE PHOTO RIGHTS SWEEP WILL LEAVE IT (16 November 2026, read on production at 15:31: eleven pieces at
+ * version 7 after three hours). The older look sweep drew pieces again with stand-in photographs; the photo rights sweep
+ * then blanked those photographs, none being registered yet (Lawal's item 26), so the cover led with none, the lock refused
+ * it, and the next hour drew it again. The lock's reason for the slides once every photograph the register would not
+ * allow now (images, from slideImagesNow) is taken out, or null when the lock passes them. Pure.
+ */
+export function refusedOnceSwept(slides: readonly Slide[], images: ReadonlyMap<number, UsableImage | null>): string | null {
+  const left = slides.map((sl, i) => (images.has(i) && images.get(i) === null ? ({ ...sl, photo: null, credit: null } as Slide) : sl))
+  return lockRefusal(left)
 }
 
 type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> }

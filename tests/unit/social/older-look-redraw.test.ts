@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine } from '@/lib/events/cta'
 import { lockRefusal, planCampaign, type CampaignCity, type CampaignNight, type Slide } from '@/lib/social/campaign'
-import { isOlderLookDraft, olderLookRedraws } from '@/lib/social/store'
+import { isOlderLookDraft, olderLookRedraws, refusedOnceSwept } from '@/lib/social/store'
 
 /*
  * THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026): production's 29 pieces of that week were
@@ -90,5 +90,19 @@ describe('the week drawn again in the locked look', () => {
     expect(lockRefusal(ahead.slides)).toBeNull()
     const { redraw } = olderLookRedraws([row({ id: 'g', kind: 'week_ahead', slides: ahead.slides })], fresh)
     expect(redraw).toEqual([])
+  })
+
+  // 16 November 2026, read on production at 15:31: eleven pieces stood at version 7 after three hours. Each hour this sweep
+  // drew them again with stand-in photographs, and the photo-rights sweep then blanked those photographs because production
+  // had registered no stand-in yet (Lawal's item 26), so the cover led with none, the lock refused it, and the next hour drew
+  // it again. A drawing is judged as the photo-rights sweep will leave it: if the lock would refuse that, it is not written.
+  it('a drawing whose lead photograph the register would remove is refused before it is written', () => {
+    const ahead = fresh.find((p) => p.kind === 'week_ahead')!
+    const photoAt = ahead.slides.map((sl, i) => ('photo' in sl && sl.photo ? i : -1)).filter((i) => i >= 0)
+    expect(photoAt[0]).toBe(0)
+    const none = new Map(photoAt.map((i) => [i, null]))
+    expect(refusedOnceSwept(ahead.slides, none)).toMatch(/does not lead with a photograph/)
+    const all = new Map(photoAt.map((i) => [i, { url: 'u', credit: 'c', assetId: 'a', focal: null, width: null, height: null }]))
+    expect(refusedOnceSwept(ahead.slides, all)).toBeNull()
   })
 })

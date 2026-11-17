@@ -157,6 +157,29 @@ export function huntSummary(night: { categorySlug: string | null; startsAt: stri
   return `${kind} on a ${MELBOURNE_WEEKDAY.format(t)} ${part}${where}.`
 }
 
+/** One link of a hunted night's series, as event_series.booking_links holds it. */
+export type HuntSeriesLink = { url: string; kind: 'tickets'; price_from_cents: number | null; price_checked_on: string | null }
+
+/**
+ * WHERE A HUNTED NIGHT IS BOOKED, AND WHETHER IT IS FREE (the PM's 07:55 of 15 November 2026: every JazzLab night read
+ * "Free, Walk in" with no price ever read). Free entry, walk in, only where every link the night was read with states a
+ * price of nothing (car 44c, the CONTROLLER's 14:55 (4)). A night read with NO link (a calendar feed, RFC 5545, carries no
+ * price or ticket) is not free: its own page is its link, with no price claimed, so the hourly run makes it a booked night
+ * (occurrence-store.ts) and never a walk in one, which the database holds free (20261021000020). Pure.
+ */
+export function huntBooking(
+  row: { pageUrl: string; links: readonly { url: string; priceFromCents: number | null }[] },
+  today: string,
+): { free: boolean; links: HuntSeriesLink[] } {
+  if (row.links.length === 0) return { free: false, links: [{ url: row.pageUrl, kind: 'tickets', price_from_cents: null, price_checked_on: null }] }
+  const free = row.links.every((l) => l.priceFromCents === 0)
+  if (free) return { free: true, links: [] }
+  return {
+    free: false,
+    links: row.links.map((l) => ({ url: l.url, kind: 'tickets' as const, price_from_cents: l.priceFromCents, price_checked_on: l.priceFromCents === null ? null : today })),
+  }
+}
+
 /** Pages a hunt run reads per site (car 44b): every site on the list fits its two daily runs; the daily collection run
  * still reads each site up to PAGE_READ_CAP. */
 export const HUNT_PAGE_CAP = 40
@@ -218,13 +241,21 @@ export function correctionDecision(stored: string, pageStarts: ReadonlySet<strin
  */
 export function likelyDuplicate(
   night: { title: string; startsAt: string },
-  known: readonly { title: string; startsAt: string; citySlug?: string | null }[],
+  known: readonly { title: string; startsAt: string; endsAt?: string | null; citySlug?: string | null }[],
   citySlug: string,
   dayOf: (iso: string) => string,
 ): boolean {
   const title = fold(night.title)
   const day = dayOf(night.startsAt)
-  return known.some((k) => (k.citySlug ?? citySlug) === citySlug && fold(k.title) === title && dayOf(k.startsAt) === day)
+  /* A known event of several days covers every day from its first to its last (the PM's 07:55 of 15 November 2026: the
+     organiser's own AMCF, Fri 20 to Sun 22 Nov, was listed again as Fed Square's Saturday and Sunday nights). Days are the
+     caller's calendar days, compared as YYYY-MM-DD text. */
+  return known.some((k) => {
+    if ((k.citySlug ?? citySlug) !== citySlug || fold(k.title) !== title) return false
+    const first = dayOf(k.startsAt)
+    const last = k.endsAt ? dayOf(k.endsAt) : first
+    return first <= day && day <= (last < first ? first : last)
+  })
 }
 
 /**

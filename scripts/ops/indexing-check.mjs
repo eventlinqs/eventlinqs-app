@@ -29,7 +29,7 @@ import { createSign } from 'node:crypto'
 import { declareWork } from '../lib/work-report.mjs'
 import {
   INDEXING_CADENCE,
-  VERIFY_COMMAND,
+  CONNECT_KEY_STEP,
   parseSitemapLocs,
   robotsFromHtml,
   summarise,
@@ -230,7 +230,7 @@ async function main() {
   })
   say(state.headline)
   for (const fault of state.faults) console.error(`${TAG} IN THE SITEMAP AND BROKEN: ${fault.url} ${fault.fault}`)
-  if (!searchConsole.connected) say(`To connect Google: ${VERIFY_COMMAND}`)
+  if (!searchConsole.connected) say(`To connect Google: ${CONNECT_KEY_STEP}`)
   persist(state)
 }
 

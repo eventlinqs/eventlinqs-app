@@ -1,10 +1,12 @@
+import { facilityNotice, NOT_AN_EVENT } from './not-an-event'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSource } from './collect'
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
+import { huntBooking, huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
 import { sourceHostOf } from './judge'
+import { holdLeftSource, releaseLeftSource } from './left-source-store'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
@@ -48,7 +50,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const { data, error } = await db
         .from('listing_sources')
         .select(
-          'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
+          'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, last_etag, last_modified_header, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
         )
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       /* LAW 19 section 7.4, each source's open canary (migration 20261106170001). Read on its own, so a database without
@@ -73,6 +75,8 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           changes: s.changes as RegisteredSource['changes'],
           lastCheckedAt: (s.last_checked_at as string | null) ?? null,
           lastSuccessAt: (s.last_success_at as string | null) ?? null,
+          lastEtag: (s.last_etag as string | null) ?? null,
+          lastModified: (s.last_modified_header as string | null) ?? null,
           permits: {
             facts: s.permits_facts === true,
             descriptions: s.permits_descriptions === true,
@@ -99,7 +103,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const data = await readEveryRow<Record<string, unknown>>('the held nights', (from, to) =>
         db
           .from('events')
-          .select('id, title, start_date, end_date, venue_id, venue_name, venue_address, city_primary, listing_series_id')
+          .select('id, title, start_date, end_date, venue_id, venue_name, venue_address, city_primary, listing_series_id, status, visibility')
           .gte('start_date', new Date(now.getTime() - DAY_MS).toISOString())
           .lte('start_date', new Date(now.getTime() + COLLECT_AHEAD_DAYS * DAY_MS).toISOString())
           .not('venue_name', 'is', null)
@@ -111,10 +115,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
          the page an import's own listing check names (the council's AUSX rows came from a hand import, no candidate). The
          daily confirmations ('collection run, source ...') repeat a series' own site every day and are left out. A series
          with neither (an organiser's own) carries none, and is never called another source's. */
-      const published = await readEveryRow<{ published_series_id: string; page_url: string | null }>('the published candidates', (from, to) =>
+      const published = await readEveryRow<{ published_series_id: string; page_url: string | null; source_id: string | null }>('the published candidates', (from, to) =>
         db
           .from('listing_candidates')
-          .select('published_series_id, page_url')
+          .select('published_series_id, page_url, source_id')
           .not('published_series_id', 'is', null)
           .order('id')
           .range(from, to),
@@ -137,9 +141,19 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       }
       for (const p of published) note(p.published_series_id, p.page_url)
       for (const c of imported) note(c.series_id, c.source_url)
+      /* The source each series was published from (./left-source.ts: a night that leaves THAT source's list is held). */
+      const publishedBy = new Map<string, Set<string>>()
+      for (const p of published) {
+        if (!p.source_id) continue
+        const set = publishedBy.get(p.published_series_id) ?? new Set<string>()
+        set.add(p.source_id)
+        publishedBy.set(p.published_series_id, set)
+      }
       return data.map((e) => {
         const seriesId = (e.listing_series_id as string | null) ?? null
         return {
+          listedPublic: e.status === 'published' && e.visibility === 'public',
+          sourceIds: seriesId ? [...(publishedBy.get(seriesId) ?? [])] : [],
           eventId: e.id as string,
           venueId: (e.venue_id as string | null) ?? null,
           venueName: e.venue_name as string,
@@ -166,6 +180,19 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         })),
       )
       if (error) throw new Error(`listing checks could not be written: ${error.message}`)
+    },
+
+    async holdLeftSource(rows, at): Promise<number> {
+      return holdLeftSource(db, rows, at)
+    },
+
+    async releaseLeftSource(eventIds, sourceId, at): Promise<number> {
+      return releaseLeftSource(db, eventIds, sourceId, at)
+    },
+
+    async noteValidators(sourceId, etag, lastModified): Promise<void> {
+      const { error } = await db.from('listing_sources').update({ last_etag: etag, last_modified_header: lastModified }).eq('id', sourceId)
+      if (error) throw new Error(`the list's validators could not be kept: ${error.message}`)
     },
 
     async venueAddresses(citySlug: string): Promise<ReadonlyMap<string, string>> {
@@ -267,6 +294,19 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         ;({ data, error } = await write(fallback.reasons, fallback.confidence))
       }
       if (error) throw new Error(`a candidate could not be written: ${error.message}`)
+      /* THE LAST READ (Lawal, 15 November 2026, 06:03: a night goes online only from a read made that day). found_at keeps
+         the first sighting (ignoreDuplicates above), so a night this run found again moves last_read_at: the read a
+         publish rests on and dates its listing check from (listing_publish_partner_night and _accepted_night,
+         20261115091001). */
+      const { error: readError } = await db
+        .from('listing_candidates')
+        .update({ last_read_at: row.foundAt })
+        .eq('source_id', row.sourceId)
+        .eq('page_url', row.pageUrl)
+        .eq('starts_at', row.startsAt)
+      /* Before Lawal applies 20261115091001 the column is not there: the night still lands (as presented_by does above), and
+         its publish then dates from its first sighting, as it always has. Any other refusal stops the land. */
+      if (readError && !/last_read_at/.test(readError.message)) throw new Error(`a candidate's last read could not be written: ${readError.message}`)
       return (data ?? []).length > 0
     },
 
@@ -386,7 +426,9 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const anchorDate = local.slice(0, 10)
       const today = toZonedInputValue(row.foundAt, city.timezone as string).slice(0, 10)
       const name = row.title.trim()
-      const free = row.links.length > 0 && row.links.every((l) => l.priceFromCents === 0)
+      /* Free entry only where every link read states nothing to pay; a night read with no link books on its own page, with
+         no price claimed, never walk in (huntBooking; the PM's 07:55 of 15 November 2026, the JazzLab nights). */
+      const { free, links: bookingLinks } = huntBooking(row, today)
       const series = {
         venue_id: venueId,
         organisation_id: org.id,
@@ -400,8 +442,8 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         timezone: city.timezone,
         /* Car 44c (the CONTROLLER's 14:55 (4)): a one line description from the night's own facts, which the row shows;
            and a night every link of which states it free is free entry, walk in, with no ticket link. */
-        summary: huntSummary({ categorySlug: classify({ title: row.title }).primary ?? null, startsAt: row.startsAt, seller: free ? null : sellerName(row.links[0]?.url ?? null), free }),
-        booking_links: free ? [] : row.links.map((l) => ({ url: l.url, kind: 'tickets', price_from_cents: l.priceFromCents, price_checked_on: l.priceFromCents === null ? null : today })),
+        summary: huntSummary({ categorySlug: classify({ title: row.title }).primary ?? null, startsAt: row.startsAt, seller: free ? null : sellerName(bookingLinks[0]?.url ?? null), free }),
+        booking_links: bookingLinks,
         listing_source: 'eventlinqs',
         status: 'active',
       }
@@ -422,6 +464,8 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         series_id: made.id,
         source_url: row.pageUrl,
         source_date: today,
+        /* Timed at the read it rests on, this run's (Lawal, 15 November 2026, 06:03): freshness runs 24 hours from it. */
+        checked_at: row.foundAt,
         import_file: `big event hunt, source ${row.sourceId}`,
         outcome: 'confirmed',
         reuse_basis: 'licensed_source',
@@ -447,6 +491,32 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           .range(from, to),
       )
       return new Set(rows.map((r) => r.source_id))
+    },
+
+    async refuseNotEvents(now: Date): Promise<number> {
+      /* ./not-an-event.ts: every waiting night whose title is a facility notice, refused with the reason and its words,
+         only while it still waits, so a person's decision taken meanwhile is never overwritten. */
+      const rows = await readEveryRow<{ id: string; title: string }>('the waiting nights', (from, to) =>
+        db.from('listing_candidates').select('id, title').eq('status', 'waiting').order('id').range(from, to),
+      )
+      const at = now.toISOString()
+      let refused = 0
+      const byWords = new Map<string, string[]>()
+      for (const r of rows) {
+        const words = facilityNotice(r.title ?? '')
+        if (words) byWords.set(words, [...(byWords.get(words) ?? []), r.id])
+      }
+      for (const [words, ids] of byWords) {
+        const { data, error } = await db
+          .from('listing_candidates')
+          .update({ status: 'refused', refused_because: `${NOT_AN_EVENT}: a facility notice (${words})`, reviewed_at: at })
+          .in('id', ids)
+          .eq('status', 'waiting')
+          .select('id')
+        if (error) throw new Error(error.message)
+        refused += (data ?? []).length
+      }
+      return refused
     },
 
     async expirePassed(now: Date, onlySources?: readonly string[]): Promise<number> {

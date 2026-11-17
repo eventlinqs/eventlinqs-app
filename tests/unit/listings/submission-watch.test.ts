@@ -76,6 +76,19 @@ describe('where it is shown, and where it is never sent', () => {
     expect(platform([]).some((l) => l.includes('switched off'))).toBe(false)
   })
 
+  // The PM's 13:40 item 1 of 16 November 2026: the libraries' nights publish through the capture rule; count the nights
+  // the rule published in the daily state on their own line, by source, so a flood is seen.
+  test('the daily state counts the nights the rule published in the last day, by source, on its own line', async () => {
+    const route = read('src/app/api/ops/state/route.ts')
+    expect(route).toContain(".eq('decided_by', 'partner_rule')")
+    const { sectionsFor } = (await import('../../../scripts/lib/state-report.mjs')) as { sectionsFor: (s: unknown) => { title: string; lines: string[] }[] }
+    const lines = (byRule: { name: string; n: number }[]) => sectionsFor({ business: { submissionsNotLive: 0, rulePublishedBySource24h: byRule } }).find((s) => s.title === 'The platform')?.lines ?? []
+    expect(lines([{ name: 'Geelong Regional Libraries', n: 20 }, { name: 'Federation Square', n: 3 }]).filter((l) => l.startsWith('Nights published by the rule'))).toEqual([
+      'Nights published by the rule in the last 24 hours: 23 (Geelong Regional Libraries 20, Federation Square 3).',
+    ])
+    expect(lines([]).filter((l) => l.startsWith('Nights published by the rule'))).toEqual(['Nights published by the rule in the last 24 hours: none.'])
+  })
+
   test("Lawal is never in the listing path: the form, the run and the hourly backstop send him nothing (15:48 (2))", () => {
     for (const path of ['src/app/submit-event/actions.ts', 'src/lib/listings/self-listing-run.ts', 'src/app/api/cron/listing-occurrences/route.ts']) {
       const src = read(path)

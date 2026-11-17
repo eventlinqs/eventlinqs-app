@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
 import { readWeeklyDigest } from '@/lib/growth/weekly-report-digest'
 import { SOURCE_STOP_WORDS } from '@/lib/health/dead-link-hold'
+import { NOT_AN_EVENT } from '@/lib/listings/not-an-event'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const hourAgo = new Date(Date.now() - SUBMISSION_LIVE_WITHIN_MINUTES * 60_000).toISOString()
-    const [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead] = await Promise.all([
+    const [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead, ruled, notEvents] = await Promise.all([
       admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null),
       admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null).gte('created_at', since),
@@ -67,15 +68,30 @@ export async function GET(request: NextRequest) {
       // The sources the visitor sentinel switched off for dead booking links in the last day (law 19 (d); the PM's 12:25
       // item 3 of 16 November 2026: 'Lawal's daily email says so in one line').
       admin.from('listing_sources').select('name').gte('stopped_at', since).ilike('stopped_because', `%${SOURCE_STOP_WORDS}%`).limit(50),
+      // The nights a rule published in the last day, by source, so a flood is seen (the PM's 13:40 item 1 of 16 November
+      // 2026: the libraries' nights publish through the capture rule).
+      admin.from('listing_candidates').select('source_id').eq('decided_by', 'partner_rule').not('published_series_id', 'is', null).gte('reviewed_at', since).limit(5000),
+      // Facility notices the collection run kept off as not an event in the last day (the PM's 15:38 item 1).
+      admin.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('status', 'refused').ilike('refused_because', `${NOT_AN_EVENT}%`).gte('reviewed_at', since),
     ])
 
-    const failed = [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead].find((r) => r.error)
+    const failed = [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead, ruled, notEvents].find((r) => r.error)
     if (failed?.error) {
       // Named, never swallowed. A daily state that quietly reports zero events
       // live would be worse than one that says it could not count them.
       console.error('[api/ops/state] a count failed:', failed.error.message)
       return NextResponse.json({ ok: false, error: failed.error.message }, { status: 500 })
     }
+
+    const ruledBySource = new Map<string, number>()
+    for (const r of (ruled.data ?? []) as { source_id: string }[]) ruledBySource.set(r.source_id, (ruledBySource.get(r.source_id) ?? 0) + 1)
+    const ruledNames = ruledBySource.size === 0 ? { data: [] as { id: string; name: string }[], error: null } : await admin.from('listing_sources').select('id, name').in('id', [...ruledBySource.keys()])
+    if (ruledNames.error) {
+      console.error('[api/ops/state] a count failed:', ruledNames.error.message)
+      return NextResponse.json({ ok: false, error: ruledNames.error.message }, { status: 500 })
+    }
+    const nameOf = new Map(((ruledNames.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]))
+    const rulePublishedBySource24h = [...ruledBySource.entries()].map(([id, n]) => ({ name: nameOf.get(id) ?? 'a source', n })).sort((a, b) => b.n - a.n)
 
     // THE WEEKLY REPORT'S MONDAY COPY (order 4, Release 3; src/lib/growth/weekly-report-digest.ts): only when the morning
     // run asks (?weekly=1, on a Melbourne Monday), so the hourly stall check never pays for it; its own failure is said
@@ -94,6 +110,8 @@ export async function GET(request: NextRequest) {
         newOrganisers24h: organisations24.count ?? 0,
         submissionsNotLive: notLive.count ?? 0,
         sourcesStoppedDeadLinks24h: ((stoppedDead.data ?? []) as { name: string }[]).map((s) => s.name),
+        rulePublishedBySource24h,
+        notEvents24h: notEvents.count ?? 0,
       },
     })
   } catch (err) {

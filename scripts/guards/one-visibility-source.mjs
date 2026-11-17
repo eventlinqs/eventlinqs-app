@@ -79,6 +79,8 @@ const NOT_DISCOVERY = [
   ['src/app/admin/', 'the admin panel, which sees everything by definition'],
   ['src/lib/admin/', 'admin reporting, same reason'],
   ['src/app/api/cron/', 'cron jobs act on rows regardless of public visibility'],
+  ['src/lib/listings/reverify-run.ts', 'the same day re-read (Lawal, 15 November 2026): it must read the published nights the public rule hides for want of a fresh read, to show them again when a read agrees'],
+  ['src/lib/listings/left-source-store.ts', 'the engine hiding a night that left its source\'s list and showing it again when the list carries it (the PM, 15 November 2026): it writes one named night by id, never a list a visitor reads'],
   ['src/lib/events/public-visibility.ts', 'the rule itself'],
   ['src/lib/events/listing-window.ts', 'the WHEN half of the rule'],
   ['src/lib/events/revalidate-event.ts', 'invalidation, not reading'],

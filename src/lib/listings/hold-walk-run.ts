@@ -49,6 +49,8 @@ type DueHold = {
   sources_tried: Tried[] | null
   readings: Reading[] | null
   event_id: string
+  /** 20261115091001: 'duplicate' is a person's to decide; the walk never releases it. */
+  reason?: string | null
 }
 
 export type WalkOutcome = { due: number; walked: number; released: number; cancelled: number; next: number; said: string[]; failed: string[] }
@@ -269,13 +271,16 @@ export async function walkHolds(
   const out: WalkOutcome = { due: 0, walked: 0, released: 0, cancelled: 0, next: 0, said: [], failed: [] }
   const { data: due, error } = await db
     .from('listing_holds')
-    .select('id, scope, field, state, next_source, sources_tried, readings, event_id, next_check_at')
+    .select('id, scope, field, state, next_source, sources_tried, readings, event_id, next_check_at, reason')
     .is('released_at', null)
     .or(`next_check_at.is.null,next_check_at.lte.${now.toISOString()}`)
     .order('next_check_at', { ascending: true, nullsFirst: true })
     .limit(200)
   if (error) throw new Error(`the open holds could not be read: ${error.message}`)
-  const holds = ((due ?? []) as DueHold[]).filter((h) => !!h.event_id)
+  /* A duplicate of a published event (the PM's 07:55 of 15 November 2026, AMCF) is held until a person decides: its own
+     source still states the night, so the walk would release it the same day. A night that left its source's list is
+     released only by that list carrying it again (./left-source-store.ts), never by its own page lingering. */
+  const holds = ((due ?? []) as DueHold[]).filter((h) => !!h.event_id && h.reason !== 'duplicate' && h.reason !== 'left_source')
   out.due = holds.length
   const taken = holds.slice(0, perTurn)
   if (taken.length === 0) return out

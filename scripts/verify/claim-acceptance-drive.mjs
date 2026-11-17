@@ -296,7 +296,24 @@ try {
     await page.setViewportSize({ width, height: width < 768 ? 844 : 1000 })
     await page.goto(`${BASE}/dashboard/organisation/media`, { waitUntil: 'load', timeout: 300000 })
     const item = page.locator(`[data-asset="${asset?.id}"]`)
-    const drawn = await item.locator('img').first().evaluate((img) => img.complete && img.naturalWidth > 0).catch(() => false)
+    /* Wait for the image's row, bring it on screen (the image loads lazily), then for the image itself: read at once after
+       'load', the 15 November 2026 run judged the loading skeleton at 390 and an image below the first screen at 1440. */
+    await item.waitFor({ timeout: 120000 }).catch(() => {})
+    await item.scrollIntoViewIfNeeded().catch(() => {})
+    const drawn = await item
+      .locator('img')
+      .first()
+      .evaluate(
+        (img) =>
+          new Promise((done) => {
+            const ok = () => img.complete && img.naturalWidth > 0
+            if (ok()) return done(true)
+            const until = Date.now() + 30000
+            const tick = () => (ok() ? done(true) : Date.now() > until ? done(false) : setTimeout(tick, 250))
+            tick()
+          }),
+      )
+      .catch(() => false)
     const overflow = await fits(page)
     await page.screenshot({ path: join(out, `media-${width}.png`), fullPage: true })
     check(`at ${width} the media page shows the yes and the image drawn, and fits (overflow ${overflow}px)`, (await item.count()) === 1 && drawn && overflow <= 0 && (await page.getByText(PERMISSION_WORDS).count()) === 1, { drawn, overflow })

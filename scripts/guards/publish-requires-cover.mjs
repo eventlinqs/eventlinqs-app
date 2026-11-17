@@ -60,6 +60,16 @@ const MIN_PUBLISH_SITES = 3
  */
 const ALLOWANCES = [
   {
+    file: 'src/lib/listings/left-source-store.ts',
+    reason:
+      "A night that left its source's list (the PM's 07:00 of 15 November 2026): it hides a published night, and shows it again only when the same list carries it again and no other hold stands, guarded by status = 'published' and visibility = 'private'. It never writes status, so it can only put back a night that was already live.",
+  },
+  {
+    file: 'src/lib/listings/reverify-run.ts',
+    reason:
+      "The engine's own re-read and day of check (Lawal, 15 November 2026): its one events write sets visibility private on a published night its own page disagrees with, guarded by visibility = 'public'. It never writes status or sets anything public, so it can never put an event live.",
+  },
+  {
     file: 'src/lib/admin/organisers.ts',
     reason:
       'Transitions AWAY from published only (suspending an organiser moves their live events to paused). Reinstating does not auto-republish, so this path can never put an event live.',

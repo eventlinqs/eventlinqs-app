@@ -765,6 +765,12 @@ export type RegisteredSource = {
   lastCheckedAt: string | null
   /** The last moment a read of this source succeeded (listing_sources.last_success_at). */
   lastSuccessAt: string | null
+  /**
+   * The validators its list last answered with (listing_sources.last_etag, last_modified_header), for a conditional read
+   * (RFC 9110 sections 13.1.2 and 13.1.3: If-None-Match, If-Modified-Since; ./collect-run.ts). Absent before any.
+   */
+  lastEtag?: string | null
+  lastModified?: string | null
   permits: PermittedContent
   /** The register has verified its terms and page (listing_sources.verification = 'verified'). */
   verified: boolean
@@ -903,6 +909,10 @@ export type KnownEvent = ListingKey & {
   endsAt?: string | null
   /** The sites its series was read from (hosts, 'www.' aside), where on record: a night another site lists is one event twice. */
   sourceHosts?: readonly string[] | null
+  /** Published and public now (status published, visibility public): only such a night can leave its list (./left-source.ts). */
+  listedPublic?: boolean
+  /** The registered sources whose candidate published its series (listing_candidates.source_id), where on record. */
+  sourceIds?: readonly string[] | null
 }
 
 export type CandidatePlan =

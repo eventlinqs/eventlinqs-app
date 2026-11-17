@@ -72,7 +72,12 @@ const SAMPLE = Number(args[args.indexOf('--sample') + 1]) || 20
 export const CRITICAL_TITLES = [
   'Benson Boone', 'Iron Maiden', 'Khalid', 'Joji', 'LANY', 'Death Cab For Cutie',
   'Melbourne United vs Brisbane Bullets', 'Melbourne United vs South East Melbourne Phoenix', 'Melbourne City FC vs Western Sydney Wanderers FC',
+  // 15 November 2026 (Lawal, 06:03): stored Sat 21 November 8:00 pm while its page stated only Sat 4 April; held 05:14.
+  'BRAZJAZ- JL Room',
 ]
+/* Lawal, 15 November 2026, 06:03 and 06:50 (the PM's 07:00 item 4 (g)): a shown night outside its freshness tier is a FAIL;
+   the tier is the database's own arithmetic (src/lib/listings/freshness.ts, 20261115091001). */
+const { freshUntil } = pick((await import('@/lib/listings/freshness')) as typeof import('@/lib/listings/freshness'))
 
 const token = process.env.SUPABASE_ACCESS_TOKEN ?? ''
 if (!token) {
@@ -338,6 +343,44 @@ await browser.close()
       })
     }
   }
+}
+/* A FIXED CRITICAL NIGHT THAT IS HELD (15 November 2026): published and upcoming but not public, so the public key above
+   never read it. Held is right while no official page states its date: it passes as 'held, not shown'. */
+if (!ONLY) {
+  const { data: heldCritical } = await records.from('events').select(cols + ', visibility').in('title', CRITICAL_TITLES).eq('status', 'published').neq('visibility', 'public').gt('start_date', nowIso)
+  for (const h of (heldCritical ?? []) as unknown as (Row & { visibility: string })[]) {
+    if (criticalIds.has(h.id)) continue
+    results.push({ title: h.title, city: h.city_primary ?? '', stored: h.start_date, source: 'not read: the night is held', live390: 'not shown', live1440: 'not shown', price: '', category: '', verdict: 'PASS', why: `held (${h.visibility}), not shown on www`, sourceUrl: '', critical: true })
+  }
+}
+/* EVERY SHOWN NIGHT HAS AN AGREEING READ INSIDE 24 HOURS (Lawal, 15 November 2026, 06:03, rule 4): a listed night a visitor
+   can see (public, its freshness not passed) whose newest confirmed listing check is older than 24 hours is a FAIL. */
+if (!ONLY) {
+  const shown: { id: string; title: string; city_primary: string | null; start_date: string; listing_series_id: string; listing_fresh_until: string | null }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from('events').select('id, title, city_primary, start_date, listing_series_id, listing_fresh_until').eq('status', 'published').gt('start_date', nowIso).not('listing_series_id', 'is', null).or(`listing_fresh_until.is.null,listing_fresh_until.gte.${nowIso}`).order('id').range(from, from + 999)
+    if (error) throw new Error(`the shown nights could not be read: ${error.message}`)
+    shown.push(...((data ?? []) as typeof shown))
+    if (!data || data.length < 1000) break
+  }
+  const newest = new Map<string, number>()
+  const seriesIds = [...new Set(shown.map((s) => s.listing_series_id))]
+  for (let i = 0; i < seriesIds.length; i += 100) {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await records.from('listing_checks').select('series_id, checked_at').in('series_id', seriesIds.slice(i, i + 100)).eq('outcome', 'confirmed').order('id').range(from, from + 999)
+      if (error) throw new Error(`the listing checks could not be read: ${error.message}`)
+      for (const c of data ?? []) newest.set(c.series_id as string, Math.max(newest.get(c.series_id as string) ?? 0, new Date(c.checked_at as string).getTime()))
+      if (!data || data.length < 1000) break
+    }
+  }
+  const stale = shown.filter((s) => {
+    const read = newest.get(s.listing_series_id)
+    return freshUntil(read ? new Date(read) : null, new Date(s.start_date)).getTime() < Date.now()
+  })
+  for (const s of stale) {
+    results.push({ title: s.title, city: s.city_primary ?? '', stored: s.start_date, source: 'no agreeing read inside its freshness tier', live390: 'shown', live1440: 'shown', price: '', category: '', verdict: 'FAIL', why: 'shown outside its freshness tier, with no agreeing read recent enough for its distance (Lawal 15 November 2026)', sourceUrl: '', critical: false })
+  }
+  console.log(`[engine-verifier] shown listed nights: ${shown.length}; outside their freshness tier: ${stale.length}`)
 }
 
 const count = (v: Result['verdict']) => results.filter((r) => r.verdict === v).length

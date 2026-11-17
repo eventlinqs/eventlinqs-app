@@ -20,7 +20,7 @@ export type Ruled = {
   ruling: 'keep' | 'correct' | 'resource' | 'hold'
   value: string | null
   scope: 'fact' | 'night' | null
-  reason: 'officials_disagree' | 'no_official_page' | null
+  reason: 'officials_disagree' | 'no_official_page' | 'left_source' | 'duplicate' | null
   readings: Reading[]
 }
 

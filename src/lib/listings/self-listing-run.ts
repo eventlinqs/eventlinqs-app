@@ -75,6 +75,28 @@ const STALE_CLAIM_MS = 10 * 60_000
 const RUN_ACTOR = { id: null, email: null, role: 'self-listing-run' } as const
 
 /** A title as the listing shows it: no leading '#' or other marks, one space at a time. Pure. */
+/**
+ * The series' end from the organiser's stated times (16 November 2026, H2o New Year's Eve: Joe stated 8 pm to 2:30 am and
+ * the run kept an end only on the start's own date, so his 2:30 am was dropped and the page showed none). An end after the
+ * start and less than a day on is the night's end, as a local time; the occurrence builder reads one at or before the start
+ * as the next morning (./occurrences.ts). Anything else is not a night's end and stays unstated.
+ */
+export function seriesEndOf(startsAt: string, endsAt: string | null, tz: string): string | null {
+  if (!endsAt) return null
+  const ms = Date.parse(endsAt) - Date.parse(startsAt)
+  if (!(ms > 0) || ms >= 24 * 3_600_000) return null
+  return `${localParts(endsAt, tz).time}:00`
+}
+
+/**
+ * The words an organiser's photograph carries when the run sets it as the cover (16 November 2026: H2o's went up at 16:11
+ * with none, and acceptance-live read it). The run cannot look at a photograph, so these say only whose it is and for
+ * which night, never what it shows; a person's looked at words replace them, and a cover that has words keeps them.
+ */
+export function organiserPhotoAlt(title: string, venue: string): string {
+  return `The organiser's photograph for ${cleanTitle(title)} at ${venue.trim()}`
+}
+
 export function cleanTitle(t: string): string {
   return t.replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s+/g, ' ').trim()
 }
@@ -191,6 +213,9 @@ async function attachPhoto(admin: Admin, sub: SubmissionRecord, eventId: string,
   if (!hasRealCover(url)) return not('sent, but its stored address is not a real cover')
   const cover = await admin.from('events').update({ cover_image_url: url }).eq('id', eventId)
   if (cover.error) return not(`sent, but it could not be set as the cover (${cover.error.message})`)
+  // Its words, only where the cover has none yet (organiserPhotoAlt); a failure here leaves the photograph on, said.
+  const words = await admin.from('events').update({ cover_image_alt: organiserPhotoAlt(sub.title, sub.venue_name) }).eq('id', eventId).is('cover_image_alt', null)
+  if (words.error) console.error('[self-listing] the cover\'s alt text could not be written:', words.error.message)
   return { attached: true, words: `yes, the organiser's own, credited "${creditLine(rightsHolder)}"` }
 }
 
@@ -290,7 +315,6 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
 
   const venueId = await findOrMakeVenue(admin, org.id as string, facts, { slug: city.slug as string, name: city.name as string, state: city.state as string })
   const start = localParts(facts.startsAt, tz)
-  const end = facts.endsAt ? localParts(facts.endsAt, tz) : null
   const today = localParts(now.toISOString(), tz).date
   const kind = facts.entry === 'free' ? null : facts.entry === 'paid' ? 'tickets' : 'free_register'
   const links = kind ? [{ url: sub.booking_url, kind, price_from_cents: facts.entry === 'paid' ? facts.priceFromCents : null, price_checked_on: today }] : []
@@ -305,7 +329,7 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
       anchor_date: start.date,
       day: new Date(`${start.date}T00:00:00Z`).getUTCDay(),
       starts_at: `${start.time}:00`,
-      ends_at: end && end.date === start.date ? `${end.time}:00` : null,
+      ends_at: seriesEndOf(facts.startsAt, facts.endsAt, tz),
       timezone: tz,
       age_restriction_min: null,
       summary: summaryFrom(sub.description, title, facts.venueName),

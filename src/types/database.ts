@@ -3383,6 +3383,36 @@ export type Database = {
         }
         Relationships: []
       }
+      health_sentinel_runs: {
+        Row: {
+          dry: boolean
+          failing: number
+          id: string
+          ok: boolean
+          ran_at: string
+          results: Json
+          sentinel: string
+        }
+        Insert: {
+          dry?: boolean
+          failing: number
+          id?: string
+          ok: boolean
+          ran_at?: string
+          results: Json
+          sentinel: string
+        }
+        Update: {
+          dry?: boolean
+          failing?: number
+          id?: string
+          ok?: boolean
+          ran_at?: string
+          results?: Json
+          sentinel?: string
+        }
+        Relationships: []
+      }
       kit_poster_downloads: {
         Row: {
           downloaded_at: string
@@ -3617,6 +3647,7 @@ export type Database = {
           id: string
           image_url: string | null
           kind: string
+          last_read_at: string | null
           links: Json
           page_url: string
           presented_by: string | null
@@ -3643,6 +3674,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           kind: string
+          last_read_at?: string | null
           links?: Json
           page_url: string
           presented_by?: string | null
@@ -3669,6 +3701,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           kind?: string
+          last_read_at?: string | null
           links?: Json
           page_url?: string
           presented_by?: string | null
@@ -13331,6 +13364,10 @@ export type Database = {
           p_code_hash: string
           p_organisation: string
         }
+        Returns: string
+      }
+      listing_fresh_from_reads: {
+        Args: { p_series: string; p_start: string; p_timezone: string }
         Returns: string
       }
       listing_fresh_until_for: {
