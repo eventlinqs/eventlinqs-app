@@ -47,6 +47,14 @@ describe("a post's title (fix 2)", () => {
     expect(t).toBe('Timor-Leste: Ita Nia Lian, Ita Nia Istoria')
     expect(t).not.toMatch(/\s[-–—]\s/)
   })
+  // The pack of 18 November 2026: the Australia v England partner kit printed "Mens T20I" while the carousel's row read
+  // "Men's" (cardTitle only); the repair belongs to the one post title every surface draws (law 4: a class, not a card).
+  it("gives a plural's possessive its apostrophe on every surface", () => {
+    expect(postTitle('Australia v England Mens T20I', 'Melbourne Cricket Ground')).toBe("Australia v England Men's T20I")
+    expect(postTitle('Womens Big Bash League Final', 'Marvel Stadium')).toBe("Women's Big Bash League Final")
+    expect(postTitle('Childrens Christmas Party', null)).toBe("Children's Christmas Party")
+    expect(postTitle("Men's Shed Open Day", null)).toBe("Men's Shed Open Day")
+  })
   it('leaves a clean title and a hyphenated word alone', () => {
     expect(postTitle('Two Door Cinema Club', 'John Cain Arena')).toBe('Two Door Cinema Club')
     expect(postTitle('Timor-Leste Night', 'Fed Square')).toBe('Timor-Leste Night')

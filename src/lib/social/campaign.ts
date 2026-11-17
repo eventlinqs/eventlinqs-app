@@ -727,6 +727,8 @@ export function postTitle(title: string, venue: string | null): string {
   }
   const parts = t.split(/\s+[-\u2013\u2014]\s+/)
   if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
+  // A plural's possessive takes its apostrophe on every surface ('Mens T20I' reads "Men's T20I"), as cardTitle writes a row.
+  t = t.replace(/\b(Men|Women|Children)s\b/g, (_m: string, who: string) => `${who}'s`)
   return cleanTitle(t)
 }
 
