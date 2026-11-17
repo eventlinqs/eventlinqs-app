@@ -12,6 +12,7 @@ import { githubActionsNames } from '@/lib/env/manifest.mjs'
 import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { overallStatus as rollUp, type HealthResult, type Severity } from '@/lib/health/result'
 import { checkOrderAttribution } from '@/lib/health/attribution-check'
+import { sharedRun } from '@/lib/health/shared-run'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -743,5 +744,13 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     }
   })
 }
+
+/**
+ * The admin's one shared run of the whole battery (the PM's 21:38 of 17 November 2026, alert (g), item 3): /admin/today and
+ * /admin/health read a run at most ADMIN_CHECKS_FRESH_MS old, and renders that start together wait on the same run, so
+ * the sidebar's prefetches and quick visits cannot load the database for the whole site. The sentinel and the heartbeat
+ * call runAllChecks themselves, fresh every time.
+ */
+export const runAllChecksForAdmin = sharedRun(() => runAllChecks())
 
 

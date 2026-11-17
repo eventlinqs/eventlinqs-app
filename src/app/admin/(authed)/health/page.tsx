@@ -1,4 +1,4 @@
-import { runAllChecks, overallStatus, type HealthResult } from '@/lib/health/checks'
+import { runAllChecksForAdmin, overallStatus, type HealthResult } from '@/lib/health/checks'
 import { getSiteUrl } from '@/lib/site-url'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -86,15 +86,17 @@ function StatusWord({ result }: { result: HealthResult }) {
 }
 
 /**
- * Private founder-only platform status page. Runs the full health battery LIVE
- * on every load (no stale cache) so the founder can look any moment without
- * waiting for an email. Gated by the admin (authed) layout - founder/admin only.
+ * Private founder-only platform status page. Reads the full health battery from
+ * the admin's one shared run, at most a minute old (runAllChecksForAdmin; alert (g)
+ * of 17 November 2026: a render per prefetch loaded the database for the whole site),
+ * so the founder can look any moment without waiting for an email. Gated by the
+ * admin (authed) layout - founder/admin only.
  */
 export default async function HealthStatusPage() {
   // AUTH-03: the (authed) layout admits an admin who has not enrolled 2FA only so enrolment can render, so this
   // page checks the strict session itself, as every page under it does.
   await requireAdminSession()
-  const results = await runAllChecks()
+  const results = await runAllChecksForAdmin()
   // The visitor sentinel's last run, as it judged the live site (the PM's 12:35 item 5 of 16 November 2026: every report
   // quotes it from here). Read through the service role, behind requireAdminSession above.
   const sentinel = await latestSentinelRun(createAdminClient())

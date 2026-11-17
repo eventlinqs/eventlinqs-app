@@ -8,7 +8,7 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
-import { runAllChecks } from '@/lib/health/checks'
+import { runAllChecksForAdmin } from '@/lib/health/checks'
 import { contributionByEvent, profitabilityFigures, type CampaignSpend } from '@/lib/growth/event-contribution'
 import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
@@ -78,7 +78,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       settle(() => readSupplyScorecard(now)),
       settle(() => readOrganiserFunnel(now)),
       settle(() => readGrowthWeek(now)),
-      settle(() => runAllChecks()),
+      settle(() => runAllChecksForAdmin()),
       counted(() => admin.from('listing_submissions').select('id', head).eq('status', 'waiting')),
       counted(() => admin.from('listing_claims').select('id', head).eq('status', 'manual_open')),
       counted(() => admin.from('social_assets').select('id', head).eq('approval_status', 'pending')),
