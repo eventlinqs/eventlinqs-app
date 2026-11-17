@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { buildOutreachMime, mimeForGraph, newMessageId } from './mime'
 import { graphSendMime, type GraphConfig } from './graph'
+import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 
 type Admin = SupabaseClient<Database>
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -93,6 +94,26 @@ type Queued = {
   subject: string | null
   body: string
   in_reply_to: string | null
+  outreach_templates: { key: string } | null
+}
+
+/**
+ * THE TIMING RULE, AGAIN AT THE MOMENT OF SENDING (the communication standard's Part 2 rule 4: no message about an event
+ * lands on or after its day, and a segment A letter goes only while its night is 3 or more days ahead). A segment A letter
+ * queued on a Friday afternoon and held over a weekend could otherwise land too close: before it is claimed, the night it
+ * names (its /events/ page) is read again, and a letter that would now land too close is set aside with why, never sent.
+ * Null means it may go.
+ */
+async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string | null> {
+  if (!t.outreach_templates?.key.startsWith('segment_a_')) return null
+  const slug = t.body.match(/\/events\/([a-z0-9-]+)/)?.[1]
+  if (!slug) return 'it names no night of theirs to check the timing against'
+  const ev = await db.from('events').select('start_date, timezone').eq('slug', slug).maybeSingle()
+  if (ev.error || !ev.data) return `its night could not be read again: ${ev.error?.message ?? 'no such night'}`
+  const landsOn = melbourneDayOf(now.toISOString())
+  return isSegmentANight(ev.data.start_date as string, landsOn, (ev.data.timezone as string | null) ?? null)
+    ? null
+    : `landing on ${landsOn} it would be less than 3 days before its night (the standard's Part 2 rule 4); set aside, never sent`
 }
 
 const BATCH = 25
@@ -146,17 +167,23 @@ export async function runOutreachSender(
 
   const due = await db
     .from('outreach_touches')
-    .select('id, contact_id, subject, body, in_reply_to')
+    .select('id, contact_id, subject, body, in_reply_to, outreach_templates(key)')
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
     .order('scheduled_for', { ascending: true })
     .limit(BATCH)
   if (due.error) throw new Error(`the queue: ${due.error.message}`)
 
-  for (const t of (due.data ?? []) as Queued[]) {
+  for (const t of (due.data ?? []) as unknown as Queued[]) {
     report.considered++
     if (!inBusinessHours(deps.now, await recipientZone(db, t.contact_id))) {
       report.outsideHours++
+      continue
+    }
+    const tooClose = await segmentATooClose(db, t, deps.now)
+    if (tooClose) {
+      await db.from('outreach_touches').update({ state: 'void', void_reason: tooClose }).eq('id', t.id).eq('state', 'queued')
+      report.refused.push({ id: t.id, reason: tooClose })
       continue
     }
     // The claim: the database runs every check here, or refuses and the message stays queued.

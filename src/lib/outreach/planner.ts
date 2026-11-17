@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
+import { draftSegmentALetter } from './segment-a-play'
 import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { ALPHA, CLAIM_WINDOW_DAYS, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge, type Half, type JudgedOutcome } from './learning'
 
@@ -38,7 +39,7 @@ export function addressRank(address: string, personName: string | null): number 
   return 3
 }
 
-export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[] }
+export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[] }
 
 const SPACING_MINUTES = 10
 const DAY_MS = 86_400_000
@@ -125,6 +126,11 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
   const plays = await db.from('outreach_plays').select('id, name, cohort_rule, step1_template_id, step2_template_id, step3_template_id, variant_template_id, test_per_half').eq('state', 'approved')
   if (plays.error) throw new Error(`outreach_plays: ${plays.error.message}`)
   const reports: PlayReport[] = []
+  // A play whose first letter is segment A's (./segment-a-play.ts) drafts in the hour it goes and queues what passes whole.
+  const firstIds = (plays.data ?? []).map((p) => p.step1_template_id).filter((x): x is string => Boolean(x))
+  const firstKeys = firstIds.length ? await db.from('outreach_templates').select('id, key').in('id', firstIds) : { data: [] as { id: string; key: string }[], error: null }
+  if (firstKeys.error) throw new Error(`the plays' first letters: ${firstKeys.error.message}`)
+  const segmentAPlays = new Set((firstKeys.data ?? []).filter((t) => t.key === 'segment_a_first').map((t) => t.id as string))
 
   for (const play of plays.data ?? []) {
     const capAnswer = await db.rpc('outreach_play_cap_today', { p_play: play.id })
@@ -141,8 +147,30 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     const judged = (judgement?.data?.outcome ?? null) as JudgedOutcome | null
     let room = cap - report.usedToday
     let slot = 0
+    const segmentA = play.step1_template_id !== null && segmentAPlays.has(play.step1_template_id)
 
-    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null) => {
+    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null, first?: { id: string; subject: string | null }) => {
+      if (segmentA) {
+        const a = await draftSegmentALetter(db, {
+          play: { id: play.id, name: play.name },
+          contactId,
+          step,
+          templateId,
+          scheduledFor: new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
+          now: deps.now,
+          origin: deps.origin,
+          actingUser: deps.actingUser,
+          first,
+        })
+        if (a.state === 'queued') {
+          report.queued++
+          room--
+          slot++
+        } else if (a.state === 'held') report.held.push({ contactId, why: [...a.why] })
+        else if (a.state === 'refused') report.refused.push({ contactId, why: a.why })
+        else (report.notDrafted ??= []).push({ contactId, why: a.why })
+        return
+      }
       const r = await draftFromTemplate(db, {
         contactId,
         templateKey: `play ${play.name} step ${step}`,
@@ -165,15 +193,16 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     }
 
     // 1. Follow-ups that are due.
-    const firsts = await db.from('outreach_touches').select('contact_id, sent_at').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
+    const firsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
     for (const first of firsts.data ?? []) {
       if (room <= 0) break
       const days = melbourneDaysBetween(new Date(first.sent_at as string), deps.now)
       const later = await db.from('outreach_touches').select('step, state').eq('contact_id', first.contact_id).in('step', [2, 3]).neq('state', 'void')
       const has = (n: number) => (later.data ?? []).some((t) => t.step === n)
       const sent2 = (later.data ?? []).some((t) => t.step === 2 && t.state === 'sent')
-      if (!has(2) && days >= 4 && play.step2_template_id) await draft(first.contact_id, 2, play.step2_template_id)
-      else if (sent2 && !has(3) && days >= 10 && play.step3_template_id) await draft(first.contact_id, 3, play.step3_template_id)
+      const thread = { id: first.id as string, subject: (first.subject as string | null) ?? null }
+      if (!has(2) && days >= 4 && play.step2_template_id) await draft(first.contact_id, 2, play.step2_template_id, null, thread)
+      else if (sent2 && !has(3) && days >= 10 && play.step3_template_id) await draft(first.contact_id, 3, play.step3_template_id, null, thread)
     }
 
     // 2. First messages to the cohort.
