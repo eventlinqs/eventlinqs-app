@@ -17,7 +17,7 @@ import { getAllCities } from '@/lib/cities/data'
  */
 
 /** The moment the rules below came into force: a revision drawn before it is stale. Moved forward with every rule change. */
-export const PIECE_RULES_SINCE = '2026-11-17T12:30:00.000Z'
+export const PIECE_RULES_SINCE = '2026-11-17T13:10:00.000Z'
 
 export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone'>
 
