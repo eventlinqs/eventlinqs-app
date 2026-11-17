@@ -83,3 +83,21 @@ describe("hashtags come from one list (the PM's 23:45, fix (e))", () => {
     expect(languageFaults(['#geelong #geelongevents', '#melbourne #melbourneevents #thisweekend', '#victoriaevents'])).toEqual([])
   })
 })
+
+describe("words for the day it posts (the PM's 23:45, fix (c))", () => {
+  // Geelong's tonight and tomorrow (130ec263): its cover says '20 to 21 November' and 'Fri and Sat', Curtain Up's row
+  // 'Fri 20 & Sat 21'; it was set to go on Saturday 21 at 10:38 am, after Friday was over.
+  const cover = { t: 'week_cover', composition: 'contents_cover', range: '20 to 21 November', lines: ['2 things on', 'in Geelong', 'Fri and Sat'], draws: null, line: '', photoEventId: null, photo: GUITARIST, credit: null } as unknown as Slide
+  const day = { t: 'days', composition: 'contents_cover', day: 'Saturday', date: '21 Nov', rows: [{ eventId: 'c', startDate: '2026-11-21T08:30:00Z', when: '7:30 pm', sub: 'Fri 20 & Sat 21', title: 'Curtain Up', place: 'The Story House', free: false }], photo: null, credit: null } as unknown as Slide
+  const pastDays = (now: string) => pieceQuality({ ...base, slides: [cover, day, ask], nights: nightsOf(), now: new Date(now) }).filter((r) => r.includes('a day already over'))
+
+  it('on Saturday 21 it prints Friday 20, a day already over, and is refused', () => {
+    const out = pastDays('2026-11-20T23:38:00Z')
+    expect(out.some((r) => r.includes('"Fri 20"'))).toBe(true)
+    expect(out.some((r) => r.includes('"20 to 21 November"'))).toBe(true)
+  })
+
+  it('on Friday 20 every day it prints is still ahead', () => {
+    expect(pastDays('2026-11-19T22:00:00Z')).toEqual([])
+  })
+})

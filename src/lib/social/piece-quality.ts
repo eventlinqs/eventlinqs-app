@@ -96,6 +96,51 @@ export function languageFaults(texts: readonly string[]): string[] {
   return out
 }
 
+/**
+ * WORDS FOR THE DAY IT POSTS (the PM's 23:45 of 17 November 2026, fix (c)): every date a piece prints, as a weekday and a
+ * day ('Fri 20') or a day and a month ('20 to 21 November', '21 Nov'), read against the day it would go on Melbourne's
+ * clock; one already over is said, so a piece never goes out naming a day that has passed (Geelong's 'Fri and Sat' piece
+ * set for Saturday). A weekday and day is placed in this month or the last, where its weekday matches.
+ */
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+
+function dayOn(now: Date, zone: string): { y: number; m: number; d: number } {
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(now)
+  const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
+  return { y: n('year'), m: n('month'), d: n('day') }
+}
+
+export function pastDaysPrinted(texts: readonly string[], now: Date, zone = 'Australia/Melbourne'): string[] {
+  const today = dayOn(now, zone)
+  const todayKey = Date.UTC(today.y, today.m - 1, today.d)
+  const out: string[] = []
+  const say = (token: string) => {
+    const r = `[night] It prints "${token}", a day already over; draw it again for the day it posts.`
+    if (!out.includes(r)) out.push(r)
+  }
+  for (const text of texts) {
+    for (const m of text.matchAll(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+(\d{1,2})\b/gi)) {
+      const wd = WEEKDAYS.indexOf(m[1].slice(0, 3).toLowerCase())
+      const d = Number(m[2])
+      for (const back of [0, 1]) {
+        const at = Date.UTC(today.y, today.m - 1 - back, d)
+        const check = new Date(at)
+        if (check.getUTCDate() !== d || check.getUTCDay() !== wd) continue
+        if (at < todayKey) say(m[0])
+        break
+      }
+    }
+    for (const m of text.matchAll(/\b(\d{1,2})(?:\s+to\s+\d{1,2})?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/gi)) {
+      const month = MONTHS.indexOf(m[2].slice(0, 3).toLowerCase())
+      // The nearest year to today: a month more than six back is next year's.
+      const year = month < today.m - 1 - 6 ? today.y + 1 : today.y
+      if (Date.UTC(year, month, Number(m[1])) < todayKey) say(m[0])
+    }
+  }
+  return out
+}
+
 export function pieceQuality(input: QualityInput): string[] {
   const out: string[] = []
 
@@ -110,6 +155,9 @@ export function pieceQuality(input: QualityInput): string[] {
     const n = input.nights.get(id)
     if (n && Date.parse(n.startDate) <= input.now.getTime()) out.push(`[night] ${n.title}: it has started (${n.startDate}); a piece never posts once its night has started. Draw it again without this night.`)
   }
+
+  /* [night] fix (c): no day it prints is already over on the day it would go. */
+  out.push(...pastDaysPrinted([...input.slides.flatMap(wordsOf), ...input.caption.split('\n')], input.now))
 
   /* [photo] class 2: a stand-in stands only over nights of its own kind; a night whose kind cannot be read is refused too. */
   input.slides.forEach((slide, i) => {
