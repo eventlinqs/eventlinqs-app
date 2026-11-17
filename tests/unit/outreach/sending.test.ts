@@ -211,3 +211,43 @@ describe('one letter a run', () => {
     expect(src).not.toMatch(/const BATCH = /)
   })
 })
+
+/*
+ * ONE SEND PATH, NO DOUBLES (the PM's 09:15 of 18 November 2026, item 2): the 14 letters wait as drafts in hello@'s
+ * Outlook for Lawal's review, and the play sends them on his go. If he sends one himself, the sync records it from
+ * hello@'s Sent Items (src/lib/outreach/sent-sync.ts) as a sent touch, and the engine never writes that recipient a
+ * first letter again. The run read Sent Items AFTER the sender (route.ts), so a draft he sent between runs could go
+ * twice; and the sender never asked whether the contact was already written.
+ */
+describe('one send path, no doubles', () => {
+  beforeEach(() => clearRecordedOutreachMail())
+
+  test('a first letter to a contact already written (Lawal sent the draft himself) is voided, never sent', async () => {
+    const queued = [{ id: 'q-first', contact_id: 'c-lawal', subject: 'Helping more people find your night', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } }]
+    const { db, calls } = fakeDb((call) => {
+      if (call.table === 'outreach_sender') return { data: { mode: 'test', from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
+      if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
+      if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: queued, error: null }
+      // The sync recorded his own message from hello@'s Sent Items as a sent touch for the same contact.
+      if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'sent')) return { data: [{ id: 'his-own', sent_at: '2026-11-18T23:05:00Z' }], error: null }
+      if (call.table === 'outreach_touches' && call.op === 'select') return { data: [], error: null }
+      if (call.table === 'organiser_contacts' && call.op === 'select') return { data: { organiser_id: 'o1', address: 'sam@eventlinqs.com', unsubscribe_token: TOKEN }, error: null }
+      if (call.table === 'organiser_venues') return { data: [], error: null }
+      if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: 'q-first' }, error: null }
+      return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
+    })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.sent).toEqual([])
+    expect(recordedOutreachMail()).toHaveLength(0)
+    const voided = calls.find((c) => c.op === 'update' && (c.payload as { state: string }).state === 'void')
+    expect((voided?.payload as { void_reason: string }).void_reason).toMatch(/already written/)
+    expect(calls.some((c) => c.op === 'update' && (c.payload as { state: string }).state === 'sending')).toBe(false)
+  })
+
+  test('the run reads hello@ Sent Items before it sends anything', async () => {
+    const { readFileSync } = await import('node:fs')
+    const route = readFileSync('src/app/api/cron/outreach-run/route.ts', 'utf8')
+    expect(route.indexOf('await syncSentItems(')).toBeGreaterThan(-1)
+    expect(route.indexOf('await syncSentItems(')).toBeLessThan(route.indexOf('await runOutreachSender('))
+  })
+})
