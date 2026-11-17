@@ -16,6 +16,7 @@
  */
 import { classify, type GuideCategory } from '@/lib/categories/classify'
 import { wallClockToIso } from './collect'
+import { nightKind } from '@/lib/social/campaign'
 
 /**
  * A HUNTED NIGHT'S CATEGORY (class O, read from production on 7 November 2026). A title naming two sides ('A vs B', 'A v B')
@@ -27,7 +28,15 @@ import { wallClockToIso } from './collect'
 const SPORTING_VENUE = /\b(arena|stadium|ground|oval|park|racecourse)\b/i
 export function huntCategory(title: string, usual: GuideCategory, venue: string): GuideCategory {
   if (SPORTING_VENUE.test(venue) && /\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
-  return (classify({ title }).primary as GuideCategory | null) ?? usual
+  const read = classify({ title }).primary as GuideCategory | null
+  if (read) return read
+  // Where the classifier reads nothing, the one kind reader the posts use decides a talk or a theatre company's production
+  // before the venue's usual category (the PM's 04:38 of 18 November 2026: 'An Evening with Alastair Campbell', a talk,
+  // was filed as Music, the Recital Centre's usual category, while the posts read it as a talk).
+  const kind = nightKind({ title, sourceTitle: title, summary: null, venueName: venue, host: venue, categorySlug: usual })
+  if (kind === 'talk') return 'education' as GuideCategory
+  if (kind === 'theatre') return 'theatre' as GuideCategory
+  return usual
 }
 
 export type HuntSource = {
