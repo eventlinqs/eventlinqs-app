@@ -18,7 +18,7 @@ import {
   type DayEvidence,
   type TurnNumbers,
 } from '@/lib/listings/discovery-day'
-import { crmNameKey, crmWebsite } from '@/lib/listings/discovery-organisers'
+import { crmNameKey, crmWebsite, siteFitsName } from '@/lib/listings/discovery-organisers'
 
 const turn = (at: string, scout: TurnNumbers['scout'] = null): TurnNumbers => ({
   at, read: 5, landed: 2, acceptedByRule: 1, queued: 1, failed: 0, organisersAttached: 0, scout,
@@ -105,6 +105,32 @@ describe('Melbourne days', () => {
 describe('the CRM organiser of a venue', () => {
   test('its name key is the CRM\'s own (lower, trimmed, single spaces)', () => {
     expect(crmNameKey('  The  JazzLab ')).toBe('the jazzlab')
+  })
+  // The seven organisers named for venues (read on production, 18 November 2026, 07:45 and 09:52): the engine entered each
+  // under a place's name with the PRESENTER's site the venue row carried (GMHBA Stadium with footballaustralia.com.au,
+  // Red Energy Arena with bendigospirit.wnbl.com.au), so a letter could greet the venue at another body's address. A site
+  // is the venue's own only where its host carries a word of the name, its initials, or the starts of its words.
+  test("a venue's recorded site is its own only where the host carries its name, its initials or the starts of its words", () => {
+    for (const [name, url] of [
+      ['Melbourne Recital Centre', 'https://www.melbournerecital.com.au'],
+      ['The JazzLab', 'https://thejazzlab.com.au'],
+      ['Queen Victoria Market', 'https://www.qvm.com.au'],
+      ['Melbourne Symphony Orchestra', 'https://mso.com.au'],
+      ["Her Majesty's Theatre Ballarat", 'https://hermaj.com'],
+    ] as const) expect(siteFitsName(name, url)).toBe(true)
+    for (const [name, url] of [
+      ['Red Energy Arena', 'https://bendigospirit.wnbl.com.au'],
+      ['GMHBA Stadium', 'https://footballaustralia.com.au'],
+      ['Sidney Myer Place', 'https://www.moonlightmarketbendigo.com.au'],
+      ['Pakington Street', 'https://pakofesta.com.au'],
+      ['Thornbury Apothecary', 'https://groovytown.com.au'],
+      ['Canterbury Park', 'https://www.bendigo.vic.gov.au'],
+      ['Geelong Ballroom Dance Club', 'https://callumwatson.com.au'],
+    ] as const) expect(siteFitsName(name, url)).toBe(false)
+  })
+  test('the engine records a venue site that is not its own as no site, said in its notes', () => {
+    const src = readFileSync(resolve('src/lib/listings/discovery-organisers.ts'), 'utf8')
+    expect(src).toMatch(/siteFitsName\(name, venue\.website_url/)
   })
   test('its website is https only, kept as its origin', () => {
     expect(crmWebsite('https://www.forum.com.au/whats-on?x=1')).toBe('https://www.forum.com.au')
