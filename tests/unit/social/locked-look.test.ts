@@ -331,7 +331,7 @@ describe("the PM's 18:45 fixes", () => {
     const leisureSat = at('2026-11-20T22:00:00Z', 'Leisurefest')
     const leisureFri = at('2026-11-19T22:00:00Z', 'Leisurefest')
     // A third night with its own photograph puts the cover in picture, so the day slide is not a repeat of the cover.
-    const sunday = at('2026-11-22T02:00:00Z', 'Sunday Picnic', { approvedPhotoUrl: OWN, photoCredit: 'Its organiser' })
+    const sunday = at('2026-11-22T02:00:00Z', 'Sunday Picnic', { approvedPhotoUrl: OWN, photoCredit: 'Sunday Picnic Committee' })
     const s = lockedListSlides([show, leisureSat, sunday], ['3 things on', 'in Geelong', 'this weekend'], ORIGIN, (n) => (n.title === 'Leisurefest' ? [leisureFri, leisureSat] : [n]))
     const day = daysOf(s).find((d) => d.rows.some((r) => r.eventId === leisureSat.eventId))!
     expect(day.rows.map((r) => r.eventId).slice(0, 2)).toEqual([leisureSat.eventId, show.eventId])
@@ -406,7 +406,7 @@ describe("the PM's 19:45 fixes", () => {
 
     const at = (iso: string, title: string, extra: Partial<CampaignNight> = {}) => night({ at: iso, title, venueName: `${title} Hall`, host: `${title} Hall`, ...extra })
     const { pieces } = planCampaign({
-      nights: [at('2026-11-16T09:00:00Z', 'Alpha Band'), at('2026-11-17T09:00:00Z', 'Beta Band'), at('2026-11-20T09:00:00Z', 'Gamma Band'), at('2026-11-21T09:00:00Z', 'Delta Band', { approvedPhotoUrl: OWN, photoCredit: 'Its organiser' }), at('2026-11-22T05:00:00Z', 'Epsilon Band')],
+      nights: [at('2026-11-16T09:00:00Z', 'Alpha Band'), at('2026-11-17T09:00:00Z', 'Beta Band'), at('2026-11-20T09:00:00Z', 'Gamma Band'), at('2026-11-21T09:00:00Z', 'Delta Band', { approvedPhotoUrl: OWN, photoCredit: 'Delta Band' }), at('2026-11-22T05:00:00Z', 'Epsilon Band')],
       cities: [{ slug: 'melbourne', name: 'Melbourne' }],
       weekStart: '2026-11-16',
       origin: ORIGIN,

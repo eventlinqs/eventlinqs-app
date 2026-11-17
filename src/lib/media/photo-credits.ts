@@ -55,7 +55,14 @@ export function creditLine(credit: string | null | undefined, options: { readonl
  * Every place that prints a credit goes through creditLine (scripts/guards/credit-printed-once.mjs).
  */
 export function creditWords(credit: string | null | undefined): string | null {
-  const words = credit?.trim().replace(/^(photo(graph)?s?\s*(by)?\s*:\s*)+/i, '').trim()
+  const words = credit
+    ?.trim()
+    .replace(/^(photo(graph)?s?\s*(by)?\s*:\s*)+/i, '')
+    .trim()
+    // A CREDIT THAT NAMES NO ONE READS 'the organiser' (the PM's 21:00 of 17 November 2026, item 2: "'Photo: Its
+    // organiser'. That is wrong English. It must name the organiser ... or read 'Photo: the organiser'"). Only a whole
+    // credit of a pronoun and a role is changed; a name ('Their Majesties Brass') is printed as recorded.
+    .replace(/^(?:its|their|his|her|our)\s+(organisers?|organizers?|venue|venues|hosts?|promoters?|owners?)$/i, (_, role: string) => `the ${role.toLowerCase()}`)
   return words || null
 }
 

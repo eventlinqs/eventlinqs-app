@@ -93,7 +93,7 @@ const comedy = [
   night({ at: '2026-11-16T08:30:00Z', title: 'Comedy Republic Bar Show', venueName: 'Comedy Republic', host: 'Comedy Republic', categorySlug: 'comedy', summary: 'Stand up comedy.' }),
   night({ at: '2026-11-18T08:30:00Z', title: 'Laugh Lab', venueName: 'Comedy Republic', host: 'Comedy Republic', categorySlug: 'comedy', summary: 'Stand up comedy.' }),
 ]
-const own = night({ at: '2026-11-20T00:00:00Z', title: 'African Music Festival 2026', venueName: 'Federation Square', host: 'Federation Square', categorySlug: 'festival', approvedPhotoUrl: OWN, photoCredit: 'Its organiser', state: { tiers: [{ price: 0 }] } })
+const own = night({ at: '2026-11-20T00:00:00Z', title: 'African Music Festival 2026', venueName: 'Federation Square', host: 'Federation Square', categorySlug: 'festival', approvedPhotoUrl: OWN, photoCredit: 'African Music and Cultural Festival', state: { tiers: [{ price: 0 }] } })
 
 const list = lockedListSlides(gigs, ['5 music', 'nights in Melbourne', 'this week'], ORIGIN)
 const cover = list[0]
