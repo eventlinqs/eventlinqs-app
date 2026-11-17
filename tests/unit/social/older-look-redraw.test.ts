@@ -96,12 +96,13 @@ describe('the week drawn again in the locked look', () => {
   // drew them again with stand-in photographs, and the photo-rights sweep then blanked those photographs because production
   // had registered no stand-in yet (Lawal's item 26), so the cover led with none, the lock refused it, and the next hour drew
   // it again. A drawing is judged as the photo-rights sweep will leave it: if the lock would refuse that, it is not written.
-  it('a drawing whose lead photograph the register would remove is refused before it is written', () => {
+  // Lawal's A and A (18 November 2026, 00:12): a drawing whose photographs the register removes is drawn in type and admitted.
+  it('a drawing whose lead photograph the register would remove is admitted in type, as Lawal ruled', () => {
     const ahead = fresh.find((p) => p.kind === 'week_ahead')!
     const photoAt = ahead.slides.map((sl, i) => ('photo' in sl && sl.photo ? i : -1)).filter((i) => i >= 0)
     expect(photoAt[0]).toBe(0)
     const none = new Map(photoAt.map((i) => [i, null]))
-    expect(refusedOnceSwept(ahead.slides, none)).toMatch(/does not lead with a photograph/)
+    expect(refusedOnceSwept(ahead.slides, none)).toBeNull()
     const all = new Map(photoAt.map((i) => [i, { url: 'u', credit: 'c', assetId: 'a', focal: null, width: null, height: null }]))
     expect(refusedOnceSwept(ahead.slides, all)).toBeNull()
   })

@@ -175,18 +175,21 @@ export function inLockedLook(slides: readonly Pick<Slide, 't'>[]): boolean {
   return slides.length > 0 && slides.every((s) => (LOCKED_SLIDES as readonly string[]).includes(s.t))
 }
 
+/** The older planner look's list slides: a list post drawn with them is drawn again in the locked look. */
+const OLDER_LIST_SLIDES: readonly Slide['t'][] = ['cover', 'night', 'end']
+
 /**
- * Why the lock keeps a piece from the plan and from publishing, or null when it may go: drawn wholly in the locked look,
- * and its first slide carrying a photograph (Lawal, 15 November 2026: "Never a text-only post"; every benchmark post leads
- * with one; out-8's Bendigo weekend post was its cover and its ask, in type alone).
+ * Why the lock keeps a piece from the plan and from publishing, or null when it may go. LAWAL'S A AND A (18 November 2026,
+ * 00:12, OPS-DIRECTIVE-LOCKED-18NOV.md): "Allow professionally designed EventLinqs posters and stories without
+ * photographs" and "Allow clean, branded EventLinqs designs for mixed-event slides"; "Remove all rules that incorrectly
+ * classify photo-free designs as invalid". So a poster, a story, the brand and organiser pieces, a post that leads in type
+ * and a day slide in the branded design are all admitted (the 15 November rules 'never a text-only post' and 'every day
+ * slide carries a photograph' are withdrawn). Only a list post in the older look is kept back, and the hourly run draws it
+ * again in the locked look. A photograph over a night it does not show is the publish gate's (piece-quality.ts), and the
+ * wordmark sits off every photograph by the renderer's own design (day-cards.ts).
  */
 export function lockRefusal(slides: readonly Slide[]): string | null {
-  if (!inLockedLook(slides)) return 'It is drawn in the older planner look, not the locked look of 15 November, so it is never approved or published.'
-  const first = slides[0]
-  if (!('photo' in first) || !first.photo) return "It does not lead with a photograph: Lawal's lock of 15 November allows no text-only post, and every post leads with one."
-  // The PM's 22:41 fix 1: every cover, day slide and venue slide carries its photograph band, as the benchmark's do.
-  const bare = slides.find((s) => (s.t === 'week_cover' || s.t === 'days' || s.t === 'venue') && !s.photo)
-  if (bare) return `Its ${bare.t === 'days' ? `${bare.day} slide` : bare.t === 'venue' ? 'venue slide' : 'cover'} carries no photograph, and every slide of the locked look carries one (the PM's 22:41).`
+  if (slides.some((s) => OLDER_LIST_SLIDES.includes(s.t))) return 'It is drawn in the older planner look (cover, night and end slides), so the hourly run draws it again in the locked look.'
   return null
 }
 

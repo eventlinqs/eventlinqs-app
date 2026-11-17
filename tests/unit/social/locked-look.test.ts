@@ -530,7 +530,8 @@ describe("the PM's 22:41 fixes (out-11, 9.3)", () => {
     expect(standInOf(tue.photo)?.kind).toBe('talk')
     expect(tue.credit).toMatch(/Pexels/)
     const bare: Slide = { ...tue, photo: null, credit: null }
-    expect(lockRefusal([s[0], bare, s.at(-1)!])).toMatch(/slide carries no photograph/)
+    // Lawal's B (18 November 2026, 00:12): a day slide in the branded design, with no photograph, is admitted.
+    expect(lockRefusal([s[0], bare, s.at(-1)!])).toBeNull()
   })
 
   it('fix 2: no stand-in photograph twice in the week, across every piece', () => {
