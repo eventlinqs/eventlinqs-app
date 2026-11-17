@@ -393,7 +393,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       figures: [
         tag(fig('Event page views last week', g ? { value: g.attention.views } : { value: null, note: notRead }, false, '/admin/growth'), 'measure', 'weekly'),
         tag(fig('Returning visitors last week', g ? { value: g.attention.returning } : { value: null, note: notRead }, false, '/admin/growth', 'seen in the 90 days before the week'), 'value', 'weekly'),
-        tag(fig('Presses out to booking sites, 7 days', pressesOut, false, '/admin/growth', 'a press is a person heading to the tickets, never a sale'), 'value', 'weekly'),
+        tag(fig('Presses out to booking sites, 7 days', pressesOut, false, '/admin/growth', 'a press out, never counted as a person or a sale'), 'value', 'weekly'),
         tag(fig('Paid orders last week', g ? { value: g.conversion.orders } : { value: null, note: notRead }, false, '/admin/growth'), 'value', 'weekly'),
         tag(fig('Claims verified, 7 days', claimsVerified, false, null), 'value', 'weekly'),
         tag(fig('New subscribers last week', g ? { value: g.engagement.subscribers } : { value: null, note: notRead }, false, '/admin/growth'), 'value', 'weekly'),

@@ -78,7 +78,7 @@ export function figureLines(f: ReportFigures): string[] {
   if (f.viewers > 0) lines.push(`${people(f.viewers)} opened its page.`)
   if (f.saves > 0) lines.push(`${people(f.saves)} saved it.`)
   if (f.reminders > 0) lines.push(`${people(f.reminders)} asked us to remind them before it started.`)
-  if (f.wentToBooking > 0) lines.push(`${people(f.wentToBooking)} went on from it to your booking page.`)
+  if (f.wentToBooking > 0) lines.push(`${f.wentToBooking === 1 ? '1 press' : `${f.wentToBooking} presses`} went on from it to your booking page.`)
   return lines
 }
 
@@ -110,7 +110,7 @@ export function sellThroughMessage(facts: ReportFacts, from: string, signature: 
     'Here is what EventLinqs counted for it, from its page on our site:',
     ...lines,
     '',
-    'Each is a person, counted once. We can see who went on to your booking page, but not what they bought there.',
+    'We count a visitor once a day. We can see the presses on to your booking page, but not what was bought there.',
     ...(facts.mayOffer
       ? [
           '',

@@ -90,7 +90,7 @@ export function levelLines(v: VenueLevels): [string, string, string, string] {
   return [
     `Exposure: ${n(v.exposure.posts, 'post', 'posts')}, ${n(v.exposure.goTaps, 'tap', 'taps')} on their links${reach}`,
     `Interest: ${n(v.interest.people, 'person', 'people')} opened the listing`,
-    `Booking intent: ${n(v.bookingIntent.people, 'person', 'people')} went on to book (a press to the booking site, never counted as a sale)`,
+    `Booking intent: ${n(v.bookingIntent.people, 'press', 'presses')} on to book (a press to the booking site, never counted as a sale)`,
     `Verified sale: ${[ours, unseen].filter(Boolean).join('; ') || 'none counted'}`,
   ]
 }
@@ -108,7 +108,7 @@ export function levelFigures(v: VenueLevels): DashboardFigure[] {
   return [
     { ...base, label: 'Exposure: posts and taps on their links', ...(none ? unread : { value: v.exposure.posts, display: `${n(v.exposure.posts, 'post', 'posts')}, ${n(v.exposure.goTaps, 'tap', 'taps')}` }) },
     { ...base, label: 'Interest: people who opened the listing', ...(none ? unread : { value: v.interest.people }) },
-    { ...base, label: 'Booking intent: people sent on to book', ...(none ? unread : { value: v.bookingIntent.people, note: 'a press to the booking site, never counted as a sale' }) },
+    { ...base, label: 'Booking intent: presses on to book', ...(none ? unread : { value: v.bookingIntent.people, note: 'a press to the booking site, never counted as a sale' }) },
     {
       ...base,
       label: 'Verified sale: orders on EventLinqs',

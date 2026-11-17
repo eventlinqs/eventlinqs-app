@@ -95,7 +95,7 @@ export default async function VenueReportPage({ params }: Props) {
                       {night.own ? '' : ', run by another organiser'}
                     </p>
                     <p className="mt-1 text-sm text-ink-700">
-                      {night.interest.people} opened the listing, {night.bookingIntent.people} went on to book
+                      {night.interest.people} opened the listing, {night.bookingIntent.people} {night.bookingIntent.people === 1 ? 'press' : 'presses'} on to book
                     </p>
                   </li>
                 ))}

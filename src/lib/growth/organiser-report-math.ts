@@ -162,7 +162,7 @@ export function addedLines(f: NightFigures, words: { siteName: (provider: string
   if (f.pressesOut.people > 0) {
     const sites = f.pressesOut.bySite.map((s) => `${count.format(s.people)} to ${words.siteName(s.provider)}`).join(', ')
     lines.push(
-      `EventLinqs sent ${n(f.pressesOut.people, 'person', 'people')} on to your booking page: ${sites}. That is a person heading to your tickets, not a ticket sold; what they bought there is not visible to us.`,
+      `Your listing had ${n(f.pressesOut.people, 'press', 'presses')} on through to your booking page: ${sites}. A press is a click through to your tickets, not a ticket sold; what happens there is not visible to us.`,
     )
   } else {
     lines.push('Nobody pressed on from your listing to your booking page.')

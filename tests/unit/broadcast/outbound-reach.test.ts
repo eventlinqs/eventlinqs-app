@@ -18,7 +18,8 @@ describe('the people sent to their tickets this week', () => {
       NOW,
     )
     expect(week).toEqual({ people: 4, bySite: [{ provider: 'humanitix', people: 3 }, { provider: 'eventbrite', people: 2 }] })
-    expect(outboundSentence(week)).toBe('EventLinqs sent 4 people to your tickets this week: 3 to Humanitix, 2 to Eventbrite.')
+    // Presses, never people (the PM's 02:38 of 18 November 2026, item 5: a press is never called a person (scripts/guards/presses-are-not-people.mjs)).
+    expect(outboundSentence(week)).toBe('4 presses on your EventLinqs listing went through to your tickets this week: 3 to Humanitix, 2 to Eventbrite.')
   })
 
   test('count only the last seven days', () => {
@@ -26,7 +27,7 @@ describe('the people sent to their tickets this week', () => {
   })
 
   test('name one site plainly, a site with no platform name as their own site, and say nothing when nobody went', () => {
-    expect(outboundSentence(outboundWeekOf([row('humanitix', 'a', 1)], NOW))).toBe('EventLinqs sent 1 person to your tickets on Humanitix this week.')
+    expect(outboundSentence(outboundWeekOf([row('humanitix', 'a', 1)], NOW))).toBe('1 press on your EventLinqs listing went through to your tickets on Humanitix this week.')
     expect(outboundSentence(outboundWeekOf([row('organiser_site', 'a', 1), row('humanitix', 'b', 1)], NOW))).toMatch(/1 to their own site/)
     expect(outboundSentence(outboundWeekOf([], NOW))).toBeNull()
   })

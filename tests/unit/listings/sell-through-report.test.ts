@@ -60,9 +60,9 @@ describe('counted figures only, a zero left out, nothing sent when nothing was c
       '214 people opened its page.',
       '9 people saved it.',
       '3 people asked us to remind them before it started.',
-      '41 people went on from it to your booking page.',
+      '41 presses went on from it to your booking page.',
     ])
-    expect(figureLines({ viewers: 1, saves: 0, reminders: 0, wentToBooking: 1 })).toEqual(['1 person opened its page.', '1 person went on from it to your booking page.'])
+    expect(figureLines({ viewers: 1, saves: 0, reminders: 0, wentToBooking: 1 })).toEqual(['1 person opened its page.', '1 press went on from it to your booking page.'])
   })
   test('nothing counted means no message at all', () => {
     expect(sellThroughMessage({ ...KYIVSKA, figures: { viewers: 0, saves: 0, reminders: 0, wentToBooking: 0 } }, FROM, SIGNATURE)).toBeNull()
@@ -70,7 +70,7 @@ describe('counted figures only, a zero left out, nothing sent when nothing was c
   test('a press out is never called a sale', () => {
     const body = sellThroughMessage(KYIVSKA, FROM, SIGNATURE)?.body ?? ''
     expect(body).not.toMatch(/sold|sales|bought tickets|ticket sales/i)
-    expect(body).toContain('We can see who went on to your booking page, but not what they bought there.')
+    expect(body).toContain('We can see the presses on to your booking page, but not what was bought there.')
   })
 })
 

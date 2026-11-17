@@ -46,9 +46,10 @@ export function outboundWeekOf(rows: readonly OutboundRow[], now: Date): Outboun
 export function outboundSentence(week: OutboundWeek): string | null {
   if (week.people === 0) return null
   const named = (p: string) => PROVIDER_NAMES[p as BookingProvider] ?? 'their own site'
-  const who = week.people === 1 ? '1 person' : `${week.people} people`
-  if (week.bySite.length === 1) return `EventLinqs sent ${who} to your tickets on ${named(week.bySite[0].provider)} this week.`
-  return `EventLinqs sent ${who} to your tickets this week: ${week.bySite.map((s) => `${s.people} to ${named(s.provider)}`).join(', ')}.`
+  // Presses, never people (the PM's 02:38 of 18 November 2026, item 5; scripts/guards/presses-are-not-people.mjs).
+  const presses = week.people === 1 ? '1 press' : `${week.people} presses`
+  if (week.bySite.length === 1) return `${presses} on your EventLinqs listing went through to your tickets on ${named(week.bySite[0].provider)} this week.`
+  return `${presses} on your EventLinqs listing went through to your tickets this week: ${week.bySite.map((s) => `${s.people} to ${named(s.provider)}`).join(', ')}.`
 }
 
 /** The week's outbound presses for one event, read in full. */
