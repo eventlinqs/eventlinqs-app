@@ -145,6 +145,35 @@ const KIND: Record<NightKind | 'other', (p: Part, at: string) => string> = {
   other: (_p, at) => `Coming up${at}.`,
 }
 const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * THE KIND SAID TWICE, THE WHOLE CLASS (the PM's 06:39 of 18 November 2026, item 2): Showtime Bendigo read 'An afternoon
+ * of dance in Bendigo.' then 'A dance performance at Ulumbarra Theatre.', and two Play House nights 'A performance at The
+ * Play House.'. A night's own line stays only where it adds something beyond its kind (the words the kind line says), its
+ * venue and its city (the pin line's), and the words every such line is made of.
+ */
+const KIND_SAYS: Record<NightKind | 'other', readonly string[]> = {
+  gig: ['live', 'music', 'gig', 'gigs', 'concert'],
+  jazz: ['jazz', 'live', 'music'],
+  classical: ['concert', 'classical', 'music', 'live'],
+  dance: ['dance', 'dancing'],
+  festival: ['festival'],
+  comedy: ['comedy', 'stand-up', 'standup', 'comedian'],
+  theatre: ['stage', 'theatre', 'theater', 'show', 'play'],
+  talk: ['talk', 'conversation'],
+  family: ['family', 'day', 'out'],
+  sport: ['game', 'match', 'day'],
+  market: ['market', 'markets'],
+  christmas: ['christmas'],
+  other: [],
+}
+const FILLER = new Set(['a', 'an', 'the', 'at', 'in', 'on', 'of', 'performance', 'performances', 'event', 'events', 'night', 'evening', 'afternoon', 'morning', 'session'])
+function addsNothing(line: string, kind: NightKind | 'other', venue: string | null, city: string): boolean {
+  let rest = line.toLowerCase()
+  for (const place of [venue, city]) if (place) rest = rest.split(place.toLowerCase()).join(' ')
+  const words = rest.split(/[^a-z0-9-]+/).filter(Boolean)
+  return words.every((w) => FILLER.has(w) || KIND_SAYS[kind].includes(w))
+}
 const holds = (text: string, place: string) => new RegExp(`\\b${esc(place)}\\b`, 'i').test(text)
 
 function partsOf(iso: string, tz: string | null): Record<string, string> {
@@ -207,7 +236,7 @@ export function posterCaption(n: CampaignNight, city: CampaignCity, site: string
     KIND[kind](part, at),
     // The kind is said once (the pack of 05:43: 'Live music in Melbourne. / Live music, up close.'): the night's own words,
     // or nothing.
-    ...(why ? [why] : []),
+    ...(why && !addsNothing(why, kind, n.venueName, city.name) ? [why] : []),
     '',
     `\u{1F4CD} ${place}`,
     `\u{1F4C5} ${dateLine(n, opts.sessions ?? [])}`,

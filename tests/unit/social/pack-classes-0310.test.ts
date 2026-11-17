@@ -171,3 +171,28 @@ describe('the kind is said once', () => {
     expect(l.join(' ')).not.toMatch(/up close|The game, live/)
   })
 })
+
+/*
+ * THE KIND SAID TWICE, THE WHOLE CLASS (the PM's 06:39 of 18 November 2026, item 2): Showtime Bendigo read 'An afternoon
+ * of dance in Bendigo.' then 'A dance performance at Ulumbarra Theatre.', and two Play House nights 'A performance at The
+ * Play House.': the second line said the kind again and the venue the pin line already names. A night's own line stays
+ * only where it adds something beyond its kind, its venue and its city.
+ */
+describe("the night's own line adds something, or it goes", () => {
+  it('a line of only the kind and the venue goes, on both platforms', () => {
+    const showtime = night({ title: 'Showtime: The Entertainers Performing Arts Studio', venueName: 'Ulumbarra Theatre', cityName: 'Bendigo', citySlug: 'bendigo', startDate: '2026-11-21T03:00:00Z', summary: 'A dance performance at Ulumbarra Theatre.' })
+    const bendigo = { slug: 'bendigo', name: 'Bendigo' }
+    for (const platform of ['instagram', 'facebook'] as const) {
+      const l = lines(posterCaption(showtime, bendigo, SITE, { platform, link: `${ORIGIN}/events/a-night` }))
+      expect(l[1]).toBe('An afternoon of dance in Bendigo.')
+      expect(l[2].startsWith('\u{1F4CD}')).toBe(true)
+    }
+    for (const c of [ig(night({})), fb(night({}))]) expect(c).not.toMatch(/A performance at The Play House/)
+  })
+  it('a line that adds its own words stays', () => {
+    const fine = night({ title: 'Fine Lines & Wine', venueName: 'Archive Wine Bar', categorySlug: 'arts-community', summary: 'A relaxed sketching night with a glass of wine at Archive Wine Bar.' })
+    expect(ig(fine)).toContain('A relaxed sketching night with a glass of wine at Archive Wine Bar.')
+    const showcase = night({ summary: 'A dance showcase by 200 students of the academy.' })
+    expect(ig(showcase)).toContain('A dance showcase by 200 students of the academy.')
+  })
+})
