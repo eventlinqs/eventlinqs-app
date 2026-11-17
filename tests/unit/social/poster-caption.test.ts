@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor } from '@/lib/events/cta'
-import { posterCaption, DAILY_POSTERS_IN_PLAN } from '@/lib/social/daily-posters'
+import { dailyPosterPieces, posterCaption, DAILY_POSTERS_IN_PLAN } from '@/lib/social/daily-posters'
 import type { CampaignNight } from '@/lib/social/campaign'
 
 /*
@@ -45,7 +45,10 @@ describe('posterCaption', () => {
     expect(gig).not.toContain('Ballarat, Ballarat')
     expect(gig).toMatch(/📅 Thursday 19 November · 7(:00)? ?pm/)
     expect(gig).toContain('🎟 Event details and tickets:')
-    expect(gig).toContain(`${SITE}/events/a-night`)
+    // Instagram takes the link in bio (a caption link is not tappable there); Facebook carries the whole link (the PM's
+    // 03:10 of 18 November 2026: the posted versions ARE this caption).
+    expect(gig).toContain('At the link in our bio.')
+    expect(posterCaption(night({}), city, SITE, { platform: 'facebook', link: 'https://www.eventlinqs.com.au/events/a-night' })).toContain('https://www.eventlinqs.com.au/events/a-night')
     expect(lines.at(-1)).toBe('#ballarat #ballaratevents')
   })
 
@@ -60,5 +63,21 @@ describe('posterCaption', () => {
 
   it("Lawal's A: the daily posters are in the week's plan", () => {
     expect(DAILY_POSTERS_IN_PLAN).toBe(true)
+  })
+})
+
+// The pack of 18 November 2026: the posters' platform versions read 'at Geelong Racecourse, Geelong' and 'at Ballarat
+// Botanical Gardens, Ballarat', the class the PM's 23:45 of 17 November (fix (d)) ruled out: a venue whose own name holds
+// its city is named alone, any other keeps its city.
+describe("a daily poster's hook names the city once", () => {
+  it('a venue whose name holds its city is named alone; any other venue keeps its city', () => {
+    const race = night({ eventId: 'r', slug: 'r', title: 'Geelong Caravanning and Adventure Leisurefest', citySlug: 'geelong', cityName: 'Geelong', venueName: 'Geelong Racecourse', host: 'Geelong Racecourse', categorySlug: 'festival', summary: 'A caravan and outdoor show.' })
+    const costa = night({ eventId: 'c', slug: 'c', title: 'The Kim Wilde', citySlug: 'geelong', cityName: 'Geelong', venueName: 'Costa Hall', host: 'Costa Hall', startDate: '2026-11-20T08:30:00Z', endDate: '2026-11-20T11:00:00Z' })
+    const pieces = dailyPosterPieces({ nights: [race, costa], cities: [{ slug: 'geelong', name: 'Geelong' }], weekStart: '2026-11-16', origin: 'https://www.eventlinqs.com.au' })
+    const all = JSON.stringify(pieces)
+    expect(pieces.length).toBe(2)
+    expect(all).not.toContain('Racecourse, Geelong')
+    expect(all).toContain('\u{1F4CD} Geelong Racecourse\\n')
+    expect(all).toContain('\u{1F4CD} Costa Hall, Geelong\\n')
   })
 })

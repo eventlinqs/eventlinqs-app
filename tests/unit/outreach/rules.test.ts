@@ -107,6 +107,14 @@ describe('each rule fails on its own breach', () => {
     draft.closing = 'Kind regards, Lawal'
     expect(ruleFailures(draft)).toEqual(["Lawal's full signature on every email", 'an unsubscribe line on every email'])
   })
+  // A follow up and a reply sign as Lawal replies, without the ABN block (VOICE-EVENTLINQS.md, which the gateway enforces);
+  // until 18 November 2026 this rule asked every email for the full block, so every follow up was held by one rule while
+  // the gateway refused the other (the segment A letters, the PM's 02:00 of 18 November 2026).
+  test('a follow up and a reply take the reply signature; a first letter keeps the full one', () => {
+    const reply = ['Kind regards,', 'Lawal Adams', 'Founder, EventLinqs', '', `If you'd rather I didn't write again, just reply and say so, or unsubscribe here: ${UNSUB}`].join('\n')
+    expect(ruleFailures({ ...email(MESSAGE_1.replace('Would that work for you?', 'Thanks again.'), 2), closing: reply })).toEqual([])
+    expect(ruleFailures({ ...email(MESSAGE_1, 1), closing: reply })).toContain("Lawal's full signature on every email")
+  })
   test('a DM without the sign-off', () => {
     const draft: Draft = { channel: 'dm', purpose: 'cadence', step: 2, subject: null, content: "Hi Sam, happy to set it all up for you if that's easier, just say the word.", closing: '' }
     expect(ruleFailures(draft)).toEqual([`DMs end "${DM_SIGN_OFF}"`])

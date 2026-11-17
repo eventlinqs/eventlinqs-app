@@ -21,7 +21,9 @@ import { getAllCities } from '@/lib/cities/data'
  */
 
 /** The moment the rules below came into force: a revision drawn before it is stale. Moved forward with every rule change. */
-export const PIECE_RULES_SINCE = '2026-11-17T13:10:00.000Z'
+// Moved forward with every rule change; last on 18 November 2026, 03:30 Melbourne (the post title's possessive, a row's
+// days at its own time, the poster's city named once): a piece drawn before that is drawn again by the code in force.
+export const PIECE_RULES_SINCE = '2026-11-17T16:30:00.000Z'
 
 export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'>
 
@@ -50,7 +52,9 @@ function wordsOf(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap(wordsOf)
   if (value && typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
-      .filter(([k]) => !['photo', 'credit', 'eventId', 'photoEventId', 'startDate', 'composition', 't', 'link', 'url', 'shortLink'].includes(k))
+      // venueAddress is the source's raw address, never printed whole ('99 Breakwater Rd, Breakwater VIC 3219' read as the
+      // city twice in the pack of 18 November 2026); the poster prints its street and the city from it.
+      .filter(([k]) => !['photo', 'credit', 'eventId', 'photoEventId', 'startDate', 'composition', 't', 'link', 'url', 'shortLink', 'venueAddress'].includes(k))
       .flatMap(([, v]) => wordsOf(v))
   }
   return []

@@ -602,7 +602,7 @@ export function compositionFor(n: Pick<CampaignNight, 'categorySlug' | 'cta'>): 
  * Where a night is, as a line names it: the venue and its city, or the venue alone when its own name already holds the
  * city (the PM's 23:45 of 17 November 2026, fix (d): never 'Her Majesty's Theatre Ballarat, Ballarat').
  */
-function metaOf(n: CampaignNight): string {
+export function metaOf(n: Pick<CampaignNight, 'venueName' | 'cityName'>): string {
   if (!n.venueName) return n.cityName
   const holdsCity = new RegExp(`\\b${n.cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(n.venueName)
   return holdsCity ? n.venueName : `${n.venueName}, ${n.cityName}`
@@ -727,8 +727,16 @@ export function postTitle(title: string, venue: string | null): string {
   }
   const parts = t.split(/\s+[-\u2013\u2014]\s+/)
   if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
+  // A plural's possessive takes its apostrophe on every surface ('Mens T20I' reads "Men's T20I"), as cardTitle writes a row.
+  t = t.replace(/\b(Men|Women|Children)s\b/g, (_m: string, who: string) => `${who}'s`)
+  // Capitals take title case (the PM's 03:10 of 18 November 2026, class 3): a word of six or more capitals is a word set in
+  // capitals ('PROFESSIONAL COMEDIANS', 'SHOWTIME'); a shorter one is a name ('LANY', 'MESS'), and a few acronyms stay.
+  t = t.replace(/\b[A-Z]{6,}\b/g, (w: string) => (KEEP_CAPITALS.has(w) ? w : `${w.charAt(0)}${w.slice(1).toLowerCase()}`))
   return cleanTitle(t)
 }
+
+/** Acronyms of six or more capitals that are names, never words set in capitals. */
+const KEEP_CAPITALS: ReadonlySet<string> = new Set(['NAIDOC', 'UNESCO', 'NASDAQ'])
 
 /**
  * A TITLE SHORTENED BY RULE (the PM's 17:10 of 15 November 2026: "titles shortened by rule from the event's own words,
@@ -832,8 +840,14 @@ export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] 
   if (dateOf(n).includes(' to ') && n.endDate) {
     return { time: clockOf(n.startDate, n.timezone), day: `${shortDay(n.startDate, n.timezone)} to ${shortDay(n.endDate, n.timezone)}`, first: n.startDate }
   }
+  // A row names only the days its one printed time is true of (the pack of 18 November 2026: Curtain Up read '2:00 PM
+  // FRI 20 & SAT 21' when Friday's session is 7.30 pm): sessions at another time are not merged into this night's label.
+  const own = clockOf(n.startDate, n.timezone)
   const byDay = new Map<string, CampaignNight>()
-  for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  for (const x of all) {
+    if (clockOf(x.startDate, x.timezone) !== own) continue
+    if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  }
   const d = [...byDay.values()].map((x) => shortDay(x.startDate, x.timezone))
   // ONE TIME PER NIGHT (the PM's 23:45 of 17 November 2026, fix (a)): the time is this night's own, the one its caption
   // prints; it was the first session's, so Alastair Campbell's 3 pm row read '11:30 am' beside a caption of 3pm.
@@ -1231,6 +1245,20 @@ export function spotlightLines(name: string, nights: readonly CampaignNight[], c
     : [`${nights.length} ${name.toLowerCase()}`, `${nights.length === 1 ? 'event' : 'events'} in ${cityName}`, 'this week']
 }
 
+/**
+ * A VENUE'S NIGHTS, THE VENUE NAMED ONCE (the PM's 03:10 of 18 November 2026, class 9: 'Melbourne Recital Centre' five
+ * times): each line the day, the time and the title, and where every night sells in one place, that once at the end.
+ */
+export function venueSpotlightLines(nights: readonly CampaignNight[]): string[] {
+  const sellers = [...new Set(nights.map((n) => n.priceLine ?? ''))]
+  const one = sellers.length === 1 && sellers[0] !== ''
+  const lines = nights.map((n) => {
+    const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '\u{1F39F}' : '\u{1F4CD}'
+    return `${mark} ${whenOf(n)}, ${n.title}.${!one && n.priceLine ? ` ${n.priceLine}.` : ''}`
+  })
+  return one ? [...lines, `${sellers[0]}.`] : lines
+}
+
 /** One line a pick: the place pin for a free night, the ticket for a paid one (the 13:27 (6), kept by the 13:53). */
 export function pickLine(n: CampaignNight): string {
   const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '🎟' : '📍'
@@ -1576,7 +1604,8 @@ export function planCampaign(input: {
     const first = nights[0]
     const city = input.cities.find((c) => c.slug === first.citySlug) ?? { slug: first.citySlug, name: first.cityName }
     const hook = `${name} this week.`
-    const body = [...nights.slice(0, 4).map(pickLine), '', creditsOf(nights)]
+    // The venue once, in the headline (the PM's 03:10, class 9): the lines carry the day, the time and the title.
+    const body = [...venueSpotlightLines(nights.slice(0, 4)), '', creditsOf(nights)]
     pieces.push({
       kind: 'venue_spotlight',
       city: city.slug,

@@ -1,6 +1,6 @@
 {
-  "_generated": "by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md and C:/dev/comms-gateway/permissions-granted.json, compounds.json and threads.json; never edited by hand. version is the sha256 of the two policy files together, first 16 hex, as gateway.py computes it.",
-  "version": "6823dffe777dfa1e",
+  "_generated": "by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md, C:/dev/START-16OCT/EL-COMMS-STANDARD-LOCKED-17NOV.md and C:/dev/comms-gateway/permissions-granted.json, compounds.json, threads.json and standard.json; never edited by hand. version is the sha256 of the three policy files together, first 16 hex, as gateway.py computes it.",
+  "version": "3b9210ea627603c6",
   "firstSignature": [
     "Lawal Adams",
     "Founder, EventLinqs",
@@ -124,5 +124,55 @@
       "why": "same AMCF thread"
     }
   ],
-  "founderMailbox": "lawal@eventlinqs.com"
+  "founderMailbox": "lawal@eventlinqs.com",
+  "standard": {
+    "outreachCategories": [
+      "first_contact",
+      "follow_up"
+    ],
+    "offerSubjects": [
+      "^Helping more people find .+ on \\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December)$",
+      "^\\d+ people sent to your booking page from EventLinqs$"
+    ],
+    "actions": [
+      "reply with one image",
+      "add it here",
+      "what would it be",
+      "sign up",
+      "create an account",
+      "register your",
+      "book a call",
+      "explore native ticketing",
+      "switch your ticketing",
+      "send me your programme",
+      "send me three"
+    ],
+    "internalWords": [
+      "robots\\.txt",
+      "\\brobots\\b",
+      "\\bscrap(e|ed|es|ing|er)\\b",
+      "\\bcrawl(s|ed|er|ing)?\\b",
+      "\\bfeeds?\\b",
+      "\\bAPIs?\\b",
+      "\\bdatabases?\\b",
+      "\\bour (bug|bugs|glitch|outage|error|fault)s?\\b"
+    ],
+    "unprovedClaims": [
+      "\\bguarantee(d|s)?\\b",
+      "\\bwe('ll| will) feature\\b",
+      "\\bfeature (it|you|your)\\b",
+      "\\bplacement\\b",
+      "\\bin our (guides|posts|newsletter)\\b",
+      "\\bwithin \\d+ (minutes|hours|days)\\b",
+      "\\breview and correct\\b",
+      "\\bsell (more|out)\\b",
+      "\\bmore (ticket )?sales\\b",
+      "\\bboost\\b"
+    ],
+    "consentBases": [
+      "conspicuous_publication",
+      "express_consent"
+    ],
+    "minDaysAhead": 3
+  }
 }

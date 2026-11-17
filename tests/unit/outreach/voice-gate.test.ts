@@ -19,15 +19,18 @@ const POLICY: VoicePolicy = readVoicePolicy()
 const SIG = ['Lawal Adams', 'Founder, EventLinqs', 'eventlinqs.com.au', 'ABN 30 837 447 587', 'Geelong, VIC, Australia']
 const OPT = "If you'd rather I didn't write again, just reply and say so, or unsubscribe here: https://www.eventlinqs.com.au/unsubscribe/outreach"
 const FIRST = [
-  'Hi Kaze team,',
-  "I hope you're all well. Something fun in Ballarat every night of the week since 1989 is quite a mission.",
-  "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds a community around every event it lists. Your 24 upcoming karaoke nights are already on our Ballarat guide: https://www.eventlinqs.com.au/go/v/f768f410-67e2-44d0-a29d-ac06da1ebc6f",
-  "Could I ask your advice: which three photos of your karaoke nights would you most like people to see? Just reply with them attached and I'll put them up myself.",
+  "Hi Her Majesty's Theatre Ballarat team,",
+  "I hope you're well.",
+  'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page. So far 6 people have opened their pages on EventLinqs.',
+  "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds a community around every event it lists. I'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
+  "Send me one image of your next show you're happy for us to use, and I'll add it for you. Your tickets stay exactly where they are.",
+  'Could you reply with one image, or add it here? https://www.eventlinqs.com.au/photos/00000000-0000-0000-0000-000000000000/00000000000000000000000000000000',
   'Kind regards,\n' + SIG.join('\n'),
   OPT,
 ].join('\n\n')
-const DM: VoiceMessage = { channel: 'instagram', category: 'first_contact', from: "instagram: Lawal's own account", to: [], subject: null, greetingName: 'Kaze team', body: FIRST }
-const EMAIL: VoiceMessage = { ...DM, channel: 'email', to: ['info@kaze.example'], subject: 'Your karaoke nights, could I ask your advice?' }
+const CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://hermaj.com/contact', noMarketingStatementChecked: true } as const
+const DM: VoiceMessage = { channel: 'instagram', category: 'first_contact', from: "instagram: Lawal's own account", to: [], subject: null, greetingName: "Her Majesty's Theatre Ballarat team", body: FIRST, consent: CONSENT, eventDate: '2026-11-28', landsOn: '2026-11-19' }
+const EMAIL: VoiceMessage = { ...DM, channel: 'email', to: ['hermaj@hermaj.com'], subject: 'Helping more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on 28 November' }
 const REPLY: VoiceMessage = {
   channel: 'email',
   category: 'reply',
@@ -83,9 +86,9 @@ describe('validate, as the gateway', () => {
     expect(has(r, 'already given')).toBe(true)
   })
   it('never invites a no, never a dash, never a placeholder', () => {
-    expect(has(voiceProblems({ ...DM, body: DM.body.replace('Could I ask', 'No pressure at all. Could I ask') }, POLICY), 'invites a no')).toBe(true)
-    expect(has(voiceProblems({ ...DM, body: DM.body.replace('quite a mission', 'quite a mission \u2014 truly') }, POLICY), 'dash')).toBe(true)
-    expect(has(voiceProblems({ ...DM, body: DM.body.replace('Ballarat guide', '{city} guide') }, POLICY), 'placeholder')).toBe(true)
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('Could you reply', 'No pressure at all. Could you reply') }, POLICY), 'invites a no')).toBe(true)
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('at no cost to you,', 'at no cost to you \u2014 truly,') }, POLICY), 'dash')).toBe(true)
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('6 people', '{count} people') }, POLICY), 'placeholder')).toBe(true)
   })
 })
 
@@ -98,7 +101,7 @@ describe('approval of the exact content, under this policy', () => {
     expect(has(approvalProblems(null, DM, POLICY), 'no approval')).toBe(true)
   })
   it('06: changed after approval is blocked', () => {
-    expect(has(approvalProblems(ok, { ...DM, body: DM.body.replace('three photos', 'four photos') }, POLICY), 'changed after approval')).toBe(true)
+    expect(has(approvalProblems(ok, { ...DM, body: DM.body.replace('one image of', 'an image of') }, POLICY), 'changed after approval')).toBe(true)
   })
   it('05: an approval under an older policy is approved again', () => {
     expect(has(approvalProblems({ ...ok, policyVersion: 'old' }, DM, POLICY), 'policy changed')).toBe(true)
@@ -114,9 +117,9 @@ describe('approval of the exact content, under this policy', () => {
 
 describe("the gateway's rules of 31 October noon (compounds, the sending mailbox, the thread)", () => {
   it('a compound modifier before a noun takes its hyphen; a compound word always does (law 6)', () => {
-    expect(has(voiceProblems({ ...DM, body: DM.body.replace('which three photos', 'the day by day program and which three photos') }, POLICY), 'compound modifier needs its hyphen')).toBe(true)
-    expect(voiceProblems({ ...DM, body: DM.body.replace('which three photos', 'the day-by-day program and which three photos') }, POLICY)).toEqual([])
-    expect(has(voiceProblems({ ...DM, body: DM.body.replace('quite a mission', 'quite a mission for a sister in law') }, POLICY), 'compound word needs its hyphen')).toBe(true)
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('Send me one image', 'It has a day by day program. Send me one image') }, POLICY), 'compound modifier needs its hyphen')).toBe(true)
+    expect(voiceProblems({ ...DM, body: DM.body.replace('Send me one image', 'It has a day-by-day program. Send me one image') }, POLICY)).toEqual([])
+    expect(has(voiceProblems({ ...DM, body: DM.body.replace('Send me one image', 'Ask your sister in law. Send me one image') }, POLICY), 'compound word needs its hyphen')).toBe(true)
   })
   it('names the mailbox it goes from, and a known thread goes from its own mailbox only', () => {
     expect(has(voiceProblems({ ...DM, from: null }, POLICY), 'no sending mailbox')).toBe(true)
@@ -136,5 +139,43 @@ describe('the mailbox Lawal sends from is data, never a literal in the code (one
     const src = readFileSync('src/lib/outreach/touch-voice.ts', 'utf8')
     expect(src).not.toMatch(/[a-z]+@eventlinqs\.com/)
     expect(src).toMatch(/founderMailbox/)
+  })
+})
+
+describe("the standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 2 rule 7; the PM's 02:00 of 18 November 2026)", () => {
+  it('the policy carries the standard, generated with the two voice files into one version, or it is refused', () => {
+    expect(POLICY.standard.offerSubjects.length).toBeGreaterThan(0)
+    expect(POLICY.standard.minDaysAhead).toBe(3)
+    expect(() => readVoicePolicy({ ...POLICY, standard: undefined })).toThrow(/POLICY_UNAVAILABLE/)
+  })
+  it('a segment A first letter passes whole, as an email and as a direct message', () => {
+    expect(voiceProblems(EMAIL, POLICY)).toEqual([])
+    expect(voiceProblems(DM, POLICY)).toEqual([])
+  })
+  it('the advice subject is refused for an offer led one', () => {
+    expect(has(voiceProblems({ ...EMAIL, subject: 'Your next show, could I ask your advice?' }, POLICY), 'offer led subject')).toBe(true)
+  })
+  it('one call to action only', () => {
+    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace('Could you reply', 'If you could change one thing about selling tickets, what would it be? Could you reply') }, POLICY), 'one call to action')).toBe(true)
+  })
+  it('no internal word reaches a customer', () => {
+    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace('So far 6 people', "We read your site's robots.txt and our feed. So far 6 people") }, POLICY), 'internal word')).toBe(true)
+  })
+  it('no promise of a capability not proved on production', () => {
+    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace('So far 6 people', "We'll feature it in our guides and posts within 24 hours. So far 6 people") }, POLICY), 'unproved claim')).toBe(true)
+  })
+  it('a letter lands 3 or more days before its night, never on or after it, and says when', () => {
+    for (const landsOn of ['2026-11-28', '2026-11-29', '2026-11-26']) expect(has(voiceProblems({ ...EMAIL, landsOn }, POLICY), 'timing')).toBe(true)
+    expect(has(voiceProblems({ ...EMAIL, eventDate: undefined }, POLICY), 'timing')).toBe(true)
+  })
+  it('the consent basis is present: published on their own site, its no refusal statement checked', () => {
+    expect(has(voiceProblems({ ...EMAIL, consent: undefined }, POLICY), 'consent')).toBe(true)
+    expect(has(voiceProblems({ ...EMAIL, consent: { ...CONSENT, noMarketingStatementChecked: false } }, POLICY), 'consent')).toBe(true)
+  })
+  it("the warm line is its own paragraph (Lawal's rule 2)", () => {
+    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace("I hope you're well.\n\nYour events", "I hope you're well. Your events") }, POLICY), 'own paragraph')).toBe(true)
+  })
+  it('a reply or a service message is not held to the outreach checks', () => {
+    expect(voiceProblems(REPLY, POLICY)).toEqual([])
   })
 })

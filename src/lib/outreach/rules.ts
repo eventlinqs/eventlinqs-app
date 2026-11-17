@@ -35,6 +35,9 @@ export const LAWAL_SIGNATURE = [
   'Geelong, VIC, Australia',
 ].join('\n')
 
+/** How a follow up and a reply sign: the name and the role, without the ABN block (the voice file's reply sign off). */
+export const REPLY_SIGNATURE = [PLATFORM_ENTITY.legalName, `Founder, ${PLATFORM_ENTITY.tradingName}`].join('\n')
+
 /** How every DM ends, word for word. */
 export const DM_SIGN_OFF = "Lawal, EventLinqs (reply stop and I won't message again)"
 
@@ -116,7 +119,10 @@ export function ruleFailures(draft: Draft): string[] {
 
   if (draft.channel === 'email') {
     if (!draft.subject || draft.subject.trim().length < 3) failures.push('an email has a subject')
-    if (!draft.closing.includes(LAWAL_SIGNATURE)) failures.push("Lawal's full signature on every email")
+    // A follow up and a reply sign as Lawal replies, without the ABN block (VOICE-EVENTLINQS.md: "Replies sign 'Kind
+    // regards, Lawal Adams, Founder, EventLinqs' with no ABN block", which the gateway enforces); a first letter signs whole.
+    const followUp = draft.purpose === 'reply' || (draft.purpose === 'cadence' && (draft.step ?? 1) >= 2)
+    if (!draft.closing.includes(followUp ? REPLY_SIGNATURE : LAWAL_SIGNATURE)) failures.push(followUp ? "Lawal's reply signature on a follow up" : "Lawal's full signature on every email")
     if (!draft.closing.includes('https://www.eventlinqs.com.au/unsubscribe/outreach')) failures.push('an unsubscribe line on every email')
   } else if (!draft.closing.trim().endsWith(DM_SIGN_OFF)) {
     failures.push(`DMs end "${DM_SIGN_OFF}"`)

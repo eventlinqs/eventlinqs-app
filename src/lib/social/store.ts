@@ -7,14 +7,14 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, planMoments, scheduleWindowOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
 import { quotableSummary, wordsRefusal } from './words'
-import { dailyPosterPieces, posterDrift, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
+import { dailyPosterPieces, posterDrift, withKitCaptions, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -883,7 +883,8 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
   // look. A switch, never a deletion (law 13): DAILY_POSTERS_IN_PLAN turns them back on.
-  const pieces = [...week.pieces, ...(DAILY_POSTERS_IN_PLAN ? dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded }) : [])]
+  // A partner kit's caption is of its kind (the PM's 03:10 of 18 November 2026, class 8), the one poster caption for its night.
+  const pieces = withKitCaptions([...week.pieces, ...(DAILY_POSTERS_IN_PLAN ? dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded }) : [])], nights, cities, ORIGIN)
   // Lawal's social lock of 15 November 2026 (campaign.ts lockRefusal): only a piece drawn wholly in the locked look and
   // carrying a photograph enters the week's plan; the rest wait behind OLDER_LOOK_IN_PLAN (law 13), never deleted.
   return { ...week, pieces: OLDER_LOOK_IN_PLAN ? pieces : pieces.filter((p) => lockRefusal(p.slides) === null) }
@@ -1720,7 +1721,8 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
   const pieces: SchedulePiece[] = due.map((d) => {
     const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined)
     const window = scheduleWindowOf(d.format, own, undefined, { onNow: ON_NOW.test(d.rev.caption) })
-    if (window.first === null) return { id: d.id, format: d.format, approvedAt: d.approvedAt }
+    // A weekend line with no night of its own goes on a Thursday or a Friday (the PM's 03:10, class 6).
+    if (window.first === null) return { id: d.id, format: d.format, approvedAt: d.approvedAt, days: weekendDaysOf(d.rev.caption, own.length) }
     firstStarting.set(d.id, window.first)
     return { id: d.id, format: d.format, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore }
   })

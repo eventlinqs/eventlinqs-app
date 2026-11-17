@@ -32,6 +32,25 @@ export interface VoicePolicy {
   readonly threads: readonly { recipient: string; mailbox: string; why: string }[]
   /** The mailbox the voice file was read from: Lawal's own, which an email by hand goes from. */
   readonly founderMailbox: string
+  /** The communication standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 2 rule 7), from standard.json. */
+  readonly standard: VoiceStandard
+}
+
+export interface VoiceStandard {
+  readonly outreachCategories: readonly VoiceCategory[]
+  readonly offerSubjects: readonly string[]
+  readonly actions: readonly string[]
+  readonly internalWords: readonly string[]
+  readonly unprovedClaims: readonly string[]
+  readonly consentBases: readonly string[]
+  readonly minDaysAhead: number
+}
+
+/** The lawful basis to write to this address (the standard's Part 2 rule 5, the Spam Act's conspicuous publication test). */
+export interface VoiceConsent {
+  readonly basis: string
+  readonly publishedOnUrl: string | null
+  readonly noMarketingStatementChecked: boolean
 }
 
 export interface VoiceMessage {
@@ -46,6 +65,11 @@ export interface VoiceMessage {
   readonly greetingName: string | null
   readonly body: string
   readonly threadRef?: string | null
+  /** An outreach letter's lawful basis; a first letter and a follow up carry it (the standard's Part 2 rule 5). */
+  readonly consent?: VoiceConsent
+  /** The local day of the night the letter is about, and the local day it would land (YYYY-MM-DD), for the timing rule. */
+  readonly eventDate?: string
+  readonly landsOn?: string
 }
 
 /** The generated policy, refused whole if any fact is missing: POLICY_UNAVAILABLE means stop, never assume. */
@@ -57,6 +81,10 @@ export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   if (typeof p?.version !== 'string' || !/^[0-9a-f]{16}$/.test(p.version) || !strings(p.firstSignature) || !strings(p.replySignature) || !strings(p.noExit) || !Array.isArray(p.permissions) || !compoundsWhole || !Array.isArray(p.threads) || typeof p.founderMailbox !== 'string' || !EMAIL.test(p.founderMailbox)) {
     throw new Error('POLICY_UNAVAILABLE: the voice policy is missing or incomplete; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   }
+  const s = p.standard
+  const standardWhole =
+    Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.actions) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead)
+  if (!standardWhole) throw new Error('POLICY_UNAVAILABLE: the communication standard is missing from the voice policy; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   return p as VoicePolicy
 }
 
@@ -111,7 +139,10 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
   if (isEmail || msg.channel === 'website_form') {
     if (!subj) r.push('no subject line')
     if (isEmail && (cat === 'reply' || cat === 'follow_up') && !/^re:\s/i.test(subj)) r.push('a reply must keep the thread subject, starting "Re:"')
-    if (cat === 'first_contact' && !/could I ask your advice\?$/i.test(subj)) r.push('a first message subject is "<their event>, could I ask your advice?" (voice file)')
+    // The advice subject is replaced by an offer led one, from the standard's own list (the PM's 02:00 of 18 November 2026).
+    if (cat === 'first_contact' && (/could I ask your advice/i.test(subj) || !policy.standard.offerSubjects.some((pat) => new RegExp(pat).test(subj)))) {
+      r.push(`a first message takes an offer led subject (standard Part 2 rule 7); found ${JSON.stringify(subj.slice(0, 80))}`)
+    }
   }
   if (isEmail && (cat === 'reply' || cat === 'follow_up') && !msg.threadRef) r.push('a reply must name the thread it answers (thread_ref)')
 
@@ -182,6 +213,47 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
   for (const p of policy.permissions) {
     if (!to.some((a) => a.toLowerCase() === p.recipient.toLowerCase())) continue
     for (const pat of p.neverAsk) if (new RegExp(pat, 'i').test(own)) r.push(`asks again for permission already given: ${p.topic} (${p.given})`)
+  }
+  return [...r, ...standardProblems(msg, policy.standard, own, bodyBefore)]
+}
+
+const dayOf = (d: string | undefined) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? Date.parse(`${d}T00:00:00Z`) : Number.NaN)
+
+/**
+ * gateway.py standard_checks, line for line: Lawal's paragraph rule, then on a first letter or a follow up one call to
+ * action, no internal word, no unproved claim, the consent basis, and the timing rule (3 or more days before its night).
+ */
+function standardProblems(msg: VoiceMessage, std: VoiceStandard, own: string, bodyBefore: string): string[] {
+  const r: string[] = []
+  const cat = msg.category
+  if (!std.outreachCategories.includes(cat)) return r
+  const paras = own.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean)
+  if (paras.length > 1 && !WARM[cat].includes(paras[1]) && !WARM[cat].includes(paras[1].replace(/\.+$/, ''))) {
+    r.push(`the warm line is its own paragraph, and the topic starts in the next (Lawal's rule 2); found ${JSON.stringify(paras[1].slice(0, 60))}`)
+  }
+  const low = bodyBefore.toLowerCase()
+  const acts = std.actions.filter((a) => low.includes(a))
+  const asks = bodyBefore.split(/(?<=[.?!])\s+/).filter((x) => x.trim().endsWith('?'))
+  if (acts.length > 2 || asks.length > 1 || (acts.includes('what would it be') && acts.length > 1)) r.push(`one call to action only (standard rule 4): found ${JSON.stringify(acts.length > 0 ? acts : asks)}`)
+  for (const pat of std.internalWords) {
+    const m = bodyBefore.match(new RegExp(pat, 'i'))
+    if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)
+  }
+  for (const pat of std.unprovedClaims) {
+    const m = bodyBefore.match(new RegExp(pat, 'i'))
+    if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
+  }
+  const c = msg.consent
+  if (!c || !std.consentBases.includes(c.basis)) r.push(`consent basis missing or unknown: one of ${std.consentBases.join(', ')} (standard Part 2 rule 5)`)
+  else if (c.basis === 'conspicuous_publication' && !((c.publishedOnUrl ?? '').startsWith('https://') && c.noMarketingStatementChecked === true)) {
+    r.push('consent by conspicuous publication needs the page it was published on and its no refusal statement checked (standard Part 2 rule 5)')
+  }
+  const ev = dayOf(msg.eventDate)
+  const lands = dayOf(msg.landsOn)
+  if (Number.isNaN(ev) || Number.isNaN(lands)) r.push('timing: event_date and lands_on (YYYY-MM-DD) are needed so no letter lands on or after its night (standard Part 2 rule 4)')
+  else {
+    const ahead = Math.round((ev - lands) / 86_400_000)
+    if (ahead < std.minDaysAhead) r.push(`timing: it would land ${ahead} day(s) before its night; a letter about a night goes only ${std.minDaysAhead} or more days ahead, never on or after its day (standard Part 2 rule 4)`)
   }
   return r
 }
