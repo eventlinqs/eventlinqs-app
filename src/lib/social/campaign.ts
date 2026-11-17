@@ -1207,6 +1207,25 @@ export function nightsWord(nights: readonly Pick<CampaignNight, 'startDate' | 't
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
 const countWord = (k: number): string => COUNT_WORDS[k] ?? String(k)
 
+/**
+ * A SPOTLIGHT HOLDS ONLY ITS KIND (the PM's 23:45 of 17 November 2026, fix (b)): a music spotlight takes music nights only
+ * (Melbourne's carried 'An Evening with Alastair Campbell', a talk filed as music), and a talk is spotlit only as a talk.
+ */
+const MUSIC_KINDS: readonly NightKind[] = ['gig', 'jazz', 'classical', 'festival', 'dance']
+export function spotlightFits(categorySlug: string, n: CampaignNight): boolean {
+  const kind = nightKind(n)
+  if (MUSIC_CATEGORIES.includes(categorySlug.toLowerCase())) return kind !== null && MUSIC_KINDS.includes(kind)
+  return kind !== 'talk' || /talk/i.test(categorySlug)
+}
+
+/** A spotlight's cover in natural words: '5 nights of / music in Melbourne / this week', or '5 music / events in ...'. */
+export function spotlightLines(name: string, nights: readonly CampaignNight[], cityName: string): [string, string, string] {
+  const evening = nightsWord(nights) === 'nights'
+  return evening
+    ? [`${nights.length} ${nights.length === 1 ? 'night' : 'nights'} of`, `${name.toLowerCase()} in ${cityName}`, 'this week']
+    : [`${nights.length} ${name.toLowerCase()}`, `${nights.length === 1 ? 'event' : 'events'} in ${cityName}`, 'this week']
+}
+
 /** One line a pick: the place pin for a free night, the ticket for a paid one (the 13:27 (6), kept by the 13:53). */
 export function pickLine(n: CampaignNight): string {
   const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '🎟' : '📍'
@@ -1463,7 +1482,7 @@ export function planCampaign(input: {
 
     /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */
     const byCategory = new Map<string, CampaignNight[]>()
-    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
+    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom && spotlightFits(n.categorySlug, n)) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
     const strongest = [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]
     if (strongest && strongest[1].filter((n) => !listed.has(n.eventId)).length >= SPOTLIGHT_MIN_NIGHTS) {
       const [slug, every] = strongest
@@ -1473,8 +1492,8 @@ export function planCampaign(input: {
       // Three different nights, after one night per title (out-7, 18:57: three sessions of one show drew "1 family nights").
       if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
-      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot)}.`
-      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `${nightsWord(spot)} in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
+      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot) === 'nights' ? 'nights' : 'events'}.`
+      const spotSlides = lockedListSlides(spot, spotlightLines(name, spot, city.name), origin, (n) => sessionsOf(n), weekPick)
       const body = [...pictured(spotSlides), ...spot.map(pickLine), '', creditsOf(spot)]
       pieces.push({
         kind: 'category_spotlight',
