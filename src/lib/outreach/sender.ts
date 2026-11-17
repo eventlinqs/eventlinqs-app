@@ -116,7 +116,8 @@ async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string
     : `landing on ${landsOn} it would be less than 3 days before its night (the standard's Part 2 rule 4); set aside, never sent`
 }
 
-const BATCH = 25
+/** One letter a run, so they go 15 minutes apart (the PM's 08:20 of 18 November 2026; the run is every 15 minutes). */
+export const SEND_BATCH = 1
 
 /** The zone of the city of a venue the contact's organiser runs, else Melbourne. */
 async function recipientZone(db: Admin, contactId: string): Promise<string> {
@@ -171,7 +172,7 @@ export async function runOutreachSender(
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
     .order('scheduled_for', { ascending: true })
-    .limit(BATCH)
+    .limit(SEND_BATCH)
   if (due.error) throw new Error(`the queue: ${due.error.message}`)
 
   for (const t of (due.data ?? []) as unknown as Queued[]) {
