@@ -602,7 +602,7 @@ export function compositionFor(n: Pick<CampaignNight, 'categorySlug' | 'cta'>): 
  * Where a night is, as a line names it: the venue and its city, or the venue alone when its own name already holds the
  * city (the PM's 23:45 of 17 November 2026, fix (d): never 'Her Majesty's Theatre Ballarat, Ballarat').
  */
-function metaOf(n: CampaignNight): string {
+export function metaOf(n: Pick<CampaignNight, 'venueName' | 'cityName'>): string {
   if (!n.venueName) return n.cityName
   const holdsCity = new RegExp(`\\b${n.cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(n.venueName)
   return holdsCity ? n.venueName : `${n.venueName}, ${n.cityName}`

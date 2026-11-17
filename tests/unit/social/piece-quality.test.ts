@@ -61,6 +61,14 @@ describe('pieceQuality, the drills', () => {
     expect(words('An event on a Wednesday evening, tickets through AXS.')).toMatch(/\[language\].*robotic/)
   })
 
+  // The pack of 18 November 2026: '99 Breakwater Rd, Breakwater VIC 3219', a poster's raw address from its source, read as
+  // the city said twice. A street named after its suburb is an address, and the raw field is never printed whole.
+  it("a poster's raw source address is not read as words the post says", () => {
+    const poster = { t: 'poster', composition: 'daily_poster', eventId: 'e', night: { title: 'Geelong Caravanning and Adventure Leisurefest', venueName: 'Geelong Racecourse', venueAddress: '99 Breakwater Rd, Breakwater VIC 3219', cityName: 'Geelong' } } as unknown as Slide
+    const out = pieceCorrections({ caption: 'A caravan and outdoor show at Geelong Racecourse.', slides: [poster], madeAt: after })
+    expect(out.filter((r) => r.startsWith('[language]'))).toEqual([])
+  })
+
   it("'Her Majesty's Theatre Ballarat, Ballarat' is refused: the city said twice", () => {
     const out = pieceCorrections({ caption: "Thu 19 Nov, 7pm, Kate Ceberano, Her Majesty's Theatre Ballarat, Ballarat.", slides: [ask], madeAt: after })
     expect(out.join(' ')).toMatch(/\[language\].*Ballarat, Ballarat/)

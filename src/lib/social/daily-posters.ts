@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, nightKind, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts } from './campaign'
+import { creditsOf, dayInWeek, join, metaOf, nightKind, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -148,7 +148,8 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
     const city = input.cities.find((c) => c.slug === pick.city)
     if (!n || !city) continue
     const photo = pick.rights === 'photo' ? n.approvedPhotoUrl : null
-    const hook = `${n.title}, ${n.venueName ? `at ${n.venueName}, ` : ''}${city.name}.`
+    // The city named once (the PM's 23:45 of 17 November 2026, fix (d)): a venue whose name holds its city is named alone.
+    const hook = n.venueName ? `${n.title}, at ${metaOf(n)}.` : `${n.title}, ${city.name}.`
     const body = [pickLine(n), '', creditsOf([n])]
     const page = `${input.origin}/events/${n.slug}`
     pieces.push({
