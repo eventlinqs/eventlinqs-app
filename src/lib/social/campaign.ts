@@ -1646,7 +1646,9 @@ export function planCampaign(input: {
     const body = [
       'List them on EventLinqs for free.',
       'We put them in front of people looking for something to do this week.',
-      'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.',
+      // The PM's 06:39 of 18 November 2026, item 3: no line says a link counts who it sends until the openers count is
+      // proved to count people (scripts/guards/presses-are-not-people.mjs reads post copy too).
+      'When we feature your night, we send you a post of your own to share.',
     ]
     pieces.push({
       kind: 'organiser_campaign',

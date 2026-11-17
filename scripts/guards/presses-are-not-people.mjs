@@ -9,7 +9,8 @@
  * to a stranger as people is a claim, so every surface says presses until the presses are proved to count people.
  *
  * This fails the build where a line in src/ (comments stripped, strings kept) puts 'people' or 'person' beside the words
- * of a press: sent or went on or pressed, the booking page or site, 'to your tickets'.
+ * of a press: sent or went on or pressed, the booking page or site, 'to your tickets'; and, in post copy, a link said to
+ * count who it sends (the PM's 06:39 of 18 November 2026, item 3).
  *
  * WHAT THIS CANNOT SEE, said so it is not mistaken for coverage: a sentence built across lines, or a word for people it
  * does not name ('visitors', 'fans'). The words a press is said in live in each surface; this reads them all.
@@ -31,6 +32,10 @@ const RULES = [
   // The press phrase first, the people word after it: a line needs both, in either order, close together.
   new RegExp(String.raw`${PRESS}[^\n]{0,60}${PEOPLE}`, 'i'),
   /\$\{who\}\s+to your tickets/,
+  // Post copy too (the PM's 06:39 of 18 November 2026, item 3): a link or a post said to count who it sends or brings
+  // ('a link that counts who it sends') is the same claim, made before the openers count is proved to count people.
+  /\bcounts? (?:who|the people)\b[^\n]{0,40}\b(?:sends?|sent|brings?|brought)\b/i,
+  /\bwho it (?:sends|brings)\b/i,
 ]
 
 const files = sourceFiles(ROOT)
