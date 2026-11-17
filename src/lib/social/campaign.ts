@@ -615,7 +615,7 @@ function metaOf(n: CampaignNight): string {
  */
 export const HUNT_SUMMARY_LINE = /^[A-Z][^.]*? on a (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) (morning|afternoon|evening)(, free entry|, tickets through [^.]+)?\.$/
 
-function whyOf(n: CampaignNight): string | null {
+export function whyOf(n: CampaignNight): string | null {
   const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
   /* The PM's 15:45 of 15 November 2026, fix 4: the headline hunt's composed line ('An event on a Monday evening,
      tickets through ...') repeats what the slide already shows; with no summary of its own a night shows none. */

@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, type CampaignCity, type CampaignNight, type PiecePlan, type PosterFacts } from './campaign'
+import { creditsOf, dayInWeek, join, nightKind, pickLine, postTitle, selectNights, siteOf, tagsFor, versionsOf, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -66,7 +66,76 @@ export function planDailyPosters(input: { nights: readonly CampaignNight[]; citi
  * the old planner look (a seller's pill, a raw street address, a calendar block), so the weekly plan leaves them out, and
  * with it the publishing queue, until they are in the 9.5 locked look. Turned back on here, never deleted (law 13).
  */
-export const DAILY_POSTERS_IN_PLAN = false
+// Lawal's A (18 November 2026, 00:12): 'Allow professionally designed EventLinqs posters and stories without photographs'.
+export const DAILY_POSTERS_IN_PLAN = true
+
+/**
+ * A DAILY POSTER'S CAPTION, NATURAL AND OF ITS OWN KIND (Lawal, 18 November 2026, 00:12 and 00:17): his Kate Ceberano
+ * caption is the quality reference, never a template. An emoji led hook phrased for the night's kind, one line of
+ * experience (the night's own words, or its kind's), then place (the city never twice), date and time, then tickets and our
+ * hashtags. No exclamation mark and no long dash (the copy law). Pure.
+ */
+const HOOKS: Record<NightKind | 'other', (t: string, c: string) => string> = {
+  gig: (t, c) => `\u{1F3B6} ${t}, live in ${c}`,
+  jazz: (t, c) => `\u{1F3B7} An evening of jazz in ${c}: ${t}`,
+  classical: (t, c) => `\u{1F3BB} ${t} in concert in ${c}`,
+  dance: (t, c) => `\u{1F483} ${t}: a night of dance in ${c}`,
+  festival: (t, c) => `\u{1F3AA} ${t} comes to ${c}`,
+  comedy: (t, c) => `\u{1F602} Stand-up in ${c}: ${t}`,
+  theatre: (t, c) => `\u{1F3AD} ${t}, on stage in ${c}`,
+  talk: (t, c) => `\u{1F399} ${t}, in conversation in ${c}`,
+  family: (t, c) => `\u{1F388} A family day out in ${c}: ${t}`,
+  sport: (t, c) => `\u{1F3DF} Game day in ${c}: ${t}`,
+  market: (t, c) => `\u{1F6CD} ${t}, a market morning in ${c}`,
+  christmas: (t, c) => `\u{1F384} ${t}, Christmas in ${c}`,
+  other: (t, c) => `\u2728 ${t}, in ${c}`,
+}
+const KIND_LINE: Record<NightKind | 'other', string> = {
+  gig: 'Live music, up close.',
+  jazz: 'Jazz the way it is meant to be heard, live.',
+  classical: 'Music played the way it was written, in the room.',
+  dance: 'Dance, live on stage.',
+  festival: 'A festival to lose the day in.',
+  comedy: 'An hour of new material and big laughs.',
+  theatre: 'An evening at the theatre.',
+  talk: 'A conversation worth hearing in person.',
+  family: 'A day out for the whole family.',
+  sport: 'The game, live.',
+  market: 'Stalls, food and makers to browse.',
+  christmas: 'The season, out and about.',
+  other: 'Something worth going out for.',
+}
+
+function longDate(iso: string, tz: string | null): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-AU', { timeZone: tz ?? 'Australia/Melbourne', weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  ) as Record<string, string>
+  const time = parts.minute === '00' ? `${parts.hour} ${String(parts.dayPeriod ?? '').toLowerCase()}` : `${parts.hour}:${parts.minute} ${String(parts.dayPeriod ?? '').toLowerCase()}`
+  return `${parts.weekday} ${parts.day} ${parts.month} \u00b7 ${time.trim()}`
+}
+
+export function posterCaption(n: CampaignNight, city: CampaignCity, site: string): string {
+  const kind = nightKind(n) ?? 'other'
+  const hook = HOOKS[kind](n.title, city.name)
+  const line = whyOf(n) ?? KIND_LINE[kind]
+  const holdsCity = !!n.venueName && new RegExp(`\\b${city.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(n.venueName)
+  const place = n.venueName ? (holdsCity ? n.venueName : `${n.venueName}, ${city.name}`) : city.name
+  return join([
+    hook,
+    line,
+    '',
+    `\u{1F4CD} ${place}`,
+    `\u{1F4C5} ${longDate(n.startDate, n.timezone ?? null)}`,
+    '',
+    '\u{1F39F} Event details and tickets:',
+    `${site}/events/${n.slug}`,
+    '',
+    tagsFor(city, null),
+  ])
+}
+
 
 export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cities: readonly CampaignCity[]; weekStart: string; origin: string; excluded?: ReadonlySet<string> }): PiecePlan[] {
   // A post's title, never a source's raw one (the PM's 15:45 of 15 November 2026, fix 2; campaign.ts postTitle).
@@ -119,7 +188,7 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
           },
         },
       ],
-      caption: join([hook, '', ...body, '', `The night: ${site}/events/${n.slug}`, '', tagsFor(city, null)]),
+      caption: posterCaption(n, city, site),
       versions: versionsOf(hook, body, page, 'The night is at the link in our bio.', 'The night:', '4:5', tagsFor(city, null)),
       partnerName: null,
       partnerEventId: null,
