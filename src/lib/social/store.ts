@@ -14,7 +14,7 @@ import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
 import { readKitTouchesSent } from './kit-sent'
 import { quotableSummary, wordsRefusal } from './words'
-import { dailyPosterPieces, posterDrift, withKitCaptions, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
+import { dailyPosterPieces, onItsDay, posterDrift, withKitCaptions, DAILY_POSTERS_IN_PLAN, type NightNow } from './daily-posters'
 import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/broadcast/price-line'
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
@@ -1832,7 +1832,9 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     }
     const rev = await newestRevision(db, pieceId)
     try {
-      const { ref } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: rev?.versions[platform].caption ?? '' })
+      // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
+      // 18 November 2026, item 1), set at the moment it posts.
+      const { ref } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: onItsDay(rev?.versions[platform].caption ?? '', rev?.slides ?? [], now) })
       const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: ref, published_at: now.toISOString() }).eq('id', id).eq('state', 'scheduled')
       if (uerr) await hold(id, refusalOf(uerr.message) ?? uerr.message)
       else published.push(`${pieceId} on ${platform}: ${ref}`)

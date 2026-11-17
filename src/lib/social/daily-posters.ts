@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, nightKind, postTitle, selectNights, siteOf, tagsFor, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts } from './campaign'
+import { creditsOf, dayInWeek, join, nightKind, postTitle, selectNights, siteOf, tagsFor, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type Slide } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -87,6 +87,28 @@ export function partOfDay(iso: string, tz: string | null): 'morning' | 'afternoo
 }
 
 type Part = ReturnType<typeof partOfDay>
+
+/**
+ * A POST ON ITS NIGHT'S OWN DAY SAYS SO (the PM's 06:39 of 18 November 2026, item 1: Fine Lines and Wine, to post on
+ * Wednesday 18 November at 9 am for 6 pm that day, read 'Coming up in Geelong.'). A poster is drawn before its slot is
+ * known, and a feed piece may go on any day up to its night's start (cadence.ts windowOf), so the line is set at the
+ * moment it posts: on the night's own day it reads 'Tonight', 'Today' or 'This afternoon' by the night's local start
+ * (partOfDay), and 'Coming up' stays only for a later day. Only that exact line changes. The publisher posts every caption
+ * through this (store.ts publishDuePieces), and the pack shows each caption through it at its slot. Pure.
+ */
+export function onItsDay(caption: string, slides: readonly Slide[], at: Date): string {
+  const poster = slides.find((s) => s.t === 'poster')
+  if (!poster || poster.t !== 'poster') return caption
+  const night = poster.night
+  const day = (when: string | Date) => new Intl.DateTimeFormat('en-CA', { timeZone: night.timezone ?? 'Australia/Melbourne' }).format(new Date(when))
+  if (day(at) !== day(night.startDate)) return caption
+  const part = partOfDay(night.startDate, night.timezone ?? null)
+  const word = part === 'morning' ? 'Today' : part === 'afternoon' ? 'This afternoon' : 'Tonight'
+  return caption
+    .split('\n')
+    .map((line) => (line === `Coming up in ${night.cityName}.` ? `${word} in ${night.cityName}.` : line === 'Coming up.' ? `${word}.` : line))
+    .join('\n')
+}
 const an = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
 const EMOJI: Record<NightKind | 'other', string> = {
   gig: '\u{1F3B6}',
