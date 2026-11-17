@@ -128,6 +128,11 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     const [o] = of(pieces, 'organiser_campaign')
     expect(o.caption).not.toMatch(/each week we send|every week we send/i)
     expect(o.caption).toContain('When we feature your night, we send you a post of your own to share')
+    // The PM's 06:39 of 18 November 2026, item 3: no claim that a link counts who it sends until the openers count is
+    // proved to count people; the slide and both captions read the one line.
+    for (const text of [o.caption, o.versions.instagram.caption, o.versions.facebook.caption,...((o.slides[0] as { points?: string[] }).points ?? [])])
+      expect(text).not.toMatch(/counts who|who it sends/i)
+    expect((o.slides[0] as { points?: string[] }).points).toContain('When we feature your night, we send you a post of your own to share.')
     /* And the planner does send it: every host featured this week has its own kit. */
     expect(of(pieces, 'partner_kit').length).toBeGreaterThan(0)
   })

@@ -31,6 +31,16 @@ describe('the category of a hunted night', () => {
   it("two sides at a theatre are a show, not a match", () => {
     expect(huntCategory('Grease vs Rocky Horror Show', 'music', 'Palais Theatre')).toBe('music')
   })
+  // The PM's 04:38 of 18 November 2026: a named stage production the classifier cannot read is theatre by the one kind
+  // reader the posts use (nightKind), before the venue's usual category. A title alone never makes a talk: 'An Evening
+  // with' heads Alastair Campbell's talk and Cat Power's and Celtic Thunder's concerts alike (production, 06:23).
+  it('a stage production the classifier cannot read is theatre; a title alone never makes a talk', () => {
+    expect(huntCategory('Bell Shakespeare: Mackenzie', 'music', 'Palais Theatre')).toBe('theatre')
+    expect(huntCategory('An Evening with Cat Power: The Greatest', 'music', 'Palais Theatre')).toBe('music')
+    expect(huntCategory('An Evening with Alastair Campbell', 'music', 'Melbourne Recital Centre')).toBe('music')
+    expect(huntCategory('Elvis Costello', 'music', 'Rod Laver Arena')).toBe('music')
+    expect(huntCategory('Vivaldi by Candlelight', 'music', 'Melbourne Recital Centre')).toBe('music')
+  })
   it('the store chooses through this one rule', () => {
     const src = readFileSync('src/lib/listings/collect-store.ts', 'utf8')
     expect(src).toMatch(/huntCategory\(row\.title, hunt\.usualCategory, venueName\)/)

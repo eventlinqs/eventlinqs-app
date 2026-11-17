@@ -11348,6 +11348,18 @@ const DRILLS = [
     expect: 'calls a press a person',
   },
   /*
+   * presses-are-not-people, post copy (the PM's 06:39 of 18 November 2026, item 3). The shape the organiser campaign had:
+   * a link said to count who it sends, before the openers count is proved to count people.
+   */
+  {
+    name: 'social: the organiser campaign says its link counts who it sends again',
+    guard: `${GUARDS}/presses-are-not-people.mjs`,
+    file: 'src/lib/social/campaign.ts',
+    find: "      'When we feature your night, we send you a post of your own to share.',",
+    replace: "      'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.',",
+    expect: 'calls a press a person',
+  },
+  /*
    * kit-sent-reads-the-touch (13 November 2026; WINDOW 5A, order 4 item 9). The shape every one of the five readers had:
    * whether a piece went read from the postings alone, so a partner kit Lawal sent by email read as never sent.
    */

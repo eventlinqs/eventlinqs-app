@@ -475,7 +475,16 @@ export function dayInWeek(n: CampaignNight, weekStart: string): number {
  * music night at a concert hall or an estate is a concert, as one at an arena already was.
  */
 export type NightKind = 'talk' | 'classical' | 'jazz' | 'comedy' | 'festival' | 'gig' | 'dance' | 'theatre' | 'christmas' | 'market' | 'sport' | 'family'
-const TALK_WORDS = /\b(an evening with|in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|stories|storytelling|spoken word|poetry|reading|historian|memoir)\b/i
+const TALK_WORDS = /\b(in conversation|conversation with|talks?|lecture|author|q\s?&\s?a|keynote|panel|spoken word|poetry|historian|memoir)\b/i
+// The SOFT talk words head talks and concerts alike, read on production on 18 November 2026 (06:27, 06:35 and 06:42).
+// 'An Evening with' is the Recital Centre's Alastair Campbell and Ben Macintyre talks, and Geelong Arts Centre's Cat Power:
+// The Greatest and Celtic Thunder concerts, whose words say 'A performance' or 'songs': so it is a talk only where the
+// night's own words name no performance. 'Stories' and 'reading' are weaker: 'songs and stories' is Ian Moss and Troy
+// Cassar-Daley's and the MSO's Sonder concerts, and 'Our Voices, Our Stories' at the Recital Centre is 'a landmark
+// concert' by its own page: so they are a talk only where, besides, the night is not filed as music.
+const EVENING_WITH = /\ban evening with\b/i
+const SOFT_TALK_WORDS = /\b(stories|storytelling|reading)\b/i
+const PERFORMANCE_WORDS = /\b(performance|performs?|performing|songs?|sings?|singing|concerts?|band|album|orchestra)\b/i
 const CLASSICAL_WORDS = /\b(recital|quartet|orchestra|symphon(y|ic)|chamber|sonatas?|concerto|choir|choral|opera|soprano|mezzo|baritone|tenor|philharmonic|art song|lieder|cantata|baroque|piano)\b/i
 // A tour is a gig only as a named tour ('Australian Made Tour 2026', 'World Tour'), never a studio, guided or walking tour
 // (the PM's 22:41 fix 3: 'MESS Studio Tours', a daytime studio tour, stood under a concert crowd).
@@ -560,7 +569,8 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
   if (/\bconcert\b/i.test(n.sourceTitle ?? n.title) && !CLASSICAL_WORDS.test(words) && !DANCE_WORDS.test(words)) return 'gig'
   const isMusic = ['music', 'concert', 'concerts', 'gig', 'gigs'].includes((n.categorySlug ?? '').toLowerCase())
   if (FIGHT_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
-  if (TALK_WORDS.test(words)) return 'talk'
+  const performance = PERFORMANCE_WORDS.test(words)
+  if (TALK_WORDS.test(words) || (EVENING_WITH.test(words) && !performance) || (!isMusic && SOFT_TALK_WORDS.test(words) && !performance)) return 'talk'
   // A sports night that names its two sides is a match whatever else its words say (a band at half time is no gig).
   if (['sports', 'sport'].includes((n.categorySlug ?? '').toLowerCase()) && MATCH_WORDS.test(n.sourceTitle ?? n.title)) return 'sport'
   if (/\bjazz/i.test(`${words} ${n.venueName ?? ''} ${n.host ?? ''}`)) return 'jazz'
@@ -1151,7 +1161,8 @@ export function venueSlideOf(host: string, nights: readonly CampaignNight[], ori
     t: 'venue',
     composition: 'venue_spotlight',
     venue: placeOf(ordered[0]) ?? host,
-    eyebrow: `Venue · ${rangeOf(ordered)}`,
+    // The dates alone: the 'VENUE' pill above says what this is (the PM's 06:39 of 18 November 2026, item 5).
+    eyebrow: rangeOf(ordered),
     accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${nightsWord(ordered, count === 1)} this week`,
     rows: ordered.map((n) => ({ ...dayRowOf(n), place: nightWords(n).entry ?? '' })),
     photo: s ? standInUrl(origin, s) : null,
@@ -1220,7 +1231,8 @@ export function splitLine(nights: readonly CampaignNight[]): string {
  */
 export function nightsWord(nights: readonly Pick<CampaignNight, 'startDate' | 'timezone'>[], one = false): string {
   const evening = nights.every((n) => Number(new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(n.startDate))) >= 17)
-  return evening ? (one ? 'night' : 'nights') : one ? 'thing' : 'things'
+  // 'Events', never 'things' standing in for them (the PM's 07:05 of 18 November 2026, item 5: 'Four things this week').
+  return evening ? (one ? 'night' : 'nights') : one ? 'event' : 'events'
 }
 
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
@@ -1636,7 +1648,9 @@ export function planCampaign(input: {
     const body = [
       'List them on EventLinqs for free.',
       'We put them in front of people looking for something to do this week.',
-      'When we feature your night, we send you a post of your own to share, with a link that counts who it sends.',
+      // The PM's 06:39 of 18 November 2026, item 3: no line says a link counts who it sends until the openers count is
+      // proved to count people (scripts/guards/presses-are-not-people.mjs reads post copy too).
+      'When we feature your night, we send you a post of your own to share.',
     ]
     pieces.push({
       kind: 'organiser_campaign',

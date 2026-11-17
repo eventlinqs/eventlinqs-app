@@ -16,6 +16,7 @@
  */
 import { classify, type GuideCategory } from '@/lib/categories/classify'
 import { wallClockToIso } from './collect'
+import { nightKind } from '@/lib/social/campaign'
 
 /**
  * A HUNTED NIGHT'S CATEGORY (class O, read from production on 7 November 2026). A title naming two sides ('A vs B', 'A v B')
@@ -27,7 +28,15 @@ import { wallClockToIso } from './collect'
 const SPORTING_VENUE = /\b(arena|stadium|ground|oval|park|racecourse)\b/i
 export function huntCategory(title: string, usual: GuideCategory, venue: string): GuideCategory {
   if (SPORTING_VENUE.test(venue) && /\s(?:vs\.?|v)\s/i.test(` ${title} `)) return 'sports' as GuideCategory
-  return (classify({ title }).primary as GuideCategory | null) ?? usual
+  const read = classify({ title }).primary as GuideCategory | null
+  if (read) return read
+  // Where the classifier reads nothing, the one kind reader the posts use files a stage production its title names (a
+  // Shakespeare, a players' or theatre company's show) as theatre before the venue's usual category (the PM's 04:38 of
+  // 18 November 2026). A TALK is never decided from a title: 'An Evening with' heads Alastair Campbell's talk and Cat
+  // Power's and Celtic Thunder's concerts alike (read on production at 06:23), so only the source's own words can say it.
+  const kind = nightKind({ title, sourceTitle: title, summary: null, venueName: venue, host: venue, categorySlug: null })
+  if (kind === 'theatre') return 'theatre' as GuideCategory
+  return usual
 }
 
 export type HuntSource = {

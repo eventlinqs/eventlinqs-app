@@ -104,18 +104,44 @@ describe("a cover's line names the venue and the time (fix 1)", () => {
 
 describe("a night's kind from its own words, never its category alone (the PM's 16:40 fix 1)", () => {
   const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre', categorySlug: 'music' }
-  it("never takes a historian's talk, an art song recital or a stories evening for a gig", () => {
+  // 18 November 2026: the stories evening of the 16:40 case is a CONCERT by its own page ('A landmark concert celebrating
+  // Timor-Leste's most exciting voices', melbournerecital.com.au, read politely at 06:42, C:\dev\EVIDENCE\EL-18NOV\
+  // kind-category\pages\0.html), so 'stories' never overrules a night filed as music, and its eyebrow says it is live.
+  it("never takes a historian's talk or an art song recital for a gig, nor a concert of stories for a talk", () => {
     const talk = night({ at: '2026-11-16T08:30:00Z', title: 'An Evening with Ben Macintyre', ...mrc })
     const recital = night({ at: '2026-11-18T08:30:00Z', title: 'Anne Sofie von Otter & Kristian Bezuidenhout', summary: 'An art song recital with piano.', ...mrc })
     const stories = night({ at: '2026-11-20T08:30:00Z', title: 'Timor-Leste: Ita Nia Lian, Ita Nia Istoria', sourceTitle: 'Timor-Leste - Ita Nia Lian, Ita Nia Istoria - Our Voices, Our Stories', ...mrc })
     expect(nightKind(talk)).toBe('talk')
     expect(nightKind(recital)).toBe('classical')
-    expect(nightKind(stories)).toBe('talk')
+    expect(nightKind(stories)).not.toBe('talk')
     expect(nightWords(talk).eyebrow).toBe('At Melbourne Recital Centre')
-    expect(nightWords(stories).eyebrow).toBe('At Melbourne Recital Centre')
+    expect(nightWords(stories).eyebrow).toBe('Live at Melbourne Recital Centre')
   })
   it('names a gig only where its words say so', () => {
     expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: 'Three local bands on the front bar stage.' }))).toBe('gig')
     expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: null }))).toBeNull()
+  })
+  // Read on production, 18 November 2026, 06:27 (q/evening-with.json): 'An Evening with' heads the Recital Centre's talks
+  // (Alastair Campbell, Ben Macintyre) and Geelong Arts Centre's and Ballarat's concerts (Cat Power: The Greatest, Celtic
+  // Thunder) alike. The phrase alone is a talk only where the night's own words name no performance; a night filed under
+  // Education and talks is a talk whatever its title.
+  it("reads 'An Evening with' as a talk only where nothing says the night is a performance", () => {
+    const gac = { venueName: 'Costa Hall', host: 'Geelong Arts Centre', categorySlug: 'arts-community' }
+    const catPower = night({ at: '2026-12-02T08:30:00Z', title: 'An Evening with Cat Power: The Greatest', summary: 'A performance at Costa Hall, Geelong Arts Centre.', ...gac })
+    const celtic = night({ at: '2027-03-29T08:00:00Z', title: 'An Evening with CELTIC THUNDER', summary: 'Celtic Thunder return with a hand-picked set of their best-loved songs, from stirring Irish classics to big sound ballads.', venueName: 'Civic Hall Ballarat', host: 'Civic Hall Ballarat', categorySlug: 'music' })
+    const campbell = night({ at: '2026-11-22T00:30:00Z', title: 'An Evening with Alastair Campbell', summary: 'An event on a Sunday morning, tickets through Melbourne Recital Centre.', ...mrc })
+    expect(nightKind(catPower)).not.toBe('talk')
+    expect(nightKind(celtic)).not.toBe('talk')
+    expect(nightKind(campbell)).toBe('talk')
+    expect(nightKind({ ...campbell, categorySlug: 'education' })).toBe('talk')
+    expect(nightKind({ ...campbell, summary: 'Alastair Campbell in conversation with Louise Adler.' })).toBe('talk')
+  })
+  // Read on production at 06:35 (q/kind-filed.json): 'songs and stories' is a concert. Ian Moss and Troy Cassar-Daley at
+  // Her Majesty's Ballarat and Ulumbarra, and the MSO with Find Your Voice Collective at Costa Hall, read as talks.
+  it("reads 'stories' and 'reading' as a talk only where nothing says the night is a performance", () => {
+    const moss = night({ at: '2026-11-28T08:30:00Z', title: 'Ian Moss and Troy Cassar-Daley: Together Alone Tour', summary: 'Rock guitarist Ian Moss and country singer Troy Cassar-Daley share songs and stories, acoustic guitars in hand.', venueName: "Her Majesty's Theatre Ballarat", host: "Her Majesty's Theatre Ballarat", categorySlug: 'music' })
+    const sonder = night({ at: '2027-11-27T08:00:00Z', title: 'Find Your Voice Collective x MSO: Sonder', summary: "The MSO and Warrnambool's Find Your Voice Collective perform new original songs and stories, conducted by Leonard Weiss.", venueName: 'Costa Hall', host: 'Geelong Arts Centre', categorySlug: 'music' })
+    expect(nightKind(moss)).not.toBe('talk')
+    expect(nightKind(sonder)).not.toBe('talk')
   })
 })

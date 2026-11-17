@@ -195,3 +195,19 @@ describe('the run', () => {
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
 })
+
+/*
+ * ONE LETTER A RUN (the PM's 08:20 of 18 November 2026): the letters go 15 minutes apart, one each run of the outreach cron
+ * (vercel.json, every 15 minutes), never all at once; ten minutes apart would need the cron changed, which is Lawal's
+ * (law 20). The sender claimed up to 25 a run.
+ */
+describe('one letter a run', () => {
+  test('the sender claims one queued letter a run, and claims by that one number', async () => {
+    const { SEND_BATCH } = await import('@/lib/outreach/sender')
+    expect(SEND_BATCH).toBe(1)
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/lib/outreach/sender.ts', 'utf8')
+    expect(src).toMatch(/\.limit\(SEND_BATCH\)/)
+    expect(src).not.toMatch(/const BATCH = /)
+  })
+})

@@ -501,12 +501,15 @@ describe("the PM's 20:40 fixes", () => {
     expect(placeLine({ venueName: 'Tan Track  (Pillars of Wisdom)', placeName: 'Tan Track  (Pillars of Wisdom)', cityName: 'Melbourne' })).toBe('Tan Track (Pillars of Wisdom)')
   })
 
-  it('nights only when every one starts at 5 pm or later; otherwise things (fix 4)', async () => {
+  // The PM's 07:05 of 18 November 2026, item 5: the spotlight's 'Four things this week' reads 'Four events this week';
+  // 'things' never stands in for events (law 22, class 4).
+  it('nights only when every one starts at 5 pm or later; otherwise events (fix 4, and the 07:05 item 5)', async () => {
     const { nightsWord } = await import('@/lib/social/campaign')
     const eve = night({ at: '2026-11-20T08:00:00Z' }) // 7 pm in Melbourne
     const morning = night({ at: '2026-11-21T00:00:00Z' }) // 11 am in Melbourne
     expect(nightsWord([eve])).toBe('nights')
-    expect(nightsWord([eve, morning])).toBe('things')
+    expect(nightsWord([eve, morning])).toBe('events')
+    expect(nightsWord([morning], true)).toBe('event')
     expect(nightsWord([eve], true)).toBe('night')
   })
 
@@ -775,6 +778,15 @@ describe("out-14, the rest of the 03:45 class: the venue slide and the chooser i
       expect(standInOf(v.photo)?.kind).toBe('gig')
       expect(standInOf(v.photo)?.shot).toBeUndefined()
     }
+  })
+
+  // The PM's 06:39 of 18 November 2026, item 5: the spotlight said 'VENUE' twice, the pill and 'VENUE · 19 TO 22 NOVEMBER'
+  // under it. The pill stays; the eyebrow reads the dates alone.
+  it('the eyebrow under the VENUE pill reads the dates alone', () => {
+    const nights = [night({ at: '2026-11-19T07:00:00Z', title: 'Eternity', summary: null, ...mrc }), night({ at: '2026-11-22T00:30:00Z', title: 'An Evening with Alastair Campbell', summary: null, ...mrc })]
+    const v = venueSlideOf('Melbourne Recital Centre', nights, ORIGIN, standInChooser('venue eyebrow'))
+    expect(v.eyebrow).toBe(rangeOf(nights))
+    expect(v.eyebrow).not.toMatch(/venue/i)
   })
 
   it('the chooser: stage only never hands a crowd; a pyrotechnic shot never twice; a crowd family passed over while a stage is free', () => {

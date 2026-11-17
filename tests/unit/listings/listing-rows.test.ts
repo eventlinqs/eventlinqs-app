@@ -217,3 +217,29 @@ describe('a whole file', () => {
     expect(f.rows.map((r) => r.line)).toEqual([2, 3, 4])
   })
 })
+
+/*
+ * THE FILE'S CATEGORY IS NEVER WRITTEN AS GIVEN (the PM's 04:38 of 18 November 2026, read on production at 06:18:
+ * Cosi by the Geelong Repertory Theatre Company was written as Arts, and An Evening with Alastair Campbell, a talk, as
+ * Music, each with no category rule, straight from a checked file's category column). The file's category is a
+ * reviewer's choice: the classifier refines a broad one its title makes precise, and a row the kind reader the posts
+ * use calls a talk or a stage production is refused under Music or Arts, naming where it belongs.
+ */
+describe("the file's category, read against the night's own words", () => {
+  const all: JudgeContext = { ...ctx, categorySlugs: new Set(['music', 'comedy', 'community', 'arts-community', 'theatre', 'education']) }
+  const at = (over: Partial<typeof good>) => judgeRow({ ...good, ...over }, all)
+  it("a theatre company's play filed as arts is written as theatre", () => {
+    const v = at({ name: 'Cosi: Geelong Repertory Theatre Company', host: 'Woodbin Theatre', category: 'arts-community', what_happens: 'A play staged by the Geelong Repertory Theatre Company.' })
+    expect(v.verdict).toBe('import')
+    expect(v.verdict === 'import' && v.row.categorySlug).toBe('theatre')
+  })
+  it('a talk filed as music is refused, naming education', () => {
+    const v = at({ name: 'An Evening with Alastair Campbell', host: 'Melbourne Recital Centre', category: 'music', what_happens: 'Alastair Campbell in conversation with Louise Adler.' })
+    expect(v.verdict).toBe('refused')
+    expect(v.verdict === 'refused' && v.reasons.join(' | ')).toMatch(/talk.*education/)
+  })
+  it('a concert headed An Evening with keeps music', () => {
+    const v = at({ name: 'An Evening with Cat Power', host: 'Costa Hall', category: 'music', what_happens: 'Cat Power performs The Greatest in full with her band.' })
+    expect(v.verdict === 'import' && v.row.categorySlug).toBe('music')
+  })
+})

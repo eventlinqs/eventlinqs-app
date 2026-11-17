@@ -20,6 +20,9 @@
  *   every-tap-works       the CONTROLLER's 14:10: at 390 with a touch profile, every link, chip, tab and button on /, the
  *                         four guides, the Victoria page, /events, one event page and AMCF lands on a 200 page or visibly
  *                         changes state within 300 ms; no 404, no dead tap, no scroll only (scripts/verify/every-tap.mjs).
+ *   kind-matches-category the PM's 04:38 of 18 November 2026: no published night the kind reader the posts use calls a
+ *                         talk carries Music or Arts, and no stage production carries Arts, on its page or in
+ *                         discovery's filters (scripts/verify/kind-misfiled.mjs, the reader's own words).
  *
  * Production is read READ ONLY through the Supabase Management API's SQL endpoint ({ read_only: true }) with the CLI's
  * token: run under scripts\ops\with-supabase-token.ps1. The site read is our own pages only, in one browser.
@@ -31,6 +34,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { everyTap } from './every-tap.mjs'
+import { kindMisfiled } from './kind-misfiled.mjs'
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`)
@@ -136,6 +140,22 @@ const results = []
 const record = (id, city, ok, detail) => {
   results.push({ id, city, ok, detail })
   console.log(`${ok ? 'PASS' : 'FAIL'} ${id}${city ? ` (${city})` : ''}: ${detail}`)
+}
+
+/*
+ * kind-matches-category (the PM's 04:38 of 18 November 2026). A night's page and discovery's filters both read its
+ * category, so every published, public night not yet ended that is filed as Music or Arts is read against the kind reader
+ * the posts use, its words read from that reader's own source (src/lib/social/campaign.ts) in the tree this runs in.
+ */
+{
+  const filed = await sql(`
+    select e.title, e.summary, e.start_date, c.slug as category
+      from public.events e join public.event_categories c on c.id = e.category_id
+     where e.status = 'published' and e.visibility = 'public' and c.slug in ('music', 'arts-community')
+       and coalesce(e.end_date, e.start_date) >= now()`)
+  const wrong = kindMisfiled(filed, readFileSync(join(process.cwd(), 'src', 'lib', 'social', 'campaign.ts'), 'utf8'))
+  const named = [...new Set(wrong.map((w) => `${w.title} (${w.category}, reads as ${w.kind === 'talk' ? 'a talk' : 'a stage production'})`))]
+  record('kind-matches-category', null, wrong.length === 0, `${filed.length} nights filed music or arts read${wrong.length ? `; FAIL ${wrong.length}: ${named.slice(0, 8).join('; ')}` : '; none the kind reader calls a talk or a stage production'}`)
 }
 
 /*
