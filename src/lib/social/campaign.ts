@@ -1161,7 +1161,8 @@ export function venueSlideOf(host: string, nights: readonly CampaignNight[], ori
     t: 'venue',
     composition: 'venue_spotlight',
     venue: placeOf(ordered[0]) ?? host,
-    eyebrow: `Venue · ${rangeOf(ordered)}`,
+    // The dates alone: the 'VENUE' pill above says what this is (the PM's 06:39 of 18 November 2026, item 5).
+    eyebrow: rangeOf(ordered),
     accent: `${countWord} ${one ? `${KIND_WORD[one]} ` : ''}${nightsWord(ordered, count === 1)} this week`,
     rows: ordered.map((n) => ({ ...dayRowOf(n), place: nightWords(n).entry ?? '' })),
     photo: s ? standInUrl(origin, s) : null,

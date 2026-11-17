@@ -777,6 +777,15 @@ describe("out-14, the rest of the 03:45 class: the venue slide and the chooser i
     }
   })
 
+  // The PM's 06:39 of 18 November 2026, item 5: the spotlight said 'VENUE' twice, the pill and 'VENUE · 19 TO 22 NOVEMBER'
+  // under it. The pill stays; the eyebrow reads the dates alone.
+  it('the eyebrow under the VENUE pill reads the dates alone', () => {
+    const nights = [night({ at: '2026-11-19T07:00:00Z', title: 'Eternity', summary: null, ...mrc }), night({ at: '2026-11-22T00:30:00Z', title: 'An Evening with Alastair Campbell', summary: null, ...mrc })]
+    const v = venueSlideOf('Melbourne Recital Centre', nights, ORIGIN, standInChooser('venue eyebrow'))
+    expect(v.eyebrow).toBe(rangeOf(nights))
+    expect(v.eyebrow).not.toMatch(/venue/i)
+  })
+
   it('the chooser: stage only never hands a crowd; a pyrotechnic shot never twice; a crowd family passed over while a stage is free', () => {
     for (let i = 0; i < 8; i += 1) {
       const pick = standInChooser(`chooser ${i}`)
