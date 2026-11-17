@@ -1234,7 +1234,7 @@ export function refusedOnceSwept(slides: readonly Slide[], images: ReadonlyMap<n
 }
 
 type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> &
-  Partial<Pick<PieceRow, 'posterDay' | 'history'>> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> & Partial<Pick<Revision, 'caption' | 'madeAt' | 'madeBy'>> }
+  Partial<Pick<PieceRow, 'posterDay' | 'history'>> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> & Partial<Pick<Revision, 'caption' | 'madeAt' | 'madeBy' | 'versions'>> }
 
 /** When a candidate's slides were last DRAWN: its newest revision not made by an edit; unknown reads as current. */
 function drawnAtOfCandidate(p: RedrawCandidate): string {
@@ -1248,7 +1248,10 @@ function drawnAtOfCandidate(p: RedrawCandidate): string {
  * or with wrong or robotic words (piece-quality.ts pieceCorrections).
  */
 export function isOlderLookDraft(p: RedrawCandidate): boolean {
-  return p.state === 'drafted' && pieceCorrections({ slides: p.revision.slides, caption: p.revision.caption ?? '', madeAt: drawnAtOfCandidate(p) }).length > 0
+  // Every caption that posts is read, as the publish gate reads them (the pack of 05:43: two posters whose faults were only
+  // in their platform versions were never drawn again).
+  const posted = [p.revision.caption ?? '', ...Object.values(p.revision.versions ?? {}).map((v) => v?.caption ?? '')].join('\n')
+  return p.state === 'drafted' && pieceCorrections({ slides: p.revision.slides, caption: posted, madeAt: drawnAtOfCandidate(p) }).length > 0
 }
 
 /**

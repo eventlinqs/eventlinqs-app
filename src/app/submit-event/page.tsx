@@ -49,7 +49,7 @@ export default async function SubmitEventPage({ searchParams }: { searchParams: 
       <PageHero
         eyebrow="LIST YOUR EVENT"
         title="Selling tickets somewhere else?"
-        subtitle="Send us your event. We check it, list it free, and send people to your own booking page."
+        subtitle="Send us your event. We check it and list it free, with a button straight to your own booking page."
       />
 
       <ContentSection surface="base" width="wide" id="submit">

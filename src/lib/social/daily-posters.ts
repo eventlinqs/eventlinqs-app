@@ -122,23 +122,6 @@ const KIND: Record<NightKind | 'other', (p: Part, at: string) => string> = {
   christmas: (_p, at) => `Christmas${at}.`,
   other: (_p, at) => `Coming up${at}.`,
 }
-/** The experience line where the night has no words of its own, true of its time of day. */
-const KIND_LINE: Record<NightKind | 'other', (p: Part) => string> = {
-  gig: () => 'Live music, up close.',
-  jazz: () => 'Jazz the way it is meant to be heard, live.',
-  classical: () => 'Music played the way it was written, in the room.',
-  dance: () => 'Dance, live on stage.',
-  festival: () => 'A festival to lose the day in.',
-  comedy: () => 'New material and big laughs.',
-  theatre: (p) => (p === 'night' ? 'An evening at the theatre.' : `${an(p)} ${p} at the theatre.`),
-  talk: () => 'A conversation worth hearing in person.',
-  family: () => 'A day out for the whole family.',
-  sport: () => 'The game, live.',
-  market: () => 'Stalls, food and makers to browse.',
-  christmas: () => 'The season, out and about.',
-  other: () => 'Something worth going out for.',
-}
-
 const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const holds = (text: string, place: string) => new RegExp(`\\b${esc(place)}\\b`, 'i').test(text)
 
@@ -157,7 +140,16 @@ const timeOf = (parts: Record<string, string>) =>
  * sessions ('Friday 20 to Sunday 22 November · 9 am'; class 7); the time where every session starts at it.
  */
 function dateLine(n: CampaignNight, sessions: readonly CampaignNight[]): string {
-  const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  // A run is consecutive days only (the pack of 18 November 2026, 05:43: a weekly show read 'Thursday 19 to Thursday 26
+  // November'): from this night, each next session on the next day; a session a week on is another night, never the run.
+  const dayKey = (x: CampaignNight) => Date.parse(`${new Intl.DateTimeFormat('en-CA', { timeZone: x.timezone ?? 'Australia/Melbourne' }).format(new Date(x.startDate))}T00:00:00Z`)
+  const others = sessions.filter((x) => x.eventId !== n.eventId).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const all = [n]
+  for (const x of others) {
+    const gap = (dayKey(x) - dayKey(all[all.length - 1])) / 86_400_000
+    if (gap === 1) all.push(x)
+    else if (gap > 1) break
+  }
   const first = partsOf(all[0].startDate, all[0].timezone ?? null)
   const last = partsOf(all[all.length - 1].startDate, all[all.length - 1].timezone ?? null)
   const sameTime = all.every((x) => timeOf(partsOf(x.startDate, x.timezone ?? null)) === timeOf(first))
@@ -191,7 +183,9 @@ export function posterCaption(n: CampaignNight, city: CampaignCity, site: string
   return join([
     `${EMOJI[kind]} ${n.title}`,
     KIND[kind](part, at),
-    why ?? KIND_LINE[kind](part),
+    // The kind is said once (the pack of 05:43: 'Live music in Melbourne. / Live music, up close.'): the night's own words,
+    // or nothing.
+    ...(why ? [why] : []),
     '',
     `\u{1F4CD} ${place}`,
     `\u{1F4C5} ${dateLine(n, opts.sessions ?? [])}`,
@@ -246,7 +240,7 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
     if (!n || !city) continue
     const photo = pick.rights === 'photo' ? n.approvedPhotoUrl : null
     // Its sessions this week (one poster names the days of a run, class 7), and both posted versions from the one caption.
-    const sessions = input.nights.filter((x) => x.citySlug === n.citySlug && x.title.toLowerCase() === n.title.toLowerCase())
+    const sessions = input.nights.filter((x) => x.citySlug === n.citySlug && x.title.toLowerCase() === n.title.toLowerCase() && dayInWeek(x, input.weekStart) >= 0)
     const versions = nightVersions(n, city, input.origin, '4:5', sessions)
     const page = `${input.origin}/events/${n.slug}`
     pieces.push({

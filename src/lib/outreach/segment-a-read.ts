@@ -80,10 +80,10 @@ export async function readSegmentAFacts(db: Admin, input: { readonly contactId: 
   const nights = await readTheirNights(db, { id: org.data.id as string, organisation_id: org.data.organisation_id as string | null, website_url: org.data.website_url as string | null }, input.now, 500)
   if (nights.length === 0) return { state: 'not read', why: 'no public night of theirs is listed' }
   const ids = nights.map((n) => n.eventId)
-  const rows: { id: string; category_id: string | null; cover_image_url: string | null; external_ticket_url: string | null }[] = []
+  const rows: { id: string; category_id: string | null; cover_image_url: string | null; external_ticket_url: string | null; summary: string | null }[] = []
   const booked = new Set<string>()
   for (const part of chunks(ids)) {
-    const ev = await db.from('events').select('id, category_id, cover_image_url, external_ticket_url').in('id', part)
+    const ev = await db.from('events').select('id, category_id, cover_image_url, external_ticket_url, summary').in('id', part)
     if (ev.error) return { state: 'not read', why: `their nights could not be read: ${ev.error.message}` }
     rows.push(...((ev.data ?? []) as typeof rows))
     const links = await db.from('event_booking_links').select('event_id').in('event_id', part)
@@ -146,6 +146,8 @@ export async function readSegmentAFacts(db: Admin, input: { readonly contactId: 
         startDate: next.startDate,
         timezone: next.timezone,
         categorySlug,
+        summary: row?.summary ?? null,
+        venueName: next.venueName,
         hasPhoto: Boolean((row?.cover_image_url ?? '').trim()),
         hasBooking: booked.has(next.eventId),
       },

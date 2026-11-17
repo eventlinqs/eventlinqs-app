@@ -11336,6 +11336,18 @@ const DRILLS = [
     expect: 'reads the organisers with no readPlatformOrganiserIds',
   },
   /*
+   * presses-are-not-people (18 November 2026; the PM's 02:38 item 5). The shape the organiser's reach page had: the week's
+   * outbound presses said as people sent to their tickets.
+   */
+  {
+    name: 'growth: the reach page says the outbound presses as people sent to their tickets again',
+    guard: `${GUARDS}/presses-are-not-people.mjs`,
+    file: 'src/lib/broadcast/outbound-reach.ts',
+    find: "  if (week.bySite.length === 1) return `${presses} on your EventLinqs listing went through to your tickets on ${named(week.bySite[0].provider)} this week.`",
+    replace: "  if (week.bySite.length === 1) return `EventLinqs sent ${week.people} people to your tickets on ${named(week.bySite[0].provider)} this week.`",
+    expect: 'calls a press a person',
+  },
+  /*
    * kit-sent-reads-the-touch (13 November 2026; WINDOW 5A, order 4 item 9). The shape every one of the five readers had:
    * whether a piece went read from the postings alone, so a partner kit Lawal sent by email read as never sent.
    */

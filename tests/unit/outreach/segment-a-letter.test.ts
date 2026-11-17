@@ -36,6 +36,8 @@ const IAN: SegmentAFacts = {
     startDate: '2026-11-28T08:30:00Z',
     timezone: 'Australia/Melbourne',
     categorySlug: 'music',
+    summary: 'Ian Moss and Troy Cassar-Daley play their songs together, live in concert.',
+    venueName: "Her Majesty's Theatre Ballarat",
     hasPhoto: true,
     hasBooking: true,
   },
@@ -106,10 +108,16 @@ describe('the first letter', () => {
   it("some listed events without a booking page: 'each' is left out", () => {
     expect(segmentAFields({ ...IAN, listedWithBooking: 12 })['listed line']).toMatch(/^Your events are already listed on EventLinqs at no cost to you, with a button straight to your own booking page\./)
   })
-  it("'show' only for music, comedy and theatre (the PM's 03:10, class 14); an arts or family listing is an event", () => {
-    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'comedy' } })['image line']).toMatch(/your next show/)
-    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'arts-community' } })['image line']).toMatch(/your next event/)
-    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'family' } })['image line']).toMatch(/your next event/)
+  // The PM's 04:38 of 18 November 2026: the word comes from the one kind reader the posts use (campaign.ts nightKind),
+  // never the raw category: 'An Evening with Alastair Campbell' is listed as music but is a talk, and Cosi by the Geelong
+  // Repertory Theatre Company is listed as arts-community but is a play.
+  it("'show' for a gig, jazz, classical, comedy, theatre or dance night by the kind reader; anything else, or no kind, an event", () => {
+    const campbell = { ...IAN.night, title: 'An Evening with Alastair Campbell', categorySlug: 'music', summary: 'Alastair Campbell in conversation with Louise Adler.', venueName: 'Melbourne Recital Centre' }
+    expect(segmentAFields({ ...IAN, night: campbell })['image line']).toMatch(/your next event/)
+    const cosi = { ...IAN.night, title: 'Cosi: Geelong Repertory Theatre Company', categorySlug: 'arts-community', summary: 'Louis Nowra’s comedy, staged by the Geelong Repertory Theatre Company.', venueName: 'The Woodbin Theatre' }
+    expect(segmentAFields({ ...IAN, night: cosi })['image line']).toMatch(/your next show/)
+    expect(segmentAFields({ ...IAN, night: { ...IAN.night, title: 'Storytime', categorySlug: 'family', summary: 'Stories and songs for little ones.', startDate: '2026-11-23T23:30:00Z' } })['image line']).toMatch(/your next event/)
+    expect(segmentAFields({ ...IAN, night: { ...IAN.night, title: 'Front Bar Trivia', categorySlug: 'nightlife', summary: null } })['image line']).toMatch(/your next event/)
   })
   it("a billing set in capitals reads as their night, never as a name (class 13): 'your Professional Comedians night on Tuesday 24 November'", () => {
     const f = segmentAFields({ ...IAN, night: { ...IAN.night, title: 'PROFESSIONAL COMEDIANS', categorySlug: 'comedy', startDate: '2026-11-24T09:00:00Z' } })

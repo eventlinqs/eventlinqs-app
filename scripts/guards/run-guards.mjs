@@ -274,6 +274,8 @@
  *                              pulled back payout never reads as money paid (V3 item 8)
  *   growth-reads-skip-the-platform  every read of the organisers leaves the platform's
  *                              own listings organisation out (2 November 2026)
+ *   presses-are-not-people     no line says a press on to a booking page as a person,
+ *                              until the presses are proved to count people (18 November 2026)
  *   kit-sent-reads-the-touch   whether a partner kit went is read through one module,
  *                              a kit Lawal sent by email counting as sent (13 November 2026)
  *   walk-in-page-sells-nothing  WI1: a free walk-in page reaches no ticket or price
@@ -3424,6 +3426,10 @@ const GUARDS = [
   // too; five readers counted that table as it stands (WINDOW 1, 2 November 2026, 12:17). Who is a real organiser is
   // one rule, src/lib/growth/platform-organiser.ts; this fails the build where src/ selects the organisers without it.
   'scripts/guards/growth-reads-skip-the-platform.mjs',
+  // The outbound presses are not shown to count people (2,013 presses against 701 page views on 18 November 2026, in
+  // bursts, a new hash on most rows), and four surfaces said them as people (the PM's 02:38 of 18 November 2026, item 5).
+  // This fails the build where src/ puts a word for people beside a press on to a booking page or the tickets.
+  'scripts/guards/presses-are-not-people.mjs',
   // A partner kit goes by hand (marked sent) or by email (Lawal sends the message carrying its own link, synced from his
   // Sent Items); five readers judged it from the postings alone (WINDOW 5A, 13 November 2026, order 4 item 9). Whether a
   // kit went is one rule, src/lib/social/kit-sent.ts; this fails the build where src/ reads the postings without it.

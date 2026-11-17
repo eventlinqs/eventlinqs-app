@@ -88,7 +88,8 @@ describe('addedLines', () => {
 
   it('never calls a press out a sale, and says what is not visible to us', () => {
     const text = addedLines(nightFigures(ROWS), words).join('\n')
-    expect(text).toContain('EventLinqs sent 3 people on to your booking page: 2 to Humanitix, 1 to Eventbrite.')
+    // Presses, never people (the PM's 02:38 of 18 November 2026, item 5: a press is never called a person (scripts/guards/presses-are-not-people.mjs)).
+    expect(text).toContain('Your listing had 3 presses on through to your booking page: 2 to Humanitix, 1 to Eventbrite.')
     expect(text).toContain('not a ticket sold')
     expect(text).not.toMatch(/\b(sale|sales|revenue)\b/i)
   })

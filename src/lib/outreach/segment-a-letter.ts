@@ -1,4 +1,5 @@
 import type { TemplateRow } from './rules'
+import { nightKind, type NightKind } from '@/lib/social/campaign'
 import { seenWords } from './follow-up-letters'
 import { dayWords } from './twenty-letters'
 
@@ -83,6 +84,9 @@ export interface SegmentANight {
   readonly startDate: string
   readonly timezone: string | null
   readonly categorySlug: string | null
+  /** The night's own words and venue, for the one kind reader the posts use (campaign.ts nightKind). */
+  readonly summary?: string | null
+  readonly venueName?: string | null
   /** Its listing shows a photograph. */
   readonly hasPhoto: boolean
   /** It has a button to their own booking page (an external ticket link or a booking link). */
@@ -106,8 +110,15 @@ export interface SegmentAFacts {
   readonly origin: string
 }
 
-// 'show' only for music, comedy and theatre (the PM's 03:10 of 18 November 2026, class 14); anything else is an event.
-const SHOW_CATEGORIES: ReadonlySet<string> = new Set(['music', 'comedy', 'theatre'])
+// 'show' only for a gig, jazz, classical, comedy, theatre or dance night (the PM's 03:10 of 18 November 2026, class 14),
+// read by the ONE kind reader the posts use (campaign.ts nightKind), never the raw category (the PM's 04:38: 'An Evening
+// with Alastair Campbell' is listed as music and is a talk; Cosi is listed as arts-community and is a play).
+const SHOW_KINDS: ReadonlySet<NightKind> = new Set<NightKind>(['gig', 'jazz', 'classical', 'comedy', 'theatre', 'dance'])
+
+/** The night's kind as the posts read it. */
+export function kindOfNight(n: SegmentANight): NightKind | null {
+  return nightKind({ title: n.title, sourceTitle: n.title, summary: n.summary ?? null, venueName: n.venueName ?? null, host: n.venueName ?? null, categorySlug: n.categorySlug, startDate: n.startDate, timezone: n.timezone })
+}
 
 /**
  * NO COUNT OF PEOPLE UNTIL IT IS PROVED TO COUNT PEOPLE (the PM's 02:38 of 18 November 2026, items 2 and 3). The page view
@@ -195,7 +206,8 @@ export function segmentAFields(f: SegmentAFacts): Record<string, string | null> 
     : `Your events are already listed on EventLinqs at no cost to you${everyBooked ? ', each with a button straight to your own booking page' : someBooked ? ', with a button straight to your own booking page' : ''}.`
   // Stated only once proved to count people, and never below 5 (OPENERS_PROVED): 'your event pages', or 'its page' for one.
   const opened = OPENERS_PROVED && f.openers >= OPENERS_FLOOR ? ` So far ${people(f.openers, `opened ${one ? 'its page' : 'your event pages'} on EventLinqs`)}.` : ''
-  const kind = SHOW_CATEGORIES.has(f.night.categorySlug ?? '') ? 'show' : 'event'
+  const read = kindOfNight(f.night)
+  const kind = read !== null && SHOW_KINDS.has(read) ? 'show' : 'event'
   const tickets = f.night.hasBooking ? ' Your tickets stay exactly where they are.' : ''
   const image = f.night.hasPhoto
     ? `Send me one image of your next ${kind} you're happy for us to use, and I'll add it for you.${tickets}`

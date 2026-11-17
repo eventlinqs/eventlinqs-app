@@ -725,7 +725,7 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
           <p data-total className="mt-2 text-sm text-white">
             {total.tickets} ticket{total.tickets === 1 ? '' : 's'} sold, {money(total.cents)}, from {gone.length} post{gone.length === 1 ? '' : 's'}.{' '}
             <span className="text-white/70">
-              {total.arrived} people arrived through them and {total.pressedOut} pressed on to book with the organiser.
+              {total.arrived} arrivals through them and {total.pressedOut} presses on to book with the organiser.
             </span>
           </p>
         )}

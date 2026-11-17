@@ -106,12 +106,21 @@ describe('the two posted versions are the one poster caption', () => {
 })
 
 describe('(7) one poster for an event over several days, naming its days', () => {
-  it('the Leisurefest on Friday and Sunday is one poster, on its first day, and its caption names the days', () => {
+  it('the Leisurefest on Friday, Saturday and Sunday is one poster, on its first day, and its caption names the days', () => {
     const fri = night({ eventId: 'f', slug: 'race-20', title: 'Geelong Caravanning and Adventure Leisurefest', venueName: 'Geelong Racecourse', host: 'Geelong Racecourse', categorySlug: 'festival', startDate: '2026-11-19T22:00:00Z', endDate: '2026-11-20T05:00:00Z', summary: null })
+    const sat = { ...fri, eventId: 't', slug: 'race-21', startDate: '2026-11-20T22:00:00Z', endDate: '2026-11-21T05:00:00Z' }
     const sun = { ...fri, eventId: 's', slug: 'race-22', startDate: '2026-11-21T22:00:00Z', endDate: '2026-11-22T05:00:00Z' }
-    const pieces = dailyPosterPieces({ nights: [fri, sun], cities: [GEELONG], weekStart: '2026-11-16', origin: ORIGIN })
+    const pieces = dailyPosterPieces({ nights: [fri, sat, sun], cities: [GEELONG], weekStart: '2026-11-16', origin: ORIGIN })
     expect(pieces.map((p) => p.eventIds[0])).toEqual(['f'])
     expect(pieces[0].versions.instagram.caption).toContain('\u{1F4C5} Friday 20 to Sunday 22 November · 9 am')
+  })
+  // The pack of 05:43: 'Thursday 19 to Thursday 26 November' for a weekly show; a run is consecutive days in the week only.
+  it('a weekly repeat is never read as a run of days: its own day only', () => {
+    const thu = night({ eventId: 'w1', slug: 'gdm-19', startDate: '2026-11-19T07:30:00Z' })
+    const next = { ...thu, eventId: 'w2', slug: 'gdm-26', startDate: '2026-11-26T07:30:00Z', endDate: '2026-11-26T10:00:00Z' }
+    const [p] = dailyPosterPieces({ nights: [thu, next], cities: [GEELONG], weekStart: '2026-11-16', origin: ORIGIN })
+    expect(p.versions.instagram.caption).toContain('\u{1F4C5} Thursday 19 November · 6:30 pm')
+    expect(p.versions.instagram.caption).not.toMatch(/to Thursday 26/)
   })
 })
 
@@ -150,5 +159,15 @@ describe('(6) a weekend line goes on a Thursday or a Friday only', () => {
     const at = plan.moments.get('brand')!
     const day = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long' }).format(at)
     expect(['Thursday', 'Friday']).toContain(day)
+  })
+})
+
+// The pack of 05:43: 'Live music in Melbourne. / Live music, up close.' A night with no words of its own says its kind once.
+describe('the kind is said once', () => {
+  it('no fallback line under the kind line when the night has no words of its own', () => {
+    const recital = night({ title: 'Anne Sofie von Otter & Kristian Bezuidenhout', citySlug: 'melbourne', cityName: 'Melbourne', venueName: 'Melbourne Recital Centre', categorySlug: 'music', summary: null })
+    const l = lines(posterCaption(recital, { slug: 'melbourne', name: 'Melbourne' }, SITE, { platform: 'instagram', link: `${ORIGIN}/events/a-night` }))
+    expect(l[2].startsWith('📍')).toBe(true)
+    expect(l.join(' ')).not.toMatch(/up close|The game, live/)
   })
 })

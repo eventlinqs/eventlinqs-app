@@ -63,7 +63,7 @@ describe('on /admin/today, the distribution results of the nights reported in th
     expect(figs.map((f) => f.label)).toEqual([
       'Exposure: posts and taps on their links',
       'Interest: people who opened the listing',
-      'Booking intent: people sent on to book',
+      'Booking intent: presses on to book',
       'Verified sale: orders on EventLinqs',
     ])
     expect(figs.every((f) => f.cadence === 'weekly' && f.kind === 'measure' && f.asksForAPerson === false)).toBe(true)
@@ -82,7 +82,7 @@ describe('the words', () => {
   test('booking intent is never called a sale, and an unseen sale says so', () => {
     const lines = levelLines(venueLevels([fourLevels(night())]))
     expect(lines).toHaveLength(4)
-    expect(lines[2]).toBe('Booking intent: 9 people went on to book (a press to the booking site, never counted as a sale)')
+    expect(lines[2]).toBe('Booking intent: 9 presses on to book (a press to the booking site, never counted as a sale)')
     expect(lines[3]).toBe('Verified sale: 1 night not ticketed on EventLinqs (free entry or another site), any sale not visible to us')
   })
   test('our own sales are said as orders and tickets', () => {
