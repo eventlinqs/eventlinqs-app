@@ -3,23 +3,30 @@ import { standInOf } from './stand-ins'
 import { getAllCities } from '@/lib/cities/data'
 
 /**
- * LAW 22, THE PUBLISH GATE: ONE CHECK OF A PIECE'S OWN CONTENT (the PM's 21:58 and 22:02 of 17 November 2026; Lawal's P0
- * directive of 21:47, sections 3 to 7). Pure: given a revision's slides and caption, the time it was drawn, its nights as
- * they are now and the moment, it returns every reason the piece may not go, each led by its class, or none. The one
- * pipeline runs it at approval and at publishing (store.pieceDependencies), at scheduling and when a piece is drawn, so no
- * route reaches the publisher without it. The faults of 17 November are its drills (tests/unit/social/piece-quality.test.ts).
+ * LAW 22, THE PUBLISH GATE, AS LAWAL'S 00:12 OF 18 NOVEMBER 2026 SHAPES IT (OPS-DIRECTIVE-LOCKED-18NOV.md; the P0 directive
+ * of 17 November 21:47, sections 3 to 7). Pure. pieceQuality gives every ESSENTIAL reason a piece may not go, each led by its
+ * class; it runs at approval and publishing (store.pieceDependencies) and at scheduling, so no route reaches the publisher
+ * without it. Everything else is a CORRECTION, never a hold: pieceCorrections names it, and the hourly run draws the piece
+ * again by the code in force (store.redrawOlderLook). A piece that still cannot pass is left out alone; it never holds
+ * another piece or the campaign.
  *
- *   [night]    a night the piece advertises has started (class 1; a piece never posts once its night has started)
- *   [photo]    a stand-in over a night it does not show (class 2; Lawal's D1: never a wrong photograph)
- *   [look]     Lawal's lock of 15 November refuses it (class 3)
- *   [language] wrong or robotic words on a slide or in the caption (class 4)
- *   [stale]    drawn before the rules now in force (P0 section 7): drawn again before it goes
+ *   holds (pieceQuality)
+ *     [night]    a night it advertises has started (unless its caption says it is on now and the night has not ended),
+ *                a day it prints is already over, a row prints another session's time
+ *     [photo]    a stand-in over a night it does not show (Lawal's D1: never a wrong photograph)
+ *   corrections (pieceCorrections): drawn again automatically
+ *     [stale]    drawn before the rules now in force
+ *     [look]     drawn in the older list look
+ *     [language] wrong or robotic words, the city twice, a hashtag off our list
  */
 
 /** The moment the rules below came into force: a revision drawn before it is stale. Moved forward with every rule change. */
 export const PIECE_RULES_SINCE = '2026-11-17T13:10:00.000Z'
 
-export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone'>
+export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'>
+
+/** A caption that says the night is happening now (Lawal's 00:12, section 5: an event in progress posts only so). */
+export const ON_NOW = /\b(on now|happening now|on right now|underway now|still on)\b/i
 
 export type QualityInput = {
   readonly slides: readonly Slide[]
@@ -144,16 +151,14 @@ export function pastDaysPrinted(texts: readonly string[], now: Date, zone = 'Aus
 export function pieceQuality(input: QualityInput): string[] {
   const out: string[] = []
 
-  /* [stale] P0 section 7: a revision drawn under older rules is drawn again before it goes. */
-  if (!(Date.parse(input.madeAt) >= Date.parse(PIECE_RULES_SINCE))) {
-    out.push(`[stale] It was drawn at ${input.madeAt}, before the rules in force since ${PIECE_RULES_SINCE}: draw it again.`)
-  }
-
-  /* [night] class 1: no piece posts once a night it advertises has started. */
+  /* [night] class 1: no piece posts once a night it advertises has started, unless its caption says it is on now and
+     people can still go (the night has not ended): Lawal's 00:12, section 5. */
+  const onNow = ON_NOW.test(input.caption)
   const ids = new Set(input.slides.flatMap(nightIdsOf))
   for (const id of ids) {
     const n = input.nights.get(id)
-    if (n && Date.parse(n.startDate) <= input.now.getTime()) out.push(`[night] ${n.title}: it has started (${n.startDate}); a piece never posts once its night has started. Draw it again without this night.`)
+    const ended = n?.endDate ? Date.parse(n.endDate) <= input.now.getTime() : true
+    if (n && Date.parse(n.startDate) <= input.now.getTime() && (!onNow || ended)) out.push(`[night] ${n.title}: it has started (${n.startDate}); a piece never posts once its night has started. Draw it again without this night.`)
   }
 
   /* [night] fix (a): one time per night; a row prints its own night's start, the time its caption prints. */
@@ -182,11 +187,20 @@ export function pieceQuality(input: QualityInput): string[] {
     }
   })
 
-  /* [look] class 3: Lawal's lock of 15 November. */
+  return out
+}
+
+/**
+ * What the hourly run corrects by drawing the piece again (Lawal's 00:12: never a hold, never a question to him): a
+ * drawing made before the rules in force, the older list look, and wrong or robotic words.
+ */
+export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' | 'madeAt'>): string[] {
+  const out: string[] = []
+  if (!(Date.parse(input.madeAt) >= Date.parse(PIECE_RULES_SINCE))) {
+    out.push(`[stale] It was drawn at ${input.madeAt}, before the rules in force since ${PIECE_RULES_SINCE}: drawn again.`)
+  }
   const locked = OLDER_LOOK_IN_PLAN ? null : lockRefusal(input.slides)
   if (locked) out.push(`[look] ${locked}`)
-
-  /* [language] class 4: on every slide and in the caption. */
   out.push(...languageFaults([...input.slides.flatMap(wordsOf), ...input.caption.split('\n')]))
   return out
 }

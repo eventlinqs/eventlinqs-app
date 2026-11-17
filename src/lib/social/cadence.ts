@@ -229,12 +229,16 @@ export function scheduleWindowOf(
   format: SocialFormat,
   nights: readonly { readonly title: string; readonly start: number; readonly end: number }[],
   zone: string = SOCIAL_ZONE,
+  opts: { readonly onNow?: boolean } = {},
 ): { deadline: Date | null; notBefore: Date | null; first: { title: string; start: Date } | null } {
   const dated = nights.filter((n) => Number.isFinite(n.start))
   if (dated.length === 0) return { deadline: null, notBefore: null, first: null }
   const first = dated.reduce((a, b) => (b.start < a.start ? b : a))
+  // ON NOW (Lawal's 00:12 of 18 November 2026, section 5): a piece whose caption says the night is on now may go while
+  // people can still go, until its earliest night ends.
+  const ends = dated.map((n) => n.end).filter((e) => Number.isFinite(e))
   return {
-    deadline: new Date(first.start),
+    deadline: opts.onNow && ends.length > 0 ? new Date(Math.min(...ends)) : new Date(first.start),
     notBefore: format === 'story' ? dayStart(new Date(first.start), zone) : null,
     first: { title: first.title, start: new Date(first.start) },
   }

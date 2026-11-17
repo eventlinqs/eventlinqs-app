@@ -70,9 +70,9 @@ describe('the week drawn again in the locked look', () => {
     expect(redraw[0].plan).toBe(ahead)
   })
 
-  it('never an approved, rejected or gone piece, never a daily poster', () => {
+  it('never an approved, rejected or gone piece; a daily poster is drawn again by its own day (Lawal, 18 November 00:12)', () => {
     const { redraw, kept } = olderLookRedraws(
-      [row({ id: 'b', kind: 'week_ahead', state: 'approved' }), row({ id: 'c', kind: 'week_ahead', state: 'rejected' }), row({ id: 'd', kind: 'week_ahead', state: 'gone' }), row({ id: 'e', kind: 'daily_poster' })],
+      [row({ id: 'b', kind: 'week_ahead', state: 'approved' }), row({ id: 'c', kind: 'week_ahead', state: 'rejected' }), row({ id: 'd', kind: 'week_ahead', state: 'gone' })],
       fresh,
     )
     expect(redraw).toEqual([])
@@ -105,5 +105,21 @@ describe('the week drawn again in the locked look', () => {
     expect(refusedOnceSwept(ahead.slides, none)).toBeNull()
     const all = new Map(photoAt.map((i) => [i, { url: 'u', credit: 'c', assetId: 'a', focal: null, width: null, height: null }]))
     expect(refusedOnceSwept(ahead.slides, all)).toBeNull()
+  })
+})
+
+describe("a stale piece of any kind is drawn again (Lawal's 00:12 of 18 November 2026)", () => {
+  it('a daily poster drawn before the rules in force takes the fresh poster of its own day, never another day', () => {
+    const base = fresh.find((p) => p.kind === 'week_ahead')!
+    const posterOf = (day: string) => ({ ...base, kind: 'daily_poster' as const, posterDay: day })
+    const stale = {
+      ...row({ id: 'p', kind: 'daily_poster', slides: base.slides }),
+      posterDay: '2026-11-19',
+      history: [{ version: 1, madeBy: 'planner' as const, madeAt: '2026-11-15T19:40:07.237Z' }],
+    }
+    const { redraw } = olderLookRedraws([stale], [posterOf('2026-11-18'), posterOf('2026-11-19')])
+    expect(redraw.map((r) => r.id)).toEqual(['p'])
+    expect(redraw[0].plan.posterDay).toBe('2026-11-19')
+    expect(olderLookRedraws([stale], [posterOf('2026-11-18')]).redraw).toEqual([])
   })
 })

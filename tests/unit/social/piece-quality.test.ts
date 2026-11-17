@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { languageFaults, PIECE_RULES_SINCE, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
+import { languageFaults, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
 import { clockOf, nightLabel, type CampaignNight, type Slide } from '@/lib/social/campaign'
 
 /*
@@ -55,25 +55,25 @@ describe('pieceQuality, the drills', () => {
   })
 
   it("'one nights', 'Quintet- JL Room' and the robotic line are refused (class 4)", () => {
-    const words = (s: string) => pieceQuality({ ...base, caption: s, slides: [ask], nights: nightsOf() }).join(' ')
+    const words = (s: string) => pieceCorrections({ caption: s, slides: [ask], madeAt: after }).join(' ')
     expect(words('Family in Geelong this week: one nights.')).toMatch(/\[language\].*one nights/)
     expect(words('Darcy Gilkerson Quintet- JL Room at The JazzLab.')).toMatch(/\[language\].*Quintet- JL Room/)
     expect(words('An event on a Wednesday evening, tickets through AXS.')).toMatch(/\[language\].*robotic/)
   })
 
   it("'Her Majesty's Theatre Ballarat, Ballarat' is refused: the city said twice", () => {
-    const out = pieceQuality({ ...base, caption: "Thu 19 Nov, 7pm, Kate Ceberano, Her Majesty's Theatre Ballarat, Ballarat.", slides: [ask], nights: nightsOf() })
+    const out = pieceCorrections({ caption: "Thu 19 Nov, 7pm, Kate Ceberano, Her Majesty's Theatre Ballarat, Ballarat.", slides: [ask], madeAt: after })
     expect(out.join(' ')).toMatch(/\[language\].*Ballarat, Ballarat/)
   })
 
   it('a piece drawn on 16 November is stale and refused until drawn again (class 5)', () => {
-    const out = pieceQuality({ ...base, madeAt: '2026-11-15T19:40:07.237+00:00', slides: [ask], nights: nightsOf() })
+    const out = pieceCorrections({ caption: base.caption, madeAt: '2026-11-15T19:40:07.237+00:00', slides: [ask] })
     expect(out.join(' ')).toMatch(/^\[stale\]/)
   })
 
   it('a piece the locked look refuses is refused (class 3)', () => {
     const cover = { t: 'cover', composition: 'contents_cover', chip: 'x', headline: 'x', line: 'x', contents: [] } as unknown as Slide
-    expect(pieceQuality({ ...base, slides: [cover, ask], nights: nightsOf() }).join(' ')).toMatch(/\[look\]/)
+    expect(pieceCorrections({ caption: base.caption, slides: [cover, ask], madeAt: after }).join(' ')).toMatch(/\[look\]/)
   })
 })
 
@@ -124,5 +124,24 @@ describe("one time per night (the PM's 23:45, fix (a))", () => {
 
   it("a show's label gives its own night's time, never its first session's", () => {
     expect(nightLabel(three as unknown as CampaignNight, [morning as unknown as CampaignNight]).time).toBe('3:00 pm')
+  })
+})
+
+describe("the gate holds only the essential classes (Lawal's 00:12, OPS-DIRECTIVE-LOCKED-18NOV.md)", () => {
+  it('wrong words, a stale drawing and the older look are corrections, never holds', () => {
+    const cover = { t: 'cover', composition: 'contents_cover', chip: 'x', headline: 'x', line: 'x', contents: [] } as unknown as Slide
+    const out = pieceQuality({ ...base, caption: 'Family in Geelong this week: one nights. #geelongevent', madeAt: '2026-11-15T19:40:07.237+00:00', slides: [cover, ask], nights: nightsOf() })
+    expect(out.filter((r) => /^\[(language|stale|look)\]/.test(r))).toEqual([])
+  })
+
+  it('a night in progress posts only when its caption says it is on now, before its end', () => {
+    const festival = night({ eventId: 'f', title: 'African Music and Cultural Festival', startDate: '2026-11-20T00:00:00Z', endDate: '2026-11-22T11:00:00Z', venueName: 'Federation Square', host: 'Federation Square', categorySlug: 'festival' })
+    const slides = [days(null, [festival]), ask]
+    const during = new Date('2026-11-21T02:00:00Z')
+    const after = new Date('2026-11-22T12:00:00Z')
+    const started = (caption: string, now: Date) => pieceQuality({ ...base, caption, slides, nights: nightsOf(festival), now }).filter((r) => r.includes('has started'))
+    expect(started('The festival is on now at Federation Square, free entry until Sunday night.', during)).toEqual([])
+    expect(started('A weekend of music at Federation Square.', during).length).toBe(1)
+    expect(started('The festival is on now at Federation Square.', after).length).toBe(1)
   })
 })

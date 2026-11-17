@@ -8,7 +8,7 @@ import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
-import { languageFaults, pieceQuality, type QualityNight } from './piece-quality'
+import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
@@ -615,6 +615,7 @@ function qualityNightOf(e: Record<string, unknown>): QualityNight {
     categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
     startDate: String(e.start_date),
     timezone: (e.timezone as string | null) ?? null,
+    endDate: (e.end_date as string | null) ?? null,
   }
 }
 
@@ -1022,6 +1023,8 @@ export type PieceRow = {
   link: string
   format: 'feed' | 'story'
   partnerName: string | null
+  /** A daily poster's own day (social_pieces.poster_day), so a redraw takes the poster of the same day. */
+  posterDay: string | null
   revision: Revision
   history: { version: number; madeBy: Revision['madeBy']; madeAt: string }[]
   decisions: { revision: number; decision: string; reason: string; at: string }[]
@@ -1038,7 +1041,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
   if (campaignId === null) return null
   const { data, error } = await db
     .from('social_pieces')
-    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, social_piece_revisions(${REVISION_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
+    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, poster_day, social_piece_revisions(${REVISION_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
     .eq('campaign_id', campaignId)
     .order('planned_at', { ascending: true })
     .limit(500)
@@ -1072,6 +1075,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
       link: p.link as string,
       format: p.format as 'feed' | 'story',
       partnerName: (p.partner_name as string | null) ?? null,
+      posterDay: (p.poster_day as string | null) ?? null,
       revision: newest,
       history: revisions.map((r) => ({ version: r.version, madeBy: r.madeBy, madeAt: r.madeAt })),
       decisions,
@@ -1228,11 +1232,22 @@ export function refusedOnceSwept(slides: readonly Slide[], images: ReadonlyMap<n
   return lockRefusal(left)
 }
 
-type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> }
+type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> &
+  Partial<Pick<PieceRow, 'posterDay' | 'history'>> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> & Partial<Pick<Revision, 'caption' | 'madeAt' | 'madeBy'>> }
 
-/** A piece the sweep draws again: drafted, never a daily poster, its newest revision refused by the lock. */
+/** When a candidate's slides were last DRAWN: its newest revision not made by an edit; unknown reads as current. */
+function drawnAtOfCandidate(p: RedrawCandidate): string {
+  const drawn = [...(p.history ?? [])].sort((a, b) => b.version - a.version).find((h) => h.madeBy !== 'edit')
+  return drawn?.madeAt ?? (p.revision.madeBy !== 'edit' ? p.revision.madeAt : undefined) ?? PIECE_RULES_SINCE
+}
+
+/**
+ * A piece the hourly run draws again (Lawal's 00:12 of 18 November 2026: corrected automatically, never a hold): drafted,
+ * of any kind, daily posters included, with a correction due: drawn before the rules in force, in the older list look,
+ * or with wrong or robotic words (piece-quality.ts pieceCorrections).
+ */
 export function isOlderLookDraft(p: RedrawCandidate): boolean {
-  return p.state === 'drafted' && p.kind !== 'daily_poster' && lockRefusal(p.revision.slides) !== null
+  return p.state === 'drafted' && pieceCorrections({ slides: p.revision.slides, caption: p.revision.caption ?? '', madeAt: drawnAtOfCandidate(p) }).length > 0
 }
 
 /**
@@ -1248,7 +1263,7 @@ export function olderLookRedraws(
   const kept: string[] = []
   for (const p of pieces.filter(isOlderLookDraft)) {
     const label = `${p.kind} ${p.city}${p.partnerName ? ` ${p.partnerName}` : ''}`
-    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null))
+    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null) && (x.posterDay ?? null) === (p.posterDay ?? null))
     if (!f) {
       kept.push(`${label}: this week's plan no longer draws it in the locked look, so it stays as it is`)
       continue
@@ -1698,7 +1713,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
   const firstStarting = new Map<string, { title: string; start: Date }>()
   const pieces: SchedulePiece[] = due.map((d) => {
     const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined)
-    const window = scheduleWindowOf(d.format, own)
+    const window = scheduleWindowOf(d.format, own, undefined, { onNow: ON_NOW.test(d.rev.caption) })
     if (window.first === null) return { id: d.id, format: d.format, approvedAt: d.approvedAt }
     firstStarting.set(d.id, window.first)
     return { id: d.id, format: d.format, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore }
