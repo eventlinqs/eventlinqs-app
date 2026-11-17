@@ -834,8 +834,14 @@ export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] 
   if (dateOf(n).includes(' to ') && n.endDate) {
     return { time: clockOf(n.startDate, n.timezone), day: `${shortDay(n.startDate, n.timezone)} to ${shortDay(n.endDate, n.timezone)}`, first: n.startDate }
   }
+  // A row names only the days its one printed time is true of (the pack of 18 November 2026: Curtain Up read '2:00 PM
+  // FRI 20 & SAT 21' when Friday's session is 7.30 pm): sessions at another time are not merged into this night's label.
+  const own = clockOf(n.startDate, n.timezone)
   const byDay = new Map<string, CampaignNight>()
-  for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  for (const x of all) {
+    if (clockOf(x.startDate, x.timezone) !== own) continue
+    if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
+  }
   const d = [...byDay.values()].map((x) => shortDay(x.startDate, x.timezone))
   // ONE TIME PER NIGHT (the PM's 23:45 of 17 November 2026, fix (a)): the time is this night's own, the one its caption
   // prints; it was the first session's, so Alastair Campbell's 3 pm row read '11:30 am' beside a caption of 3pm.

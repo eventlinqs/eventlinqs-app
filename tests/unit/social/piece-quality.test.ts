@@ -125,6 +125,20 @@ describe("one time per night (the PM's 23:45, fix (a))", () => {
   it("a show's label gives its own night's time, never its first session's", () => {
     expect(nightLabel(three as unknown as CampaignNight, [morning as unknown as CampaignNight]).time).toBe('3:00 pm')
   })
+
+  // The pack of 18 November 2026: Curtain Up's row read '2:00 PM FRI 20 & SAT 21' (Friday's session is 7.30 pm) and
+  // '7:30 PM FRI 20 & SAT 21' (Saturday's is 2 pm). A row names only the days its one printed time is true of.
+  it('a row names only the days whose session starts at the time it prints', () => {
+    const curtainSat = night({ eventId: '392c498b', title: 'GSODA Junior Players presents Curtain Up', startDate: '2026-11-21T03:00:00Z', venueName: 'The Story House' })
+    const curtainFri = { ...curtainSat, eventId: '40847df9', startDate: '2026-11-20T08:30:00Z' }
+    const sat = nightLabel(curtainSat as unknown as CampaignNight, [curtainFri as unknown as CampaignNight])
+    expect([sat.time, sat.day]).toEqual(['2:00 pm', 'Sat 21'])
+    const fri = nightLabel(curtainFri as unknown as CampaignNight, [curtainSat as unknown as CampaignNight])
+    expect([fri.time, fri.day]).toEqual(['7:30 pm', 'Fri 20'])
+    // Sessions at the same time on two days still read as one row.
+    const satEvening = { ...curtainSat, eventId: 'x2', startDate: '2026-11-21T08:30:00Z' }
+    expect(nightLabel(curtainFri as unknown as CampaignNight, [satEvening as unknown as CampaignNight]).day).toBe('Fri 20 & Sat 21')
+  })
 })
 
 describe("the gate holds only the essential classes (Lawal's 00:12, OPS-DIRECTIVE-LOCKED-18NOV.md)", () => {
