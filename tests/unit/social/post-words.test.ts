@@ -104,15 +104,18 @@ describe("a cover's line names the venue and the time (fix 1)", () => {
 
 describe("a night's kind from its own words, never its category alone (the PM's 16:40 fix 1)", () => {
   const mrc = { venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre', categorySlug: 'music' }
-  it("never takes a historian's talk, an art song recital or a stories evening for a gig", () => {
+  // 18 November 2026: the stories evening of the 16:40 case is a CONCERT by its own page ('A landmark concert celebrating
+  // Timor-Leste's most exciting voices', melbournerecital.com.au, read politely at 06:42, C:\dev\EVIDENCE\EL-18NOV\
+  // kind-category\pages\0.html), so 'stories' never overrules a night filed as music, and its eyebrow says it is live.
+  it("never takes a historian's talk or an art song recital for a gig, nor a concert of stories for a talk", () => {
     const talk = night({ at: '2026-11-16T08:30:00Z', title: 'An Evening with Ben Macintyre', ...mrc })
     const recital = night({ at: '2026-11-18T08:30:00Z', title: 'Anne Sofie von Otter & Kristian Bezuidenhout', summary: 'An art song recital with piano.', ...mrc })
     const stories = night({ at: '2026-11-20T08:30:00Z', title: 'Timor-Leste: Ita Nia Lian, Ita Nia Istoria', sourceTitle: 'Timor-Leste - Ita Nia Lian, Ita Nia Istoria - Our Voices, Our Stories', ...mrc })
     expect(nightKind(talk)).toBe('talk')
     expect(nightKind(recital)).toBe('classical')
-    expect(nightKind(stories)).toBe('talk')
+    expect(nightKind(stories)).not.toBe('talk')
     expect(nightWords(talk).eyebrow).toBe('At Melbourne Recital Centre')
-    expect(nightWords(stories).eyebrow).toBe('At Melbourne Recital Centre')
+    expect(nightWords(stories).eyebrow).toBe('Live at Melbourne Recital Centre')
   })
   it('names a gig only where its words say so', () => {
     expect(nightKind(night({ at: '2026-11-20T09:00:00Z', title: 'Locals Live 2', summary: 'Three local bands on the front bar stage.' }))).toBe('gig')
@@ -130,6 +133,8 @@ describe("a night's kind from its own words, never its category alone (the PM's 
     expect(nightKind(catPower)).not.toBe('talk')
     expect(nightKind(celtic)).not.toBe('talk')
     expect(nightKind(campbell)).toBe('talk')
+    expect(nightKind({ ...campbell, categorySlug: 'education' })).toBe('talk')
+    expect(nightKind({ ...campbell, summary: 'Alastair Campbell in conversation with Louise Adler.' })).toBe('talk')
   })
   // Read on production at 06:35 (q/kind-filed.json): 'songs and stories' is a concert. Ian Moss and Troy Cassar-Daley at
   // Her Majesty's Ballarat and Ulumbarra, and the MSO with Find Your Voice Collective at Costa Hall, read as talks.
