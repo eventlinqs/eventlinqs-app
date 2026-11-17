@@ -613,7 +613,6 @@ function qualityNightOf(e: Record<string, unknown>): QualityNight {
     venueName: (e.venue_name as string | null) ?? null,
     host: (e.venue_name as string | null) ?? null,
     categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
-    sourceTitle: null,
     startDate: String(e.start_date),
     timezone: (e.timezone as string | null) ?? null,
   }

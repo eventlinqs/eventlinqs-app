@@ -18,7 +18,6 @@ const night = (over: Partial<QualityNight> & { eventId: string; title: string; s
   venueName: 'Costa Hall',
   host: 'Costa Hall',
   categorySlug: 'music',
-  sourceTitle: null,
   timezone: 'Australia/Melbourne',
   ...over,
 })
