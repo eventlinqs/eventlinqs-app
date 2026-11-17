@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { pageViewKeyParts } from '@/lib/growth/page-view-key'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readNightViewers } from '@/lib/growth/organiser-report'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
@@ -67,6 +68,8 @@ export async function readSegmentAFacts(db: Admin, input: { readonly contactId: 
     .eq('id', input.contactId)
     .single()
   if (contact.error) return { state: 'not read', why: `the contact could not be read: ${contact.error.message}` }
+  // The platform's own listings organisation is never written to (src/lib/growth/platform-organiser.ts).
+  if ((await readPlatformOrganiserIds(db)).has(contact.data.organiser_id as string)) return { state: 'not read', why: "the platform's own listings organisation" }
   const org = await db.from('organisers').select('id, name, organisation_id, website_url').eq('id', contact.data.organiser_id as string).single()
   if (org.error) return { state: 'not read', why: `the organiser could not be read: ${org.error.message}` }
   // The greeting names the organisation that owns the address (the PM's 03:10, class 10): otherwise no letter, with why.
