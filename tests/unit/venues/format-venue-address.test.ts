@@ -187,3 +187,16 @@ describe('the street names its place (8 November 2026: "800 High Street, Melbour
     expect(addressNamingItsPlace('800 High Street', null, 'Melbourne')).toBe('800 High Street')
   })
 })
+
+/*
+ * ONE SPACE IN EVERY VENUE LINE (the PM's 06:39 of 18 November 2026, item 4). Every renderer joins a venue's name and
+ * address through this one formatter, so a run of whitespace inside a stored name or address (a doubled space, a tab, a
+ * non-breaking space) is drawn as one space, never two, on every poster, card and page.
+ */
+describe('one space in every venue line', () => {
+  test('a doubled space, a tab or a non-breaking space inside a part is drawn as one space', () => {
+    expect(formatVenueWithAddress({ name: 'Archive  Wine Bar', address: '140\tHigh St', city: 'Geelong' })).toBe('Archive Wine Bar, 140 High St, Geelong')
+    expect(formatVenueWithAddress({ name: 'Archive Wine Bar', address: '140\u00a0\u00a0High St', city: 'Geelong' })).toBe('Archive Wine Bar, 140 High St, Geelong')
+    expect(formatVenueAddress({ address: '140  High St', city: 'Geelong' })).toBe('140 High St, Geelong')
+  })
+})

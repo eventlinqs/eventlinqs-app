@@ -52,9 +52,11 @@ function normalise(segment: string): string {
  */
 function segments(value: string | null | undefined): string[] {
   if (!value) return []
+  // One space in every venue line (the PM's 06:39 of 18 November 2026, item 4): a run of whitespace inside a stored part (a
+  // doubled space, a tab, a non-breaking space) is one space on every renderer that joins a name and an address.
   return value
     .split(',')
-    .map(s => s.trim())
+    .map(s => s.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
 }
 
