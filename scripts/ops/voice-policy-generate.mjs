@@ -17,6 +17,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 const VOICE = 'C:/dev/START-16OCT/VOICE-EVENTLINQS.md'
 const LAW = 'C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md'
+// The communication standard (Lawal, 17 November 2026, 21:10), the third policy file since the PM's 02:00 of 18 November
+// 2026: its Part 2 rule 7 checks are read from standard.json beside the gateway, as gateway.py reads them.
+const STANDARD_FILE = 'C:/dev/START-16OCT/EL-COMMS-STANDARD-LOCKED-17NOV.md'
+const STANDARD = 'C:/dev/comms-gateway/standard.json'
 const PERMS = 'C:/dev/comms-gateway/permissions-granted.json'
 const COMPOUNDS = 'C:/dev/comms-gateway/compounds.json'
 const THREADS = 'C:/dev/comms-gateway/threads.json'
@@ -27,7 +31,7 @@ function unavailable(why) {
   process.exit(3)
 }
 
-const bytes = [VOICE, LAW].map((f) => {
+const bytes = [VOICE, LAW, STANDARD_FILE].map((f) => {
   try {
     const b = readFileSync(f)
     if (!b.toString('utf8').trim()) unavailable(`${f} is empty`)
@@ -38,7 +42,17 @@ const bytes = [VOICE, LAW].map((f) => {
 })
 const hash = createHash('sha256')
 for (const b of bytes) hash.update(b)
-const [voice, law] = bytes.map((b) => b.toString('utf8'))
+const [voice, law, standardText] = bytes.map((b) => b.toString('utf8'))
+if (!standardText.includes('THE QUALITY GATE IS CODE')) unavailable('the communication standard no longer states its quality gate (Part 2 rule 7)')
+let standard
+try {
+  const s = JSON.parse(readFileSync(STANDARD, 'utf8'))
+  const list = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => typeof x === 'string' && x.length > 0)
+  if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.actions) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead }
+} catch (e) {
+  unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
+}
 
 const first = voice.match(/"Kind regards," then: (.+)/)
 if (!first) unavailable('the voice file no longer states the first message sign off')
@@ -81,7 +95,7 @@ const replyText = reply[1]
 const comma = replyText.indexOf(', ')
 const policy = {
   _generated:
-    'by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md and C:/dev/comms-gateway/permissions-granted.json, compounds.json and threads.json; never edited by hand. version is the sha256 of the two policy files together, first 16 hex, as gateway.py computes it.',
+    'by scripts/ops/voice-policy-generate.mjs from C:/dev/START-16OCT/VOICE-EVENTLINQS.md, C:/dev/START-16OCT/COMMUNICATION-LAW-25OCT.md, C:/dev/START-16OCT/EL-COMMS-STANDARD-LOCKED-17NOV.md and C:/dev/comms-gateway/permissions-granted.json, compounds.json, threads.json and standard.json; never edited by hand. version is the sha256 of the three policy files together, first 16 hex, as gateway.py computes it.',
   version: hash.digest('hex').slice(0, 16),
   firstSignature: first[1].split(' / ').map((s) => s.trim()),
   replySignature: comma === -1 ? [replyText.trim()] : [replyText.slice(0, comma).trim(), replyText.slice(comma + 2).trim()],
@@ -90,6 +104,7 @@ const policy = {
   compounds,
   threads,
   founderMailbox: mailbox[1].toLowerCase(),
+  standard,
 }
 const text = JSON.stringify(policy, null, 2) + '\n'
 

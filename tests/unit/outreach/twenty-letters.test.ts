@@ -37,12 +37,15 @@ function judged(letter: typeof TWENTY_ADVICE, personName: string | null, organis
 
 describe('the two letters', () => {
   for (const letter of [TWENTY_ADVICE, TWENTY_OFFER]) {
-    it(`${letter.key}: every rule and the gateway pass, to a named person and to a team`, () => {
+    // SUPERSEDED BY THE COMMUNICATION STANDARD (Lawal, 17 November 2026, 21:10; the PM's 02:00 of 18 November 2026): the
+    // 'could I ask your advice?' first letter passes the CRM's rules still, and the gateway now refuses it for its subject,
+    // so none of it can leave; the segment A letter (./segment-a-letter.ts) takes its place.
+    it(`${letter.key}: every CRM rule passes, and the gateway refuses it for the advice subject the standard replaced`, () => {
       for (const person of ['Iryna Koval', null]) {
         const { rendered, voice } = judged(letter, person)
         expect(rendered.heldBecause, rendered.body).toEqual([])
         expect(ruleFailures(rendered)).toEqual([])
-        expect(voice, rendered.body).toEqual([])
+        expect(voice.some((v) => v.includes('offer led subject')), rendered.body).toBe(true)
       }
     })
   }
