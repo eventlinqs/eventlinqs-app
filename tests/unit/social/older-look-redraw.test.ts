@@ -149,4 +149,14 @@ describe('the hourly redraw reads what posts (the pack of 18 November 2026, 05:4
   it('the rules moment is after #295 went live (05:02:54, 18 November 2026), so every drawing by older code is drawn again', () => {
     expect(Date.parse(PIECE_RULES_SINCE)).toBeGreaterThanOrEqual(Date.parse('2026-11-17T18:02:54Z'))
   })
+  // The PM's 07:05 of 18 November 2026, item 3: the routine corrections ride the category car and apply by the hourly
+  // redraw after it. The pack of 08:01 showed seven GO posts drawn at 05:40 by #295's code (the kind said twice, a weekly
+  // repeat read as a run), which #296's rules moment did not make stale. The moment moves past this car's deploy (11:00
+  // today), so a draft drawn by any earlier code, the 07:40 sweep's included, is drawn again by the car's code.
+  it("a draft drawn by this morning's runs before the category car is stale, so the car's code draws it again", () => {
+    expect(Date.parse(PIECE_RULES_SINCE)).toBeGreaterThanOrEqual(Date.parse('2026-11-18T00:00:00Z'))
+    const base = fresh.find((p) => p.kind === 'week_ahead')!
+    const p = { ...row({ id: 'm', kind: 'week_ahead', slides: base.slides }), revision: { slides: base.slides, version: 52, message: null, caption: base.caption, versions: base.versions, madeAt: '2026-11-17T20:40:07.000Z' } }
+    expect(isOlderLookDraft(p)).toBe(true)
+  })
 })

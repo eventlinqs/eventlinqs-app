@@ -501,12 +501,15 @@ describe("the PM's 20:40 fixes", () => {
     expect(placeLine({ venueName: 'Tan Track  (Pillars of Wisdom)', placeName: 'Tan Track  (Pillars of Wisdom)', cityName: 'Melbourne' })).toBe('Tan Track (Pillars of Wisdom)')
   })
 
-  it('nights only when every one starts at 5 pm or later; otherwise things (fix 4)', async () => {
+  // The PM's 07:05 of 18 November 2026, item 5: the spotlight's 'Four things this week' reads 'Four events this week';
+  // 'things' never stands in for events (law 22, class 4).
+  it('nights only when every one starts at 5 pm or later; otherwise events (fix 4, and the 07:05 item 5)', async () => {
     const { nightsWord } = await import('@/lib/social/campaign')
     const eve = night({ at: '2026-11-20T08:00:00Z' }) // 7 pm in Melbourne
     const morning = night({ at: '2026-11-21T00:00:00Z' }) // 11 am in Melbourne
     expect(nightsWord([eve])).toBe('nights')
-    expect(nightsWord([eve, morning])).toBe('things')
+    expect(nightsWord([eve, morning])).toBe('events')
+    expect(nightsWord([morning], true)).toBe('event')
     expect(nightsWord([eve], true)).toBe('night')
   })
 

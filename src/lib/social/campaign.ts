@@ -1231,7 +1231,8 @@ export function splitLine(nights: readonly CampaignNight[]): string {
  */
 export function nightsWord(nights: readonly Pick<CampaignNight, 'startDate' | 'timezone'>[], one = false): string {
   const evening = nights.every((n) => Number(new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(n.startDate))) >= 17)
-  return evening ? (one ? 'night' : 'nights') : one ? 'thing' : 'things'
+  // 'Events', never 'things' standing in for them (the PM's 07:05 of 18 November 2026, item 5: 'Four things this week').
+  return evening ? (one ? 'night' : 'nights') : one ? 'event' : 'events'
 }
 
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
