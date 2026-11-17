@@ -123,3 +123,17 @@ describe("a stale piece of any kind is drawn again (Lawal's 00:12 of 18 November
     expect(olderLookRedraws([stale], [posterOf('2026-11-18')]).redraw).toEqual([])
   })
 })
+
+describe('the hourly redraw never loops (the sweep loop of 17 November, #291, never returns)', () => {
+  it('a piece whose words a redraw cannot change (a source title) is never drawn again identical', () => {
+    const base = fresh.find((p) => p.kind === 'week_ahead')!
+    const same = {
+      ...row({ id: 'q', kind: 'week_ahead', slides: base.slides }),
+      revision: { slides: base.slides, version: 3, message: null, caption: `${base.caption}\nDarcy Gilkerson Quintet- JL Room`, madeAt: '2026-11-18T03:00:00.000Z', madeBy: 'sweep' as const },
+    }
+    const plan = { ...base, caption: same.revision.caption }
+    const { redraw, kept } = olderLookRedraws([same], [plan])
+    expect(redraw).toEqual([])
+    expect(kept.join(' ')).toMatch(/would be the same/)
+  })
+})

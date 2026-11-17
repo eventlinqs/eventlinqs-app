@@ -1273,6 +1273,12 @@ export function olderLookRedraws(
       kept.push(`${label}: ${refused}`)
       continue
     }
+    // NEVER A LOOP (the sweep loop of 17 November, #291): a drawing that would be the same as the one kept (a fault the
+    // source carries, a title a redraw cannot change) is never written again; it stays, said once an hour in the log.
+    if (JSON.stringify(f.slides) === JSON.stringify(p.revision.slides) && f.caption === (p.revision.caption ?? null)) {
+      kept.push(`${label}: drawn again it would be the same, so it stays as it is`)
+      continue
+    }
     redraw.push({ id: p.id, label, version: p.revision.version + 1, message: f.kind === 'partner_kit' ? (p.revision.message ?? f.message) : f.message, plan: f })
   }
   return { redraw, kept }
