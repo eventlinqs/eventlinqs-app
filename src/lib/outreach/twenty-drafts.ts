@@ -9,6 +9,7 @@ import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
 import type { TemplateRow } from './rules'
 import { letterFields, letterFor, TWENTY_LETTERS, TWENTY_OWN_PAGE, type TheirNight } from './twenty-letters'
+import { SEGMENT_A_LETTERS } from './segment-a-letter'
 
 /**
  * TOMORROW'S TWENTY, DRAFTED EVERY DAY FROM VERIFIED ROWS (Lawal, 12 November 2026, 11:11, item 1: "by 07:00 tomorrow
@@ -59,6 +60,21 @@ type StoredLetter = TemplateRow & { readonly key: string; readonly source: strin
 
 const sameWords = (a: { channel: string; purpose: string; step: number | null; subject: string | null; body: string }, b: StoredLetter) =>
   a.channel === b.channel && a.purpose === b.purpose && a.step === b.step && a.subject === b.subject && a.body === b.body
+
+/**
+ * THE DAY'S TWENTY IN THE ADVICE LETTER IS SUPERSEDED (the communication standard of 17 November 2026: "It supersedes the
+ * 'could I ask your advice?' first letter"; the PM's 02:00 of 18 November 2026). Hidden behind this switch, never deleted
+ * (law 13): while it is off the hourly run drafts no advice or offer letter, which the gateway now refuses for its
+ * subject anyway, and organisers whose events are listed are written to by the segment A play (./segment-a-play.ts).
+ */
+export const TWENTY_ADVICE_DRAFTING = false
+
+/** Stores the segment A letters (./segment-a-letter.ts) in the founder's name, versioned; returns the keys written. */
+export async function storeSegmentALetters(db: Admin): Promise<string[] | { readonly why: string }> {
+  const founder = await founderAccount(db)
+  if (founder.id === null) return { why: founder.why }
+  return storeLetters(db, founder.id, SEGMENT_A_LETTERS)
+}
 
 /** Stores the twenty's first letters; returns the keys written. */
 export async function storeTwentyLetters(db: Admin, by: string): Promise<string[]> {

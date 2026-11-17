@@ -8,7 +8,7 @@ import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
-import { draftTheTwenty, founderAccount } from '@/lib/outreach/twenty-drafts'
+import { TWENTY_ADVICE_DRAFTING, draftTheTwenty, founderAccount, storeSegmentALetters } from '@/lib/outreach/twenty-drafts'
 import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-ups'
 import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
@@ -107,7 +107,11 @@ export async function GET(request: NextRequest) {
     let followUps: unknown = 'not drafted in this run: the first run of each hour drafts'
     if (now.getUTCMinutes() < 15) {
       try {
-        twenty = await draftTheTwenty(db, { now, origin })
+        // The segment A letters are stored every hour, versioned, so a play can name their exact version.
+        const segmentA = await storeSegmentALetters(db)
+        twenty = TWENTY_ADVICE_DRAFTING
+          ? { segmentA, twenty: await draftTheTwenty(db, { now, origin }) }
+          : { segmentA, twenty: 'not drafted: the advice letter is superseded by the communication standard of 17 November 2026; organisers with listed events are written to by the segment A play' }
         console.log(`[cron/outreach-run] the twenty: ${JSON.stringify(twenty)}`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
