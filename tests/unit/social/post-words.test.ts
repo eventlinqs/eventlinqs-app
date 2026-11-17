@@ -131,4 +131,12 @@ describe("a night's kind from its own words, never its category alone (the PM's 
     expect(nightKind(celtic)).not.toBe('talk')
     expect(nightKind(campbell)).toBe('talk')
   })
+  // Read on production at 06:35 (q/kind-filed.json): 'songs and stories' is a concert. Ian Moss and Troy Cassar-Daley at
+  // Her Majesty's Ballarat and Ulumbarra, and the MSO with Find Your Voice Collective at Costa Hall, read as talks.
+  it("reads 'stories' and 'reading' as a talk only where nothing says the night is a performance", () => {
+    const moss = night({ at: '2026-11-28T08:30:00Z', title: 'Ian Moss and Troy Cassar-Daley: Together Alone Tour', summary: 'Rock guitarist Ian Moss and country singer Troy Cassar-Daley share songs and stories, acoustic guitars in hand.', venueName: "Her Majesty's Theatre Ballarat", host: "Her Majesty's Theatre Ballarat", categorySlug: 'music' })
+    const sonder = night({ at: '2027-11-27T08:00:00Z', title: 'Find Your Voice Collective x MSO: Sonder', summary: "The MSO and Warrnambool's Find Your Voice Collective perform new original songs and stories, conducted by Leonard Weiss.", venueName: 'Costa Hall', host: 'Geelong Arts Centre', categorySlug: 'music' })
+    expect(nightKind(moss)).not.toBe('talk')
+    expect(nightKind(sonder)).not.toBe('talk')
+  })
 })
