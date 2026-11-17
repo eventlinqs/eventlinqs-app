@@ -106,7 +106,57 @@ export interface SegmentAFacts {
   readonly origin: string
 }
 
-const SHOW_CATEGORIES: ReadonlySet<string> = new Set(['music', 'comedy', 'theatre', 'arts-community'])
+// 'show' only for music, comedy and theatre (the PM's 03:10 of 18 November 2026, class 14); anything else is an event.
+const SHOW_CATEGORIES: ReadonlySet<string> = new Set(['music', 'comedy', 'theatre'])
+
+/**
+ * NO COUNT OF PEOPLE UNTIL IT IS PROVED TO COUNT PEOPLE (the PM's 02:38 of 18 November 2026, items 2 and 3). The page view
+ * record refuses crawlers and headless browsers (src/lib/broadcast/crawler.ts) and keys a visitor by address and browser,
+ * one row a day, but it cannot tell our own real browser visits (Lawal on his own listings, a walk in a real browser, an
+ * admin session on a public page) from the public, so no letter states it; below 5 it would never be stated anyway.
+ */
+export const OPENERS_PROVED = false
+const OPENERS_FLOOR = 5
+
+/**
+ * THE GREETING NAMES THE ORGANISATION, as it would sign itself (the PM's 03:10, classes 11 and 12): a person's first name
+ * where one is named, else the organisation without a leading 'The', a bracketed part or an 'at <venue>' tail, and 'team'.
+ */
+export function greetingOf(organiserName: string, personName: string | null): string {
+  const first = (personName ?? '').trim().split(/\s+/)[0] ?? ''
+  if (first) return first
+  const name = organiserName
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s+at\s+.+$/i, '')
+    .replace(/^the\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return `${name} team`
+}
+
+/**
+ * THE ADDRESS BELONGS TO THE ORGANISATION THE GREETING NAMES (the PM's 03:10, class 10: 'Bendigo Foodshare team' at
+ * manager@bcfm.org.au, the Bendigo Community Farmers Market). True when the address's own name or its domain holds a word
+ * of the organisation's name (three letters or more), or the initials of its main words; otherwise the letter is held.
+ */
+export function addressFitsName(address: string, organiserName: string): boolean {
+  const [local, domain] = address.toLowerCase().split('@')
+  if (!domain) return false
+  const label = domain.split('.')[0] ?? ''
+  const words = organiserName
+    .replace(/\([^)]*\)/g, ' ')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !['the', 'and', 'for', 'with'].includes(w))
+  const initials = organiserName
+    .replace(/\([^)]*\)/g, ' ')
+    .split(/\s+/)
+    .filter((w) => /^[A-Z]/.test(w) && !['The', 'Of', 'And'].includes(w))
+    .map((w) => w[0].toLowerCase())
+    .join('')
+  return words.some((w) => label.includes(w) || local.includes(w)) || (initials.length >= 2 && label.startsWith(initials))
+}
 
 /** A title as a letter writes it: title case for one written all in capitals, and a plural's possessive with its apostrophe. */
 export function letterTitle(title: string): string {
@@ -132,16 +182,19 @@ const people = (n: number, tail: string) => (n === 1 ? `one person has ${tail}` 
 
 /** Every field the three letters fill, from the facts; a fact we do not hold stays unfilled, so the draft is held. */
 export function segmentAFields(f: SegmentAFacts): Record<string, string | null> {
-  const first = (f.personName ?? '').trim().split(/\s+/)[0] ?? ''
-  const organiser = f.organiserName.trim()
-  const event = letterTitle(f.night.title) || null
+  const title = letterTitle(f.night.title)
+  // A billing set in capitals is their night, not a name (the PM's 03:10, class 13): 'your Professional Comedians night'.
+  const billing = /[A-Z]{2}/.test(f.night.title) && f.night.title === f.night.title.toUpperCase()
+  const evening = Number(new Intl.DateTimeFormat('en-AU', { timeZone: f.night.timezone || 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' }).format(new Date(f.night.startDate))) >= 17
+  const event = title ? (billing ? `your ${title} ${evening ? 'night' : 'session'}` : title) : null
   const one = f.listedNow === 1
   const everyBooked = f.listedNow > 0 && f.listedWithBooking === f.listedNow
   const someBooked = f.listedWithBooking > 0
   const listing = one
     ? `Your event is already listed on EventLinqs at no cost to you${everyBooked ? ', with a button straight to your own booking page' : ''}.`
     : `Your events are already listed on EventLinqs at no cost to you${everyBooked ? ', each with a button straight to your own booking page' : someBooked ? ', with a button straight to your own booking page' : ''}.`
-  const opened = f.openers > 0 ? ` So far ${people(f.openers, `opened ${one ? 'your event pages' : 'their pages'} on EventLinqs`)}.` : ''
+  // Stated only once proved to count people, and never below 5 (OPENERS_PROVED): 'your event pages', or 'its page' for one.
+  const opened = OPENERS_PROVED && f.openers >= OPENERS_FLOOR ? ` So far ${people(f.openers, `opened ${one ? 'its page' : 'your event pages'} on EventLinqs`)}.` : ''
   const kind = SHOW_CATEGORIES.has(f.night.categorySlug ?? '') ? 'show' : 'event'
   const tickets = f.night.hasBooking ? ' Your tickets stay exactly where they are.' : ''
   const image = f.night.hasPhoto
@@ -151,7 +204,7 @@ export function segmentAFields(f: SegmentAFacts): Record<string, string | null> 
   const day = dayWords(f.night.startDate, f.night.timezone)
   const date = new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', timeZone: f.night.timezone || 'Australia/Melbourne' }).format(new Date(f.night.startDate))
   return {
-    greeting: first || (organiser ? `${organiser} team` : null),
+    greeting: f.organiserName.trim() || f.personName ? greetingOf(f.organiserName, f.personName) : null,
     event,
     'event day': day,
     'event date': date,
@@ -159,7 +212,7 @@ export function segmentAFields(f: SegmentAFacts): Record<string, string | null> 
     'listed line': listing + opened,
     'image line': image,
     'photo link': f.photoLink,
-    'night line': event && link ? `${event} on ${day} is listed on EventLinqs${seenWords(f.nightOpeners ?? 0)}: ${link}` : null,
+    'night line': event && link ? `${event.charAt(0).toUpperCase()}${event.slice(1)} on ${day} is listed on EventLinqs${OPENERS_PROVED && (f.nightOpeners ?? 0) >= OPENERS_FLOOR ? seenWords(f.nightOpeners ?? 0) : ''}: ${link}` : null,
     'photo why line': `A photo would give the people finding it a real picture of the ${kind}${f.night.hasBooking ? ', and more reason to click through to your tickets' : ''}. Send me one image you're happy for us to use and I'll add it for you.`,
     'still line': `I'd still love to help more people find it while it's coming up: send me one image you're happy for us to use and I'll add it to the listing for you${f.night.hasBooking ? ', with your tickets staying exactly where they are' : ''}.`,
   }

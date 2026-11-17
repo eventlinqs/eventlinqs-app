@@ -5,7 +5,7 @@ import { pageViewKeyParts } from '@/lib/growth/page-view-key'
 import { readNightViewers } from '@/lib/growth/organiser-report'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
-import { isSegmentANight, melbourneDayOf, type SegmentAFacts } from './segment-a-letter'
+import { addressFitsName, isSegmentANight, melbourneDayOf, type SegmentAFacts } from './segment-a-letter'
 import type { VoiceConsent } from './voice-gate'
 
 /**
@@ -63,12 +63,16 @@ export async function readOpeners(db: Admin, eventIds: readonly string[]): Promi
 export async function readSegmentAFacts(db: Admin, input: { readonly contactId: string; readonly landsOn: string; readonly now: Date; readonly origin: string }): Promise<SegmentARead> {
   const contact = await db
     .from('organiser_contacts')
-    .select('organiser_id, person_name, unsubscribe_token, basis, published_on_url, no_marketing_statement_checked')
+    .select('organiser_id, address, person_name, unsubscribe_token, basis, published_on_url, no_marketing_statement_checked')
     .eq('id', input.contactId)
     .single()
   if (contact.error) return { state: 'not read', why: `the contact could not be read: ${contact.error.message}` }
   const org = await db.from('organisers').select('id, name, organisation_id, website_url').eq('id', contact.data.organiser_id as string).single()
   if (org.error) return { state: 'not read', why: `the organiser could not be read: ${org.error.message}` }
+  // The greeting names the organisation that owns the address (the PM's 03:10, class 10): otherwise no letter, with why.
+  if (!addressFitsName(contact.data.address as string, org.data.name as string)) {
+    return { state: 'not read', why: `the greeting would name ${org.data.name as string}, which ${contact.data.address as string} does not belong to; the contact's own organisation is read first` }
+  }
 
   const nights = await readTheirNights(db, { id: org.data.id as string, organisation_id: org.data.organisation_id as string | null, website_url: org.data.website_url as string | null }, input.now, 500)
   if (nights.length === 0) return { state: 'not read', why: 'no public night of theirs is listed' }

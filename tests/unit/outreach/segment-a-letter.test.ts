@@ -3,6 +3,9 @@ import { renderTemplate, ruleFailures } from '@/lib/outreach/rules'
 import { readVoicePolicy, voiceProblems } from '@/lib/outreach/voice-gate'
 import { touchVoiceMessage } from '@/lib/outreach/touch-voice'
 import {
+  OPENERS_PROVED,
+  addressFitsName,
+  greetingOf,
   SEGMENT_A_DAY10,
   SEGMENT_A_DAY4,
   SEGMENT_A_FIRST,
@@ -66,7 +69,7 @@ describe('the first letter', () => {
       [
         "Hi Her Majesty's Theatre Ballarat team,",
         "I hope you're well.",
-        'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page. So far 6 people have opened their pages on EventLinqs.',
+        'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page.',
         "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. I'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
         "Send me one image of your next show you're happy for us to use, and I'll add it for you. Your tickets stay exactly where they are.",
         `Could you reply with one image, or add it here? ${PHOTO}`,
@@ -81,18 +84,20 @@ describe('the first letter', () => {
     expect(rendered.body).not.toMatch(/gone on to your booking page|sent to your booking page/)
     expect(rendered.body).not.toMatch(/ticketing platform/i)
   })
-  it('one person and one listed event take the singular', () => {
-    const one = segmentAFields({ ...IAN, listedNow: 1, listedWithBooking: 1, openers: 1 })
-    expect(one['listed line']).toBe('Your event is already listed on EventLinqs at no cost to you, with a button straight to your own booking page. So far one person has opened your event pages on EventLinqs.')
-    expect(segmentAFields({ ...IAN, openers: 1 })['listed line']).toMatch(/So far one person has opened their pages on EventLinqs\.$/)
+  it('one listed event takes the singular', () => {
+    expect(segmentAFields({ ...IAN, listedNow: 1, listedWithBooking: 1 })['listed line']).toBe('Your event is already listed on EventLinqs at no cost to you, with a button straight to your own booking page.')
   })
-  it('no one opened yet: the no proof version, the listing sentence alone', () => {
-    expect(segmentAFields({ ...IAN, openers: 0 })['listed line']).toBe('Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page.')
+  // The PM's 02:38 of 18 November 2026, items 2 and 3: a count goes in a letter only once it is proved to count people,
+  // and below 5 never; the page view record cannot tell our own real browser visits from the public, so it is not proved.
+  it('no count of people is stated while the openers are not proved to be people', () => {
+    expect(OPENERS_PROVED).toBe(false)
+    expect(segmentAFields({ ...IAN, openers: 76 })['listed line']).not.toMatch(/people|person/)
+    expect(segmentAFields({ ...IAN, nightOpeners: 23 })['night line']).not.toMatch(/people|person/)
   })
   it('no booking page on any listed event: no booking words anywhere', () => {
     const free = { ...IAN, listedWithBooking: 0, night: { ...IAN.night, hasBooking: false, categorySlug: 'food-drink', title: 'Bendigo Community Farmers Market' } }
     const f = segmentAFields(free)
-    expect(f['listed line']).toBe('Your events are already listed on EventLinqs at no cost to you. So far 6 people have opened their pages on EventLinqs.')
+    expect(f['listed line']).toBe('Your events are already listed on EventLinqs at no cost to you.')
     expect(f['image line']).toBe("Send me one image of your next event you're happy for us to use, and I'll add it for you.")
     const { rendered, voice } = judged(SEGMENT_A_FIRST, free)
     expect(rendered.body).not.toMatch(/booking page|tickets stay/)
@@ -101,10 +106,32 @@ describe('the first letter', () => {
   it("some listed events without a booking page: 'each' is left out", () => {
     expect(segmentAFields({ ...IAN, listedWithBooking: 12 })['listed line']).toMatch(/^Your events are already listed on EventLinqs at no cost to you, with a button straight to your own booking page\./)
   })
-  it('a show only for music, comedy and theatre; an all capitals title in title case', () => {
+  it("'show' only for music, comedy and theatre (the PM's 03:10, class 14); an arts or family listing is an event", () => {
     expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'comedy' } })['image line']).toMatch(/your next show/)
-    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'health-wellness' } })['image line']).toMatch(/your next event/)
-    expect(segmentAFields({ ...IAN, night: { ...IAN.night, title: 'PROFESSIONAL COMEDIANS' } }).event).toBe('Professional Comedians')
+    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'arts-community' } })['image line']).toMatch(/your next event/)
+    expect(segmentAFields({ ...IAN, night: { ...IAN.night, categorySlug: 'family' } })['image line']).toMatch(/your next event/)
+  })
+  it("a billing set in capitals reads as their night, never as a name (class 13): 'your Professional Comedians night on Tuesday 24 November'", () => {
+    const f = segmentAFields({ ...IAN, night: { ...IAN.night, title: 'PROFESSIONAL COMEDIANS', categorySlug: 'comedy', startDate: '2026-11-24T09:00:00Z' } })
+    expect(f.event).toBe('your Professional Comedians night')
+    expect(f['event day']).toBe('Tuesday 24 November')
+  })
+})
+
+describe("the greeting names the organisation that owns the address (the PM's 03:10, classes 10 to 12)", () => {
+  it("a leading 'The', a bracketed part and an 'at <venue>' tail are left out of a greeting", () => {
+    expect(greetingOf('The Wheeler Centre', null)).toBe('Wheeler Centre team')
+    expect(greetingOf('Friends of Ballarat Botanical Gardens (Guiding Friends)', null)).toBe('Friends of Ballarat Botanical Gardens team')
+    expect(greetingOf('Melbourne Comedy Club at Miranda Tequila Bar', null)).toBe('Melbourne Comedy Club team')
+    expect(greetingOf("Her Majesty's Theatre Ballarat", 'Sam Lee')).toBe('Sam')
+  })
+  it('an organisation the address does not belong to is refused, so the letter is held', () => {
+    expect(addressFitsName('manager@bcfm.org.au', 'Bendigo Foodshare')).toBe(false)
+    expect(addressFitsName('info@fbbg.org.au', 'Friends of Ballarat Botanical Gardens (Guiding Friends)')).toBe(true)
+    expect(addressFitsName('boxoffice@geelongartscentre.org.au', 'Geelong Arts Centre')).toBe(true)
+    expect(addressFitsName('hermaj@hermaj.com', "Her Majesty's Theatre Ballarat")).toBe(true)
+    expect(addressFitsName('bendigo@ncgrl.vic.gov.au', 'Bendigo Library')).toBe(true)
+    expect(addressFitsName('ticketing@wheelercentre.com', 'The Wheeler Centre')).toBe(true)
   })
   it('a listing with no photo says so, and why one helps', () => {
     expect(segmentAFields({ ...IAN, night: { ...IAN.night, hasPhoto: false } })['image line']).toBe(
@@ -130,10 +157,10 @@ describe('the timing rule (the standard, Part 2 rule 4)', () => {
 
 describe('the day 4 and day 10 letters (standard-v1 msg-2 and msg-3, with their next night)', () => {
   const thread = { 'thread subject': 'Helping more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on 28 November' }
-  it('day 4 names the night, its own real count only above zero, and one action; the CRM rules and the gateway pass', () => {
+  it('day 4 names the night and its page (no count while the openers are not proved to be people), and one action; the CRM rules and the gateway pass', () => {
     const { rendered, voice } = judged(SEGMENT_A_DAY4, { ...IAN, nightOpeners: 4 }, '2026-11-23', thread)
     expect(rendered.subject).toBe('Re: Helping more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on 28 November')
-    expect(rendered.content).toContain('Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November is listed on EventLinqs, and 4 people have opened its page so far: https://www.eventlinqs.com.au/events/')
+    expect(rendered.content).toContain('Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November is listed on EventLinqs: https://www.eventlinqs.com.au/events/')
     expect(rendered.content).toContain(`Reply with one image, or add it here: ${PHOTO}`)
     expect(ruleFailures(rendered)).toEqual([])
     expect(voice).toEqual([])
