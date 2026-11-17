@@ -1,4 +1,4 @@
-import { HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
+import { clockOf, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
 import { standInOf } from './stand-ins'
 import { getAllCities } from '@/lib/cities/data'
 
@@ -154,6 +154,17 @@ export function pieceQuality(input: QualityInput): string[] {
   for (const id of ids) {
     const n = input.nights.get(id)
     if (n && Date.parse(n.startDate) <= input.now.getTime()) out.push(`[night] ${n.title}: it has started (${n.startDate}); a piece never posts once its night has started. Draw it again without this night.`)
+  }
+
+  /* [night] fix (a): one time per night; a row prints its own night's start, the time its caption prints. */
+  for (const slide of input.slides) {
+    if (slide.t !== 'days' && slide.t !== 'venue') continue
+    for (const row of slide.rows) {
+      const n = input.nights.get(row.eventId)
+      if (!n || row.when.includes(' to ')) continue
+      const own = clockOf(n.startDate, n.timezone ?? null)
+      if (row.when !== own) out.push(`[night] ${n.title} prints ${row.when} on its slide, but this night starts at ${own}; one night shows one time.`)
+    }
   }
 
   /* [night] fix (c): no day it prints is already over on the day it would go. */

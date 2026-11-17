@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { languageFaults, PIECE_RULES_SINCE, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
-import type { Slide } from '@/lib/social/campaign'
+import { clockOf, nightLabel, type CampaignNight, type Slide } from '@/lib/social/campaign'
 
 /*
  * LAW 22, THE PUBLISH GATE: ONE CHECK OF A PIECE'S OWN CONTENT (the PM's 21:58 and 22:02 of 17 November 2026; P0 sections
@@ -28,7 +28,7 @@ const gig = night({ eventId: 'g', title: 'The Teskey Brothers', startDate: '2026
 const pevan = night({ eventId: 'p', title: 'Pevan & Sarah in Concert 2026', startDate: '2026-11-16T23:30:00Z', venueName: 'Ulumbarra Theatre', host: 'Ulumbarra Theatre' })
 
 const nightsOf = (...ns: QualityNight[]) => new Map(ns.map((n) => [n.eventId, n]))
-const row = (n: QualityNight) => ({ eventId: n.eventId, startDate: n.startDate, when: '7:30 PM', sub: null, title: n.title, place: n.venueName ?? '', free: false })
+const row = (n: QualityNight) => ({ eventId: n.eventId, startDate: n.startDate, when: clockOf(n.startDate, n.timezone ?? null), sub: null, title: n.title, place: n.venueName ?? '', free: false })
 const days = (photo: string | null, ns: QualityNight[]): Slide =>
   ({ t: 'days', composition: 'contents_cover', day: 'Saturday', date: '28 Nov', rows: ns.map(row), photo, credit: photo ? 'Illustrative photo: Alexander Hamilton / Pexels' : null }) as unknown as Slide
 const ask: Slide = { t: 'ask', composition: 'contents_cover', three: [], all: 'All 3 are on EventLinqs.', link: 'Link in bio' } as unknown as Slide
@@ -99,5 +99,30 @@ describe("words for the day it posts (the PM's 23:45, fix (c))", () => {
 
   it('on Friday 20 every day it prints is still ahead', () => {
     expect(pastDays('2026-11-19T22:00:00Z')).toEqual([])
+  })
+})
+
+describe("one time per night (the PM's 23:45, fix (a))", () => {
+  // Melbourne's music spotlight (a4e16c4f): its row for the 3 pm session of An Evening with Alastair Campbell (596f41f6)
+  // printed '11:30 am', the show's first session, while its caption printed the night's own '3pm'. The Melbourne Recital
+  // Centre's page names the 11.30am and 3pm sessions (read politely at 00:03 on 18 November): both times are true, but one
+  // night shows one time.
+  const three = night({ eventId: '596f41f6', title: 'An Evening with Alastair Campbell', startDate: '2026-11-22T04:00:00Z', venueName: 'Melbourne Recital Centre', host: 'Melbourne Recital Centre', categorySlug: 'talks' })
+  const morning = { ...three, eventId: 'c3f635aa', startDate: '2026-11-22T00:30:00Z' }
+  const rowAt = (when: string): Slide =>
+    ({ t: 'days', composition: 'contents_cover', day: 'Sunday', date: '22 Nov', rows: [{ eventId: '596f41f6', startDate: three.startDate, when, sub: 'Sun 22', title: three.title, place: 'Melbourne Recital Centre', free: false }], photo: null, credit: null }) as unknown as Slide
+
+  it("a row that prints another session's time is refused", () => {
+    const out = pieceQuality({ ...base, slides: [rowAt('11:30 am'), ask], nights: nightsOf(three), now: new Date('2026-11-18T00:00:00Z') })
+    expect(out.some((r) => r.startsWith('[night] An Evening with Alastair Campbell prints 11:30 am') && r.includes('3:00 pm'))).toBe(true)
+  })
+
+  it('a row that prints its own time passes that check', () => {
+    const out = pieceQuality({ ...base, slides: [rowAt('3:00 pm'), ask], nights: nightsOf(three), now: new Date('2026-11-18T00:00:00Z') })
+    expect(out.filter((r) => r.includes(' prints '))).toEqual([])
+  })
+
+  it("a show's label gives its own night's time, never its first session's", () => {
+    expect(nightLabel(three as unknown as CampaignNight, [morning as unknown as CampaignNight]).time).toBe('3:00 pm')
   })
 })

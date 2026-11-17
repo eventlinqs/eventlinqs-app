@@ -820,8 +820,8 @@ export type NightLabel = { time: string; day: string; first: string }
 /**
  * ONE NIGHT, ONE DATE LABEL (the PM's 18:45 fix 1: "a run reads the same on every slide"): the one function a post's cover,
  * day slides and ask read a night's dates from. A night over several days reads its first and last ("Fri 20 to Sun 22");
- * a show with sessions on several days names them ("Fri 20 & Sat 21", over three "Thu 19 to Sat 21"); its time is its
- * first session's.
+ * a show with sessions on several days names them ("Fri 20 & Sat 21", over three "Thu 19 to Sat 21"); its time is the
+ * night's own, as its caption prints it.
  */
 export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] = []): NightLabel {
   const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
@@ -832,7 +832,9 @@ export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] 
   const byDay = new Map<string, CampaignNight>()
   for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
   const d = [...byDay.values()].map((x) => shortDay(x.startDate, x.timezone))
-  return { time: clockOf(first.startDate, first.timezone), day: d.length === 1 ? d[0] : d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}`, first: first.startDate }
+  // ONE TIME PER NIGHT (the PM's 23:45 of 17 November 2026, fix (a)): the time is this night's own, the one its caption
+  // prints; it was the first session's, so Alastair Campbell's 3 pm row read '11:30 am' beside a caption of 3pm.
+  return { time: clockOf(n.startDate, n.timezone), day: d.length === 1 ? d[0] : d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}`, first: first.startDate }
 }
 
 /** A night as Lawal's gold timed card: its time over its date label, its title by rule, its place, and FREE. */
