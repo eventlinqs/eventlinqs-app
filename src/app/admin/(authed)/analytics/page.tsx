@@ -86,7 +86,7 @@ export default async function AdminAnalyticsPage() {
                 <li key={o.organisationId} className="flex items-center justify-between gap-3 rounded-md border border-white/[0.08] px-3 py-2 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="text-white/40">{i + 1}</span>
-                    <Link href={`/admin/organisers/${o.organisationId}`} className="truncate text-[var(--brand-accent)] hover:underline">{o.name}</Link>
+                    <Link prefetch={false} href={`/admin/organisers/${o.organisationId}`} className="truncate text-[var(--brand-accent)] hover:underline">{o.name}</Link>
                   </span>
                   <span className="shrink-0 text-white/70">{money(o.gmvCents)}</span>
                 </li>

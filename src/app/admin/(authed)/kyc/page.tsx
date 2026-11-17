@@ -97,7 +97,7 @@ export default async function AdminKycPage() {
               rows.map(o => (
                 <tr key={o.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/organisers/${o.id}`}
                       className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
                     >

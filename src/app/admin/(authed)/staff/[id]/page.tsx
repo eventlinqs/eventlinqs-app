@@ -71,7 +71,7 @@ export default async function AdminStaffDetailPage({
   return (
     <div>
       <nav className="mb-6 text-sm text-white/50">
-        <Link href="/admin/staff" className="hover:text-white">Admin staff</Link>
+        <Link prefetch={false} href="/admin/staff" className="hover:text-white">Admin staff</Link>
         <span aria-hidden className="px-2">/</span>
         <span className="text-white/80">{staff.displayName}</span>
       </nav>

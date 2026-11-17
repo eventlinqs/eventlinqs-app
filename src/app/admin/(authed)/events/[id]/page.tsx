@@ -84,7 +84,7 @@ export default async function AdminEventDetailPage({
   return (
     <div>
       <nav className="mb-6 text-sm text-white/50">
-        <Link href="/admin/events" className="hover:text-white">Events</Link>
+        <Link prefetch={false} href="/admin/events" className="hover:text-white">Events</Link>
         <span aria-hidden className="px-2">/</span>
         <span className="text-white/80">{event.title}</span>
       </nav>
@@ -102,8 +102,8 @@ export default async function AdminEventDetailPage({
         }
         action={
           <span className="flex flex-wrap gap-2">
-            <Link href={`/events/${event.slug}`} className={SECONDARY}>View public page</Link>
-            <Link href={`/admin/organisers/${event.organisationId}`} className={SECONDARY}>Organiser</Link>
+            <Link prefetch={false} href={`/events/${event.slug}`} className={SECONDARY}>View public page</Link>
+            <Link prefetch={false} href={`/admin/organisers/${event.organisationId}`} className={SECONDARY}>Organiser</Link>
           </span>
         }
       />

@@ -128,7 +128,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
         <SelectField label="Action" name="action" options={KNOWN_ACTIONS} defaultValue={params.action} />
         <SelectField label="Target type" name="target" options={KNOWN_TARGET_TYPES} defaultValue={params.target} />
         <div className="md:col-span-5 flex items-center justify-end gap-2">
-          <Link
+          <Link prefetch={false}
             href="/admin/audit"
             className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
           >
@@ -225,7 +225,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
 
       <div className="mt-4 flex items-center justify-end">
         {result.nextCursor ? (
-          <Link
+          <Link prefetch={false}
             href={buildNextHref(params, result.nextCursor)}
             className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
           >

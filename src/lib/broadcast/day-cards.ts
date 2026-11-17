@@ -73,7 +73,6 @@ const wordmark = (k: number, color: string, dot: string = GOLD) =>
   h('div', { alignItems: 'flex-end' },
     text('EVENTLINQS', { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, letterSpacing: 2 * k, color, lineHeight: 1 }),
     text('.', { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: dot, lineHeight: 1 }))
-const markOnPhoto = (k: number) => h('div', { background: 'rgba(10,22,40,0.82)', borderRadius: 12 * k, padding: `${10 * k}px ${16 * k}px`, alignSelf: 'flex-start' }, wordmark(k, WHITE))
 const pill = (k: number, words: string, fill: string, ink: string) =>
   text(words, { fontFamily: 'Manrope', fontWeight: 800, fontSize: 30 * k, letterSpacing: 1.5 * k, color: ink, background: fill, borderRadius: 999, padding: `${12 * k}px ${26 * k}px`, lineHeight: 1 })
 const eyebrow = (k: number, words: string, color: string) => wrap(words.toUpperCase(), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 36 * k, letterSpacing: 3 * k, color, lineHeight: 1.2 })
@@ -166,16 +165,41 @@ const fitLine = (words: string, max: number, width: number, caps = false) => Mat
 const creditMark = (k: number, s: string) =>
   text(s, { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 26 * k, color: 'rgba(255,255,255,0.7)', textShadow: '0 0 14px rgba(0,0,0,1)' })
 
-/** A photograph of the right kind, filling a band across the top and fading into the navy below it. */
-const band = (w: number, bh: number, p: DrawnPhoto) =>
-  h('div', { position: 'absolute', top: 0, left: 0, width: w, height: bh },
-    img(p.uri, w, bh, { position: 'absolute', top: 0, left: 0, objectFit: 'cover' }),
-    h('div', { position: 'absolute', top: 0, left: 0, width: w, height: bh, backgroundImage: `linear-gradient(to bottom, rgba(10,22,40,0.62) 0%, rgba(10,22,40,0) 30%, rgba(10,22,40,0) 72%, ${NAVY} 100%)` }))
+/**
+ * A photograph of the right kind, filling a band across the top from `top` (below the navy strip that carries the
+ * wordmark) to `bh`, and fading into the navy below it.
+ */
+const band = (w: number, bh: number, p: DrawnPhoto, top = 0) =>
+  h('div', { position: 'absolute', top, left: 0, width: w, height: Math.max(1, bh - top) },
+    img(p.uri, w, Math.max(1, bh - top), { position: 'absolute', top: 0, left: 0, objectFit: 'cover' }),
+    h('div', { position: 'absolute', top: 0, left: 0, width: w, height: Math.max(1, bh - top), backgroundImage: `linear-gradient(to bottom, rgba(10,22,40,0.62) 0%, rgba(10,22,40,0) 30%, rgba(10,22,40,0) 72%, ${NAVY} 100%)` }))
 
-/** The band's height before it is fitted: about the top third; lockedElement then ends it where the words begin. */
+/**
+ * THE WORDMARK NEVER SITS OVER A PHOTOGRAPH (Lawal's D3, 16 November 2026, 23:08: "Keep the approved EventLinqs wordmark
+ * on the separate design band, not over the event photograph"; the PM's 23:42: a stand-in is a photograph, so on every
+ * slide the wordmark sits on the navy band). A slide with a photograph band keeps a navy strip at its top for the
+ * wordmark (and a venue's pill beside it, as the feature slide's chip); the photograph starts below it. The strip is the
+ * slide's own top padding (SAFE on a story), the top row (the pill, the taller of the two, is 54 at k 1) and a gap.
+ * Read from the drawn frame by tests/unit/social/wordmark-off-photo.test.ts.
+ */
+const MARK_ROW = 56
+const MARK_GAP = 28
+export function bandTop(f: DayFormat, slide: 'days' | 'cover' | 'venue'): number {
+  const { k } = SIZE[f]
+  const scale = slide === 'cover' ? 1 : 0.8
+  return Math.round((f === 'story' ? SAFE : 0) + 64 * k * scale + (MARK_ROW + MARK_GAP) * k)
+}
+
+/**
+ * The band's height before it is fitted: about the top third; lockedElement then ends it where the words begin, as it
+ * always did. Below the wordmark's strip the photograph keeps at least PHOTO_FLOOR of the frame's height, so a band that
+ * would end close under the strip runs that much further rather than show a sliver (a venue's story: the strip ends at
+ * 385 of 1920, the planned band at 461).
+ */
+const PHOTO_FLOOR = 0.18
 export function bandHeight(f: DayFormat, slide: 'days' | 'cover' | 'venue'): number {
   const share = slide === 'venue' ? 0.24 : slide === 'cover' ? (f === 'square' ? 0.34 : 0.4) : f === 'story' ? 0.36 : f === 'square' ? 0.3 : 0.34
-  return Math.round(SIZE[f].h * share)
+  return Math.max(Math.round(SIZE[f].h * share), bandTop(f, slide) + Math.round(SIZE[f].h * PHOTO_FLOOR))
 }
 
 /** A slide's padding: a story keeps Instagram's own rows clear at its top and foot. */
@@ -232,9 +256,9 @@ export function daysElement(f: DayFormat, words: DaysWords, photo: DrawnPhoto | 
     return inType(w, H, css, [wordmark(k, WHITE), h('div', { flexDirection: 'column', marginTop: 40 * k, flexShrink: 0 }, ...stacked), cardGroup(k, s, words.rows, 36 * k, w - 2 * pad)], h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot)))
   }
   return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
-    band(w, bandH, photo),
+    band(w, bandH, photo, bandTop(f, 'days')),
     h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', padding: css },
-      markOnPhoto(k),
+      wordmark(k, WHITE),
       h('div', { flexGrow: 1 }),
       dayHeading(k, w, pad, words),
       words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 22 * k }, creditMark(k, words.credit)) : null,
@@ -263,9 +287,9 @@ export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: Dra
   const footer = h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot))
   if (photo && mode === 'band') {
     return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
-      band(w, bandH, photo),
+      band(w, bandH, photo, bandTop(f, 'cover')),
       h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', padding: css },
-        markOnPhoto(k),
+        wordmark(k, WHITE),
         h('div', { flexGrow: 1 }),
         words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginBottom: 14 * k }, creditMark(k, words.credit)) : null,
         eyebrow(k, words.range, GOLD),
@@ -353,7 +377,7 @@ export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto 
     ? h('div', { flexDirection: 'column', alignItems: 'center', width: '100%', gap: 22 * k, marginTop: 26 * k }, askLine(k, WHITE), exit(k, f, GOLD))
     : h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 26 * k, gap: 20 * k }, askLine(k, WHITE), exit(k, f, GOLD))
   const tail = footOf(k, foot)
-  const top = h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%' }, photo ? markOnPhoto(k) : wordmark(k, WHITE), pill(k, 'VENUE', GOLD, NAVY))
+  const top = h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%' }, wordmark(k, WHITE), pill(k, 'VENUE', GOLD, NAVY))
   if (!photo) {
     const s = scale ?? cardScale(f, words.rows.length)
     return inType(w, H, css, [
@@ -363,7 +387,7 @@ export function venueElement(f: DayFormat, words: VenueWords, photo: DrawnPhoto 
     ], h('div', { flexDirection: 'column', width: '100%' }, close, tail ? h('div', { justifyContent: 'flex-end', width: '100%', marginTop: 16 * k }, tail) : null))
   }
   return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
-    band(w, bandH, photo),
+    band(w, bandH, photo, bandTop(f, 'venue')),
     h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', padding: css },
       top,
       h('div', { flexGrow: 1 }),
@@ -403,13 +427,35 @@ export function askElement(f: DayFormat, words: AskWords, foot: Foot): El {
     h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot, false)))
 }
 
-/** A photograph cropped to fill a band `bh` high (a licensed photograph of the night's kind, never a night's own). */
-export async function bandPhoto(url: string, f: DayFormat, bh: number): Promise<DrawnPhoto | null> {
+/**
+ * A photograph cropped to fill a band `bh` high (a licensed photograph of the night's kind, never a night's own), its
+ * subject kept in the band by its focal point (the PM's 01:45 of 17 November 2026, scoring D3: on the venue story the
+ * microphone's head sat hard against the strip, a centre crop of a subject high in its frame). A focal point a person set
+ * by looking (0 to 1 across and down: the register's, or the stand-in's own, src/lib/social/stand-ins.ts) centres the
+ * crop on it; with none, the middle. sharp's attention strategy was tried at 01:43 on 17 November and looked at: on the
+ * microphone it framed the bright bokeh and dropped the microphone altogether, so no crop is chosen by a machine.
+ */
+export async function bandPhoto(url: string, f: DayFormat, bh: number, focal: { x: number; y: number } | null = null): Promise<DrawnPhoto | null> {
   const fetched = await fetchImageBytes(url)
   if (!fetched) return null
   const { default: sharp } = await import('sharp')
   const w = SIZE[f].w
-  const out = await sharp(Buffer.from(fetched.bytes)).rotate().resize(w, bh, { fit: 'cover', position: 'centre' }).jpeg({ quality: 88 }).toBuffer()
+  const source = sharp(Buffer.from(fetched.bytes)).rotate()
+  let out: Buffer
+  if (focal) {
+    const meta = await source.metadata()
+    const sw = meta.autoOrient?.width ?? meta.width ?? 0
+    const sh = meta.autoOrient?.height ?? meta.height ?? 0
+    if (!sw || !sh) return null
+    const s = Math.max(w / sw, bh / sh)
+    const rw = Math.max(w, Math.round(sw * s))
+    const rh = Math.max(bh, Math.round(sh * s))
+    const left = Math.min(rw - w, Math.max(0, Math.round(focal.x * rw - w / 2)))
+    const top = Math.min(rh - bh, Math.max(0, Math.round(focal.y * rh - bh / 2)))
+    out = await source.resize(rw, rh, { fit: 'fill' }).extract({ left, top, width: w, height: bh }).jpeg({ quality: 88 }).toBuffer()
+  } else {
+    out = await source.resize(w, bh, { fit: 'cover', position: 'centre' }).jpeg({ quality: 88 }).toBuffer()
+  }
   return { uri: `data:image/jpeg;base64,${out.toString('base64')}`, width: w, height: bh }
 }
 

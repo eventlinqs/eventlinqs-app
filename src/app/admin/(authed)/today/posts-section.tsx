@@ -39,7 +39,7 @@ function PieceLine({ label, p }: { label: string; p: PieceSummary | null }) {
               </>
             ) : null}
           </p>
-          <Link href={p.href} className={OPEN}>
+          <Link prefetch={false} href={p.href} className={OPEN}>
             Open it on the studio
           </Link>
         </>
@@ -71,7 +71,7 @@ export function PostsSection({ view }: { view: { ok: true; v: ThreePosts } | { o
               <>
                 <p className="mt-1 text-sm text-white/80">
                   {view.v.spotlight.night.title}, {formatPlatformDateTime(view.v.spotlight.night.startDate)}.{' '}
-                  <Link href={`/events/${view.v.spotlight.night.slug}`} className="underline underline-offset-2">
+                  <Link prefetch={false} href={`/events/${view.v.spotlight.night.slug}`} className="underline underline-offset-2">
                     Its page
                   </Link>
                 </p>
@@ -101,7 +101,7 @@ export function PostsSection({ view }: { view: { ok: true; v: ThreePosts } | { o
                         </>
                       ) : null}
                     </p>
-                    <Link href={view.v.spotlight.post.href} className={OPEN}>
+                    <Link prefetch={false} href={view.v.spotlight.post.href} className={OPEN}>
                       Open it on the studio
                     </Link>
                   </>

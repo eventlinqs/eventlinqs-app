@@ -28,7 +28,7 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
         </label>
       </form>
       <div className="ml-auto flex items-center gap-3">
-        <Link
+        <Link prefetch={false}
           href="/admin/notifications"
           aria-label="Notifications and operations inbox"
           className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/[0.06] hover:text-white"

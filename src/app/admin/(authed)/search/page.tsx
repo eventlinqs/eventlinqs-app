@@ -29,7 +29,7 @@ function ResultGroup({ title, hits, href, allHref }: Group) {
         <h2 className="font-display text-sm uppercase tracking-widest text-white/60">
           {title} <span className="text-white/40">({hits.length})</span>
         </h2>
-        <Link href={allHref} className="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-accent)] hover:underline">
+        <Link prefetch={false} href={allHref} className="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-accent)] hover:underline">
           View all
         </Link>
       </div>
@@ -39,7 +39,7 @@ function ResultGroup({ title, hits, href, allHref }: Group) {
         <ul>
           {hits.map(h => (
             <li key={h.id} className="border-t border-white/[0.04] first:border-t-0">
-              <Link href={href(h.id)} className="block px-4 py-3 transition hover:bg-white/[0.03]">
+              <Link prefetch={false} href={href(h.id)} className="block px-4 py-3 transition hover:bg-white/[0.03]">
                 <span className="block text-sm text-white">{h.primary}</span>
                 {h.secondary ? <span className="mt-0.5 block text-xs text-white/45">{h.secondary}</span> : null}
               </Link>

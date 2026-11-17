@@ -95,7 +95,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         >
           Search
         </button>
-        <Link
+        <Link prefetch={false}
           href="/admin/payouts"
           className="min-h-[44px] rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
         >
@@ -126,7 +126,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               rows.map(o => (
                 <tr key={o.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/payouts/${o.id}`}
                       className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
                     >
@@ -168,10 +168,10 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         <span>Page {page}</span>
         <div className="flex gap-2">
           {page > 1 ? (
-            <Link href={`/admin/payouts?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page - 1) }).toString()}`} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">Previous</Link>
+            <Link prefetch={false} href={`/admin/payouts?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page - 1) }).toString()}`} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">Previous</Link>
           ) : null}
           {hasMore ? (
-            <Link href={`/admin/payouts?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page + 1) }).toString()}`} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">Next</Link>
+            <Link prefetch={false} href={`/admin/payouts?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page + 1) }).toString()}`} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">Next</Link>
           ) : null}
         </div>
       </div>

@@ -62,7 +62,7 @@ export default async function AdminOrderDetailPage({
         <p className="mt-2 text-sm text-white/60">
           {order.event_title ?? 'Event'} | {order.buyer_email ?? 'Guest'} | {money(order.total_cents, order.currency)}
         </p>
-        <Link href="/admin/orders" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+        <Link prefetch={false} href="/admin/orders" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
           Back to orders
         </Link>
       </header>

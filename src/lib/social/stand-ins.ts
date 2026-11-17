@@ -58,6 +58,12 @@ export type StandIn = {
   sport?: Sport
   /** Its shot family where it is a crowd (see Shot); none is a stage or room with no crowd in front. */
   shot?: Shot
+  /**
+   * Where its subject is (0 to 1 across and down), set by looking at the photograph, for one whose subject sits away
+   * from the middle: a band crops it there, so the subject is never cut by the wordmark's strip (the PM's 01:45 of
+   * 17 November 2026: the microphone's head sat hard against the strip). None crops at the middle.
+   */
+  focal?: { x: number; y: number }
   /** The Pexels page it was taken from. */
   page: string
 }
@@ -67,7 +73,7 @@ export const STAND_INS: readonly StandIn[] = [
   { id: '1047442', kind: 'gig', subject: 'a gig crowd', photographer: 'anna-m. w.', shot: 'crowd', page: 'https://www.pexels.com/photo/people-enjoying-the-concert-1047442/' },
   { id: '21790480', kind: 'gig', subject: 'a concert crowd', photographer: 'Benjamin Farren', venue: false, shot: 'crowd', page: 'https://www.pexels.com/photo/silhouette-of-raised-arms-in-crowd-at-concert-21790480/' },
   { id: '1105666', kind: 'gig', subject: 'a gig crowd', photographer: 'Vishnu R Nair', shot: 'crowd', page: 'https://www.pexels.com/photo/people-at-concert-1105666/' },
-  { id: '23522931', kind: 'comedy', subject: 'a comedy stage', photographer: 'Gezer Amorim', page: 'https://www.pexels.com/photo/black-and-white-photograph-of-a-microphone-on-a-stage-and-spotlight-reflections-23522931/' },
+  { id: '23522931', kind: 'comedy', subject: 'a comedy stage', photographer: 'Gezer Amorim', focal: { x: 0.6, y: 0.42 }, page: 'https://www.pexels.com/photo/black-and-white-photograph-of-a-microphone-on-a-stage-and-spotlight-reflections-23522931/' },
   { id: '8186273', kind: 'comedy', subject: 'a comedy stage', photographer: 'Brett Sayles', venue: false, page: 'https://www.pexels.com/photo/microphone-on-stand-placed-on-stage-with-green-lights-8186273/' },
   { id: '9419374', kind: 'jazz', subject: 'a jazz club', photographer: 'cottonbro studio', page: 'https://www.pexels.com/photo/photo-of-a-woman-singing-near-musicians-9419374/' },
   // Widened on 15 November 2026 for out-12 (the PM's 22:41 fixes 1 and 2: every day slide carries a photograph of its lead
@@ -176,9 +182,13 @@ export function standInUrl(origin: string, s: Pick<StandIn, 'id'>): string {
   return `${origin.replace(/\/$/, '')}/social/stand-ins/${s.id}.jpg`
 }
 
-/** Its credit on the slide's edge, printed through the one credit line (src/lib/media/photo-credits.ts). */
+/**
+ * Its credit on the slide's edge, printed through the one credit line (src/lib/media/photo-credits.ts), marked
+ * illustrative on the slide itself (Lawal's D1 and D2, 16 November 2026, 23:08): a story has no caption and a slide
+ * shared alone leaves its caption behind, so the caption's 'not this night' was never enough on its own.
+ */
 export function standInCredit(s: Pick<StandIn, 'photographer'>): string {
-  return creditLine(`${s.photographer} / Pexels`) ?? `${s.photographer} / Pexels`
+  return creditLine(`${s.photographer} / Pexels`, { illustrative: true }) ?? `${s.photographer} / Pexels`
 }
 
 /** The stand-in a URL names, or null: a slide's photograph is a stand-in only when it is one of these. */

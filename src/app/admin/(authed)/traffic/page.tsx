@@ -133,7 +133,7 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
         {TRAFFIC_WINDOWS.map(option => {
           const selected = option === days
           return (
-            <Link
+            <Link prefetch={false}
               key={option}
               href={windowHref(option)}
               aria-current={selected ? 'page' : undefined}

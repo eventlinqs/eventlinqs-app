@@ -40,6 +40,14 @@ describe('withCredits and creditLine', () => {
     expect(out[1].credit).toBeUndefined()
   })
 
+  it("marks an illustrative photograph as illustrative, once, and never a night's own (Lawal's D2, 16 November 2026)", () => {
+    expect(creditLine('Sebastian Ervi / Pexels', { illustrative: true })).toBe('Illustrative photo: Sebastian Ervi / Pexels')
+    expect(creditLine('Photo: Sebastian Ervi / Pexels', { illustrative: true })).toBe('Illustrative photo: Sebastian Ervi / Pexels')
+    expect(creditLine('Pexels', { illustrative: true, plural: true })).toBe('Illustrative photos: Pexels')
+    expect(creditLine(null, { illustrative: true })).toBeNull()
+    expect(creditLine('AMCF, past festival')).not.toMatch(/Illustrative/)
+  })
+
   it('prints "Photo: <credit>", and nothing for no credit', () => {
     expect(creditLine('AMCF, past festival')).toBe('Photo: AMCF, past festival')
     expect(creditLine(undefined)).toBeNull()
@@ -52,5 +60,19 @@ describe('withCredits and creditLine', () => {
     expect(creditLine('Photo: AMCF, past festivals', { plural: true })).toBe('Photos: AMCF, past festivals')
     expect(creditLine('Photo:   ')).toBeNull()
     expect(creditLine(' ')).toBeNull()
+  })
+
+  it("a credit that names no one reads 'the organiser', never 'Its organiser' (the PM's 21:00 of 17 November 2026, item 2)", () => {
+    // The PM, on d3/after-feature-feed.png: "'Photo: Its organiser'. That is wrong English. It must name the organiser
+    // ('Photo: African Music and Cultural Festival') or read 'Photo: the organiser'."
+    expect(creditLine('Its organiser')).toBe('Photo: the organiser')
+    expect(creditLine('its organiser')).toBe('Photo: the organiser')
+    expect(creditLine('Their organisers')).toBe('Photo: the organisers')
+    expect(creditLine('Photo: Its venue')).toBe('Photo: the venue')
+    expect(creditLine('His promoter')).toBe('Photo: the promoter')
+    // A name is printed as recorded, even one that begins with the same letters.
+    expect(creditLine('African Music and Cultural Festival')).toBe('Photo: African Music and Cultural Festival')
+    expect(creditLine('Itsy Bitsy Band')).toBe('Photo: Itsy Bitsy Band')
+    expect(creditLine('Their Majesties Brass, past show')).toBe('Photo: Their Majesties Brass, past show')
   })
 })

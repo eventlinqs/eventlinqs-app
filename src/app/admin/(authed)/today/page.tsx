@@ -115,9 +115,9 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         }
         action={
           queue.waiting > 0 && firstHref ? (
-            <Link href={firstHref} className={PRIMARY}>Start with the oldest</Link>
+            <Link prefetch={false} href={firstHref} className={PRIMARY}>Start with the oldest</Link>
           ) : (
-            <Link href="/admin/automation" className={PRIMARY}>Open automation</Link>
+            <Link prefetch={false} href="/admin/automation" className={PRIMARY}>Open automation</Link>
           )
         }
       />
@@ -208,7 +208,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
                       </p>
                       {t.failure_reason ? <p className="mt-1 text-sm text-amber-200">{t.failure_reason}</p> : t.next_action ? <p className="mt-1 text-sm text-white/60">{t.next_action}</p> : null}
                       {href ? (
-                        <Link href={href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline">
+                        <Link prefetch={false} href={href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline">
                           Open
                         </Link>
                       ) : null}
@@ -257,7 +257,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
                   </div>
                   <p className="mt-1 text-sm text-white/60">{item.why}</p>
                   {item.href ? (
-                    <Link
+                    <Link prefetch={false}
                       href={item.href}
                       className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                     >
@@ -390,7 +390,7 @@ function ExceptionBlock({ title, kind, figures, empty, count }: { title: string;
               <span className="font-display text-lg font-semibold text-white">{figureValue(f, count)}</span>
               {f.note ? <span className="w-full text-xs text-white/60">{f.note}</span> : null}
               {f.href ? (
-                <Link
+                <Link prefetch={false}
                   href={f.href}
                   className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                 >

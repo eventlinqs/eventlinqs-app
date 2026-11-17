@@ -48,7 +48,7 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
-      <Link href="/admin/acquisition" className="font-display text-xs text-white/60 hover:text-white">Organiser pipeline</Link>
+      <Link prefetch={false} href="/admin/acquisition" className="font-display text-xs text-white/60 hover:text-white">Organiser pipeline</Link>
       <h1 className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl">{s.organiser.name}</h1>
       <p className="mt-2 font-display text-sm">
         <span className="rounded-md bg-white/10 px-2 py-0.5 font-semibold">{CRM_STAGE_WORDS[r.stage]}</span>
@@ -68,7 +68,7 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
           <ul className="mt-2 space-y-2">
             {r.pending.map((p, i) => (
               <li key={i} className="rounded-lg bg-white/5 p-3 font-display text-sm">
-                {p.href ? <Link href={p.href} className="underline-offset-2 hover:underline">{p.words}</Link> : p.words}
+                {p.href ? <Link prefetch={false} href={p.href} className="underline-offset-2 hover:underline">{p.words}</Link> : p.words}
                 <span className="block text-xs text-white/50">since {when(p.since)}</span>
               </li>
             ))}
@@ -101,7 +101,7 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
         <ul className="mt-2 space-y-1">
           {s.nights.slice(0, 12).map((n) => (
             <li key={n.id} className="font-display text-sm">
-              <Link href={`/events/${n.slug}`} className="hover:underline">{n.title}</Link> <span className="text-white/50">{n.start_date.slice(0, 10)}, {n.status}</span>
+              <Link prefetch={false} href={`/events/${n.slug}`} className="hover:underline">{n.title}</Link> <span className="text-white/50">{n.start_date.slice(0, 10)}, {n.status}</span>
             </li>
           ))}
         </ul>
@@ -113,7 +113,7 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
           {r.lines.map((l, i) => (
             <li key={i} className="font-display text-sm">
               <span className="block text-xs text-white/50">{when(l.at)}</span>
-              {l.href ? <Link href={l.href} className="hover:underline">{l.words}</Link> : l.words}
+              {l.href ? <Link prefetch={false} href={l.href} className="hover:underline">{l.words}</Link> : l.words}
             </li>
           ))}
         </ol>

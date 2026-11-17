@@ -61,11 +61,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           )}
         </div>
         <p className="mt-2 text-sm text-white/60">{user.email}</p>
-        <Link href="/admin/users" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to users</Link>
+        <Link prefetch={false} href="/admin/users" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to users</Link>
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link
+        <Link prefetch={false}
           href={`/admin/orders?q=${encodeURIComponent(user.email ?? '')}`}
           className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
         >

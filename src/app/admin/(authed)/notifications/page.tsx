@@ -43,7 +43,7 @@ function AlertCard({ label, count, description, href }: Alert) {
   const needsAttention = count != null && count > 0
   const unreachable = count == null
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className="block rounded-xl border border-white/[0.08] bg-[#131A2A] p-5 outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
     >
@@ -182,7 +182,7 @@ export default async function AdminNotificationsPage() {
                     </p>
                     <p className="text-xs text-white/40">{formatMoment(row.occurred_at)}</p>
                   </div>
-                  <Link
+                  <Link prefetch={false}
                     href={row.admin_path}
                     className="mt-2 block font-display text-lg font-semibold text-white outline-none hover:text-[var(--brand-accent)] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                   >
@@ -214,7 +214,7 @@ export default async function AdminNotificationsPage() {
         <h2 className="font-display text-sm uppercase tracking-widest text-white/60">Activity</h2>
         <p className="mt-2 text-sm text-white/50">
           Every admin action is recorded. Review the full history in the{' '}
-          <Link href="/admin/audit" className="text-[var(--brand-accent)] hover:underline">
+          <Link prefetch={false} href="/admin/audit" className="text-[var(--brand-accent)] hover:underline">
             audit log
           </Link>
           .

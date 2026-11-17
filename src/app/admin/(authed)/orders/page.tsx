@@ -58,7 +58,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           Every refund is recorded in the audit log.
         </p>
         <p className="mt-3 text-sm">
-          <Link href="/admin/orders/unfulfilled" className="text-[var(--brand-accent)] hover:underline">
+          <Link prefetch={false} href="/admin/orders/unfulfilled" className="text-[var(--brand-accent)] hover:underline">
             Money taken, no ticket
           </Link>
           <span className="text-white/50"> - buyers charged who hold no ticket, checked against Stripe.</span>
@@ -82,7 +82,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         >
           Search
         </button>
-        <Link
+        <Link prefetch={false}
           href="/admin/orders"
           className="min-h-[44px] rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
         >
@@ -114,7 +114,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
               rows.map(o => (
                 <tr key={o.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/orders/${o.id}`}
                       className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
                     >
@@ -148,7 +148,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         <span>Page {page}</span>
         <div className="flex gap-2">
           {page > 1 ? (
-            <Link
+            <Link prefetch={false}
               href={`/admin/orders?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page - 1) }).toString()}`}
               className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white"
             >
@@ -156,7 +156,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             </Link>
           ) : null}
           {hasMore ? (
-            <Link
+            <Link prefetch={false}
               href={`/admin/orders?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page + 1) }).toString()}`}
               className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white"
             >
